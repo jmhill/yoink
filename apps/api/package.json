@@ -1,0 +1,23 @@
+{
+  "name": "@yoink/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --experimental-sqlite src/index.ts",
+    "build": "tsc",
+    "start": "node --experimental-sqlite dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ts-rest/fastify": "^3.52.0",
+    "@yoink/api-contracts": "workspace:*",
+    "@yoink/infrastructure": "workspace:*",
+    "fastify": "^4.28.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}

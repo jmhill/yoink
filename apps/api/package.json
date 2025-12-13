@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.4.0",
     "@ts-rest/fastify": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",

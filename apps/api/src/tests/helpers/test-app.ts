@@ -18,6 +18,10 @@ export const TEST_ORG_ID = '550e8400-e29b-41d4-a716-446655440001';
 // Test user uses the hardcoded SEED_USER_ID from seed.ts
 export const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 
+// Admin test credentials
+export const TEST_ADMIN_PASSWORD = 'test-admin-password';
+export const TEST_SESSION_SECRET = 'test-session-secret-32-chars-ok';
+
 const testConfig: AppConfig = {
   server: { port: 3000, host: '0.0.0.0' },
   database: { type: 'memory' },
@@ -33,6 +37,14 @@ const testConfig: AppConfig = {
   seedToken: TEST_TOKEN_SECRET,
 };
 
+const testConfigWithAdmin: AppConfig = {
+  ...testConfig,
+  admin: {
+    password: TEST_ADMIN_PASSWORD,
+    sessionSecret: TEST_SESSION_SECRET,
+  },
+};
+
 export const createTestApp = async () => {
   // In tests, we run migrations before creating the app
   // In production, migrations are run as a separate CI/CD step
@@ -40,4 +52,13 @@ export const createTestApp = async () => {
   runMigrations(infrastructure.database.db, migrations);
 
   return createAppFromConfig({ config: testConfig, infrastructure, silent: true });
+};
+
+export const createTestAppWithAdmin = async () => {
+  // In tests, we run migrations before creating the app
+  // In production, migrations are run as a separate CI/CD step
+  const infrastructure = createInfrastructure(testConfigWithAdmin);
+  runMigrations(infrastructure.database.db, migrations);
+
+  return createAppFromConfig({ config: testConfigWithAdmin, infrastructure, silent: true });
 };

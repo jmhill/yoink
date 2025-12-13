@@ -64,5 +64,18 @@ export const createSqliteUserStore = (db: DatabaseSync): UserStore => {
         return errAsync(userStorageError('Failed to find user', error));
       }
     },
+
+    findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          SELECT * FROM users WHERE organization_id = ? ORDER BY created_at DESC
+        `);
+
+        const rows = stmt.all(organizationId) as UserRow[];
+        return okAsync(rows.map(rowToUser));
+      } catch (error) {
+        return errAsync(userStorageError('Failed to find users by organization', error));
+      }
+    },
   };
 };

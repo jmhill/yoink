@@ -33,5 +33,12 @@ export const createFakeOrganizationStore = (
       const found = organizations.find((o) => o.id === id);
       return okAsync(found ?? null);
     },
+
+    findAll: (): ResultAsync<Organization[], OrganizationStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(organizationStorageError('Find failed'));
+      }
+      return okAsync([...organizations]);
+    },
   };
 };

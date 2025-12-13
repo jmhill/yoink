@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { createApp } from './app.js';
+import { createApp, type AdminConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
 import { createCaptureService } from './captures/domain/capture-service.js';
@@ -13,6 +13,10 @@ import {
   createSqliteTokenStore,
   seedAuthData,
 } from './auth/infrastructure/index.js';
+import {
+  createAdminSessionService,
+  createAdminService,
+} from './admin/domain/index.js';
 import {
   createSystemClock,
   createFakeClock,
@@ -134,5 +138,26 @@ export const createAppFromConfig = async (options: CreateAppOptions) => {
     idGenerator,
   });
 
-  return createApp({ captureService, authMiddleware, healthChecker });
+  // Create admin services if admin config is provided
+  let admin: AdminConfig | undefined;
+  if (config.admin) {
+    const adminSessionService = createAdminSessionService({
+      adminPassword: config.admin.password,
+      sessionSecret: config.admin.sessionSecret,
+      clock,
+    });
+
+    const adminService = createAdminService({
+      organizationStore,
+      userStore,
+      tokenStore,
+      clock,
+      idGenerator,
+      passwordHasher,
+    });
+
+    admin = { adminService, adminSessionService };
+  }
+
+  return createApp({ captureService, authMiddleware, healthChecker, admin });
 };

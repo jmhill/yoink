@@ -69,5 +69,18 @@ export const createSqliteOrganizationStore = (
         return errAsync(organizationStorageError('Failed to find organization', error));
       }
     },
+
+    findAll: (): ResultAsync<Organization[], OrganizationStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          SELECT * FROM organizations ORDER BY created_at DESC
+        `);
+
+        const rows = stmt.all() as OrganizationRow[];
+        return okAsync(rows.map(rowToOrganization));
+      } catch (error) {
+        return errAsync(organizationStorageError('Failed to find all organizations', error));
+      }
+    },
   };
 };

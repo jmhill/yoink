@@ -72,17 +72,25 @@ export const InfrastructureConfigSchema = z.object({
   passwordHasher: PasswordHasherConfigSchema,
 });
 
+// Admin configuration
+export const AdminConfigSchema = z.object({
+  password: z.string().min(1),
+  sessionSecret: z.string().min(32),
+});
+
 // Full application configuration
 export const AppConfigSchema = z.object({
   server: ServerConfigSchema,
   database: DatabaseConfigSchema,
   infrastructure: InfrastructureConfigSchema,
   seedToken: z.string().optional(),
+  admin: AdminConfigSchema.optional(),
 });
 
 // Export inferred types
 export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 export type ClockConfig = z.infer<typeof ClockConfigSchema>;
+export type AdminConfig = z.infer<typeof AdminConfigSchema>;
 export type IdGeneratorConfig = z.infer<typeof IdGeneratorConfigSchema>;
 export type PasswordHasherConfig = z.infer<typeof PasswordHasherConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

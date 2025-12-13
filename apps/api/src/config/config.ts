@@ -1,4 +1,23 @@
-import { type AppConfig, type DatabaseConfig } from './schema.js';
+import { type AppConfig, type DatabaseConfig, type AdminConfig } from './schema.js';
+
+/**
+ * Load admin configuration from environment variables.
+ * Returns undefined if ADMIN_PASSWORD is not set.
+ */
+const loadAdminConfig = (): AdminConfig | undefined => {
+  const password = process.env.ADMIN_PASSWORD;
+  const sessionSecret = process.env.SESSION_SECRET;
+
+  if (!password) {
+    return undefined;
+  }
+
+  // Generate a default session secret if not provided (32 chars from password hash)
+  // In production, SESSION_SECRET should always be explicitly set
+  const secret = sessionSecret ?? `default-session-secret-${password}`.slice(0, 32).padEnd(32, 'x');
+
+  return { password, sessionSecret: secret };
+};
 
 /**
  * Load application configuration from environment variables.
@@ -20,6 +39,7 @@ export const loadConfig = (): AppConfig => {
       passwordHasher: { type: 'bcrypt' },
     },
     seedToken: process.env.SEED_TOKEN,
+    admin: loadAdminConfig(),
   };
 };
 

@@ -154,4 +154,58 @@ describe('createSqliteTokenStore', () => {
       }
     });
   });
+
+  describe('findByUserId', () => {
+    it('returns empty array when no tokens exist for user', async () => {
+      const found = await store.findByUserId(TEST_USER.id);
+
+      expect(found).toEqual([]);
+    });
+
+    it('returns all tokens for the user ordered by createdAt desc', async () => {
+      const token1 = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440003',
+        name: 'first-token',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      const token2 = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        name: 'second-token',
+        createdAt: '2024-02-01T00:00:00.000Z',
+      });
+      await store.save(token1);
+      await store.save(token2);
+
+      const found = await store.findByUserId(TEST_USER.id);
+
+      expect(found).toHaveLength(2);
+      expect(found[0].name).toBe('second-token');
+      expect(found[1].name).toBe('first-token');
+    });
+
+    it('only returns tokens for the specified user', async () => {
+      const token = createTestToken();
+      await store.save(token);
+
+      const found = await store.findByUserId('other-user-id');
+
+      expect(found).toEqual([]);
+    });
+  });
+
+  describe('delete', () => {
+    it('removes a token from the database', async () => {
+      const token = createTestToken();
+      await store.save(token);
+
+      await store.delete(token.id);
+
+      const found = await store.findById(token.id);
+      expect(found).toBeNull();
+    });
+
+    it('does not throw when deleting non-existent token', async () => {
+      await expect(store.delete('non-existent-id')).resolves.not.toThrow();
+    });
+  });
 });

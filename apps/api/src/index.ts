@@ -1,5 +1,5 @@
 import { createApp } from './app.js';
-import { loadConfig } from './config/config.js';
+import { loadConfig, getDatabasePath } from './config/config.js';
 import { createCaptureService } from './captures/domain/capture-service.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createTokenService } from './auth/domain/token-service.js';
@@ -21,9 +21,12 @@ import { dirname } from 'node:path';
 
 const main = async () => {
   const config = loadConfig();
+  const dbPath = getDatabasePath(config.database);
 
-  // Ensure database directory exists
-  mkdirSync(dirname(config.dbPath), { recursive: true });
+  // Ensure database directory exists (only for file-based databases)
+  if (config.database.type === 'sqlite') {
+    mkdirSync(dirname(config.database.path), { recursive: true });
+  }
 
   // Create shared infrastructure
   const clock = createSystemClock();
@@ -32,10 +35,10 @@ const main = async () => {
 
   // Create auth stores (all using same db path)
   const organizationStore = createSqliteOrganizationStore({
-    location: config.dbPath,
+    location: dbPath,
   });
-  const userStore = createSqliteUserStore({ location: config.dbPath });
-  const tokenStore = createSqliteTokenStore({ location: config.dbPath });
+  const userStore = createSqliteUserStore({ location: dbPath });
+  const tokenStore = createSqliteTokenStore({ location: dbPath });
 
   // Seed auth data if configured
   await seedAuthData({
@@ -64,7 +67,7 @@ const main = async () => {
   const healthChecker = createSqliteHealthChecker({ tokenStore });
 
   // Create capture store and service
-  const captureStore = createSqliteCaptureStore({ location: config.dbPath });
+  const captureStore = createSqliteCaptureStore({ location: dbPath });
   const captureService = createCaptureService({
     store: captureStore,
     clock,
@@ -74,8 +77,9 @@ const main = async () => {
   const app = await createApp({ captureService, authMiddleware, healthChecker });
 
   try {
-    await app.listen({ port: config.port, host: config.host });
-    console.log(`Server running at http://${config.host}:${config.port}`);
+    const { port, host } = config.server;
+    await app.listen({ port, host });
+    console.log(`Server running at http://${host}:${port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

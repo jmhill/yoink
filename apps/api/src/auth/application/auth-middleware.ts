@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthContext } from '../../shared/auth-context.js';
+import type { TokenService } from '../domain/token-service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -7,28 +8,31 @@ declare module 'fastify' {
   }
 }
 
-const VALID_TOKEN = 'test-token-xyz';
-
-export const HARDCODED_AUTH_CONTEXT: AuthContext = {
-  organizationId: '550e8400-e29b-41d4-a716-446655440001',
-  userId: '550e8400-e29b-41d4-a716-446655440002',
+export type AuthMiddlewareDependencies = {
+  tokenService: TokenService;
 };
 
-export const authMiddleware = async (
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> => {
-  const authHeader = request.headers.authorization;
+export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
+  const { tokenService } = deps;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return reply.status(401).send({ message: 'Missing authorization header' });
-  }
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const authHeader = request.headers.authorization;
 
-  const token = authHeader.slice(7);
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.status(401).send({ message: 'Missing authorization header' });
+    }
 
-  if (token !== VALID_TOKEN) {
-    return reply.status(401).send({ message: 'Invalid token' });
-  }
+    const token = authHeader.slice(7);
 
-  request.authContext = HARDCODED_AUTH_CONTEXT;
+    const result = await tokenService.validateToken(token);
+
+    if (!result) {
+      return reply.status(401).send({ message: 'Invalid token' });
+    }
+
+    request.authContext = {
+      organizationId: result.organization.id,
+      userId: result.user.id,
+    };
+  };
 };

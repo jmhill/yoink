@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createTestApp } from '../helpers/test-app.js';
+import { createTestApp, TEST_TOKEN } from '../helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 
 describe('Capture API', () => {
-  const VALID_TOKEN = 'test-token-xyz';
+  const VALID_TOKEN = TEST_TOKEN;
   let app: FastifyInstance;
 
   beforeEach(async () => {

@@ -15,7 +15,8 @@
     "@ts-rest/fastify": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",
-    "fastify": "^4.28.0"
+    "fastify": "^4.28.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0"

@@ -1,17 +1,23 @@
 import Fastify from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { captureContract } from '@yoink/api-contracts';
-import { authMiddleware } from './auth/application/auth-middleware.js';
 import type { CaptureService } from './captures/domain/capture-service.js';
+
+export type AuthMiddleware = (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => Promise<void>;
 
 export type AppDependencies = {
   captureService: CaptureService;
+  authMiddleware: AuthMiddleware;
 };
 
 export const createApp = async (deps: AppDependencies) => {
   const app = Fastify();
 
-  app.addHook('preHandler', authMiddleware);
+  app.addHook('preHandler', deps.authMiddleware);
 
   const s = initServer();
 

@@ -186,4 +186,243 @@ describe('createCaptureService', () => {
       }
     });
   });
+
+  describe('findById', () => {
+    it('returns capture when it exists in organization', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Existing content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.findById({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(existingCapture);
+      }
+    });
+
+    it('returns not found error when capture does not exist', async () => {
+      const store = createFakeCaptureStore();
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.findById({
+        id: 'non-existent',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+
+    it('returns not found error when capture belongs to different organization', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'other-org',
+        createdById: 'user-456',
+        content: 'Other org content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.findById({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+
+    it('returns error when store fails', async () => {
+      const store = createFakeCaptureStore({ shouldFailOnFind: true });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.findById({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('STORAGE_ERROR');
+      }
+    });
+  });
+
+  describe('update', () => {
+    it('updates capture content', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Original content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'capture-123',
+        organizationId: 'org-123',
+        content: 'Updated content',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.content).toBe('Updated content');
+      }
+    });
+
+    it('updates capture title', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'capture-123',
+        organizationId: 'org-123',
+        title: 'New title',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.title).toBe('New title');
+      }
+    });
+
+    it('sets archivedAt when archiving', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'capture-123',
+        organizationId: 'org-123',
+        status: 'archived',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.status).toBe('archived');
+        expect(result.value.archivedAt).toBe('2025-01-16T10:00:00.000Z');
+      }
+    });
+
+    it('clears archivedAt when un-archiving', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'archived' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+        archivedAt: '2025-01-15T12:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'capture-123',
+        organizationId: 'org-123',
+        status: 'inbox',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.status).toBe('inbox');
+        expect(result.value.archivedAt).toBeUndefined();
+      }
+    });
+
+    it('returns not found error when capture does not exist', async () => {
+      const store = createFakeCaptureStore();
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'non-existent',
+        organizationId: 'org-123',
+        content: 'Updated',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+
+    it('returns not found error when capture belongs to different organization', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'other-org',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.update({
+        id: 'capture-123',
+        organizationId: 'org-123',
+        content: 'Updated',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+  });
 });

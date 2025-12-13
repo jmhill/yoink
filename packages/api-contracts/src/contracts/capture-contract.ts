@@ -1,6 +1,6 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { CaptureSchema, CreateCaptureSchema } from '../schemas/capture.js';
+import { CaptureSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -36,6 +36,38 @@ export const captureContract = c.router({
       500: ErrorSchema,
     },
     summary: 'List captures',
+  },
+
+  get: {
+    method: 'GET',
+    path: '/captures/:id',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Get a capture by ID',
+  },
+
+  update: {
+    method: 'PATCH',
+    path: '/captures/:id',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: UpdateCaptureSchema,
+    responses: {
+      200: CaptureSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Update a capture',
   },
 }, {
     strictStatusCodes: true

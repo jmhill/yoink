@@ -95,6 +95,42 @@ export const createSqliteCaptureStore = (
       }
     },
 
+    findById: (id: string): ResultAsync<Capture | null, StorageError> => {
+      try {
+        const stmt = db.prepare(`SELECT * FROM captures WHERE id = ?`);
+        const row = stmt.get(id) as CaptureRow | undefined;
+
+        return okAsync(row ? rowToCapture(row) : null);
+      } catch (error) {
+        return errAsync(storageError('Failed to find capture', error));
+      }
+    },
+
+    update: (capture: Capture): ResultAsync<void, StorageError> => {
+      try {
+        const stmt = db.prepare(`
+          UPDATE captures SET
+            content = ?,
+            title = ?,
+            status = ?,
+            archived_at = ?
+          WHERE id = ?
+        `);
+
+        stmt.run(
+          capture.content,
+          capture.title ?? null,
+          capture.status,
+          capture.archivedAt ?? null,
+          capture.id
+        );
+
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(storageError('Failed to update capture', error));
+      }
+    },
+
     findByOrganization: (
       options: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {

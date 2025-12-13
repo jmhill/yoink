@@ -24,4 +24,24 @@ describe('captureContract', () => {
     expect(captureContract.create.responses).toHaveProperty('401');
     expect(captureContract.list.responses).toHaveProperty('401');
   });
+
+  it('defines get endpoint', () => {
+    expect(captureContract.get.method).toBe('GET');
+    expect(captureContract.get.path).toBe('/captures/:id');
+  });
+
+  it('has 200 and 404 responses for get', () => {
+    expect(captureContract.get.responses).toHaveProperty('200');
+    expect(captureContract.get.responses).toHaveProperty('404');
+  });
+
+  it('defines update endpoint', () => {
+    expect(captureContract.update.method).toBe('PATCH');
+    expect(captureContract.update.path).toBe('/captures/:id');
+  });
+
+  it('has 200 and 404 responses for update', () => {
+    expect(captureContract.update.responses).toHaveProperty('200');
+    expect(captureContract.update.responses).toHaveProperty('404');
+  });
 });

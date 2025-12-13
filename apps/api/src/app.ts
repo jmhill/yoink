@@ -92,6 +92,65 @@ export const createApp = async (deps: AppDependencies) => {
           }
         );
       },
+
+      get: async ({ params, request }) => {
+        const result = await deps.captureService.findById({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      update: async ({ params, body, request }) => {
+        const result = await deps.captureService.update({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          title: body.title,
+          content: body.content,
+          status: body.status,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(captureContract, captureRouter, authedApp, {

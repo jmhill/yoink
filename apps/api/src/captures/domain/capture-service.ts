@@ -1,9 +1,10 @@
-import type { ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { CaptureStore, FindByOrganizationResult } from './capture-store.js';
-import type { CreateCaptureCommand, ListCapturesQuery } from './capture-commands.js';
-import type { CreateCaptureError, ListCapturesError } from './capture-errors.js';
+import type { CreateCaptureCommand, ListCapturesQuery, FindCaptureQuery, UpdateCaptureCommand } from './capture-commands.js';
+import type { CreateCaptureError, ListCapturesError, FindCaptureError, UpdateCaptureError } from './capture-errors.js';
+import { captureNotFoundError } from './capture-errors.js';
 
 export type CaptureServiceDependencies = {
   store: CaptureStore;
@@ -16,6 +17,8 @@ export type ListCapturesResult = FindByOrganizationResult;
 export type CaptureService = {
   create: (command: CreateCaptureCommand) => ResultAsync<Capture, CreateCaptureError>;
   list: (query: ListCapturesQuery) => ResultAsync<ListCapturesResult, ListCapturesError>;
+  findById: (query: FindCaptureQuery) => ResultAsync<Capture, FindCaptureError>;
+  update: (command: UpdateCaptureCommand) => ResultAsync<Capture, UpdateCaptureError>;
 };
 
 export const createCaptureService = (
@@ -48,5 +51,50 @@ export const createCaptureService = (
         cursor: query.cursor,
       });
     },
+
+    findById: (query: FindCaptureQuery): ResultAsync<Capture, FindCaptureError> => {
+      return store.findById(query.id).andThen((capture) => {
+        if (!capture || capture.organizationId !== query.organizationId) {
+          return errAsync(captureNotFoundError(query.id));
+        }
+        return okAsync(capture);
+      });
+    },
+
+    update: (command: UpdateCaptureCommand): ResultAsync<Capture, UpdateCaptureError> => {
+      return store.findById(command.id).andThen((existing) => {
+        if (!existing || existing.organizationId !== command.organizationId) {
+          return errAsync(captureNotFoundError(command.id));
+        }
+
+        const updatedCapture: Capture = {
+          ...existing,
+          title: command.title ?? existing.title,
+          content: command.content ?? existing.content,
+          status: command.status ?? existing.status,
+          archivedAt: computeArchivedAt(existing, command, clock),
+        };
+
+        return store.update(updatedCapture).map(() => updatedCapture);
+      });
+    },
   };
+};
+
+const computeArchivedAt = (
+  existing: Capture,
+  command: UpdateCaptureCommand,
+  clock: Clock
+): string | undefined => {
+  const newStatus = command.status ?? existing.status;
+
+  if (newStatus === 'archived' && existing.status !== 'archived') {
+    return clock.now().toISOString();
+  }
+
+  if (newStatus === 'inbox') {
+    return undefined;
+  }
+
+  return existing.archivedAt;
 };

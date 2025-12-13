@@ -27,6 +27,25 @@ export const createFakeCaptureStore = (
       return okAsync(undefined);
     },
 
+    findById: (id: string): ResultAsync<Capture | null, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const found = captures.find((c) => c.id === id);
+      return okAsync(found ?? null);
+    },
+
+    update: (capture: Capture): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Update failed'));
+      }
+      const index = captures.findIndex((c) => c.id === capture.id);
+      if (index !== -1) {
+        captures[index] = capture;
+      }
+      return okAsync(undefined);
+    },
+
     findByOrganization: (
       opts: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {

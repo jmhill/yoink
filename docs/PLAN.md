@@ -8,7 +8,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 ## Current Status
 
-**Phase 1: Backend Foundation** - In Progress (80% complete)
+**Phase 1: Backend Foundation** - Complete ✓
 
 ---
 
@@ -39,17 +39,14 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Application layer:
   - [x] POST /captures - create capture
   - [x] GET /captures - list captures (with status filter, pagination)
+  - [x] GET /captures/:id - get single capture
+  - [x] PATCH /captures/:id - update capture (title, content, status)
+- [x] Archive captures (via status update, sets archivedAt timestamp)
 - [x] Seed script for bootstrapping org/user/token (SEED_TOKEN env var)
 - [x] CI pipeline (GitHub Actions with pnpm quality script)
+- [x] Contract tests for all endpoints
 
-### Remaining
-
-- [ ] GET /captures/:id - get single capture
-- [ ] PATCH /captures/:id - update capture (title, content, status)
-- [ ] Archive captures (no hard delete)
-- [ ] Contract tests for remaining endpoints
-
-**Deliverable**: Can POST/GET/PATCH captures via curl with a seeded token
+**Deliverable**: Can POST/GET/PATCH captures via curl with a seeded token ✓
 
 ---
 

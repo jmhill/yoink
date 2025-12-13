@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CaptureSchema, CreateCaptureSchema } from './capture.js';
+import { CaptureSchema, CreateCaptureSchema, UpdateCaptureSchema } from './capture.js';
 
 describe('CaptureSchema', () => {
   const validCapture = {
@@ -132,6 +132,72 @@ describe('CreateCaptureSchema', () => {
 
   it('rejects missing content', () => {
     const result = CreateCaptureSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('UpdateCaptureSchema', () => {
+  it('validates update with title only', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      title: 'New title',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates update with content only', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      content: 'Updated content',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates update with status only', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      status: 'archived',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates update with all fields', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      title: 'New title',
+      content: 'Updated content',
+      status: 'inbox',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates empty update (no changes)', () => {
+    const result = UpdateCaptureSchema.safeParse({});
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty content', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      content: '',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects title over 200 characters', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      title: 'a'.repeat(201),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid status', () => {
+    const result = UpdateCaptureSchema.safeParse({
+      status: 'deleted',
+    });
 
     expect(result.success).toBe(false);
   });

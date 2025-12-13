@@ -170,5 +170,117 @@ export const runCaptureStoreContractTests = (
         }
       });
     });
+
+    describe('findById', () => {
+      it('returns capture when it exists', async () => {
+        const capture = createTestCapture({ id: 'capture-123' });
+        await store.save(capture);
+
+        const result = await store.findById('capture-123');
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value).toEqual(capture);
+        }
+      });
+
+      it('returns null when capture does not exist', async () => {
+        const result = await store.findById('non-existent-id');
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value).toBeNull();
+        }
+      });
+
+      it('returns capture regardless of organization', async () => {
+        const capture = createTestCapture({
+          id: 'capture-456',
+          organizationId: 'some-org',
+        });
+        await store.save(capture);
+
+        const result = await store.findById('capture-456');
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value?.organizationId).toBe('some-org');
+        }
+      });
+    });
+
+    describe('update', () => {
+      it('updates capture content', async () => {
+        const capture = createTestCapture({ id: 'capture-123', content: 'Original' });
+        await store.save(capture);
+
+        const updatedCapture = { ...capture, content: 'Updated content' };
+        const updateResult = await store.update(updatedCapture);
+
+        expect(updateResult.isOk()).toBe(true);
+
+        const findResult = await store.findById('capture-123');
+        expect(findResult.isOk()).toBe(true);
+        if (findResult.isOk()) {
+          expect(findResult.value?.content).toBe('Updated content');
+        }
+      });
+
+      it('updates capture status and archivedAt', async () => {
+        const capture = createTestCapture({ id: 'capture-123', status: 'inbox' });
+        await store.save(capture);
+
+        const updatedCapture = {
+          ...capture,
+          status: 'archived' as const,
+          archivedAt: '2025-01-16T10:00:00.000Z',
+        };
+        await store.update(updatedCapture);
+
+        const findResult = await store.findById('capture-123');
+        expect(findResult.isOk()).toBe(true);
+        if (findResult.isOk()) {
+          expect(findResult.value?.status).toBe('archived');
+          expect(findResult.value?.archivedAt).toBe('2025-01-16T10:00:00.000Z');
+        }
+      });
+
+      it('updates capture title', async () => {
+        const capture = createTestCapture({ id: 'capture-123' });
+        await store.save(capture);
+
+        const updatedCapture = { ...capture, title: 'New title' };
+        await store.update(updatedCapture);
+
+        const findResult = await store.findById('capture-123');
+        expect(findResult.isOk()).toBe(true);
+        if (findResult.isOk()) {
+          expect(findResult.value?.title).toBe('New title');
+        }
+      });
+
+      it('clears archivedAt when un-archiving', async () => {
+        const capture = createTestCapture({
+          id: 'capture-123',
+          status: 'archived',
+          archivedAt: '2025-01-16T10:00:00.000Z',
+        });
+        await store.save(capture);
+
+        const updatedCapture = {
+          ...capture,
+          status: 'inbox' as const,
+          archivedAt: undefined,
+        };
+        await store.update(updatedCapture);
+
+        const findResult = await store.findById('capture-123');
+        expect(findResult.isOk()).toBe(true);
+        if (findResult.isOk()) {
+          expect(findResult.value?.status).toBe('inbox');
+          expect(findResult.value?.archivedAt).toBeUndefined();
+        }
+      });
+    });
   });
 };

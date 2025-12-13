@@ -16,6 +16,8 @@ export type FindByOrganizationResult = {
 
 export type CaptureStore = {
   save(capture: Capture): ResultAsync<void, StorageError>;
+  findById(id: string): ResultAsync<Capture | null, StorageError>;
+  update(capture: Capture): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
   ): ResultAsync<FindByOrganizationResult, StorageError>;

@@ -23,3 +23,11 @@ export const CreateCaptureSchema = z.object({
 });
 
 export type CreateCapture = z.infer<typeof CreateCaptureSchema>;
+
+export const UpdateCaptureSchema = z.object({
+  title: z.string().max(200).optional(),
+  content: z.string().min(1).max(10000).optional(),
+  status: z.enum(['inbox', 'archived']).optional(),
+});
+
+export type UpdateCapture = z.infer<typeof UpdateCaptureSchema>;

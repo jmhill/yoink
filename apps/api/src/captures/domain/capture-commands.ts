@@ -13,3 +13,16 @@ export type ListCapturesQuery = {
   limit?: number;
   cursor?: string;
 };
+
+export type FindCaptureQuery = {
+  id: string;
+  organizationId: string;
+};
+
+export type UpdateCaptureCommand = {
+  id: string;
+  organizationId: string;
+  title?: string;
+  content?: string;
+  status?: 'inbox' | 'archived';
+};

@@ -15,6 +15,7 @@ export type SeedDependencies = {
   passwordHasher: PasswordHasher;
   idGenerator: IdGenerator;
   clock: Clock;
+  silent?: boolean;
 };
 
 export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
@@ -68,5 +69,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
   });
 
   // Log the full token for the user (tokenId:secret format)
-  console.log(`Seeded API token: ${tokenId}:${seedToken}`);
+  if (!deps.silent) {
+    console.log(`Seeded API token: ${tokenId}:${seedToken}`);
+  }
 };

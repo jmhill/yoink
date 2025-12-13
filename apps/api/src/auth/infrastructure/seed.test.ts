@@ -61,6 +61,7 @@ describe('seedAuthData', () => {
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
+      silent: true,
     });
 
     expect(savedOrgs).toHaveLength(1);
@@ -85,6 +86,7 @@ describe('seedAuthData', () => {
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
+      silent: true,
     });
 
     expect(savedOrgs).toHaveLength(0);
@@ -103,6 +105,7 @@ describe('seedAuthData', () => {
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
+      silent: true,
     });
 
     expect(savedOrgs).toHaveLength(0);
@@ -119,6 +122,7 @@ describe('seedAuthData', () => {
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
+      silent: true,
     });
 
     expect(savedOrgs[0].id).toBe('550e8400-e29b-41d4-a716-446655440001');

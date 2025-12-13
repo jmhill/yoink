@@ -85,10 +85,11 @@ export const createInfrastructure = (config: AppConfig): Infrastructure => {
 export type CreateAppOptions = {
   config: AppConfig;
   infrastructure?: Infrastructure;
+  silent?: boolean;
 };
 
 export const createAppFromConfig = async (options: CreateAppOptions) => {
-  const { config, infrastructure } = options;
+  const { config, infrastructure, silent } = options;
   const { database, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);
   const { db } = database;
@@ -107,6 +108,7 @@ export const createAppFromConfig = async (options: CreateAppOptions) => {
     passwordHasher,
     idGenerator,
     clock,
+    silent,
   });
 
   // Create token service

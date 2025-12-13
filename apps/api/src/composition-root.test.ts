@@ -136,7 +136,7 @@ describe('composition root', () => {
       const infrastructure = createInfrastructure(config);
       runMigrations(infrastructure.database.db, migrations);
 
-      const app = await createAppFromConfig({ config, infrastructure });
+      const app = await createAppFromConfig({ config, infrastructure, silent: true });
 
       expect(app).toBeDefined();
       // Verify the app has registered routes
@@ -149,7 +149,7 @@ describe('composition root', () => {
       const infrastructure = createInfrastructure(config);
       runMigrations(infrastructure.database.db, migrations);
 
-      const app = await createAppFromConfig({ config, infrastructure });
+      const app = await createAppFromConfig({ config, infrastructure, silent: true });
 
       // The seeded token should work for authentication
       // Token format is tokenId:secret, where tokenId is the first generated ID

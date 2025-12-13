@@ -39,5 +39,5 @@ export const createTestApp = async () => {
   const infrastructure = createInfrastructure(testConfig);
   runMigrations(infrastructure.database.db, migrations);
 
-  return createAppFromConfig({ config: testConfig, infrastructure });
+  return createAppFromConfig({ config: testConfig, infrastructure, silent: true });
 };

@@ -8,7 +8,7 @@
     "test:coverage": "vitest run --coverage",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "quality": "pnpm typecheck && pnpm test",
+    "quality": "pnpm build && pnpm typecheck && pnpm test",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -3,7 +3,8 @@
   "packages": [
     "nodejs@24",
     "pnpm@9",
-    "typescript-language-server@latest"
+    "typescript-language-server@latest",
+    "flyctl@latest"
   ],
   "shell": {
     "init_hook": [

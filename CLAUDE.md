@@ -107,6 +107,11 @@ All capture queries are scoped to the authenticated user's organization.
 - Avoid adding unnecessary test helpers - prefer using the public API of all services and modules.
 - Test files are colocated with source (`.test.ts` suffix)
 
+## Continuous Delivery
+
+- Make small, cohesive commits - the pre-commit hook will at least ensure that tests aren't failing, but we also want every single commit of our code to be potentially releasable to end users.
+- The code should be maintained in a releasable state using engineering approaches like branch by abstraction, expand/migrate/contract, backwards-compatible API design, evolutionary database design, feature toggles, and any other method available that provides ample flexibility.
+
 ## Environment Variables
 
 | Variable | Purpose |

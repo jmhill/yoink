@@ -20,7 +20,7 @@ export const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 
 // Admin test credentials
 export const TEST_ADMIN_PASSWORD = 'test-admin-password';
-export const TEST_SESSION_SECRET = 'test-session-secret-32-chars-ok';
+export const TEST_SESSION_SECRET = 'test-session-secret-32-chars-min!';
 
 const testConfig: AppConfig = {
   server: { port: 3000, host: '0.0.0.0' },

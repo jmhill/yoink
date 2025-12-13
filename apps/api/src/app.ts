@@ -184,6 +184,7 @@ export const createApp = async (deps: AppDependencies) => {
   if (deps.admin) {
     const { adminService, adminSessionService } = deps.admin;
 
+    // Register admin routes with session authentication middleware
     await registerAdminRoutes(app, {
       adminService,
       adminSessionService,

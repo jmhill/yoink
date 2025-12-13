@@ -26,6 +26,11 @@ export const createAdminSessionService = (
 ): AdminSessionService => {
   const { adminPassword, sessionSecret, clock, sessionTtlMs = DEFAULT_SESSION_TTL_MS } = deps;
 
+  // Validate session secret length for HMAC security
+  if (sessionSecret.length < 32) {
+    throw new Error('sessionSecret must be at least 32 characters');
+  }
+
   const sign = (payload: string): string => {
     const hmac = createHmac('sha256', sessionSecret);
     hmac.update(payload);

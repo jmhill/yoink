@@ -10,30 +10,26 @@ export type AdminRoutesDependencies = {
   adminSessionService: AdminSessionService;
 };
 
-type AuthCheck = { authorized: true } | { authorized: false; response: { status: 401; body: { message: string } } };
-
-const checkAdminSession = (
+/**
+ * Helper to check admin session authentication.
+ * Returns the session if valid, or a 401 response object if not.
+ */
+const requireAdminAuth = (
   request: FastifyRequest,
   adminSessionService: AdminSessionService
-): AuthCheck => {
+) => {
   const sessionToken = (request.cookies as Record<string, string>)?.[ADMIN_SESSION_COOKIE];
 
   if (!sessionToken) {
-    return {
-      authorized: false,
-      response: { status: 401, body: { message: 'Not authenticated' } },
-    };
+    return { status: 401 as const, body: { message: 'Not authenticated' } };
   }
 
   const session = adminSessionService.verifySession(sessionToken);
   if (!session) {
-    return {
-      authorized: false,
-      response: { status: 401, body: { message: 'Invalid or expired session' } },
-    };
+    return { status: 401 as const, body: { message: 'Invalid or expired session' } };
   }
 
-  return { authorized: true };
+  return session;
 };
 
 export const registerAdminRoutes = async (
@@ -44,7 +40,7 @@ export const registerAdminRoutes = async (
   const s = initServer();
 
   const router = s.router(adminContract, {
-    // Session management
+    // Public routes - session management
     login: async ({ body, reply }) => {
       const result = adminSessionService.login(body.password);
 
@@ -80,13 +76,12 @@ export const registerAdminRoutes = async (
       };
     },
 
-    // Organizations
+    // Protected routes - Organizations
     listOrganizations: async ({ request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       const organizations = await adminService.listOrganizations();
-
       return {
         status: 200 as const,
         body: { organizations },
@@ -94,11 +89,10 @@ export const registerAdminRoutes = async (
     },
 
     createOrganization: async ({ body, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       const organization = await adminService.createOrganization(body.name);
-
       return {
         status: 201 as const,
         body: organization,
@@ -106,8 +100,8 @@ export const registerAdminRoutes = async (
     },
 
     getOrganization: async ({ params, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       const organization = await adminService.getOrganization(params.id);
 
@@ -124,15 +118,13 @@ export const registerAdminRoutes = async (
       };
     },
 
-    // Users
+    // Protected routes - Users
     listUsers: async ({ params, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       // Check if organization exists
-      const organization = await adminService.getOrganization(
-        params.organizationId
-      );
+      const organization = await adminService.getOrganization(params.organizationId);
       if (!organization) {
         return {
           status: 404 as const,
@@ -141,7 +133,6 @@ export const registerAdminRoutes = async (
       }
 
       const users = await adminService.listUsers(params.organizationId);
-
       return {
         status: 200 as const,
         body: { users },
@@ -149,13 +140,11 @@ export const registerAdminRoutes = async (
     },
 
     createUser: async ({ params, body, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       // Check if organization exists
-      const organization = await adminService.getOrganization(
-        params.organizationId
-      );
+      const organization = await adminService.getOrganization(params.organizationId);
       if (!organization) {
         return {
           status: 404 as const,
@@ -163,11 +152,7 @@ export const registerAdminRoutes = async (
         };
       }
 
-      const user = await adminService.createUser(
-        params.organizationId,
-        body.email
-      );
-
+      const user = await adminService.createUser(params.organizationId, body.email);
       return {
         status: 201 as const,
         body: user,
@@ -175,8 +160,8 @@ export const registerAdminRoutes = async (
     },
 
     getUser: async ({ params, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       const user = await adminService.getUser(params.id);
 
@@ -193,10 +178,10 @@ export const registerAdminRoutes = async (
       };
     },
 
-    // Tokens
+    // Protected routes - Tokens
     listTokens: async ({ params, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       // Check if user exists
       const user = await adminService.getUser(params.userId);
@@ -208,7 +193,6 @@ export const registerAdminRoutes = async (
       }
 
       const tokens = await adminService.listTokens(params.userId);
-
       return {
         status: 200 as const,
         body: { tokens },
@@ -216,8 +200,8 @@ export const registerAdminRoutes = async (
     },
 
     createToken: async ({ params, body, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       // Check if user exists
       const user = await adminService.getUser(params.userId);
@@ -229,7 +213,6 @@ export const registerAdminRoutes = async (
       }
 
       const result = await adminService.createToken(params.userId, body.name);
-
       return {
         status: 201 as const,
         body: {
@@ -240,12 +223,11 @@ export const registerAdminRoutes = async (
     },
 
     revokeToken: async ({ params, request }) => {
-      const auth = checkAdminSession(request, adminSessionService);
-      if (!auth.authorized) return auth.response;
+      const auth = requireAdminAuth(request, adminSessionService);
+      if ('status' in auth) return auth;
 
       // We don't check if token exists - just delete it (idempotent)
       await adminService.revokeToken(params.id);
-
       return {
         status: 204 as const,
         body: undefined,

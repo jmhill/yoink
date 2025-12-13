@@ -16,7 +16,7 @@ export type AdminServiceDependencies = {
 };
 
 export type CreateTokenResult = {
-  token: ApiToken;
+  token: ApiTokenView; // View without hash, not full ApiToken
   rawToken: string; // The full tokenId:secret value
 };
 
@@ -121,7 +121,7 @@ export const createAdminService = (
       await tokenStore.save(token);
 
       return {
-        token: toApiTokenView(token) as ApiToken, // Cast back since we need full token structure
+        token: toApiTokenView(token),
         rawToken: `${tokenId}:${secret}`,
       };
     },

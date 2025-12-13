@@ -167,9 +167,8 @@ export const adminContract = c.router(
       responses: {
         204: z.undefined(),
         401: ErrorSchema,
-        404: ErrorSchema,
       },
-      summary: 'Revoke (delete) an API token',
+      summary: 'Revoke (delete) an API token (idempotent)',
     },
   },
   {

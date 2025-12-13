@@ -98,13 +98,24 @@ Organization → User → ApiToken
 
 All capture queries are scoped to the authenticated user's organization.
 
+## Code Style
+
+- **TDD required**: Write failing test first, then minimal code to pass
+- **TypeScript strict mode**: No `any`, no unused vars, no implicit returns
+- **Imports**: Use `type` keyword for type-only imports (`verbatimModuleSyntax`)
+- **Types**: Prefer `type` over `interface`; define Zod schemas first, derive types
+- **Naming**: `camelCase` functions, `PascalCase` types, `kebab-case.ts` files
+- **Testing**: Colocated `.test.ts` files; use fake implementations over mocks
+- **Error handling**: Use Result types or early returns with guard clauses
+- **Functions**: Pure, immutable data, options objects for 2+ parameters
+
 ## Testing
 
 - Vitest with workspace configuration (each package has its own vitest.config.ts)
 - In-memory SQLite (`:memory:`) for integration tests
 - Fake dependencies for deterministic tests (clock, ID generator, password hasher)
-- Avoid using vitest mocks unless necessary - prefer using fake implementations of our interfaces for all code we control.
-- Avoid adding unnecessary test helpers - prefer using the public API of all services and modules.
+- Avoid using vitest mocks unless necessary - prefer using fake implementations of our interfaces for all code we control
+- Avoid adding unnecessary test helpers - prefer using the public API of all services and modules
 - Test files are colocated with source (`.test.ts` suffix)
 
 ## Continuous Delivery

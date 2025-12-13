@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.14.0/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@24",
+    "pnpm@9",
+    "typescript-language-server@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Yoink dev environment ready - Node 24 + pnpm 9'"
+    ]
+  }
+}

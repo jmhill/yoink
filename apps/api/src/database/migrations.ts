@@ -38,7 +38,7 @@ export const migrations: Migration[] = [
       db.exec(`
         CREATE TABLE users (
           id TEXT PRIMARY KEY,
-          organization_id TEXT NOT NULL REFERENCES organizations(id),
+          organization_id TEXT NOT NULL,
           email TEXT NOT NULL,
           created_at TEXT NOT NULL
         )
@@ -53,7 +53,7 @@ export const migrations: Migration[] = [
       db.exec(`
         CREATE TABLE api_tokens (
           id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL REFERENCES users(id),
+          user_id TEXT NOT NULL,
           token_hash TEXT NOT NULL,
           name TEXT NOT NULL,
           last_used_at TEXT,
@@ -70,8 +70,8 @@ export const migrations: Migration[] = [
       db.exec(`
         CREATE TABLE captures (
           id TEXT PRIMARY KEY,
-          organization_id TEXT NOT NULL REFERENCES organizations(id),
-          created_by_id TEXT NOT NULL REFERENCES users(id),
+          organization_id TEXT NOT NULL,
+          created_by_id TEXT NOT NULL,
           content TEXT NOT NULL,
           title TEXT,
           source_url TEXT,

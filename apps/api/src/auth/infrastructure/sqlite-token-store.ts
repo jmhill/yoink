@@ -1,10 +1,6 @@
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';
-
-export type SqliteTokenStoreOptions = {
-  location: string;
-};
 
 type TokenRow = {
   id: string;
@@ -24,29 +20,26 @@ const rowToToken = (row: TokenRow): ApiToken => ({
   createdAt: row.created_at,
 });
 
-const initialize = (db: DatabaseSync): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS api_tokens (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      last_used_at TEXT,
-      created_at TEXT NOT NULL
+/**
+ * Validates that the required database schema exists.
+ * Throws an error if migrations have not been run.
+ */
+const validateSchema = (db: DatabaseSync): void => {
+  const table = db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='api_tokens'`
     )
-  `);
+    .get();
 
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_api_tokens_user
-    ON api_tokens(user_id)
-  `);
+  if (!table) {
+    throw new Error(
+      'TokenStore requires "api_tokens" table. Ensure migrations have been run before starting the application.'
+    );
+  }
 };
 
-export const createSqliteTokenStore = (
-  options: SqliteTokenStoreOptions
-): TokenStore => {
-  const db = new DatabaseSync(options.location);
-  initialize(db);
+export const createSqliteTokenStore = (db: DatabaseSync): TokenStore => {
+  validateSchema(db);
 
   return {
     save: async (token: ApiToken): Promise<void> => {

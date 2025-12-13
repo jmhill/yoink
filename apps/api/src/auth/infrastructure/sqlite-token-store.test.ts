@@ -1,11 +1,29 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
+import { DatabaseSync } from 'node:sqlite';
 import { createSqliteTokenStore } from './sqlite-token-store.js';
+import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
+import { createSqliteUserStore } from './sqlite-user-store.js';
+import { runMigrations } from '../../database/migrator.js';
+import { migrations } from '../../database/migrations.js';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';
 
+const TEST_ORG = {
+  id: '550e8400-e29b-41d4-a716-446655440001',
+  name: 'Test Organization',
+  createdAt: '2024-01-01T00:00:00.000Z',
+};
+
+const TEST_USER = {
+  id: '550e8400-e29b-41d4-a716-446655440002',
+  organizationId: TEST_ORG.id,
+  email: 'test@example.com',
+  createdAt: '2024-01-01T00:00:00.000Z',
+};
+
 const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
   id: '550e8400-e29b-41d4-a716-446655440003',
-  userId: '550e8400-e29b-41d4-a716-446655440002',
+  userId: TEST_USER.id,
   tokenHash: 'bcrypt-hash-here',
   name: 'default-token',
   createdAt: '2024-01-01T00:00:00.000Z',
@@ -13,10 +31,33 @@ const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
 });
 
 describe('createSqliteTokenStore', () => {
+  let db: DatabaseSync;
   let store: TokenStore;
 
-  beforeEach(() => {
-    store = createSqliteTokenStore({ location: ':memory:' });
+  beforeAll(() => {
+    db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations);
+  });
+
+  afterAll(() => {
+    db.close();
+  });
+
+  beforeEach(async () => {
+    // Clear data between tests (respecting foreign key order)
+    db.exec('DELETE FROM api_tokens');
+    db.exec('DELETE FROM captures');
+    db.exec('DELETE FROM users');
+    db.exec('DELETE FROM organizations');
+
+    // Create required parent records
+    const orgStore = createSqliteOrganizationStore(db);
+    await orgStore.save(TEST_ORG);
+
+    const userStore = createSqliteUserStore(db);
+    await userStore.save(TEST_USER);
+
+    store = createSqliteTokenStore(db);
   });
 
   describe('save', () => {

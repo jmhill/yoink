@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import type {
@@ -7,10 +7,6 @@ import type {
   FindByOrganizationResult,
 } from '../domain/capture-store.js';
 import { storageError, type StorageError } from '../domain/capture-errors.js';
-
-export type SqliteCaptureStoreOptions = {
-  location: string;
-};
 
 type CaptureRow = {
   id: string;
@@ -38,33 +34,26 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   archivedAt: row.archived_at ?? undefined,
 });
 
-const initialize = (db: DatabaseSync): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS captures (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      created_by_id TEXT NOT NULL,
-      content TEXT NOT NULL,
-      title TEXT,
-      source_url TEXT,
-      source_app TEXT,
-      status TEXT NOT NULL DEFAULT 'inbox',
-      captured_at TEXT NOT NULL,
-      archived_at TEXT
+/**
+ * Validates that the required database schema exists.
+ * Throws an error if migrations have not been run.
+ */
+const validateSchema = (db: DatabaseSync): void => {
+  const table = db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='captures'`
     )
-  `);
+    .get();
 
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_captures_org_status
-    ON captures(organization_id, status, captured_at DESC)
-  `);
+  if (!table) {
+    throw new Error(
+      'CaptureStore requires "captures" table. Ensure migrations have been run before starting the application.'
+    );
+  }
 };
 
-export const createSqliteCaptureStore = (
-  options: SqliteCaptureStoreOptions
-): CaptureStore => {
-  const db = new DatabaseSync(options.location);
-  initialize(db);
+export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
+  validateSchema(db);
 
   return {
     save: (capture: Capture): ResultAsync<void, StorageError> => {

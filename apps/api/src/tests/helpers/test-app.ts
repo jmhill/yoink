@@ -1,4 +1,7 @@
+import { DatabaseSync } from 'node:sqlite';
 import { createApp } from '../../app.js';
+import { runMigrations } from '../../database/migrator.js';
+import { migrations } from '../../database/migrations.js';
 import { createCaptureService } from '../../captures/domain/capture-service.js';
 import { createSqliteCaptureStore } from '../../captures/infrastructure/sqlite-capture-store.js';
 import { createTokenService } from '../../auth/domain/token-service.js';
@@ -42,12 +45,14 @@ export const createTestApp = async () => {
   const idGenerator = createFakeIdGenerator();
   const passwordHasher = createFakePasswordHasher();
 
-  // Create auth stores with in-memory databases
-  const organizationStore = createSqliteOrganizationStore({
-    location: ':memory:',
-  });
-  const userStore = createSqliteUserStore({ location: ':memory:' });
-  const tokenStore = createSqliteTokenStore({ location: ':memory:' });
+  // Create in-memory database and run migrations
+  const db = new DatabaseSync(':memory:');
+  runMigrations(db, migrations);
+
+  // Create auth stores with shared database connection
+  const organizationStore = createSqliteOrganizationStore(db);
+  const userStore = createSqliteUserStore(db);
+  const tokenStore = createSqliteTokenStore(db);
 
   // Seed test data
   await organizationStore.save(TEST_ORG);
@@ -78,7 +83,7 @@ export const createTestApp = async () => {
   const healthChecker = createSqliteHealthChecker({ tokenStore });
 
   // Create capture store and service
-  const captureStore = createSqliteCaptureStore({ location: ':memory:' });
+  const captureStore = createSqliteCaptureStore(db);
   const captureService = createCaptureService({
     store: captureStore,
     clock,

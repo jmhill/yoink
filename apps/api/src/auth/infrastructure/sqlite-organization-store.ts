@@ -1,10 +1,6 @@
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
-
-export type SqliteOrganizationStoreOptions = {
-  location: string;
-};
 
 type OrganizationRow = {
   id: string;
@@ -18,21 +14,28 @@ const rowToOrganization = (row: OrganizationRow): Organization => ({
   createdAt: row.created_at,
 });
 
-const initialize = (db: DatabaseSync): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS organizations (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      created_at TEXT NOT NULL
+/**
+ * Validates that the required database schema exists.
+ * Throws an error if migrations have not been run.
+ */
+const validateSchema = (db: DatabaseSync): void => {
+  const table = db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='organizations'`
     )
-  `);
+    .get();
+
+  if (!table) {
+    throw new Error(
+      'OrganizationStore requires "organizations" table. Ensure migrations have been run before starting the application.'
+    );
+  }
 };
 
 export const createSqliteOrganizationStore = (
-  options: SqliteOrganizationStoreOptions
+  db: DatabaseSync
 ): OrganizationStore => {
-  const db = new DatabaseSync(options.location);
-  initialize(db);
+  validateSchema(db);
 
   return {
     save: async (organization: Organization): Promise<void> => {

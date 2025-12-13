@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
+import { DatabaseSync } from 'node:sqlite';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
+import { runMigrations } from '../../database/migrator.js';
+import { migrations } from '../../database/migrations.js';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 
@@ -13,10 +16,26 @@ const createTestOrganization = (
 });
 
 describe('createSqliteOrganizationStore', () => {
+  let db: DatabaseSync;
   let store: OrganizationStore;
 
+  beforeAll(() => {
+    db = new DatabaseSync(':memory:');
+    runMigrations(db, migrations);
+  });
+
+  afterAll(() => {
+    db.close();
+  });
+
   beforeEach(() => {
-    store = createSqliteOrganizationStore({ location: ':memory:' });
+    // Clear data between tests
+    db.exec('DELETE FROM api_tokens');
+    db.exec('DELETE FROM captures');
+    db.exec('DELETE FROM users');
+    db.exec('DELETE FROM organizations');
+
+    store = createSqliteOrganizationStore(db);
   });
 
   describe('save', () => {

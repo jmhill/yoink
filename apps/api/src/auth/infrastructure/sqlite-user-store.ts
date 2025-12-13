@@ -1,10 +1,6 @@
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
-
-export type SqliteUserStoreOptions = {
-  location: string;
-};
 
 type UserRow = {
   id: string;
@@ -20,27 +16,24 @@ const rowToUser = (row: UserRow): User => ({
   createdAt: row.created_at,
 });
 
-const initialize = (db: DatabaseSync): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      email TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    )
-  `);
+/**
+ * Validates that the required database schema exists.
+ * Throws an error if migrations have not been run.
+ */
+const validateSchema = (db: DatabaseSync): void => {
+  const table = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='users'`)
+    .get();
 
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_users_organization
-    ON users(organization_id)
-  `);
+  if (!table) {
+    throw new Error(
+      'UserStore requires "users" table. Ensure migrations have been run before starting the application.'
+    );
+  }
 };
 
-export const createSqliteUserStore = (
-  options: SqliteUserStoreOptions
-): UserStore => {
-  const db = new DatabaseSync(options.location);
-  initialize(db);
+export const createSqliteUserStore = (db: DatabaseSync): UserStore => {
+  validateSchema(db);
 
   return {
     save: async (user: User): Promise<void> => {

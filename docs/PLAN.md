@@ -46,10 +46,10 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 - [ ] GET /captures/:id - get single capture
 - [ ] PATCH /captures/:id - update capture (title, content, status)
-- [ ] DELETE /captures/:id - hard delete capture
+- [ ] Archive captures (no hard delete)
 - [ ] Contract tests for remaining endpoints
 
-**Deliverable**: Can POST/GET/PATCH/DELETE captures via curl with a seeded token
+**Deliverable**: Can POST/GET/PATCH captures via curl with a seeded token
 
 ---
 
@@ -112,12 +112,23 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 **Goal**: Running in production
 
-- [ ] Dockerize API
-- [ ] Deploy to Fly.io
-- [ ] Set up SQLite persistence (Fly volume or Litestream backup)
+- [x] Dockerize API
+- [x] Deploy to Fly.io
+- [x] Set up SQLite persistence (Fly volume)
+- [x] Configure HTTPS (Fly.io handles automatically)
+- [x] CI/CD pipeline (GitHub Actions → Fly.io)
+- [x] Health endpoint (`GET /health`) with Fly.io HTTP health checks
+- [x] Post-deploy smoke test job in CI
 - [ ] Deploy web app (same service or separate static host)
-- [ ] Configure HTTPS
 - [ ] Install PWA on phone, extension in browser
+
+### Smoke Test Setup (One-Time)
+
+After first deploy with health endpoint:
+1. Check Fly.io logs: `flyctl logs -a jhtc-yoink-api`
+2. Find line: `Seeded API token: <tokenId>:<secret>`
+3. Add as GitHub secret: `SMOKE_TEST_TOKEN`
+4. Future deploys will run full smoke tests (health + capture creation)
 
 **Deliverable**: Fully functional personal capture system
 

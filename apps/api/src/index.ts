@@ -4,6 +4,7 @@ import { createCaptureService } from './captures/domain/capture-service.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createTokenService } from './auth/domain/token-service.js';
 import { createAuthMiddleware } from './auth/application/auth-middleware.js';
+import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
   createSqliteOrganizationStore,
   createSqliteUserStore,
@@ -59,6 +60,9 @@ const main = async () => {
   // Create auth middleware
   const authMiddleware = createAuthMiddleware({ tokenService });
 
+  // Create health checker
+  const healthChecker = createSqliteHealthChecker({ tokenStore });
+
   // Create capture store and service
   const captureStore = createSqliteCaptureStore({ location: config.dbPath });
   const captureService = createCaptureService({
@@ -67,7 +71,7 @@ const main = async () => {
     idGenerator,
   });
 
-  const app = await createApp({ captureService, authMiddleware });
+  const app = await createApp({ captureService, authMiddleware, healthChecker });
 
   try {
     await app.listen({ port: config.port, host: config.host });

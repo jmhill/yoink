@@ -41,3 +41,66 @@ jobs:
         run: flyctl deploy --config apps/api/fly.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  smoke-test:
+    name: Post-Deploy Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Wait for deployment to stabilize
+        run: sleep 10
+
+      - name: Health check with retry
+        run: |
+          API_URL="https://jhtc-yoink-api.fly.dev"
+          MAX_RETRIES=5
+          RETRY_DELAY=10
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i: Checking health..."
+            HTTP_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$API_URL/health")
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Health check passed!"
+              cat /tmp/health.json
+              exit 0
+            fi
+
+            echo "Health check returned $HTTP_CODE, retrying in ${RETRY_DELAY}s..."
+            sleep $RETRY_DELAY
+            RETRY_DELAY=$((RETRY_DELAY * 2))
+          done
+
+          echo "Health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Create test capture
+        env:
+          SMOKE_TEST_TOKEN: ${{ secrets.SMOKE_TEST_TOKEN }}
+        run: |
+          API_URL="https://jhtc-yoink-api.fly.dev"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Skip if token not configured (first deploy)
+          if [ -z "$SMOKE_TEST_TOKEN" ]; then
+            echo "SMOKE_TEST_TOKEN not configured - skipping capture test"
+            echo "After first deploy, add SMOKE_TEST_TOKEN secret from Fly.io logs"
+            exit 0
+          fi
+
+          HTTP_CODE=$(curl -s -o /tmp/capture.json -w "%{http_code}" \
+            -X POST "$API_URL/captures" \
+            -H "Authorization: Bearer $SMOKE_TEST_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"Smoke test at $TIMESTAMP\", \"sourceApp\": \"github-actions\"}")
+
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Capture creation passed!"
+            cat /tmp/capture.json
+          else
+            echo "Capture creation failed with status $HTTP_CODE"
+            cat /tmp/capture.json
+            exit 1
+          fi

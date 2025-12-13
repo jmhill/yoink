@@ -37,4 +37,6 @@ export const captureContract = c.router({
     },
     summary: 'List captures',
   },
-});
+}, {
+    strictStatusCodes: true
+  });

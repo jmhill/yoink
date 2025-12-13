@@ -13,4 +13,6 @@ export const healthContract = c.router({
     },
     summary: 'Health check endpoint',
   },
+}, {
+  strictStatusCodes: true,
 });

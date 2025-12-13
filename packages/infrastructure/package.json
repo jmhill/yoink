@@ -16,6 +16,10 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^25.0.1"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0"
   }
 }

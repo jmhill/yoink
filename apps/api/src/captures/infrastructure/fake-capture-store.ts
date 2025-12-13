@@ -10,12 +10,13 @@ import { storageError, type StorageError } from '../domain/capture-errors.js';
 export type FakeCaptureStoreOptions = {
   shouldFailOnSave?: boolean;
   shouldFailOnFind?: boolean;
+  initialCaptures?: Capture[];
 };
 
 export const createFakeCaptureStore = (
   options: FakeCaptureStoreOptions = {}
-): CaptureStore & { getCaptures: () => Capture[] } => {
-  const captures: Capture[] = [];
+): CaptureStore => {
+  const captures: Capture[] = [...(options.initialCaptures ?? [])];
 
   return {
     save: (capture: Capture): ResultAsync<void, StorageError> => {
@@ -34,10 +35,14 @@ export const createFakeCaptureStore = (
       }
       const filtered = captures
         .filter((c) => c.organizationId === opts.organizationId)
-        .filter((c) => !opts.status || c.status === opts.status);
+        .filter((c) => !opts.status || c.status === opts.status)
+        .sort(
+          (a, b) =>
+            new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
+        )
+        .slice(0, opts.limit ?? Infinity);
       return okAsync({ captures: filtered });
     },
 
-    getCaptures: () => [...captures],
   };
 };

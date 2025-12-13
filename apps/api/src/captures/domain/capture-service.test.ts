@@ -42,8 +42,12 @@ describe('createCaptureService', () => {
         createdById: 'user-456',
       });
 
-      expect(store.getCaptures()).toHaveLength(1);
-      expect(store.getCaptures()[0].content).toBe('My text');
+      const listResult = await service.list({ organizationId: 'org-123' });
+      expect(listResult.isOk()).toBe(true);
+      if (listResult.isOk()) {
+        expect(listResult.value.captures).toHaveLength(1);
+        expect(listResult.value.captures[0].content).toBe('My text');
+      }
     });
 
     it('includes optional fields when provided', async () => {
@@ -137,22 +141,21 @@ describe('createCaptureService', () => {
     });
 
     it('filters by status', async () => {
-      const store = createFakeCaptureStore();
+      const archivedCapture = {
+        id: 'archived-capture-id',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Archived capture',
+        status: 'archived' as const,
+        capturedAt: '2025-01-15T09:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [archivedCapture] });
       const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
-      const idGenerator = createFakeIdGenerator(['id-1', 'id-2']);
+      const idGenerator = createFakeIdGenerator(['inbox-capture-id']);
       const service = createCaptureService({ store, clock, idGenerator });
 
       await service.create({
         content: 'Inbox capture',
-        organizationId: 'org-123',
-        createdById: 'user-456',
-      });
-
-      // Manually add an archived capture to the store for testing
-      store.getCaptures()[0].status = 'archived';
-
-      await service.create({
-        content: 'Another inbox capture',
         organizationId: 'org-123',
         createdById: 'user-456',
       });
@@ -165,7 +168,7 @@ describe('createCaptureService', () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value.captures).toHaveLength(1);
-        expect(result.value.captures[0].content).toBe('Another inbox capture');
+        expect(result.value.captures[0].content).toBe('Inbox capture');
       }
     });
 

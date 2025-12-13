@@ -50,19 +50,21 @@ Capture {
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      REQUEST WITH TOKEN                             │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Authorization: Bearer <plaintext-token>                            │
+│  Authorization: Bearer <tokenId>:<secret>                           │
+│  Example: Bearer 550e8400-e29b-41d4-a716-446655440003:mysecrettoken │
 └─────────────────────────────────────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      AUTH MIDDLEWARE                                │
 ├─────────────────────────────────────────────────────────────────────┤
-│  1. Hash incoming token                                             │
-│  2. Look up ApiToken by hash                                        │
-│  3. Load User and Organization                                      │
-│  4. Attach to request context:                                      │
-│     req.auth = { user, organization, token }                        │
-│  5. Update token.lastUsedAt                                         │
+│  1. Parse token: extract tokenId and secret from tokenId:secret     │
+│  2. Look up ApiToken by tokenId (O(1) lookup)                       │
+│  3. Verify secret against stored bcrypt hash                        │
+│  4. Load User and Organization                                      │
+│  5. Attach to request context:                                      │
+│     req.auth = { organizationId, userId }                           │
+│  6. Update token.lastUsedAt                                         │
 └─────────────────────────────────────────────────────────────────────┘
                                │
                                ▼
@@ -278,7 +280,7 @@ The `organizationId` and `createdById` are set server-side from the auth context
 ```
 universal-capture/
 ├── apps/
-│   ├── api/                      # Express API
+│   ├── api/                      # Fastify API
 │   │   ├── src/
 │   │   │   ├── captures/
 │   │   │   │   ├── application/  # ts-rest router
@@ -460,86 +462,85 @@ Extension needs:
 - `storage` permission (to store API URL and token)
 - Options page for configuration
 
-## 3. Implementation Plan
+## 3. Implementation Phases
+
+> **Note**: For current progress and task tracking, see [PLAN.md](./PLAN.md).
 
 ### Phase 1: Backend Foundation
 **Goal**: Working API with persistence and multi-tenant auth
 
-- [ ] Initialize monorepo (nx)
-- [ ] Set up libs/api-contracts with capture contract
-- [ ] Set up libs/infrastructure (Clock, IdGenerator, PasswordHasher)
-- [ ] Create apps/api scaffold
-  - [ ] Auth domain:
-    - [ ] Organization, User, ApiToken entities and schemas
-    - [ ] OrganizationStore, UserStore, TokenStore interfaces
-    - [ ] SQLite adapters for all stores
-    - [ ] TokenService (validate, hash, create, revoke)
-    - [ ] Token auth middleware (Bearer token → user/org context)
-  - [ ] Captures domain:
-    - [ ] Capture entity, CaptureService, CaptureStore interface
-    - [ ] SQLite adapter with org scoping
-  - [ ] Application: ts-rest router with auth middleware
-- [ ] Contract tests for all stores
-- [ ] Seed script for bootstrapping first org/user/token (dev only)
+- Initialize monorepo (pnpm workspaces)
+- Set up packages/infrastructure (Clock, IdGenerator, PasswordHasher)
+- Create apps/api scaffold (Fastify)
+- Auth domain:
+  - Organization, User, ApiToken entities and schemas
+  - OrganizationStore, UserStore, TokenStore interfaces
+  - SQLite adapters for all stores
+  - TokenService (validate with tokenId:secret format)
+  - Token auth middleware (Bearer token → auth context)
+- Captures domain:
+  - Capture entity, CaptureService, CaptureStore interface
+  - SQLite adapter with organization scoping
+- Full CRUD endpoints: POST, GET (list), GET (single), PATCH, DELETE
+- Seed script for bootstrapping org/user/token (dev only)
 
-**Deliverable**: Can POST/GET captures via curl with a seeded token
+**Deliverable**: Can POST/GET/PATCH/DELETE captures via curl with a seeded token
 
 ### Phase 2: Web App (Inbox + Admin)
 **Goal**: View/manage captures and provision access via browser
 
-- [ ] Create apps/web scaffold (Vite + React)
-- [ ] Set up ts-rest client
-
 **Admin Panel:**
-- [ ] Admin session auth (password from env var)
-- [ ] Admin login page
-- [ ] Organizations list + create
-- [ ] Organization detail (users list + create)
-- [ ] User detail (tokens list + create/revoke)
-- [ ] Session middleware protecting /admin/* routes
+- Admin session auth (ADMIN_PASSWORD env var)
+- Admin login page
+- Organizations list + create
+- Organization detail (users list + create)
+- User detail (tokens list + create/revoke)
+- Session middleware protecting /admin/* routes
 
 **Capture Inbox:**
-- [ ] Token configuration (stored in localStorage)
-- [ ] Quick add input at top of inbox
-- [ ] Inbox view (list captures, newest first)
-- [ ] Archive action (swipe or button)
-- [ ] Delete action (with confirmation)
-- [ ] Basic responsive styling (mobile-first)
+- Create apps/web scaffold (Vite + React)
+- API client setup
+- Token configuration (stored in localStorage)
+- Quick add input at top of inbox
+- Inbox view (list captures, newest first)
+- Archive action (swipe or button)
+- Delete action (with confirmation)
+- Basic responsive styling (mobile-first)
 
 **Deliverable**: Can create org/user/token via admin panel, then use inbox with that token
 
 ### Phase 3: PWA + Android Share
 **Goal**: Capture from Android via share intent
 
-- [ ] Add PWA manifest with share_target
-- [ ] Implement /share route handler
-- [ ] Service worker for installability
-- [ ] Handle offline gracefully (show error, don't crash)
-- [ ] Test on actual Android device
+- Add PWA manifest with share_target
+- Implement /share route handler
+- Service worker for installability
+- Handle offline gracefully (show error, don't crash)
+- Test on actual Android device
 
 **Deliverable**: Can install PWA on Android, share text to it
 
 ### Phase 4: Browser Extension
 **Goal**: Quick capture from desktop browser
 
-- [ ] Create apps/extension scaffold
-- [ ] Manifest v3 setup
-- [ ] Popup UI (selection + source URL)
-- [ ] Content script to grab selection
-- [ ] Options page (API URL, token config)
-- [ ] Build pipeline (extension needs bundling)
+- Create apps/extension scaffold
+- Manifest v3 setup
+- Popup UI (selection + source URL)
+- Content script to grab selection
+- Options page (API URL, token config)
+- Build pipeline (extension needs bundling)
 
 **Deliverable**: Working extension in Chromium browsers (Chrome, Brave, Edge)
 
 ### Phase 5: Deployment
 **Goal**: Running in production
 
-- [ ] Dockerize API
-- [ ] Deploy to Fly.io (or VPS of choice)
-- [ ] Set up SQLite persistence (Fly volume or Litestream backup)
-- [ ] Deploy web app (same service or separate static host)
-- [ ] Configure HTTPS
-- [ ] Install PWA on phone, extension in browser
+- Dockerize API
+- Deploy to Fly.io
+- Set up SQLite persistence (Fly volume or Litestream backup)
+- Deploy web app (same service or separate static host)
+- Configure HTTPS
+- Install PWA on phone, extension in browser
 
 **Deliverable**: Fully functional personal capture system
 
@@ -565,3 +566,7 @@ Extension needs:
 - **Multi-tenancy**: Organization → User → Token hierarchy from day one
 - **Quick add**: Include simple text input in web inbox
 - **Admin auth**: Separate from user auth—env var password with session cookie (not user flags/roles)
+- **Token format**: `tokenId:secret` for O(1) database lookup (parse → lookup by ID → verify hash)
+- **API framework**: Fastify (chosen over Express for better TypeScript support and performance)
+- **Monorepo tool**: pnpm workspaces (simpler than nx for this project size)
+- **Password hashing**: bcrypt with 10 salt rounds

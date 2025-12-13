@@ -118,4 +118,5 @@ All capture queries are scoped to the authenticated user's organization.
 
 ## Current Status
 
-See `docs/PLAN.md` for implementation progress. Phase 1 (Backend Foundation) is ~80% complete.
+- See `docs/PLAN.md` for implementation progress.
+- Always update `docs/PLAN.md` when completing tasks

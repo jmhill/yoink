@@ -16,6 +16,7 @@
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",
     "fastify": "^4.28.0",
+    "neverthrow": "^8.2.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {

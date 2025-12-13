@@ -103,6 +103,8 @@ All capture queries are scoped to the authenticated user's organization.
 - Vitest with workspace configuration (each package has its own vitest.config.ts)
 - In-memory SQLite (`:memory:`) for integration tests
 - Fake dependencies for deterministic tests (clock, ID generator, password hasher)
+- Avoid using vitest mocks unless necessary - prefer using fake implementations of our interfaces for all code we control.
+- Avoid adding unnecessary test helpers - prefer using the public API of all services and modules.
 - Test files are colocated with source (`.test.ts` suffix)
 
 ## Environment Variables

@@ -23,7 +23,7 @@ export const createApp = async (deps: AppDependencies) => {
 
   const router = s.router(captureContract, {
     create: async ({ body, request }) => {
-      const capture = await deps.captureService.create({
+      const result = await deps.captureService.create({
         content: body.content,
         title: body.title,
         sourceUrl: body.sourceUrl,
@@ -32,10 +32,21 @@ export const createApp = async (deps: AppDependencies) => {
         createdById: request.authContext.userId,
       });
 
-      return {
-        status: 201,
-        body: capture,
-      };
+      return result.match(
+        (capture) => ({
+          status: 201 as const,
+          body: capture,
+        }),
+        (error) => {
+          switch (error.type) {
+            case 'STORAGE_ERROR':
+              return {
+                status: 500 as const,
+                body: { message: 'Internal server error' },
+              };
+          }
+        }
+      );
     },
 
     list: async ({ query, request }) => {
@@ -46,10 +57,21 @@ export const createApp = async (deps: AppDependencies) => {
         cursor: query.cursor,
       });
 
-      return {
-        status: 200,
-        body: result,
-      };
+      return result.match(
+        (data) => ({
+          status: 200 as const,
+          body: data,
+        }),
+        (error) => {
+          switch (error.type) {
+            case 'STORAGE_ERROR':
+              return {
+                status: 500 as const,
+                body: { message: 'Internal server error' },
+              };
+          }
+        }
+      );
     },
   });
 

@@ -1,6 +1,9 @@
+import type { ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
-import type { CaptureStore } from './capture-store.js';
+import type { CaptureStore, FindByOrganizationResult } from './capture-store.js';
+import type { CreateCaptureCommand, ListCapturesQuery } from './capture-commands.js';
+import type { CreateCaptureError, ListCapturesError } from './capture-errors.js';
 
 export type CaptureServiceDependencies = {
   store: CaptureStore;
@@ -8,30 +11,11 @@ export type CaptureServiceDependencies = {
   idGenerator: IdGenerator;
 };
 
-export type CreateCaptureInput = {
-  content: string;
-  title?: string;
-  sourceUrl?: string;
-  sourceApp?: string;
-  organizationId: string;
-  createdById: string;
-};
-
-export type ListCapturesInput = {
-  organizationId: string;
-  status?: 'inbox' | 'archived';
-  limit?: number;
-  cursor?: string;
-};
-
-export type ListCapturesResult = {
-  captures: Capture[];
-  nextCursor?: string;
-};
+export type ListCapturesResult = FindByOrganizationResult;
 
 export type CaptureService = {
-  create: (input: CreateCaptureInput) => Promise<Capture>;
-  list: (input: ListCapturesInput) => Promise<ListCapturesResult>;
+  create: (command: CreateCaptureCommand) => ResultAsync<Capture, CreateCaptureError>;
+  list: (query: ListCapturesQuery) => ResultAsync<ListCapturesResult, ListCapturesError>;
 };
 
 export const createCaptureService = (
@@ -40,30 +24,28 @@ export const createCaptureService = (
   const { store, clock, idGenerator } = deps;
 
   return {
-    create: async (input: CreateCaptureInput): Promise<Capture> => {
+    create: (command: CreateCaptureCommand): ResultAsync<Capture, CreateCaptureError> => {
       const capture: Capture = {
         id: idGenerator.generate(),
-        organizationId: input.organizationId,
-        createdById: input.createdById,
-        content: input.content,
-        title: input.title,
-        sourceUrl: input.sourceUrl,
-        sourceApp: input.sourceApp,
+        organizationId: command.organizationId,
+        createdById: command.createdById,
+        content: command.content,
+        title: command.title,
+        sourceUrl: command.sourceUrl,
+        sourceApp: command.sourceApp,
         status: 'inbox',
         capturedAt: clock.now().toISOString(),
       };
 
-      await store.save(capture);
-
-      return capture;
+      return store.save(capture).map(() => capture);
     },
 
-    list: async (input: ListCapturesInput): Promise<ListCapturesResult> => {
+    list: (query: ListCapturesQuery): ResultAsync<ListCapturesResult, ListCapturesError> => {
       return store.findByOrganization({
-        organizationId: input.organizationId,
-        status: input.status,
-        limit: input.limit,
-        cursor: input.cursor,
+        organizationId: query.organizationId,
+        status: query.status,
+        limit: query.limit,
+        cursor: query.cursor,
       });
     },
   };

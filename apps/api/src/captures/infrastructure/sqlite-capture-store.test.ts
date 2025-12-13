@@ -24,13 +24,17 @@ describe('createSqliteCaptureStore', () => {
     it('persists a capture', async () => {
       const capture = createTestCapture({ content: 'Test content' });
 
-      await store.save(capture);
+      const saveResult = await store.save(capture);
+      expect(saveResult.isOk()).toBe(true);
 
-      const result = await store.findByOrganization({
+      const findResult = await store.findByOrganization({
         organizationId: capture.organizationId,
       });
-      expect(result.captures).toHaveLength(1);
-      expect(result.captures[0]).toEqual(capture);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value.captures).toHaveLength(1);
+        expect(findResult.value.captures[0]).toEqual(capture);
+      }
     });
 
     it('persists capture with optional fields', async () => {
@@ -40,14 +44,18 @@ describe('createSqliteCaptureStore', () => {
         sourceApp: 'browser-extension',
       });
 
-      await store.save(capture);
+      const saveResult = await store.save(capture);
+      expect(saveResult.isOk()).toBe(true);
 
-      const result = await store.findByOrganization({
+      const findResult = await store.findByOrganization({
         organizationId: capture.organizationId,
       });
-      expect(result.captures[0].title).toBe('A title');
-      expect(result.captures[0].sourceUrl).toBe('https://example.com');
-      expect(result.captures[0].sourceApp).toBe('browser-extension');
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value.captures[0].title).toBe('A title');
+        expect(findResult.value.captures[0].sourceUrl).toBe('https://example.com');
+        expect(findResult.value.captures[0].sourceApp).toBe('browser-extension');
+      }
     });
   });
 
@@ -67,8 +75,11 @@ describe('createSqliteCaptureStore', () => {
 
       const result = await store.findByOrganization({ organizationId: 'org-1' });
 
-      expect(result.captures).toHaveLength(1);
-      expect(result.captures[0].content).toBe('Org 1');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.captures).toHaveLength(1);
+        expect(result.value.captures[0].content).toBe('Org 1');
+      }
     });
 
     it('returns captures in newest-first order', async () => {
@@ -90,8 +101,11 @@ describe('createSqliteCaptureStore', () => {
         organizationId: older.organizationId,
       });
 
-      expect(result.captures[0].content).toBe('Newer');
-      expect(result.captures[1].content).toBe('Older');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.captures[0].content).toBe('Newer');
+        expect(result.value.captures[1].content).toBe('Older');
+      }
     });
 
     it('filters by status', async () => {
@@ -106,8 +120,11 @@ describe('createSqliteCaptureStore', () => {
         status: 'inbox',
       });
 
-      expect(result.captures).toHaveLength(1);
-      expect(result.captures[0].status).toBe('inbox');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.captures).toHaveLength(1);
+        expect(result.value.captures[0].status).toBe('inbox');
+      }
     });
 
     it('limits results', async () => {
@@ -120,7 +137,10 @@ describe('createSqliteCaptureStore', () => {
         limit: 2,
       });
 
-      expect(result.captures).toHaveLength(2);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.captures).toHaveLength(2);
+      }
     });
 
     it('returns empty array when no captures exist', async () => {
@@ -128,7 +148,10 @@ describe('createSqliteCaptureStore', () => {
         organizationId: 'non-existent-org',
       });
 
-      expect(result.captures).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.captures).toEqual([]);
+      }
     });
   });
 });

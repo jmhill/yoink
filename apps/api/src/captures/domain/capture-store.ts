@@ -1,4 +1,6 @@
+import type { ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
+import type { StorageError } from './capture-errors.js';
 
 export type FindByOrganizationOptions = {
   organizationId: string;
@@ -13,8 +15,8 @@ export type FindByOrganizationResult = {
 };
 
 export type CaptureStore = {
-  save(capture: Capture): Promise<void>;
+  save(capture: Capture): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
-  ): Promise<FindByOrganizationResult>;
+  ): ResultAsync<FindByOrganizationResult, StorageError>;
 };

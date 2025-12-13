@@ -1,10 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
+import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import type {
   CaptureStore,
   FindByOrganizationOptions,
   FindByOrganizationResult,
 } from '../domain/capture-store.js';
+import { storageError, type StorageError } from '../domain/capture-errors.js';
 
 export type SqliteCaptureStoreOptions = {
   location: string;
@@ -65,53 +67,63 @@ export const createSqliteCaptureStore = (
   initialize(db);
 
   return {
-    save: async (capture: Capture): Promise<void> => {
-      const stmt = db.prepare(`
-        INSERT INTO captures (
-          id, organization_id, created_by_id, content, title,
-          source_url, source_app, status, captured_at, archived_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+    save: (capture: Capture): ResultAsync<void, StorageError> => {
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO captures (
+            id, organization_id, created_by_id, content, title,
+            source_url, source_app, status, captured_at, archived_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
 
-      stmt.run(
-        capture.id,
-        capture.organizationId,
-        capture.createdById,
-        capture.content,
-        capture.title ?? null,
-        capture.sourceUrl ?? null,
-        capture.sourceApp ?? null,
-        capture.status,
-        capture.capturedAt,
-        capture.archivedAt ?? null
-      );
+        stmt.run(
+          capture.id,
+          capture.organizationId,
+          capture.createdById,
+          capture.content,
+          capture.title ?? null,
+          capture.sourceUrl ?? null,
+          capture.sourceApp ?? null,
+          capture.status,
+          capture.capturedAt,
+          capture.archivedAt ?? null
+        );
+
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(storageError('Failed to save capture', error));
+      }
     },
 
-    findByOrganization: async (
+    findByOrganization: (
       options: FindByOrganizationOptions
-    ): Promise<FindByOrganizationResult> => {
-      const { organizationId, status, limit = 50 } = options;
+    ): ResultAsync<FindByOrganizationResult, StorageError> => {
+      try {
+        const { organizationId, status, limit = 50 } = options;
 
-      let sql = `
-        SELECT * FROM captures
-        WHERE organization_id = ?
-      `;
-      const params: (string | number)[] = [organizationId];
+        let sql = `
+          SELECT * FROM captures
+          WHERE organization_id = ?
+        `;
+        const params: (string | number)[] = [organizationId];
 
-      if (status) {
-        sql += ` AND status = ?`;
-        params.push(status);
+        if (status) {
+          sql += ` AND status = ?`;
+          params.push(status);
+        }
+
+        sql += ` ORDER BY captured_at DESC LIMIT ?`;
+        params.push(limit);
+
+        const stmt = db.prepare(sql);
+        const rows = stmt.all(...params) as CaptureRow[];
+
+        const captures = rows.map(rowToCapture);
+
+        return okAsync({ captures });
+      } catch (error) {
+        return errAsync(storageError('Failed to find captures', error));
       }
-
-      sql += ` ORDER BY captured_at DESC LIMIT ?`;
-      params.push(limit);
-
-      const stmt = db.prepare(sql);
-      const rows = stmt.all(...params) as CaptureRow[];
-
-      const captures = rows.map(rowToCapture);
-
-      return { captures };
     },
   };
 };

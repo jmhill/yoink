@@ -1,5 +1,5 @@
 
-# Universal Capture: Design Document
+# "Yoink" Universal Capture: Design Document
 
 A personal "universal inbox" for quick text capture from browser and mobile, replacing Google Keep's capture functionality.
 
@@ -326,13 +326,8 @@ Multi-tenant token-based authentication with organization scoping.
 
 **How it works:**
 
-1. **Admin creates organization** via CLI: `npm run cli:create-org "Justin's Inbox"`
-2. **Admin creates user** in org: `npm run cli:create-user --org <orgId> --email justin@example.com`
-3. **Admin creates API token**: `npm run cli:create-token --user <userId> --name "macbook"`
-   - Generates random token, hashes with bcrypt, stores hash
-   - Prints plaintext token **once** (user must save it)
-4. **Client includes token** in requests: `Authorization: Bearer <token>`
-5. **Middleware validates**:
+1. **Client includes token** in requests: `Authorization: Bearer <token>`
+2. **Middleware validates**:
    - Hash incoming token
    - Look up ApiToken by hash
    - Load associated User and Organization
@@ -470,7 +465,7 @@ Extension needs:
 ### Phase 1: Backend Foundation
 **Goal**: Working API with persistence and multi-tenant auth
 
-- [ ] Initialize monorepo (npm workspaces)
+- [ ] Initialize monorepo (nx)
 - [ ] Set up libs/api-contracts with capture contract
 - [ ] Set up libs/infrastructure (Clock, IdGenerator, PasswordHasher)
 - [ ] Create apps/api scaffold
@@ -561,10 +556,6 @@ Extension needs:
 - **Unarchive**: Allow moving archived items back to inbox
 
 ---
-
-## Open Questions
-
-1. **Naming**: "Universal Capture" is descriptive but clunky. Ship name TBD?
 
 ## Decisions Made
 

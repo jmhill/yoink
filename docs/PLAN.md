@@ -9,7 +9,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 ## Current Status
 
 **Phase 1: Backend Foundation** - Complete ✓
-**Phase 2: Admin Panel (Backend)** - Complete ✓
+**Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 
 ---
 
@@ -63,11 +63,18 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Tokens API (GET/POST /admin/users/:id/tokens, DELETE /admin/tokens/:id)
 - [x] Session cookie authentication for protected routes
 
-### Admin Panel (Frontend) - Pending
-- [ ] Admin login page UI
-- [ ] Organizations list + create UI
-- [ ] Organization detail (users list + create) UI
-- [ ] User detail (tokens list + create/revoke) UI
+### Admin Panel (Frontend) - Complete ✓
+- [x] Turborepo setup for monorepo build orchestration
+- [x] apps/admin scaffold (Vite + React + TanStack Router)
+- [x] Tailwind CSS v4 + shadcn/ui components
+- [x] ts-rest API client consuming @yoink/api-contracts
+- [x] Admin login page UI
+- [x] Organizations list + create UI
+- [x] Organization detail (users list + create) UI
+- [x] User detail (tokens list + create/revoke) UI
+- [x] Session-based auth guard (redirects to /login if unauthorized)
+- [x] Fastify static file serving from /admin
+- [x] Dockerfile multi-stage build includes admin UI
 
 ### Capture Inbox
 - [ ] Create apps/web scaffold (Vite + React)

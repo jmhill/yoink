@@ -7,13 +7,14 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 # Copy workspace root files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY tsconfig.base.json ./
 
 # Copy package manifests for all packages
 COPY packages/infrastructure/package.json ./packages/infrastructure/
 COPY packages/api-contracts/package.json ./packages/api-contracts/
 COPY apps/api/package.json ./apps/api/
+COPY apps/admin/package.json ./apps/admin/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -22,8 +23,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/infrastructure/ ./packages/infrastructure/
 COPY packages/api-contracts/ ./packages/api-contracts/
 COPY apps/api/ ./apps/api/
+COPY apps/admin/ ./apps/admin/
 
-# Build all packages
+# Build all packages using Turborepo
 RUN pnpm build
 
 # Production stage
@@ -49,6 +51,9 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder /app/packages/infrastructure/dist ./packages/infrastructure/dist
 COPY --from=builder /app/packages/api-contracts/dist ./packages/api-contracts/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+
+# Copy admin UI static files to public/admin directory
+COPY --from=builder /app/apps/admin/dist ./apps/api/public/admin
 
 # Create data directory for SQLite
 RUN mkdir -p /app/apps/api/data

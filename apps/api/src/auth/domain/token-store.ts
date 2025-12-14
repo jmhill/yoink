@@ -1,8 +1,10 @@
+import type { ResultAsync } from 'neverthrow';
 import type { ApiToken } from './api-token.js';
+import type { TokenStorageError } from './auth-errors.js';
 
 export type TokenStore = {
-  save(token: ApiToken): Promise<void>;
-  findById(id: string): Promise<ApiToken | null>;
-  updateLastUsed(id: string, timestamp: string): Promise<void>;
-  hasAnyTokens(): Promise<boolean>;
+  save(token: ApiToken): ResultAsync<void, TokenStorageError>;
+  findById(id: string): ResultAsync<ApiToken | null, TokenStorageError>;
+  updateLastUsed(id: string, timestamp: string): ResultAsync<void, TokenStorageError>;
+  hasAnyTokens(): ResultAsync<boolean, TokenStorageError>;
 };

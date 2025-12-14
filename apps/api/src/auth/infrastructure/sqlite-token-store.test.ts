@@ -64,10 +64,15 @@ describe('createSqliteTokenStore', () => {
     it('persists a token', async () => {
       const token = createTestToken();
 
-      await store.save(token);
+      const saveResult = await store.save(token);
 
-      const found = await store.findById(token.id);
-      expect(found).toEqual(token);
+      expect(saveResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(token.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).toEqual(token);
+      }
     });
 
     it('persists token with lastUsedAt', async () => {
@@ -75,10 +80,15 @@ describe('createSqliteTokenStore', () => {
         lastUsedAt: '2024-06-15T12:00:00.000Z',
       });
 
-      await store.save(token);
+      const saveResult = await store.save(token);
 
-      const found = await store.findById(token.id);
-      expect(found?.lastUsedAt).toBe('2024-06-15T12:00:00.000Z');
+      expect(saveResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(token.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value?.lastUsedAt).toBe('2024-06-15T12:00:00.000Z');
+      }
     });
   });
 
@@ -87,16 +97,22 @@ describe('createSqliteTokenStore', () => {
       const token = createTestToken({ name: 'My Token' });
       await store.save(token);
 
-      const found = await store.findById(token.id);
+      const result = await store.findById(token.id);
 
-      expect(found).not.toBeNull();
-      expect(found?.name).toBe('My Token');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.name).toBe('My Token');
+      }
     });
 
     it('returns null when token not found', async () => {
-      const found = await store.findById('non-existent-id');
+      const result = await store.findById('non-existent-id');
 
-      expect(found).toBeNull();
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
     });
   });
 
@@ -105,10 +121,15 @@ describe('createSqliteTokenStore', () => {
       const token = createTestToken();
       await store.save(token);
 
-      await store.updateLastUsed(token.id, '2024-06-20T15:30:00.000Z');
+      const updateResult = await store.updateLastUsed(token.id, '2024-06-20T15:30:00.000Z');
 
-      const found = await store.findById(token.id);
-      expect(found?.lastUsedAt).toBe('2024-06-20T15:30:00.000Z');
+      expect(updateResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(token.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value?.lastUsedAt).toBe('2024-06-20T15:30:00.000Z');
+      }
     });
   });
 
@@ -116,7 +137,10 @@ describe('createSqliteTokenStore', () => {
     it('returns false when no tokens exist', async () => {
       const result = await store.hasAnyTokens();
 
-      expect(result).toBe(false);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(false);
+      }
     });
 
     it('returns true when tokens exist', async () => {
@@ -124,7 +148,10 @@ describe('createSqliteTokenStore', () => {
 
       const result = await store.hasAnyTokens();
 
-      expect(result).toBe(true);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
     });
   });
 });

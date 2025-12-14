@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { adminContract } from '@yoink/api-contracts';
+import { adminPublicContract, adminProtectedContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
@@ -25,59 +25,57 @@ export const registerAdminRoutes = async (
   const { adminService, adminSessionService } = deps;
   const s = initServer();
 
-  // Register admin routes
-  await app.register(async (adminApp) => {
-    // Add authentication middleware for all routes except login/logout
-    const authMiddleware = createAdminSessionMiddleware({ adminSessionService });
+  // Register public admin routes (no auth required)
+  const publicRouter = s.router(adminPublicContract, {
+    login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
+      const result = adminSessionService.login(body.password);
 
-    adminApp.addHook('preHandler', async (request, reply) => {
-      // Skip auth for login and logout routes
-      if (request.url === '/admin/login' || request.url === '/admin/logout') {
-        return;
+      if (!result.success) {
+        return {
+          status: 401 as const,
+          body: { message: 'Invalid password' },
+        };
       }
 
-      // Apply auth middleware for all other routes
-      await authMiddleware(request, reply);
-    });
+      reply.setCookie(ADMIN_SESSION_COOKIE, result.sessionToken!, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 24 * 60 * 60, // 24 hours
+      });
 
-    const router = s.router(adminContract, {
-      // Public routes - session management (no auth required)
-      login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
-        const result = adminSessionService.login(body.password);
+      return {
+        status: 200 as const,
+        body: { success: true },
+      };
+    },
 
-        if (!result.success) {
-          return {
-            status: 401 as const,
-            body: { message: 'Invalid password' },
-          };
-        }
+    logout: async ({ reply }: { reply: FastifyReply }) => {
+      reply.clearCookie(ADMIN_SESSION_COOKIE, {
+        path: '/',
+      });
 
-        reply.setCookie(ADMIN_SESSION_COOKIE, result.sessionToken!, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          path: '/',
-          maxAge: 24 * 60 * 60, // 24 hours
-        });
+      return {
+        status: 200 as const,
+        body: { success: true },
+      };
+    },
+  });
 
-        return {
-          status: 200 as const,
-          body: { success: true },
-        };
-      },
+  s.registerRouter(adminPublicContract, publicRouter, app, {
+    responseValidation: true,
+    requestValidationErrorHandler: (err, _request, reply) => {
+      return reply.status(400).send({ message: err.message });
+    },
+  });
 
-      logout: async ({ reply }: { reply: FastifyReply }) => {
-        reply.clearCookie(ADMIN_SESSION_COOKIE, {
-          path: '/',
-        });
+  // Register protected admin routes (auth required via middleware)
+  await app.register(async (protectedApp) => {
+    const authMiddleware = createAdminSessionMiddleware({ adminSessionService });
+    protectedApp.addHook('preHandler', authMiddleware);
 
-        return {
-          status: 200 as const,
-          body: { success: true },
-        };
-      },
-
-      // Protected routes - Organizations (auth handled by preHandler hook)
+    const protectedRouter = s.router(adminProtectedContract, {
       listOrganizations: async () => {
         const result = await adminService.listOrganizations();
         return result.match(
@@ -119,7 +117,6 @@ export const registerAdminRoutes = async (
         );
       },
 
-      // Protected routes - Users (auth handled by preHandler hook)
       listUsers: async ({ params }: { params: { organizationId: string } }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);
@@ -177,7 +174,6 @@ export const registerAdminRoutes = async (
         );
       },
 
-      // Protected routes - Tokens (auth handled by preHandler hook)
       listTokens: async ({ params }: { params: { userId: string } }) => {
         // Check if user exists
         const userResult = await adminService.getUser(params.userId);
@@ -232,7 +228,7 @@ export const registerAdminRoutes = async (
       },
     });
 
-    s.registerRouter(adminContract, router, adminApp, {
+    s.registerRouter(adminProtectedContract, protectedRouter, protectedApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
         return reply.status(400).send({ message: err.message });

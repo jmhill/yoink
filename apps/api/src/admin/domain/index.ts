@@ -12,3 +12,5 @@ export {
   type CreateTokenResult,
   type ApiTokenView,
 } from './admin-service.js';
+
+export * from './admin-errors.js';

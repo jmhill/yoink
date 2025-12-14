@@ -80,9 +80,12 @@ describe('createSqliteOrganizationStore', () => {
 
   describe('findAll', () => {
     it('returns empty array when no organizations exist', async () => {
-      const found = await store.findAll();
+      const result = await store.findAll();
 
-      expect(found).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
     });
 
     it('returns all organizations ordered by createdAt desc', async () => {
@@ -99,11 +102,14 @@ describe('createSqliteOrganizationStore', () => {
       await store.save(org1);
       await store.save(org2);
 
-      const found = await store.findAll();
+      const result = await store.findAll();
 
-      expect(found).toHaveLength(2);
-      expect(found[0].name).toBe('Second Org');
-      expect(found[1].name).toBe('First Org');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].name).toBe('Second Org');
+        expect(result.value[1].name).toBe('First Org');
+      }
     });
   });
 });

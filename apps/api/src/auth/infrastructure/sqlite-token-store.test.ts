@@ -157,9 +157,12 @@ describe('createSqliteTokenStore', () => {
 
   describe('findByUserId', () => {
     it('returns empty array when no tokens exist for user', async () => {
-      const found = await store.findByUserId(TEST_USER.id);
+      const result = await store.findByUserId(TEST_USER.id);
 
-      expect(found).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
     });
 
     it('returns all tokens for the user ordered by createdAt desc', async () => {
@@ -176,20 +179,26 @@ describe('createSqliteTokenStore', () => {
       await store.save(token1);
       await store.save(token2);
 
-      const found = await store.findByUserId(TEST_USER.id);
+      const result = await store.findByUserId(TEST_USER.id);
 
-      expect(found).toHaveLength(2);
-      expect(found[0].name).toBe('second-token');
-      expect(found[1].name).toBe('first-token');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].name).toBe('second-token');
+        expect(result.value[1].name).toBe('first-token');
+      }
     });
 
     it('only returns tokens for the specified user', async () => {
       const token = createTestToken();
       await store.save(token);
 
-      const found = await store.findByUserId('other-user-id');
+      const result = await store.findByUserId('other-user-id');
 
-      expect(found).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
     });
   });
 
@@ -198,14 +207,19 @@ describe('createSqliteTokenStore', () => {
       const token = createTestToken();
       await store.save(token);
 
-      await store.delete(token.id);
+      const deleteResult = await store.delete(token.id);
+      expect(deleteResult.isOk()).toBe(true);
 
-      const found = await store.findById(token.id);
-      expect(found).toBeNull();
+      const findResult = await store.findById(token.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).toBeNull();
+      }
     });
 
-    it('does not throw when deleting non-existent token', async () => {
-      await expect(store.delete('non-existent-id')).resolves.not.toThrow();
+    it('succeeds when deleting non-existent token', async () => {
+      const result = await store.delete('non-existent-id');
+      expect(result.isOk()).toBe(true);
     });
   });
 });

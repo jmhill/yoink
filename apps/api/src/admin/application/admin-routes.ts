@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { adminContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
@@ -32,6 +32,14 @@ const requireAdminAuth = (
   return session;
 };
 
+/**
+ * Helper to convert storage errors to 500 responses
+ */
+const storageErrorResponse = (message: string) => ({
+  status: 500 as const,
+  body: { message },
+});
+
 export const registerAdminRoutes = async (
   app: FastifyInstance,
   deps: AdminRoutesDependencies
@@ -41,7 +49,7 @@ export const registerAdminRoutes = async (
 
   const router = s.router(adminContract, {
     // Public routes - session management
-    login: async ({ body, reply }) => {
+    login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
       const result = adminSessionService.login(body.password);
 
       if (!result.success) {
@@ -65,7 +73,7 @@ export const registerAdminRoutes = async (
       };
     },
 
-    logout: async ({ reply }) => {
+    logout: async ({ reply }: { reply: FastifyReply }) => {
       reply.clearCookie(ADMIN_SESSION_COOKIE, {
         path: '/',
       });
@@ -77,161 +85,184 @@ export const registerAdminRoutes = async (
     },
 
     // Protected routes - Organizations
-    listOrganizations: async ({ request }) => {
+    listOrganizations: async ({ request }: { request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
-      const organizations = await adminService.listOrganizations();
-      return {
-        status: 200 as const,
-        body: { organizations },
-      };
+      const result = await adminService.listOrganizations();
+      return result.match(
+        (organizations) => ({
+          status: 200 as const,
+          body: { organizations },
+        }),
+        () => storageErrorResponse('Failed to list organizations')
+      );
     },
 
-    createOrganization: async ({ body, request }) => {
+    createOrganization: async ({ body, request }: { body: { name: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
-      const organization = await adminService.createOrganization(body.name);
-      return {
-        status: 201 as const,
-        body: organization,
-      };
+      const result = await adminService.createOrganization(body.name);
+      return result.match(
+        (organization) => ({
+          status: 201 as const,
+          body: organization,
+        }),
+        () => storageErrorResponse('Failed to create organization')
+      );
     },
 
-    getOrganization: async ({ params, request }) => {
+    getOrganization: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
-      const organization = await adminService.getOrganization(params.id);
-
-      if (!organization) {
-        return {
-          status: 404 as const,
-          body: { message: 'Organization not found' },
-        };
-      }
-
-      return {
-        status: 200 as const,
-        body: organization,
-      };
+      const result = await adminService.getOrganization(params.id);
+      return result.match(
+        (organization) => {
+          if (!organization) {
+            return {
+              status: 404 as const,
+              body: { message: 'Organization not found' },
+            };
+          }
+          return {
+            status: 200 as const,
+            body: organization,
+          };
+        },
+        () => storageErrorResponse('Failed to get organization')
+      );
     },
 
     // Protected routes - Users
-    listUsers: async ({ params, request }) => {
+    listUsers: async ({ params, request }: { params: { organizationId: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
       // Check if organization exists
-      const organization = await adminService.getOrganization(params.organizationId);
-      if (!organization) {
-        return {
-          status: 404 as const,
-          body: { message: 'Organization not found' },
-        };
-      }
+      const orgResult = await adminService.getOrganization(params.organizationId);
+      const orgCheck = orgResult.match(
+        (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
+        () => storageErrorResponse('Failed to check organization')
+      );
+      if (orgCheck) return orgCheck;
 
-      const users = await adminService.listUsers(params.organizationId);
-      return {
-        status: 200 as const,
-        body: { users },
-      };
+      const result = await adminService.listUsers(params.organizationId);
+      return result.match(
+        (users) => ({
+          status: 200 as const,
+          body: { users },
+        }),
+        () => storageErrorResponse('Failed to list users')
+      );
     },
 
-    createUser: async ({ params, body, request }) => {
+    createUser: async ({ params, body, request }: { params: { organizationId: string }; body: { email: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
       // Check if organization exists
-      const organization = await adminService.getOrganization(params.organizationId);
-      if (!organization) {
-        return {
-          status: 404 as const,
-          body: { message: 'Organization not found' },
-        };
-      }
+      const orgResult = await adminService.getOrganization(params.organizationId);
+      const orgCheck = orgResult.match(
+        (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
+        () => storageErrorResponse('Failed to check organization')
+      );
+      if (orgCheck) return orgCheck;
 
-      const user = await adminService.createUser(params.organizationId, body.email);
-      return {
-        status: 201 as const,
-        body: user,
-      };
+      const result = await adminService.createUser(params.organizationId, body.email);
+      return result.match(
+        (user) => ({
+          status: 201 as const,
+          body: user,
+        }),
+        () => storageErrorResponse('Failed to create user')
+      );
     },
 
-    getUser: async ({ params, request }) => {
+    getUser: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
-      const user = await adminService.getUser(params.id);
-
-      if (!user) {
-        return {
-          status: 404 as const,
-          body: { message: 'User not found' },
-        };
-      }
-
-      return {
-        status: 200 as const,
-        body: user,
-      };
+      const result = await adminService.getUser(params.id);
+      return result.match(
+        (user) => {
+          if (!user) {
+            return {
+              status: 404 as const,
+              body: { message: 'User not found' },
+            };
+          }
+          return {
+            status: 200 as const,
+            body: user,
+          };
+        },
+        () => storageErrorResponse('Failed to get user')
+      );
     },
 
     // Protected routes - Tokens
-    listTokens: async ({ params, request }) => {
+    listTokens: async ({ params, request }: { params: { userId: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
       // Check if user exists
-      const user = await adminService.getUser(params.userId);
-      if (!user) {
-        return {
-          status: 404 as const,
-          body: { message: 'User not found' },
-        };
-      }
+      const userResult = await adminService.getUser(params.userId);
+      const userCheck = userResult.match(
+        (user) => (user ? null : { status: 404 as const, body: { message: 'User not found' } }),
+        () => storageErrorResponse('Failed to check user')
+      );
+      if (userCheck) return userCheck;
 
-      const tokens = await adminService.listTokens(params.userId);
-      return {
-        status: 200 as const,
-        body: { tokens },
-      };
+      const result = await adminService.listTokens(params.userId);
+      return result.match(
+        (tokens) => ({
+          status: 200 as const,
+          body: { tokens },
+        }),
+        () => storageErrorResponse('Failed to list tokens')
+      );
     },
 
-    createToken: async ({ params, body, request }) => {
+    createToken: async ({ params, body, request }: { params: { userId: string }; body: { name: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
       // Check if user exists
-      const user = await adminService.getUser(params.userId);
-      if (!user) {
-        return {
-          status: 404 as const,
-          body: { message: 'User not found' },
-        };
-      }
+      const userResult = await adminService.getUser(params.userId);
+      const userCheck = userResult.match(
+        (user) => (user ? null : { status: 404 as const, body: { message: 'User not found' } }),
+        () => storageErrorResponse('Failed to check user')
+      );
+      if (userCheck) return userCheck;
 
       const result = await adminService.createToken(params.userId, body.name);
-      return {
-        status: 201 as const,
-        body: {
-          token: result.token,
-          rawToken: result.rawToken,
-        },
-      };
+      return result.match(
+        (tokenResult) => ({
+          status: 201 as const,
+          body: {
+            token: tokenResult.token,
+            rawToken: tokenResult.rawToken,
+          },
+        }),
+        () => storageErrorResponse('Failed to create token')
+      );
     },
 
-    revokeToken: async ({ params, request }) => {
+    revokeToken: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
       const auth = requireAdminAuth(request, adminSessionService);
       if ('status' in auth) return auth;
 
       // We don't check if token exists - just delete it (idempotent)
-      await adminService.revokeToken(params.id);
-      return {
-        status: 204 as const,
-        body: undefined,
-      };
+      const result = await adminService.revokeToken(params.id);
+      return result.match(
+        () => ({
+          status: 204 as const,
+          body: undefined,
+        }),
+        () => storageErrorResponse('Failed to revoke token')
+      );
     },
   });
 

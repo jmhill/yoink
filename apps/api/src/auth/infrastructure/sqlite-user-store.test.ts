@@ -90,9 +90,12 @@ describe('createSqliteUserStore', () => {
 
   describe('findByOrganizationId', () => {
     it('returns empty array when no users exist for organization', async () => {
-      const found = await store.findByOrganizationId(TEST_ORG.id);
+      const result = await store.findByOrganizationId(TEST_ORG.id);
 
-      expect(found).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
     });
 
     it('returns all users for the organization ordered by createdAt desc', async () => {
@@ -109,20 +112,26 @@ describe('createSqliteUserStore', () => {
       await store.save(user1);
       await store.save(user2);
 
-      const found = await store.findByOrganizationId(TEST_ORG.id);
+      const result = await store.findByOrganizationId(TEST_ORG.id);
 
-      expect(found).toHaveLength(2);
-      expect(found[0].email).toBe('second@example.com');
-      expect(found[1].email).toBe('first@example.com');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].email).toBe('second@example.com');
+        expect(result.value[1].email).toBe('first@example.com');
+      }
     });
 
     it('only returns users for the specified organization', async () => {
       const user = createTestUser();
       await store.save(user);
 
-      const found = await store.findByOrganizationId('other-org-id');
+      const result = await store.findByOrganizationId('other-org-id');
 
-      expect(found).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
     });
   });
 });

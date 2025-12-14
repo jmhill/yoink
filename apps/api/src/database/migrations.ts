@@ -23,7 +23,7 @@ export const migrations: Migration[] = [
     name: 'create_organizations',
     up: (db) => {
       db.exec(`
-        CREATE TABLE organizations (
+        CREATE TABLE IF NOT EXISTS organizations (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           created_at TEXT NOT NULL
@@ -36,14 +36,14 @@ export const migrations: Migration[] = [
     name: 'create_users',
     up: (db) => {
       db.exec(`
-        CREATE TABLE users (
+        CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           organization_id TEXT NOT NULL,
           email TEXT NOT NULL,
           created_at TEXT NOT NULL
         )
       `);
-      db.exec(`CREATE INDEX idx_users_organization ON users(organization_id)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id)`);
     },
   },
   {
@@ -51,7 +51,7 @@ export const migrations: Migration[] = [
     name: 'create_api_tokens',
     up: (db) => {
       db.exec(`
-        CREATE TABLE api_tokens (
+        CREATE TABLE IF NOT EXISTS api_tokens (
           id TEXT PRIMARY KEY,
           user_id TEXT NOT NULL,
           token_hash TEXT NOT NULL,
@@ -60,7 +60,7 @@ export const migrations: Migration[] = [
           created_at TEXT NOT NULL
         )
       `);
-      db.exec(`CREATE INDEX idx_api_tokens_user ON api_tokens(user_id)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id)`);
     },
   },
   {
@@ -68,7 +68,7 @@ export const migrations: Migration[] = [
     name: 'create_captures',
     up: (db) => {
       db.exec(`
-        CREATE TABLE captures (
+        CREATE TABLE IF NOT EXISTS captures (
           id TEXT PRIMARY KEY,
           organization_id TEXT NOT NULL,
           created_by_id TEXT NOT NULL,
@@ -82,7 +82,7 @@ export const migrations: Migration[] = [
         )
       `);
       db.exec(`
-        CREATE INDEX idx_captures_org_status 
+        CREATE INDEX IF NOT EXISTS idx_captures_org_status 
         ON captures(organization_id, status, captured_at DESC)
       `);
     },

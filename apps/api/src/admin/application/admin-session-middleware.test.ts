@@ -11,7 +11,7 @@ import { createFakeClock } from '@yoink/infrastructure';
 
 describe('adminSessionMiddleware', () => {
   const ADMIN_PASSWORD = 'test-password';
-  const SESSION_SECRET = 'a-32-character-secret-for-hmac!';
+  const SESSION_SECRET = 'a-32-character-secret-for-hmac!!';
 
   let app: FastifyInstance;
   let validSessionToken: string;

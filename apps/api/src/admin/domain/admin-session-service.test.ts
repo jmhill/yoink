@@ -4,7 +4,7 @@ import { createFakeClock } from '@yoink/infrastructure';
 
 describe('AdminSessionService', () => {
   const ADMIN_PASSWORD = 'super-secret-password';
-  const SESSION_SECRET = 'a-32-character-secret-for-hmac!';
+  const SESSION_SECRET = 'a-32-character-secret-for-hmac!!';
   let clock: ReturnType<typeof createFakeClock>;
   let service: AdminSessionService;
 
@@ -142,7 +142,7 @@ describe('AdminSessionService', () => {
     it('cannot verify tokens signed with different secret', () => {
       const otherService = createAdminSessionService({
         adminPassword: ADMIN_PASSWORD,
-        sessionSecret: 'a-different-32-char-secret-key!',
+        sessionSecret: 'a-different-32-char-secret-key!!',
         clock,
       });
 

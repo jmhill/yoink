@@ -1,5 +1,5 @@
 import {
-  createAppFromConfig,
+  bootstrapApp,
   createInfrastructure,
 } from '../../composition-root.js';
 import { runMigrations } from '../../database/migrator.js';
@@ -51,7 +51,7 @@ export const createTestApp = async () => {
   const infrastructure = createInfrastructure(testConfig);
   runMigrations(infrastructure.database.db, migrations);
 
-  return createAppFromConfig({ config: testConfig, infrastructure, silent: true });
+  return bootstrapApp({ config: testConfig, infrastructure, silent: true });
 };
 
 export const createTestAppWithAdmin = async () => {

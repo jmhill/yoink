@@ -1,5 +1,5 @@
 import { loadConfig } from './config/config.js';
-import { createAppFromConfig } from './composition-root.js';
+import { bootstrapApp } from './composition-root.js';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -11,7 +11,7 @@ const main = async () => {
     mkdirSync(dirname(config.database.path), { recursive: true });
   }
 
-  const app = await createAppFromConfig({ config });
+  const app = await bootstrapApp({ config });
 
   try {
     const { port, host } = config.server;

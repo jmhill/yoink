@@ -86,13 +86,13 @@ export const createInfrastructure = (config: AppConfig): Infrastructure => {
   };
 };
 
-export type CreateAppOptions = {
+export type BootstrapOptions = {
   config: AppConfig;
   infrastructure?: Infrastructure;
   silent?: boolean;
 };
 
-export const createAppFromConfig = async (options: CreateAppOptions) => {
+export const bootstrapApp = async (options: BootstrapOptions) => {
   const { config, infrastructure, silent } = options;
   const { database, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);

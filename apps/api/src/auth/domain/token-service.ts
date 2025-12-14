@@ -1,3 +1,4 @@
+import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Clock, PasswordHasher } from '@yoink/infrastructure';
 import type { Organization } from './organization.js';
 import type { User } from './user.js';
@@ -5,6 +6,15 @@ import type { ApiToken } from './api-token.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { UserStore } from './user-store.js';
 import type { TokenStore } from './token-store.js';
+import type { ValidateTokenQuery } from './token-queries.js';
+import {
+  invalidTokenFormatError,
+  tokenNotFoundError,
+  invalidSecretError,
+  userNotFoundError,
+  organizationNotFoundError,
+  type TokenValidationError,
+} from './auth-errors.js';
 
 export type AuthResult = {
   organization: Organization;
@@ -13,7 +23,7 @@ export type AuthResult = {
 };
 
 export type TokenService = {
-  validateToken(plaintext: string): Promise<AuthResult | null>;
+  validateToken(query: ValidateTokenQuery): ResultAsync<AuthResult, TokenValidationError>;
 };
 
 export type TokenServiceDependencies = {
@@ -51,39 +61,47 @@ export const createTokenService = (
   const { organizationStore, userStore, tokenStore, passwordHasher, clock } = deps;
 
   return {
-    validateToken: async (plaintext: string): Promise<AuthResult | null> => {
+    validateToken: (query: ValidateTokenQuery): ResultAsync<AuthResult, TokenValidationError> => {
       // Parse tokenId:secret format
-      const parsed = parseToken(plaintext);
+      const parsed = parseToken(query.plaintext);
       if (!parsed) {
-        return null;
+        return errAsync(invalidTokenFormatError());
       }
 
       // Lookup token by ID (O(1))
-      const token = await tokenStore.findById(parsed.tokenId);
-      if (!token) {
-        return null;
-      }
+      return tokenStore.findById(parsed.tokenId).andThen((token) => {
+        if (!token) {
+          return errAsync(tokenNotFoundError(parsed.tokenId));
+        }
 
-      // Verify secret against stored hash
-      const isMatch = await passwordHasher.compare(parsed.secret, token.tokenHash);
-      if (!isMatch) {
-        return null;
-      }
+        // Verify secret against stored hash
+        // Wrap the Promise-based compare in a ResultAsync
+        return ResultAsync.fromPromise(
+          passwordHasher.compare(parsed.secret, token.tokenHash),
+          () => tokenNotFoundError(parsed.tokenId) // This shouldn't happen in practice
+        ).andThen((isMatch) => {
+          if (!isMatch) {
+            return errAsync(invalidSecretError(parsed.tokenId));
+          }
 
-      const user = await userStore.findById(token.userId);
-      if (!user) {
-        return null;
-      }
+          return userStore.findById(token.userId).andThen((user) => {
+            if (!user) {
+              return errAsync(userNotFoundError(token.userId));
+            }
 
-      const organization = await organizationStore.findById(user.organizationId);
-      if (!organization) {
-        return null;
-      }
+            return organizationStore.findById(user.organizationId).andThen((organization) => {
+              if (!organization) {
+                return errAsync(organizationNotFoundError(user.organizationId));
+              }
 
-      // Update lastUsedAt
-      await tokenStore.updateLastUsed(token.id, clock.now().toISOString());
+              // Update lastUsedAt (fire and forget - we don't want to fail validation if this fails)
+              tokenStore.updateLastUsed(token.id, clock.now().toISOString());
 
-      return { organization, user, token };
+              return okAsync({ organization, user, token });
+            });
+          });
+        });
+      });
     },
   };
 };

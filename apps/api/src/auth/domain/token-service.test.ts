@@ -3,9 +3,9 @@ import { createTokenService, type TokenService } from './token-service.js';
 import type { Organization } from './organization.js';
 import type { User } from './user.js';
 import type { ApiToken } from './api-token.js';
-import type { OrganizationStore } from './organization-store.js';
-import type { UserStore } from './user-store.js';
-import type { TokenStore } from './token-store.js';
+import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
+import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
+import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
 
 describe('TokenService', () => {
@@ -34,32 +34,20 @@ describe('TokenService', () => {
   const VALID_TOKEN = `${testToken.id}:my-secret-token`;
 
   let tokenService: TokenService;
-  let organizationStore: OrganizationStore;
-  let userStore: UserStore;
-  let tokenStore: TokenStore;
-  let lastUsedUpdates: Array<{ id: string; timestamp: string }>;
+  let tokenStore: ReturnType<typeof createFakeTokenStore>;
 
   beforeEach(() => {
-    lastUsedUpdates = [];
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [testOrg],
+    });
 
-    organizationStore = {
-      save: async () => {},
-      findById: async (id) => (id === testOrg.id ? testOrg : null),
-    };
+    const userStore = createFakeUserStore({
+      initialUsers: [testUser],
+    });
 
-    userStore = {
-      save: async () => {},
-      findById: async (id) => (id === testUser.id ? testUser : null),
-    };
-
-    tokenStore = {
-      save: async () => {},
-      findById: async (id) => (id === testToken.id ? testToken : null),
-      updateLastUsed: async (id, timestamp) => {
-        lastUsedUpdates.push({ id, timestamp });
-      },
-      hasAnyTokens: async () => true,
-    };
+    tokenStore = createFakeTokenStore({
+      initialTokens: [testToken],
+    });
 
     const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
 
@@ -73,71 +61,163 @@ describe('TokenService', () => {
   });
 
   it('returns auth result for valid token', async () => {
-    const result = await tokenService.validateToken(VALID_TOKEN);
+    const result = await tokenService.validateToken({ plaintext: VALID_TOKEN });
 
-    expect(result).not.toBeNull();
-    expect(result?.organization).toEqual(testOrg);
-    expect(result?.user).toEqual(testUser);
-    expect(result?.token.id).toBe(testToken.id);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.organization).toEqual(testOrg);
+      expect(result.value.user).toEqual(testUser);
+      expect(result.value.token.id).toBe(testToken.id);
+    }
   });
 
-  it('returns null for wrong secret', async () => {
-    const result = await tokenService.validateToken(`${testToken.id}:wrong-secret`);
+  it('returns INVALID_SECRET error for wrong secret', async () => {
+    const result = await tokenService.validateToken({
+      plaintext: `${testToken.id}:wrong-secret`,
+    });
 
-    expect(result).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_SECRET');
+    }
   });
 
-  it('returns null for non-existent token id', async () => {
-    const result = await tokenService.validateToken('non-existent-id:my-secret-token');
+  it('returns TOKEN_NOT_FOUND error for non-existent token id', async () => {
+    const result = await tokenService.validateToken({
+      plaintext: 'non-existent-id:my-secret-token',
+    });
 
-    expect(result).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_NOT_FOUND');
+    }
   });
 
-  it('returns null for missing colon separator', async () => {
-    const result = await tokenService.validateToken('my-secret-token');
+  it('returns INVALID_TOKEN_FORMAT error for missing colon separator', async () => {
+    const result = await tokenService.validateToken({
+      plaintext: 'my-secret-token',
+    });
 
-    expect(result).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_TOKEN_FORMAT');
+    }
   });
 
-  it('returns null for empty token id', async () => {
-    const result = await tokenService.validateToken(':my-secret-token');
+  it('returns INVALID_TOKEN_FORMAT error for empty token id', async () => {
+    const result = await tokenService.validateToken({
+      plaintext: ':my-secret-token',
+    });
 
-    expect(result).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_TOKEN_FORMAT');
+    }
   });
 
-  it('returns null for empty secret', async () => {
-    const result = await tokenService.validateToken(`${testToken.id}:`);
+  it('returns INVALID_TOKEN_FORMAT error for empty secret', async () => {
+    const result = await tokenService.validateToken({
+      plaintext: `${testToken.id}:`,
+    });
 
-    expect(result).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_TOKEN_FORMAT');
+    }
   });
 
-  it('returns null when token exists but user not found', async () => {
-    userStore.findById = async () => null;
+  it('returns USER_NOT_FOUND error when token exists but user not found', async () => {
+    // Create a token for a non-existent user
+    const orphanToken: ApiToken = {
+      id: 'orphan-token-id',
+      userId: 'non-existent-user',
+      tokenHash: 'fake-hash:orphan-secret',
+      name: 'orphan-token',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
 
-    const result = await tokenService.validateToken(VALID_TOKEN);
+    tokenStore = createFakeTokenStore({ initialTokens: [orphanToken] });
+    const userStore = createFakeUserStore({ initialUsers: [] });
+    const organizationStore = createFakeOrganizationStore({ initialOrganizations: [testOrg] });
 
-    expect(result).toBeNull();
+    tokenService = createTokenService({
+      organizationStore,
+      userStore,
+      tokenStore,
+      passwordHasher: createFakePasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await tokenService.validateToken({
+      plaintext: 'orphan-token-id:orphan-secret',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('USER_NOT_FOUND');
+    }
   });
 
-  it('returns null when user exists but organization not found', async () => {
-    organizationStore.findById = async () => null;
+  it('returns ORGANIZATION_NOT_FOUND error when user exists but organization not found', async () => {
+    // Create user belonging to non-existent org
+    const orphanUser: User = {
+      id: 'orphan-user-id',
+      organizationId: 'non-existent-org',
+      email: 'orphan@example.com',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
 
-    const result = await tokenService.validateToken(VALID_TOKEN);
+    const orphanToken: ApiToken = {
+      id: 'orphan-token-id',
+      userId: orphanUser.id,
+      tokenHash: 'fake-hash:orphan-secret',
+      name: 'orphan-token',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
 
-    expect(result).toBeNull();
+    const organizationStore = createFakeOrganizationStore({ initialOrganizations: [] });
+    const userStore = createFakeUserStore({ initialUsers: [orphanUser] });
+    tokenStore = createFakeTokenStore({ initialTokens: [orphanToken] });
+
+    tokenService = createTokenService({
+      organizationStore,
+      userStore,
+      tokenStore,
+      passwordHasher: createFakePasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await tokenService.validateToken({
+      plaintext: 'orphan-token-id:orphan-secret',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('ORGANIZATION_NOT_FOUND');
+    }
   });
 
   it('updates lastUsedAt on successful validation', async () => {
-    await tokenService.validateToken(VALID_TOKEN);
+    await tokenService.validateToken({ plaintext: VALID_TOKEN });
 
-    expect(lastUsedUpdates).toHaveLength(1);
-    expect(lastUsedUpdates[0].id).toBe(testToken.id);
-    expect(lastUsedUpdates[0].timestamp).toBe('2024-06-15T12:00:00.000Z');
+    // Check the token was updated in the store
+    const findResult = await tokenStore.findById(testToken.id);
+    expect(findResult.isOk()).toBe(true);
+    if (findResult.isOk()) {
+      expect(findResult.value?.lastUsedAt).toBe('2024-06-15T12:00:00.000Z');
+    }
   });
 
   it('does not update lastUsedAt on failed validation', async () => {
-    await tokenService.validateToken(`${testToken.id}:wrong-secret`);
+    await tokenService.validateToken({
+      plaintext: `${testToken.id}:wrong-secret`,
+    });
 
-    expect(lastUsedUpdates).toHaveLength(0);
+    // Check the token was not updated
+    const findResult = await tokenStore.findById(testToken.id);
+    expect(findResult.isOk()).toBe(true);
+    if (findResult.isOk()) {
+      expect(findResult.value?.lastUsedAt).toBeUndefined();
+    }
   });
 });

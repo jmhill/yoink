@@ -10,4 +10,8 @@ else
     litestream restore -if-replica-exists -config /etc/litestream.yml "$DB_PATH"
 fi
 
+# Run migrations before starting the app
+echo "Running database migrations..."
+node --experimental-sqlite dist/migrate.js
+
 exec litestream replicate -exec "node --experimental-sqlite dist/index.js" -config /etc/litestream.yml

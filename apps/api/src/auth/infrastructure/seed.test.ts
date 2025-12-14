@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedAuthData } from './seed.js';
+import { createFakeOrganizationStore } from './fake-organization-store.js';
+import { createFakeUserStore } from './fake-user-store.js';
+import { createFakeTokenStore } from './fake-token-store.js';
 import type { Organization } from '../domain/organization.js';
 import type { User } from '../domain/user.js';
 import type { ApiToken } from '../domain/api-token.js';
-import type { OrganizationStore } from '../domain/organization-store.js';
-import type { UserStore } from '../domain/user-store.js';
-import type { TokenStore } from '../domain/token-store.js';
 import {
   createFakePasswordHasher,
   createFakeClock,
@@ -16,43 +16,58 @@ describe('seedAuthData', () => {
   let savedOrgs: Organization[];
   let savedUsers: User[];
   let savedTokens: ApiToken[];
-  let hasTokens: boolean;
 
-  let organizationStore: OrganizationStore;
-  let userStore: UserStore;
-  let tokenStore: TokenStore;
+  // Helper to create stores that track saved items
+  const createTrackingOrganizationStore = (initialOrganizations: Organization[] = []) => {
+    savedOrgs = [...initialOrganizations];
+    const store = createFakeOrganizationStore({ initialOrganizations });
+    const originalSave = store.save.bind(store);
+    return {
+      ...store,
+      save: (org: Organization) => {
+        savedOrgs.push(org);
+        return originalSave(org);
+      },
+    };
+  };
+
+  const createTrackingUserStore = (initialUsers: User[] = []) => {
+    savedUsers = [...initialUsers];
+    const store = createFakeUserStore({ initialUsers });
+    const originalSave = store.save.bind(store);
+    return {
+      ...store,
+      save: (user: User) => {
+        savedUsers.push(user);
+        return originalSave(user);
+      },
+    };
+  };
+
+  const createTrackingTokenStore = (initialTokens: ApiToken[] = []) => {
+    savedTokens = [...initialTokens];
+    const store = createFakeTokenStore({ initialTokens });
+    const originalSave = store.save.bind(store);
+    return {
+      ...store,
+      save: (token: ApiToken) => {
+        savedTokens.push(token);
+        return originalSave(token);
+      },
+    };
+  };
 
   beforeEach(() => {
     savedOrgs = [];
     savedUsers = [];
     savedTokens = [];
-    hasTokens = false;
-
-    organizationStore = {
-      save: async (org) => {
-        savedOrgs.push(org);
-      },
-      findById: async () => null,
-    };
-
-    userStore = {
-      save: async (user) => {
-        savedUsers.push(user);
-      },
-      findById: async () => null,
-    };
-
-    tokenStore = {
-      save: async (token) => {
-        savedTokens.push(token);
-      },
-      findById: async () => null,
-      updateLastUsed: async () => {},
-      hasAnyTokens: async () => hasTokens,
-    };
   });
 
   it('creates org, user, and token when SEED_TOKEN is provided and no tokens exist', async () => {
+    const organizationStore = createTrackingOrganizationStore();
+    const userStore = createTrackingUserStore();
+    const tokenStore = createTrackingTokenStore();
+
     await seedAuthData({
       seedToken: 'my-seed-token',
       organizationStore,
@@ -78,6 +93,10 @@ describe('seedAuthData', () => {
   });
 
   it('does nothing when SEED_TOKEN is not provided', async () => {
+    const organizationStore = createTrackingOrganizationStore();
+    const userStore = createTrackingUserStore();
+    const tokenStore = createTrackingTokenStore();
+
     await seedAuthData({
       seedToken: undefined,
       organizationStore,
@@ -95,7 +114,22 @@ describe('seedAuthData', () => {
   });
 
   it('does nothing when tokens already exist', async () => {
-    hasTokens = true;
+    const existingToken: ApiToken = {
+      id: 'existing-token',
+      userId: 'existing-user',
+      tokenHash: 'hash',
+      name: 'existing',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+
+    const organizationStore = createTrackingOrganizationStore();
+    const userStore = createTrackingUserStore();
+    const tokenStore = createTrackingTokenStore([existingToken]);
+
+    // Reset after creating stores (creating stores adds initial items to tracking arrays)
+    savedOrgs = [];
+    savedUsers = [];
+    savedTokens = [];
 
     await seedAuthData({
       seedToken: 'my-seed-token',
@@ -114,6 +148,10 @@ describe('seedAuthData', () => {
   });
 
   it('uses the hardcoded organization ID for backward compatibility', async () => {
+    const organizationStore = createTrackingOrganizationStore();
+    const userStore = createTrackingUserStore();
+    const tokenStore = createTrackingTokenStore();
+
     await seedAuthData({
       seedToken: 'my-seed-token',
       organizationStore,

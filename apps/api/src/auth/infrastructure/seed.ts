@@ -35,38 +35,50 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
   }
 
   // Skip if tokens already exist (seeding already done)
-  const hasTokens = await tokenStore.hasAnyTokens();
-  if (hasTokens) {
+  const hasTokensResult = await tokenStore.hasAnyTokens();
+  if (hasTokensResult.isErr()) {
+    throw new Error('Failed to check for existing tokens during seeding');
+  }
+  if (hasTokensResult.value) {
     return;
   }
 
   const now = clock.now().toISOString();
 
   // Create default organization
-  await organizationStore.save({
+  const saveOrgResult = await organizationStore.save({
     id: SEED_ORG_ID,
     name: 'My Captures',
     createdAt: now,
   });
+  if (saveOrgResult.isErr()) {
+    throw new Error('Failed to seed organization');
+  }
 
   // Create default user
-  await userStore.save({
+  const saveUserResult = await userStore.save({
     id: SEED_USER_ID,
     organizationId: SEED_ORG_ID,
     email: 'seed@localhost',
     createdAt: now,
   });
+  if (saveUserResult.isErr()) {
+    throw new Error('Failed to seed user');
+  }
 
   // Create API token with hashed seed value
   const tokenId = idGenerator.generate();
   const tokenHash = await passwordHasher.hash(seedToken);
-  await tokenStore.save({
+  const saveTokenResult = await tokenStore.save({
     id: tokenId,
     userId: SEED_USER_ID,
     tokenHash,
     name: 'seed-token',
     createdAt: now,
   });
+  if (saveTokenResult.isErr()) {
+    throw new Error('Failed to seed API token');
+  }
 
   // Log the full token for the user (tokenId:secret format)
   if (!deps.silent) {

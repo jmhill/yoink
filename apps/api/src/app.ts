@@ -23,12 +23,17 @@ export const createApp = async (deps: AppDependencies) => {
   // Health route - registered at app level (no auth)
   const healthRouter = s.router(healthContract, {
     check: async () => {
-      const health = await deps.healthChecker.check();
-      const statusCode = health.status === 'healthy' ? 200 : 503;
-      return {
-        status: statusCode as 200 | 503,
-        body: health,
-      };
+      const result = await deps.healthChecker.check();
+      return result.match(
+        (health) => ({
+          status: 200 as const,
+          body: health,
+        }),
+        () => ({
+          status: 503 as const,
+          body: { status: 'unhealthy', database: 'disconnected' } as const,
+        })
+      );
     },
   });
 

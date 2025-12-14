@@ -15,9 +15,11 @@ import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
 
-export const adminContract = c.router(
+/**
+ * Public admin routes - no authentication required
+ */
+export const adminPublicContract = c.router(
   {
-    // Session management
     login: {
       method: 'POST',
       path: '/admin/login',
@@ -38,7 +40,17 @@ export const adminContract = c.router(
       },
       summary: 'Logout from admin panel',
     },
+  },
+  {
+    strictStatusCodes: true,
+  }
+);
 
+/**
+ * Protected admin routes - require session authentication
+ */
+export const adminProtectedContract = c.router(
+  {
     // Organizations
     listOrganizations: {
       method: 'GET',

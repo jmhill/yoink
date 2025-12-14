@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { Clock } from '@yoink/infrastructure';
 
 export type AdminSessionServiceDependencies = {
@@ -20,6 +20,14 @@ export type AdminSessionService = {
 };
 
 const DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Hash a password using SHA-256 to produce fixed-size output.
+ * This ensures timing-safe comparison doesn't leak password length.
+ */
+const hashPassword = (password: string): Buffer => {
+  return createHash('sha256').update(password).digest();
+};
 
 export const createAdminSessionService = (
   deps: AdminSessionServiceDependencies
@@ -49,12 +57,15 @@ export const createAdminSessionService = (
     }
   };
 
+  // Pre-compute hash of admin password for timing-safe comparison
+  const adminPasswordHash = hashPassword(adminPassword);
+
   return {
     login(password: string) {
-      // Use timing-safe comparison for password
-      const isValid =
-        password.length === adminPassword.length &&
-        timingSafeEqual(Buffer.from(password), Buffer.from(adminPassword));
+      // Use timing-safe comparison on fixed-size hashes to prevent
+      // timing attacks that could leak password length
+      const providedHash = hashPassword(password);
+      const isValid = timingSafeEqual(providedHash, adminPasswordHash);
 
       if (!isValid) {
         return { success: false };

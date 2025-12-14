@@ -61,5 +61,10 @@ export const LoginResponseSchema = z.object({
   success: z.boolean(),
 });
 
+export const SessionResponseSchema = z.object({
+  authenticated: z.boolean(),
+});
+
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+export type SessionResponse = z.infer<typeof SessionResponseSchema>;

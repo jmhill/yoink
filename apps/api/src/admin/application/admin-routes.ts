@@ -76,6 +76,14 @@ export const registerAdminRoutes = async (
     protectedApp.addHook('preHandler', authMiddleware);
 
     const protectedRouter = s.router(adminProtectedContract, {
+      getSession: async () => {
+        // If we get here, the session is valid (middleware passed)
+        return {
+          status: 200 as const,
+          body: { authenticated: true },
+        };
+      },
+
       listOrganizations: async () => {
         const result = await adminService.listOrganizations();
         return result.match(

@@ -10,6 +10,7 @@ import {
   CreateTokenResponseSchema,
   LoginRequestSchema,
   LoginResponseSchema,
+  SessionResponseSchema,
 } from '../schemas/admin.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -51,6 +52,17 @@ export const adminPublicContract = c.router(
  */
 export const adminProtectedContract = c.router(
   {
+    // Session
+    getSession: {
+      method: 'GET',
+      path: '/admin/session',
+      responses: {
+        200: SessionResponseSchema,
+        401: ErrorSchema,
+      },
+      summary: 'Check if session is valid',
+    },
+
     // Organizations
     listOrganizations: {
       method: 'GET',

@@ -48,6 +48,30 @@ describe('Admin API', () => {
     });
   });
 
+  describe('GET /admin/session', () => {
+    it('returns 401 without session', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/session',
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('returns authenticated true with valid session', async () => {
+      const sessionToken = await login();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/session',
+        cookies: { [ADMIN_SESSION_COOKIE]: sessionToken! },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ authenticated: true });
+    });
+  });
+
   describe('POST /admin/logout', () => {
     it('clears the session cookie', async () => {
       // First login

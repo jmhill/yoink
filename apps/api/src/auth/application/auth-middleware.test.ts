@@ -6,9 +6,9 @@ import { createTokenService } from '../domain/token-service.js';
 import type { Organization } from '../domain/organization.js';
 import type { User } from '../domain/user.js';
 import type { ApiToken } from '../domain/api-token.js';
-import type { OrganizationStore } from '../domain/organization-store.js';
-import type { UserStore } from '../domain/user-store.js';
-import type { TokenStore } from '../domain/token-store.js';
+import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
+import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
+import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
 
 describe('authMiddleware', () => {
@@ -36,22 +36,17 @@ describe('authMiddleware', () => {
   };
 
   beforeEach(async () => {
-    const organizationStore: OrganizationStore = {
-      save: async () => {},
-      findById: async (id) => (id === testOrg.id ? testOrg : null),
-    };
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [testOrg],
+    });
 
-    const userStore: UserStore = {
-      save: async () => {},
-      findById: async (id) => (id === testUser.id ? testUser : null),
-    };
+    const userStore = createFakeUserStore({
+      initialUsers: [testUser],
+    });
 
-    const tokenStore: TokenStore = {
-      save: async () => {},
-      findById: async (id) => (id === testToken.id ? testToken : null),
-      updateLastUsed: async () => {},
-      hasAnyTokens: async () => true,
-    };
+    const tokenStore = createFakeTokenStore({
+      initialTokens: [testToken],
+    });
 
     const tokenService = createTokenService({
       organizationStore,

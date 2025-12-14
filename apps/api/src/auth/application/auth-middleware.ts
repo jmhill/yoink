@@ -24,15 +24,16 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
 
     const token = authHeader.slice(7);
 
-    const result = await tokenService.validateToken(token);
+    const result = await tokenService.validateToken({ plaintext: token });
 
-    if (!result) {
+    if (result.isErr()) {
+      // For security, we don't reveal specific error details to the client
       return reply.status(401).send({ message: 'Invalid token' });
     }
 
     request.authContext = {
-      organizationId: result.organization.id,
-      userId: result.user.id,
+      organizationId: result.value.organization.id,
+      userId: result.value.user.id,
     };
   };
 };

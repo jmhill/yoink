@@ -30,5 +30,13 @@ export const createFakeUserStore = (
       const found = users.find((u) => u.id === id);
       return okAsync(found ?? null);
     },
+
+    findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(userStorageError('Find failed'));
+      }
+      const found = users.filter((u) => u.organizationId === organizationId);
+      return okAsync(found);
+    },
   };
 };

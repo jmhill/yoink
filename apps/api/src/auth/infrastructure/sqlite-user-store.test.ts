@@ -87,4 +87,51 @@ describe('createSqliteUserStore', () => {
       }
     });
   });
+
+  describe('findByOrganizationId', () => {
+    it('returns empty array when no users exist for organization', async () => {
+      const result = await store.findByOrganizationId(TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('returns all users for the organization ordered by createdAt desc', async () => {
+      const user1 = createTestUser({
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        email: 'first@example.com',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      const user2 = createTestUser({
+        id: '550e8400-e29b-41d4-a716-446655440003',
+        email: 'second@example.com',
+        createdAt: '2024-02-01T00:00:00.000Z',
+      });
+      await store.save(user1);
+      await store.save(user2);
+
+      const result = await store.findByOrganizationId(TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].email).toBe('second@example.com');
+        expect(result.value[1].email).toBe('first@example.com');
+      }
+    });
+
+    it('only returns users for the specified organization', async () => {
+      const user = createTestUser();
+      await store.save(user);
+
+      const result = await store.findByOrganizationId('other-org-id');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+  });
 });

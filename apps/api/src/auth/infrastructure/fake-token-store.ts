@@ -31,6 +31,14 @@ export const createFakeTokenStore = (
       return okAsync(found ?? null);
     },
 
+    findByUserId: (userId: string): ResultAsync<ApiToken[], TokenStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(tokenStorageError('Find failed'));
+      }
+      const found = tokens.filter((t) => t.userId === userId);
+      return okAsync(found);
+    },
+
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Update failed'));
@@ -39,6 +47,17 @@ export const createFakeTokenStore = (
       if (token) {
         const index = tokens.indexOf(token);
         tokens[index] = { ...token, lastUsedAt: timestamp };
+      }
+      return okAsync(undefined);
+    },
+
+    delete: (id: string): ResultAsync<void, TokenStorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(tokenStorageError('Delete failed'));
+      }
+      const index = tokens.findIndex((t) => t.id === id);
+      if (index !== -1) {
+        tokens.splice(index, 1);
       }
       return okAsync(undefined);
     },

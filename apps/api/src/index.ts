@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const main = async () => {
-  const config = loadConfig();
+  const config = await loadConfig();
 
   // Ensure database directory exists (only for file-based databases)
   if (config.database.type === 'sqlite') {

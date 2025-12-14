@@ -77,4 +77,39 @@ describe('createSqliteOrganizationStore', () => {
       }
     });
   });
+
+  describe('findAll', () => {
+    it('returns empty array when no organizations exist', async () => {
+      const result = await store.findAll();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('returns all organizations ordered by createdAt desc', async () => {
+      const org1 = createTestOrganization({
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        name: 'First Org',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      const org2 = createTestOrganization({
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        name: 'Second Org',
+        createdAt: '2024-02-01T00:00:00.000Z',
+      });
+      await store.save(org1);
+      await store.save(org2);
+
+      const result = await store.findAll();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].name).toBe('Second Org');
+        expect(result.value[1].name).toBe('First Org');
+      }
+    });
+  });
 });

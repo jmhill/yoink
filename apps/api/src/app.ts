@@ -1,24 +1,37 @@
 import Fastify from 'fastify';
+import cookie from '@fastify/cookie';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { captureContract, healthContract } from '@yoink/api-contracts';
 import type { CaptureService } from './captures/domain/capture-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
+import type { AdminService } from './admin/domain/admin-service.js';
+import type { AdminSessionService } from './admin/domain/admin-session-service.js';
+import { registerAdminRoutes } from './admin/application/index.js';
 
 export type AuthMiddleware = (
   request: FastifyRequest,
   reply: FastifyReply
 ) => Promise<void>;
 
+export type AdminConfig = {
+  adminService: AdminService;
+  adminSessionService: AdminSessionService;
+};
+
 export type AppDependencies = {
   captureService: CaptureService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
+  admin?: AdminConfig;
 };
 
 export const createApp = async (deps: AppDependencies) => {
   const app = Fastify();
   const s = initServer();
+
+  // Register cookie plugin for session management
+  await app.register(cookie);
 
   // Health route - registered at app level (no auth)
   const healthRouter = s.router(healthContract, {
@@ -166,6 +179,17 @@ export const createApp = async (deps: AppDependencies) => {
       },
     });
   });
+
+  // Admin routes - only registered if admin config is provided
+  if (deps.admin) {
+    const { adminService, adminSessionService } = deps.admin;
+
+    // Register admin routes with session authentication middleware
+    await registerAdminRoutes(app, {
+      adminService,
+      adminSessionService,
+    });
+  }
 
   return app;
 };

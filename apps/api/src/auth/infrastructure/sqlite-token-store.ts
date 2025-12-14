@@ -75,6 +75,18 @@ export const createSqliteTokenStore = (db: DatabaseSync): TokenStore => {
       }
     },
 
+    findByUserId: (userId: string): ResultAsync<ApiToken[], TokenStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          SELECT * FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC
+        `);
+        const rows = stmt.all(userId) as TokenRow[];
+        return okAsync(rows.map(rowToToken));
+      } catch (error) {
+        return errAsync(tokenStorageError('Failed to find tokens by user', error));
+      }
+    },
+
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       try {
         const stmt = db.prepare(`
@@ -84,6 +96,16 @@ export const createSqliteTokenStore = (db: DatabaseSync): TokenStore => {
         return okAsync(undefined);
       } catch (error) {
         return errAsync(tokenStorageError('Failed to update token last used', error));
+      }
+    },
+
+    delete: (id: string): ResultAsync<void, TokenStorageError> => {
+      try {
+        const stmt = db.prepare(`DELETE FROM api_tokens WHERE id = ?`);
+        stmt.run(id);
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(tokenStorageError('Failed to delete token', error));
       }
     },
 

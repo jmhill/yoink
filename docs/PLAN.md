@@ -9,6 +9,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 ## Current Status
 
 **Phase 1: Backend Foundation** - Complete ✓
+**Phase 2: Admin Panel (Backend)** - Complete ✓
 
 ---
 
@@ -54,13 +55,19 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 **Goal**: View/manage captures and provision access via browser
 
-### Admin Panel
-- [ ] Admin session auth (ADMIN_PASSWORD env var)
-- [ ] Admin login page
-- [ ] Organizations list + create
-- [ ] Organization detail (users list + create)
-- [ ] User detail (tokens list + create/revoke)
-- [ ] Session middleware protecting /admin/* routes
+### Admin Panel (Backend API) - Complete ✓
+- [x] Admin session auth (ADMIN_PASSWORD env var)
+- [x] Admin login/logout endpoints (POST /admin/login, /admin/logout)
+- [x] Organizations API (GET/POST /admin/organizations, GET /admin/organizations/:id)
+- [x] Users API (GET/POST /admin/organizations/:id/users, GET /admin/users/:id)
+- [x] Tokens API (GET/POST /admin/users/:id/tokens, DELETE /admin/tokens/:id)
+- [x] Session cookie authentication for protected routes
+
+### Admin Panel (Frontend) - Pending
+- [ ] Admin login page UI
+- [ ] Organizations list + create UI
+- [ ] Organization detail (users list + create) UI
+- [ ] User detail (tokens list + create/revoke) UI
 
 ### Capture Inbox
 - [ ] Create apps/web scaffold (Vite + React)

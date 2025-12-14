@@ -1,0 +1,12 @@
+dbs:
+  - path: /app/apps/api/data/captures.db
+    replicas:
+      - type: s3
+        bucket: ${BUCKET_NAME}
+        path: backups
+        endpoint: ${AWS_ENDPOINT_URL_S3}
+        region: auto
+        force-path-style: true
+        sync-interval: 1s
+        snapshot-interval: 1h
+        retention: 168h

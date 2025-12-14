@@ -29,6 +29,9 @@ RUN pnpm build
 # Production stage
 FROM node:24-alpine AS runner
 
+# Install Litestream for SQLite backup/restore
+COPY --from=litestream/litestream:0.3.13 /usr/local/bin/litestream /usr/local/bin/litestream
+
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 WORKDIR /app
@@ -50,6 +53,11 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 # Create data directory for SQLite
 RUN mkdir -p /app/apps/api/data
 
+# Copy Litestream config and startup script
+COPY apps/api/litestream.yml /etc/litestream.yml
+COPY apps/api/run.sh /app/run.sh
+RUN chmod +x /app/run.sh
+
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
@@ -58,4 +66,4 @@ EXPOSE 3000
 
 WORKDIR /app/apps/api
 
-CMD ["node", "--experimental-sqlite", "dist/index.js"]
+CMD ["/app/run.sh"]

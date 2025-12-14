@@ -12,6 +12,7 @@ primary_region = 'sjc'
   NODE_ENV = "production"
   HOST = "0.0.0.0"
   PORT = "3000"
+  DB_PATH = "/app/apps/api/data/captures.db"
 
 [http_service]
   internal_port = 3000

@@ -145,6 +145,7 @@ export const createAppFromConfig = async (options: CreateAppOptions) => {
       adminPassword: config.admin.password,
       sessionSecret: config.admin.sessionSecret,
       clock,
+      idGenerator, // Adds sessionId to tokens for defense-in-depth
     });
 
     const adminService = createAdminService({

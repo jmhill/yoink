@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createAdminSessionService, type AdminSessionService } from './admin-session-service.js';
-import { createFakeClock } from '@yoink/infrastructure';
+import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 
 describe('AdminSessionService', () => {
   const ADMIN_PASSWORD = 'super-secret-password';
@@ -150,6 +150,43 @@ describe('AdminSessionService', () => {
       const session = service.verifySession(token);
 
       expect(session?.createdAt).toBe('2024-06-15T12:00:00.000Z');
+    });
+
+    it('generates unique tokens even when created at same timestamp', () => {
+      // Use a service with an idGenerator to get unique session IDs
+      const idGenerator = createFakeIdGenerator();
+      const serviceWithIds = createAdminSessionService({
+        adminPassword: ADMIN_PASSWORD,
+        sessionSecret: SESSION_SECRET,
+        clock,
+        idGenerator,
+      });
+
+      const token1 = serviceWithIds.createSessionToken();
+      const token2 = serviceWithIds.createSessionToken();
+
+      // Tokens should be different due to unique sessionId
+      expect(token1).not.toBe(token2);
+
+      // Both should still be valid
+      expect(serviceWithIds.verifySession(token1)).not.toBeNull();
+      expect(serviceWithIds.verifySession(token2)).not.toBeNull();
+    });
+
+    it('includes sessionId when idGenerator is provided', () => {
+      const idGenerator = createFakeIdGenerator();
+      const serviceWithIds = createAdminSessionService({
+        adminPassword: ADMIN_PASSWORD,
+        sessionSecret: SESSION_SECRET,
+        clock,
+        idGenerator,
+      });
+
+      const token = serviceWithIds.createSessionToken();
+      const session = serviceWithIds.verifySession(token);
+
+      expect(session?.sessionId).toBeDefined();
+      expect(typeof session?.sessionId).toBe('string');
     });
   });
 

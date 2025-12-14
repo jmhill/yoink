@@ -1,16 +1,18 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { Clock } from '@yoink/infrastructure';
+import type { Clock, IdGenerator } from '@yoink/infrastructure';
 
 export type AdminSessionServiceDependencies = {
   adminPassword: string;
   sessionSecret: string;
   clock: Clock;
   sessionTtlMs?: number; // Default 24 hours
+  idGenerator?: IdGenerator; // Optional - adds sessionId for defense-in-depth
 };
 
 export type AdminSession = {
   isAdmin: true;
   createdAt: string;
+  sessionId?: string; // Present when idGenerator is provided
 };
 
 export type AdminSessionService = {
@@ -32,7 +34,7 @@ const hashPassword = (password: string): Buffer => {
 export const createAdminSessionService = (
   deps: AdminSessionServiceDependencies
 ): AdminSessionService => {
-  const { adminPassword, sessionSecret, clock, sessionTtlMs = DEFAULT_SESSION_TTL_MS } = deps;
+  const { adminPassword, sessionSecret, clock, sessionTtlMs = DEFAULT_SESSION_TTL_MS, idGenerator } = deps;
 
   // Validate session secret length for HMAC security
   if (sessionSecret.length < 32) {
@@ -124,6 +126,7 @@ export const createAdminSessionService = (
       const session: AdminSession = {
         isAdmin: true,
         createdAt: clock.now().toISOString(),
+        ...(idGenerator && { sessionId: idGenerator.generate() }),
       };
 
       const payloadB64 = Buffer.from(JSON.stringify(session)).toString('base64url');

@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "^9.4.0",
-    "@fastify/static": "^8.3.0",
+    "@fastify/static": "^7.0.4",
     "@ts-rest/fastify": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",

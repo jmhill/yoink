@@ -1,6 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
+import { userStorageError, type UserStorageError } from '../domain/auth-errors.js';
 
 type UserRow = {
   id: string;
@@ -36,22 +38,31 @@ export const createSqliteUserStore = (db: DatabaseSync): UserStore => {
   validateSchema(db);
 
   return {
-    save: async (user: User): Promise<void> => {
-      const stmt = db.prepare(`
-        INSERT INTO users (id, organization_id, email, created_at)
-        VALUES (?, ?, ?, ?)
-      `);
+    save: (user: User): ResultAsync<void, UserStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO users (id, organization_id, email, created_at)
+          VALUES (?, ?, ?, ?)
+        `);
 
-      stmt.run(user.id, user.organizationId, user.email, user.createdAt);
+        stmt.run(user.id, user.organizationId, user.email, user.createdAt);
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(userStorageError('Failed to save user', error));
+      }
     },
 
-    findById: async (id: string): Promise<User | null> => {
-      const stmt = db.prepare(`
-        SELECT * FROM users WHERE id = ?
-      `);
+    findById: (id: string): ResultAsync<User | null, UserStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          SELECT * FROM users WHERE id = ?
+        `);
 
-      const row = stmt.get(id) as UserRow | undefined;
-      return row ? rowToUser(row) : null;
+        const row = stmt.get(id) as UserRow | undefined;
+        return okAsync(row ? rowToUser(row) : null);
+      } catch (error) {
+        return errAsync(userStorageError('Failed to find user', error));
+      }
     },
   };
 };

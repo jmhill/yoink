@@ -52,10 +52,15 @@ describe('createSqliteUserStore', () => {
     it('persists a user', async () => {
       const user = createTestUser();
 
-      await store.save(user);
+      const saveResult = await store.save(user);
 
-      const found = await store.findById(user.id);
-      expect(found).toEqual(user);
+      expect(saveResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(user.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).toEqual(user);
+      }
     });
   });
 
@@ -64,16 +69,22 @@ describe('createSqliteUserStore', () => {
       const user = createTestUser({ email: 'alice@example.com' });
       await store.save(user);
 
-      const found = await store.findById(user.id);
+      const result = await store.findById(user.id);
 
-      expect(found).not.toBeNull();
-      expect(found?.email).toBe('alice@example.com');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.email).toBe('alice@example.com');
+      }
     });
 
     it('returns null when user not found', async () => {
-      const found = await store.findById('non-existent-id');
+      const result = await store.findById('non-existent-id');
 
-      expect(found).toBeNull();
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
     });
   });
 });

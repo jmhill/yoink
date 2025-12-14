@@ -60,5 +60,5 @@ export const createTestAppWithAdmin = async () => {
   const infrastructure = createInfrastructure(testConfigWithAdmin);
   runMigrations(infrastructure.database.db, migrations);
 
-  return createAppFromConfig({ config: testConfigWithAdmin, infrastructure, silent: true });
+  return bootstrapApp({ config: testConfigWithAdmin, infrastructure, silent: true });
 };

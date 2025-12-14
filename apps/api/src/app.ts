@@ -1,18 +1,13 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import { captureContract, healthContract } from '@yoink/api-contracts';
+import { registerHealthRoutes } from './health/application/index.js';
+import { registerCaptureRoutes } from './captures/application/index.js';
+import { registerAdminRoutes } from './admin/application/index.js';
 import type { CaptureService } from './captures/domain/capture-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
+import type { AuthMiddleware } from './auth/application/auth-middleware.js';
 import type { AdminService } from './admin/domain/admin-service.js';
 import type { AdminSessionService } from './admin/domain/admin-session-service.js';
-import { registerAdminRoutes } from './admin/application/index.js';
-
-export type AuthMiddleware = (
-  request: FastifyRequest,
-  reply: FastifyReply
-) => Promise<void>;
 
 export type AdminConfig = {
   adminService: AdminService;
@@ -28,167 +23,20 @@ export type AppDependencies = {
 
 export const createApp = async (deps: AppDependencies) => {
   const app = Fastify();
-  const s = initServer();
 
-  // Register cookie plugin for session management
+  // Register plugins
   await app.register(cookie);
 
-  // Health route - registered at app level (no auth)
-  const healthRouter = s.router(healthContract, {
-    check: async () => {
-      const result = await deps.healthChecker.check();
-      return result.match(
-        (health) => ({
-          status: 200 as const,
-          body: health,
-        }),
-        () => ({
-          status: 503 as const,
-          body: { status: 'unhealthy', database: 'disconnected' } as const,
-        })
-      );
-    },
-  });
-
-  s.registerRouter(healthContract, healthRouter, app, {
-    responseValidation: true,
-  });
-
-  // Authenticated routes - scoped plugin with auth hook
-  await app.register(async (authedApp) => {
-    authedApp.addHook('preHandler', deps.authMiddleware);
-
-    const captureRouter = s.router(captureContract, {
-      create: async ({ body, request }) => {
-        const result = await deps.captureService.create({
-          content: body.content,
-          title: body.title,
-          sourceUrl: body.sourceUrl,
-          sourceApp: body.sourceApp,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-        });
-
-        return result.match(
-          (capture) => ({
-            status: 201 as const,
-            body: capture,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      list: async ({ query, request }) => {
-        const result = await deps.captureService.list({
-          organizationId: request.authContext.organizationId,
-          status: query.status,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-
-        return result.match(
-          (data) => ({
-            status: 200 as const,
-            body: data,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      get: async ({ params, request }) => {
-        const result = await deps.captureService.findById({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (capture) => ({
-            status: 200 as const,
-            body: capture,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      update: async ({ params, body, request }) => {
-        const result = await deps.captureService.update({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          title: body.title,
-          content: body.content,
-          status: body.status,
-        });
-
-        return result.match(
-          (capture) => ({
-            status: 200 as const,
-            body: capture,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-    });
-
-    s.registerRouter(captureContract, captureRouter, authedApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
-      },
-    });
+  // Register routes
+  await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
+  await registerCaptureRoutes(app, {
+    captureService: deps.captureService,
+    authMiddleware: deps.authMiddleware,
   });
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
-    const { adminService, adminSessionService } = deps.admin;
-
-    // Register admin routes with session authentication middleware
-    await registerAdminRoutes(app, {
-      adminService,
-      adminSessionService,
-    });
+    await registerAdminRoutes(app, deps.admin);
   }
 
   return app;

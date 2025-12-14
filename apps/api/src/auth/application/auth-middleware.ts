@@ -8,6 +8,11 @@ declare module 'fastify' {
   }
 }
 
+export type AuthMiddleware = (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => Promise<void>;
+
 export type AuthMiddlewareDependencies = {
   tokenService: TokenService;
 };

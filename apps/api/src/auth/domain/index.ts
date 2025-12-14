@@ -10,3 +10,23 @@ export {
   type TokenServiceDependencies,
   type AuthResult,
 } from './token-service.js';
+export type { ValidateTokenQuery } from './token-queries.js';
+export {
+  userStorageError,
+  tokenStorageError,
+  organizationStorageError,
+  invalidTokenFormatError,
+  tokenNotFoundError,
+  invalidSecretError,
+  userNotFoundError,
+  organizationNotFoundError,
+  type UserStorageError,
+  type TokenStorageError,
+  type OrganizationStorageError,
+  type InvalidTokenFormatError,
+  type TokenNotFoundError,
+  type InvalidSecretError,
+  type UserNotFoundError,
+  type OrganizationNotFoundError,
+  type TokenValidationError,
+} from './auth-errors.js';

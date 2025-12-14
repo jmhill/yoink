@@ -1,6 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
+import {
+  organizationStorageError,
+  type OrganizationStorageError,
+} from '../domain/auth-errors.js';
 
 type OrganizationRow = {
   id: string;
@@ -38,22 +43,31 @@ export const createSqliteOrganizationStore = (
   validateSchema(db);
 
   return {
-    save: async (organization: Organization): Promise<void> => {
-      const stmt = db.prepare(`
-        INSERT INTO organizations (id, name, created_at)
-        VALUES (?, ?, ?)
-      `);
+    save: (organization: Organization): ResultAsync<void, OrganizationStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO organizations (id, name, created_at)
+          VALUES (?, ?, ?)
+        `);
 
-      stmt.run(organization.id, organization.name, organization.createdAt);
+        stmt.run(organization.id, organization.name, organization.createdAt);
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(organizationStorageError('Failed to save organization', error));
+      }
     },
 
-    findById: async (id: string): Promise<Organization | null> => {
-      const stmt = db.prepare(`
-        SELECT * FROM organizations WHERE id = ?
-      `);
+    findById: (id: string): ResultAsync<Organization | null, OrganizationStorageError> => {
+      try {
+        const stmt = db.prepare(`
+          SELECT * FROM organizations WHERE id = ?
+        `);
 
-      const row = stmt.get(id) as OrganizationRow | undefined;
-      return row ? rowToOrganization(row) : null;
+        const row = stmt.get(id) as OrganizationRow | undefined;
+        return okAsync(row ? rowToOrganization(row) : null);
+      } catch (error) {
+        return errAsync(organizationStorageError('Failed to find organization', error));
+      }
     },
   };
 };

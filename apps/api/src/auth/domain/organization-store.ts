@@ -1,6 +1,8 @@
+import type { ResultAsync } from 'neverthrow';
 import type { Organization } from './organization.js';
+import type { OrganizationStorageError } from './auth-errors.js';
 
 export type OrganizationStore = {
-  save(organization: Organization): Promise<void>;
-  findById(id: string): Promise<Organization | null>;
+  save(organization: Organization): ResultAsync<void, OrganizationStorageError>;
+  findById(id: string): ResultAsync<Organization | null, OrganizationStorageError>;
 };

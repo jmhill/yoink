@@ -42,10 +42,15 @@ describe('createSqliteOrganizationStore', () => {
     it('persists an organization', async () => {
       const org = createTestOrganization();
 
-      await store.save(org);
+      const saveResult = await store.save(org);
 
-      const found = await store.findById(org.id);
-      expect(found).toEqual(org);
+      expect(saveResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(org.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).toEqual(org);
+      }
     });
   });
 
@@ -54,16 +59,22 @@ describe('createSqliteOrganizationStore', () => {
       const org = createTestOrganization({ name: 'My Org' });
       await store.save(org);
 
-      const found = await store.findById(org.id);
+      const result = await store.findById(org.id);
 
-      expect(found).not.toBeNull();
-      expect(found?.name).toBe('My Org');
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.name).toBe('My Org');
+      }
     });
 
     it('returns null when organization not found', async () => {
-      const found = await store.findById('non-existent-id');
+      const result = await store.findById('non-existent-id');
 
-      expect(found).toBeNull();
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
     });
   });
 });

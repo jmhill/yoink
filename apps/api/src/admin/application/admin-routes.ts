@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { adminContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';

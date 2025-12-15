@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      - ADMIN_PASSWORD=test-admin-password
+      - SESSION_SECRET=test-session-secret-min-32-chars-long
+      - SKIP_LITESTREAM=true
+      - DB_PATH=/app/apps/api/data/captures.db
+    ports:
+      - "3333:3000"

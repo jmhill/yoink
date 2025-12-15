@@ -9,6 +9,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "quality": "turbo run build typecheck test",
+    "docker:test": "./scripts/docker-test.sh",
     "dev": "turbo run dev",
     "prepare": "husky"
   },

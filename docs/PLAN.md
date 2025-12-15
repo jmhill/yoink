@@ -187,6 +187,20 @@ application/      # HTTP layer
 - **Fake dependencies**: Clock, IdGenerator, PasswordHasher have fake implementations
 - **In-memory SQLite**: Integration tests use `:memory:` databases
 
+### E2E Testing Pipeline (Planned)
+
+We have a plan to refactor the CI/CD pipeline to test the production Docker artifact before deployment. This implements Dave Farley's 4-layer testing approach where the same acceptance tests run against both:
+- In-process server (fast, for `pnpm quality`)
+- Docker container (production artifact, for `pnpm e2e:test`)
+
+**See [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) for full details.**
+
+Key goals:
+- Build Docker image once, test it, deploy the tested artifact
+- Same acceptance tests, swappable system under test
+- `pnpm e2e:test` available locally and in CI
+- Deploy pre-built images to Fly.io (no remote build)
+
 ### Environment Variables
 
 | Variable | Purpose | Required |

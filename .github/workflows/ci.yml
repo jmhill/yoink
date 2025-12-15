@@ -24,10 +24,22 @@ jobs:
       - name: Run quality checks
         run: devbox run pnpm quality
 
+  docker-test:
+    name: Docker E2E Test
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Docker E2E test
+        run: ./scripts/docker-test.sh
+
   deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: quality
+    needs: docker-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:

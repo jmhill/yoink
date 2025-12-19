@@ -75,7 +75,7 @@ jobs:
       - name: Run E2E tests
         run: |
           IMAGE=registry.fly.io/jhtc-yoink-api:${{ github.sha }} \
-          ./scripts/e2e-test.sh
+          devbox run ./scripts/e2e-test.sh
 
   deploy:
     name: Deploy to Fly.io

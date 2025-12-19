@@ -24,8 +24,8 @@ jobs:
       - name: Run quality checks
         run: devbox run pnpm quality
 
-  docker-test:
-    name: Docker E2E Test
+  build-artifact:
+    name: Build Docker Image
     runs-on: ubuntu-latest
     needs: quality
 
@@ -33,13 +33,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Docker E2E test
-        run: ./scripts/docker-test.sh
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Authenticate with Fly.io Registry
+        run: flyctl auth docker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t registry.fly.io/jhtc-yoink-api:${{ github.sha }} -f apps/api/Dockerfile .
+          docker push registry.fly.io/jhtc-yoink-api:${{ github.sha }}
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: build-artifact
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.14.0
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Authenticate with Fly.io Registry
+        run: flyctl auth docker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Pull pre-built image
+        run: docker pull registry.fly.io/jhtc-yoink-api:${{ github.sha }}
+
+      - name: Install dependencies
+        run: devbox run pnpm install --frozen-lockfile
+
+      - name: Run E2E tests
+        run: |
+          IMAGE=registry.fly.io/jhtc-yoink-api:${{ github.sha }} \
+          ./scripts/e2e-test.sh
 
   deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: docker-test
+    needs: e2e-tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -49,8 +90,8 @@ jobs:
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy to Fly.io
-        run: flyctl deploy --config apps/api/fly.toml --remote-only
+      - name: Deploy pre-built image
+        run: flyctl deploy --image registry.fly.io/jhtc-yoink-api:${{ github.sha }} --config apps/api/fly.toml
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -116,3 +157,8 @@ jobs:
             cat /tmp/capture.json
             exit 1
           fi
+
+      - name: Verify admin UI reachable
+        run: |
+          curl -sf https://jhtc-yoink-api.fly.dev/admin/ | grep -q "<!DOCTYPE html>"
+          echo "Admin UI is reachable"

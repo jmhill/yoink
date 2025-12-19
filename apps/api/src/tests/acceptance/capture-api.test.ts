@@ -1,84 +1,105 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createTestApp, TEST_TOKEN } from '../helpers/test-app.js';
-import type { FastifyInstance } from 'fastify';
+import { describe, it, expect, beforeAll } from 'vitest';
+import type { HttpClient } from '../helpers/http-client.js';
+import { createTestContext } from '../helpers/test-app.js';
+import {
+  loginToAdminPanel,
+  logoutAdmin,
+  createTestTenant,
+  type TestTenant,
+} from '../helpers/dsl.js';
 
 describe('Capture API', () => {
-  const VALID_TOKEN = TEST_TOKEN;
-  let app: FastifyInstance;
+  let client: HttpClient;
+  let tenant: TestTenant;
 
-  beforeEach(async () => {
-    app = await createTestApp();
+  beforeAll(async () => {
+    const context = await createTestContext();
+    client = context.client;
+
+    // Create isolated tenant for this test suite
+    await loginToAdminPanel(client, context.adminPassword);
+    tenant = await createTestTenant(client);
+    await logoutAdmin(client);
   });
 
   describe('POST /captures', () => {
     it('creates a capture with valid token', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'My captured text' },
-      });
+      const uniqueContent = `capture-create-${Date.now()}`;
+
+      const response = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(201);
 
-      const body = response.json();
-      expect(body.content).toBe('My captured text');
+      const body = response.json<{
+        id: string;
+        content: string;
+        status: string;
+        organizationId: string;
+        createdById: string;
+        capturedAt: string;
+      }>();
+      expect(body.content).toBe(uniqueContent);
       expect(body.status).toBe('inbox');
       expect(body.id).toBeDefined();
-      expect(body.organizationId).toBeDefined();
-      expect(body.createdById).toBeDefined();
+      expect(body.organizationId).toBe(tenant.organization.id);
+      expect(body.createdById).toBe(tenant.user.id);
       expect(body.capturedAt).toBeDefined();
     });
 
     it('creates a capture with optional fields', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: {
-          content: 'My captured text',
+      const uniqueContent = `capture-optional-${Date.now()}`;
+
+      const response = await client.post(
+        '/captures',
+        {
+          content: uniqueContent,
           title: 'A title',
           sourceUrl: 'https://example.com/article',
           sourceApp: 'browser-extension',
         },
-      });
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(201);
 
-      const body = response.json();
+      const body = response.json<{
+        title: string;
+        sourceUrl: string;
+        sourceApp: string;
+      }>();
       expect(body.title).toBe('A title');
       expect(body.sourceUrl).toBe('https://example.com/article');
       expect(body.sourceApp).toBe('browser-extension');
     });
 
     it('rejects request without token', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        payload: { content: 'My captured text' },
+      const response = await client.post('/captures', {
+        content: 'My captured text',
       });
 
       expect(response.statusCode).toBe(401);
     });
 
     it('rejects request with invalid token', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: 'Bearer wrong-token' },
-        payload: { content: 'My captured text' },
-      });
+      const response = await client.post(
+        '/captures',
+        { content: 'My captured text' },
+        { authorization: 'Bearer wrong-token' }
+      );
 
       expect(response.statusCode).toBe(401);
     });
 
     it('rejects invalid content', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: '' },
-      });
+      const response = await client.post(
+        '/captures',
+        { content: '' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(400);
     });
@@ -86,57 +107,65 @@ describe('Capture API', () => {
 
   describe('GET /captures', () => {
     it('lists captures for authenticated user', async () => {
-      await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'First capture' },
-      });
+      const uniqueContent = `capture-list-${Date.now()}`;
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
+      await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
+
+      const response = await client.get('/captures', {
+        authorization: `Bearer ${tenant.apiToken}`,
       });
 
       expect(response.statusCode).toBe(200);
 
-      const body = response.json();
-      expect(body.captures).toHaveLength(1);
-      expect(body.captures[0].content).toBe('First capture');
+      const body = response.json<{
+        captures: Array<{ content: string }>;
+      }>();
+      expect(body.captures.length).toBeGreaterThanOrEqual(1);
+      expect(body.captures.some((c) => c.content === uniqueContent)).toBe(true);
     });
 
     it('returns captures in newest-first order', async () => {
-      await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'First' },
+      const firstContent = `capture-order-first-${Date.now()}`;
+      const secondContent = `capture-order-second-${Date.now()}`;
+
+      await client.post(
+        '/captures',
+        { content: firstContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
+
+      await client.post(
+        '/captures',
+        { content: secondContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
+
+      const response = await client.get('/captures', {
+        authorization: `Bearer ${tenant.apiToken}`,
       });
 
-      await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Second' },
-      });
+      const body = response.json<{
+        captures: Array<{ content: string }>;
+      }>();
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-      });
+      // Find positions of our test captures
+      const firstIndex = body.captures.findIndex(
+        (c) => c.content === firstContent
+      );
+      const secondIndex = body.captures.findIndex(
+        (c) => c.content === secondContent
+      );
 
-      const body = response.json();
-      expect(body.captures[0].content).toBe('Second');
-      expect(body.captures[1].content).toBe('First');
+      // Second (newer) should come before first (older)
+      expect(secondIndex).toBeLessThan(firstIndex);
     });
 
     it('rejects request without token', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures',
-      });
+      const response = await client.get('/captures');
 
       expect(response.statusCode).toBe(401);
     });
@@ -144,49 +173,44 @@ describe('Capture API', () => {
 
   describe('GET /captures/:id', () => {
     it('returns capture by id', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'My captured text' },
-      });
+      const uniqueContent = `capture-get-by-id-${Date.now()}`;
 
-      const created = createResponse.json();
+      const createResponse = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
-      const response = await app.inject({
-        method: 'GET',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
+      const created = createResponse.json<{ id: string }>();
+
+      const response = await client.get(`/captures/${created.id}`, {
+        authorization: `Bearer ${tenant.apiToken}`,
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual(created);
+      expect(response.json<{ content: string }>().content).toBe(uniqueContent);
     });
 
     it('returns 404 for non-existent capture', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures/00000000-0000-0000-0000-000000000000',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-      });
+      const response = await client.get(
+        '/captures/00000000-0000-0000-0000-000000000000',
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(404);
     });
 
     it('rejects request without token', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures/00000000-0000-0000-0000-000000000000',
-      });
+      const response = await client.get(
+        '/captures/00000000-0000-0000-0000-000000000000'
+      );
 
       expect(response.statusCode).toBe(401);
     });
 
     it('returns 400 for invalid id format', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/captures/not-a-uuid',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
+      const response = await client.get('/captures/not-a-uuid', {
+        authorization: `Bearer ${tenant.apiToken}`,
       });
 
       expect(response.statusCode).toBe(400);
@@ -195,126 +219,127 @@ describe('Capture API', () => {
 
   describe('PATCH /captures/:id', () => {
     it('updates capture content', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Original content' },
-      });
+      const originalContent = `capture-update-original-${Date.now()}`;
+      const updatedContent = `capture-update-updated-${Date.now()}`;
 
-      const created = createResponse.json();
+      const createResponse = await client.post(
+        '/captures',
+        { content: originalContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
-      const response = await app.inject({
-        method: 'PATCH',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Updated content' },
-      });
+      const created = createResponse.json<{ id: string }>();
+
+      const response = await client.patch(
+        `/captures/${created.id}`,
+        { content: updatedContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().content).toBe('Updated content');
+      expect(response.json<{ content: string }>().content).toBe(updatedContent);
     });
 
     it('updates capture title', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Some content' },
-      });
+      const uniqueContent = `capture-update-title-${Date.now()}`;
 
-      const created = createResponse.json();
+      const createResponse = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
-      const response = await app.inject({
-        method: 'PATCH',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { title: 'New title' },
-      });
+      const created = createResponse.json<{ id: string }>();
+
+      const response = await client.patch(
+        `/captures/${created.id}`,
+        { title: 'New title' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().title).toBe('New title');
+      expect(response.json<{ title: string }>().title).toBe('New title');
     });
 
     it('archives capture and sets archivedAt', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Content to archive' },
-      });
+      const uniqueContent = `capture-archive-${Date.now()}`;
 
-      const created = createResponse.json();
+      const createResponse = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
-      const response = await app.inject({
-        method: 'PATCH',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { status: 'archived' },
-      });
+      const created = createResponse.json<{ id: string }>();
+
+      const response = await client.patch(
+        `/captures/${created.id}`,
+        { status: 'archived' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().status).toBe('archived');
-      expect(response.json().archivedAt).toBeDefined();
+      const body = response.json<{ status: string; archivedAt: string }>();
+      expect(body.status).toBe('archived');
+      expect(body.archivedAt).toBeDefined();
     });
 
     it('un-archives capture and clears archivedAt', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Content' },
-      });
+      const uniqueContent = `capture-unarchive-${Date.now()}`;
 
-      const created = createResponse.json();
+      const createResponse = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
-      await app.inject({
-        method: 'PATCH',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { status: 'archived' },
-      });
+      const created = createResponse.json<{ id: string }>();
 
-      const response = await app.inject({
-        method: 'PATCH',
-        url: `/captures/${created.id}`,
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { status: 'inbox' },
-      });
+      // First archive
+      await client.patch(
+        `/captures/${created.id}`,
+        { status: 'archived' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
+
+      // Then un-archive
+      const response = await client.patch(
+        `/captures/${created.id}`,
+        { status: 'inbox' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().status).toBe('inbox');
-      expect(response.json().archivedAt).toBeUndefined();
+      const body = response.json<{ status: string; archivedAt?: string }>();
+      expect(body.status).toBe('inbox');
+      expect(body.archivedAt).toBeUndefined();
     });
 
     it('returns 404 for non-existent capture', async () => {
-      const response = await app.inject({
-        method: 'PATCH',
-        url: '/captures/00000000-0000-0000-0000-000000000000',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Updated' },
-      });
+      const response = await client.patch(
+        '/captures/00000000-0000-0000-0000-000000000000',
+        { content: 'Updated' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(404);
     });
 
     it('rejects request without token', async () => {
-      const response = await app.inject({
-        method: 'PATCH',
-        url: '/captures/00000000-0000-0000-0000-000000000000',
-        payload: { content: 'Updated' },
-      });
+      const response = await client.patch(
+        '/captures/00000000-0000-0000-0000-000000000000',
+        { content: 'Updated' }
+      );
 
       expect(response.statusCode).toBe(401);
     });
 
     it('returns 400 for invalid id format', async () => {
-      const response = await app.inject({
-        method: 'PATCH',
-        url: '/captures/not-a-uuid',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'Updated' },
-      });
+      const response = await client.patch(
+        '/captures/not-a-uuid',
+        { content: 'Updated' },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(response.statusCode).toBe(400);
     });
@@ -322,23 +347,27 @@ describe('Capture API', () => {
 
   describe('end-to-end flow', () => {
     it('creates and retrieves a capture', async () => {
-      const createResponse = await app.inject({
-        method: 'POST',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
-        payload: { content: 'My captured text' },
-      });
+      const uniqueContent = `capture-e2e-flow-${Date.now()}`;
+
+      const createResponse = await client.post(
+        '/captures',
+        { content: uniqueContent },
+        { authorization: `Bearer ${tenant.apiToken}` }
+      );
 
       expect(createResponse.statusCode).toBe(201);
-      expect(createResponse.json().content).toBe('My captured text');
+      expect(createResponse.json<{ content: string }>().content).toBe(
+        uniqueContent
+      );
 
-      const listResponse = await app.inject({
-        method: 'GET',
-        url: '/captures',
-        headers: { authorization: `Bearer ${VALID_TOKEN}` },
+      const listResponse = await client.get('/captures', {
+        authorization: `Bearer ${tenant.apiToken}`,
       });
 
-      expect(listResponse.json().captures).toHaveLength(1);
+      const body = listResponse.json<{
+        captures: Array<{ content: string }>;
+      }>();
+      expect(body.captures.some((c) => c.content === uniqueContent)).toBe(true);
     });
   });
 });

@@ -68,7 +68,7 @@ export const createTestTenant = async (
   const suffix = `${timestamp}-${random}`;
 
   const orgName = options?.orgName ?? `test-org-${suffix}`;
-  const userEmail = options?.userEmail ?? `test-${suffix}@localhost`;
+  const userEmail = options?.userEmail ?? `test-${suffix}@example.com`;
   const tokenName = options?.tokenName ?? 'test-token';
 
   // Create organization

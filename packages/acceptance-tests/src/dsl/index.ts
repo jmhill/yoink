@@ -1,2 +1,24 @@
-export { loginToAdminPanel, logoutAdmin } from './admin.js';
-export { createTestTenant, type TestTenant } from './tenant.js';
+// Types
+export type {
+  Capture,
+  Organization,
+  User,
+  Token,
+  CreateCaptureInput,
+  UpdateCaptureInput,
+  CreateTokenResult,
+  HealthStatus,
+} from './types.js';
+
+// Errors
+export {
+  DslError,
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+} from './errors.js';
+
+// Interfaces
+export type { Actor, AnonymousActor } from './actor.js';
+export type { Admin } from './admin.js';
+export type { Health } from './health.js';

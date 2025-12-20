@@ -1,163 +1,223 @@
-# E2E Testing Pipeline Plan
+# E2E Testing Pipeline
 
 ## Overview
 
-This document outlines the implementation of our E2E testing pipeline that properly tests the production artifact before deployment. We use Dave Farley's 4-layer testing architecture to ensure we "test what we ship."
+This document describes our E2E testing pipeline that properly tests the production artifact before deployment. We use Dave Farley's 4-layer testing architecture to ensure we "test what we ship."
 
-## Implementation Status
+## 4-Layer Architecture
 
-**Completed:**
-- [x] Separate `packages/acceptance-tests/` package for black-box E2E tests
-- [x] Docker-based E2E testing via `pnpm e2e:test`
-- [x] CI pipeline: quality → build-artifact → e2e-tests → deploy → smoke-test
-- [x] Pre-built Docker image deployed (no remote builds)
-- [x] Smoke tests verify health, capture creation, and admin UI
-
-## Problem Statement (Solved)
-
-Our original pipeline had gaps:
-
-1. **Acceptance tests ran against in-process server** - Not the actual Docker container that gets deployed
-2. **Docker build issues caught late** - The `@fastify/static` v8/v5 mismatch was only caught when Fly.io tried to start the container
-3. **Build happened twice** - Once in `quality` (TypeScript), again in `deploy` (Docker)
-4. **No production artifact testing** - We tested the code, not the deployable artifact
-
-## Architecture
-
-### 4-Layer Testing Approach
+Our acceptance tests follow Dave Farley's layered architecture where dependencies flow upward:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Use Cases (what we're testing)                             │
-│  "Create a capture", "Login as admin", "List organizations" │
-├─────────────────────────────────────────────────────────────┤
-│  DSL (readable test language)                               │
-│  Test helpers, fixtures, assertions                         │
-├─────────────────────────────────────────────────────────────┤
-│  Protocol Driver (how we talk to the system)                │
-│  HTTP client hitting endpoints                              │
-├─────────────────────────────────────────────────────────────┤
-│  System Under Test (swappable)                              │
-│  ┌─────────────────┐  OR  ┌─────────────────┐              │
-│  │ In-process app  │      │ Docker container │              │
-│  │ (fast, quality) │      │ (prod artifact)  │              │
-│  └─────────────────┘      └─────────────────┘              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  Use Cases (plain English test descriptions)                    │
+│  "Capturing notes", "Organizing work", "Managing tenants"       │
+│                                                                 │
+│  describe('Capturing notes', () => {                            │
+│    it('can create a new capture', async () => {                 │
+│      const capture = await alice.createCapture({ content });    │
+│    });                                                          │
+│  });                                                            │
+├─────────────────────────────────────────────────────────────────┤
+│  DSL (domain interfaces)                                        │
+│  Actor, Admin, Health - pure TypeScript interfaces              │
+│                                                                 │
+│  type Actor = {                                                 │
+│    createCapture(input): Promise<Capture>;                      │
+│    listCaptures(): Promise<Capture[]>;                          │
+│    archiveCapture(id): Promise<Capture>;                        │
+│  };                                                             │
+├─────────────────────────────────────────────────────────────────┤
+│  Drivers (implement DSL interfaces)                             │
+│  HTTP driver (now), Playwright driver (future)                  │
+│                                                                 │
+│  // Driver implements DSL interface                             │
+│  createHttpActor(client, credentials): Actor                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Insight**: Same tests, same assertions, just swap the bottom layer.
-
-### CI/CD Pipeline
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CI/CD Pipeline                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────┐    ┌────────────────┐    ┌───────────┐    ┌──────────────┐   │
-│  │ quality  │───►│ build-artifact │───►│ e2e-tests │───►│    deploy    │   │
-│  └──────────┘    └────────────────┘    └───────────┘    └──────────────┘   │
-│       │                  │                   │                  │          │
-│       ▼                  ▼                   ▼                  ▼          │
-│  • lint               • docker build     • Start container   • fly deploy │
-│  • typecheck          • push to Fly.io   • Run acceptance      --image    │
-│  • unit tests           registry           tests against it  • smoke test │
-│                       • tag with SHA     • Tear down           (minimal)  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Key Design Decision**: Acceptance tests live in a separate `packages/acceptance-tests/` package that:
-- Has no dependencies on `@yoink/api` internals
-- Uses pure HTTP for all interactions (truly black-box)
-- Is excluded from `pnpm quality` (runs only via `e2e:test`)
-- Can run against any environment (local container, CI, staging, production)
+**Key Principle**: Use cases never reference drivers directly. They only use DSL interfaces. Drivers implement those interfaces for specific transports (HTTP, browser UI, etc.).
 
 ## Package Structure
 
-### `packages/acceptance-tests/`
+```
+packages/acceptance-tests/src/
+├── dsl/                          # Domain interfaces (what)
+│   ├── types.ts                  # Capture, Organization, User, etc.
+│   ├── errors.ts                 # UnauthorizedError, NotFoundError
+│   ├── actor.ts                  # Actor, AnonymousActor interfaces
+│   ├── admin.ts                  # Admin interface
+│   ├── health.ts                 # Health interface
+│   └── index.ts
+│
+├── drivers/                      # Transport implementations (how)
+│   ├── types.ts                  # Driver, DriverCapability
+│   ├── http/
+│   │   ├── http-client.ts        # Low-level fetch wrapper
+│   │   ├── actor.ts              # Actor via REST API
+│   │   ├── admin.ts              # Admin via REST API
+│   │   ├── health.ts             # Health via REST API
+│   │   └── index.ts              # createHttpDriver()
+│   └── index.ts                  # getDriver() factory
+│
+├── use-cases/                    # Tests (why)
+│   ├── harness.ts                # describeFeature(), test context
+│   ├── capturing-notes.test.ts   # Create, list, get captures
+│   ├── organizing-work.test.ts   # Archive, update, status changes
+│   ├── managing-tenants.test.ts  # Org, user, token CRUD
+│   ├── authenticating.test.ts    # Login, logout, sessions
+│   └── system-health.test.ts     # Health checks
+│
+└── config.ts                     # Environment configuration
+```
 
-The acceptance tests package is completely isolated from the main API:
+## Actor Pattern
+
+Tests use the Actor pattern to represent authenticated users:
+
+```typescript
+describeFeature('Capturing notes', ['http', 'playwright'], ({ createActor }) => {
+  let alice: Actor;
+  let anonymous: AnonymousActor;
+
+  beforeEach(async () => {
+    // Each test gets a fresh isolated tenant
+    alice = await createActor('alice@example.com');
+    anonymous = createAnonymousActor();
+  });
+
+  it('can create a new capture', async () => {
+    const capture = await alice.createCapture({ content: 'Buy milk' });
+    
+    expect(capture.content).toBe('Buy milk');
+    expect(capture.status).toBe('inbox');
+  });
+
+  it('requires authentication', async () => {
+    await expect(anonymous.createCapture({ content: 'test' }))
+      .rejects.toThrow(UnauthorizedError);
+  });
+});
+```
+
+**Benefits:**
+- Tests read like plain English: "alice creates a capture"
+- No HTTP verbs or protocol details in test descriptions
+- Multi-user tests are easy: "bob cannot see alice's captures"
+- Anonymous access is just another actor type
+
+## Driver Capabilities
+
+Tests declare which drivers they support:
+
+```typescript
+// Runs on both HTTP and Playwright drivers
+describeFeature('Capturing notes', ['http', 'playwright'], ...)
+
+// HTTP only (admin panel tests)
+describeFeature('Managing tenants', ['http'], ...)
+```
+
+The test harness skips tests for unsupported drivers. This allows:
+- Running API tests via HTTP driver now
+- Running same tests via Playwright later (UI testing)
+- Adding new drivers without modifying tests
+
+## CI/CD Pipeline
 
 ```
-packages/acceptance-tests/
-├── src/
-│   ├── config.ts              # Environment-based configuration
-│   ├── drivers/
-│   │   ├── http-client.ts     # Fetch-based HTTP client with cookie jar
-│   │   └── index.ts
-│   ├── dsl/
-│   │   ├── admin.ts           # loginToAdminPanel, logoutAdmin
-│   │   ├── tenant.ts          # createTestTenant, TestTenant type
-│   │   └── index.ts
-│   └── use-cases/
-│       ├── admin.test.ts      # Admin API tests
-│       ├── captures.test.ts   # Capture API tests
-│       └── health.test.ts     # Health endpoint tests
-├── package.json
-├── tsconfig.json
-└── vitest.config.ts
+┌────────────────────────────────────────────────────────────────────────────┐
+│                              CI/CD Pipeline                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────┐    ┌────────────────┐    ┌───────────┐    ┌──────────────┐  │
+│  │ quality  │───►│ build-artifact │───►│ e2e-tests │───►│    deploy    │  │
+│  └──────────┘    └────────────────┘    └───────────┘    └──────────────┘  │
+│       │                  │                   │                  │         │
+│       ▼                  ▼                   ▼                  ▼         │
+│  • lint               • docker build     • Start container   • fly deploy│
+│  • typecheck          • push to Fly.io   • Run acceptance      --image   │
+│  • unit tests           registry           tests against it  • smoke test│
+│                       • tag with SHA     • Tear down                      │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Configuration
-
-Tests require these environment variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `TEST_BASE_URL` | Base URL of system under test | `http://localhost:3333` |
-| `TEST_ADMIN_PASSWORD` | Admin panel password | `test-admin-password` |
-
-### Running Tests
+## Running Tests
 
 ```bash
 # Run E2E tests locally (starts container, runs tests, cleans up)
 pnpm e2e:test
 
-# Run against a custom URL (e.g., staging)
+# Run against a custom environment
 TEST_BASE_URL=https://staging.example.com \
 TEST_ADMIN_PASSWORD=staging-password \
 pnpm --filter @yoink/acceptance-tests test
+
+# Run with a specific driver (future)
+DRIVER=playwright pnpm --filter @yoink/acceptance-tests test
 ```
 
-## Files
+## Configuration
 
-### Created
-- `packages/acceptance-tests/` - Standalone E2E test package
-- `scripts/e2e-test.sh` - E2E test orchestration script
-
-### Modified
-- `.github/workflows/ci.yml` - New pipeline structure
-- `package.json` - Added `e2e:test` script, quality excludes acceptance-tests
-- `docker-compose.test.yml` - Support pre-built images via `IMAGE` env var
-
-### Removed from `apps/api/`
-- `src/tests/acceptance/` - Moved to `packages/acceptance-tests/`
-- `src/tests/helpers/dsl.ts` - Moved to `packages/acceptance-tests/src/dsl/`
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TEST_BASE_URL` | Base URL of system under test | `http://localhost:3333` |
+| `TEST_ADMIN_PASSWORD` | Admin panel password | `test-admin-password` |
+| `DRIVER` | Which driver to use (default: `http`) | `http`, `playwright` |
 
 ## Design Decisions
 
-### Why a Separate Package?
+### Why This Architecture?
 
-1. **No build step needed** - Tests don't depend on internal packages
-2. **True black-box testing** - Only uses public HTTP APIs
-3. **Portable** - Same tests can run against any environment
-4. **Fast CI** - Not part of `pnpm quality`, runs only when needed
-5. **Extensible** - Can add Playwright for UI tests in the future
+1. **Tests read like specs** - No protocol details pollute test descriptions
+2. **Portable** - Same tests work against API (HTTP) or UI (Playwright)
+3. **Isolated** - Each test gets its own tenant, no interference
+4. **Black-box** - No internal dependencies, truly external testing
+5. **Extensible** - Add new drivers without changing tests
 
-### Test Data Isolation
+### Test Isolation
 
-Each test creates its own isolated data:
-- `createTestTenant()` creates a unique organization, user, and token
-- Tests use their own tenant and don't interfere with each other
-- Container state persists across test files within a single run
+Each test creates a fresh Actor with:
+- New organization (unique name)
+- New user (test email)
+- New API token
 
-### Image Registry
+This ensures complete isolation between tests, even when running in parallel.
 
-We use Fly.io's registry instead of GHCR to avoid cross-registry authentication:
-- Build pushes to `registry.fly.io/jhtc-yoink-api:$SHA`
-- E2E tests pull from the same registry
-- Deploy uses the same tested image
+### Error Handling
+
+The DSL uses typed errors for assertions:
+
+```typescript
+import { UnauthorizedError, NotFoundError, ValidationError } from '../dsl/index.js';
+
+await expect(anonymous.createCapture({ content: 'test' }))
+  .rejects.toThrow(UnauthorizedError);
+
+await expect(alice.getCapture('non-existent-id'))
+  .rejects.toThrow(NotFoundError);
+```
+
+## Future: Playwright Driver
+
+When we add UI testing, the Playwright driver will implement the same DSL:
+
+```typescript
+// drivers/playwright/actor.ts
+export const createPlaywrightActor = (page: Page, credentials): Actor => ({
+  async createCapture(input) {
+    await page.goto('/captures/new');
+    await page.fill('[name="content"]', input.content);
+    await page.click('button[type="submit"]');
+    // Extract created capture from page
+    return parseCapture(page);
+  },
+  // ... other methods
+});
+```
+
+Same tests, different transport - validates the UI works correctly.
 
 ## References
 

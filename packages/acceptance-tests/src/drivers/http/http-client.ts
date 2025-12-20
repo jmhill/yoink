@@ -1,3 +1,8 @@
+/**
+ * Low-level HTTP client for making requests.
+ * This is internal to the HTTP driver - not exposed to tests.
+ */
+
 export type CookieData = { name: string; value: string; expires?: Date };
 
 export type HttpResponse = {

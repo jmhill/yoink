@@ -1,25 +1,35 @@
-import type { HttpClient } from '../drivers/index.js';
+import type {
+  Organization,
+  User,
+  Token,
+  CreateTokenResult,
+} from './types.js';
 
 /**
- * Logs into the admin panel and persists the session cookie.
- * The HttpClient automatically maintains cookies across requests.
+ * Admin operations for managing tenants.
+ * Requires admin authentication (separate from user authentication).
+ *
+ * This is used for test setup (creating orgs/users/tokens) and for
+ * testing admin-specific functionality.
  */
-export const loginToAdminPanel = async (
-  client: HttpClient,
-  password: string
-): Promise<void> => {
-  const response = await client.post('/admin/login', { password });
-  if (response.statusCode !== 200) {
-    throw new Error(
-      `Admin login failed with status ${response.statusCode}: ${response.body}`
-    );
-  }
-};
+export type Admin = {
+  // Authentication
+  login(): Promise<void>;
+  logout(): Promise<void>;
+  isLoggedIn(): Promise<boolean>;
 
-/**
- * Logs out from the admin panel.
- * Clears the session cookie.
- */
-export const logoutAdmin = async (client: HttpClient): Promise<void> => {
-  await client.post('/admin/logout', {});
+  // Organization management
+  createOrganization(name: string): Promise<Organization>;
+  listOrganizations(): Promise<Organization[]>;
+  getOrganization(id: string): Promise<Organization>;
+
+  // User management
+  createUser(organizationId: string, email: string): Promise<User>;
+  listUsers(organizationId: string): Promise<User[]>;
+  getUser(id: string): Promise<User>;
+
+  // Token management
+  createToken(userId: string, name: string): Promise<CreateTokenResult>;
+  listTokens(userId: string): Promise<Token[]>;
+  revokeToken(tokenId: string): Promise<void>;
 };

@@ -52,3 +52,37 @@ TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
 pnpm --filter @yoink/acceptance-tests test
 
 echo "==> E2E tests passed!"
+
+# Generate feature report from test results (if JSON output exists)
+RESULTS_FILE="packages/acceptance-tests/test-results.json"
+if [ -f "$RESULTS_FILE" ]; then
+    echo ""
+    echo "==> Feature Report"
+    echo "===================="
+    
+    # Parse JSON and generate markdown-style report
+    node -e "
+const fs = require('fs');
+const results = JSON.parse(fs.readFileSync('$RESULTS_FILE', 'utf8'));
+
+const driver = process.env.DRIVER || 'http';
+
+console.log('');
+console.log('| Feature | Tests | Status | Driver |');
+console.log('|---------|-------|--------|--------|');
+
+for (const file of results.testResults) {
+    const name = file.name.split('/').pop().replace('.test.ts', '').replace(/-/g, ' ');
+    const featureName = name.charAt(0).toUpperCase() + name.slice(1);
+    const passed = file.assertionResults.filter(t => t.status === 'passed').length;
+    const total = file.assertionResults.length;
+    const status = passed === total ? '✅ Pass' : '❌ Fail';
+    console.log('| ' + featureName + ' | ' + passed + '/' + total + ' | ' + status + ' | ' + driver + ' |');
+}
+
+const totalPassed = results.numPassedTests;
+const totalTests = results.numTotalTests;
+console.log('');
+console.log('**Total: ' + totalPassed + '/' + totalTests + ' tests passed**');
+"
+fi

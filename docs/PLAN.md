@@ -11,32 +11,9 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 1: Backend Foundation** - Complete ✓
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 42 acceptance tests, 172 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 56 acceptance tests, 172 unit tests)
 **CI/CD Optimizations** - Complete ✓
-
----
-
-## Next Up: Multi-Driver E2E Test Runner
-
-**Goal**: Run acceptance tests against both HTTP and Playwright drivers in a single execution with unified reporting.
-
-See **[E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md)** for the full implementation plan.
-
-### Summary
-
-1. **Fix Playwright Driver** - Currently doesn't actually test UI behavior; needs to verify actions work
-2. **Refactor Test Harness** - Run each test against all applicable drivers in single vitest run
-3. **Custom Reporter** - Output unified markdown table showing pass/fail/N/A per test per driver
-4. **Update CI** - Install Playwright browsers, run both drivers, show report in step summary
-
-### Key Changes
-
-| Current | New |
-|---------|-----|
-| `DRIVER=http` or `DRIVER=playwright` | Both drivers run automatically |
-| Two separate test runs for "all" | Single vitest execution |
-| Report only shows last driver | Unified table: `\| Test \| http \| playwright \|` |
-| Playwright assumes behavior | Playwright verifies UI state |
+**Multi-Driver E2E Test Runner** - Complete ✓
 
 ---
 
@@ -229,19 +206,24 @@ We implement Dave Farley's 4-layer acceptance test architecture:
 
 **Test counts:**
 - 172 unit tests (apps/api, packages/*)
-- 42 acceptance tests (packages/acceptance-tests)
+- 56 acceptance tests (packages/acceptance-tests)
   - HTTP driver: 42 tests
-  - Playwright driver: 14 tests (admin-only tests skipped)
+  - Playwright driver: 14 tests
+  - Both drivers run in single vitest execution
 
 **Commands:**
 - `pnpm quality` - Run unit tests, type checking, and builds
-- `pnpm e2e:test` - Run acceptance tests against Docker container
-- `DRIVER=playwright pnpm e2e:test` - Run with Playwright driver only
-- `DRIVER=all pnpm e2e:test` - Run with both drivers (sequential)
+- `pnpm e2e:test` - Run acceptance tests against Docker container (both drivers)
+
+**Multi-Driver Test Runner:**
+- Single vitest run executes tests against all applicable drivers
+- Test names include driver suffix: `can create capture [http]`
+- Custom reporter outputs unified markdown table showing pass/fail/N/A per driver
+- CI displays report in GitHub Actions step summary
 
 **See:**
 - [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) - 4-layer architecture design
-- [E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md) - Multi-driver runner plan (next up)
+- [E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md) - Multi-driver runner implementation
 
 ### CI/CD Optimizations
 

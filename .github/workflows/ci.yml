@@ -108,7 +108,15 @@ jobs:
       - name: Install acceptance test dependencies
         run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: devbox run pnpm --filter @yoink/acceptance-tests exec playwright install chromium
 
       - name: Run E2E tests

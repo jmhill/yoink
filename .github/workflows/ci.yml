@@ -18,6 +18,10 @@ on:
       - 'CLAUDE.md'
       - '.github/workflows/claude*.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   quality:
     name: Quality Checks

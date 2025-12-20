@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Yoink",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Quick capture from any webpage",
   "permissions": ["activeTab", "storage", "contextMenus", "notifications"],
   "host_permissions": ["<all_urls>"],

@@ -272,7 +272,7 @@ jobs:
 
       - name: Build extension
         if: steps.filter.outputs.extension == 'true'
-        run: devbox run pnpm --filter @yoink/extension build
+        run: devbox run pnpm --filter @yoink/extension... build
 
       - name: Package extension
         if: steps.filter.outputs.extension == 'true'

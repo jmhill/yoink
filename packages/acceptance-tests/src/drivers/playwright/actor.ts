@@ -115,6 +115,32 @@ export const createPlaywrightActor = (
       });
     },
 
+    async listArchivedCaptures(): Promise<Capture[]> {
+      await ensureConfigured();
+      await archivedPage.goto();
+      
+      // Small delay to ensure page is loaded
+      await page.waitForTimeout(100);
+      
+      const contents = await archivedPage.getCaptureContents();
+      
+      return contents.map((content) => {
+        const state = capturesByContent.get(content);
+        if (state) {
+          return buildCapture(state);
+        }
+        // Capture exists but we don't have metadata for it
+        return {
+          id: `unknown-${Date.now()}`,
+          content,
+          status: 'archived' as const,
+          organizationId: credentials.organizationId,
+          createdById: credentials.userId,
+          capturedAt: new Date().toISOString(),
+        };
+      });
+    },
+
     async getCapture(id: string): Promise<Capture> {
       await ensureConfigured();
       
@@ -184,6 +210,78 @@ export const createPlaywrightActor = (
       await settingsPage.goto();
       await settingsPage.logout();
       isConfigured = false;
+    },
+
+    async requiresConfiguration(): Promise<boolean> {
+      // Try to navigate to inbox and check if we get redirected to /config
+      await page.goto('/');
+      // Give time for redirect to happen
+      await page.waitForTimeout(500);
+      return page.url().includes('/config');
+    },
+
+    async shareContent(params: { text?: string; url?: string; title?: string }): Promise<Capture> {
+      await ensureConfigured();
+
+      // Build share URL with query params
+      const searchParams = new URLSearchParams();
+      if (params.text) searchParams.set('text', params.text);
+      if (params.url) searchParams.set('url', params.url);
+      if (params.title) searchParams.set('title', params.title);
+
+      await page.goto(`/share?${searchParams.toString()}`);
+
+      // Wait for the share modal to be visible
+      await page.getByRole('button', { name: 'Save' }).waitFor();
+
+      // Click save
+      await page.getByRole('button', { name: 'Save' }).click();
+
+      // Wait for success and redirect to inbox
+      await page.waitForURL('/', { timeout: 5000 });
+
+      // Build a capture object from what we know
+      const content = params.text || params.url || '';
+      const capturedAt = new Date().toISOString();
+      const state: CaptureState = {
+        id: `share-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        content,
+        status: 'inbox',
+        capturedAt,
+      };
+      capturesByContent.set(content, state);
+
+      return {
+        ...buildCapture(state),
+        sourceUrl: params.url,
+      };
+    },
+
+    async goOffline(): Promise<void> {
+      await page.context().setOffline(true);
+    },
+
+    async goOnline(): Promise<void> {
+      await page.context().setOffline(false);
+    },
+
+    async isOfflineBannerVisible(): Promise<boolean> {
+      await ensureConfigured();
+      await inboxPage.goto();
+      // Look for the offline banner
+      const banner = page.getByText("You're offline");
+      return await banner.isVisible();
+    },
+
+    async isQuickAddDisabled(): Promise<boolean> {
+      await ensureConfigured();
+      await inboxPage.goto();
+      const input = page.getByPlaceholder('Quick capture...');
+      // Could also be checking for the offline-specific placeholder
+      const isDisabled = await input.isDisabled();
+      const placeholder = await input.getAttribute('placeholder');
+      // Input is disabled OR has offline placeholder text
+      return isDisabled || placeholder?.includes('offline') || false;
     },
   };
 };

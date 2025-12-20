@@ -266,6 +266,12 @@ Ideas for future consideration (not yet scheduled):
 - [ ] Swipe-to-archive gesture on mobile
 - [ ] Pull-to-refresh in inbox
 
+### Admin Panel Improvements
+- [ ] Duplicate email detection (reject creating user with existing email in org)
+- [ ] Organization name uniqueness validation
+- [ ] User deletion
+- [ ] Organization deletion
+
 ---
 
 ## Implementation Notes

@@ -1,5 +1,8 @@
 import { describeFeature, expect } from './harness.js';
 import { UnauthorizedError } from '../dsl/index.js';
+import { createHttpAdmin } from '../drivers/http/admin.js';
+import { createHttpClient } from '../drivers/http/http-client.js';
+import { getTestConfig } from '../config.js';
 
 describeFeature('Authenticating', ['http'], ({ admin, it, beforeEach, afterEach }) => {
   // Make sure we're logged out before each test
@@ -49,5 +52,13 @@ describeFeature('Authenticating', ['http'], ({ admin, it, beforeEach, afterEach 
 
     // Try to access without login
     await expect(admin.listOrganizations()).rejects.toThrow(UnauthorizedError);
+  });
+
+  it('rejects login with wrong password', async () => {
+    const config = getTestConfig();
+    const client = createHttpClient(config.baseUrl);
+    const wrongPasswordAdmin = createHttpAdmin(client, 'wrong-password-123');
+
+    await expect(wrongPasswordAdmin.login()).rejects.toThrow(UnauthorizedError);
   });
 });

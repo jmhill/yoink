@@ -1,5 +1,5 @@
 import { describeFeature, expect, beforeAll, afterAll } from './harness.js';
-import { NotFoundError } from '../dsl/index.js';
+import { NotFoundError, ValidationError } from '../dsl/index.js';
 
 describeFeature('Managing tenants', ['http'], ({ admin, it }) => {
   beforeAll(async () => {
@@ -151,5 +151,13 @@ describeFeature('Managing tenants', ['http'], ({ admin, it }) => {
     // Just verify the token was created successfully
     expect(rawToken).toBeDefined();
     expect(rawToken).toContain(':');
+  });
+
+  it('rejects invalid email format when creating user', async () => {
+    const org = await admin.createOrganization(`validation-test-org-${Date.now()}`);
+
+    await expect(admin.createUser(org.id, 'not-an-email')).rejects.toThrow(
+      ValidationError
+    );
   });
 });

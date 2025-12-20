@@ -70,7 +70,15 @@ export const createHttpActor = (
     },
 
     async listCaptures(): Promise<Capture[]> {
-      const response = await client.get('/api/captures', authHeaders());
+      const response = await client.get('/api/captures?status=inbox', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ captures: Capture[] }>().captures;
+    },
+
+    async listArchivedCaptures(): Promise<Capture[]> {
+      const response = await client.get('/api/captures?status=archived', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -118,6 +126,30 @@ export const createHttpActor = (
 
     async logout(): Promise<void> {
       throw new UnsupportedOperationError('logout', 'http');
+    },
+
+    async requiresConfiguration(): Promise<boolean> {
+      throw new UnsupportedOperationError('requiresConfiguration', 'http');
+    },
+
+    async shareContent(): Promise<Capture> {
+      throw new UnsupportedOperationError('shareContent', 'http');
+    },
+
+    async goOffline(): Promise<void> {
+      throw new UnsupportedOperationError('goOffline', 'http');
+    },
+
+    async goOnline(): Promise<void> {
+      throw new UnsupportedOperationError('goOnline', 'http');
+    },
+
+    async isOfflineBannerVisible(): Promise<boolean> {
+      throw new UnsupportedOperationError('isOfflineBannerVisible', 'http');
+    },
+
+    async isQuickAddDisabled(): Promise<boolean> {
+      throw new UnsupportedOperationError('isQuickAddDisabled', 'http');
     },
   };
 };

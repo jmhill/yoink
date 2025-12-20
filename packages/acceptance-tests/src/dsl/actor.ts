@@ -16,6 +16,7 @@ export type Actor = {
   // Capture operations
   createCapture(input: CreateCaptureInput): Promise<Capture>;
   listCaptures(): Promise<Capture[]>;
+  listArchivedCaptures(): Promise<Capture[]>;
   getCapture(id: string): Promise<Capture>;
   updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture>;
   archiveCapture(id: string): Promise<Capture>;
@@ -33,6 +34,44 @@ export type Actor = {
    * Clears credentials and returns to unconfigured state.
    */
   logout(): Promise<void>;
+
+  /**
+   * Check if the session requires (re)configuration.
+   * Returns true if the app redirects to /config when trying to access inbox.
+   * Only available in browser-based drivers.
+   */
+  requiresConfiguration(): Promise<boolean>;
+
+  /**
+   * Simulate sharing content via the share target (PWA share intent).
+   * Opens the /share route with the provided parameters.
+   * Only available in browser-based drivers.
+   */
+  shareContent(params: { text?: string; url?: string; title?: string }): Promise<Capture>;
+
+  /**
+   * Simulate going offline.
+   * Only available in browser-based drivers.
+   */
+  goOffline(): Promise<void>;
+
+  /**
+   * Simulate coming back online.
+   * Only available in browser-based drivers.
+   */
+  goOnline(): Promise<void>;
+
+  /**
+   * Check if the offline banner is visible.
+   * Only available in browser-based drivers.
+   */
+  isOfflineBannerVisible(): Promise<boolean>;
+
+  /**
+   * Check if the quick-add input is disabled.
+   * Only available in browser-based drivers.
+   */
+  isQuickAddDisabled(): Promise<boolean>;
 };
 
 /**

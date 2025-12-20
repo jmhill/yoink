@@ -5,7 +5,7 @@ import type {
   Token,
   CreateTokenResult,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError } from '../../dsl/index.js';
+import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
 /**
@@ -91,6 +91,10 @@ export const createHttpAdmin = (
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
+    }
+    if (response.statusCode === 400) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
     }
     if (response.statusCode !== 201) {
       throw new Error(`Failed to create user: ${response.body}`);

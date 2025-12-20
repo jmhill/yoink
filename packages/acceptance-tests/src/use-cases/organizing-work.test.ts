@@ -26,6 +26,36 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor, it, b
     expect(restored.status).toBe('inbox');
   });
 
+  it('removes archived captures from inbox list', async () => {
+    const capture = await alice.createCapture({ content: `archive-test-${Date.now()}` });
+    await alice.archiveCapture(capture.id);
+
+    const inboxCaptures = await alice.listCaptures();
+
+    expect(inboxCaptures.some((c) => c.content === capture.content)).toBe(false);
+  });
+
+  it('shows archived captures in archived list', async () => {
+    const capture = await alice.createCapture({ content: `archived-list-${Date.now()}` });
+    await alice.archiveCapture(capture.id);
+
+    const archivedCaptures = await alice.listArchivedCaptures();
+
+    expect(archivedCaptures.some((c) => c.content === capture.content)).toBe(true);
+  });
+
+  it('moves unarchived captures back to inbox list', async () => {
+    const capture = await alice.createCapture({ content: `unarchive-test-${Date.now()}` });
+    await alice.archiveCapture(capture.id);
+    await alice.unarchiveCapture(capture.id);
+
+    const inboxCaptures = await alice.listCaptures();
+    const archivedCaptures = await alice.listArchivedCaptures();
+
+    expect(inboxCaptures.some((c) => c.content === capture.content)).toBe(true);
+    expect(archivedCaptures.some((c) => c.content === capture.content)).toBe(false);
+  });
+
   it('can update capture content', async () => {
     const capture = await alice.createCapture({ content: 'Original' });
 

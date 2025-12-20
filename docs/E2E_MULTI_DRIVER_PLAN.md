@@ -1,5 +1,7 @@
 # E2E Multi-Driver Test Runner Plan
 
+> **Note**: This document describes the implementation plan. For current testing documentation, see [TESTING.md](./TESTING.md).
+
 This document outlines the plan to overhaul the E2E test infrastructure to support running tests against multiple drivers (HTTP + Playwright) in a single test execution, with unified reporting.
 
 ## Problem Statement

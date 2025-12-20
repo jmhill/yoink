@@ -1,5 +1,7 @@
 # E2E Testing Pipeline
 
+> **Note**: This document describes the original design. For current testing documentation, see [TESTING.md](./TESTING.md).
+
 > **Status: Implemented** ✓
 > 
 > This architecture is fully implemented and running in CI. See `packages/acceptance-tests/` for the implementation.

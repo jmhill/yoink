@@ -13,7 +13,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 56 acceptance tests, 172 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 172 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 
@@ -248,41 +248,13 @@ application/      # HTTP layer
 
 ### Testing Infrastructure - Complete ✓
 
-We implement Dave Farley's 4-layer acceptance test architecture:
+See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing strategy.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Use Cases (plain English test descriptions)                    │
-│  "Capturing notes", "Organizing work", "Managing tenants"       │
-├─────────────────────────────────────────────────────────────────┤
-│  DSL (domain interfaces)                                        │
-│  Actor, Admin, Health - pure TypeScript interfaces              │
-├─────────────────────────────────────────────────────────────────┤
-│  Drivers (implement DSL interfaces)                             │
-│  HTTP driver, Playwright driver                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Test counts:**
+**Quick Reference:**
 - 172 unit tests (apps/api, packages/*)
-- 56 acceptance tests (packages/acceptance-tests)
-  - HTTP driver: 42 tests
-  - Playwright driver: 14 tests
-  - Both drivers run in single vitest execution
-
-**Commands:**
-- `pnpm quality` - Run unit tests, type checking, and builds
-- `pnpm e2e:test` - Run acceptance tests against Docker container (both drivers)
-
-**Multi-Driver Test Runner:**
-- Single vitest run executes tests against all applicable drivers
-- Test names include driver suffix: `can create capture [http]`
-- Custom reporter outputs unified markdown table showing pass/fail/N/A per driver
-- CI displays report in GitHub Actions step summary
-
-**See:**
-- [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) - 4-layer architecture design
-- [E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md) - Multi-driver runner implementation
+- 58 acceptance tests (44 HTTP + 14 Playwright)
+- `pnpm quality` - Unit tests, type checking, builds
+- `pnpm e2e:test` - Acceptance tests against Docker container
 
 ### CI/CD Optimizations
 
@@ -338,6 +310,29 @@ All API endpoints are under the `/api` prefix:
 
 ---
 
+## Development Workflow
+
+When implementing new features:
+
+1. **Examine acceptance tests first** - Before writing any code, check `packages/acceptance-tests/src/use-cases/` for existing tests related to the feature. If adding a new capability, write the acceptance test first.
+
+2. **Understand the DSL** - The acceptance tests use a domain-specific language. See `packages/acceptance-tests/src/dsl/` for the Actor, Admin, and Health interfaces.
+
+3. **TDD from outside-in**:
+   - Write/modify acceptance test describing the desired behavior
+   - Run acceptance tests to see the failure
+   - Drop down to unit tests for implementation details
+   - Implement minimal code to pass
+   - Refactor if valuable
+
+4. **Verify before committing**:
+   - `pnpm quality` - Unit tests, type checking, builds
+   - `pnpm e2e:test` - Acceptance tests against Docker container
+
+See [TESTING.md](./TESTING.md) for comprehensive testing documentation.
+
+---
+
 ## Session Continuity Notes
 
 When resuming work on this project:
@@ -345,6 +340,7 @@ When resuming work on this project:
 1. Run `pnpm quality` to verify all tests pass
 2. Check this PLAN.md for current phase and remaining tasks
 3. Read recent git commits for implementation context
-4. Continue with TDD: write failing test → implement → refactor
+4. **Examine acceptance tests** for the feature area you're working on
+5. Continue with TDD: write failing test → implement → refactor
 
 The PROJECT_BRIEF.md contains the full design specification. This PLAN.md tracks what's actually built.

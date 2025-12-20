@@ -17,6 +17,9 @@ function ConfigPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Check if redirected from share page
+  const isFromShare = new URLSearchParams(window.location.search).get('from') === 'share';
+
   useEffect(() => {
     const existingToken = tokenStorage.get();
     if (existingToken) {
@@ -59,7 +62,9 @@ function ConfigPage() {
         <CardHeader>
           <CardTitle className="text-center text-2xl">Yoink</CardTitle>
           <CardDescription className="text-center">
-            Enter your API token to start capturing notes.
+            {isFromShare
+              ? 'Please configure your API token to capture shared content.'
+              : 'Enter your API token to start capturing notes.'}
           </CardDescription>
         </CardHeader>
         <CardContent>

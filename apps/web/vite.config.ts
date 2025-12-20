@@ -40,6 +40,16 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
+        // Share target for Android share intent
+        share_target: {
+          action: '/share',
+          method: 'GET',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+          },
+        },
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],

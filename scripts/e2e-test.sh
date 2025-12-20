@@ -10,12 +10,6 @@ RETRY_INTERVAL=2
 TEST_BASE_URL="http://localhost:3333"
 TEST_ADMIN_PASSWORD="test-admin-password"
 
-# Driver configuration
-# - DRIVER=http (default): Run tests with HTTP driver only
-# - DRIVER=playwright: Run tests with Playwright driver only
-# - DRIVER=all: Run tests with both drivers
-DRIVER="${DRIVER:-http}"
-
 cleanup() {
     echo "==> Cleaning up..."
     docker compose -f "$COMPOSE_FILE" down --volumes --remove-orphans 2>/dev/null || true
@@ -52,56 +46,9 @@ for i in $(seq 1 $MAX_RETRIES); do
     sleep $RETRY_INTERVAL
 done
 
-run_tests() {
-    local driver=$1
-    echo "==> Running acceptance tests (driver: $driver)..."
-    DRIVER="$driver" \
-    TEST_BASE_URL="$TEST_BASE_URL" \
-    TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
-    pnpm --filter @yoink/acceptance-tests test
-}
+echo "==> Running acceptance tests (HTTP + Playwright drivers)..."
+TEST_BASE_URL="$TEST_BASE_URL" \
+TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
+pnpm --filter @yoink/acceptance-tests test
 
-if [ "$DRIVER" = "all" ]; then
-    echo "==> Running tests with both HTTP and Playwright drivers..."
-    run_tests "http"
-    echo ""
-    run_tests "playwright"
-else
-    run_tests "$DRIVER"
-fi
-
-echo "==> E2E tests passed!"
-
-# Generate feature report from test results (if JSON output exists)
-RESULTS_FILE="packages/acceptance-tests/test-results.json"
-if [ -f "$RESULTS_FILE" ]; then
-    echo ""
-    echo "==> Feature Report"
-    echo "===================="
-    
-    # Parse JSON and generate markdown-style report
-    node -e "
-const fs = require('fs');
-const results = JSON.parse(fs.readFileSync('$RESULTS_FILE', 'utf8'));
-
-const driver = process.env.DRIVER || 'http';
-
-console.log('');
-console.log('| Feature | Tests | Status | Driver |');
-console.log('|---------|-------|--------|--------|');
-
-for (const file of results.testResults) {
-    const name = file.name.split('/').pop().replace('.test.ts', '').replace(/-/g, ' ');
-    const featureName = name.charAt(0).toUpperCase() + name.slice(1);
-    const passed = file.assertionResults.filter(t => t.status === 'passed').length;
-    const total = file.assertionResults.length;
-    const status = passed === total ? '✅ Pass' : '❌ Fail';
-    console.log('| ' + featureName + ' | ' + passed + '/' + total + ' | ' + status + ' | ' + driver + ' |');
-}
-
-const totalPassed = results.numPassedTests;
-const totalTests = results.numTotalTests;
-console.log('');
-console.log('**Total: ' + totalPassed + '/' + totalTests + ' tests passed**');
-"
-fi
+echo "==> E2E tests complete!"

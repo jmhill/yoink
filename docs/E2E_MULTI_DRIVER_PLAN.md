@@ -411,14 +411,20 @@ Must fix the driver before testing harness changes.
 - Test names now include driver suffix: `can create capture [http]`
 - Single vitest run executes 56 tests (42 HTTP + 14 Playwright)
 
-### Phase 3: Update Infrastructure
+### Phase 3: Update Infrastructure - COMPLETE
 
-1. Simplify `e2e-test.sh`
-2. Update CI workflow:
-   - Add Playwright browser installation
-   - Remove inline report generation
-   - Use report file for step summary
-3. Verify CI passes via PR
+1. ~~Simplify `e2e-test.sh`~~
+2. ~~Update CI workflow:~~
+   - ~~Add Playwright browser installation~~
+   - ~~Remove inline report generation~~
+   - ~~Use report file for step summary~~
+3. ~~Verify CI passes via PR~~
+
+**Changes made:**
+- Simplified `e2e-test.sh` to remove DRIVER env var logic (now automatic)
+- Added `playwright install chromium` step to CI workflow
+- CI now uses `test-report.md` from custom reporter for step summary
+- Removed 60+ lines of inline Node.js report generation from CI
 
 ---
 

@@ -24,7 +24,7 @@ export const adminPublicContract = c.router(
   {
     login: {
       method: 'POST',
-      path: '/admin/login',
+      path: '/api/admin/login',
       body: LoginRequestSchema,
       responses: {
         200: LoginResponseSchema,
@@ -35,7 +35,7 @@ export const adminPublicContract = c.router(
 
     logout: {
       method: 'POST',
-      path: '/admin/logout',
+      path: '/api/admin/logout',
       body: z.object({}),
       responses: {
         200: LoginResponseSchema,
@@ -56,7 +56,7 @@ export const adminProtectedContract = c.router(
     // Session
     getSession: {
       method: 'GET',
-      path: '/admin/session',
+      path: '/api/admin/session',
       responses: {
         200: SessionResponseSchema,
         401: ErrorSchema,
@@ -67,7 +67,7 @@ export const adminProtectedContract = c.router(
     // Organizations
     listOrganizations: {
       method: 'GET',
-      path: '/admin/organizations',
+      path: '/api/admin/organizations',
       responses: {
         200: z.object({
           organizations: z.array(OrganizationSchema),
@@ -80,7 +80,7 @@ export const adminProtectedContract = c.router(
 
     createOrganization: {
       method: 'POST',
-      path: '/admin/organizations',
+      path: '/api/admin/organizations',
       body: CreateOrganizationSchema,
       responses: {
         201: OrganizationSchema,
@@ -93,7 +93,7 @@ export const adminProtectedContract = c.router(
 
     getOrganization: {
       method: 'GET',
-      path: '/admin/organizations/:id',
+      path: '/api/admin/organizations/:id',
       pathParams: z.object({
         id: z.string().uuid(),
       }),
@@ -108,7 +108,7 @@ export const adminProtectedContract = c.router(
 
     updateOrganization: {
       method: 'PATCH',
-      path: '/admin/organizations/:id',
+      path: '/api/admin/organizations/:id',
       pathParams: z.object({
         id: z.string().uuid(),
       }),
@@ -125,7 +125,7 @@ export const adminProtectedContract = c.router(
     // Users
     listUsers: {
       method: 'GET',
-      path: '/admin/organizations/:organizationId/users',
+      path: '/api/admin/organizations/:organizationId/users',
       pathParams: z.object({
         organizationId: z.string().uuid(),
       }),
@@ -142,7 +142,7 @@ export const adminProtectedContract = c.router(
 
     createUser: {
       method: 'POST',
-      path: '/admin/organizations/:organizationId/users',
+      path: '/api/admin/organizations/:organizationId/users',
       pathParams: z.object({
         organizationId: z.string().uuid(),
       }),
@@ -159,7 +159,7 @@ export const adminProtectedContract = c.router(
 
     getUser: {
       method: 'GET',
-      path: '/admin/users/:id',
+      path: '/api/admin/users/:id',
       pathParams: z.object({
         id: z.string().uuid(),
       }),
@@ -175,7 +175,7 @@ export const adminProtectedContract = c.router(
     // Tokens
     listTokens: {
       method: 'GET',
-      path: '/admin/users/:userId/tokens',
+      path: '/api/admin/users/:userId/tokens',
       pathParams: z.object({
         userId: z.string().uuid(),
       }),
@@ -192,7 +192,7 @@ export const adminProtectedContract = c.router(
 
     createToken: {
       method: 'POST',
-      path: '/admin/users/:userId/tokens',
+      path: '/api/admin/users/:userId/tokens',
       pathParams: z.object({
         userId: z.string().uuid(),
       }),
@@ -209,7 +209,7 @@ export const adminProtectedContract = c.router(
 
     revokeToken: {
       method: 'DELETE',
-      path: '/admin/tokens/:id',
+      path: '/api/admin/tokens/:id',
       pathParams: z.object({
         id: z.string().uuid(),
       }),

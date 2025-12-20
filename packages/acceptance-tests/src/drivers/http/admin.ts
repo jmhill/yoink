@@ -16,7 +16,7 @@ export const createHttpAdmin = (
   password: string
 ): Admin => ({
   async login(): Promise<void> {
-    const response = await client.post('/admin/login', { password });
+    const response = await client.post('/api/admin/login', { password });
     if (response.statusCode === 401) {
       throw new UnauthorizedError('Invalid admin password');
     }
@@ -26,11 +26,11 @@ export const createHttpAdmin = (
   },
 
   async logout(): Promise<void> {
-    await client.post('/admin/logout', {});
+    await client.post('/api/admin/logout', {});
   },
 
   async isLoggedIn(): Promise<boolean> {
-    const response = await client.get('/admin/session');
+    const response = await client.get('/api/admin/session');
     if (response.statusCode === 401) {
       return false;
     }
@@ -39,7 +39,7 @@ export const createHttpAdmin = (
   },
 
   async createOrganization(name: string): Promise<Organization> {
-    const response = await client.post('/admin/organizations', { name });
+    const response = await client.post('/api/admin/organizations', { name });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -50,7 +50,7 @@ export const createHttpAdmin = (
   },
 
   async listOrganizations(): Promise<Organization[]> {
-    const response = await client.get('/admin/organizations');
+    const response = await client.get('/api/admin/organizations');
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -58,7 +58,7 @@ export const createHttpAdmin = (
   },
 
   async getOrganization(id: string): Promise<Organization> {
-    const response = await client.get(`/admin/organizations/${id}`);
+    const response = await client.get(`/api/admin/organizations/${id}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -69,7 +69,7 @@ export const createHttpAdmin = (
   },
 
   async renameOrganization(id: string, newName: string): Promise<Organization> {
-    const response = await client.patch(`/admin/organizations/${id}`, {
+    const response = await client.patch(`/api/admin/organizations/${id}`, {
       name: newName,
     });
     if (response.statusCode === 401) {
@@ -86,7 +86,7 @@ export const createHttpAdmin = (
 
   async createUser(organizationId: string, email: string): Promise<User> {
     const response = await client.post(
-      `/admin/organizations/${organizationId}/users`,
+      `/api/admin/organizations/${organizationId}/users`,
       { email }
     );
     if (response.statusCode === 401) {
@@ -100,7 +100,7 @@ export const createHttpAdmin = (
 
   async listUsers(organizationId: string): Promise<User[]> {
     const response = await client.get(
-      `/admin/organizations/${organizationId}/users`
+      `/api/admin/organizations/${organizationId}/users`
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
@@ -109,7 +109,7 @@ export const createHttpAdmin = (
   },
 
   async getUser(id: string): Promise<User> {
-    const response = await client.get(`/admin/users/${id}`);
+    const response = await client.get(`/api/admin/users/${id}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -120,7 +120,7 @@ export const createHttpAdmin = (
   },
 
   async createToken(userId: string, name: string): Promise<CreateTokenResult> {
-    const response = await client.post(`/admin/users/${userId}/tokens`, {
+    const response = await client.post(`/api/admin/users/${userId}/tokens`, {
       name,
     });
     if (response.statusCode === 401) {
@@ -134,7 +134,7 @@ export const createHttpAdmin = (
   },
 
   async listTokens(userId: string): Promise<Token[]> {
-    const response = await client.get(`/admin/users/${userId}/tokens`);
+    const response = await client.get(`/api/admin/users/${userId}/tokens`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -142,7 +142,7 @@ export const createHttpAdmin = (
   },
 
   async revokeToken(tokenId: string): Promise<void> {
-    const response = await client.delete(`/admin/tokens/${tokenId}`);
+    const response = await client.delete(`/api/admin/tokens/${tokenId}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }

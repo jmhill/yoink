@@ -4,12 +4,12 @@ import { captureContract } from './capture-contract.js';
 describe('captureContract', () => {
   it('defines create endpoint', () => {
     expect(captureContract.create.method).toBe('POST');
-    expect(captureContract.create.path).toBe('/captures');
+    expect(captureContract.create.path).toBe('/api/captures');
   });
 
   it('defines list endpoint', () => {
     expect(captureContract.list.method).toBe('GET');
-    expect(captureContract.list.path).toBe('/captures');
+    expect(captureContract.list.path).toBe('/api/captures');
   });
 
   it('has 201 response for create', () => {
@@ -27,7 +27,7 @@ describe('captureContract', () => {
 
   it('defines get endpoint', () => {
     expect(captureContract.get.method).toBe('GET');
-    expect(captureContract.get.path).toBe('/captures/:id');
+    expect(captureContract.get.path).toBe('/api/captures/:id');
   });
 
   it('has 200 and 404 responses for get', () => {
@@ -37,7 +37,7 @@ describe('captureContract', () => {
 
   it('defines update endpoint', () => {
     expect(captureContract.update.method).toBe('PATCH');
-    expect(captureContract.update.path).toBe('/captures/:id');
+    expect(captureContract.update.path).toBe('/api/captures/:id');
   });
 
   it('has 200 and 404 responses for update', () => {

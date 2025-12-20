@@ -54,7 +54,7 @@ export const createHttpActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
-      const response = await client.post('/captures', input, authHeaders());
+      const response = await client.post('/api/captures', input, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -69,7 +69,7 @@ export const createHttpActor = (
     },
 
     async listCaptures(): Promise<Capture[]> {
-      const response = await client.get('/captures', authHeaders());
+      const response = await client.get('/api/captures', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -77,7 +77,7 @@ export const createHttpActor = (
     },
 
     async getCapture(id: string): Promise<Capture> {
-      const response = await client.get(`/captures/${id}`, authHeaders());
+      const response = await client.get(`/api/captures/${id}`, authHeaders());
       return handleCaptureResponse(response, id);
     },
 
@@ -86,7 +86,7 @@ export const createHttpActor = (
       input: UpdateCaptureInput
     ): Promise<Capture> {
       const response = await client.patch(
-        `/captures/${id}`,
+        `/api/captures/${id}`,
         input,
         authHeaders()
       );
@@ -95,7 +95,7 @@ export const createHttpActor = (
 
     async archiveCapture(id: string): Promise<Capture> {
       const response = await client.patch(
-        `/captures/${id}`,
+        `/api/captures/${id}`,
         { status: 'archived' },
         authHeaders()
       );
@@ -104,7 +104,7 @@ export const createHttpActor = (
 
     async unarchiveCapture(id: string): Promise<Capture> {
       const response = await client.patch(
-        `/captures/${id}`,
+        `/api/captures/${id}`,
         { status: 'inbox' },
         authHeaders()
       );
@@ -119,7 +119,7 @@ export const createHttpActor = (
  */
 export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => ({
   async createCapture(input: CreateCaptureInput): Promise<Capture> {
-    const response = await client.post('/captures', input);
+    const response = await client.post('/api/captures', input);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -128,7 +128,7 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
   },
 
   async listCaptures(): Promise<Capture[]> {
-    const response = await client.get('/captures');
+    const response = await client.get('/api/captures');
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -136,7 +136,7 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
   },
 
   async getCapture(id: string): Promise<Capture> {
-    const response = await client.get(`/captures/${id}`);
+    const response = await client.get(`/api/captures/${id}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }

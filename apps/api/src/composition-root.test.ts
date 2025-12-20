@@ -25,7 +25,7 @@ describe('bootstrapApp', () => {
 
     expect(app).toBeDefined();
     // Verify the app has registered routes
-    const response = await app.inject({ method: 'GET', url: '/health' });
+    const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(200);
   });
 
@@ -40,7 +40,7 @@ describe('bootstrapApp', () => {
     // Token format is tokenId:secret, where tokenId is the first generated ID
     const response = await app.inject({
       method: 'POST',
-      url: '/captures',
+      url: '/api/captures',
       headers: {
         authorization: `Bearer 00000000-0000-4000-8000-000000000001:my-seed-token`,
       },

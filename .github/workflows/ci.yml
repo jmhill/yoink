@@ -176,7 +176,7 @@ jobs:
 
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Attempt $i: Checking health..."
-            HTTP_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$API_URL/health")
+            HTTP_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$API_URL/api/health")
 
             if [ "$HTTP_CODE" = "200" ]; then
               echo "Health check passed!"
@@ -207,7 +207,7 @@ jobs:
           fi
 
           HTTP_CODE=$(curl -s -o /tmp/capture.json -w "%{http_code}" \
-            -X POST "$API_URL/captures" \
+            -X POST "$API_URL/api/captures" \
             -H "Authorization: Bearer $SMOKE_TEST_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"content\": \"Smoke test at $TIMESTAMP\", \"sourceApp\": \"github-actions\"}")

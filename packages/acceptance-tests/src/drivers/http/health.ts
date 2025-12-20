@@ -6,7 +6,7 @@ import type { HttpClient } from './http-client.js';
  */
 export const createHttpHealth = (client: HttpClient): Health => ({
   async check(): Promise<HealthStatus> {
-    const response = await client.get('/health');
+    const response = await client.get('/api/health');
     return response.json<HealthStatus>();
   },
 });

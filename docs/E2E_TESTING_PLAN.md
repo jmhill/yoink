@@ -1,5 +1,9 @@
 # E2E Testing Pipeline
 
+> **Status: Implemented** ✓
+> 
+> This architecture is fully implemented and running in CI. See `packages/acceptance-tests/` for the implementation.
+
 ## Overview
 
 This document describes our E2E testing pipeline that properly tests the production artifact before deployment. We use Dave Farley's 4-layer testing architecture to ensure we "test what we ship."

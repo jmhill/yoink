@@ -8,7 +8,7 @@ const c = initContract();
 export const captureContract = c.router({
   create: {
     method: 'POST',
-    path: '/captures',
+    path: '/api/captures',
     body: CreateCaptureSchema,
     responses: {
       201: CaptureSchema,
@@ -21,7 +21,7 @@ export const captureContract = c.router({
 
   list: {
     method: 'GET',
-    path: '/captures',
+    path: '/api/captures',
     query: z.object({
       status: z.enum(['inbox', 'archived']).optional(),
       limit: z.coerce.number().min(1).max(100).default(50),
@@ -40,7 +40,7 @@ export const captureContract = c.router({
 
   get: {
     method: 'GET',
-    path: '/captures/:id',
+    path: '/api/captures/:id',
     pathParams: z.object({
       id: z.string().uuid(),
     }),
@@ -55,7 +55,7 @@ export const captureContract = c.router({
 
   update: {
     method: 'PATCH',
-    path: '/captures/:id',
+    path: '/api/captures/:id',
     pathParams: z.object({
       id: z.string().uuid(),
     }),

@@ -2,7 +2,7 @@
 set -e
 
 COMPOSE_FILE="docker-compose.test.yml"
-HEALTH_URL="http://localhost:3333/health"
+HEALTH_URL="http://localhost:3333/api/health"
 MAX_RETRIES=30
 RETRY_INTERVAL=2
 

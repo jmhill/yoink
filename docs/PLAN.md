@@ -10,6 +10,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 **Phase 1: Backend Foundation** - Complete ✓
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 38 acceptance tests, 172 unit tests)
 
 ---
 
@@ -70,11 +71,12 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] ts-rest API client consuming @yoink/api-contracts
 - [x] Admin login page UI
 - [x] Organizations list + create UI
-- [x] Organization detail (users list + create) UI
+- [x] Organization detail (users list + create + rename) UI
 - [x] User detail (tokens list + create/revoke) UI
 - [x] Session-based auth guard (redirects to /login if unauthorized)
 - [x] Fastify static file serving from /admin
 - [x] Dockerfile multi-stage build includes admin UI
+- [x] Rename organization functionality (PATCH endpoint + UI)
 
 ### Capture Inbox
 - [ ] Create apps/web scaffold (Vite + React)
@@ -128,7 +130,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Set up SQLite persistence (Fly volume)
 - [x] Configure HTTPS (Fly.io handles automatically)
 - [x] CI/CD pipeline (GitHub Actions → Fly.io)
-- [x] Health endpoint (`GET /health`) with Fly.io HTTP health checks
+- [x] Health endpoint (`GET /api/health`) with Fly.io HTTP health checks
 - [x] Post-deploy smoke test job in CI
 - [ ] Deploy web app (same service or separate static host)
 - [ ] Install PWA on phone, extension in browser
@@ -180,6 +182,33 @@ application/      # HTTP layer
   └── routes.ts      # Fastify routes calling domain services
 ```
 
+### Testing Infrastructure - Complete ✓
+
+We implement Dave Farley's 4-layer acceptance test architecture:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Use Cases (plain English test descriptions)                    │
+│  "Capturing notes", "Organizing work", "Managing tenants"       │
+├─────────────────────────────────────────────────────────────────┤
+│  DSL (domain interfaces)                                        │
+│  Actor, Admin, Health - pure TypeScript interfaces              │
+├─────────────────────────────────────────────────────────────────┤
+│  Drivers (implement DSL interfaces)                             │
+│  HTTP driver (now), Playwright driver (future)                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Test counts:**
+- 172 unit tests (apps/api, packages/*)
+- 38 acceptance tests (packages/acceptance-tests)
+
+**Commands:**
+- `pnpm quality` - Run unit tests, type checking, and builds
+- `pnpm e2e:test` - Run acceptance tests against Docker container
+
+**See [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) for architecture details.**
+
 ### Testing Approach
 
 - **TDD**: All code written in response to failing tests
@@ -187,19 +216,17 @@ application/      # HTTP layer
 - **Fake dependencies**: Clock, IdGenerator, PasswordHasher have fake implementations
 - **In-memory SQLite**: Integration tests use `:memory:` databases
 
-### E2E Testing Pipeline (Planned)
+### URL Structure
 
-We have a plan to refactor the CI/CD pipeline to test the production Docker artifact before deployment. This implements Dave Farley's 4-layer testing approach where the same acceptance tests run against both:
-- In-process server (fast, for `pnpm quality`)
-- Docker container (production artifact, for `pnpm e2e:test`)
+All API endpoints are under the `/api` prefix:
 
-**See [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) for full details.**
-
-Key goals:
-- Build Docker image once, test it, deploy the tested artifact
-- Same acceptance tests, swappable system under test
-- `pnpm e2e:test` available locally and in CI
-- Deploy pre-built images to Fly.io (no remote build)
+| Path | Purpose |
+|------|---------|
+| `/api/health` | Health check |
+| `/api/captures` | Capture CRUD (Bearer token auth) |
+| `/api/admin/*` | Admin API (session cookie auth) |
+| `/admin` | Admin panel UI (static files) |
+| `/` | Reserved for web app (Capture Inbox) |
 
 ### Environment Variables
 

@@ -6,7 +6,7 @@ const c = initContract();
 export const healthContract = c.router({
   check: {
     method: 'GET',
-    path: '/health',
+    path: '/api/health',
     responses: {
       200: HealthResponseSchema,
       503: HealthResponseSchema,

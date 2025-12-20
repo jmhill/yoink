@@ -125,6 +125,25 @@ export const registerAdminRoutes = async (
         );
       },
 
+      updateOrganization: async ({ params, body }: { params: { id: string }; body: { name: string } }) => {
+        const result = await adminService.renameOrganization(params.id, body.name);
+        return result.match(
+          (organization) => {
+            if (!organization) {
+              return {
+                status: 404 as const,
+                body: { message: 'Organization not found' },
+              };
+            }
+            return {
+              status: 200 as const,
+              body: organization,
+            };
+          },
+          () => storageErrorResponse('Failed to update organization')
+        );
+      },
+
       listUsers: async ({ params }: { params: { organizationId: string } }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);

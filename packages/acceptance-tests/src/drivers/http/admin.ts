@@ -68,6 +68,22 @@ export const createHttpAdmin = (
     return response.json<Organization>();
   },
 
+  async renameOrganization(id: string, newName: string): Promise<Organization> {
+    const response = await client.patch(`/admin/organizations/${id}`, {
+      name: newName,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Organization', id);
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to rename organization: ${response.body}`);
+    }
+    return response.json<Organization>();
+  },
+
   async createUser(organizationId: string, email: string): Promise<User> {
     const response = await client.post(
       `/admin/organizations/${organizationId}/users`,

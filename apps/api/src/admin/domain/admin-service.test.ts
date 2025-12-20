@@ -79,6 +79,33 @@ describe('AdminService', () => {
         expect(result.value).toBeNull();
       }
     });
+
+    it('renames an organization', async () => {
+      const createResult = await service.createOrganization('Original Name');
+      expect(createResult.isOk()).toBe(true);
+      if (!createResult.isOk()) return;
+
+      const renameResult = await service.renameOrganization(
+        createResult.value.id,
+        'New Name'
+      );
+
+      expect(renameResult.isOk()).toBe(true);
+      if (renameResult.isOk() && renameResult.value) {
+        expect(renameResult.value.id).toBe(createResult.value.id);
+        expect(renameResult.value.name).toBe('New Name');
+        expect(renameResult.value.createdAt).toBe(createResult.value.createdAt);
+      }
+    });
+
+    it('returns null when renaming non-existent organization', async () => {
+      const result = await service.renameOrganization('non-existent', 'New Name');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
+    });
   });
 
   describe('users', () => {

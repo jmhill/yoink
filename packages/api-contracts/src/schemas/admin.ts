@@ -11,8 +11,13 @@ export const CreateOrganizationSchema = z.object({
   name: z.string().min(1).max(200),
 });
 
+export const UpdateOrganizationSchema = z.object({
+  name: z.string().min(1).max(200),
+});
+
 export type Organization = z.infer<typeof OrganizationSchema>;
 export type CreateOrganization = z.infer<typeof CreateOrganizationSchema>;
+export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 
 // User schemas
 export const UserSchema = z.object({

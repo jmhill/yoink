@@ -35,6 +35,10 @@ export type AdminService = {
   listOrganizations(): ResultAsync<Organization[], OrganizationStorageError>;
   getOrganization(id: string): ResultAsync<Organization | null, OrganizationStorageError>;
   createOrganization(name: string): ResultAsync<Organization, OrganizationStorageError>;
+  renameOrganization(
+    id: string,
+    newName: string
+  ): ResultAsync<Organization | null, OrganizationStorageError>;
 
   // Users
   listUsers(organizationId: string): ResultAsync<User[], UserStorageError>;
@@ -82,6 +86,21 @@ export const createAdminService = (
       };
 
       return organizationStore.save(organization).map(() => organization);
+    },
+
+    renameOrganization(id: string, newName: string) {
+      return organizationStore.findById(id).andThen((org) => {
+        if (!org) {
+          return ResultAsync.fromSafePromise(Promise.resolve(null));
+        }
+
+        const updated: Organization = {
+          ...org,
+          name: newName,
+        };
+
+        return organizationStore.save(updated).map(() => updated);
+      });
     },
 
     // Users

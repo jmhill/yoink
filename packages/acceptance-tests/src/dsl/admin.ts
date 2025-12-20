@@ -22,6 +22,7 @@ export type Admin = {
   createOrganization(name: string): Promise<Organization>;
   listOrganizations(): Promise<Organization[]>;
   getOrganization(id: string): Promise<Organization>;
+  renameOrganization(id: string, newName: string): Promise<Organization>;
 
   // User management
   createUser(organizationId: string, email: string): Promise<User>;

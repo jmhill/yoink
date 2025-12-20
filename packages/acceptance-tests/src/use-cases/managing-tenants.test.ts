@@ -1,6 +1,5 @@
 import { describeFeature, it, expect, beforeAll, afterAll } from './harness.js';
 import { NotFoundError } from '../dsl/index.js';
-import type { Admin } from '../dsl/index.js';
 
 describeFeature('Managing tenants', ['http'], ({ admin }) => {
   beforeAll(async () => {
@@ -38,6 +37,29 @@ describeFeature('Managing tenants', ['http'], ({ admin }) => {
 
     expect(retrieved.id).toBe(created.id);
     expect(retrieved.name).toBe(uniqueName);
+  });
+
+  it('can rename an organization', async () => {
+    const originalName = `rename-test-org-${Date.now()}`;
+    const newName = `renamed-org-${Date.now()}`;
+    const created = await admin.createOrganization(originalName);
+
+    const updated = await admin.renameOrganization(created.id, newName);
+
+    expect(updated.id).toBe(created.id);
+    expect(updated.name).toBe(newName);
+
+    // Verify the rename persisted
+    const retrieved = await admin.getOrganization(created.id);
+    expect(retrieved.name).toBe(newName);
+  });
+
+  it('returns not found when renaming non-existent organization', async () => {
+    const nonExistentId = '00000000-0000-0000-0000-000000000000';
+
+    await expect(
+      admin.renameOrganization(nonExistentId, 'new-name')
+    ).rejects.toThrow(NotFoundError);
   });
 
   it('returns not found for non-existent organization', async () => {

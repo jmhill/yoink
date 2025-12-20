@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   OrganizationSchema,
   CreateOrganizationSchema,
+  UpdateOrganizationSchema,
   UserSchema,
   CreateUserSchema,
   ApiTokenSchema,
@@ -103,6 +104,22 @@ export const adminProtectedContract = c.router(
         500: ErrorSchema,
       },
       summary: 'Get an organization by ID',
+    },
+
+    updateOrganization: {
+      method: 'PATCH',
+      path: '/admin/organizations/:id',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: UpdateOrganizationSchema,
+      responses: {
+        200: OrganizationSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Update an organization',
     },
 
     // Users

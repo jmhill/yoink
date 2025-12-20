@@ -22,7 +22,12 @@ export const createFakeOrganizationStore = (
       if (options.shouldFailOnSave) {
         return errAsync(organizationStorageError('Save failed'));
       }
-      organizations.push(organization);
+      const existingIndex = organizations.findIndex((o) => o.id === organization.id);
+      if (existingIndex >= 0) {
+        organizations[existingIndex] = organization;
+      } else {
+        organizations.push(organization);
+      }
       return okAsync(undefined);
     },
 

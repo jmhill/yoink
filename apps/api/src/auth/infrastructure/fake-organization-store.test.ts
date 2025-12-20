@@ -26,6 +26,23 @@ describe('createFakeOrganizationStore', () => {
       }
     });
 
+    it('updates an existing organization', async () => {
+      const store = createFakeOrganizationStore();
+      const org = createTestOrganization({ name: 'Original Name' });
+      await store.save(org);
+
+      const updated = { ...org, name: 'Updated Name' };
+      const updateResult = await store.save(updated);
+
+      expect(updateResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(org.id);
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value?.name).toBe('Updated Name');
+      }
+    });
+
     it('returns error when configured to fail', async () => {
       const store = createFakeOrganizationStore({ shouldFailOnSave: true });
       const org = createTestOrganization();

@@ -48,6 +48,7 @@ export const createSqliteOrganizationStore = (
         const stmt = db.prepare(`
           INSERT INTO organizations (id, name, created_at)
           VALUES (?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET name = excluded.name
         `);
 
         stmt.run(organization.id, organization.name, organization.createdAt);

@@ -1,10 +1,50 @@
+# Dependencies (reinstalled in Docker)
 **/node_modules
+
+# Build outputs (rebuilt in Docker)
 **/dist
+**/*.tsbuildinfo
+
+# Data and cache
 **/data
+**/.turbo
+
+# Logs
 **/*.log
+
+# Environment files
 **/.env*
+!**/.env.example
+
+# Git and CI
 .git
 .github
+
+# Development tools
 .husky
 .devbox
+.vscode
+.idea
+
+# Documentation (not needed at runtime)
 docs
+CLAUDE.md
+AGENTS.md
+
+# Test outputs
+**/test-results.json
+**/coverage
+
+# Acceptance tests package (not needed in Docker image)
+packages/acceptance-tests
+
+# E2E test infrastructure
+scripts
+docker-compose.test.yml
+
+# Development config files
+.dockerignore
+.gitignore
+.envrc
+devbox.json
+devbox.lock

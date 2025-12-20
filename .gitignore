@@ -1,4 +1,22 @@
+# Dependencies
 node_modules
+
+# Build outputs
 dist
+*.tsbuildinfo
+
+# Data and cache
 data
 .turbo
+
+# Test outputs
+test-results.json
+coverage
+
+# Environment and IDE
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+*.log

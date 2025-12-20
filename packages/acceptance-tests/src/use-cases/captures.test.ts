@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import type { HttpClient } from '../helpers/http-client.js';
-import { createTestContext } from '../helpers/test-app.js';
+import { createHttpClient, type HttpClient } from '../drivers/index.js';
+import { getTestConfig } from '../config.js';
 import {
   loginToAdminPanel,
   logoutAdmin,
   createTestTenant,
   type TestTenant,
-} from '../helpers/dsl.js';
+} from '../dsl/index.js';
 
-describe('Capture API', () => {
+describe('Captures', () => {
   let client: HttpClient;
   let tenant: TestTenant;
 
   beforeAll(async () => {
-    const context = await createTestContext();
-    client = context.client;
+    const config = getTestConfig();
+    client = createHttpClient(config.baseUrl);
 
     // Create isolated tenant for this test suite
-    await loginToAdminPanel(client, context.adminPassword);
+    await loginToAdminPanel(client, config.adminPassword);
     tenant = await createTestTenant(client);
     await logoutAdmin(client);
   });

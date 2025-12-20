@@ -2,18 +2,27 @@
 
 ## Overview
 
-This document outlines the plan to refactor our CI/CD pipeline to properly test the production artifact before deployment. The goal is to implement a "test what you ship" approach using Dave Farley's 4-layer testing architecture.
+This document outlines the implementation of our E2E testing pipeline that properly tests the production artifact before deployment. We use Dave Farley's 4-layer testing architecture to ensure we "test what we ship."
 
-## Problem Statement
+## Implementation Status
 
-Our current pipeline has gaps:
+**Completed:**
+- [x] Separate `packages/acceptance-tests/` package for black-box E2E tests
+- [x] Docker-based E2E testing via `pnpm e2e:test`
+- [x] CI pipeline: quality → build-artifact → e2e-tests → deploy → smoke-test
+- [x] Pre-built Docker image deployed (no remote builds)
+- [x] Smoke tests verify health, capture creation, and admin UI
 
-1. **Acceptance tests run against in-process server** - Not the actual Docker container that gets deployed
+## Problem Statement (Solved)
+
+Our original pipeline had gaps:
+
+1. **Acceptance tests ran against in-process server** - Not the actual Docker container that gets deployed
 2. **Docker build issues caught late** - The `@fastify/static` v8/v5 mismatch was only caught when Fly.io tried to start the container
-3. **Build happens twice** - Once in `quality` (TypeScript), again in `deploy` (Docker)
-4. **No production artifact testing** - We test the code, not the deployable artifact
+3. **Build happened twice** - Once in `quality` (TypeScript), again in `deploy` (Docker)
+4. **No production artifact testing** - We tested the code, not the deployable artifact
 
-## Target Architecture
+## Architecture
 
 ### 4-Layer Testing Approach
 
@@ -38,7 +47,7 @@ Our current pipeline has gaps:
 
 **Key Insight**: Same tests, same assertions, just swap the bottom layer.
 
-### Target CI/CD Pipeline
+### CI/CD Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -51,335 +60,106 @@ Our current pipeline has gaps:
 │       │                  │                   │                  │          │
 │       ▼                  ▼                   ▼                  ▼          │
 │  • lint               • docker build     • Start container   • fly deploy │
-│  • typecheck          • push to GHCR     • Run acceptance      --image    │
-│  • unit tests         • tag with SHA       tests against it  • smoke test │
-│  • acceptance tests                      • Tear down           (minimal)  │
-│    (in-process)                                                            │
+│  • typecheck          • push to Fly.io   • Run acceptance      --image    │
+│  • unit tests           registry           tests against it  • smoke test │
+│                       • tag with SHA     • Tear down           (minimal)  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Implementation Tasks
+**Key Design Decision**: Acceptance tests live in a separate `packages/acceptance-tests/` package that:
+- Has no dependencies on `@yoink/api` internals
+- Uses pure HTTP for all interactions (truly black-box)
+- Is excluded from `pnpm quality` (runs only via `e2e:test`)
+- Can run against any environment (local container, CI, staging, production)
 
-### Phase 1: Refactor Test Infrastructure
+## Package Structure
 
-#### 1.1 Modify `createTestApp()` to Support External Target
+### `packages/acceptance-tests/`
 
-**File**: `apps/api/src/tests/helpers/test-app.ts`
+The acceptance tests package is completely isolated from the main API:
 
-Add environment variable detection:
-
-```typescript
-// If TEST_BASE_URL is set, return a client pointing at that URL
-// Otherwise, spin up the in-process server as before
-
-export const createTestApp = async (options?: TestAppOptions) => {
-  const baseUrl = process.env.TEST_BASE_URL;
-  
-  if (baseUrl) {
-    // External container mode - just return HTTP client
-    return {
-      client: createHttpClient(baseUrl),
-      cleanup: async () => {}, // No cleanup needed
-      // Expose seeded credentials for auth
-      seedToken: process.env.TEST_SEED_TOKEN,
-      adminPassword: process.env.TEST_ADMIN_PASSWORD,
-    };
-  }
-  
-  // In-process mode - existing behavior
-  // ...
-};
+```
+packages/acceptance-tests/
+├── src/
+│   ├── config.ts              # Environment-based configuration
+│   ├── drivers/
+│   │   ├── http-client.ts     # Fetch-based HTTP client with cookie jar
+│   │   └── index.ts
+│   ├── dsl/
+│   │   ├── admin.ts           # loginToAdminPanel, logoutAdmin
+│   │   ├── tenant.ts          # createTestTenant, TestTenant type
+│   │   └── index.ts
+│   └── use-cases/
+│       ├── admin.test.ts      # Admin API tests
+│       ├── captures.test.ts   # Capture API tests
+│       └── health.test.ts     # Health endpoint tests
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
 ```
 
-**Considerations**:
-- Need to handle seeding differently - container uses env vars, in-process uses test fixtures
-- Some tests may need adjustment if they rely on direct database access
-- Auth credentials need to be passed through env vars for container mode
+### Configuration
 
-#### 1.2 Update Acceptance Tests for Dual-Mode Support
+Tests require these environment variables:
 
-**Files**: `apps/api/src/tests/acceptance/*.test.ts`
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TEST_BASE_URL` | Base URL of system under test | `http://localhost:3333` |
+| `TEST_ADMIN_PASSWORD` | Admin panel password | `test-admin-password` |
 
-Most tests should work unchanged since they use HTTP client. Review for:
-- Direct database access (won't work in container mode)
-- Hardcoded credentials (need to use env vars)
-- Test isolation assumptions (container has persistent state within test run)
-
-### Phase 2: Docker Compose Updates
-
-#### 2.1 Update `docker-compose.test.yml`
-
-```yaml
-services:
-  api:
-    image: ${IMAGE:-}
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    environment:
-      - ADMIN_PASSWORD=test-admin-password
-      - SESSION_SECRET=test-session-secret-min-32-chars-long
-      - SKIP_LITESTREAM=true
-      - DB_PATH=/app/apps/api/data/captures.db
-      - SEED_TOKEN=test-seed-token-secret
-    ports:
-      - "3333:3000"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
-```
-
-#### 2.2 Create `scripts/e2e-test.sh`
+### Running Tests
 
 ```bash
-#!/bin/bash
-set -e
+# Run E2E tests locally (starts container, runs tests, cleans up)
+pnpm e2e:test
 
-COMPOSE_FILE="docker-compose.test.yml"
-HEALTH_URL="http://localhost:3333/health"
-
-cleanup() {
-    docker compose -f "$COMPOSE_FILE" down --volumes --remove-orphans 2>/dev/null || true
-}
-trap cleanup EXIT
-
-# Start container
-docker compose -f "$COMPOSE_FILE" up --build -d
-
-# Wait for health
-# ... (retry logic)
-
-# Run acceptance tests against container
-TEST_BASE_URL="http://localhost:3333" \
-TEST_SEED_TOKEN="<tokenId>:test-seed-token-secret" \
-TEST_ADMIN_PASSWORD="test-admin-password" \
-pnpm --filter @yoink/api test:acceptance
-
-echo "==> E2E tests passed!"
+# Run against a custom URL (e.g., staging)
+TEST_BASE_URL=https://staging.example.com \
+TEST_ADMIN_PASSWORD=staging-password \
+pnpm --filter @yoink/acceptance-tests test
 ```
 
-#### 2.3 Add npm Scripts
+## Files
 
-**File**: `package.json` (root)
+### Created
+- `packages/acceptance-tests/` - Standalone E2E test package
+- `scripts/e2e-test.sh` - E2E test orchestration script
 
-```json
-{
-  "scripts": {
-    "e2e:test": "./scripts/e2e-test.sh"
-  }
-}
-```
-
-**File**: `apps/api/package.json`
-
-```json
-{
-  "scripts": {
-    "test:acceptance": "vitest run --config vitest.acceptance.config.ts"
-  }
-}
-```
-
-### Phase 3: CI/CD Pipeline Updates
-
-#### 3.1 Update GitHub Actions Workflow
-
-**File**: `.github/workflows/ci.yml`
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  quality:
-    name: Quality Checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jetify-com/devbox-install-action@v0.14.0
-      - run: devbox run pnpm install --frozen-lockfile
-      - run: devbox run pnpm quality
-
-  build-artifact:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    needs: quality
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:latest
-
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: build-artifact
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Pull pre-built image
-        run: docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
-      
-      - name: Run E2E tests
-        run: |
-          # Use pre-built image instead of building
-          IMAGE=ghcr.io/${{ github.repository }}:${{ github.sha }} \
-          ./scripts/e2e-test.sh
-
-  deploy:
-    name: Deploy to Fly.io
-    runs-on: ubuntu-latest
-    needs: e2e-tests
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      
-      - name: Deploy pre-built image
-        run: flyctl deploy --image ghcr.io/${{ github.repository }}:${{ github.sha }} --config apps/api/fly.toml
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  smoke-test:
-    name: Production Smoke Test
-    runs-on: ubuntu-latest
-    needs: deploy
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Health check
-        run: |
-          curl -sf https://jhtc-yoink-api.fly.dev/health
-      
-      - name: Create test capture
-        env:
-          SMOKE_TEST_TOKEN: ${{ secrets.SMOKE_TEST_TOKEN }}
-        run: |
-          # Skip if token not configured
-          if [ -z "$SMOKE_TEST_TOKEN" ]; then
-            echo "SMOKE_TEST_TOKEN not configured - skipping"
-            exit 0
-          fi
-          
-          curl -sf -X POST https://jhtc-yoink-api.fly.dev/captures \
-            -H "Authorization: Bearer $SMOKE_TEST_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"content": "Smoke test", "sourceApp": "github-actions"}'
-      
-      - name: Verify admin UI reachable
-        run: |
-          curl -sf https://jhtc-yoink-api.fly.dev/admin/ | grep -q "<!DOCTYPE html>"
-```
-
-#### 3.2 Update `docker-compose.test.yml` for Pre-built Image Support
-
-```yaml
-services:
-  api:
-    image: ${IMAGE:-}
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    # ... rest unchanged
-```
-
-When `IMAGE` is set, use that; otherwise build from Dockerfile (for local dev).
-
-### Phase 4: Fly.io Configuration
-
-#### 4.1 Update `fly.toml`
-
-Remove the `[build]` section since we're deploying pre-built images:
-
-```toml
-app = "jhtc-yoink-api"
-primary_region = "ord"
-
-# Remove [build] section - we deploy pre-built images
-
-[http_service]
-  internal_port = 3000
-  # ... rest unchanged
-```
-
-## Files to Create/Modify
-
-### New Files
-- `docs/E2E_TESTING_PLAN.md` - This document
-- `scripts/e2e-test.sh` - E2E test orchestration script (replaces `docker-test.sh`)
-- `apps/api/vitest.acceptance.config.ts` - Separate config for acceptance tests (optional)
-
-### Modified Files
-- `apps/api/src/tests/helpers/test-app.ts` - Add external target support
-- `docker-compose.test.yml` - Support pre-built images, add seed token
+### Modified
 - `.github/workflows/ci.yml` - New pipeline structure
-- `apps/api/fly.toml` - Remove build section
-- `package.json` - Add `e2e:test` script, remove `docker:test`
-- `docs/PLAN.md` - Reference this plan
+- `package.json` - Added `e2e:test` script, quality excludes acceptance-tests
+- `docker-compose.test.yml` - Support pre-built images via `IMAGE` env var
 
-### Removed Files
-- `scripts/docker-test.sh` - Replaced by `e2e-test.sh`
+### Removed from `apps/api/`
+- `src/tests/acceptance/` - Moved to `packages/acceptance-tests/`
+- `src/tests/helpers/dsl.ts` - Moved to `packages/acceptance-tests/src/dsl/`
 
-## Migration Strategy
+## Design Decisions
 
-1. **Phase 1**: Implement test infrastructure changes without breaking existing tests
-2. **Phase 2**: Add new CI jobs alongside existing ones (run both)
-3. **Phase 3**: Verify new pipeline works, remove old jobs
-4. **Phase 4**: Update documentation
+### Why a Separate Package?
 
-## Success Criteria
+1. **No build step needed** - Tests don't depend on internal packages
+2. **True black-box testing** - Only uses public HTTP APIs
+3. **Portable** - Same tests can run against any environment
+4. **Fast CI** - Not part of `pnpm quality`, runs only when needed
+5. **Extensible** - Can add Playwright for UI tests in the future
 
-- [ ] `pnpm quality` runs fast (~3-5s with cache, includes in-process acceptance tests)
-- [ ] `pnpm e2e:test` works locally (builds Docker, runs acceptance tests against it)
-- [ ] CI pipeline: quality -> build -> e2e -> deploy -> smoke-test
-- [ ] Same acceptance tests run in both modes
-- [ ] Deploy uses pre-built, tested image (no remote build)
-- [ ] Smoke test verifies: health, capture creation, admin UI reachable
+### Test Data Isolation
 
-## Open Questions
+Each test creates its own isolated data:
+- `createTestTenant()` creates a unique organization, user, and token
+- Tests use their own tenant and don't interfere with each other
+- Container state persists across test files within a single run
 
-1. **Test data isolation**: Should each test file get a fresh container, or one container for all tests?
-   - Recommendation: One container per `e2e:test` run, tests must be independent
+### Image Registry
 
-2. **Seed token format**: The container needs to output the seeded token in a predictable format so the test script can capture it.
-   - Recommendation: Log format `Seeded API token: <tokenId>:<secret>` and parse it
-
-3. **GHCR image retention**: How long to keep old images?
-   - Recommendation: GitHub's default retention policy, or configure lifecycle rules
+We use Fly.io's registry instead of GHCR to avoid cross-registry authentication:
+- Build pushes to `registry.fly.io/jhtc-yoink-api:$SHA`
+- E2E tests pull from the same registry
+- Deploy uses the same tested image
 
 ## References
 
 - [Dave Farley - Acceptance Testing](https://www.youtube.com/watch?v=SXbhOqz5hYo)
 - [Fly.io Deploy Documentation](https://fly.io/docs/launch/deploy/)
-- [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)

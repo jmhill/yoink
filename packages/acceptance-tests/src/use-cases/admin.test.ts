@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import type { HttpClient } from '../helpers/http-client.js';
-import { createTestContext } from '../helpers/test-app.js';
-import { loginToAdminPanel } from '../helpers/dsl.js';
+import { createHttpClient, type HttpClient } from '../drivers/index.js';
+import { getTestConfig } from '../config.js';
+import { loginToAdminPanel } from '../dsl/index.js';
 
 // Cookie name constant - duplicated from implementation to avoid importing
 const ADMIN_SESSION_COOKIE = 'admin_session';
 
-describe('Admin API', () => {
+describe('Admin', () => {
   let client: HttpClient;
   let adminPassword: string;
 
-  beforeAll(async () => {
-    const context = await createTestContext();
-    client = context.client;
-    adminPassword = context.adminPassword;
+  beforeAll(() => {
+    const config = getTestConfig();
+    client = createHttpClient(config.baseUrl);
+    adminPassword = config.adminPassword;
   });
 
   describe('POST /admin/login', () => {
@@ -44,8 +44,9 @@ describe('Admin API', () => {
   describe('GET /admin/session', () => {
     it('returns 401 without session', async () => {
       // Create a fresh client without session cookie
-      const freshContext = await createTestContext();
-      const response = await freshContext.client.get('/admin/session');
+      const config = getTestConfig();
+      const freshClient = createHttpClient(config.baseUrl);
+      const response = await freshClient.get('/admin/session');
 
       expect(response.statusCode).toBe(401);
     });
@@ -88,8 +89,9 @@ describe('Admin API', () => {
 
   describe('GET /admin/organizations', () => {
     it('returns 401 without session', async () => {
-      const freshContext = await createTestContext();
-      const response = await freshContext.client.get('/admin/organizations');
+      const config = getTestConfig();
+      const freshClient = createHttpClient(config.baseUrl);
+      const response = await freshClient.get('/admin/organizations');
 
       expect(response.statusCode).toBe(401);
     });

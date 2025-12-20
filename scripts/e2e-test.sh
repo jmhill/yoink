@@ -49,6 +49,6 @@ done
 echo "==> Running acceptance tests against container..."
 TEST_BASE_URL="$TEST_BASE_URL" \
 TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
-pnpm --filter @yoink/api test src/tests/acceptance/
+pnpm --filter @yoink/acceptance-tests test
 
 echo "==> E2E tests passed!"

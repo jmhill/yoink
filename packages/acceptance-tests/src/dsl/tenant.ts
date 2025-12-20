@@ -1,37 +1,8 @@
-import type { HttpClient } from './http-client.js';
-
-/**
- * Test DSL (Domain Specific Language) for acceptance tests.
- * Provides high-level helpers that abstract authentication details.
- */
-
-/**
- * Logs into the admin panel and persists the session cookie.
- * Works in both in-process and external container modes.
- */
-export const loginToAdminPanel = async (
-  client: HttpClient,
-  password: string
-): Promise<void> => {
-  const response = await client.post('/admin/login', { password });
-  if (response.statusCode !== 200) {
-    throw new Error(
-      `Admin login failed with status ${response.statusCode}: ${response.body}`
-    );
-  }
-  // Session cookie is automatically persisted by the HttpClient
-};
-
-/**
- * Logs out from the admin panel.
- */
-export const logoutAdmin = async (client: HttpClient): Promise<void> => {
-  await client.post('/admin/logout', {});
-  // Cookie is cleared by the HttpClient
-};
+import type { HttpClient } from '../drivers/index.js';
 
 /**
  * Represents an isolated test tenant (organization + user + API token).
+ * Each test suite should create its own tenant to avoid data collisions.
  */
 export type TestTenant = {
   organization: { id: string; name: string; createdAt: string };
@@ -53,7 +24,6 @@ type CreateTestTenantOptions = {
  *
  * @example
  * beforeAll(async () => {
- *   const { client, adminPassword } = await createTestContext();
  *   await loginToAdminPanel(client, adminPassword);
  *   tenant = await createTestTenant(client);
  *   await logoutAdmin(client);

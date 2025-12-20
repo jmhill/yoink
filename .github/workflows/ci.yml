@@ -69,11 +69,8 @@ jobs:
       - name: Pull pre-built image
         run: docker pull registry.fly.io/jhtc-yoink-api:${{ github.sha }}
 
-      - name: Install dependencies
-        run: devbox run pnpm install --frozen-lockfile
-
-      - name: Build workspace packages
-        run: devbox run pnpm build
+      - name: Install acceptance test dependencies
+        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests
 
       - name: Run E2E tests
         run: |

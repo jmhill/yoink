@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import type { HttpClient } from '../helpers/http-client.js';
-import { createTestContext } from '../helpers/test-app.js';
+import { createHttpClient, type HttpClient } from '../drivers/index.js';
+import { getTestConfig } from '../config.js';
 
-describe('Health API', () => {
+describe('Health', () => {
   let client: HttpClient;
 
-  beforeAll(async () => {
-    const context = await createTestContext();
-    client = context.client;
+  beforeAll(() => {
+    const config = getTestConfig();
+    client = createHttpClient(config.baseUrl);
   });
 
   describe('GET /health', () => {

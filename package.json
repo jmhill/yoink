@@ -8,7 +8,7 @@
     "test:coverage": "vitest run --coverage",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "quality": "turbo run build typecheck test",
+    "quality": "turbo run build typecheck test --filter=!@yoink/acceptance-tests",
     "e2e:test": "./scripts/e2e-test.sh",
     "dev": "turbo run dev",
     "prepare": "husky"

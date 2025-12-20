@@ -379,14 +379,21 @@ Remove the existing inline Node.js report generation since the custom reporter h
 
 ## Implementation Order
 
-### Phase 1: Fix Playwright Driver (Prerequisite)
+### Phase 1: Fix Playwright Driver (Prerequisite) - COMPLETE
 
 Must fix the driver before testing harness changes.
 
-1. Fix `AnonymousActor` to properly test redirect behavior
-2. Fix `Actor` to verify UI state after actions
-3. Improve page object waiting strategies
-4. Verify fixes work: `DRIVER=playwright pnpm e2e:test`
+1. ~~Fix `AnonymousActor` to properly test redirect behavior~~
+2. ~~Fix `Actor` to verify UI state after actions~~ (existing implementation was correct)
+3. ~~Improve page object waiting strategies~~ (existing implementation was correct)
+4. ~~Verify fixes work: `DRIVER=playwright pnpm e2e:test`~~
+
+**Changes made:**
+- Refactored `AnonymousActor` to use `ensureRedirectsToConfig()` helper that:
+  - Clears localStorage token to ensure truly anonymous state
+  - Uses `waitForURL('**/config')` to verify redirect actually happens
+  - Throws `UnauthorizedError` only after successful redirect verification
+- The `Actor` implementation was already correctly verifying UI state via page objects
 
 ### Phase 2: Refactor Test Harness
 

@@ -177,43 +177,43 @@ export const createPlaywrightActor = (
 /**
  * Playwright implementation of AnonymousActor.
  * Attempts operations without configuring a token.
+ * 
+ * This actor verifies that the app properly enforces authentication
+ * by checking that unauthenticated users are redirected to /config.
  */
 export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
+  /**
+   * Ensures we're truly anonymous by clearing any stored token,
+   * then navigates to the app and verifies redirect to /config.
+   */
+  const ensureRedirectsToConfig = async (): Promise<void> => {
+    // Clear any existing token to ensure we're truly anonymous
+    await page.goto('/');
+    await page.evaluate(() => localStorage.removeItem('yoink_api_token'));
+    
+    // Navigate to the app root
+    await page.goto('/');
+    
+    // The app should redirect to /config because no token is set
+    // Use waitForURL to actually verify the redirect happens
+    await page.waitForURL('**/config', { timeout: 5000 });
+  };
+
   return {
     async createCapture(_input: CreateCaptureInput): Promise<Capture> {
-      // Navigate without token - should redirect to config
-      await page.goto('/');
-      
-      // Check if redirected to config page
-      const url = page.url();
-      if (url.includes('/config')) {
-        throw new UnauthorizedError();
-      }
-      
-      // Should not reach here
+      await ensureRedirectsToConfig();
+      // Successfully redirected means auth is enforced
       throw new UnauthorizedError();
     },
 
     async listCaptures(): Promise<Capture[]> {
-      await page.goto('/');
-      
-      const url = page.url();
-      if (url.includes('/config')) {
-        throw new UnauthorizedError();
-      }
-      
-      return [];
+      await ensureRedirectsToConfig();
+      throw new UnauthorizedError();
     },
 
-    async getCapture(id: string): Promise<Capture> {
-      await page.goto('/');
-      
-      const url = page.url();
-      if (url.includes('/config')) {
-        throw new UnauthorizedError();
-      }
-      
-      throw new NotFoundError('Capture', id);
+    async getCapture(_id: string): Promise<Capture> {
+      await ensureRedirectsToConfig();
+      throw new UnauthorizedError();
     },
   };
 };

@@ -196,10 +196,8 @@ A comprehensive security review identified the following priorities before shari
 - [x] Dependency vulnerability scanning in CI (`pnpm audit`)
 
 ### Medium Priority (Before Wider Rollout)
-- [ ] Pin GitHub Actions to commit SHAs (supply chain security)
-- [ ] Downgrade to Node 22 LTS (stable runtime)
-- [ ] Fix token enumeration timing oracle
-- [ ] Add optional token expiration
+- [x] Pin GitHub Actions to commit SHAs (supply chain security)
+- [x] Fix token enumeration timing oracle
 
 ### Deferred (Production Hardening)
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))

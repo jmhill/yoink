@@ -220,4 +220,44 @@ describe('TokenService', () => {
       expect(findResult.value?.lastUsedAt).toBeUndefined();
     }
   });
+
+  it('performs constant-time validation even for non-existent tokens (timing attack protection)', async () => {
+    // Track whether password hasher was called
+    let compareCallCount = 0;
+    const trackingPasswordHasher = {
+      ...createFakePasswordHasher(),
+      compare: async (plain: string, hash: string) => {
+        compareCallCount++;
+        // Fake hasher returns true if hash starts with 'fake-hash:' followed by plain
+        return hash === `fake-hash:${plain}`;
+      },
+    };
+
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [testOrg],
+    });
+    const userStore = createFakeUserStore({
+      initialUsers: [testUser],
+    });
+    const tokenStore = createFakeTokenStore({
+      initialTokens: [testToken],
+    });
+
+    const service = createTokenService({
+      organizationStore,
+      userStore,
+      tokenStore,
+      passwordHasher: trackingPasswordHasher,
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    // Attempt validation with non-existent token ID
+    await service.validateToken({
+      plaintext: 'non-existent-id:any-secret',
+    });
+
+    // The password hasher should still be called even for non-existent tokens
+    // This ensures constant-time behavior to prevent timing oracle attacks
+    expect(compareCallCount).toBe(1);
+  });
 });

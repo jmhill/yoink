@@ -17,6 +17,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 241 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
+**Phase 4.5: Security Hardening** - In Progress
 
 ---
 
@@ -179,6 +180,47 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - Extension builds automatically when `apps/extension/**` or `packages/api-contracts/**` changes
 - GitHub Release created on main branch with versioned ZIP (e.g., `extension-2024-01-15-abc1234`)
 - Download ZIP from GitHub Releases, unzip, load unpacked in Chrome
+
+---
+
+## Phase 4.5: Security Hardening
+
+**Goal**: Prepare for demo and external users with critical security improvements
+
+A comprehensive security review identified the following priorities before sharing the app with friends and other users.
+
+### Critical Fixes (Before Demo)
+- [x] Rate limiting on admin login (brute force protection)
+- [x] Security headers via @fastify/helmet (CSP, X-Frame-Options, etc.)
+- [ ] Non-root user in Dockerfile (container security)
+- [ ] Dependency vulnerability scanning in CI (`pnpm audit`)
+
+### Medium Priority (Before Wider Rollout)
+- [ ] Pin GitHub Actions to commit SHAs (supply chain security)
+- [ ] Downgrade to Node 22 LTS (stable runtime)
+- [ ] Fix token enumeration timing oracle
+- [ ] Add optional token expiration
+
+### Deferred (Production Hardening)
+- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
+- [ ] Add container scanning (Trivy) to CI
+- [ ] Add SAST (CodeQL/Semgrep) to CI
+- [ ] Enable Dependabot for automated updates
+
+### Security Assessment Summary
+
+**API Token Security**: Adequate for demo phase
+- Token format: `tokenId:secret` with bcrypt-hashed secrets
+- ~244 bits of entropy (UUID v4 for both parts)
+- Hash never exposed in API responses
+- Generic error messages prevent information leakage
+
+**Known Acceptable Risks**:
+- Tokens don't expire (mitigated by small user count, manual auditing)
+- Web app uses localStorage for tokens (mitigated by React's XSS protection)
+- Stateless admin sessions can't be revoked early (mitigated by 24-hour TTL)
+
+**Deliverable**: Demo-ready security posture with rate limiting, security headers, and hardened container
 
 ---
 

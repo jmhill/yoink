@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -30,7 +32,19 @@ export type AppDependencies = {
 export const createApp = async (deps: AppDependencies) => {
   const app = Fastify();
 
-  // Register plugins
+  // Register security plugins
+  await app.register(helmet, {
+    // Configure Content Security Policy for SPA serving
+    contentSecurityPolicy: false, // Disable CSP for now (SPA needs inline scripts from Vite)
+  });
+
+  await app.register(rateLimit, {
+    global: true,
+    max: 100, // General rate limit: 100 requests per minute
+    timeWindow: '1 minute',
+  });
+
+  // Register other plugins
   await app.register(cookie);
 
   // Register routes

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import { adminPublicContract, adminProtectedContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
@@ -25,49 +26,58 @@ export const registerAdminRoutes = async (
   const { adminService, adminSessionService } = deps;
   const s = initServer();
 
-  // Register public admin routes (no auth required)
-  const publicRouter = s.router(adminPublicContract, {
-    login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
-      const result = adminSessionService.login(body.password);
+  // Register public admin routes with strict rate limiting
+  await app.register(async (publicApp) => {
+    // Apply strict rate limiting to login endpoint (brute force protection)
+    await publicApp.register(rateLimit, {
+      max: 5, // 5 attempts
+      timeWindow: '15 minutes',
+      keyGenerator: (request) => request.ip,
+    });
 
-      if (!result.success) {
+    const publicRouter = s.router(adminPublicContract, {
+      login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
+        const result = adminSessionService.login(body.password);
+
+        if (!result.success) {
+          return {
+            status: 401 as const,
+            body: { message: 'Invalid password' },
+          };
+        }
+
+        reply.setCookie(ADMIN_SESSION_COOKIE, result.sessionToken!, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          path: '/',
+          maxAge: 24 * 60 * 60, // 24 hours
+        });
+
         return {
-          status: 401 as const,
-          body: { message: 'Invalid password' },
+          status: 200 as const,
+          body: { success: true },
         };
-      }
+      },
 
-      reply.setCookie(ADMIN_SESSION_COOKIE, result.sessionToken!, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 24 * 60 * 60, // 24 hours
-      });
+      logout: async ({ reply }: { reply: FastifyReply }) => {
+        reply.clearCookie(ADMIN_SESSION_COOKIE, {
+          path: '/',
+        });
 
-      return {
-        status: 200 as const,
-        body: { success: true },
-      };
-    },
+        return {
+          status: 200 as const,
+          body: { success: true },
+        };
+      },
+    });
 
-    logout: async ({ reply }: { reply: FastifyReply }) => {
-      reply.clearCookie(ADMIN_SESSION_COOKIE, {
-        path: '/',
-      });
-
-      return {
-        status: 200 as const,
-        body: { success: true },
-      };
-    },
-  });
-
-  s.registerRouter(adminPublicContract, publicRouter, app, {
-    responseValidation: true,
-    requestValidationErrorHandler: (err, _request, reply) => {
-      return reply.status(400).send({ message: err.message });
-    },
+    s.registerRouter(adminPublicContract, publicRouter, publicApp, {
+      responseValidation: true,
+      requestValidationErrorHandler: (err, _request, reply) => {
+        return reply.status(400).send({ message: err.message });
+      },
+    });
   });
 
   // Register protected admin routes (auth required via middleware)

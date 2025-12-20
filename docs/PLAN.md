@@ -12,7 +12,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
 **Phase 3: PWA + Android Share** - Complete ✓
-**Phase 3.1: PWA Polish** - In Progress
+**Phase 3.1: PWA Polish** - Complete ✓
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 56 acceptance tests, 172 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
@@ -141,7 +141,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Display source URL on capture cards in inbox/archived views
 
 ### Performance
-- [ ] Set `min_machines_running = 1` in Fly.io config to eliminate cold start latency
+- [x] Set `min_machines_running = 1` in Fly.io config to eliminate cold start latency
 
 ### Discovered During Phase 3.1
 *(Track any new issues found while implementing the above)*

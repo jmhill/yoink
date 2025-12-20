@@ -14,6 +14,7 @@ import type { HealthChecker } from './health/domain/health-checker.js';
 import type { AuthMiddleware } from './auth/application/auth-middleware.js';
 import type { AdminService } from './admin/domain/admin-service.js';
 import type { AdminSessionService } from './admin/domain/admin-session-service.js';
+import type { RateLimitConfig } from './config/schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,10 +28,21 @@ export type AppDependencies = {
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
   admin?: AdminConfig;
+  rateLimit?: RateLimitConfig;
+};
+
+// Default rate limit configuration
+const defaultRateLimitConfig: RateLimitConfig = {
+  enabled: true,
+  globalMax: 100,
+  globalTimeWindow: '1 minute',
+  adminLoginMax: 5,
+  adminLoginTimeWindow: '15 minutes',
 };
 
 export const createApp = async (deps: AppDependencies) => {
   const app = Fastify();
+  const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
 
   // Register security plugins
   await app.register(helmet, {
@@ -38,11 +50,14 @@ export const createApp = async (deps: AppDependencies) => {
     contentSecurityPolicy: false, // Disable CSP for now (SPA needs inline scripts from Vite)
   });
 
-  await app.register(rateLimit, {
-    global: true,
-    max: 100, // General rate limit: 100 requests per minute
-    timeWindow: '1 minute',
-  });
+  // Only register global rate limiting if enabled
+  if (rateLimitConfig.enabled) {
+    await app.register(rateLimit, {
+      global: true,
+      max: rateLimitConfig.globalMax,
+      timeWindow: rateLimitConfig.globalTimeWindow,
+    });
+  }
 
   // Register other plugins
   await app.register(cookie);
@@ -56,7 +71,7 @@ export const createApp = async (deps: AppDependencies) => {
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
-    await registerAdminRoutes(app, deps.admin);
+    await registerAdminRoutes(app, deps.admin, rateLimitConfig);
   }
 
   // Serve static files in production

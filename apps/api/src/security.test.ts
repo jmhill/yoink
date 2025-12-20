@@ -2,8 +2,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createInfrastructure, bootstrapApp } from './composition-root.js';
 import { runMigrations } from './database/migrator.js';
 import { migrations } from './database/migrations.js';
-import type { AppConfig } from './config/schema.js';
+import type { AppConfig, RateLimitConfig } from './config/schema.js';
 import type { FastifyInstance } from 'fastify';
+
+const defaultRateLimitConfig: RateLimitConfig = {
+  enabled: true,
+  globalMax: 100,
+  globalTimeWindow: '1 minute',
+  adminLoginMax: 5,
+  adminLoginTimeWindow: '15 minutes',
+};
 
 const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
   server: { port: 3000, host: '0.0.0.0' },
@@ -17,6 +25,7 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
     password: 'test-admin-password',
     sessionSecret: 'a-32-character-secret-for-hmac!!',
   },
+  rateLimit: defaultRateLimitConfig,
   ...overrides,
 });
 
@@ -109,6 +118,29 @@ describe('Security Features', () => {
       });
 
       expect(response.headers['x-powered-by']).toBeUndefined();
+    });
+  });
+
+  describe('Rate Limiting Configuration', () => {
+    it('allows unlimited login attempts when rate limiting is disabled', async () => {
+      // Create app with rate limiting disabled
+      const config = createTestConfig({
+        rateLimit: { ...defaultRateLimitConfig, enabled: false },
+      });
+      const infrastructure = createInfrastructure(config);
+      runMigrations(infrastructure.database.db, migrations);
+      const appWithNoRateLimit = await bootstrapApp({ config, infrastructure, silent: true });
+
+      // Make more than 5 login attempts - should all work (return 401 for wrong password)
+      for (let i = 0; i < 10; i++) {
+        const response = await appWithNoRateLimit.inject({
+          method: 'POST',
+          url: '/api/admin/login',
+          payload: { password: 'wrong-password' },
+        });
+        // Should get 401 (wrong password), not 429 (rate limited)
+        expect(response.statusCode).toBe(401);
+      }
     });
   });
 });

@@ -1,4 +1,4 @@
-import { type AppConfig, type DatabaseConfig, type AdminConfig } from './schema.js';
+import { type AppConfig, type DatabaseConfig, type AdminConfig, type RateLimitConfig } from './schema.js';
 
 /**
  * Load admin configuration from environment variables.
@@ -28,6 +28,21 @@ const loadAdminConfig = async (): Promise<AdminConfig | undefined> => {
 };
 
 /**
+ * Load rate limit configuration from environment variables.
+ * RATE_LIMIT_ENABLED=false disables rate limiting (for testing).
+ */
+const loadRateLimitConfig = (): RateLimitConfig => {
+  const enabled = process.env.RATE_LIMIT_ENABLED !== 'false';
+  return {
+    enabled,
+    globalMax: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX ?? '100', 10),
+    globalTimeWindow: process.env.RATE_LIMIT_GLOBAL_WINDOW ?? '1 minute',
+    adminLoginMax: parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN_MAX ?? '5', 10),
+    adminLoginTimeWindow: process.env.RATE_LIMIT_ADMIN_LOGIN_WINDOW ?? '15 minutes',
+  };
+};
+
+/**
  * Load application configuration from environment variables.
  * Returns production-ready defaults (sqlite, system clock, uuid, bcrypt).
  */
@@ -48,6 +63,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     },
     seedToken: process.env.SEED_TOKEN,
     admin: await loadAdminConfig(),
+    rateLimit: loadRateLimitConfig(),
   };
 };
 

@@ -160,5 +160,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     admin = { adminService, adminSessionService };
   }
 
-  return createApp({ captureService, authMiddleware, healthChecker, admin });
+  return createApp({
+    captureService,
+    authMiddleware,
+    healthChecker,
+    admin,
+    rateLimit: config.rateLimit,
+  });
 };

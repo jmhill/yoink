@@ -10,6 +10,8 @@ services:
       - SESSION_SECRET=test-session-secret-min-32-chars-long
       - SKIP_LITESTREAM=true
       - DB_PATH=/app/apps/api/data/captures.db
+      # Disable rate limiting for E2E tests
+      - RATE_LIMIT_ENABLED=false
     ports:
       - "3333:3000"
     healthcheck:

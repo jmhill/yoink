@@ -78,6 +78,17 @@ export const AdminConfigSchema = z.object({
   sessionSecret: z.string().min(32),
 });
 
+// Rate limiting configuration
+export const RateLimitConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  // General rate limit for all endpoints
+  globalMax: z.number().default(100),
+  globalTimeWindow: z.string().default('1 minute'),
+  // Strict rate limit for admin login (brute force protection)
+  adminLoginMax: z.number().default(5),
+  adminLoginTimeWindow: z.string().default('15 minutes'),
+});
+
 // Full application configuration
 export const AppConfigSchema = z.object({
   server: ServerConfigSchema,
@@ -85,12 +96,14 @@ export const AppConfigSchema = z.object({
   infrastructure: InfrastructureConfigSchema,
   seedToken: z.string().optional(),
   admin: AdminConfigSchema.optional(),
+  rateLimit: RateLimitConfigSchema.optional(),
 });
 
 // Export inferred types
 export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 export type ClockConfig = z.infer<typeof ClockConfigSchema>;
 export type AdminConfig = z.infer<typeof AdminConfigSchema>;
+export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type IdGeneratorConfig = z.infer<typeof IdGeneratorConfigSchema>;
 export type PasswordHasherConfig = z.infer<typeof PasswordHasherConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

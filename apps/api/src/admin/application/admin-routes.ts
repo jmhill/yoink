@@ -5,6 +5,7 @@ import { adminPublicContract, adminProtectedContract } from '@yoink/api-contract
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
+import type { RateLimitConfig } from '../../config/schema.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
@@ -21,7 +22,8 @@ const storageErrorResponse = (message: string) => ({
 
 export const registerAdminRoutes = async (
   app: FastifyInstance,
-  deps: AdminRoutesDependencies
+  deps: AdminRoutesDependencies,
+  rateLimitConfig: RateLimitConfig
 ) => {
   const { adminService, adminSessionService } = deps;
   const s = initServer();
@@ -29,11 +31,14 @@ export const registerAdminRoutes = async (
   // Register public admin routes with strict rate limiting
   await app.register(async (publicApp) => {
     // Apply strict rate limiting to login endpoint (brute force protection)
-    await publicApp.register(rateLimit, {
-      max: 5, // 5 attempts
-      timeWindow: '15 minutes',
-      keyGenerator: (request) => request.ip,
-    });
+    // Only if rate limiting is enabled
+    if (rateLimitConfig.enabled) {
+      await publicApp.register(rateLimit, {
+        max: rateLimitConfig.adminLoginMax,
+        timeWindow: rateLimitConfig.adminLoginTimeWindow,
+        keyGenerator: (request) => request.ip,
+      });
+    }
 
     const publicRouter = s.router(adminPublicContract, {
       login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {

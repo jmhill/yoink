@@ -13,7 +13,8 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 172 unit tests)
+**Phase 4: Browser Extension** - Complete ✓
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 241 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 
@@ -150,18 +151,34 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 ---
 
-## Phase 4: Browser Extension
+## Phase 4: Browser Extension - Complete ✓
 
 **Goal**: Quick capture from desktop browser
 
-- [ ] Create apps/extension scaffold
-- [ ] Manifest v3 setup
-- [ ] Popup UI (selection + source URL)
-- [ ] Content script to grab selection
-- [ ] Options page (API URL, token config)
-- [ ] Build pipeline (extension needs bundling)
+- [x] Create apps/extension scaffold (Vite + React + TypeScript)
+- [x] Manifest v3 setup with permissions (activeTab, storage, contextMenus, notifications)
+- [x] Popup UI with quick-add input, selection auto-fill, page title fallback
+- [x] Content script to grab selection and page info
+- [x] Options page (API URL + token config with validation)
+- [x] Background service worker for context menu captures
+- [x] Keyboard shortcut (Ctrl+Shift+Y / Cmd+Shift+Y)
+- [x] Build pipeline with Vite multi-entry bundling
+- [x] CI workflow for extension build + auto-release on changes
+- [x] Icon generation script (scripts/generate-extension-icons.mjs)
 
-**Deliverable**: Working extension in Chromium browsers (Chrome, Brave, Edge)
+**Deliverable**: Working extension in Chromium browsers (Chrome, Brave, Edge) ✓
+
+### Extension Features
+- **Popup**: Quick-add text input, auto-fills with selected text or page title
+- **Context Menu**: Right-click selected text → "Capture with Yoink"
+- **Keyboard Shortcut**: Ctrl+Shift+Y (Windows/Linux) / Cmd+Shift+Y (Mac)
+- **Options Page**: Configure API URL and token with validation
+- **Notifications**: Success/error feedback for context menu captures
+
+### CI/CD
+- Extension builds automatically when `apps/extension/**` or `packages/api-contracts/**` changes
+- GitHub Release created on main branch with versioned ZIP (e.g., `extension-2024-01-15-abc1234`)
+- Download ZIP from GitHub Releases, unzip, load unpacked in Chrome
 
 ---
 

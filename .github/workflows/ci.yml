@@ -226,3 +226,102 @@ jobs:
         run: |
           curl -sf https://jhtc-yoink-api.fly.dev/admin/ | grep -q "<!DOCTYPE html>"
           echo "Admin UI is reachable"
+
+  extension-build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+    needs: quality
+
+    # Check if extension or api-contracts changed
+    outputs:
+      should-release: ${{ steps.filter.outputs.extension == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for extension changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            extension:
+              - 'apps/extension/**'
+              - 'packages/api-contracts/**'
+
+      - name: Install devbox
+        if: steps.filter.outputs.extension == 'true'
+        uses: jetify-com/devbox-install-action@v0.14.0
+
+      - name: Setup pnpm cache
+        if: steps.filter.outputs.extension == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        if: steps.filter.outputs.extension == 'true'
+        run: devbox run pnpm install --frozen-lockfile
+
+      - name: Run extension tests
+        if: steps.filter.outputs.extension == 'true'
+        run: devbox run pnpm --filter @yoink/extension test
+
+      - name: Build extension
+        if: steps.filter.outputs.extension == 'true'
+        run: devbox run pnpm --filter @yoink/extension build
+
+      - name: Package extension
+        if: steps.filter.outputs.extension == 'true'
+        run: |
+          cd apps/extension/dist
+          zip -r ../../../yoink-extension.zip .
+
+      - name: Upload extension artifact
+        if: steps.filter.outputs.extension == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yoink-extension-${{ github.sha }}
+          path: yoink-extension.zip
+          retention-days: 30
+
+  extension-release:
+    name: Release Extension
+    runs-on: ubuntu-latest
+    needs: extension-build
+    if: needs.extension-build.outputs.should-release == 'true'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download extension artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: yoink-extension-${{ github.sha }}
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(date -u +"%Y-%m-%d")-$(echo ${{ github.sha }} | cut -c1-7)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: extension-${{ steps.version.outputs.version }}
+          name: Extension ${{ steps.version.outputs.version }}
+          body: |
+            Browser extension build from commit ${{ github.sha }}
+
+            ## Installation
+            1. Download `yoink-extension.zip` below
+            2. Unzip to a permanent location
+            3. Open Chrome and go to `chrome://extensions`
+            4. Enable "Developer mode" (top right toggle)
+            5. Click "Load unpacked" and select the unzipped folder
+          files: yoink-extension.zip
+          generate_release_notes: false

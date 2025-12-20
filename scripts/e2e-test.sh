@@ -10,6 +10,12 @@ RETRY_INTERVAL=2
 TEST_BASE_URL="http://localhost:3333"
 TEST_ADMIN_PASSWORD="test-admin-password"
 
+# Driver configuration
+# - DRIVER=http (default): Run tests with HTTP driver only
+# - DRIVER=playwright: Run tests with Playwright driver only
+# - DRIVER=all: Run tests with both drivers
+DRIVER="${DRIVER:-http}"
+
 cleanup() {
     echo "==> Cleaning up..."
     docker compose -f "$COMPOSE_FILE" down --volumes --remove-orphans 2>/dev/null || true
@@ -46,10 +52,23 @@ for i in $(seq 1 $MAX_RETRIES); do
     sleep $RETRY_INTERVAL
 done
 
-echo "==> Running acceptance tests against container..."
-TEST_BASE_URL="$TEST_BASE_URL" \
-TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
-pnpm --filter @yoink/acceptance-tests test
+run_tests() {
+    local driver=$1
+    echo "==> Running acceptance tests (driver: $driver)..."
+    DRIVER="$driver" \
+    TEST_BASE_URL="$TEST_BASE_URL" \
+    TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
+    pnpm --filter @yoink/acceptance-tests test
+}
+
+if [ "$DRIVER" = "all" ]; then
+    echo "==> Running tests with both HTTP and Playwright drivers..."
+    run_tests "http"
+    echo ""
+    run_tests "playwright"
+else
+    run_tests "$DRIVER"
+fi
 
 echo "==> E2E tests passed!"
 

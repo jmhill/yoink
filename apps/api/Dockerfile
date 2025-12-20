@@ -38,6 +38,10 @@ COPY --from=litestream/litestream:0.3.13 /usr/local/bin/litestream /usr/local/bi
 
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
 WORKDIR /app
 
 # Copy workspace configuration
@@ -60,8 +64,9 @@ COPY --from=builder /app/apps/web/dist ./apps/api/public
 # Copy admin UI static files to public/admin directory
 COPY --from=builder /app/apps/admin/dist ./apps/api/public/admin
 
-# Create data directory for SQLite
-RUN mkdir -p /app/apps/api/data
+# Create data directory for SQLite and set ownership
+RUN mkdir -p /app/apps/api/data && \
+    chown -R nodejs:nodejs /app
 
 # Copy Litestream config and startup script
 COPY apps/api/litestream.yml /etc/litestream.yml
@@ -75,5 +80,8 @@ ENV PORT=3000
 EXPOSE 3000
 
 WORKDIR /app/apps/api
+
+# Switch to non-root user
+USER nodejs
 
 CMD ["/app/run.sh"]

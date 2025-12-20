@@ -192,7 +192,7 @@ A comprehensive security review identified the following priorities before shari
 ### Critical Fixes (Before Demo)
 - [x] Rate limiting on admin login (brute force protection)
 - [x] Security headers via @fastify/helmet (CSP, X-Frame-Options, etc.)
-- [ ] Non-root user in Dockerfile (container security)
+- [x] Non-root user in Dockerfile (container security)
 - [ ] Dependency vulnerability scanning in CI (`pnpm audit`)
 
 ### Medium Priority (Before Wider Rollout)

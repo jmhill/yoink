@@ -44,6 +44,9 @@ function OrganizationDetailPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
 
   const loadData = async () => {
     try {
@@ -97,6 +100,36 @@ function OrganizationDetailPage() {
     }
   };
 
+  const handleRenameOrganization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRenaming(true);
+
+    try {
+      const response = await adminApi.updateOrganization({
+        params: { id: orgId },
+        body: { name: newOrgName },
+      });
+
+      if (response.status === 200) {
+        setOrganization(response.body);
+        setIsRenameDialogOpen(false);
+      } else {
+        setError('Failed to rename organization');
+      }
+    } catch {
+      setError('Failed to rename organization');
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const openRenameDialog = () => {
+    if (organization) {
+      setNewOrgName(organization.name);
+      setIsRenameDialogOpen(true);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -136,10 +169,46 @@ function OrganizationDetailPage() {
           <h1 className="text-2xl font-bold">{organization.name}</h1>
           <p className="text-gray-500">Created {formatDate(organization.createdAt)}</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Create User</Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={openRenameDialog}>
+                Rename
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleRenameOrganization}>
+                <DialogHeader>
+                  <DialogTitle>Rename Organization</DialogTitle>
+                  <DialogDescription>
+                    Enter a new name for this organization.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="orgName">Name</Label>
+                    <Input
+                      id="orgName"
+                      type="text"
+                      value={newOrgName}
+                      onChange={(e) => setNewOrgName(e.target.value)}
+                      placeholder="Enter organization name"
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={isRenaming}>
+                    {isRenaming ? 'Renaming...' : 'Rename'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Create User</Button>
+            </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreateUser}>
               <DialogHeader>
@@ -169,6 +238,7 @@ function OrganizationDetailPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {error && (

@@ -1,7 +1,7 @@
-import { describeFeature, it, expect, beforeEach, afterEach } from './harness.js';
+import { describeFeature, expect } from './harness.js';
 import { UnauthorizedError } from '../dsl/index.js';
 
-describeFeature('Authenticating', ['http'], ({ admin }) => {
+describeFeature('Authenticating', ['http'], ({ admin, it, beforeEach, afterEach }) => {
   // Make sure we're logged out before each test
   beforeEach(async () => {
     try {

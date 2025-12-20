@@ -1,6 +1,6 @@
-import { describeFeature, it, expect } from './harness.js';
+import { describeFeature, expect } from './harness.js';
 
-describeFeature('System health', ['http', 'playwright'], ({ health }) => {
+describeFeature('System health', ['http', 'playwright'], ({ health, it }) => {
   it('reports healthy status when system is running', async () => {
     const status = await health.check();
 

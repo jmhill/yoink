@@ -1,7 +1,7 @@
-import { describeFeature, it, expect, beforeAll, afterAll } from './harness.js';
+import { describeFeature, expect, beforeAll, afterAll } from './harness.js';
 import { NotFoundError } from '../dsl/index.js';
 
-describeFeature('Managing tenants', ['http'], ({ admin }) => {
+describeFeature('Managing tenants', ['http'], ({ admin, it }) => {
   beforeAll(async () => {
     await admin.login();
   });

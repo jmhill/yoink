@@ -395,13 +395,21 @@ Must fix the driver before testing harness changes.
   - Throws `UnauthorizedError` only after successful redirect verification
 - The `Actor` implementation was already correctly verifying UI state via page objects
 
-### Phase 2: Refactor Test Harness
+### Phase 2: Refactor Test Harness - COMPLETE
 
-1. Update `harness.ts` with new multi-driver logic
-2. Update test files to get `it` from context
-3. Create custom reporter
-4. Update `vitest.config.ts`
-5. Test locally: verify both drivers execute in single run
+1. ~~Update `harness.ts` with new multi-driver logic~~
+2. ~~Update test files to get `it` from context~~
+3. ~~Create custom reporter~~
+4. ~~Update `vitest.config.ts`~~
+5. ~~Test locally: verify both drivers execute in single run~~
+
+**Changes made:**
+- Refactored `harness.ts` to create nested describe blocks per driver
+- Each driver gets its own instance with isolated setup/teardown
+- `it`, `beforeEach`, `afterEach` now come from context
+- Created `MultiDriverReporter` that outputs unified markdown table
+- Test names now include driver suffix: `can create capture [http]`
+- Single vitest run executes 56 tests (42 HTTP + 14 Playwright)
 
 ### Phase 3: Update Infrastructure
 

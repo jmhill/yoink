@@ -1,8 +1,8 @@
-import { describeFeature, it, expect, beforeEach } from './harness.js';
+import { describeFeature, expect } from './harness.js';
 import type { Actor } from '../dsl/index.js';
 import { NotFoundError, ValidationError } from '../dsl/index.js';
 
-describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => {
+describeFeature('Organizing work', ['http', 'playwright'], ({ createActor, it, beforeEach }) => {
   let alice: Actor;
 
   beforeEach(async () => {
@@ -60,7 +60,7 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => 
 });
 
 // API-specific validation tests (not applicable to UI)
-describeFeature('Organizing work - API validation', ['http'], ({ createActor }) => {
+describeFeature('Organizing work - API validation', ['http'], ({ createActor, it, beforeEach }) => {
   let alice: Actor;
 
   beforeEach(async () => {

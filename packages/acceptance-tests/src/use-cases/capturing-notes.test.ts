@@ -1,11 +1,11 @@
-import { describeFeature, it, expect, beforeEach } from './harness.js';
+import { describeFeature, expect } from './harness.js';
 import type { Actor, AnonymousActor } from '../dsl/index.js';
 import { UnauthorizedError, ValidationError } from '../dsl/index.js';
 
 describeFeature(
   'Capturing notes',
   ['http', 'playwright'],
-  ({ createActor, createAnonymousActor }) => {
+  ({ createActor, createAnonymousActor, it, beforeEach }) => {
     let alice: Actor;
     let anonymous: AnonymousActor;
 
@@ -71,7 +71,7 @@ describeFeature(
 describeFeature(
   'Capturing notes - API features',
   ['http'],
-  ({ createActor, createAnonymousActor }) => {
+  ({ createActor, createAnonymousActor, it, beforeEach }) => {
     let alice: Actor;
     let anonymous: AnonymousActor;
 

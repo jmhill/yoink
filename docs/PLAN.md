@@ -12,6 +12,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
 **Phase 3: PWA + Android Share** - Complete ✓
+**Phase 3.1: PWA Polish** - In Progress
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 56 acceptance tests, 172 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
@@ -128,6 +129,27 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 ---
 
+## Phase 3.1: PWA Polish
+
+**Goal**: Address mobile UX issues discovered in exploratory testing
+
+### Bug Fixes
+- [x] Fix archive buttons not visible on mobile (hover-reveal doesn't work on touch)
+- [ ] Create settings page with logout option (Settings button currently clears token unexpectedly)
+- [ ] Parse share intent URL separately into `sourceUrl` field (not combined into content)
+- [ ] Display source URL in share modal as separate read-only field
+- [ ] Display source URL on capture cards in inbox/archived views
+
+### Performance
+- [ ] Set `min_machines_running = 1` in Fly.io config to eliminate cold start latency
+
+### Discovered During Phase 3.1
+*(Track any new issues found while implementing the above)*
+
+**Deliverable**: Mobile-friendly inbox with proper share target URL handling
+
+---
+
 ## Phase 4: Browser Extension
 
 **Goal**: Quick capture from desktop browser
@@ -166,6 +188,26 @@ After first deploy with health endpoint:
 4. Future deploys will run full smoke tests (health + capture creation)
 
 **Deliverable**: Fully functional personal capture system
+
+---
+
+## Future Enhancements
+
+Ideas for future consideration (not yet scheduled):
+
+### Capture Editing
+- [ ] Markdown rendering for capture content display
+- [ ] Markdown editor for capture editing (with preview)
+
+### Rich Media Captures
+- [ ] Camera integration on Android for photo captures
+- [ ] Image attachment support in capture entity
+- [ ] Image display in inbox/archived views
+
+### User Experience
+- [ ] Dark mode with system preference detection
+- [ ] Swipe-to-archive gesture on mobile
+- [ ] Pull-to-refresh in inbox
 
 ---
 

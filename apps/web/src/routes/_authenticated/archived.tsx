@@ -111,7 +111,7 @@ function ArchivedPage() {
       ) : (
         <div className="space-y-2">
           {captures.map((capture) => (
-            <Card key={capture.id} className="group">
+            <Card key={capture.id}>
               <CardContent className="flex items-start justify-between gap-2 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="whitespace-pre-wrap break-words">{capture.content}</p>
@@ -123,7 +123,6 @@ function ArchivedPage() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleUnarchive(capture.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Move to inbox"
                 >
                   <RotateCcw className="h-4 w-4" />

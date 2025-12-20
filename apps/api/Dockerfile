@@ -15,6 +15,7 @@ COPY packages/infrastructure/package.json ./packages/infrastructure/
 COPY packages/api-contracts/package.json ./packages/api-contracts/
 COPY apps/api/package.json ./apps/api/
 COPY apps/admin/package.json ./apps/admin/
+COPY apps/web/package.json ./apps/web/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -24,6 +25,7 @@ COPY packages/infrastructure/ ./packages/infrastructure/
 COPY packages/api-contracts/ ./packages/api-contracts/
 COPY apps/api/ ./apps/api/
 COPY apps/admin/ ./apps/admin/
+COPY apps/web/ ./apps/web/
 
 # Build all packages using Turborepo
 RUN pnpm build
@@ -51,6 +53,9 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder /app/packages/infrastructure/dist ./packages/infrastructure/dist
 COPY --from=builder /app/packages/api-contracts/dist ./packages/api-contracts/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+
+# Copy web app static files to public directory (served at root)
+COPY --from=builder /app/apps/web/dist ./apps/api/public
 
 # Copy admin UI static files to public/admin directory
 COPY --from=builder /app/apps/admin/dist ./apps/api/public/admin

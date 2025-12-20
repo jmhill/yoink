@@ -45,23 +45,45 @@ export const createApp = async (deps: AppDependencies) => {
     await registerAdminRoutes(app, deps.admin);
   }
 
-  // Serve admin static files in production (if build exists)
-  const adminDistPath = join(__dirname, '../public/admin');
+  // Serve static files in production
+  const publicPath = join(__dirname, '../public');
+  const adminDistPath = join(publicPath, 'admin');
+  const webDistPath = publicPath;
+  
+  // Serve web app at root (if build exists)
+  if (existsSync(join(webDistPath, 'index.html'))) {
+    await app.register(fastifyStatic, {
+      root: webDistPath,
+      prefix: '/',
+      decorateReply: true,
+      // Don't serve files that match API or admin routes
+      serve: true,
+    });
+  }
+
+  // Serve admin static files at /admin (if build exists)
   if (existsSync(adminDistPath)) {
     await app.register(fastifyStatic, {
       root: adminDistPath,
       prefix: '/admin/',
       decorateReply: false,
     });
+  }
 
-    // SPA fallback - serve index.html for unmatched /admin/* routes
-    app.setNotFoundHandler((request, reply) => {
-      if (request.url.startsWith('/admin')) {
+  // SPA fallback - serve index.html for unmatched routes
+  app.setNotFoundHandler((request, reply) => {
+    // Admin SPA routes
+    if (request.url.startsWith('/admin')) {
+      if (existsSync(adminDistPath)) {
         return reply.sendFile('index.html', adminDistPath);
       }
-      return reply.status(404).send({ message: 'Not found' });
-    });
-  }
+    }
+    // Web app SPA routes (not API routes)
+    if (!request.url.startsWith('/api') && existsSync(join(webDistPath, 'index.html'))) {
+      return reply.sendFile('index.html', webDistPath);
+    }
+    return reply.status(404).send({ message: 'Not found' });
+  });
 
   return app;
 };

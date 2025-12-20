@@ -21,23 +21,7 @@ describeFeature(
 
       expect(capture.content).toBe('Remember to buy milk');
       expect(capture.status).toBe('inbox');
-      expect(capture.createdById).toBe(alice.userId);
-      expect(capture.organizationId).toBe(alice.organizationId);
       expect(capture.id).toBeDefined();
-      expect(capture.capturedAt).toBeDefined();
-    });
-
-    it('can create a capture with optional metadata', async () => {
-      const capture = await alice.createCapture({
-        content: 'Interesting article',
-        title: 'How to TDD',
-        sourceUrl: 'https://example.com/tdd',
-        sourceApp: 'browser-extension',
-      });
-
-      expect(capture.title).toBe('How to TDD');
-      expect(capture.sourceUrl).toBe('https://example.com/tdd');
-      expect(capture.sourceApp).toBe('browser-extension');
     });
 
     it('requires authentication to create captures', async () => {
@@ -59,22 +43,18 @@ describeFeature(
 
       const captures = await alice.listCaptures();
 
-      expect(captures).toContainEqual(expect.objectContaining({ id: capture.id }));
+      expect(captures.some((c) => c.content === capture.content)).toBe(true);
     });
 
     it('orders captures newest first', async () => {
-      const first = await alice.createCapture({ content: 'first' });
-      const second = await alice.createCapture({ content: 'second' });
+      await alice.createCapture({ content: 'first-note' });
+      await alice.createCapture({ content: 'second-note' });
 
       const captures = await alice.listCaptures();
-      const firstIndex = captures.findIndex((c) => c.id === first.id);
-      const secondIndex = captures.findIndex((c) => c.id === second.id);
+      const firstIndex = captures.findIndex((c) => c.content === 'first-note');
+      const secondIndex = captures.findIndex((c) => c.content === 'second-note');
 
       expect(secondIndex).toBeLessThan(firstIndex);
-    });
-
-    it('requires authentication to list captures', async () => {
-      await expect(anonymous.listCaptures()).rejects.toThrow(UnauthorizedError);
     });
 
     it('can retrieve a specific capture by id', async () => {
@@ -83,13 +63,62 @@ describeFeature(
       const retrieved = await alice.getCapture(created.id);
 
       expect(retrieved.content).toBe('Find me later');
-      expect(retrieved.id).toBe(created.id);
+    });
+  }
+);
+
+// API-specific tests (require features not in web UI)
+describeFeature(
+  'Capturing notes - API features',
+  ['http'],
+  ({ createActor, createAnonymousActor }) => {
+    let alice: Actor;
+    let anonymous: AnonymousActor;
+
+    beforeEach(async () => {
+      alice = await createActor('alice@example.com');
+      anonymous = createAnonymousActor();
+    });
+
+    it('includes user and org info in capture', async () => {
+      const capture = await alice.createCapture({
+        content: 'Test capture',
+      });
+
+      expect(capture.createdById).toBe(alice.userId);
+      expect(capture.organizationId).toBe(alice.organizationId);
+      expect(capture.capturedAt).toBeDefined();
+    });
+
+    it('can create a capture with optional metadata', async () => {
+      const capture = await alice.createCapture({
+        content: 'Interesting article',
+        title: 'How to TDD',
+        sourceUrl: 'https://example.com/tdd',
+        sourceApp: 'browser-extension',
+      });
+
+      expect(capture.title).toBe('How to TDD');
+      expect(capture.sourceUrl).toBe('https://example.com/tdd');
+      expect(capture.sourceApp).toBe('browser-extension');
+    });
+
+    it('requires authentication to list captures', async () => {
+      await expect(anonymous.listCaptures()).rejects.toThrow(UnauthorizedError);
     });
 
     it('requires authentication to get a capture', async () => {
       await expect(
         anonymous.getCapture('00000000-0000-0000-0000-000000000000')
       ).rejects.toThrow(UnauthorizedError);
+    });
+
+    it('can retrieve capture by exact id', async () => {
+      const created = await alice.createCapture({ content: 'Find me later' });
+
+      const retrieved = await alice.getCapture(created.id);
+
+      expect(retrieved.id).toBe(created.id);
     });
   }
 );

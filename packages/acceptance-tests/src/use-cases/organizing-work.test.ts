@@ -15,7 +15,6 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => 
     const archived = await alice.archiveCapture(capture.id);
 
     expect(archived.status).toBe('archived');
-    expect(archived.archivedAt).toBeDefined();
   });
 
   it('can unarchive a capture', async () => {
@@ -25,7 +24,6 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => 
     const restored = await alice.unarchiveCapture(capture.id);
 
     expect(restored.status).toBe('inbox');
-    expect(restored.archivedAt).toBeUndefined();
   });
 
   it('can update capture content', async () => {
@@ -36,16 +34,6 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => 
     });
 
     expect(updated.content).toBe('Updated');
-  });
-
-  it('can add a title to a capture', async () => {
-    const capture = await alice.createCapture({ content: 'Some note' });
-
-    const updated = await alice.updateCapture(capture.id, {
-      title: 'Important!',
-    });
-
-    expect(updated.title).toBe('Important!');
   });
 
   it('returns not found for non-existent capture', async () => {
@@ -68,6 +56,42 @@ describeFeature('Organizing work', ['http', 'playwright'], ({ createActor }) => 
     await expect(
       alice.updateCapture(nonExistentId, { content: 'Updated' })
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// API-specific validation tests (not applicable to UI)
+describeFeature('Organizing work - API validation', ['http'], ({ createActor }) => {
+  let alice: Actor;
+
+  beforeEach(async () => {
+    alice = await createActor('alice@example.com');
+  });
+
+  it('can add a title to a capture', async () => {
+    const capture = await alice.createCapture({ content: 'Some note' });
+
+    const updated = await alice.updateCapture(capture.id, {
+      title: 'Important!',
+    });
+
+    expect(updated.title).toBe('Important!');
+  });
+
+  it('returns archivedAt when archiving', async () => {
+    const capture = await alice.createCapture({ content: 'Done with this' });
+
+    const archived = await alice.archiveCapture(capture.id);
+
+    expect(archived.archivedAt).toBeDefined();
+  });
+
+  it('clears archivedAt when unarchiving', async () => {
+    const capture = await alice.createCapture({ content: 'Maybe not done' });
+    await alice.archiveCapture(capture.id);
+
+    const restored = await alice.unarchiveCapture(capture.id);
+
+    expect(restored.archivedAt).toBeUndefined();
   });
 
   it('rejects invalid capture id format', async () => {

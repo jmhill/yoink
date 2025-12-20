@@ -10,7 +10,32 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 **Phase 1: Backend Foundation** - Complete ✓
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 38 acceptance tests, 172 unit tests)
+**Phase 2.5: Capture Inbox Web App** - Complete ✓
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 42 acceptance tests, 172 unit tests)
+
+---
+
+## Next Up: Multi-Driver E2E Test Runner
+
+**Goal**: Run acceptance tests against both HTTP and Playwright drivers in a single execution with unified reporting.
+
+See **[E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md)** for the full implementation plan.
+
+### Summary
+
+1. **Fix Playwright Driver** - Currently doesn't actually test UI behavior; needs to verify actions work
+2. **Refactor Test Harness** - Run each test against all applicable drivers in single vitest run
+3. **Custom Reporter** - Output unified markdown table showing pass/fail/N/A per test per driver
+4. **Update CI** - Install Playwright browsers, run both drivers, show report in step summary
+
+### Key Changes
+
+| Current | New |
+|---------|-----|
+| `DRIVER=http` or `DRIVER=playwright` | Both drivers run automatically |
+| Two separate test runs for "all" | Single vitest execution |
+| Report only shows last driver | Unified table: `\| Test \| http \| playwright \|` |
+| Playwright assumes behavior | Playwright verifies UI state |
 
 ---
 
@@ -78,17 +103,19 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Dockerfile multi-stage build includes admin UI
 - [x] Rename organization functionality (PATCH endpoint + UI)
 
-### Capture Inbox
-- [ ] Create apps/web scaffold (Vite + React)
-- [ ] Set up API client (fetch or ts-rest)
-- [ ] Token configuration (stored in localStorage)
-- [ ] Quick add input at top of inbox
-- [ ] Inbox view (list captures, newest first)
-- [ ] Archive action (swipe or button)
-- [ ] Delete action (with confirmation)
-- [ ] Basic responsive styling (mobile-first)
+### Capture Inbox - Complete ✓
+- [x] Create apps/web scaffold (Vite + React + TanStack Router)
+- [x] Set up API client (ts-rest with @yoink/api-contracts)
+- [x] Token configuration page (/config with localStorage)
+- [x] Quick add input at top of inbox
+- [x] Inbox view (list captures, newest first)
+- [x] Archive action (button with hover reveal)
+- [x] Archived view with unarchive action
+- [x] Tab navigation between Inbox and Archived
+- [x] Dockerfile serves web app at / and admin at /admin
+- [x] Playwright driver for browser-based acceptance tests
 
-**Deliverable**: Can create org/user/token via admin panel, then use inbox with that token
+**Deliverable**: Can create org/user/token via admin panel, then use inbox with that token ✓
 
 ---
 
@@ -195,19 +222,25 @@ We implement Dave Farley's 4-layer acceptance test architecture:
 │  Actor, Admin, Health - pure TypeScript interfaces              │
 ├─────────────────────────────────────────────────────────────────┤
 │  Drivers (implement DSL interfaces)                             │
-│  HTTP driver (now), Playwright driver (future)                  │
+│  HTTP driver, Playwright driver                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Test counts:**
 - 172 unit tests (apps/api, packages/*)
-- 38 acceptance tests (packages/acceptance-tests)
+- 42 acceptance tests (packages/acceptance-tests)
+  - HTTP driver: 42 tests
+  - Playwright driver: 14 tests (admin-only tests skipped)
 
 **Commands:**
 - `pnpm quality` - Run unit tests, type checking, and builds
 - `pnpm e2e:test` - Run acceptance tests against Docker container
+- `DRIVER=playwright pnpm e2e:test` - Run with Playwright driver only
+- `DRIVER=all pnpm e2e:test` - Run with both drivers (sequential)
 
-**See [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) for architecture details.**
+**See:**
+- [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) - 4-layer architecture design
+- [E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md) - Multi-driver runner plan (next up)
 
 ### Testing Approach
 

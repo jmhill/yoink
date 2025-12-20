@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { captureApi } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
+import { useNetworkStatus } from '@/lib/use-network-status';
 import type { Capture } from '@yoink/api-contracts';
 import { Archive, Inbox, Settings } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/_authenticated/')({
 });
 
 function InboxPage() {
+  const isOnline = useNetworkStatus();
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newContent, setNewContent] = useState('');
@@ -130,11 +132,11 @@ function InboxPage() {
           <Input
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
-            placeholder="Quick capture..."
-            disabled={isCreating}
+            placeholder={isOnline ? 'Quick capture...' : 'Offline - cannot add captures'}
+            disabled={isCreating || !isOnline}
             className="flex-1"
           />
-          <Button type="submit" disabled={isCreating || !newContent.trim()}>
+          <Button type="submit" disabled={isCreating || !newContent.trim() || !isOnline}>
             {isCreating ? '...' : 'Add'}
           </Button>
         </div>

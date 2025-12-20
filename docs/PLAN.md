@@ -11,6 +11,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 1: Backend Foundation** - Complete ✓
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
+**Phase 3: PWA + Android Share** - Complete ✓
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 56 acceptance tests, 172 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
@@ -97,17 +98,33 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 ---
 
-## Phase 3: PWA + Android Share
+## Phase 3: PWA + Android Share - Complete ✓
 
 **Goal**: Capture from Android via share intent
 
-- [ ] Add PWA manifest with share_target
-- [ ] Implement /share route handler
-- [ ] Service worker for installability
-- [ ] Handle offline gracefully (show error, don't crash)
-- [ ] Test on actual Android device
+### PWA Infrastructure - Complete ✓
+- [x] Add vite-plugin-pwa for manifest and service worker generation
+- [x] Create icon generation script (scripts/generate-pwa-icons.mjs)
+  - Generates 192x192, 512x512, maskable icons from assets/yoink.png
+  - Apple touch icon (180x180) and favicon
+- [x] Configure PWA manifest with theme color (#FBC4AB), icons, display: standalone
+- [x] Update index.html with PWA meta tags (theme-color, apple-mobile-web-app-*)
+- [x] Service worker auto-registers with precaching for static assets
 
-**Deliverable**: Can install PWA on Android, share text to it
+### Share Target - Complete ✓
+- [x] Add share_target to manifest (GET method with title/text/url params)
+- [x] Create /share route with floating quick-add modal UI
+- [x] Parse and combine share params (title\n\ntext\n\nurl format)
+- [x] Save button creates capture, shows toast, closes after 1s delay
+- [x] Redirect to /config?from=share if no token configured
+
+### Offline Handling - Complete ✓
+- [x] Create useNetworkStatus hook (tracks navigator.onLine)
+- [x] Add offline banner to root layout (yellow warning bar)
+- [x] Disable quick-add input when offline with explanatory placeholder
+- [x] Show offline warning in share modal, disable save button
+
+**Deliverable**: Can install PWA on Android, share text to it ✓
 
 ---
 

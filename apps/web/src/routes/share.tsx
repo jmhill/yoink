@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { captureApi } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
+import { useNetworkStatus } from '@/lib/use-network-status';
 import { combineShareParams, parseShareParams } from '@/lib/share';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { WifiOff, X } from 'lucide-react';
 
 export const Route = createFileRoute('/share')({
   component: SharePage,
@@ -14,6 +15,7 @@ export const Route = createFileRoute('/share')({
 
 function SharePage() {
   const navigate = useNavigate();
+  const isOnline = useNetworkStatus();
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -97,6 +99,12 @@ function SharePage() {
           </div>
         </CardHeader>
         <CardContent>
+          {!isOnline && (
+            <div className="mb-4 flex items-center gap-2 rounded-md bg-yellow-100 px-3 py-2 text-sm text-yellow-800">
+              <WifiOff className="h-4 w-4" />
+              <span>You're offline. Cannot save captures.</span>
+            </div>
+          )}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -115,7 +123,7 @@ function SharePage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!content.trim() || isSaving || isClosing}
+              disabled={!content.trim() || isSaving || isClosing || !isOnline}
             >
               {isSaving ? 'Saving...' : isClosing ? 'Saved!' : 'Save'}
             </Button>

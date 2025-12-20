@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { captureApi } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
-import { combineShareParams, parseShareParams } from '@/lib/share';
+import { extractContent, extractUrl, parseShareParams } from '@/lib/share';
 import { toast } from 'sonner';
-import { WifiOff, X } from 'lucide-react';
+import { WifiOff, X, Link as LinkIcon } from 'lucide-react';
 
 export const Route = createFileRoute('/share')({
   component: SharePage,
@@ -17,14 +17,15 @@ function SharePage() {
   const navigate = useNavigate();
   const isOnline = useNetworkStatus();
   const [content, setContent] = useState('');
+  const [sourceUrl, setSourceUrl] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   // Parse share params from URL on mount
   useEffect(() => {
     const params = parseShareParams(new URLSearchParams(window.location.search));
-    const combined = combineShareParams(params);
-    setContent(combined);
+    setContent(extractContent(params));
+    setSourceUrl(extractUrl(params));
   }, []);
 
   // Check if token is configured
@@ -51,12 +52,16 @@ function SharePage() {
   };
 
   const handleSave = async () => {
-    if (!content.trim()) return;
+    // Need either content or URL to save
+    if (!content.trim() && !sourceUrl) return;
 
     setIsSaving(true);
     try {
       const response = await captureApi.create({
-        body: { content: content.trim() },
+        body: {
+          content: content.trim() || sourceUrl || '',
+          sourceUrl,
+        },
       });
 
       if (response.status === 201) {
@@ -105,6 +110,12 @@ function SharePage() {
               <span>You're offline. Cannot save captures.</span>
             </div>
           )}
+          {sourceUrl && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+              <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate text-muted-foreground">{sourceUrl}</span>
+            </div>
+          )}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -123,7 +134,7 @@ function SharePage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!content.trim() || isSaving || isClosing || !isOnline}
+              disabled={(!content.trim() && !sourceUrl) || isSaving || isClosing || !isOnline}
             >
               {isSaving ? 'Saving...' : isClosing ? 'Saved!' : 'Save'}
             </Button>

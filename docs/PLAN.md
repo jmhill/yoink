@@ -136,9 +136,9 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 ### Bug Fixes
 - [x] Fix archive buttons not visible on mobile (hover-reveal doesn't work on touch)
 - [x] Create settings page with logout option (Settings button currently clears token unexpectedly)
-- [ ] Parse share intent URL separately into `sourceUrl` field (not combined into content)
-- [ ] Display source URL in share modal as separate read-only field
-- [ ] Display source URL on capture cards in inbox/archived views
+- [x] Parse share intent URL separately into `sourceUrl` field (not combined into content)
+- [x] Display source URL in share modal as separate read-only field
+- [x] Display source URL on capture cards in inbox/archived views
 
 ### Performance
 - [ ] Set `min_machines_running = 1` in Fly.io config to eliminate cold start latency

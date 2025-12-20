@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { captureApi } from '@/api/client';
 import type { Capture } from '@yoink/api-contracts';
-import { Archive, Inbox, Settings, RotateCcw } from 'lucide-react';
+import { Archive, Inbox, Settings, RotateCcw, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/archived')({
@@ -111,6 +111,18 @@ function ArchivedPage() {
               <CardContent className="flex items-start justify-between gap-2 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+                  {capture.sourceUrl && (
+                    <a
+                      href={capture.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                      data-testid="source-url"
+                    >
+                      <LinkIcon className="h-3 w-3" />
+                      <span className="truncate">{capture.sourceUrl}</span>
+                    </a>
+                  )}
                   <p className="mt-1 text-xs text-gray-400">
                     {formatDate(capture.capturedAt)}
                   </p>

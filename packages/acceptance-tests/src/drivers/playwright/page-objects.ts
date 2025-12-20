@@ -67,6 +67,18 @@ export class InboxPage {
     return contents;
   }
 
+  /**
+   * Get the source URL displayed on a capture card, if any.
+   */
+  async getCaptureSourceUrl(content: string): Promise<string | null> {
+    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
+    const urlElement = card.locator('[data-testid="source-url"]');
+    if (await urlElement.isVisible()) {
+      return await urlElement.textContent();
+    }
+    return null;
+  }
+
   async archiveCapture(content: string): Promise<void> {
     // Find the card containing this content and click its archive button
     const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });

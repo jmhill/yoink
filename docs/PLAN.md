@@ -193,7 +193,7 @@ A comprehensive security review identified the following priorities before shari
 - [x] Rate limiting on admin login (brute force protection)
 - [x] Security headers via @fastify/helmet (CSP, X-Frame-Options, etc.)
 - [x] Non-root user in Dockerfile (container security)
-- [ ] Dependency vulnerability scanning in CI (`pnpm audit`)
+- [x] Dependency vulnerability scanning in CI (`pnpm audit`)
 
 ### Medium Priority (Before Wider Rollout)
 - [ ] Pin GitHub Actions to commit SHAs (supply chain security)

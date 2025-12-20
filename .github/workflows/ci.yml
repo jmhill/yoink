@@ -48,6 +48,9 @@ jobs:
       - name: Run quality checks
         run: devbox run pnpm quality
 
+      - name: Security audit
+        run: devbox run pnpm audit --audit-level=high
+
   build-artifact:
     name: Build Docker Image
     runs-on: ubuntu-latest

@@ -7,7 +7,7 @@ import type {
   UpdateCaptureInput,
 } from '../../dsl/index.js';
 import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
-import { ConfigPage, InboxPage, ArchivedPage } from './page-objects.js';
+import { ConfigPage, InboxPage, ArchivedPage, SettingsPage } from './page-objects.js';
 
 type ActorCredentials = {
   email: string;
@@ -38,6 +38,7 @@ export const createPlaywrightActor = (
   const configPage = new ConfigPage(page);
   const inboxPage = new InboxPage(page);
   const archivedPage = new ArchivedPage(page);
+  const settingsPage = new SettingsPage(page);
   
   // Track captures we've created for ID lookup
   const capturesByContent = new Map<string, CaptureState>();
@@ -170,6 +171,19 @@ export const createPlaywrightActor = (
 
     async unarchiveCapture(id: string): Promise<Capture> {
       return this.updateCapture(id, { status: 'inbox' });
+    },
+
+    async goToSettings(): Promise<void> {
+      await ensureConfigured();
+      await inboxPage.goto();
+      await inboxPage.goToSettings();
+    },
+
+    async logout(): Promise<void> {
+      await ensureConfigured();
+      await settingsPage.goto();
+      await settingsPage.logout();
+      isConfigured = false;
     },
   };
 };

@@ -13,6 +13,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedArchivedRouteImport } from './routes/_authenticated/archived'
 
 const ShareRoute = ShareRouteImport.update({
@@ -34,6 +35,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedArchivedRoute = AuthenticatedArchivedRouteImport.update({
   id: '/archived',
   path: '/archived',
@@ -44,12 +50,14 @@ export interface FileRoutesByFullPath {
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
   '/archived': typeof AuthenticatedArchivedRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
   '/archived': typeof AuthenticatedArchivedRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -58,19 +66,21 @@ export interface FileRoutesById {
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
   '/_authenticated/archived': typeof AuthenticatedArchivedRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/config' | '/share' | '/archived' | '/'
+  fullPaths: '/config' | '/share' | '/archived' | '/settings' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/config' | '/share' | '/archived' | '/'
+  to: '/config' | '/share' | '/archived' | '/settings' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/config'
     | '/share'
     | '/_authenticated/archived'
+    | '/_authenticated/settings'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -110,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/archived': {
       id: '/_authenticated/archived'
       path: '/archived'
@@ -122,11 +139,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedArchivedRoute: typeof AuthenticatedArchivedRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedArchivedRoute: AuthenticatedArchivedRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

@@ -9,6 +9,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  UnsupportedOperationError,
 } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
@@ -109,6 +110,14 @@ export const createHttpActor = (
         authHeaders()
       );
       return handleCaptureResponse(response, id);
+    },
+
+    async goToSettings(): Promise<void> {
+      throw new UnsupportedOperationError('goToSettings', 'http');
+    },
+
+    async logout(): Promise<void> {
+      throw new UnsupportedOperationError('logout', 'http');
     },
   };
 };

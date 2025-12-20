@@ -81,9 +81,38 @@ export class InboxPage {
     await this.page.waitForURL('/archived');
   }
 
+  async goToSettings(): Promise<void> {
+    await this.page.getByTitle('Settings').click();
+    await this.page.waitForURL('/settings');
+  }
+
   async isEmpty(): Promise<boolean> {
     const emptyMessage = this.page.getByText('Your inbox is empty');
     return await emptyMessage.isVisible();
+  }
+}
+
+/**
+ * Page object for the settings page (/settings).
+ */
+export class SettingsPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(): Promise<void> {
+    await this.page.goto('/settings');
+  }
+
+  async logout(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Log out' }).click();
+    // Wait for redirect to config page
+    await this.page.waitForURL('**/config');
+  }
+
+  async goBack(): Promise<void> {
+    await this.page.getByRole('link', { name: 'Back' }).or(
+      this.page.locator('a[href="/"]')
+    ).click();
+    await this.page.waitForURL('/');
   }
 }
 

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { captureApi } from '@/api/client';
-import { tokenStorage } from '@/lib/token';
 import type { Capture } from '@yoink/api-contracts';
 import { Archive, Inbox, Settings, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -52,11 +51,6 @@ function ArchivedPage() {
     }
   };
 
-  const handleClearToken = () => {
-    tokenStorage.remove();
-    window.location.href = '/config';
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -76,8 +70,10 @@ function ArchivedPage() {
     <div className="container mx-auto max-w-2xl p-4">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Yoink</h1>
-        <Button variant="ghost" size="icon" onClick={handleClearToken} title="Settings">
-          <Settings className="h-5 w-5" />
+        <Button variant="ghost" size="icon" asChild title="Settings">
+          <Link to="/settings">
+            <Settings className="h-5 w-5" />
+          </Link>
         </Button>
       </div>
 

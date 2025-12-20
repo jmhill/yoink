@@ -42,3 +42,12 @@ export class ValidationError extends DslError {
     super(message);
   }
 }
+
+/**
+ * Thrown when an operation is not supported by the current driver.
+ */
+export class UnsupportedOperationError extends DslError {
+  constructor(operation: string, driver: string) {
+    super(`Operation '${operation}' is not supported by the ${driver} driver`);
+  }
+}

@@ -20,6 +20,19 @@ export type Actor = {
   updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture>;
   archiveCapture(id: string): Promise<Capture>;
   unarchiveCapture(id: string): Promise<Capture>;
+
+  // Session operations
+  /**
+   * Navigate to the settings page.
+   * Only available in browser-based drivers.
+   */
+  goToSettings(): Promise<void>;
+
+  /**
+   * Log out of the current session.
+   * Clears credentials and returns to unconfigured state.
+   */
+  logout(): Promise<void>;
 };
 
 /**

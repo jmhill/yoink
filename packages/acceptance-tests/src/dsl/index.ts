@@ -16,6 +16,7 @@ export {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  UnsupportedOperationError,
 } from './errors.js';
 
 // Interfaces

@@ -12,6 +12,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 2: Admin Panel (Backend + Frontend)** - Complete ✓
 **Phase 2.5: Capture Inbox Web App** - Complete ✓
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 42 acceptance tests, 172 unit tests)
+**CI/CD Optimizations** - Complete ✓
 
 ---
 
@@ -241,6 +242,30 @@ We implement Dave Farley's 4-layer acceptance test architecture:
 **See:**
 - [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) - 4-layer architecture design
 - [E2E_MULTI_DRIVER_PLAN.md](./E2E_MULTI_DRIVER_PLAN.md) - Multi-driver runner plan (next up)
+
+### CI/CD Optimizations
+
+Implemented performance and efficiency improvements to the CI pipeline:
+
+**Path Filtering**
+- CI pipeline skips runs for documentation-only changes
+- Ignored paths: `docs/**`, `*.md`, `AGENTS.md`, `CLAUDE.md`, `.github/workflows/claude*.yml`
+- Claude Code Review workflow still runs on all PRs (useful for doc quality review)
+
+**Dependency Caching**
+- pnpm store cached using `actions/cache@v4`
+- Cache key based on `pnpm-lock.yaml` hash
+- Applied to both `quality` and `e2e-tests` jobs
+
+**Docker Layer Caching**
+- Switched from manual `docker build` to `docker/build-push-action@v6`
+- Uses GitHub Actions cache (`type=gha`) for layer caching
+- Requires `docker/setup-buildx-action@v3` for BuildKit support
+
+**Benefits:**
+- Documentation PRs don't trigger expensive Docker builds and E2E tests
+- Subsequent CI runs reuse cached dependencies (faster installs)
+- Docker builds reuse cached layers when Dockerfile/dependencies unchanged
 
 ### Testing Approach
 

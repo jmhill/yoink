@@ -132,8 +132,8 @@ function ArchivedPage() {
           <Card>
             <CardContent className="py-8 text-center">
               <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
-              <p className="text-gray-600">Unable to connect to the server.</p>
-              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+              <p className="text-muted-foreground">Unable to connect to the server.</p>
+              <p className="text-sm text-muted-foreground">Please check your internet connection.</p>
             </CardContent>
           </Card>
         </div>
@@ -182,10 +182,10 @@ function ArchivedPage() {
       </Tabs>
 
       {isPending ? (
-        <p className="text-center text-gray-500">Loading...</p>
+        <p className="text-center text-muted-foreground">Loading...</p>
       ) : captures.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center text-gray-500">
+          <CardContent className="py-8 text-center text-muted-foreground">
             <Archive className="mx-auto mb-2 h-8 w-8" />
             <p>No archived captures</p>
             <p className="text-sm">Archived items will appear here</p>
@@ -210,7 +210,7 @@ function ArchivedPage() {
                       <span className="truncate">{capture.sourceUrl}</span>
                     </a>
                   )}
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(capture.capturedAt)}
                   </p>
                 </div>

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import { runMigrations } from './migrator.js';
-import type { Migration } from './migrations.js';
+import type { Migration } from './types.js';
 
 describe('runMigrations', () => {
   let db: DatabaseSync;
@@ -164,5 +164,47 @@ describe('runMigrations', () => {
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='_migrations'")
       .all();
     expect(tables).toHaveLength(1);
+  });
+
+  it('rolls back failed migration leaving database unchanged', () => {
+    const migrations: Migration[] = [
+      {
+        version: 1,
+        name: 'create_foo',
+        up: (db) => db.exec('CREATE TABLE foo (id TEXT PRIMARY KEY)'),
+      },
+      {
+        version: 2,
+        name: 'failing_migration',
+        up: (db) => {
+          // Create a table, then fail mid-migration
+          db.exec('CREATE TABLE partial (id TEXT PRIMARY KEY)');
+          throw new Error('Migration failed intentionally');
+        },
+      },
+    ];
+
+    // First migration should succeed
+    runMigrations(db, migrations.slice(0, 1));
+
+    // Second migration should fail and rollback
+    expect(() => runMigrations(db, migrations)).toThrow(
+      'Migration failed intentionally'
+    );
+
+    // The partial table should NOT exist (rolled back)
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
+    const tableNames = tables.map((t) => t.name);
+    expect(tableNames).toContain('foo'); // First migration persisted
+    expect(tableNames).not.toContain('partial'); // Failed migration rolled back
+
+    // Migration 2 should NOT be recorded
+    const records = db
+      .prepare('SELECT version, name FROM _migrations ORDER BY version')
+      .all() as { version: number; name: string }[];
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ version: 1, name: 'create_foo' });
   });
 });

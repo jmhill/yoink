@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { Migration } from './migrations.js';
+import type { Migration } from './types.js';
 
 export type MigrationResult = {
   applied: string[];
@@ -16,6 +16,7 @@ type MigrationRow = {
  *
  * - Creates a _migrations table to track applied migrations
  * - Applies migrations in order by version number
+ * - Each migration runs in a transaction (rolls back on failure)
  * - Validates that existing migrations haven't changed names (consistency check)
  * - Returns which migrations were applied and which were already applied
  */
@@ -59,15 +60,22 @@ export const runMigrations = (
       continue;
     }
 
-    // Apply the migration
-    migration.up(db);
+    // Apply the migration within a transaction
+    db.exec('BEGIN TRANSACTION');
+    try {
+      migration.up(db);
 
-    // Record as applied
-    db.prepare(
-      'INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)'
-    ).run(migration.version, migration.name, new Date().toISOString());
+      // Record as applied
+      db.prepare(
+        'INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)'
+      ).run(migration.version, migration.name, new Date().toISOString());
 
-    result.applied.push(migration.name);
+      db.exec('COMMIT');
+      result.applied.push(migration.name);
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   return result;

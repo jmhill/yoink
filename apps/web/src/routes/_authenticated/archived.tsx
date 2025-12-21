@@ -19,7 +19,7 @@ function ArchivedPage() {
     queryData: { query: { status: 'archived' as const } },
   });
 
-  const unarchiveMutation = tsr.update.useMutation({
+  const unarchiveMutation = tsr.unarchive.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
       await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
@@ -105,7 +105,7 @@ function ArchivedPage() {
   const handleUnarchive = (id: string) => {
     unarchiveMutation.mutate({
       params: { id },
-      body: { status: 'inbox' },
+      body: {},
     });
   };
 

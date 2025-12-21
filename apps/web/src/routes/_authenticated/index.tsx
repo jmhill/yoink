@@ -95,7 +95,7 @@ function InboxPage() {
     },
   });
 
-  const archiveMutation = tsr.update.useMutation({
+  const archiveMutation = tsr.archive.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
       await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
@@ -178,82 +178,98 @@ function InboxPage() {
     },
   });
 
-  const pinMutation = tsr.update.useMutation({
-    onMutate: async ({ params, body }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
-
-      // Snapshot current state for rollback
-      const previousInbox = tsrQueryClient.list.getQueryData([
-        'captures',
-        'inbox',
-      ]);
-
-      // Optimistically update the pin state
-      if (previousInbox?.status === 200 && body) {
-        const isPinning = body.pinned === true;
-        const updatedCaptures = previousInbox.body.captures.map((c) => {
-          if (c.id === params.id) {
-            return {
-              ...c,
-              pinnedAt: isPinning ? new Date().toISOString() : undefined,
-            };
-          }
-          return c;
-        });
-
-        // Re-sort: pinned first (by pinnedAt DESC), then unpinned (by capturedAt DESC)
-        updatedCaptures.sort((a, b) => {
-          const aPinned = a.pinnedAt ? 1 : 0;
-          const bPinned = b.pinnedAt ? 1 : 0;
-          if (aPinned !== bPinned) {
-            return bPinned - aPinned;
-          }
-          if (a.pinnedAt && b.pinnedAt) {
-            return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
-          }
-          return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
-        });
-
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: updatedCaptures,
-          },
-        });
-      }
-
-      return { previousInbox };
-    },
-
-    onError: (err, _variables, context) => {
-      // Rollback on error
-      if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'inbox'],
-          context.previousInbox
-        );
-      }
-
-      // Show error toast
+  // Pin mutation helper - uses different endpoints for pin/unpin
+  const pinMutationInternal = tsr.pin.useMutation({
+    onError: (err) => {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to update pin');
+        toast.error('Failed to pin');
       }
     },
-
-    onSuccess: (_data, variables) => {
-      const isPinning = variables.body?.pinned === true;
-      toast.success(isPinning ? 'Pinned' : 'Unpinned');
+    onSuccess: () => {
+      toast.success('Pinned');
     },
-
     onSettled: () => {
-      // Refetch to ensure consistency with server
       tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
     },
   });
+
+  const unpinMutationInternal = tsr.unpin.useMutation({
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to unpin');
+      }
+    },
+    onSuccess: () => {
+      toast.success('Unpinned');
+    },
+    onSettled: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+    },
+  });
+
+  // Wrapper to handle optimistic updates for both pin/unpin
+  const handlePinOptimistic = async (id: string, isPinning: boolean) => {
+    // Cancel in-flight queries to prevent overwrites
+    await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+    // Snapshot current state for rollback
+    const previousInbox = tsrQueryClient.list.getQueryData([
+      'captures',
+      'inbox',
+    ]);
+
+    // Optimistically update the pin state
+    if (previousInbox?.status === 200) {
+      const updatedCaptures = previousInbox.body.captures.map((c) => {
+        if (c.id === id) {
+          return {
+            ...c,
+            pinnedAt: isPinning ? new Date().toISOString() : undefined,
+          };
+        }
+        return c;
+      });
+
+      // Re-sort: pinned first (by pinnedAt DESC), then unpinned (by capturedAt DESC)
+      updatedCaptures.sort((a, b) => {
+        const aPinned = a.pinnedAt ? 1 : 0;
+        const bPinned = b.pinnedAt ? 1 : 0;
+        if (aPinned !== bPinned) {
+          return bPinned - aPinned;
+        }
+        if (a.pinnedAt && b.pinnedAt) {
+          return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
+        }
+        return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
+      });
+
+      tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+        ...previousInbox,
+        body: {
+          ...previousInbox.body,
+          captures: updatedCaptures,
+        },
+      });
+    }
+
+    // Call the actual mutation
+    try {
+      if (isPinning) {
+        await pinMutationInternal.mutateAsync({ params: { id }, body: {} });
+      } else {
+        await unpinMutationInternal.mutateAsync({ params: { id }, body: {} });
+      }
+    } catch {
+      // Rollback on error
+      if (previousInbox) {
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], previousInbox);
+      }
+    }
+  };
 
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,15 +283,12 @@ function InboxPage() {
   const handleArchive = (id: string) => {
     archiveMutation.mutate({
       params: { id },
-      body: { status: 'archived' },
+      body: {},
     });
   };
 
   const handlePin = (id: string, isPinned: boolean) => {
-    pinMutation.mutate({
-      params: { id },
-      body: { pinned: !isPinned },
-    });
+    handlePinOptimistic(id, !isPinned);
   };
 
   const formatDate = (dateString: string) => {
@@ -409,7 +422,7 @@ function InboxPage() {
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => handlePin(capture.id, isPinned)}
-                      disabled={pinMutation.isPending}
+                      disabled={pinMutationInternal.isPending || unpinMutationInternal.isPending}
                       aria-label={isPinned ? 'Unpin' : 'Pin'}
                     >
                       <Pin className={`h-4 w-4 ${isPinned ? 'fill-current' : ''}`} />

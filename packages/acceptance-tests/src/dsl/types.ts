@@ -52,11 +52,10 @@ export type CreateCaptureInput = {
   sourceApp?: string;
 };
 
+// Content-only updates - explicit operations handle status/pin/snooze
 export type UpdateCaptureInput = {
   content?: string;
   title?: string;
-  status?: 'inbox' | 'archived';
-  pinned?: boolean;
 };
 
 // =============================================================================

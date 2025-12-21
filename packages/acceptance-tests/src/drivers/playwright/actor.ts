@@ -172,30 +172,6 @@ export const createPlaywrightActor = (
         throw new NotFoundError('Capture', id);
       }
       
-      // Handle status change
-      if (input.status === 'archived' && targetState.status === 'inbox') {
-        await inboxPage.goto();
-        await inboxPage.archiveCapture(targetState.content);
-        targetState.status = 'archived';
-        // Archiving automatically unpins
-        targetState.pinnedAt = undefined;
-      } else if (input.status === 'inbox' && targetState.status === 'archived') {
-        await archivedPage.goto();
-        await archivedPage.unarchiveCapture(targetState.content);
-        targetState.status = 'inbox';
-      }
-
-      // Handle pinned change
-      if (input.pinned === true && !targetState.pinnedAt) {
-        await inboxPage.goto();
-        await inboxPage.pinCapture(targetState.content);
-        targetState.pinnedAt = new Date().toISOString();
-      } else if (input.pinned === false && targetState.pinnedAt) {
-        await inboxPage.goto();
-        await inboxPage.unpinCapture(targetState.content);
-        targetState.pinnedAt = undefined;
-      }
-      
       // Update content in our state (UI doesn't support inline edit yet)
       if (input.content) {
         capturesByContent.delete(targetState.content);
@@ -207,11 +183,51 @@ export const createPlaywrightActor = (
     },
 
     async archiveCapture(id: string): Promise<Capture> {
-      return this.updateCapture(id, { status: 'archived' });
+      await ensureConfigured();
+
+      // Find the capture by ID
+      let targetState: CaptureState | undefined;
+      for (const state of capturesByContent.values()) {
+        if (state.id === id) {
+          targetState = state;
+          break;
+        }
+      }
+
+      if (!targetState) {
+        throw new NotFoundError('Capture', id);
+      }
+
+      await inboxPage.goto();
+      await inboxPage.archiveCapture(targetState.content);
+      targetState.status = 'archived';
+      // Archiving automatically unpins
+      targetState.pinnedAt = undefined;
+
+      return buildCapture(targetState);
     },
 
     async unarchiveCapture(id: string): Promise<Capture> {
-      return this.updateCapture(id, { status: 'inbox' });
+      await ensureConfigured();
+
+      // Find the capture by ID
+      let targetState: CaptureState | undefined;
+      for (const state of capturesByContent.values()) {
+        if (state.id === id) {
+          targetState = state;
+          break;
+        }
+      }
+
+      if (!targetState) {
+        throw new NotFoundError('Capture', id);
+      }
+
+      await archivedPage.goto();
+      await archivedPage.unarchiveCapture(targetState.content);
+      targetState.status = 'inbox';
+
+      return buildCapture(targetState);
     },
 
     async pinCapture(id: string): Promise<Capture> {

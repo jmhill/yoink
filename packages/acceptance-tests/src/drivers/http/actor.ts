@@ -103,36 +103,36 @@ export const createHttpActor = (
     },
 
     async archiveCapture(id: string): Promise<Capture> {
-      const response = await client.patch(
-        `/api/captures/${id}`,
-        { status: 'archived' },
+      const response = await client.post(
+        `/api/captures/${id}/archive`,
+        {},
         authHeaders()
       );
       return handleCaptureResponse(response, id);
     },
 
     async unarchiveCapture(id: string): Promise<Capture> {
-      const response = await client.patch(
-        `/api/captures/${id}`,
-        { status: 'inbox' },
+      const response = await client.post(
+        `/api/captures/${id}/unarchive`,
+        {},
         authHeaders()
       );
       return handleCaptureResponse(response, id);
     },
 
     async pinCapture(id: string): Promise<Capture> {
-      const response = await client.patch(
-        `/api/captures/${id}`,
-        { pinned: true },
+      const response = await client.post(
+        `/api/captures/${id}/pin`,
+        {},
         authHeaders()
       );
       return handleCaptureResponse(response, id);
     },
 
     async unpinCapture(id: string): Promise<Capture> {
-      const response = await client.patch(
-        `/api/captures/${id}`,
-        { pinned: false },
+      const response = await client.post(
+        `/api/captures/${id}/unpin`,
+        {},
         authHeaders()
       );
       return handleCaptureResponse(response, id);

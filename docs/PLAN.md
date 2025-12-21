@@ -19,6 +19,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
 **Phase 4.6: Database Migration Infrastructure** - Complete ✓ (critical items)
+**Phase 5.5: Snooze Feature** - In Progress (backend complete, UI pending)
 
 ---
 
@@ -302,6 +303,58 @@ After first deploy with health endpoint:
 
 ---
 
+## Phase 5.5: Snooze Feature
+
+**Goal**: Temporarily hide captures and have them resurface after a specified time
+
+### API Refactor (Complete) ✓
+- [x] Replace generic PATCH with explicit operation endpoints
+  - POST /captures/:id/archive and /unarchive
+  - POST /captures/:id/pin and /unpin
+- [x] Update web app and acceptance tests to use new endpoints
+
+### Backend (Complete) ✓
+- [x] Add `snoozedUntil` field to CaptureSchema (ISO timestamp or null)
+- [x] Add POST /captures/:id/snooze endpoint (accepts `until` timestamp)
+- [x] Add POST /captures/:id/unsnooze endpoint
+- [x] Add `snoozed` boolean query param to GET /captures
+  - `snoozed=true`: only captures with snoozedUntil in the future
+  - `snoozed=false`: exclude snoozed captures (default for inbox)
+- [x] Migration 006-add-snoozed-until.ts
+- [x] Business rules:
+  - Can't snooze archived captures
+  - Snooze time must be in future
+  - Archiving clears snooze
+  - Pin and snooze can coexist
+
+### Acceptance Tests (Pending)
+- [ ] Create snoozing-captures.test.ts
+- [ ] Test snooze creation with valid future time
+- [ ] Test snooze appears in snoozed list, not inbox
+- [ ] Test expired snooze returns to inbox
+- [ ] Test unsnooze returns capture to inbox immediately
+- [ ] Test archive clears snooze
+
+### Web App UI (Pending)
+- [ ] Add Snoozed tab (leftmost: Snoozed | Inbox | Archived)
+- [ ] Add snooze button to capture cards (left position, before Pin)
+- [ ] Snooze dropdown with options:
+  - "Later today" (6pm same day)
+  - "Tomorrow" (9am next day)
+  - "Next week" (Monday 9am)
+- [ ] Create /snoozed route showing snoozed captures with wake times
+- [ ] Show "Waking at [time]" on snoozed capture cards
+- [ ] Unsnooze button on snoozed captures
+
+### Design Decisions
+- **Snooze filtering**: Client compares `snoozedUntil` vs current time (no lazy DB updates)
+- **Status vs modifiers**: `status` is workflow (inbox/archived), `pinnedAt`/`snoozedUntil` are display modifiers
+- **Pin + Snooze coexist**: When snooze expires, pinned captures appear at top of inbox
+
+**Deliverable**: Can snooze captures to resurface later without push notifications
+
+---
+
 ## Future Enhancements
 
 Ideas for future consideration, roughly prioritized:
@@ -321,9 +374,7 @@ Ideas for future consideration, roughly prioritized:
   - Pinned captures appear first in inbox, sorted by pinnedAt (most recent first)
   - Archiving a pinned capture automatically unpins it
   - Visual indicator: accent border on left edge of pinned cards
-- [ ] Snooze/reminders - temporarily hide capture, resurface after duration
-  - New "snoozed" status alongside inbox/archived
-  - Mechanics TBD: backend scheduler vs client-side check, push notifications
+- [ ] Snooze captures - temporarily hide, resurface after duration (backend complete, see Phase 5.5)
 - [ ] Swipe-to-archive gesture on mobile
 
 ### Tier 3: Architectural Work

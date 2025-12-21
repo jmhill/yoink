@@ -19,6 +19,20 @@ type ActorCredentials = {
 /**
  * State tracking for captures created through the UI.
  * Since the UI doesn't expose all capture fields, we need to track them.
+ *
+ * LIMITATION: Synthetic ID Tracking
+ * =================================
+ * The Playwright driver generates synthetic IDs (e.g., "ui-1234567890-abc123")
+ * because the web UI doesn't expose the actual database IDs. This has implications:
+ *
+ * 1. `getCapture(id)` only works for captures this driver instance created
+ * 2. Tests using synthetic IDs don't verify actual database behavior
+ * 3. If the same content is captured twice, the Map will only track the latest
+ *
+ * The driver uses content-based lookups internally, mapping content → state.
+ * This works well for most acceptance tests since each test creates unique content.
+ *
+ * For tests that need real IDs (e.g., testing ID validation), use HTTP driver only.
  */
 type CaptureState = {
   id: string;
@@ -72,13 +86,17 @@ export const createPlaywrightActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
-      if (!input.content || input.content.trim() === '') {
-        throw new ValidationError('Content is required');
-      }
-      
       await ensureConfigured();
       await inboxPage.goto();
-      await inboxPage.quickAdd(input.content);
+      
+      // Attempt to add the capture through the UI
+      // The UI prevents submission if content is empty (button is disabled)
+      const wasSubmitted = await inboxPage.quickAdd(input.content);
+      
+      if (!wasSubmitted) {
+        // The UI rejected the submission (e.g., empty content)
+        throw new ValidationError('Content is required');
+      }
       
       // Generate a pseudo-ID (the real ID is in the backend)
       // For tests that need the ID, we'll use the content as a lookup key
@@ -98,8 +116,8 @@ export const createPlaywrightActor = (
       await ensureConfigured();
       await inboxPage.goto();
       
-      // Small delay to ensure page is loaded
-      await page.waitForTimeout(100);
+      // Wait for the page to finish loading (either captures or empty state)
+      await inboxPage.waitForCapturesOrEmpty();
       
       const contents = await inboxPage.getCaptureContents();
       
@@ -124,8 +142,8 @@ export const createPlaywrightActor = (
       await ensureConfigured();
       await archivedPage.goto();
       
-      // Small delay to ensure page is loaded
-      await page.waitForTimeout(100);
+      // Wait for the page to finish loading (either captures or empty state)
+      await archivedPage.waitForCapturesOrEmpty();
       
       const contents = await archivedPage.getCaptureContents();
       
@@ -333,8 +351,8 @@ export const createPlaywrightActor = (
       await ensureConfigured();
       await snoozedPage.goto();
       
-      // Small delay to ensure page is loaded
-      await page.waitForTimeout(100);
+      // Wait for the page to finish loading (either captures or empty state)
+      await snoozedPage.waitForCapturesOrEmpty();
       
       const contents = await snoozedPage.getCaptureContents();
       
@@ -371,9 +389,16 @@ export const createPlaywrightActor = (
     async requiresConfiguration(): Promise<boolean> {
       // Try to navigate to inbox and check if we get redirected to /config
       await page.goto('/');
-      // Give time for redirect to happen
-      await page.waitForTimeout(500);
-      return page.url().includes('/config');
+      
+      // Wait for either the inbox to load or redirect to config
+      // The app redirects to /config if no token is set
+      try {
+        await page.waitForURL('**/config', { timeout: 2000 });
+        return true;
+      } catch {
+        // No redirect happened within timeout, so we're on the inbox
+        return false;
+      }
     },
 
     async shareContent(params: { text?: string; url?: string; title?: string }): Promise<Capture> {
@@ -425,29 +450,35 @@ export const createPlaywrightActor = (
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
-      // Wait a moment for the offline state to be detected by the app
-      await page.waitForTimeout(200);
-      // Look for the offline banner
+      
+      // Wait for offline banner to appear (with timeout for robustness)
+      // The banner appears when the useNetworkStatus hook detects offline state
       const banner = page.getByText("You're offline");
-      return await banner.isVisible();
+      try {
+        await banner.waitFor({ state: 'visible', timeout: 2000 });
+        return true;
+      } catch {
+        // Banner didn't appear within timeout
+        return false;
+      }
     },
 
     async isQuickAddDisabled(): Promise<boolean> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
-      // Wait a moment for the offline state to be detected by the app
-      await page.waitForTimeout(200);
-      // Check for offline placeholder text (app changes placeholder when offline)
+      
+      // Wait for the offline placeholder to appear (indicates disabled state)
+      // The app changes the placeholder text when offline
       const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
-      const hasOfflinePlaceholder = await offlineInput.isVisible().catch(() => false);
-      if (hasOfflinePlaceholder) {
+      try {
+        await offlineInput.waitFor({ state: 'visible', timeout: 2000 });
         return true;
+      } catch {
+        // Offline placeholder didn't appear - check if regular input is disabled
+        const input = page.getByPlaceholder('Quick capture...');
+        return await input.isDisabled();
       }
-      // Fallback: check if regular input is disabled
-      const input = page.getByPlaceholder('Quick capture...');
-      const isDisabled = await input.isDisabled().catch(() => false);
-      return isDisabled;
     },
   };
 };

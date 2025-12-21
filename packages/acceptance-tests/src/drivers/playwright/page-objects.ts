@@ -42,11 +42,48 @@ export class InboxPage {
     await this.page.waitForSelector('[data-slot="card"]');
   }
 
-  async quickAdd(content: string): Promise<void> {
-    await this.page.getByPlaceholder('Quick capture...').fill(content);
-    await this.page.getByRole('button', { name: 'Add' }).click();
-    // Wait for the capture to appear
-    await this.page.getByText(content).waitFor();
+  /**
+   * Wait for either capture cards to appear or empty state message.
+   * This replaces arbitrary timeouts with explicit wait conditions.
+   */
+  async waitForCapturesOrEmpty(): Promise<void> {
+    // Wait for either:
+    // 1. At least one capture card to appear
+    // 2. The "Your inbox is empty" message to appear
+    // 3. The loading state to disappear
+    await Promise.race([
+      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('Your inbox is empty').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, the page might still be loading
+      // Fall through and let the test continue (it will fail if data is missing)
+    });
+  }
+
+  /**
+   * Add a capture via the quick-add input.
+   * Returns true if submission was successful, false if the UI prevented it.
+   */
+  async quickAdd(content: string): Promise<boolean> {
+    const input = this.page.getByPlaceholder('Quick capture...');
+    const addButton = this.page.getByRole('button', { name: 'Add' });
+    
+    await input.fill(content);
+    
+    // Check if the Add button is disabled (UI validation for empty content)
+    const isDisabled = await addButton.isDisabled();
+    if (isDisabled) {
+      return false;
+    }
+    
+    await addButton.click();
+    
+    // Wait for the capture to appear (indicates success)
+    if (content.trim()) {
+      await this.page.getByText(content).waitFor();
+    }
+    
+    return true;
   }
 
   async getCaptureContents(): Promise<string[]> {
@@ -177,6 +214,19 @@ export class ArchivedPage {
     await this.page.waitForSelector('[data-slot="card"]');
   }
 
+  /**
+   * Wait for either capture cards to appear or empty state message.
+   * This replaces arbitrary timeouts with explicit wait conditions.
+   */
+  async waitForCapturesOrEmpty(): Promise<void> {
+    await Promise.race([
+      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('No archived captures').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, let the test continue (it will fail if data is missing)
+    });
+  }
+
   async getCaptureContents(): Promise<string[]> {
     const cards = this.page.locator('[data-slot="card"]');
     const count = await cards.count();
@@ -224,6 +274,19 @@ export class SnoozedPage {
 
   async waitForLoad(): Promise<void> {
     await this.page.waitForSelector('[data-slot="card"]');
+  }
+
+  /**
+   * Wait for either capture cards to appear or empty state message.
+   * This replaces arbitrary timeouts with explicit wait conditions.
+   */
+  async waitForCapturesOrEmpty(): Promise<void> {
+    await Promise.race([
+      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('No snoozed captures').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, let the test continue (it will fail if data is missing)
+    });
   }
 
   async getCaptureContents(): Promise<string[]> {

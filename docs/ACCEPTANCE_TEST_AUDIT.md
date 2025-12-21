@@ -50,19 +50,11 @@ const actor = createHttpActor(client, { ...invalidTokenConfig });
 
 #### Validation Logic in Driver
 
-The Playwright driver pre-validates input rather than letting the UI demonstrate validation:
+~~The Playwright driver pre-validates input rather than letting the UI demonstrate validation.~~
 
-```typescript
-// actor.ts:74-77
-async createCapture(input: CreateCaptureInput): Promise<Capture> {
-  if (!input.content || input.content.trim() === '') {
-    throw new ValidationError('Content is required');
-  }
-  // ...
-}
-```
+**Status**: ✅ Fixed
 
-**Recommendation**: Remove validation from driver. Let the UI show validation errors, then have the driver detect and translate those errors.
+The driver now attempts the UI action and detects if the Add button is disabled (which indicates validation failure). The `quickAdd` page object method returns `false` when submission is prevented, allowing the driver to translate this into a `ValidationError`.
 
 #### Synthetic ID Tracking
 
@@ -80,33 +72,35 @@ const state: CaptureState = {
 
 **Impact**: `getCapture(id)` only works for captures the driver created. Creates semantic drift from actual system behavior.
 
-**Recommendation**: Consider alternatives:
-- Use content-based lookups consistently
-- Expose a test-only API endpoint to retrieve real IDs
-- Accept this limitation and document it clearly
+**Status**: ✅ Documented
+
+The limitation is now documented in the `CaptureState` type definition in `actor.ts`. This is an acceptable limitation because:
+1. Most acceptance tests create unique content per test
+2. Tests requiring real ID validation use HTTP-only driver (`['http'] as const`)
+3. Content-based lookups work well for UI-level testing
 
 #### Magic Timeouts
 
-Hardcoded `waitForTimeout` calls are fragile:
+~~Hardcoded `waitForTimeout` calls are fragile.~~
 
-```typescript
-await page.waitForTimeout(100);  // Multiple locations
-await page.waitForTimeout(500);
-```
+**Status**: ✅ Fixed
 
-**Recommendation**: Replace with explicit wait conditions:
-```typescript
-await page.waitForSelector('[data-testid="capture-list"]');
-await page.waitForResponse((r) => r.url().includes('/api/captures'));
-```
+All magic timeouts have been replaced with explicit wait conditions:
+
+- `listCaptures`, `listArchivedCaptures`, `listSnoozedCaptures`: Now use `waitForCapturesOrEmpty()` which waits for either capture cards or empty state message
+- `requiresConfiguration`: Now uses `waitForURL('**/config')` with a timeout
+- `isOfflineBannerVisible`: Now uses `banner.waitFor({ state: 'visible' })` with a timeout
+- `isQuickAddDisabled`: Now uses `offlineInput.waitFor({ state: 'visible' })` with a timeout
+
+The page objects (`InboxPage`, `ArchivedPage`, `SnoozedPage`) now expose `waitForCapturesOrEmpty()` methods that use `Promise.race()` to wait for one of multiple possible states.
 
 #### Silent Error Swallowing
 
-```typescript
-const hasOfflinePlaceholder = await offlineInput.isVisible().catch(() => false);
-```
+~~The `isQuickAddDisabled` method caught all errors and converted them to `false`, hiding potential issues.~~
 
-**Recommendation**: Handle errors explicitly or at minimum log unexpected failures.
+**Status**: ✅ Fixed
+
+The method now uses explicit `waitFor()` with a timeout, then falls through to a direct `isDisabled()` check. Errors that occur during the direct check will now propagate rather than being silently swallowed.
 
 ---
 
@@ -277,10 +271,12 @@ Each `createActor()` call creates a new organization, user, and token. This prov
 | Priority | Recommendation | Status |
 |----------|----------------|--------|
 | High | Fix DSL violations in `authenticating.test.ts` and `token-security.test.ts` | ✅ Done |
-| High | Remove validation logic from Playwright driver | Pending |
+| High | Remove validation logic from Playwright driver | ✅ Done |
 | Medium | Split Actor into CoreActor + BrowserActor | ✅ Done |
 | Medium | Replace `describeFeature` with `usingDrivers` pattern | ✅ Done |
-| Medium | Replace magic timeouts with explicit wait conditions | Pending |
+| Medium | Replace magic timeouts with explicit wait conditions | ✅ Done |
+| Medium | Fix silent error swallowing in offline detection | ✅ Done |
+| Low | Document synthetic ID tracking limitation | ✅ Done |
 | Low | Add tenant cleanup in test teardown | Pending |
 | Low | Consider isolated browser contexts per actor | Pending |
 
@@ -321,3 +317,18 @@ Context types:
 - `BaseContext` - Common operations, returns `CoreActor` (used for multi-driver tests)
 
 All contexts include `ctx.driverName` for including driver info in test names.
+
+**Playwright Driver Cleanup**
+
+The Playwright driver has been cleaned up to remove test logic from the driver layer:
+
+1. **Validation Logic Removed**: The `createCapture` method no longer pre-validates content. Instead, the `quickAdd` page object returns `false` when the UI prevents submission (disabled Add button), and the driver translates this to `ValidationError`.
+
+2. **Magic Timeouts Replaced**: All `waitForTimeout()` calls replaced with explicit wait conditions:
+   - Page objects now have `waitForCapturesOrEmpty()` methods using `Promise.race()`
+   - `requiresConfiguration` uses `waitForURL()` with timeout
+   - Offline detection uses element-specific `waitFor()` with timeout
+
+3. **Error Swallowing Fixed**: The `isQuickAddDisabled` method now properly propagates errors instead of catching and returning `false`.
+
+4. **Synthetic ID Limitation Documented**: The `CaptureState` type now includes comprehensive documentation explaining why synthetic IDs are used and their limitations.

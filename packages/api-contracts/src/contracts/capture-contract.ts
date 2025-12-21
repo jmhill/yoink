@@ -24,6 +24,7 @@ export const captureContract = c.router({
     path: '/api/captures',
     query: z.object({
       status: z.enum(['inbox', 'archived']).optional(),
+      snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
       limit: z.coerce.number().min(1).max(100).default(50),
       cursor: z.string().uuid().optional(),
     }),
@@ -67,7 +68,108 @@ export const captureContract = c.router({
       404: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'Update a capture',
+    summary: 'Update a capture (content only)',
+  },
+
+  // Workflow operations
+  archive: {
+    method: 'POST',
+    path: '/api/captures/:id/archive',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Archive a capture',
+  },
+
+  unarchive: {
+    method: 'POST',
+    path: '/api/captures/:id/unarchive',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Unarchive a capture',
+  },
+
+  // Display modifier operations
+  pin: {
+    method: 'POST',
+    path: '/api/captures/:id/pin',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Pin a capture',
+  },
+
+  unpin: {
+    method: 'POST',
+    path: '/api/captures/:id/unpin',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Unpin a capture',
+  },
+
+  snooze: {
+    method: 'POST',
+    path: '/api/captures/:id/snooze',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({
+      until: z.string().datetime(),
+    }),
+    responses: {
+      200: CaptureSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Snooze a capture until a specific time',
+  },
+
+  unsnooze: {
+    method: 'POST',
+    path: '/api/captures/:id/unsnooze',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      200: CaptureSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Unsnooze a capture',
   },
 }, {
     strictStatusCodes: true

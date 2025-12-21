@@ -12,6 +12,7 @@ export const CaptureSchema = z.object({
   capturedAt: z.string().datetime(),
   archivedAt: z.string().datetime().optional(),
   pinnedAt: z.string().datetime().optional(),
+  snoozedUntil: z.string().datetime().optional(),
 });
 
 export type Capture = z.infer<typeof CaptureSchema>;
@@ -25,11 +26,10 @@ export const CreateCaptureSchema = z.object({
 
 export type CreateCapture = z.infer<typeof CreateCaptureSchema>;
 
+// Content-only updates (title, content) - explicit operations handle status/pin/snooze
 export const UpdateCaptureSchema = z.object({
   title: z.string().max(200).optional(),
   content: z.string().min(1).max(10000).optional(),
-  status: z.enum(['inbox', 'archived']).optional(),
-  pinned: z.boolean().optional(),
 });
 
 export type UpdateCapture = z.infer<typeof UpdateCaptureSchema>;

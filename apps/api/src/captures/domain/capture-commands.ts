@@ -10,6 +10,7 @@ export type CreateCaptureCommand = {
 export type ListCapturesQuery = {
   organizationId: string;
   status?: 'inbox' | 'archived';
+  snoozed?: boolean; // true = only snoozed, false = exclude snoozed
   limit?: number;
   cursor?: string;
 };
@@ -19,11 +20,43 @@ export type FindCaptureQuery = {
   organizationId: string;
 };
 
+// Content-only updates - explicit commands handle status/pin/snooze
 export type UpdateCaptureCommand = {
   id: string;
   organizationId: string;
   title?: string;
   content?: string;
-  status?: 'inbox' | 'archived';
-  pinned?: boolean;
+};
+
+// Workflow operations
+export type ArchiveCaptureCommand = {
+  id: string;
+  organizationId: string;
+};
+
+export type UnarchiveCaptureCommand = {
+  id: string;
+  organizationId: string;
+};
+
+// Display modifier operations
+export type PinCaptureCommand = {
+  id: string;
+  organizationId: string;
+};
+
+export type UnpinCaptureCommand = {
+  id: string;
+  organizationId: string;
+};
+
+export type SnoozeCaptureCommand = {
+  id: string;
+  organizationId: string;
+  until: string; // ISO datetime when snooze expires
+};
+
+export type UnsnoozeCaptureCommand = {
+  id: string;
+  organizationId: string;
 };

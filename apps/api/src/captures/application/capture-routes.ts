@@ -52,6 +52,7 @@ export const registerCaptureRoutes = async (
         const result = await captureService.list({
           organizationId: request.authContext.organizationId,
           status: query.status,
+          snoozed: query.snoozed,
           limit: query.limit,
           cursor: query.cursor,
         });
@@ -107,8 +108,190 @@ export const registerCaptureRoutes = async (
           organizationId: request.authContext.organizationId,
           title: body.title,
           content: body.content,
-          status: body.status,
-          pinned: body.pinned,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      archive: async ({ params, request }) => {
+        const result = await captureService.archive({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      unarchive: async ({ params, request }) => {
+        const result = await captureService.unarchive({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      pin: async ({ params, request }) => {
+        const result = await captureService.pin({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'CAPTURE_ALREADY_ARCHIVED':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Cannot pin an archived capture' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      unpin: async ({ params, request }) => {
+        const result = await captureService.unpin({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      snooze: async ({ params, body, request }) => {
+        const result = await captureService.snooze({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          until: body.until,
+        });
+
+        return result.match(
+          (capture) => ({
+            status: 200 as const,
+            body: capture,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'CAPTURE_ALREADY_ARCHIVED':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Cannot snooze an archived capture' },
+                };
+              case 'INVALID_SNOOZE_TIME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      unsnooze: async ({ params, request }) => {
+        const result = await captureService.unsnooze({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
         });
 
         return result.match(

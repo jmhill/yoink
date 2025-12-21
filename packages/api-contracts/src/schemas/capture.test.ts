@@ -154,19 +154,10 @@ describe('UpdateCaptureSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('validates update with status only', () => {
-    const result = UpdateCaptureSchema.safeParse({
-      status: 'archived',
-    });
-
-    expect(result.success).toBe(true);
-  });
-
-  it('validates update with all fields', () => {
+  it('validates update with all content fields', () => {
     const result = UpdateCaptureSchema.safeParse({
       title: 'New title',
       content: 'Updated content',
-      status: 'inbox',
     });
 
     expect(result.success).toBe(true);
@@ -194,11 +185,17 @@ describe('UpdateCaptureSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects invalid status', () => {
+  it('ignores extra fields (status/pinned now handled by explicit endpoints)', () => {
+    // UpdateCaptureSchema only accepts content/title, extra fields are stripped
     const result = UpdateCaptureSchema.safeParse({
-      status: 'deleted',
+      content: 'Valid content',
+      status: 'archived', // This is now handled by /archive endpoint
+      pinned: true, // This is now handled by /pin endpoint
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({ content: 'Valid content' });
+    }
   });
 });

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { captureApi } from '@/api/client';
+import { tsr } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { extractContent, extractUrl, parseShareParams } from '@/lib/share';
@@ -57,7 +57,8 @@ function SharePage() {
 
     setIsSaving(true);
     try {
-      const response = await captureApi.create({
+      // Use direct mutation (fire-and-forget, no Query caching needed)
+      const response = await tsr.create.mutate({
         body: {
           content: content.trim() || sourceUrl || '',
           sourceUrl,

@@ -1,26 +1,25 @@
-import { initClient } from '@ts-rest/core';
+import { initTsrReactQuery } from '@ts-rest/react-query/v5';
 import {
   adminPublicContract,
   adminProtectedContract,
 } from '@yoink/api-contracts';
 
-// Base URL is empty since we're on the same origin (or proxied in dev)
-const baseUrl = '';
-
 const commonOptions = {
-  baseUrl,
-  credentials: 'include' as const, // Send cookies with requests
+  baseUrl: '',
+  credentials: 'include' as const,
   baseHeaders: {
     'Content-Type': 'application/json',
   },
 };
 
 /**
- * Client for public admin endpoints (login, logout)
+ * ts-rest React Query client for public admin endpoints (login, logout).
+ * These don't require session authentication.
  */
-export const publicApi = initClient(adminPublicContract, commonOptions);
+export const tsrPublic = initTsrReactQuery(adminPublicContract, commonOptions);
 
 /**
- * Client for protected admin endpoints (requires session cookie)
+ * ts-rest React Query client for protected admin endpoints.
+ * Requires session cookie authentication.
  */
-export const adminApi = initClient(adminProtectedContract, commonOptions);
+export const tsrAdmin = initTsrReactQuery(adminProtectedContract, commonOptions);

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { tokenStorage } from '@/lib/token';
-import { captureApi } from '@/api/client';
+import { tsr } from '@/api/client';
 
 export const Route = createFileRoute('/config')({
   component: ConfigPage,
@@ -36,8 +36,8 @@ function ConfigPage() {
     tokenStorage.set(token);
 
     try {
-      // Validate the token by making a test request
-      const response = await captureApi.list({ query: { limit: 1 } });
+      // Validate the token by making a test request using direct query
+      const response = await tsr.list.query({ query: { limit: 1 } });
 
       if (response.status === 200) {
         navigate({ to: '/' });

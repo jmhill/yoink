@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,8 +27,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { adminApi } from '@/api/client';
-import type { Organization, User } from '@yoink/api-contracts';
+import { tsrAdmin } from '@/api/client';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { WifiOff } from 'lucide-react';
 
 export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
   component: OrganizationDetailPage,
@@ -37,90 +38,51 @@ export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
 function OrganizationDetailPage() {
   const { orgId } = Route.useParams();
   const navigate = useNavigate();
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
-  const [isRenaming, setIsRenaming] = useState(false);
+  const tsrQueryClient = tsrAdmin.useQueryClient();
 
-  const loadData = async () => {
-    try {
-      const [orgResponse, usersResponse] = await Promise.all([
-        adminApi.getOrganization({ params: { id: orgId } }),
-        adminApi.listUsers({ params: { organizationId: orgId } }),
-      ]);
+  const { data: orgData, isPending: orgPending, error: orgError } = tsrAdmin.getOrganization.useQuery({
+    queryKey: ['organizations', orgId],
+    queryData: { params: { id: orgId } },
+  });
 
-      if (orgResponse.status === 200) {
-        setOrganization(orgResponse.body);
-      } else if (orgResponse.status === 404) {
-        setError('Organization not found');
-        return;
-      }
+  const { data: usersData, isPending: usersPending } = tsrAdmin.listUsers.useQuery({
+    queryKey: ['organizations', orgId, 'users'],
+    queryData: { params: { organizationId: orgId } },
+  });
 
-      if (usersResponse.status === 200) {
-        setUsers(usersResponse.body.users);
-      }
-    } catch {
-      setError('Failed to load data');
-    } finally {
-      setIsLoading(false);
-    }
+  const createUserMutation = tsrAdmin.createUser.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
+      setNewUserEmail('');
+      setIsDialogOpen(false);
+    },
+  });
+
+  const updateOrgMutation = tsrAdmin.updateOrganization.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
+      setIsRenameDialogOpen(false);
+    },
+  });
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    createUserMutation.mutate({
+      params: { organizationId: orgId },
+      body: { email: newUserEmail },
+    });
   };
 
-  useEffect(() => {
-    loadData();
-  }, [orgId]);
-
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleRenameOrganization = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCreating(true);
-
-    try {
-      const response = await adminApi.createUser({
-        params: { organizationId: orgId },
-        body: { email: newUserEmail },
-      });
-
-      if (response.status === 201) {
-        setUsers((prev) => [...prev, response.body]);
-        setNewUserEmail('');
-        setIsDialogOpen(false);
-      } else {
-        setError('Failed to create user');
-      }
-    } catch {
-      setError('Failed to create user');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleRenameOrganization = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsRenaming(true);
-
-    try {
-      const response = await adminApi.updateOrganization({
-        params: { id: orgId },
-        body: { name: newOrgName },
-      });
-
-      if (response.status === 200) {
-        setOrganization(response.body);
-        setIsRenameDialogOpen(false);
-      } else {
-        setError('Failed to rename organization');
-      }
-    } catch {
-      setError('Failed to rename organization');
-    } finally {
-      setIsRenaming(false);
-    }
+    updateOrgMutation.mutate({
+      params: { id: orgId },
+      body: { name: newOrgName },
+    });
   };
 
   const openRenameDialog = () => {
@@ -134,7 +96,44 @@ function OrganizationDetailPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
+  // Error state
+  if (orgError) {
+    if (isFetchError(orgError)) {
+      return (
+        <div className="container mx-auto p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
+              <p className="text-gray-600">Unable to connect to the server.</p>
+              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    if (orgError.status === 404) {
+      return (
+        <div className="container mx-auto p-6">
+          <p className="text-red-600">Organization not found</p>
+          <Link to="/" className="text-blue-600 hover:underline">
+            Back to Organizations
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="py-8 text-center text-red-600">
+            <p>Failed to load organization</p>
+            <p className="text-sm">Status: {orgError.status}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (orgPending || usersPending) {
     return (
       <div className="container mx-auto p-6">
         <p className="text-gray-600">Loading...</p>
@@ -142,10 +141,13 @@ function OrganizationDetailPage() {
     );
   }
 
+  const organization = orgData?.status === 200 ? orgData.body : null;
+  const users = usersData?.status === 200 ? usersData.body.users : [];
+
   if (!organization) {
     return (
       <div className="container mx-auto p-6">
-        <p className="text-red-600">{error || 'Organization not found'}</p>
+        <p className="text-red-600">Organization not found</p>
         <Link to="/" className="text-blue-600 hover:underline">
           Back to Organizations
         </Link>
@@ -197,9 +199,14 @@ function OrganizationDetailPage() {
                     />
                   </div>
                 </div>
+                {updateOrgMutation.error && (
+                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
+                    Failed to rename organization
+                  </div>
+                )}
                 <DialogFooter>
-                  <Button type="submit" disabled={isRenaming}>
-                    {isRenaming ? 'Renaming...' : 'Rename'}
+                  <Button type="submit" disabled={updateOrgMutation.isPending}>
+                    {updateOrgMutation.isPending ? 'Renaming...' : 'Rename'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -230,9 +237,14 @@ function OrganizationDetailPage() {
                   />
                 </div>
               </div>
+              {createUserMutation.error && (
+                <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
+                  Failed to create user
+                </div>
+              )}
               <DialogFooter>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create'}
+                <Button type="submit" disabled={createUserMutation.isPending}>
+                  {createUserMutation.isPending ? 'Creating...' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
@@ -240,12 +252,6 @@ function OrganizationDetailPage() {
         </Dialog>
         </div>
       </div>
-
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-          {error}
-        </div>
-      )}
 
       <Card>
         <CardHeader>

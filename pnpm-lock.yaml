@@ -53,6 +53,9 @@ importers:
       '@ts-rest/core':
         specifier: ^3.52.0
         version: 3.52.1(@types/node@25.0.1)(zod@3.25.76)
+      '@ts-rest/react-query':
+        specifier: ^3.52.0
+        version: 3.52.1(@tanstack/react-query@5.90.12(react@18.3.1))(@ts-rest/core@3.52.1(@types/node@25.0.1)(zod@3.25.76))(react@18.3.1)(zod@3.25.76)
       '@yoink/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -209,12 +212,18 @@ importers:
       '@radix-ui/react-tabs':
         specifier: ^1.1.4
         version: 1.1.13(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-query':
+        specifier: ^5.62.0
+        version: 5.90.12(react@18.3.1)
       '@tanstack/react-router':
         specifier: ^1.93.0
         version: 1.141.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@ts-rest/core':
         specifier: ^3.52.0
         version: 3.52.1(@types/node@25.0.1)(zod@3.25.76)
+      '@ts-rest/react-query':
+        specifier: ^3.52.0
+        version: 3.52.1(@tanstack/react-query@5.90.12(react@18.3.1))(@ts-rest/core@3.52.1(@types/node@25.0.1)(zod@3.25.76))(react@18.3.1)(zod@3.25.76)
       '@yoink/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -2003,6 +2012,17 @@ packages:
     peerDependencies:
       '@ts-rest/core': ~3.52.0
       fastify: ^4.0.0
+      zod: ^3.22.3
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@ts-rest/react-query@3.52.1':
+    resolution: {integrity: sha512-Y4wx3oQwyEj7h3hVz2Wsrd8u7xWRqXc0K6YpKruZJg5G1pioKdlqqjKvv+JJbtgk+vImzha9z+NgeFnO4oYAkA==}
+    peerDependencies:
+      '@tanstack/react-query': ^4.0.0 || ^5.0.0
+      '@ts-rest/core': ~3.52.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
       zod: ^3.22.3
     peerDependenciesMeta:
       zod:
@@ -5548,6 +5568,14 @@ snapshots:
     dependencies:
       '@ts-rest/core': 3.52.1(@types/node@25.0.1)(zod@3.25.76)
       fastify: 4.29.1
+    optionalDependencies:
+      zod: 3.25.76
+
+  '@ts-rest/react-query@3.52.1(@tanstack/react-query@5.90.12(react@18.3.1))(@ts-rest/core@3.52.1(@types/node@25.0.1)(zod@3.25.76))(react@18.3.1)(zod@3.25.76)':
+    dependencies:
+      '@tanstack/react-query': 5.90.12(react@18.3.1)
+      '@ts-rest/core': 3.52.1(@types/node@25.0.1)(zod@3.25.76)
+      react: 18.3.1
     optionalDependencies:
       zod: 3.25.76
 

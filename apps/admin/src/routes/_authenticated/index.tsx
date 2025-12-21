@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,8 +27,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { adminApi, publicApi } from '@/api/client';
-import type { Organization } from '@yoink/api-contracts';
+import { tsrAdmin, tsrPublic } from '@/api/client';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { WifiOff } from 'lucide-react';
 
 export const Route = createFileRoute('/_authenticated/')({
   component: OrganizationsPage,
@@ -36,57 +37,31 @@ export const Route = createFileRoute('/_authenticated/')({
 
 function OrganizationsPage() {
   const navigate = useNavigate();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const tsrQueryClient = tsrAdmin.useQueryClient();
 
-  const loadOrganizations = async () => {
-    try {
-      const response = await adminApi.listOrganizations();
-      if (response.status === 200) {
-        setOrganizations(response.body.organizations);
-      } else {
-        setError('Failed to load organizations');
-      }
-    } catch {
-      setError('Failed to load organizations');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data, isPending, error } = tsrAdmin.listOrganizations.useQuery({
+    queryKey: ['organizations'],
+  });
 
-  useEffect(() => {
-    loadOrganizations();
-  }, []);
+  const createMutation = tsrAdmin.createOrganization.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+      setNewOrgName('');
+      setIsDialogOpen(false);
+    },
+  });
 
-  const handleCreateOrganization = async (e: React.FormEvent) => {
+  const handleCreateOrganization = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCreating(true);
-
-    try {
-      const response = await adminApi.createOrganization({
-        body: { name: newOrgName },
-      });
-
-      if (response.status === 201) {
-        setOrganizations((prev) => [...prev, response.body]);
-        setNewOrgName('');
-        setIsDialogOpen(false);
-      } else {
-        setError('Failed to create organization');
-      }
-    } catch {
-      setError('Failed to create organization');
-    } finally {
-      setIsCreating(false);
-    }
+    createMutation.mutate({
+      body: { name: newOrgName },
+    });
   };
 
   const handleLogout = async () => {
-    await publicApi.logout({ body: {} });
+    await tsrPublic.logout.mutate({ body: {} });
     navigate({ to: '/login' });
   };
 
@@ -94,13 +69,42 @@ function OrganizationsPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
+  // Error state
+  if (error) {
+    if (isFetchError(error)) {
+      return (
+        <div className="container mx-auto p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
+              <p className="text-gray-600">Unable to connect to the server.</p>
+              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="py-8 text-center text-red-600">
+            <p>Failed to load organizations</p>
+            <p className="text-sm">Status: {error.status}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isPending) {
     return (
       <div className="container mx-auto p-6">
         <p className="text-gray-600">Loading...</p>
       </div>
     );
   }
+
+  const organizations = data?.status === 200 ? data.body.organizations : [];
 
   return (
     <div className="container mx-auto p-6">
@@ -131,9 +135,14 @@ function OrganizationsPage() {
                     />
                   </div>
                 </div>
+                {createMutation.error && (
+                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
+                    Failed to create organization
+                  </div>
+                )}
                 <DialogFooter>
-                  <Button type="submit" disabled={isCreating}>
-                    {isCreating ? 'Creating...' : 'Create'}
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? 'Creating...' : 'Create'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -144,12 +153,6 @@ function OrganizationsPage() {
           </Button>
         </div>
       </div>
-
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-          {error}
-        </div>
-      )}
 
       <Card>
         <CardHeader>

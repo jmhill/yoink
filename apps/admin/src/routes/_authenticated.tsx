@@ -1,10 +1,11 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { adminApi } from '@/api/client';
+import { tsrAdmin } from '@/api/client';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
     try {
-      const response = await adminApi.getSession();
+      // Use direct query for session check (outside React context)
+      const response = await tsrAdmin.getSession.query();
       if (response.status !== 200) {
         throw redirect({ to: '/login' });
       }

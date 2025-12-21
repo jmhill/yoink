@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { publicApi } from '@/api/client';
+import { tsrPublic } from '@/api/client';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -22,7 +22,8 @@ function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await publicApi.login({
+      // Use direct mutation for login (fire-and-forget, no caching needed)
+      const response = await tsrPublic.login.mutate({
         body: { password },
       });
 

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,8 +27,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { adminApi } from '@/api/client';
-import type { Organization, User, ApiToken } from '@yoink/api-contracts';
+import { tsrAdmin } from '@/api/client';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/users/$userId')({
@@ -37,94 +38,70 @@ export const Route = createFileRoute('/_authenticated/users/$userId')({
 
 function UserDetailPage() {
   const { userId } = Route.useParams();
-  const [user, setUser] = useState<User | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [tokens, setTokens] = useState<ApiToken[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const tsrQueryClient = tsrAdmin.useQueryClient();
 
-  const loadData = async () => {
-    try {
-      const userResponse = await adminApi.getUser({ params: { id: userId } });
+  const { data: userData, isPending: userPending, error: userError } = tsrAdmin.getUser.useQuery({
+    queryKey: ['users', userId],
+    queryData: { params: { id: userId } },
+  });
 
-      if (userResponse.status === 200) {
-        setUser(userResponse.body);
+  const user = userData?.status === 200 ? userData.body : null;
 
-        // Load organization and tokens
-        const [orgResponse, tokensResponse] = await Promise.all([
-          adminApi.getOrganization({
-            params: { id: userResponse.body.organizationId },
-          }),
-          adminApi.listTokens({ params: { userId } }),
-        ]);
+  // Fetch organization once we have the user
+  const { data: orgData, isPending: orgPending } = tsrAdmin.getOrganization.useQuery({
+    queryKey: ['organizations', user?.organizationId ?? ''],
+    queryData: { params: { id: user?.organizationId ?? '' } },
+    enabled: !!user?.organizationId,
+  });
 
-        if (orgResponse.status === 200) {
-          setOrganization(orgResponse.body);
-        }
-        if (tokensResponse.status === 200) {
-          setTokens(tokensResponse.body.tokens);
-        }
-      } else if (userResponse.status === 404) {
-        setError('User not found');
-      }
-    } catch {
-      setError('Failed to load data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: tokensData, isPending: tokensPending } = tsrAdmin.listTokens.useQuery({
+    queryKey: ['users', userId, 'tokens'],
+    queryData: { params: { userId } },
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [userId]);
-
-  const handleCreateToken = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreating(true);
-
-    try {
-      const response = await adminApi.createToken({
-        params: { userId },
-        body: { name: newTokenName },
-      });
-
-      if (response.status === 201) {
-        setTokens((prev) => [...prev, response.body.token]);
-        setCreatedToken(response.body.rawToken);
+  const createTokenMutation = tsrAdmin.createToken.useMutation({
+    onSuccess: (data) => {
+      if (data.status === 201) {
+        tsrQueryClient.invalidateQueries({ queryKey: ['users', userId, 'tokens'] });
+        setCreatedToken(data.body.rawToken);
         setNewTokenName('');
         setIsCreateDialogOpen(false);
         setIsTokenDialogOpen(true);
-      } else {
-        setError('Failed to create token');
       }
-    } catch {
-      setError('Failed to create token');
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    },
+  });
 
-  const handleRevokeToken = async (tokenId: string, tokenName: string) => {
-    if (!confirm(`Are you sure you want to revoke the token "${tokenName}"?`)) {
-      return;
-    }
-
-    try {
-      const response = await adminApi.revokeToken({ params: { id: tokenId } });
-      if (response.status === 204) {
-        setTokens((prev) => prev.filter((t) => t.id !== tokenId));
-        toast.success('Token revoked');
+  const revokeTokenMutation = tsrAdmin.revokeToken.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['users', userId, 'tokens'] });
+      toast.success('Token revoked');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to revoke token');
       }
-    } catch {
-      toast.error('Failed to revoke token');
+    },
+  });
+
+  const handleCreateToken = (e: React.FormEvent) => {
+    e.preventDefault();
+    createTokenMutation.mutate({
+      params: { userId },
+      body: { name: newTokenName },
+    });
+  };
+
+  const handleRevokeToken = (tokenId: string, tokenName: string) => {
+    if (!confirm(`Are you sure you want to revoke the token "${tokenName}"?`)) {
+      return;
     }
+    revokeTokenMutation.mutate({ params: { id: tokenId } });
   };
 
   const handleCopyToken = async () => {
@@ -138,7 +115,44 @@ function UserDetailPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
+  // Error state
+  if (userError) {
+    if (isFetchError(userError)) {
+      return (
+        <div className="container mx-auto p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
+              <p className="text-gray-600">Unable to connect to the server.</p>
+              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    if (userError.status === 404) {
+      return (
+        <div className="container mx-auto p-6">
+          <p className="text-red-600">User not found</p>
+          <Link to="/" className="text-blue-600 hover:underline">
+            Back to Organizations
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="py-8 text-center text-red-600">
+            <p>Failed to load user</p>
+            <p className="text-sm">Status: {userError.status}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (userPending || orgPending || tokensPending) {
     return (
       <div className="container mx-auto p-6">
         <p className="text-gray-600">Loading...</p>
@@ -146,10 +160,13 @@ function UserDetailPage() {
     );
   }
 
+  const organization = orgData?.status === 200 ? orgData.body : null;
+  const tokens = tokensData?.status === 200 ? tokensData.body.tokens : [];
+
   if (!user || !organization) {
     return (
       <div className="container mx-auto p-6">
-        <p className="text-red-600">{error || 'User not found'}</p>
+        <p className="text-red-600">User not found</p>
         <Link to="/" className="text-blue-600 hover:underline">
           Back to Organizations
         </Link>
@@ -205,9 +222,14 @@ function UserDetailPage() {
                   />
                 </div>
               </div>
+              {createTokenMutation.error && (
+                <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
+                  Failed to create token
+                </div>
+              )}
               <DialogFooter>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create'}
+                <Button type="submit" disabled={createTokenMutation.isPending}>
+                  {createTokenMutation.isPending ? 'Creating...' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
@@ -238,12 +260,6 @@ function UserDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-          {error}
-        </div>
-      )}
 
       <Card>
         <CardHeader>
@@ -282,6 +298,7 @@ function UserDetailPage() {
                         variant="destructive"
                         size="sm"
                         onClick={() => handleRevokeToken(token.id, token.name)}
+                        disabled={revokeTokenMutation.isPending}
                       >
                         Revoke
                       </Button>

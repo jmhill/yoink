@@ -1,11 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { captureApi } from '@/api/client';
-import type { Capture } from '@yoink/api-contracts';
-import { Archive, Inbox, Settings, RotateCcw, Link as LinkIcon } from 'lucide-react';
+import { tsr } from '@/api/client';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { Archive, Inbox, Settings, RotateCcw, Link as LinkIcon, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/archived')({
@@ -13,42 +12,32 @@ export const Route = createFileRoute('/_authenticated/archived')({
 });
 
 function ArchivedPage() {
-  const [captures, setCaptures] = useState<Capture[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const tsrQueryClient = tsr.useQueryClient();
 
-  const loadCaptures = async () => {
-    try {
-      const response = await captureApi.list({ query: { status: 'archived' } });
-      if (response.status === 200) {
-        setCaptures(response.body.captures);
-      }
-    } catch {
-      toast.error('Failed to load captures');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data, isPending, error } = tsr.list.useQuery({
+    queryKey: ['captures', 'archived'],
+    queryData: { query: { status: 'archived' as const } },
+  });
 
-  useEffect(() => {
-    loadCaptures();
-  }, []);
-
-  const handleUnarchive = async (id: string) => {
-    try {
-      const response = await captureApi.update({
-        params: { id },
-        body: { status: 'inbox' },
-      });
-
-      if (response.status === 200) {
-        setCaptures((prev) => prev.filter((c) => c.id !== id));
-        toast.success('Moved to inbox');
+  const unarchiveMutation = tsr.update.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      toast.success('Moved to inbox');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to unarchive');
       }
-    } catch {
-      toast.error('Failed to unarchive');
-    }
+    },
+  });
+
+  const handleUnarchive = (id: string) => {
+    unarchiveMutation.mutate({
+      params: { id },
+      body: { status: 'inbox' },
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -65,6 +54,35 @@ function ArchivedPage() {
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
+
+  // Error state
+  if (error) {
+    if (isFetchError(error)) {
+      return (
+        <div className="container mx-auto max-w-2xl p-4">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
+              <p className="text-gray-600">Unable to connect to the server.</p>
+              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    return (
+      <div className="container mx-auto max-w-2xl p-4">
+        <Card>
+          <CardContent className="py-8 text-center text-red-600">
+            <p>Failed to load captures</p>
+            <p className="text-sm">Status: {error.status}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
@@ -94,7 +112,7 @@ function ArchivedPage() {
         </TabsList>
       </Tabs>
 
-      {isLoading ? (
+      {isPending ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : captures.length === 0 ? (
         <Card>
@@ -131,6 +149,7 @@ function ArchivedPage() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleUnarchive(capture.id)}
+                  disabled={unarchiveMutation.isPending}
                   title="Move to inbox"
                 >
                   <RotateCcw className="h-4 w-4" />

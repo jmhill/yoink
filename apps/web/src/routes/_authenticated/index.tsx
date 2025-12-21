@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { captureApi } from '@/api/client';
+import { tsr } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
-import type { Capture } from '@yoink/api-contracts';
-import { Archive, Inbox, Settings, Link as LinkIcon } from 'lucide-react';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { Archive, Inbox, Settings, Link as LinkIcon, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/')({
@@ -16,71 +16,58 @@ export const Route = createFileRoute('/_authenticated/')({
 
 function InboxPage() {
   const isOnline = useNetworkStatus();
-  const [captures, setCaptures] = useState<Capture[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [newContent, setNewContent] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const tsrQueryClient = tsr.useQueryClient();
 
-  const loadCaptures = async () => {
-    try {
-      const response = await captureApi.list({ query: { status: 'inbox' } });
-      if (response.status === 200) {
-        setCaptures(response.body.captures);
-      }
-    } catch {
-      toast.error('Failed to load captures');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data, isPending, error } = tsr.list.useQuery({
+    queryKey: ['captures', 'inbox'],
+    queryData: { query: { status: 'inbox' as const } },
+  });
 
-  useEffect(() => {
-    loadCaptures();
-  }, []);
-
-  const handleQuickAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newContent.trim()) return;
-
-    setIsCreating(true);
-    try {
-      const response = await captureApi.create({
-        body: { content: newContent.trim() },
-      });
-
-      if (response.status === 201) {
-        setCaptures((prev) => [response.body, ...prev]);
-        setNewContent('');
-        toast.success('Capture added');
+  const createMutation = tsr.create.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      setNewContent('');
+      toast.success('Capture added');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to add capture');
       }
-    } catch {
-      toast.error('Failed to add capture');
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    },
+  });
 
-  const handleArchive = async (id: string) => {
-    try {
-      const response = await captureApi.update({
-        params: { id },
-        body: { status: 'archived' },
-      });
-
-      if (response.status === 200) {
-        setCaptures((prev) => prev.filter((c) => c.id !== id));
-        toast.success('Archived');
+  const archiveMutation = tsr.update.useMutation({
+    onSuccess: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      toast.success('Archived');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to archive');
       }
-    } catch {
-      toast.error('Failed to archive');
-    }
+    },
+  });
+
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContent.trim()) return;
+
+    createMutation.mutate({
+      body: { content: newContent.trim() },
+    });
   };
 
-
+  const handleArchive = (id: string) => {
+    archiveMutation.mutate({
+      params: { id },
+      body: { status: 'archived' },
+    });
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -96,6 +83,36 @@ function InboxPage() {
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
+
+  // Error state
+  if (error) {
+    if (isFetchError(error)) {
+      return (
+        <div className="container mx-auto max-w-2xl p-4">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
+              <p className="text-gray-600">Unable to connect to the server.</p>
+              <p className="text-sm text-gray-500">Please check your internet connection.</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    // Contract-defined error (401, etc)
+    return (
+      <div className="container mx-auto max-w-2xl p-4">
+        <Card>
+          <CardContent className="py-8 text-center text-red-600">
+            <p>Failed to load captures</p>
+            <p className="text-sm">Status: {error.status}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
@@ -131,16 +148,16 @@ function InboxPage() {
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             placeholder={isOnline ? 'Quick capture...' : 'Offline - cannot add captures'}
-            disabled={isCreating || !isOnline}
+            disabled={createMutation.isPending || !isOnline}
             className="flex-1"
           />
-          <Button type="submit" disabled={isCreating || !newContent.trim() || !isOnline}>
-            {isCreating ? '...' : 'Add'}
+          <Button type="submit" disabled={createMutation.isPending || !newContent.trim() || !isOnline}>
+            {createMutation.isPending ? '...' : 'Add'}
           </Button>
         </div>
       </form>
 
-      {isLoading ? (
+      {isPending ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : captures.length === 0 ? (
         <Card>
@@ -177,6 +194,7 @@ function InboxPage() {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => handleArchive(capture.id)}
+                  disabled={archiveMutation.isPending}
                   title="Archive"
                 >
                   <Archive className="h-4 w-4" />

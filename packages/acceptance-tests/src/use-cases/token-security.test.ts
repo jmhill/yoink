@@ -1,36 +1,28 @@
-import { describeFeature, expect, beforeAll, afterAll } from './harness.js';
+import { usingDrivers, describe, it, expect, beforeAll, afterAll } from './harness.js';
 import { UnauthorizedError } from '../dsl/index.js';
-import { createHttpActor } from '../drivers/http/actor.js';
-import { createHttpClient } from '../drivers/http/http-client.js';
-import { getTestConfig } from '../config.js';
 
 /**
  * Tests for API token security.
  * Verifies that revoked tokens are properly rejected.
  */
-describeFeature(
-  'Token security',
-  ['http'],
-  ({ admin, it }) => {
-    const config = getTestConfig();
-    const client = createHttpClient(config.baseUrl);
-
+usingDrivers(['http'] as const, (ctx) => {
+  describe(`Token security [${ctx.driverName}]`, () => {
     beforeAll(async () => {
-      await admin.login();
+      await ctx.admin.login();
     });
 
     afterAll(async () => {
-      await admin.logout();
+      await ctx.admin.logout();
     });
 
     it('rejects requests with revoked tokens', async () => {
       // Setup: Create org, user, and token
-      const org = await admin.createOrganization(`revoke-test-${Date.now()}`);
-      const user = await admin.createUser(org.id, `revoke-user-${Date.now()}@example.com`);
-      const { rawToken, token } = await admin.createToken(user.id, 'to-be-revoked');
+      const org = await ctx.admin.createOrganization(`revoke-test-${Date.now()}`);
+      const user = await ctx.admin.createUser(org.id, `revoke-user-${Date.now()}@example.com`);
+      const { rawToken, token } = await ctx.admin.createToken(user.id, 'to-be-revoked');
 
       // Create actor with the token
-      const actor = createHttpActor(client, {
+      const actor = ctx.createActorWithCredentials({
         email: user.email,
         userId: user.id,
         organizationId: org.id,
@@ -42,7 +34,7 @@ describeFeature(
       expect(capture.content).toBe('test capture');
 
       // Revoke the token
-      await admin.revokeToken(token.id);
+      await ctx.admin.revokeToken(token.id);
 
       // Verify token no longer works
       await expect(actor.createCapture({ content: 'should fail' })).rejects.toThrow(
@@ -51,7 +43,7 @@ describeFeature(
     });
 
     it('rejects requests with invalid token format', async () => {
-      const invalidActor = createHttpActor(client, {
+      const invalidActor = ctx.createActorWithCredentials({
         email: 'fake@example.com',
         userId: 'fake-user-id',
         organizationId: 'fake-org-id',
@@ -62,7 +54,7 @@ describeFeature(
     });
 
     it('rejects requests with non-existent token id', async () => {
-      const fakeActor = createHttpActor(client, {
+      const fakeActor = ctx.createActorWithCredentials({
         email: 'fake@example.com',
         userId: 'fake-user-id',
         organizationId: 'fake-org-id',
@@ -71,5 +63,5 @@ describeFeature(
 
       await expect(fakeActor.listCaptures()).rejects.toThrow(UnauthorizedError);
     });
-  }
-);
+  });
+});

@@ -1,22 +1,20 @@
-import { describeFeature, expect } from './harness.js';
-import type { Actor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
+import type { CoreActor } from '../dsl/index.js';
 import { NotFoundError } from '../dsl/index.js';
 
 /**
  * Tests for multi-tenant isolation.
  * Verifies that users in different organizations cannot access each other's data.
  */
-describeFeature(
-  'Tenant isolation',
-  ['http'],
-  ({ createActor, it, beforeEach }) => {
-    let alice: Actor;
-    let bob: Actor;
+usingDrivers(['http'] as const, (ctx) => {
+  describe(`Tenant isolation [${ctx.driverName}]`, () => {
+    let alice: CoreActor;
+    let bob: CoreActor;
 
     beforeEach(async () => {
       // Create two actors in different organizations
-      alice = await createActor('alice@example.com');
-      bob = await createActor('bob@example.com');
+      alice = await ctx.createActor('alice@example.com');
+      bob = await ctx.createActor('bob@example.com');
     });
 
     it('users cannot see captures from other organizations', async () => {
@@ -80,5 +78,5 @@ describeFeature(
       expect(bobCaptures.length).toBe(1);
       expect(bobCaptures.every((c) => c.organizationId === bob.organizationId)).toBe(true);
     });
-  }
-);
+  });
+});

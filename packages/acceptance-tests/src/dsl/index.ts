@@ -20,6 +20,6 @@ export {
 } from './errors.js';
 
 // Interfaces
-export type { Actor, AnonymousActor } from './actor.js';
+export type { Actor, CoreActor, BrowserActor, BrowserActorOperations, AnonymousActor } from './actor.js';
 export type { Admin } from './admin.js';
 export type { Health } from './health.js';

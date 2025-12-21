@@ -192,30 +192,36 @@ type HttpContext = {
 
 ### Simplified Test Pattern
 
-Replace the complex `describeFeature` with a simple forEach pattern:
+Replace the complex `describeFeature` with `usingDrivers` - a thin wrapper that handles setup/teardown:
 
 ```typescript
-// Browser-only test - TypeScript knows createActor returns BrowserActor
-(['playwright'] as const).forEach((driver) => {
-  describe(`Session management [${driver}]`, () => {
-    const { createActor } = setupDriver(driver);
-
+// Browser-only test - TypeScript knows ctx.createActor returns BrowserActor
+usingDrivers(['playwright'] as const, (ctx) => {
+  describe(`Session management [${ctx.driverName}]`, () => {
     it('can logout', async () => {
-      const alice = await createActor('alice@example.com');
+      const alice = await ctx.createActor('alice@example.com');
       await alice.logout();  // TypeScript knows this exists
     });
   });
 });
 
-// Multi-driver test - TypeScript knows createActor returns CoreActor
-(['http', 'playwright'] as const).forEach((driver) => {
-  describe(`Capturing notes [${driver}]`, () => {
-    const { createActor } = setupDriver(driver);
-
+// Multi-driver test - TypeScript knows ctx.createActor returns CoreActor
+usingDrivers(['http', 'playwright'] as const, (ctx) => {
+  describe(`Capturing notes [${ctx.driverName}]`, () => {
     it('can create capture', async () => {
-      const alice = await createActor('alice@example.com');
+      const alice = await ctx.createActor('alice@example.com');
       await alice.createCapture({ content: 'Test' });  // OK
       await alice.logout();  // Error - not on CoreActor
+    });
+  });
+});
+
+// HTTP-only test - TypeScript knows ctx has createActorWithCredentials
+usingDrivers(['http'] as const, (ctx) => {
+  describe(`Token security [${ctx.driverName}]`, () => {
+    it('rejects invalid tokens', async () => {
+      const actor = ctx.createActorWithCredentials({ token: 'invalid', ... });
+      await expect(actor.listCaptures()).rejects.toThrow(UnauthorizedError);
     });
   });
 });
@@ -268,12 +274,50 @@ Each `createActor()` call creates a new organization, user, and token. This prov
 
 ## Summary of Recommendations
 
-| Priority | Recommendation |
-|----------|----------------|
-| High | Fix DSL violations in `authenticating.test.ts` and `token-security.test.ts` |
-| High | Remove validation logic from Playwright driver |
-| Medium | Split Actor into CoreActor + BrowserActor |
-| Medium | Replace `describeFeature` with simpler forEach + `setupDriver` pattern |
-| Medium | Replace magic timeouts with explicit wait conditions |
-| Low | Add tenant cleanup in test teardown |
-| Low | Consider isolated browser contexts per actor |
+| Priority | Recommendation | Status |
+|----------|----------------|--------|
+| High | Fix DSL violations in `authenticating.test.ts` and `token-security.test.ts` | ✅ Done |
+| High | Remove validation logic from Playwright driver | Pending |
+| Medium | Split Actor into CoreActor + BrowserActor | ✅ Done |
+| Medium | Replace `describeFeature` with `usingDrivers` pattern | ✅ Done |
+| Medium | Replace magic timeouts with explicit wait conditions | Pending |
+| Low | Add tenant cleanup in test teardown | Pending |
+| Low | Consider isolated browser contexts per actor | Pending |
+
+## Implementation Notes
+
+### Completed Items
+
+**DSL Violations Fixed**
+
+Both `authenticating.test.ts` and `token-security.test.ts` now use the `usingDrivers` helper with `['http'] as const` to get `HttpContext`, which provides:
+
+- `createAdminWithCredentials(password)` - Create an Admin with a specific password for testing wrong credentials
+- `createActorWithCredentials(credentials)` - Create an actor with pre-existing credentials for testing revoked/invalid tokens
+
+**Actor Interface Split**
+
+The `Actor` type has been split into:
+
+- `CoreActor` - Operations available in all drivers (capture CRUD, listing, etc.)
+- `BrowserActorOperations` - Browser-only operations (offline, sharing, settings, logout)
+- `BrowserActor` - `CoreActor & BrowserActorOperations`
+- `Actor` - Kept as alias to `BrowserActor` for backwards compatibility
+
+**New `usingDrivers` Helper**
+
+A single function with TypeScript overloads provides type-safe contexts:
+
+```typescript
+// Overload signatures narrow the context type based on drivers
+function usingDrivers(drivers: readonly ['http'], fn: (ctx: HttpContext) => void): void;
+function usingDrivers(drivers: readonly ['playwright'], fn: (ctx: PlaywrightContext) => void): void;
+function usingDrivers<T extends readonly DriverCapability[]>(drivers: T, fn: (ctx: BaseContext) => void): void;
+```
+
+Context types:
+- `HttpContext` - Includes `createAdminWithCredentials`, `createActorWithCredentials`, returns `CoreActor`
+- `PlaywrightContext` - Returns `BrowserActor` with browser-specific operations
+- `BaseContext` - Common operations, returns `CoreActor` (used for multi-driver tests)
+
+All contexts include `ctx.driverName` for including driver info in test names.

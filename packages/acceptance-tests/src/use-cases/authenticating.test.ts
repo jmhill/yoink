@@ -1,64 +1,61 @@
-import { describeFeature, expect } from './harness.js';
+import { usingDrivers, describe, it, expect, beforeEach, afterEach } from './harness.js';
 import { UnauthorizedError } from '../dsl/index.js';
-import { createHttpAdmin } from '../drivers/http/admin.js';
-import { createHttpClient } from '../drivers/http/http-client.js';
-import { getTestConfig } from '../config.js';
 
-describeFeature('Authenticating', ['http'], ({ admin, it, beforeEach, afterEach }) => {
-  // Make sure we're logged out before each test
-  beforeEach(async () => {
-    try {
-      await admin.logout();
-    } catch {
-      // Ignore - might not be logged in
-    }
-  });
+usingDrivers(['http'] as const, (ctx) => {
+  describe(`Authenticating [${ctx.driverName}]`, () => {
+    // Make sure we're logged out before each test
+    beforeEach(async () => {
+      try {
+        await ctx.admin.logout();
+      } catch {
+        // Ignore - might not be logged in
+      }
+    });
 
-  afterEach(async () => {
-    try {
-      await admin.logout();
-    } catch {
-      // Ignore
-    }
-  });
+    afterEach(async () => {
+      try {
+        await ctx.admin.logout();
+      } catch {
+        // Ignore
+      }
+    });
 
-  it('can log into the admin panel', async () => {
-    await admin.login();
+    it('can log into the admin panel', async () => {
+      await ctx.admin.login();
 
-    const isLoggedIn = await admin.isLoggedIn();
-    expect(isLoggedIn).toBe(true);
-  });
+      const isLoggedIn = await ctx.admin.isLoggedIn();
+      expect(isLoggedIn).toBe(true);
+    });
 
-  it('can log out of the admin panel', async () => {
-    await admin.login();
-    await admin.logout();
+    it('can log out of the admin panel', async () => {
+      await ctx.admin.login();
+      await ctx.admin.logout();
 
-    const isLoggedIn = await admin.isLoggedIn();
-    expect(isLoggedIn).toBe(false);
-  });
+      const isLoggedIn = await ctx.admin.isLoggedIn();
+      expect(isLoggedIn).toBe(false);
+    });
 
-  it('reports not logged in without session', async () => {
-    const isLoggedIn = await admin.isLoggedIn();
+    it('reports not logged in without session', async () => {
+      const isLoggedIn = await ctx.admin.isLoggedIn();
 
-    expect(isLoggedIn).toBe(false);
-  });
+      expect(isLoggedIn).toBe(false);
+    });
 
-  it('requires admin session to list organizations', async () => {
-    // Create fresh admin that's definitely not logged in
-    // This is a bit tricky since we share the admin instance
-    // For now, we just verify the logout worked
-    const isLoggedIn = await admin.isLoggedIn();
-    expect(isLoggedIn).toBe(false);
+    it('requires admin session to list organizations', async () => {
+      // Create fresh admin that's definitely not logged in
+      // This is a bit tricky since we share the admin instance
+      // For now, we just verify the logout worked
+      const isLoggedIn = await ctx.admin.isLoggedIn();
+      expect(isLoggedIn).toBe(false);
 
-    // Try to access without login
-    await expect(admin.listOrganizations()).rejects.toThrow(UnauthorizedError);
-  });
+      // Try to access without login
+      await expect(ctx.admin.listOrganizations()).rejects.toThrow(UnauthorizedError);
+    });
 
-  it('rejects login with wrong password', async () => {
-    const config = getTestConfig();
-    const client = createHttpClient(config.baseUrl);
-    const wrongPasswordAdmin = createHttpAdmin(client, 'wrong-password-123');
+    it('rejects login with wrong password', async () => {
+      const wrongPasswordAdmin = ctx.createAdminWithCredentials('wrong-password-123');
 
-    await expect(wrongPasswordAdmin.login()).rejects.toThrow(UnauthorizedError);
+      await expect(wrongPasswordAdmin.login()).rejects.toThrow(UnauthorizedError);
+    });
   });
 });

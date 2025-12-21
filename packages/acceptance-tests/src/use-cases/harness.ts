@@ -1,28 +1,29 @@
 import {
-  describe as vitestDescribe,
-  it as vitestIt,
   beforeAll as vitestBeforeAll,
   afterAll as vitestAfterAll,
-  beforeEach as vitestBeforeEach,
-  afterEach as vitestAfterEach,
 } from 'vitest';
 import type { Driver, DriverCapability, DriverConfig } from '../drivers/index.js';
 import { createHttpDriver, createPlaywrightDriver } from '../drivers/index.js';
+import { createHttpClient } from '../drivers/http/http-client.js';
+import { createHttpAdmin } from '../drivers/http/admin.js';
+import { createHttpActor } from '../drivers/http/actor.js';
 import { getTestConfig } from '../config.js';
-import type { Actor, AnonymousActor, Admin, Health } from '../dsl/index.js';
+import type { CoreActor, BrowserActor, AnonymousActor, Admin, Health } from '../dsl/index.js';
 
 /**
- * Custom test function type that includes driver name in test output.
+ * Credentials for creating an actor with a specific token.
  */
-type ItFunction = (name: string, fn: () => Promise<void> | void) => void;
+export type ActorCredentials = {
+  email: string;
+  userId: string;
+  organizationId: string;
+  token: string;
+};
 
 /**
- * Context provided to each test via the describeFeature callback.
+ * Base context available to all driver types.
  */
-export type TestContext = {
-  /** The active driver */
-  driver: Driver;
-
+export type BaseContext = {
   /** Name of the current driver */
   driverName: DriverCapability;
 
@@ -36,28 +37,44 @@ export type TestContext = {
    * Create an authenticated actor for this test.
    * Each call creates a new isolated tenant (org, user, token).
    */
-  createActor: (email: string) => Promise<Actor>;
+  createActor: (email: string) => Promise<CoreActor>;
 
   /**
    * Create an anonymous (unauthenticated) actor.
    */
   createAnonymousActor: () => AnonymousActor;
+};
+
+/**
+ * Context for HTTP driver tests.
+ * Includes additional helpers for testing HTTP-specific security scenarios.
+ */
+export type HttpContext = BaseContext & {
+  driverName: 'http';
 
   /**
-   * Test function - use this instead of importing `it` from vitest.
-   * Automatically appends driver name to test title.
+   * Create an Admin with a specific password (for testing wrong credentials).
    */
-  it: ItFunction;
+  createAdminWithCredentials: (password: string) => Admin;
 
   /**
-   * beforeEach hook scoped to this driver context.
+   * Create an actor with specific pre-existing credentials.
+   * Useful for testing revoked/invalid tokens.
    */
-  beforeEach: (fn: () => Promise<void> | void) => void;
+  createActorWithCredentials: (credentials: ActorCredentials) => CoreActor;
+};
+
+/**
+ * Context for Playwright driver tests.
+ * Returns BrowserActor with browser-specific operations.
+ */
+export type PlaywrightContext = Omit<BaseContext, 'createActor'> & {
+  driverName: 'playwright';
 
   /**
-   * afterEach hook scoped to this driver context.
+   * Create an authenticated actor with browser capabilities.
    */
-  afterEach: (fn: () => Promise<void> | void) => void;
+  createActor: (email: string) => Promise<BrowserActor>;
 };
 
 /**
@@ -75,82 +92,147 @@ const createDriver = (capability: DriverCapability, config: DriverConfig): Drive
 };
 
 /**
- * Wrapper around Vitest's describe that runs tests against all applicable drivers.
+ * Create HTTP-specific context with additional helpers.
+ */
+const createHttpContext = (driver: Driver, config: DriverConfig): HttpContext => {
+  const client = createHttpClient(config.baseUrl);
+
+  return {
+    driverName: 'http',
+    admin: driver.admin,
+    health: driver.health,
+    createActor: (email: string) => driver.createActor(email) as Promise<CoreActor>,
+    createAnonymousActor: () => driver.createAnonymousActor(),
+    createAdminWithCredentials: (password: string) => createHttpAdmin(client, password),
+    createActorWithCredentials: (credentials: ActorCredentials) =>
+      createHttpActor(client, credentials),
+  };
+};
+
+/**
+ * Create Playwright-specific context.
+ */
+const createPlaywrightContext = (driver: Driver): PlaywrightContext => ({
+  driverName: 'playwright',
+  admin: driver.admin,
+  health: driver.health,
+  createActor: (email: string) => driver.createActor(email) as Promise<BrowserActor>,
+  createAnonymousActor: () => driver.createAnonymousActor(),
+});
+
+/**
+ * Create base context for multi-driver tests.
+ */
+const createBaseContext = (driver: Driver, driverName: DriverCapability): BaseContext => ({
+  driverName,
+  admin: driver.admin,
+  health: driver.health,
+  createActor: (email: string) => driver.createActor(email) as Promise<CoreActor>,
+  createAnonymousActor: () => driver.createAnonymousActor(),
+});
+
+// ============================================================================
+// usingDrivers - Type-safe driver iteration with automatic setup/teardown
+// ============================================================================
+
+/**
+ * Run tests using specified drivers with automatic setup and teardown.
  *
- * For each driver in `supportedDrivers`, creates a nested describe block and runs
- * all tests within that context. Test names include the driver suffix for clarity.
+ * Uses TypeScript function overloads to provide type-safe context based on
+ * which drivers are specified:
+ *
+ * - Single 'http' driver: HttpContext with createAdminWithCredentials, createActorWithCredentials
+ * - Single 'playwright' driver: PlaywrightContext with BrowserActor
+ * - Multiple drivers: BaseContext with CoreActor (common subset)
  *
  * @example
- * describeFeature('Capturing notes', ['http', 'playwright'], ({ createActor, it }) => {
- *   let alice: Actor;
- *
- *   beforeEach(async () => {
- *     alice = await createActor('alice@example.com');
- *   });
- *
- *   it('can create a new capture', async () => {
- *     const capture = await alice.createCapture({ content: 'Hello' });
- *     expect(capture.content).toBe('Hello');
+ * // HTTP-only test with security helpers
+ * usingDrivers(['http'] as const, (ctx) => {
+ *   describe(`Token security [${ctx.driverName}]`, () => {
+ *     it('rejects invalid tokens', async () => {
+ *       const actor = ctx.createActorWithCredentials({ token: 'invalid', ... });
+ *       await expect(actor.listCaptures()).rejects.toThrow(UnauthorizedError);
+ *     });
  *   });
  * });
  *
- * Output:
- *   Capturing notes
- *     [http]
- *       ✓ can create a new capture [http]
- *     [playwright]
- *       ✓ can create a new capture [playwright]
+ * @example
+ * // Playwright-only test with browser operations
+ * usingDrivers(['playwright'] as const, (ctx) => {
+ *   describe(`Offline handling [${ctx.driverName}]`, () => {
+ *     it('shows offline banner', async () => {
+ *       const alice = await ctx.createActor('alice@example.com');
+ *       await alice.goOffline();
+ *       expect(await alice.isOfflineBannerVisible()).toBe(true);
+ *     });
+ *   });
+ * });
+ *
+ * @example
+ * // Multi-driver test with common operations
+ * usingDrivers(['http', 'playwright'] as const, (ctx) => {
+ *   describe(`Capturing notes [${ctx.driverName}]`, () => {
+ *     it('can create a capture', async () => {
+ *       const alice = await ctx.createActor('alice@example.com');
+ *       const capture = await alice.createCapture({ content: 'Test' });
+ *       expect(capture.content).toBe('Test');
+ *     });
+ *   });
+ * });
  */
-export const describeFeature = (
-  name: string,
-  supportedDrivers: DriverCapability[],
-  fn: (context: TestContext) => void
-): void => {
+
+// Overload: HTTP-only gets HttpContext
+export function usingDrivers(
+  drivers: readonly ['http'],
+  fn: (ctx: HttpContext) => void
+): void;
+
+// Overload: Playwright-only gets PlaywrightContext
+export function usingDrivers(
+  drivers: readonly ['playwright'],
+  fn: (ctx: PlaywrightContext) => void
+): void;
+
+// Overload: Multiple drivers get BaseContext (common subset)
+export function usingDrivers<T extends readonly DriverCapability[]>(
+  drivers: T,
+  fn: (ctx: BaseContext) => void
+): void;
+
+// Implementation
+export function usingDrivers(
+  drivers: readonly DriverCapability[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fn: (ctx: any) => void
+): void {
   const config = getTestConfig();
 
-  vitestDescribe(name, () => {
-    // For each supported driver, create a nested describe block
-    for (const driverName of supportedDrivers) {
-      vitestDescribe(`[${driverName}]`, () => {
-        // Create driver instance for this describe block
-        // Each driver block gets its own instance to ensure isolation
-        const driver = createDriver(driverName, config);
+  for (const driverName of drivers) {
+    const driver = createDriver(driverName, config);
 
-        // Setup driver before tests in this block
-        vitestBeforeAll(async () => {
-          await driver.setup();
-        });
+    // Setup and teardown for this driver
+    vitestBeforeAll(async () => {
+      await driver.setup();
+    });
 
-        // Teardown driver after tests in this block
-        vitestAfterAll(async () => {
-          await driver.teardown();
-        });
+    vitestAfterAll(async () => {
+      await driver.teardown();
+    });
 
-        // Custom `it` that appends driver name to test title
-        const it: ItFunction = (testName, testFn) => {
-          vitestIt(`${testName} [${driverName}]`, testFn);
-        };
+    // Create the appropriate context based on driver type
+    let context: BaseContext | HttpContext | PlaywrightContext;
 
-        // Create context with the driver
-        // Note: Driver methods may not work until setup() completes in beforeAll,
-        // but the context object itself is available for registration
-        const context: TestContext = {
-          driver,
-          driverName,
-          admin: driver.admin,
-          health: driver.health,
-          createActor: (email: string) => driver.createActor(email),
-          createAnonymousActor: () => driver.createAnonymousActor(),
-          it,
-          beforeEach: vitestBeforeEach,
-          afterEach: vitestAfterEach,
-        };
-
-        fn(context);
-      });
+    if (driverName === 'http' && drivers.length === 1) {
+      context = createHttpContext(driver, config);
+    } else if (driverName === 'playwright' && drivers.length === 1) {
+      context = createPlaywrightContext(driver);
+    } else {
+      context = createBaseContext(driver, driverName);
     }
-  });
-};
 
-// Re-export vitest utilities for convenience (except `it` which comes from context)
-export { expect, beforeAll, afterAll } from 'vitest';
+    fn(context);
+  }
+}
+
+// Re-export vitest utilities for convenience
+export { expect, it, describe, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';

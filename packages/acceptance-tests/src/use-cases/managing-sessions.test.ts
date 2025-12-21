@@ -1,19 +1,17 @@
-import { describeFeature, expect } from './harness.js';
-import type { Actor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
+import type { BrowserActor } from '../dsl/index.js';
 
 /**
  * Tests for web app session management.
  * These are Playwright-only tests since they involve browser UI interactions
  * that don't have HTTP API equivalents.
  */
-describeFeature(
-  'Managing web app sessions',
-  ['playwright'],
-  ({ createActor, createAnonymousActor, it, beforeEach }) => {
-    let alice: Actor;
+usingDrivers(['playwright'] as const, (ctx) => {
+  describe(`Managing web app sessions [${ctx.driverName}]`, () => {
+    let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await createActor('alice@example.com');
+      alice = await ctx.createActor('alice@example.com');
     });
 
     it('can navigate to settings page', async () => {
@@ -44,7 +42,7 @@ describeFeature(
       // The anonymous actor verifies that accessing the app without a token
       // redirects to /config - this is already tested by the auth tests,
       // but we verify the redirect behavior explicitly here
-      const anonymous = createAnonymousActor();
+      const anonymous = ctx.createAnonymousActor();
 
       // This will throw UnauthorizedError after verifying redirect to /config
       // The important thing is the redirect happens (verified inside the actor)
@@ -64,5 +62,5 @@ describeFeature(
 
       expect(capture.content).toContain('config-test-');
     });
-  }
-);
+  });
+});

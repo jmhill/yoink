@@ -385,7 +385,6 @@ Ideas for future consideration, roughly prioritized:
   - Pinned captures appear first in inbox, sorted by pinnedAt (most recent first)
   - Archiving a pinned capture automatically unpins it
   - Visual indicator: accent border on left edge of pinned cards
-- [ ] Snooze captures - temporarily hide, resurface after duration (backend complete, see Phase 5.5)
 - [ ] Swipe-to-archive gesture on mobile
 - [ ] Auto archive/delete captures after configurable number of days
 - [ ] Better social captures
@@ -393,6 +392,8 @@ Ideas for future consideration, roughly prioritized:
   - [ ] LinkedIn improvements
 
 ### Tier 3: Architectural Work
+- [ ] Observability (logging, metrics, tracing)
+- [ ] Feature flagging infrastructure
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
   - Prerequisite for multi-org membership and improved auth UX
 - [ ] Admin panel improvements
@@ -410,8 +411,6 @@ Ideas for future consideration, roughly prioritized:
   - Camera integration on Android for photo captures
   - Image attachment support in capture entity
   - Audio notes
-- [ ] Observability (logging, metrics, tracing)
-- [ ] Feature flagging infrastructure
 
 ### Tier 4: Deferred / Low Priority
 - [ ] Card layout with drag-and-drop reordering
@@ -474,11 +473,18 @@ See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing st
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 
-#### Acceptance Test Review (In Progress)
+#### Acceptance Test Review (Complete) ✓
 - [x] Read use cases
 - [x] Compare driver implementations
 - [x] Ensure drivers are not including test logic
-- [ ] Implement the improved driver selection helper functions
+- [x] Implement the improved driver selection helper functions
+  - Split `Actor` into `CoreActor` (all drivers) + `BrowserActor` (Playwright only)
+  - Created `usingDrivers` helper with TypeScript overloads for type-safe context:
+    - `['http'] as const` → `HttpContext` with `createAdminWithCredentials`, `createActorWithCredentials`
+    - `['playwright'] as const` → `PlaywrightContext` with `BrowserActor`
+    - `['http', 'playwright'] as const` → `BaseContext` with `CoreActor`
+  - All tests updated to use new pattern with `ctx.driverName` for driver-specific describe blocks
+  - Fixed DSL violations in `authenticating.test.ts` and `token-security.test.ts`
 
 See [ACCEPTANCE_TEST_AUDIT.md](./ACCEPTANCE_TEST_AUDIT.md) for detailed findings.
 

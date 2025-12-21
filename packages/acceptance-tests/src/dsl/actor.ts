@@ -1,13 +1,10 @@
 import type { Capture, CreateCaptureInput, UpdateCaptureInput } from './types.js';
 
 /**
- * Represents an authenticated user performing actions.
- * All operations are scoped to this user's identity and permissions.
- *
- * This is the primary interface for user-facing acceptance tests.
- * Tests should read like: "alice.createCapture(...)" or "bob.listCaptures()"
+ * Core actor operations available in all drivers (HTTP and browser).
+ * These are the fundamental capture management operations.
  */
-export type Actor = {
+export type CoreActor = {
   // Identity
   readonly email: string;
   readonly userId: string;
@@ -26,11 +23,15 @@ export type Actor = {
   snoozeCapture(id: string, until: string): Promise<Capture>;
   unsnoozeCapture(id: string): Promise<Capture>;
   listSnoozedCaptures(): Promise<Capture[]>;
+};
 
-  // Session operations
+/**
+ * Browser-specific operations only available in Playwright driver.
+ * These require a real browser context to function.
+ */
+export type BrowserActorOperations = {
   /**
    * Navigate to the settings page.
-   * Only available in browser-based drivers.
    */
   goToSettings(): Promise<void>;
 
@@ -43,41 +44,49 @@ export type Actor = {
   /**
    * Check if the session requires (re)configuration.
    * Returns true if the app redirects to /config when trying to access inbox.
-   * Only available in browser-based drivers.
    */
   requiresConfiguration(): Promise<boolean>;
 
   /**
    * Simulate sharing content via the share target (PWA share intent).
    * Opens the /share route with the provided parameters.
-   * Only available in browser-based drivers.
    */
   shareContent(params: { text?: string; url?: string; title?: string }): Promise<Capture>;
 
   /**
    * Simulate going offline.
-   * Only available in browser-based drivers.
    */
   goOffline(): Promise<void>;
 
   /**
    * Simulate coming back online.
-   * Only available in browser-based drivers.
    */
   goOnline(): Promise<void>;
 
   /**
    * Check if the offline banner is visible.
-   * Only available in browser-based drivers.
    */
   isOfflineBannerVisible(): Promise<boolean>;
 
   /**
    * Check if the quick-add input is disabled.
-   * Only available in browser-based drivers.
    */
   isQuickAddDisabled(): Promise<boolean>;
 };
+
+/**
+ * Browser actor with all operations (core + browser-specific).
+ * Only returned by the Playwright driver.
+ */
+export type BrowserActor = CoreActor & BrowserActorOperations;
+
+/**
+ * Full Actor interface (union of all capabilities).
+ * Kept for backwards compatibility - existing tests use this type.
+ *
+ * @deprecated Use CoreActor for multi-driver tests, BrowserActor for browser-only tests
+ */
+export type Actor = BrowserActor;
 
 /**
  * Represents an unauthenticated user attempting actions.

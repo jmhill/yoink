@@ -1,17 +1,15 @@
-import { describeFeature, expect } from './harness.js';
-import type { Actor, AnonymousActor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
+import type { CoreActor, AnonymousActor } from '../dsl/index.js';
 import { UnauthorizedError, ValidationError } from '../dsl/index.js';
 
-describeFeature(
-  'Capturing notes',
-  ['http', 'playwright'],
-  ({ createActor, createAnonymousActor, it, beforeEach }) => {
-    let alice: Actor;
+usingDrivers(['http', 'playwright'] as const, (ctx) => {
+  describe(`Capturing notes [${ctx.driverName}]`, () => {
+    let alice: CoreActor;
     let anonymous: AnonymousActor;
 
     beforeEach(async () => {
-      alice = await createActor('alice@example.com');
-      anonymous = createAnonymousActor();
+      alice = await ctx.createActor('alice@example.com');
+      anonymous = ctx.createAnonymousActor();
     });
 
     it('can create a new capture', async () => {
@@ -64,20 +62,18 @@ describeFeature(
 
       expect(retrieved.content).toBe('Find me later');
     });
-  }
-);
+  });
+});
 
 // API-specific tests (require features not in web UI)
-describeFeature(
-  'Capturing notes - API features',
-  ['http'],
-  ({ createActor, createAnonymousActor, it, beforeEach }) => {
-    let alice: Actor;
+usingDrivers(['http'] as const, (ctx) => {
+  describe(`Capturing notes - API features [${ctx.driverName}]`, () => {
+    let alice: CoreActor;
     let anonymous: AnonymousActor;
 
     beforeEach(async () => {
-      alice = await createActor('alice@example.com');
-      anonymous = createAnonymousActor();
+      alice = await ctx.createActor('alice@example.com');
+      anonymous = ctx.createAnonymousActor();
     });
 
     it('includes user and org info in capture', async () => {
@@ -120,5 +116,5 @@ describeFeature(
 
       expect(retrieved.id).toBe(created.id);
     });
-  }
-);
+  });
+});

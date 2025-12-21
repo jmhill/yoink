@@ -1,19 +1,17 @@
-import { describeFeature, expect } from './harness.js';
-import type { Actor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
+import type { BrowserActor } from '../dsl/index.js';
 
 /**
  * Tests for the share target feature (PWA).
  * These tests verify the /share route works correctly when receiving
  * share intents from Android or other platforms.
  */
-describeFeature(
-  'Sharing content',
-  ['playwright'],
-  ({ createActor, it, beforeEach }) => {
-    let alice: Actor;
+usingDrivers(['playwright'] as const, (ctx) => {
+  describe(`Sharing content [${ctx.driverName}]`, () => {
+    let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await createActor('alice@example.com');
+      alice = await ctx.createActor('alice@example.com');
     });
 
     it('can capture shared text via share target', async () => {
@@ -51,5 +49,5 @@ describeFeature(
       expect(capture.content).toBe(sharedUrl);
       expect(capture.sourceUrl).toBe(sharedUrl);
     });
-  }
-);
+  });
+});

@@ -1,15 +1,17 @@
-import { describeFeature, expect } from './harness.js';
+import { usingDrivers, describe, it, expect } from './harness.js';
 
-describeFeature('System health', ['http', 'playwright'], ({ health, it }) => {
-  it('reports healthy status when system is running', async () => {
-    const status = await health.check();
+usingDrivers(['http', 'playwright'] as const, (ctx) => {
+  describe(`System health [${ctx.driverName}]`, () => {
+    it('reports healthy status when system is running', async () => {
+      const status = await ctx.health.check();
 
-    expect(status.status).toBe('healthy');
-  });
+      expect(status.status).toBe('healthy');
+    });
 
-  it('reports database as connected', async () => {
-    const status = await health.check();
+    it('reports database as connected', async () => {
+      const status = await ctx.health.check();
 
-    expect(status.database).toBe('connected');
+      expect(status.database).toBe('connected');
+    });
   });
 });

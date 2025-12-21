@@ -17,7 +17,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 241 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
-**Phase 4.5: Security Hardening** - In Progress
+**Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
 **Phase 4.6: Database Migration Infrastructure** - Complete ✓ (critical items)
 
 ---
@@ -306,6 +306,8 @@ Ideas for future consideration, roughly prioritized:
 
 ### Tier 1: Quick Wins
 - [x] Dark mode with system preference detection
+  - PWA: Uses theme CSS variables (`bg-background`, `text-muted-foreground`)
+  - Extension: External `theme-init.js` script (Manifest V3 CSP blocks inline scripts)
 - [x] Extension: Fix notification feedback for context menu captures
 - [x] Extension: Add Alt+Shift+Y as alternative quick capture shortcut
 - [x] Optimistic updates for web app mutations (create, archive, unarchive)
@@ -466,6 +468,11 @@ When implementing new features:
 4. **Verify before committing**:
    - `pnpm quality` - Unit tests, type checking, builds
    - `pnpm e2e:test` - Acceptance tests against Docker container
+
+5. **Local preview** (optional):
+   - `./scripts/local-preview.sh` - Builds Docker container, creates test credentials, copies API token to clipboard
+   - Opens at http://localhost:3333 with a fresh database
+   - Useful for testing production builds before deploying
 
 See [TESTING.md](./TESTING.md) for comprehensive testing documentation.
 

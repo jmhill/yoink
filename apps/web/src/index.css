@@ -1,12 +1,5 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
-@import "@yoink/theme/variables.css";
+@import "@yoink/ui-base/styles/variables.css";
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+/* App-specific styles can go here */

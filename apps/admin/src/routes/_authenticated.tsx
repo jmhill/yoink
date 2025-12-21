@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect, isRedirect } from '@tanstack/react-router';
 import { tsrAdmin } from '@/api/client';
 import { useTheme, type Theme } from '@/lib/use-theme';
-import { Button } from '@/components/ui/button';
+import { Button } from '@yoink/ui-base/components/button';
 import { Sun, Moon, Monitor } from 'lucide-react';
 
 export const Route = createFileRoute('/_authenticated')({

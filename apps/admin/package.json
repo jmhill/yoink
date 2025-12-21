@@ -10,26 +10,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-label": "^2.1.8",
-    "@radix-ui/react-separator": "^1.1.8",
-    "@radix-ui/react-slot": "^1.2.4",
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-router": "^1.93.0",
     "@ts-rest/core": "^3.52.0",
     "@ts-rest/react-query": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
-    "@yoink/theme": "workspace:*",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
+    "@yoink/ui-base": "workspace:*",
     "lucide-react": "^0.561.0",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hook-form": "^7.68.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.4.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {

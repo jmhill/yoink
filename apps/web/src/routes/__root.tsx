@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router';
-import { Toaster } from '@/components/ui/sonner';
+import { Toaster } from '@yoink/ui-base/components/sonner';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { usePwaUpdate } from '@/lib/use-pwa-update';
 import { UpdateBanner } from '@/components/update-banner';

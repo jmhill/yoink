@@ -1,5 +1,5 @@
 import { RefreshCw, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@yoink/ui-base/components/button';
 
 type UpdateBannerProps = {
   onRefresh: () => void;

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@yoink/ui-base/components/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tokenStorage } from '@/lib/token';
 import { useTheme, type Theme } from '@/lib/use-theme';
 import { ArrowLeft, LogOut, Sun, Moon, Monitor } from 'lucide-react';

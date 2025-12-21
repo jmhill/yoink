@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Label } from '@yoink/ui-base/components/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tokenStorage } from '@/lib/token';
 import { tsr } from '@/api/client';
 

@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button, buttonVariants } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Card, CardContent } from '@yoink/ui-base/components/card';
+import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@yoink/ui-base/components/dropdown-menu';
 import { tsr } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';

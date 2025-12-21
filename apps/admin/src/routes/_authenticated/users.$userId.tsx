@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Label } from '@yoink/ui-base/components/label';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@yoink/ui-base/components/card';
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@yoink/ui-base/components/table';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@yoink/ui-base/components/dialog';
 import { tsrAdmin } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff } from 'lucide-react';

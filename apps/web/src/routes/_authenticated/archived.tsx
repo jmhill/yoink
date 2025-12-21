@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@yoink/ui-base/components/button';
+import { Card, CardContent } from '@yoink/ui-base/components/card';
+import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Archive, Inbox, Settings, RotateCcw, Link as LinkIcon, WifiOff, Clock } from 'lucide-react';

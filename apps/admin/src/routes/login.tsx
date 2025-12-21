@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Label } from '@yoink/ui-base/components/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tsrPublic } from '@/api/client';
 
 export const Route = createFileRoute('/login')({

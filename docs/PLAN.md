@@ -19,7 +19,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
 **Phase 4.6: Database Migration Infrastructure** - Complete ✓ (critical items)
-**Phase 5.5: Snooze Feature** - In Progress (backend complete, UI pending)
+**Phase 5.5: Snooze Feature** - Complete ✓
 
 ---
 
@@ -337,16 +337,17 @@ After first deploy with health endpoint:
 - [x] Test validation: past time rejected, archived capture rejected
 - [x] Test not found handling for snooze/unsnooze
 
-### Web App UI (Pending)
-- [ ] Add Snoozed tab (leftmost: Snoozed | Inbox | Archived)
-- [ ] Add snooze button to capture cards (left position, before Pin)
-- [ ] Snooze dropdown with options:
-  - "Later today" (6pm same day)
+### Web App UI (Complete) ✓
+- [x] Add Snoozed tab (leftmost: Snoozed | Inbox | Archived)
+- [x] Add snooze button to capture cards (left position, before Pin)
+- [x] Snooze dropdown with options:
+  - "Later today" (6pm same day, or 2h if past 4pm)
   - "Tomorrow" (9am next day)
   - "Next week" (Monday 9am)
-- [ ] Create /snoozed route showing snoozed captures with wake times
-- [ ] Show "Waking at [time]" on snoozed capture cards
-- [ ] Unsnooze button on snoozed captures
+- [x] Create /snoozed route showing snoozed captures with wake times
+- [x] Show "Waking in [time]" on snoozed capture cards
+- [x] Unsnooze button on snoozed captures
+- [x] Optimistic updates for snooze/unsnooze mutations
 
 ### Design Decisions
 - **Snooze filtering**: Client compares `snoozedUntil` vs current time (no lazy DB updates)

@@ -5,7 +5,7 @@
  * Based on shadcn/ui neutral color palette with oklch colors.
  */
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

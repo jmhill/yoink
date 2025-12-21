@@ -362,6 +362,11 @@ After first deploy with health endpoint:
 
 Ideas for future consideration, roughly prioritized:
 
+### Maintenance and Chores
+- [x] Migrate away from deprecated TanStackRouterVite export
+  - Replaced `TanStackRouterVite` with `tanstackRouter` from `@tanstack/router-plugin/vite`
+  - Added recommended options: `{ target: 'react', autoCodeSplitting: true }`
+
 ### Tier 1: Quick Wins
 - [x] Dark mode with system preference detection
   - PWA: Uses theme CSS variables (`bg-background`, `text-muted-foreground`)
@@ -371,6 +376,9 @@ Ideas for future consideration, roughly prioritized:
 - [x] Optimistic updates for web app mutations (create, archive, unarchive)
 - [x] Faster PWA update detection (5-min interval + visibility change listener with debounce)
 - [x] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
+- [ ] Fix bad network error state (red error message on "Failed to load captures")
+- [ ] Fix highlight and share on mobile browser not including link
+- [ ] More themes (tokyonight)
 
 ### Tier 2: Feature Additions
 - [x] Pin capture to top (boolean flag + sort order)
@@ -379,6 +387,10 @@ Ideas for future consideration, roughly prioritized:
   - Visual indicator: accent border on left edge of pinned cards
 - [ ] Snooze captures - temporarily hide, resurface after duration (backend complete, see Phase 5.5)
 - [ ] Swipe-to-archive gesture on mobile
+- [ ] Auto archive/delete captures after configurable number of days
+- [ ] Better social captures
+  - [ ] Twitter/X improvements
+  - [ ] LinkedIn improvements
 
 ### Tier 3: Architectural Work
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
@@ -398,11 +410,18 @@ Ideas for future consideration, roughly prioritized:
   - Camera integration on Android for photo captures
   - Image attachment support in capture entity
   - Audio notes
+- [ ] Observability (logging, metrics, tracing)
+- [ ] Feature flagging infrastructure
 
 ### Tier 4: Deferred / Low Priority
 - [ ] Card layout with drag-and-drop reordering
 - [ ] URL previews/thumbnails
 - [ ] Pagination (not needed while capture count is manageable)
+- [ ] Community edition (make Yoink self-hostable for anyone)
+
+### Tier 5: AI Features
+- [ ] Summarize links (AI-generated summaries for captured URLs)
+- [ ] RAG search over old captures (semantic search using embeddings)
 
 ### Removed from Consideration
 - ~~Pull-to-refresh~~ - Native browser/PWA behavior, already works
@@ -454,6 +473,14 @@ See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing st
 - 92 acceptance tests (HTTP + Playwright)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
+
+#### Acceptance Test Review (In Progress)
+- [x] Read use cases
+- [x] Compare driver implementations
+- [x] Ensure drivers are not including test logic
+- [ ] Implement the improved driver selection helper functions
+
+See [ACCEPTANCE_TEST_AUDIT.md](./ACCEPTANCE_TEST_AUDIT.md) for detailed findings.
 
 ### CI/CD Optimizations
 

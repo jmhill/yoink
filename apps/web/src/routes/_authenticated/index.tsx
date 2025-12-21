@@ -58,7 +58,7 @@ function InboxPage() {
     if (!newContent.trim()) return;
 
     createMutation.mutate({
-      body: { content: newContent.trim() },
+      body: { content: newContent.trim(), sourceApp: 'web' },
     });
   };
 

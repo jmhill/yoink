@@ -62,6 +62,7 @@ function SharePage() {
         body: {
           content: content.trim() || sourceUrl || '',
           sourceUrl,
+          sourceApp: 'share',
         },
       });
 

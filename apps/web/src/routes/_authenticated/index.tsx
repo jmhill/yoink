@@ -4,10 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { tsr } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Settings, Link as LinkIcon, WifiOff, Pin } from 'lucide-react';
+import { Archive, Inbox, Settings, Link as LinkIcon, WifiOff, Pin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/')({
@@ -21,7 +27,7 @@ function InboxPage() {
 
   const { data, isPending, error } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const } },
+    queryData: { query: { status: 'inbox' as const, snoozed: false } },
   });
 
   const createMutation = tsr.create.useMutation({
@@ -211,6 +217,87 @@ function InboxPage() {
     },
   });
 
+  // Snooze mutation
+  const snoozeMutation = tsr.snooze.useMutation({
+    onMutate: async ({ params }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      // Snapshot current state for rollback
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+      const previousSnoozed = tsrQueryClient.list.getQueryData([
+        'captures',
+        'snoozed',
+      ]);
+
+      // Find the capture being snoozed
+      if (previousInbox?.status === 200) {
+        const captureToSnooze = previousInbox.body.captures.find(
+          (c) => c.id === params.id
+        );
+
+        // Remove from inbox
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
+          body: {
+            ...previousInbox.body,
+            captures: previousInbox.body.captures.filter(
+              (c) => c.id !== params.id
+            ),
+          },
+        });
+
+        // Add to snoozed (if cache exists)
+        if (captureToSnooze && previousSnoozed?.status === 200) {
+          tsrQueryClient.list.setQueryData(['captures', 'snoozed'], {
+            ...previousSnoozed,
+            body: {
+              ...previousSnoozed.body,
+              captures: [captureToSnooze, ...previousSnoozed.body.captures],
+            },
+          });
+        }
+      }
+
+      return { previousInbox, previousSnoozed };
+    },
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+      if (context?.previousSnoozed) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'snoozed'],
+          context.previousSnoozed
+        );
+      }
+
+      // Show error toast
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to snooze');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('Snoozed');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+    },
+  });
+
   // Wrapper to handle optimistic updates for both pin/unpin
   const handlePinOptimistic = async (id: string, isPinning: boolean) => {
     // Cancel in-flight queries to prevent overwrites
@@ -291,6 +378,47 @@ function InboxPage() {
     handlePinOptimistic(id, !isPinned);
   };
 
+  // Snooze time helpers
+  const getSnoozeTime = (option: 'later-today' | 'tomorrow' | 'next-week'): string => {
+    const now = new Date();
+
+    switch (option) {
+      case 'later-today': {
+        // 6 PM today, or 2 hours from now if past 4 PM
+        const sixPm = new Date(now);
+        sixPm.setHours(18, 0, 0, 0);
+        if (now.getHours() >= 16) {
+          // If past 4 PM, snooze for 2 hours
+          return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
+        }
+        return sixPm.toISOString();
+      }
+      case 'tomorrow': {
+        // 9 AM tomorrow
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        return tomorrow.toISOString();
+      }
+      case 'next-week': {
+        // 9 AM next Monday
+        const nextMonday = new Date(now);
+        const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
+        nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+        nextMonday.setHours(9, 0, 0, 0);
+        return nextMonday.toISOString();
+      }
+    }
+  };
+
+  const handleSnooze = (id: string, option: 'later-today' | 'tomorrow' | 'next-week') => {
+    const until = getSnoozeTime(option);
+    snoozeMutation.mutate({
+      params: { id },
+      body: { until },
+    });
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -348,7 +476,13 @@ function InboxPage() {
       </div>
 
       <Tabs defaultValue="inbox" className="mb-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="snoozed" asChild>
+            <Link to="/snoozed" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Snoozed
+            </Link>
+          </TabsTrigger>
           <TabsTrigger value="inbox" asChild>
             <Link to="/" className="flex items-center gap-2">
               <Inbox className="h-4 w-4" />
@@ -418,6 +552,29 @@ function InboxPage() {
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={snoozeMutation.isPending}
+                          aria-label="Snooze"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'later-today')}>
+                          Later today
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'tomorrow')}>
+                          Tomorrow
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'next-week')}>
+                          Next week
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                       variant="ghost"
                       size="icon-sm"

@@ -104,6 +104,23 @@ export class InboxPage {
     await card.getByRole('button', { name: 'Pin' }).waitFor();
   }
 
+  async snoozeCapture(content: string, option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
+    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
+    await card.hover();
+    // Click the snooze dropdown trigger
+    await card.getByLabel('Snooze').click();
+    // Select the snooze option from dropdown - Radix uses data-slot for menu items
+    const optionText = option === 'later-today' ? 'Later today' : option === 'tomorrow' ? 'Tomorrow' : 'Next week';
+    await this.page.locator('[data-slot="dropdown-menu-item"]').filter({ hasText: optionText }).click();
+    // Wait for the capture to disappear from inbox
+    await this.page.getByText(content).waitFor({ state: 'hidden' });
+  }
+
+  async goToSnoozed(): Promise<void> {
+    await this.page.getByRole('link', { name: 'Snoozed' }).click();
+    await this.page.waitForURL('/snoozed');
+  }
+
   async goToArchived(): Promise<void> {
     await this.page.getByRole('link', { name: 'Archived' }).click();
     await this.page.waitForURL('/archived');
@@ -189,6 +206,55 @@ export class ArchivedPage {
 
   async isEmpty(): Promise<boolean> {
     const emptyMessage = this.page.getByText('No archived captures');
+    return await emptyMessage.isVisible();
+  }
+}
+
+/**
+ * Page object for the snoozed page (/snoozed).
+ */
+export class SnoozedPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(): Promise<void> {
+    await this.page.goto('/snoozed');
+  }
+
+  async waitForLoad(): Promise<void> {
+    await this.page.waitForSelector('[data-slot="card"]');
+  }
+
+  async getCaptureContents(): Promise<string[]> {
+    const cards = this.page.locator('[data-slot="card"]');
+    const count = await cards.count();
+    const contents: string[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const contentElement = card.locator('p').first();
+      const text = await contentElement.textContent();
+      if (text) {
+        contents.push(text);
+      }
+    }
+    
+    return contents;
+  }
+
+  async unsnoozeCapture(content: string): Promise<void> {
+    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
+    await card.hover();
+    await card.getByLabel('Unsnooze').click();
+    await this.page.getByText(content).waitFor({ state: 'hidden' });
+  }
+
+  async goToInbox(): Promise<void> {
+    await this.page.getByRole('link', { name: 'Inbox' }).click();
+    await this.page.waitForURL('/');
+  }
+
+  async isEmpty(): Promise<boolean> {
+    const emptyMessage = this.page.getByText('No snoozed captures');
     return await emptyMessage.isVisible();
   }
 }

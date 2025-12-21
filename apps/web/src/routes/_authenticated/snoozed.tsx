@@ -4,61 +4,61 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Settings, RotateCcw, Link as LinkIcon, WifiOff, Clock } from 'lucide-react';
+import { Archive, Inbox, Settings, AlarmClockOff, Link as LinkIcon, WifiOff, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/_authenticated/archived')({
-  component: ArchivedPage,
+export const Route = createFileRoute('/_authenticated/snoozed')({
+  component: SnoozedPage,
 });
 
-function ArchivedPage() {
+function SnoozedPage() {
   const tsrQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error } = tsr.list.useQuery({
-    queryKey: ['captures', 'archived'],
-    queryData: { query: { status: 'archived' as const } },
+    queryKey: ['captures', 'snoozed'],
+    queryData: { query: { status: 'inbox' as const, snoozed: true } },
   });
 
-  const unarchiveMutation = tsr.unarchive.useMutation({
+  const unsnoozeMutation = tsr.unsnooze.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
       await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
 
       // Snapshot current state for rollback
-      const previousArchived = tsrQueryClient.list.getQueryData([
+      const previousSnoozed = tsrQueryClient.list.getQueryData([
         'captures',
-        'archived',
+        'snoozed',
       ]);
       const previousInbox = tsrQueryClient.list.getQueryData([
         'captures',
         'inbox',
       ]);
 
-      // Find the capture being unarchived
-      if (previousArchived?.status === 200) {
-        const captureToUnarchive = previousArchived.body.captures.find(
+      // Find the capture being unsnoozed
+      if (previousSnoozed?.status === 200) {
+        const captureToUnsnooze = previousSnoozed.body.captures.find(
           (c) => c.id === params.id
         );
 
-        // Remove from archived
-        tsrQueryClient.list.setQueryData(['captures', 'archived'], {
-          ...previousArchived,
+        // Remove from snoozed
+        tsrQueryClient.list.setQueryData(['captures', 'snoozed'], {
+          ...previousSnoozed,
           body: {
-            ...previousArchived.body,
-            captures: previousArchived.body.captures.filter(
+            ...previousSnoozed.body,
+            captures: previousSnoozed.body.captures.filter(
               (c) => c.id !== params.id
             ),
           },
         });
 
         // Add to inbox (if cache exists)
-        if (captureToUnarchive && previousInbox?.status === 200) {
+        if (captureToUnsnooze && previousInbox?.status === 200) {
           tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
             ...previousInbox,
             body: {
               ...previousInbox.body,
               captures: [
-                { ...captureToUnarchive, status: 'inbox' as const },
+                { ...captureToUnsnooze, snoozedUntil: undefined },
                 ...previousInbox.body.captures,
               ],
             },
@@ -66,15 +66,15 @@ function ArchivedPage() {
         }
       }
 
-      return { previousArchived, previousInbox };
+      return { previousSnoozed, previousInbox };
     },
 
     onError: (err, _variables, context) => {
       // Rollback on error
-      if (context?.previousArchived) {
+      if (context?.previousSnoozed) {
         tsrQueryClient.list.setQueryData(
-          ['captures', 'archived'],
-          context.previousArchived
+          ['captures', 'snoozed'],
+          context.previousSnoozed
         );
       }
       if (context?.previousInbox) {
@@ -88,7 +88,7 @@ function ArchivedPage() {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to unarchive');
+        toast.error('Failed to unsnooze');
       }
     },
 
@@ -102,8 +102,8 @@ function ArchivedPage() {
     },
   });
 
-  const handleUnarchive = (id: string) => {
-    unarchiveMutation.mutate({
+  const handleUnsnooze = (id: string) => {
+    unsnoozeMutation.mutate({
       params: { id },
       body: {},
     });
@@ -122,6 +122,21 @@ function ArchivedPage() {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const formatWakeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Waking soon';
+    if (diffMins < 60) return `Waking in ${diffMins}m`;
+    if (diffHours < 24) return `Waking in ${diffHours}h`;
+    if (diffDays < 7) return `Waking in ${diffDays}d`;
+    return `Waking ${date.toLocaleDateString()}`;
   };
 
   // Error state
@@ -164,7 +179,7 @@ function ArchivedPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="archived" className="mb-6">
+      <Tabs defaultValue="snoozed" className="mb-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="snoozed" asChild>
             <Link to="/snoozed" className="flex items-center gap-2">
@@ -192,9 +207,9 @@ function ArchivedPage() {
       ) : captures.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <Archive className="mx-auto mb-2 h-8 w-8" />
-            <p>No archived captures</p>
-            <p className="text-sm">Archived items will appear here</p>
+            <Clock className="mx-auto mb-2 h-8 w-8" />
+            <p>No snoozed captures</p>
+            <p className="text-sm">Snoozed items will appear here until they wake up</p>
           </CardContent>
         </Card>
       ) : (
@@ -216,18 +231,25 @@ function ArchivedPage() {
                       <span className="truncate">{capture.sourceUrl}</span>
                     </a>
                   )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(capture.capturedAt)}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(capture.capturedAt)}</span>
+                    {capture.snoozedUntil && (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <Clock className="h-3 w-3" />
+                        {formatWakeTime(capture.snoozedUntil)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => handleUnarchive(capture.id)}
-                  disabled={unarchiveMutation.isPending}
-                  title="Move to inbox"
+                  onClick={() => handleUnsnooze(capture.id)}
+                  disabled={unsnoozeMutation.isPending}
+                  title="Wake up now"
+                  aria-label="Unsnooze"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <AlarmClockOff className="h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>

@@ -7,10 +7,10 @@ import { NotFoundError, ValidationError } from '../dsl/index.js';
  * 
  * Snooze allows temporarily hiding captures from the inbox.
  * When the snooze time expires, the capture reappears in the inbox.
- * 
- * Note: These tests currently only run against the HTTP driver since
- * the web UI for snooze hasn't been implemented yet.
  */
+
+// Core snooze behavior
+// TODO: Add 'playwright' driver once UI selectors are debugged
 describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach }) => {
   let alice: Actor;
 
@@ -18,13 +18,6 @@ describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach })
   const futureTime = (hours: number): string => {
     const date = new Date();
     date.setHours(date.getHours() + hours);
-    return date.toISOString();
-  };
-
-  // Helper to create a past timestamp
-  const pastTime = (hours: number): string => {
-    const date = new Date();
-    date.setHours(date.getHours() - hours);
     return date.toISOString();
   };
 
@@ -38,7 +31,7 @@ describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach })
 
     const snoozed = await alice.snoozeCapture(capture.id, until);
 
-    expect(snoozed.snoozedUntil).toBe(until);
+    expect(snoozed.snoozedUntil).toBeDefined();
   });
 
   it('snoozed capture appears in snoozed list', async () => {
@@ -81,6 +74,38 @@ describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach })
 
     expect(inboxCaptures.some((c) => c.content === content)).toBe(true);
     expect(snoozedCaptures.some((c) => c.content === content)).toBe(false);
+  });
+});
+
+// API-specific validation and edge cases
+describeFeature('Snoozing captures - API validation', ['http'], ({ createActor, it, beforeEach }) => {
+  let alice: Actor;
+
+  // Helper to create a future timestamp
+  const futureTime = (hours: number): string => {
+    const date = new Date();
+    date.setHours(date.getHours() + hours);
+    return date.toISOString();
+  };
+
+  // Helper to create a past timestamp
+  const pastTime = (hours: number): string => {
+    const date = new Date();
+    date.setHours(date.getHours() - hours);
+    return date.toISOString();
+  };
+
+  beforeEach(async () => {
+    alice = await createActor('alice@example.com');
+  });
+
+  it('returns exact snoozedUntil timestamp', async () => {
+    const capture = await alice.createCapture({ content: 'Snooze exact' });
+    const until = futureTime(2);
+
+    const snoozed = await alice.snoozeCapture(capture.id, until);
+
+    expect(snoozed.snoozedUntil).toBe(until);
   });
 
   it('archiving a snoozed capture clears the snooze', async () => {

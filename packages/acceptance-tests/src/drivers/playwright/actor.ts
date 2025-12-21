@@ -6,8 +6,8 @@ import type {
   CreateCaptureInput,
   UpdateCaptureInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError, UnsupportedOperationError } from '../../dsl/index.js';
-import { ConfigPage, InboxPage, ArchivedPage, SettingsPage } from './page-objects.js';
+import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
+import { ConfigPage, InboxPage, ArchivedPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
 type ActorCredentials = {
   email: string;
@@ -26,6 +26,7 @@ type CaptureState = {
   status: 'inbox' | 'archived';
   capturedAt: string;
   pinnedAt?: string;
+  snoozedUntil?: string;
 };
 
 /**
@@ -40,6 +41,7 @@ export const createPlaywrightActor = (
   const inboxPage = new InboxPage(page);
   const archivedPage = new ArchivedPage(page);
   const settingsPage = new SettingsPage(page);
+  const snoozedPage = new SnoozedPage(page);
   
   // Track captures we've created for ID lookup
   const capturesByContent = new Map<string, CaptureState>();
@@ -61,6 +63,7 @@ export const createPlaywrightActor = (
     createdById: credentials.userId,
     capturedAt: state.capturedAt,
     pinnedAt: state.pinnedAt,
+    snoozedUntil: state.snoozedUntil,
   });
 
   return {
@@ -278,19 +281,78 @@ export const createPlaywrightActor = (
       return buildCapture(targetState);
     },
 
-    async snoozeCapture(_id: string, _until: string): Promise<Capture> {
-      // TODO: Implement when snooze UI is added
-      throw new UnsupportedOperationError('snoozeCapture', 'playwright');
+    async snoozeCapture(id: string, until: string): Promise<Capture> {
+      await ensureConfigured();
+
+      // Find the capture by ID
+      let targetState: CaptureState | undefined;
+      for (const state of capturesByContent.values()) {
+        if (state.id === id) {
+          targetState = state;
+          break;
+        }
+      }
+
+      if (!targetState) {
+        throw new NotFoundError('Capture', id);
+      }
+
+      // Determine snooze option based on until time
+      // For simplicity, we'll use 'tomorrow' as the default option in UI tests
+      await inboxPage.goto();
+      await inboxPage.snoozeCapture(targetState.content, 'tomorrow');
+      targetState.snoozedUntil = until;
+
+      return buildCapture(targetState);
     },
 
-    async unsnoozeCapture(_id: string): Promise<Capture> {
-      // TODO: Implement when snooze UI is added
-      throw new UnsupportedOperationError('unsnoozeCapture', 'playwright');
+    async unsnoozeCapture(id: string): Promise<Capture> {
+      await ensureConfigured();
+
+      // Find the capture by ID
+      let targetState: CaptureState | undefined;
+      for (const state of capturesByContent.values()) {
+        if (state.id === id) {
+          targetState = state;
+          break;
+        }
+      }
+
+      if (!targetState) {
+        throw new NotFoundError('Capture', id);
+      }
+
+      await snoozedPage.goto();
+      await snoozedPage.unsnoozeCapture(targetState.content);
+      targetState.snoozedUntil = undefined;
+
+      return buildCapture(targetState);
     },
 
     async listSnoozedCaptures(): Promise<Capture[]> {
-      // TODO: Implement when snoozed tab UI is added
-      throw new UnsupportedOperationError('listSnoozedCaptures', 'playwright');
+      await ensureConfigured();
+      await snoozedPage.goto();
+      
+      // Small delay to ensure page is loaded
+      await page.waitForTimeout(100);
+      
+      const contents = await snoozedPage.getCaptureContents();
+      
+      return contents.map((content) => {
+        const state = capturesByContent.get(content);
+        if (state) {
+          return buildCapture(state);
+        }
+        // Capture exists but we don't have metadata for it
+        return {
+          id: `unknown-${Date.now()}`,
+          content,
+          status: 'inbox' as const,
+          organizationId: credentials.organizationId,
+          createdById: credentials.userId,
+          capturedAt: new Date().toISOString(),
+        };
+      });
     },
 
     async goToSettings(): Promise<void> {

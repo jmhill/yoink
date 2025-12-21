@@ -18,6 +18,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - In Progress
+**Phase 4.6: Database Migration Infrastructure** - Not Started
 
 ---
 
@@ -200,7 +201,7 @@ A comprehensive security review identified the following priorities before shari
 - [x] Fix token enumeration timing oracle
 
 ### Deferred (Production Hardening)
-- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
+- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md)) - prerequisite for multi-org
 - [ ] Add container scanning (Trivy) to CI
 - [ ] Add SAST (CodeQL/Semgrep) to CI
 - [ ] Enable Dependabot for automated updates
@@ -219,6 +220,57 @@ A comprehensive security review identified the following priorities before shari
 - Stateless admin sessions can't be revoked early (mitigated by 24-hour TTL)
 
 **Deliverable**: Demo-ready security posture with rate limiting, security headers, and hardened container
+
+---
+
+## Phase 4.6: Database Migration Infrastructure
+
+**Goal**: Robust migration system for evolutionary database design
+
+As the application grows toward features like passkeys, image capture, and tags, the migration infrastructure needs to support safe schema evolution.
+
+### Critical (Now) - Complete ✓
+- [x] Add transaction wrapping to migrator (prevent partial migration corruption)
+- [x] Split migrations into individual files (better maintainability and git history)
+- [x] Create table rebuild helper (for complex schema changes in SQLite)
+
+### Medium Priority (Production Hardening)
+- [ ] Add migration checksum validation (detect unauthorized modifications)
+- [ ] Add dry-run mode (preview what would be applied)
+- [ ] Add schema validation (verify expected tables/columns exist post-migration)
+
+### Design Notes
+
+**Why these changes?**
+
+SQLite has limited `ALTER TABLE` support compared to PostgreSQL/MySQL. You cannot:
+- Drop columns (in older SQLite versions)
+- Change column types
+- Add NOT NULL to existing columns
+- Modify constraints
+
+The "table rebuild" pattern is required for these operations:
+1. Create new table with desired schema
+2. Copy data from old table
+3. Drop old table
+4. Rename new table
+
+**File structure after migration split:**
+```
+database/
+  migrations/
+    001-create-organizations.ts
+    002-create-users.ts
+    003-create-api-tokens.ts
+    004-create-captures.ts
+    index.ts  # Re-exports all migrations in order
+  migrator.ts
+  migrator.test.ts
+  table-rebuild.ts
+  table-rebuild.test.ts
+```
+
+**Deliverable**: Migration infrastructure ready for passkeys, image capture, and other schema-evolving features
 
 ---
 
@@ -250,84 +302,48 @@ After first deploy with health endpoint:
 
 ## Future Enhancements
 
-Ideas for future consideration (not yet scheduled):
+Ideas for future consideration, roughly prioritized:
 
-### Capture Editing
-- [ ] Markdown rendering for capture content display
-- [ ] Markdown editor for capture editing (with preview)
-
-### Rich Media Captures
-- [ ] Camera integration on Android for photo captures
-- [ ] Image attachment support in capture entity
-- [ ] Image display in inbox/archived views
-
-### User Experience
+### Tier 1: Quick Wins
 - [ ] Dark mode with system preference detection
+- [ ] Extension: Fix notification feedback for context menu captures
+- [ ] Extension: Investigate keyboard shortcut not working (possible Brave conflict)
+- [ ] Optimistic updates for mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
+
+### Tier 2: Feature Additions
+- [ ] Pin capture to top (boolean flag + sort order)
+- [ ] Snooze/reminders - temporarily hide capture, resurface after duration
+  - New "snoozed" status alongside inbox/archived
+  - Mechanics TBD: backend scheduler vs client-side check, push notifications
 - [ ] Swipe-to-archive gesture on mobile
-- [ ] Pull-to-refresh in inbox
-- [ ] Optimistic updates for mutations (see below)
 
-### Optimistic Updates
+### Tier 3: Architectural Work
+- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
+  - Prerequisite for multi-org membership and improved auth UX
+- [ ] Admin panel improvements
+  - Duplicate email detection (reject creating user with existing email in org)
+  - Organization name uniqueness validation
+  - User deletion
+  - Organization deletion
+- [ ] Multi-org membership (users can belong to multiple organizations)
+  - Enables sharing workspaces with family/coworkers
+  - Requires auth model redesign, depends on passkeys
+- [ ] Capture editing
+  - Markdown rendering for capture content display
+  - Markdown editor for capture editing (with preview)
+- [ ] Rich media captures
+  - Camera integration on Android for photo captures
+  - Image attachment support in capture entity
+  - Audio notes
 
-The app now uses TanStack Query v5 with ts-rest for data fetching. Adding optimistic updates would make the UI feel instant by updating the cache before the server responds, with automatic rollback on error.
+### Tier 4: Deferred / Low Priority
+- [ ] Card layout with drag-and-drop reordering
+- [ ] URL previews/thumbnails
+- [ ] Pagination (not needed while capture count is manageable)
 
-**Pattern:**
-
-```typescript
-const archiveMutation = tsr.update.useMutation({
-  onMutate: async ({ params }) => {
-    // 1. Cancel in-flight queries
-    await tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
-    
-    // 2. Snapshot for rollback
-    const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
-    
-    // 3. Optimistically update cache
-    if (previousInbox?.status === 200) {
-      tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-        ...previousInbox,
-        body: {
-          ...previousInbox.body,
-          captures: previousInbox.body.captures.filter(c => c.id !== params.id),
-        },
-      });
-    }
-    
-    return { previousInbox };
-  },
-  
-  onError: (_err, _variables, context) => {
-    // 4. Rollback on error
-    if (context?.previousInbox) {
-      tsrQueryClient.list.setQueryData(['captures', 'inbox'], context.previousInbox);
-    }
-  },
-  
-  onSettled: () => {
-    // 5. Refetch to ensure consistency
-    tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
-  },
-});
-```
-
-**Mutations to update:**
-
-| Location | Mutation | Notes |
-|----------|----------|-------|
-| `web/index.tsx` | create | Use temp ID until server responds |
-| `web/index.tsx` | archive | Move between inbox/archived caches |
-| `web/archived.tsx` | unarchive | Mirror of archive |
-| `admin/index.tsx` | createOrganization | Simple append |
-| `admin/organizations.$orgId.tsx` | createUser, updateOrganization | Simple append/update |
-| `admin/users.$userId.tsx` | createToken, revokeToken | Token creation shows modal with raw token |
-
-**Estimated effort:** ~2 hours total
-
-### Admin Panel Improvements
-- [ ] Duplicate email detection (reject creating user with existing email in org)
-- [ ] Organization name uniqueness validation
-- [ ] User deletion
-- [ ] Organization deletion
+### Removed from Consideration
+- ~~Pull-to-refresh~~ - Native browser/PWA behavior, already works
+- ~~Polling/SSE for data changes~~ - React Query's refetch handles this adequately
 
 ---
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -553,15 +553,12 @@ function InboxPage() {
                   </div>
                   <div className="flex gap-1">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={snoozeMutation.isPending}
-                          aria-label="Snooze"
-                        >
-                          <Clock className="h-4 w-4" />
-                        </Button>
+                      <DropdownMenuTrigger
+                        disabled={snoozeMutation.isPending}
+                        aria-label="Snooze"
+                        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+                      >
+                        <Clock className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => handleSnooze(capture.id, 'later-today')}>

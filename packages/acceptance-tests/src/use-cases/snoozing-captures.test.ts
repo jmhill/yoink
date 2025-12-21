@@ -10,8 +10,7 @@ import { NotFoundError, ValidationError } from '../dsl/index.js';
  */
 
 // Core snooze behavior
-// TODO: Add 'playwright' driver once dropdown menu selector issue is resolved
-describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach }) => {
+describeFeature('Snoozing captures', ['http', 'playwright'], ({ createActor, it, beforeEach }) => {
   let alice: Actor;
 
   // Helper to create a future timestamp

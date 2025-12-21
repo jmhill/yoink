@@ -274,7 +274,7 @@ database/
 
 ---
 
-## Phase 5: Deployment
+## Phase 5: Deployment - Complete ✓
 
 **Goal**: Running in production
 
@@ -285,8 +285,8 @@ database/
 - [x] CI/CD pipeline (GitHub Actions → Fly.io)
 - [x] Health endpoint (`GET /api/health`) with Fly.io HTTP health checks
 - [x] Post-deploy smoke test job in CI
-- [ ] Deploy web app (same service or separate static host)
-- [ ] Install PWA on phone, extension in browser
+- [x] Deploy web app (same service or separate static host)
+- [x] Install PWA on phone, extension in browser
 
 ### Smoke Test Setup (One-Time)
 
@@ -308,7 +308,8 @@ Ideas for future consideration, roughly prioritized:
 - [x] Dark mode with system preference detection
 - [x] Extension: Fix notification feedback for context menu captures
 - [x] Extension: Add Alt+Shift+Y as alternative quick capture shortcut
-- [ ] Optimistic updates for mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
+- [x] Optimistic updates for web app mutations (create, archive, unarchive)
+- [ ] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
 
 ### Tier 2: Feature Additions
 - [ ] Pin capture to top (boolean flag + sort order)

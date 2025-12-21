@@ -25,31 +25,156 @@ function InboxPage() {
   });
 
   const createMutation = tsr.create.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+    onMutate: async ({ body }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      // Snapshot current state for rollback
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+
+      // Create optimistic capture with temp ID
+      const optimisticCapture = {
+        id: `temp-${Date.now()}`,
+        organizationId: 'temp',
+        createdById: 'temp',
+        content: body.content,
+        title: body.title,
+        sourceUrl: body.sourceUrl,
+        sourceApp: body.sourceApp ?? 'web',
+        status: 'inbox' as const,
+        capturedAt: new Date().toISOString(),
+      };
+
+      if (previousInbox?.status === 200) {
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
+          body: {
+            ...previousInbox.body,
+            captures: [optimisticCapture, ...previousInbox.body.captures],
+          },
+        });
+      }
+
+      // Clear input immediately for snappy UX
       setNewContent('');
-      toast.success('Capture added');
+
+      return { previousInbox, previousContent: body.content };
     },
-    onError: (err) => {
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+      // Restore the input content so user doesn't lose their text
+      if (context?.previousContent) {
+        setNewContent(context.previousContent);
+      }
+
+      // Show error toast
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to add capture');
       }
     },
+
+    onSuccess: () => {
+      toast.success('Capture added');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server (replaces temp ID with real one)
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+    },
   });
 
   const archiveMutation = tsr.update.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
-      toast.success('Archived');
+    onMutate: async ({ params }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      // Snapshot current state for rollback
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+      const previousArchived = tsrQueryClient.list.getQueryData([
+        'captures',
+        'archived',
+      ]);
+
+      // Find the capture being archived
+      if (previousInbox?.status === 200) {
+        const captureToArchive = previousInbox.body.captures.find(
+          (c) => c.id === params.id
+        );
+
+        // Remove from inbox
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
+          body: {
+            ...previousInbox.body,
+            captures: previousInbox.body.captures.filter(
+              (c) => c.id !== params.id
+            ),
+          },
+        });
+
+        // Add to archived (if cache exists)
+        if (captureToArchive && previousArchived?.status === 200) {
+          tsrQueryClient.list.setQueryData(['captures', 'archived'], {
+            ...previousArchived,
+            body: {
+              ...previousArchived.body,
+              captures: [
+                { ...captureToArchive, status: 'archived' as const },
+                ...previousArchived.body.captures,
+              ],
+            },
+          });
+        }
+      }
+
+      return { previousInbox, previousArchived };
     },
-    onError: (err) => {
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+      if (context?.previousArchived) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'archived'],
+          context.previousArchived
+        );
+      }
+
+      // Show error toast
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to archive');
       }
+    },
+
+    onSuccess: () => {
+      toast.success('Archived');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
     },
   });
 

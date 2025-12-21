@@ -20,16 +20,85 @@ function ArchivedPage() {
   });
 
   const unarchiveMutation = tsr.update.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
-      toast.success('Moved to inbox');
+    onMutate: async ({ params }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      // Snapshot current state for rollback
+      const previousArchived = tsrQueryClient.list.getQueryData([
+        'captures',
+        'archived',
+      ]);
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+
+      // Find the capture being unarchived
+      if (previousArchived?.status === 200) {
+        const captureToUnarchive = previousArchived.body.captures.find(
+          (c) => c.id === params.id
+        );
+
+        // Remove from archived
+        tsrQueryClient.list.setQueryData(['captures', 'archived'], {
+          ...previousArchived,
+          body: {
+            ...previousArchived.body,
+            captures: previousArchived.body.captures.filter(
+              (c) => c.id !== params.id
+            ),
+          },
+        });
+
+        // Add to inbox (if cache exists)
+        if (captureToUnarchive && previousInbox?.status === 200) {
+          tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+            ...previousInbox,
+            body: {
+              ...previousInbox.body,
+              captures: [
+                { ...captureToUnarchive, status: 'inbox' as const },
+                ...previousInbox.body.captures,
+              ],
+            },
+          });
+        }
+      }
+
+      return { previousArchived, previousInbox };
     },
-    onError: (err) => {
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousArchived) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'archived'],
+          context.previousArchived
+        );
+      }
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+
+      // Show error toast
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to unarchive');
       }
+    },
+
+    onSuccess: () => {
+      toast.success('Moved to inbox');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
     },
   });
 

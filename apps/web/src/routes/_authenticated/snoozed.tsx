@@ -215,7 +215,7 @@ function SnoozedPage() {
       ) : (
         <div className="space-y-2">
           {captures.map((capture) => (
-            <Card key={capture.id}>
+            <Card key={capture.id} data-capture-id={capture.id}>
               <CardContent className="flex items-start justify-between gap-2 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="whitespace-pre-wrap break-words">{capture.content}</p>

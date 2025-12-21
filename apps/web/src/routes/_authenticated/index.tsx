@@ -530,6 +530,7 @@ function InboxPage() {
             return (
               <Card
                 key={capture.id}
+                data-capture-id={capture.id}
                 className={isPinned ? 'border-l-4 border-l-primary' : ''}
               >
                 <CardContent className="flex items-start justify-between gap-2 py-3">

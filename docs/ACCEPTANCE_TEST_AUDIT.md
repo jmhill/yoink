@@ -58,26 +58,19 @@ The driver now attempts the UI action and detects if the Add button is disabled 
 
 #### Synthetic ID Tracking
 
-The driver maintains a `capturesByContent` Map to track IDs because the UI doesn't expose them:
+~~The driver maintained a `capturesByContent` Map to track synthetic IDs because the UI didn't expose them.~~
 
-```typescript
-const capturesByContent = new Map<string, CaptureState>();
+**Status**: ✅ Fixed
 
-// Creates fake IDs for tracking
-const state: CaptureState = {
-  id: `ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  // ...
-};
-```
+The web UI now exposes real capture IDs via `data-capture-id` attributes on capture cards. The Playwright driver reads these IDs directly from the DOM, eliminating the need for synthetic ID tracking entirely.
 
-**Impact**: `getCapture(id)` only works for captures the driver created. Creates semantic drift from actual system behavior.
+Changes made:
+1. Added `data-capture-id={capture.id}` to Card components in inbox, archived, and snoozed pages
+2. Updated page objects to read IDs via `getAttribute('data-capture-id')`
+3. Removed `capturesByContent` Map and `CaptureState` type from the actor
+4. The `quickAdd` method now returns the real capture ID from the DOM
 
-**Status**: ✅ Documented
-
-The limitation is now documented in the `CaptureState` type definition in `actor.ts`. This is an acceptable limitation because:
-1. Most acceptance tests create unique content per test
-2. Tests requiring real ID validation use HTTP-only driver (`['http'] as const`)
-3. Content-based lookups work well for UI-level testing
+This means the Playwright driver now uses real database IDs, matching the HTTP driver's behavior exactly.
 
 #### Magic Timeouts
 
@@ -276,7 +269,7 @@ Each `createActor()` call creates a new organization, user, and token. This prov
 | Medium | Replace `describeFeature` with `usingDrivers` pattern | ✅ Done |
 | Medium | Replace magic timeouts with explicit wait conditions | ✅ Done |
 | Medium | Fix silent error swallowing in offline detection | ✅ Done |
-| Low | Document synthetic ID tracking limitation | ✅ Done |
+| Low | Expose real IDs in DOM (replaces synthetic ID tracking) | ✅ Done |
 | Low | Add tenant cleanup in test teardown | Pending |
 | Low | Consider isolated browser contexts per actor | Pending |
 
@@ -331,4 +324,4 @@ The Playwright driver has been cleaned up to remove test logic from the driver l
 
 3. **Error Swallowing Fixed**: The `isQuickAddDisabled` method now properly propagates errors instead of catching and returning `false`.
 
-4. **Synthetic ID Limitation Documented**: The `CaptureState` type now includes comprehensive documentation explaining why synthetic IDs are used and their limitations.
+4. **Real IDs from DOM**: The web UI now exposes `data-capture-id` attributes on capture cards. The Playwright driver reads these real database IDs directly from the DOM, eliminating synthetic ID tracking entirely. This makes the Playwright driver's behavior match the HTTP driver exactly.

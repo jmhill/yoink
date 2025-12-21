@@ -50,9 +50,8 @@ export class InboxPage {
     // Wait for either:
     // 1. At least one capture card to appear
     // 2. The "Your inbox is empty" message to appear
-    // 3. The loading state to disappear
     await Promise.race([
-      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.locator('[data-capture-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('Your inbox is empty').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, the page might still be loading
@@ -62,9 +61,9 @@ export class InboxPage {
 
   /**
    * Add a capture via the quick-add input.
-   * Returns true if submission was successful, false if the UI prevented it.
+   * Returns the created capture's ID if successful, null if the UI prevented submission.
    */
-  async quickAdd(content: string): Promise<boolean> {
+  async quickAdd(content: string): Promise<string | null> {
     const input = this.page.getByPlaceholder('Quick capture...');
     const addButton = this.page.getByRole('button', { name: 'Add' });
     
@@ -73,7 +72,7 @@ export class InboxPage {
     // Check if the Add button is disabled (UI validation for empty content)
     const isDisabled = await addButton.isDisabled();
     if (isDisabled) {
-      return false;
+      return null;
     }
     
     await addButton.click();
@@ -83,12 +82,16 @@ export class InboxPage {
       await this.page.getByText(content).waitFor();
     }
     
-    return true;
+    // Get the real ID from the newly created capture card
+    const card = this.page.locator('[data-capture-id]').filter({ hasText: content }).first();
+    const captureId = await card.getAttribute('data-capture-id');
+    
+    return captureId;
   }
 
   async getCaptureContents(): Promise<string[]> {
     // Get all capture cards and extract their content
-    const cards = this.page.locator('[data-slot="card"]');
+    const cards = this.page.locator('[data-capture-id]');
     const count = await cards.count();
     const contents: string[] = [];
     
@@ -102,6 +105,35 @@ export class InboxPage {
     }
     
     return contents;
+  }
+
+  /**
+   * Get all captures with their IDs from the DOM.
+   */
+  async getCaptures(): Promise<Array<{ id: string; content: string }>> {
+    const cards = this.page.locator('[data-capture-id]');
+    const count = await cards.count();
+    const captures: Array<{ id: string; content: string }> = [];
+    
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const id = await card.getAttribute('data-capture-id');
+      const contentElement = card.locator('p').first();
+      const content = await contentElement.textContent();
+      if (id && content) {
+        captures.push({ id, content });
+      }
+    }
+    
+    return captures;
+  }
+
+  /**
+   * Get a capture's ID by its content.
+   */
+  async getCaptureIdByContent(content: string): Promise<string | null> {
+    const card = this.page.locator('[data-capture-id]').filter({ hasText: content }).first();
+    return await card.getAttribute('data-capture-id');
   }
 
   /**
@@ -220,7 +252,7 @@ export class ArchivedPage {
    */
   async waitForCapturesOrEmpty(): Promise<void> {
     await Promise.race([
-      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.locator('[data-capture-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No archived captures').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
@@ -228,7 +260,7 @@ export class ArchivedPage {
   }
 
   async getCaptureContents(): Promise<string[]> {
-    const cards = this.page.locator('[data-slot="card"]');
+    const cards = this.page.locator('[data-capture-id]');
     const count = await cards.count();
     const contents: string[] = [];
     
@@ -242,6 +274,27 @@ export class ArchivedPage {
     }
     
     return contents;
+  }
+
+  /**
+   * Get all captures with their IDs from the DOM.
+   */
+  async getCaptures(): Promise<Array<{ id: string; content: string }>> {
+    const cards = this.page.locator('[data-capture-id]');
+    const count = await cards.count();
+    const captures: Array<{ id: string; content: string }> = [];
+    
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const id = await card.getAttribute('data-capture-id');
+      const contentElement = card.locator('p').first();
+      const content = await contentElement.textContent();
+      if (id && content) {
+        captures.push({ id, content });
+      }
+    }
+    
+    return captures;
   }
 
   async unarchiveCapture(content: string): Promise<void> {
@@ -282,7 +335,7 @@ export class SnoozedPage {
    */
   async waitForCapturesOrEmpty(): Promise<void> {
     await Promise.race([
-      this.page.locator('[data-slot="card"]').first().waitFor({ state: 'attached' }),
+      this.page.locator('[data-capture-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No snoozed captures').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
@@ -290,7 +343,7 @@ export class SnoozedPage {
   }
 
   async getCaptureContents(): Promise<string[]> {
-    const cards = this.page.locator('[data-slot="card"]');
+    const cards = this.page.locator('[data-capture-id]');
     const count = await cards.count();
     const contents: string[] = [];
     
@@ -304,6 +357,27 @@ export class SnoozedPage {
     }
     
     return contents;
+  }
+
+  /**
+   * Get all captures with their IDs from the DOM.
+   */
+  async getCaptures(): Promise<Array<{ id: string; content: string }>> {
+    const cards = this.page.locator('[data-capture-id]');
+    const count = await cards.count();
+    const captures: Array<{ id: string; content: string }> = [];
+    
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const id = await card.getAttribute('data-capture-id');
+      const contentElement = card.locator('p').first();
+      const content = await contentElement.textContent();
+      if (id && content) {
+        captures.push({ id, content });
+      }
+    }
+    
+    return captures;
   }
 
   async unsnoozeCapture(content: string): Promise<void> {

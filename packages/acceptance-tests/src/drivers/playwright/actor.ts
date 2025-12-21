@@ -17,35 +17,11 @@ type ActorCredentials = {
 };
 
 /**
- * State tracking for captures created through the UI.
- * Since the UI doesn't expose all capture fields, we need to track them.
- *
- * LIMITATION: Synthetic ID Tracking
- * =================================
- * The Playwright driver generates synthetic IDs (e.g., "ui-1234567890-abc123")
- * because the web UI doesn't expose the actual database IDs. This has implications:
- *
- * 1. `getCapture(id)` only works for captures this driver instance created
- * 2. Tests using synthetic IDs don't verify actual database behavior
- * 3. If the same content is captured twice, the Map will only track the latest
- *
- * The driver uses content-based lookups internally, mapping content → state.
- * This works well for most acceptance tests since each test creates unique content.
- *
- * For tests that need real IDs (e.g., testing ID validation), use HTTP driver only.
- */
-type CaptureState = {
-  id: string;
-  content: string;
-  status: 'inbox' | 'archived';
-  capturedAt: string;
-  pinnedAt?: string;
-  snoozedUntil?: string;
-};
-
-/**
  * Playwright implementation of the Actor interface.
  * Interacts with the web UI to perform operations.
+ *
+ * This driver reads real capture IDs from the DOM via data-capture-id attributes,
+ * eliminating the need for synthetic ID tracking.
  */
 export const createPlaywrightActor = (
   page: Page,
@@ -56,9 +32,7 @@ export const createPlaywrightActor = (
   const archivedPage = new ArchivedPage(page);
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
-  
-  // Track captures we've created for ID lookup
-  const capturesByContent = new Map<string, CaptureState>();
+
   let isConfigured = false;
 
   const ensureConfigured = async (): Promise<void> => {
@@ -68,17 +42,38 @@ export const createPlaywrightActor = (
     }
   };
 
-  // Helper to build a Capture object from UI state
-  const buildCapture = (state: CaptureState): Capture => ({
-    id: state.id,
-    content: state.content,
-    status: state.status,
+  /**
+   * Build a minimal Capture object from ID and content.
+   * We don't have access to all fields through the UI, but tests
+   * primarily need id, content, and status.
+   */
+  const buildCapture = (
+    id: string,
+    content: string,
+    status: 'inbox' | 'archived',
+    extras?: Partial<Capture>
+  ): Capture => ({
+    id,
+    content,
+    status,
     organizationId: credentials.organizationId,
     createdById: credentials.userId,
-    capturedAt: state.capturedAt,
-    pinnedAt: state.pinnedAt,
-    snoozedUntil: state.snoozedUntil,
+    capturedAt: new Date().toISOString(),
+    ...extras,
   });
+
+  /**
+   * Find a capture's content by its ID from the current page.
+   * Returns null if not found.
+   */
+  const findCaptureContentById = async (id: string): Promise<string | null> => {
+    const card = page.locator(`[data-capture-id="${id}"]`);
+    if ((await card.count()) === 0) {
+      return null;
+    }
+    const contentElement = card.locator('p').first();
+    return await contentElement.textContent();
+  };
 
   return {
     email: credentials.email,
@@ -88,289 +83,176 @@ export const createPlaywrightActor = (
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
       await ensureConfigured();
       await inboxPage.goto();
-      
+
       // Attempt to add the capture through the UI
-      // The UI prevents submission if content is empty (button is disabled)
-      const wasSubmitted = await inboxPage.quickAdd(input.content);
-      
-      if (!wasSubmitted) {
+      // quickAdd returns the real ID from the DOM, or null if submission was prevented
+      const captureId = await inboxPage.quickAdd(input.content);
+
+      if (!captureId) {
         // The UI rejected the submission (e.g., empty content)
         throw new ValidationError('Content is required');
       }
-      
-      // Generate a pseudo-ID (the real ID is in the backend)
-      // For tests that need the ID, we'll use the content as a lookup key
-      const capturedAt = new Date().toISOString();
-      const state: CaptureState = {
-        id: `ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        content: input.content,
-        status: 'inbox',
-        capturedAt,
-      };
-      capturesByContent.set(input.content, state);
-      
-      return buildCapture(state);
+
+      return buildCapture(captureId, input.content, 'inbox');
     },
 
     async listCaptures(): Promise<Capture[]> {
       await ensureConfigured();
       await inboxPage.goto();
-      
-      // Wait for the page to finish loading (either captures or empty state)
       await inboxPage.waitForCapturesOrEmpty();
-      
-      const contents = await inboxPage.getCaptureContents();
-      
-      return contents.map((content) => {
-        const state = capturesByContent.get(content);
-        if (state) {
-          return buildCapture(state);
-        }
-        // Capture exists but we don't have metadata for it
-        return {
-          id: `unknown-${Date.now()}`,
-          content,
-          status: 'inbox' as const,
-          organizationId: credentials.organizationId,
-          createdById: credentials.userId,
-          capturedAt: new Date().toISOString(),
-        };
-      });
+
+      const captures = await inboxPage.getCaptures();
+      return captures.map(({ id, content }) => buildCapture(id, content, 'inbox'));
     },
 
     async listArchivedCaptures(): Promise<Capture[]> {
       await ensureConfigured();
       await archivedPage.goto();
-      
-      // Wait for the page to finish loading (either captures or empty state)
       await archivedPage.waitForCapturesOrEmpty();
-      
-      const contents = await archivedPage.getCaptureContents();
-      
-      return contents.map((content) => {
-        const state = capturesByContent.get(content);
-        if (state) {
-          return buildCapture(state);
-        }
-        // Capture exists but we don't have metadata for it
-        return {
-          id: `unknown-${Date.now()}`,
-          content,
-          status: 'archived' as const,
-          organizationId: credentials.organizationId,
-          createdById: credentials.userId,
-          capturedAt: new Date().toISOString(),
-        };
-      });
+
+      const captures = await archivedPage.getCaptures();
+      return captures.map(({ id, content }) => buildCapture(id, content, 'archived'));
     },
 
     async getCapture(id: string): Promise<Capture> {
       await ensureConfigured();
-      
-      // Look up by ID in our tracked captures
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          return buildCapture(state);
-        }
+
+      // Check inbox first
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
+      let content = await findCaptureContentById(id);
+      if (content) {
+        return buildCapture(id, content, 'inbox');
       }
-      
+
+      // Check archived
+      await archivedPage.goto();
+      await archivedPage.waitForCapturesOrEmpty();
+      content = await findCaptureContentById(id);
+      if (content) {
+        return buildCapture(id, content, 'archived');
+      }
+
+      // Check snoozed
+      await snoozedPage.goto();
+      await snoozedPage.waitForCapturesOrEmpty();
+      content = await findCaptureContentById(id);
+      if (content) {
+        return buildCapture(id, content, 'inbox');
+      }
+
       throw new NotFoundError('Capture', id);
     },
 
     async updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture> {
       await ensureConfigured();
-      
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-      
-      if (!targetState) {
+
+      // First verify the capture exists
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
+      const content = await findCaptureContentById(id);
+
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
-      
-      // Update content in our state (UI doesn't support inline edit yet)
-      if (input.content) {
-        capturesByContent.delete(targetState.content);
-        targetState.content = input.content;
-        capturesByContent.set(targetState.content, targetState);
-      }
-      
-      return buildCapture(targetState);
+
+      // UI doesn't support inline edit yet, so we just return the current state
+      // with the requested content update (this is a limitation of the UI)
+      return buildCapture(id, input.content ?? content, 'inbox');
     },
 
     async archiveCapture(id: string): Promise<Capture> {
       await ensureConfigured();
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      await inboxPage.goto();
-      await inboxPage.archiveCapture(targetState.content);
-      targetState.status = 'archived';
-      // Archiving automatically unpins
-      targetState.pinnedAt = undefined;
-
-      return buildCapture(targetState);
+      await inboxPage.archiveCapture(content);
+      return buildCapture(id, content, 'archived');
     },
 
     async unarchiveCapture(id: string): Promise<Capture> {
       await ensureConfigured();
+      await archivedPage.goto();
+      await archivedPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      await archivedPage.goto();
-      await archivedPage.unarchiveCapture(targetState.content);
-      targetState.status = 'inbox';
-
-      return buildCapture(targetState);
+      await archivedPage.unarchiveCapture(content);
+      return buildCapture(id, content, 'inbox');
     },
 
     async pinCapture(id: string): Promise<Capture> {
       await ensureConfigured();
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      // Navigate to inbox and pin the capture
-      await inboxPage.goto();
-      await inboxPage.pinCapture(targetState.content);
-      targetState.pinnedAt = new Date().toISOString();
-
-      return buildCapture(targetState);
+      await inboxPage.pinCapture(content);
+      return buildCapture(id, content, 'inbox', { pinnedAt: new Date().toISOString() });
     },
 
     async unpinCapture(id: string): Promise<Capture> {
       await ensureConfigured();
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      // Navigate to inbox and unpin the capture
-      await inboxPage.goto();
-      await inboxPage.unpinCapture(targetState.content);
-      targetState.pinnedAt = undefined;
-
-      return buildCapture(targetState);
+      await inboxPage.unpinCapture(content);
+      return buildCapture(id, content, 'inbox');
     },
 
     async snoozeCapture(id: string, until: string): Promise<Capture> {
       await ensureConfigured();
+      await inboxPage.goto();
+      await inboxPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      // Determine snooze option based on until time
-      // For simplicity, we'll use 'tomorrow' as the default option in UI tests
-      await inboxPage.goto();
-      await inboxPage.snoozeCapture(targetState.content, 'tomorrow');
-      targetState.snoozedUntil = until;
-
-      return buildCapture(targetState);
+      // For simplicity, we use 'tomorrow' as the snooze option in UI tests
+      await inboxPage.snoozeCapture(content, 'tomorrow');
+      return buildCapture(id, content, 'inbox', { snoozedUntil: until });
     },
 
     async unsnoozeCapture(id: string): Promise<Capture> {
       await ensureConfigured();
+      await snoozedPage.goto();
+      await snoozedPage.waitForCapturesOrEmpty();
 
-      // Find the capture by ID
-      let targetState: CaptureState | undefined;
-      for (const state of capturesByContent.values()) {
-        if (state.id === id) {
-          targetState = state;
-          break;
-        }
-      }
-
-      if (!targetState) {
+      const content = await findCaptureContentById(id);
+      if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      await snoozedPage.goto();
-      await snoozedPage.unsnoozeCapture(targetState.content);
-      targetState.snoozedUntil = undefined;
-
-      return buildCapture(targetState);
+      await snoozedPage.unsnoozeCapture(content);
+      return buildCapture(id, content, 'inbox');
     },
 
     async listSnoozedCaptures(): Promise<Capture[]> {
       await ensureConfigured();
       await snoozedPage.goto();
-      
-      // Wait for the page to finish loading (either captures or empty state)
       await snoozedPage.waitForCapturesOrEmpty();
-      
-      const contents = await snoozedPage.getCaptureContents();
-      
-      return contents.map((content) => {
-        const state = capturesByContent.get(content);
-        if (state) {
-          return buildCapture(state);
-        }
-        // Capture exists but we don't have metadata for it
-        return {
-          id: `unknown-${Date.now()}`,
-          content,
-          status: 'inbox' as const,
-          organizationId: credentials.organizationId,
-          createdById: credentials.userId,
-          capturedAt: new Date().toISOString(),
-        };
-      });
+
+      const captures = await snoozedPage.getCaptures();
+      return captures.map(({ id, content }) => buildCapture(id, content, 'inbox'));
     },
 
     async goToSettings(): Promise<void> {
@@ -389,7 +271,7 @@ export const createPlaywrightActor = (
     async requiresConfiguration(): Promise<boolean> {
       // Try to navigate to inbox and check if we get redirected to /config
       await page.goto('/');
-      
+
       // Wait for either the inbox to load or redirect to config
       // The app redirects to /config if no token is set
       try {
@@ -421,21 +303,16 @@ export const createPlaywrightActor = (
       // Wait for success and redirect to inbox
       await page.waitForURL('/', { timeout: 5000 });
 
-      // Build a capture object from what we know
+      // Get the real ID from the newly created capture
       const content = params.text || params.url || '';
-      const capturedAt = new Date().toISOString();
-      const state: CaptureState = {
-        id: `share-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        content,
-        status: 'inbox',
-        capturedAt,
-      };
-      capturesByContent.set(content, state);
+      await inboxPage.waitForCapturesOrEmpty();
+      const captureId = await inboxPage.getCaptureIdByContent(content);
 
-      return {
-        ...buildCapture(state),
-        sourceUrl: params.url,
-      };
+      if (!captureId) {
+        throw new Error('Failed to find shared capture in inbox');
+      }
+
+      return buildCapture(captureId, content, 'inbox', { sourceUrl: params.url });
     },
 
     async goOffline(): Promise<void> {
@@ -450,7 +327,7 @@ export const createPlaywrightActor = (
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
-      
+
       // Wait for offline banner to appear (with timeout for robustness)
       // The banner appears when the useNetworkStatus hook detects offline state
       const banner = page.getByText("You're offline");
@@ -467,7 +344,7 @@ export const createPlaywrightActor = (
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
-      
+
       // Wait for the offline placeholder to appear (indicates disabled state)
       // The app changes the placeholder text when offline
       const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
@@ -486,7 +363,7 @@ export const createPlaywrightActor = (
 /**
  * Playwright implementation of AnonymousActor.
  * Attempts operations without configuring a token.
- * 
+ *
  * This actor verifies that the app properly enforces authentication
  * by checking that unauthenticated users are redirected to /config.
  */
@@ -499,10 +376,10 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     // Clear any existing token to ensure we're truly anonymous
     await page.goto('/');
     await page.evaluate(() => localStorage.removeItem('yoink_api_token'));
-    
+
     // Navigate to the app root
     await page.goto('/');
-    
+
     // The app should redirect to /config because no token is set
     // Use waitForURL to actually verify the redirect happens
     await page.waitForURL('**/config', { timeout: 5000 });

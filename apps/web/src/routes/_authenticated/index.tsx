@@ -564,13 +564,13 @@ function InboxPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'later-today')}>
+                        <DropdownMenuItem onSelect={() => handleSnooze(capture.id, 'later-today')}>
                           Later today
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'tomorrow')}>
+                        <DropdownMenuItem onSelect={() => handleSnooze(capture.id, 'tomorrow')}>
                           Tomorrow
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSnooze(capture.id, 'next-week')}>
+                        <DropdownMenuItem onSelect={() => handleSnooze(capture.id, 'next-week')}>
                           Next week
                         </DropdownMenuItem>
                       </DropdownMenuContent>

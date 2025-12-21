@@ -108,6 +108,7 @@ export const registerCaptureRoutes = async (
           title: body.title,
           content: body.content,
           status: body.status,
+          pinned: body.pinned,
         });
 
         return result.match(

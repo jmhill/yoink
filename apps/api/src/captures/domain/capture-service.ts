@@ -73,6 +73,7 @@ export const createCaptureService = (
           content: command.content ?? existing.content,
           status: command.status ?? existing.status,
           archivedAt: computeArchivedAt(existing, command, clock),
+          pinnedAt: computePinnedAt(existing, command, clock),
         };
 
         return store.update(updatedCapture).map(() => updatedCapture);
@@ -97,4 +98,30 @@ const computeArchivedAt = (
   }
 
   return existing.archivedAt;
+};
+
+const computePinnedAt = (
+  existing: Capture,
+  command: UpdateCaptureCommand,
+  clock: Clock
+): string | undefined => {
+  const newStatus = command.status ?? existing.status;
+
+  // Archiving automatically unpins
+  if (newStatus === 'archived') {
+    return undefined;
+  }
+
+  // Explicit pin request
+  if (command.pinned === true && !existing.pinnedAt) {
+    return clock.now().toISOString();
+  }
+
+  // Explicit unpin request
+  if (command.pinned === false) {
+    return undefined;
+  }
+
+  // No change requested, preserve existing state
+  return existing.pinnedAt;
 };

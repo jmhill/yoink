@@ -21,6 +21,8 @@ export type Actor = {
   updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture>;
   archiveCapture(id: string): Promise<Capture>;
   unarchiveCapture(id: string): Promise<Capture>;
+  pinCapture(id: string): Promise<Capture>;
+  unpinCapture(id: string): Promise<Capture>;
 
   // Session operations
   /**

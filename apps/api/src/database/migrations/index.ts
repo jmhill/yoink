@@ -16,12 +16,14 @@ import { migration as createOrganizations } from './001-create-organizations.js'
 import { migration as createUsers } from './002-create-users.js';
 import { migration as createApiTokens } from './003-create-api-tokens.js';
 import { migration as createCaptures } from './004-create-captures.js';
+import { migration as addPinnedAt } from './005-add-pinned-at.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
   createUsers,
   createApiTokens,
   createCaptures,
+  addPinnedAt,
 ];
 
 export type { Migration };

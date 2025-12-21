@@ -18,6 +18,7 @@ export type Capture = {
   createdById: string;
   capturedAt: string;
   archivedAt?: string;
+  pinnedAt?: string;
 };
 
 export type Organization = {
@@ -55,6 +56,7 @@ export type UpdateCaptureInput = {
   content?: string;
   title?: string;
   status?: 'inbox' | 'archived';
+  pinned?: boolean;
 };
 
 // =============================================================================

@@ -25,4 +25,5 @@ export type UpdateCaptureCommand = {
   title?: string;
   content?: string;
   status?: 'inbox' | 'archived';
+  pinned?: boolean;
 };

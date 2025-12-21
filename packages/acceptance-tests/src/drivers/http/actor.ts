@@ -120,6 +120,24 @@ export const createHttpActor = (
       return handleCaptureResponse(response, id);
     },
 
+    async pinCapture(id: string): Promise<Capture> {
+      const response = await client.patch(
+        `/api/captures/${id}`,
+        { pinned: true },
+        authHeaders()
+      );
+      return handleCaptureResponse(response, id);
+    },
+
+    async unpinCapture(id: string): Promise<Capture> {
+      const response = await client.patch(
+        `/api/captures/${id}`,
+        { pinned: false },
+        authHeaders()
+      );
+      return handleCaptureResponse(response, id);
+    },
+
     async goToSettings(): Promise<void> {
       throw new UnsupportedOperationError('goToSettings', 'http');
     },

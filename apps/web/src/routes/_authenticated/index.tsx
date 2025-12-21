@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tsr } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Settings, Link as LinkIcon, WifiOff } from 'lucide-react';
+import { Archive, Inbox, Settings, Link as LinkIcon, WifiOff, Pin } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/')({
@@ -178,6 +178,83 @@ function InboxPage() {
     },
   });
 
+  const pinMutation = tsr.update.useMutation({
+    onMutate: async ({ params, body }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      // Snapshot current state for rollback
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+
+      // Optimistically update the pin state
+      if (previousInbox?.status === 200 && body) {
+        const isPinning = body.pinned === true;
+        const updatedCaptures = previousInbox.body.captures.map((c) => {
+          if (c.id === params.id) {
+            return {
+              ...c,
+              pinnedAt: isPinning ? new Date().toISOString() : undefined,
+            };
+          }
+          return c;
+        });
+
+        // Re-sort: pinned first (by pinnedAt DESC), then unpinned (by capturedAt DESC)
+        updatedCaptures.sort((a, b) => {
+          const aPinned = a.pinnedAt ? 1 : 0;
+          const bPinned = b.pinnedAt ? 1 : 0;
+          if (aPinned !== bPinned) {
+            return bPinned - aPinned;
+          }
+          if (a.pinnedAt && b.pinnedAt) {
+            return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
+          }
+          return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
+        });
+
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
+          body: {
+            ...previousInbox.body,
+            captures: updatedCaptures,
+          },
+        });
+      }
+
+      return { previousInbox };
+    },
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+
+      // Show error toast
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to update pin');
+      }
+    },
+
+    onSuccess: (_data, variables) => {
+      const isPinning = variables.body?.pinned === true;
+      toast.success(isPinning ? 'Pinned' : 'Unpinned');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+    },
+  });
+
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContent.trim()) return;
@@ -191,6 +268,13 @@ function InboxPage() {
     archiveMutation.mutate({
       params: { id },
       body: { status: 'archived' },
+    });
+  };
+
+  const handlePin = (id: string, isPinned: boolean) => {
+    pinMutation.mutate({
+      params: { id },
+      body: { pinned: !isPinned },
     });
   };
 
@@ -294,39 +378,56 @@ function InboxPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {captures.map((capture) => (
-            <Card key={capture.id}>
-              <CardContent className="flex items-start justify-between gap-2 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="whitespace-pre-wrap break-words">{capture.content}</p>
-                  {capture.sourceUrl && (
-                    <a
-                      href={capture.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-                      data-testid="source-url"
+          {captures.map((capture) => {
+            const isPinned = Boolean(capture.pinnedAt);
+            return (
+              <Card
+                key={capture.id}
+                className={isPinned ? 'border-l-4 border-l-primary' : ''}
+              >
+                <CardContent className="flex items-start justify-between gap-2 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+                    {capture.sourceUrl && (
+                      <a
+                        href={capture.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                        data-testid="source-url"
+                      >
+                        <LinkIcon className="h-3 w-3" />
+                        <span className="truncate">{capture.sourceUrl}</span>
+                      </a>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(capture.capturedAt)}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handlePin(capture.id, isPinned)}
+                      disabled={pinMutation.isPending}
+                      aria-label={isPinned ? 'Unpin' : 'Pin'}
                     >
-                      <LinkIcon className="h-3 w-3" />
-                      <span className="truncate">{capture.sourceUrl}</span>
-                    </a>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(capture.capturedAt)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleArchive(capture.id)}
-                  disabled={archiveMutation.isPending}
-                  title="Archive"
-                >
-                  <Archive className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                      <Pin className={`h-4 w-4 ${isPinned ? 'fill-current' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleArchive(capture.id)}
+                      disabled={archiveMutation.isPending}
+                      title="Archive"
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

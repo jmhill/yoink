@@ -14,7 +14,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 58 acceptance tests, 241 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 266 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
@@ -317,7 +317,10 @@ Ideas for future consideration, roughly prioritized:
 - [x] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
 
 ### Tier 2: Feature Additions
-- [ ] Pin capture to top (boolean flag + sort order)
+- [x] Pin capture to top (boolean flag + sort order)
+  - Pinned captures appear first in inbox, sorted by pinnedAt (most recent first)
+  - Archiving a pinned capture automatically unpins it
+  - Visual indicator: accent border on left edge of pinned cards
 - [ ] Snooze/reminders - temporarily hide capture, resurface after duration
   - New "snoozed" status alongside inbox/archived
   - Mechanics TBD: backend scheduler vs client-side check, push notifications
@@ -393,8 +396,8 @@ application/      # HTTP layer
 See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing strategy.
 
 **Quick Reference:**
-- 172 unit tests (apps/api, packages/*)
-- 58 acceptance tests (44 HTTP + 14 Playwright)
+- 188 unit tests (apps/api, packages/*)
+- 92 acceptance tests (HTTP + Playwright)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 

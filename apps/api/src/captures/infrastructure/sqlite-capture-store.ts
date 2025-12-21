@@ -19,6 +19,7 @@ type CaptureRow = {
   status: string;
   captured_at: string;
   archived_at: string | null;
+  pinned_at: string | null;
 };
 
 const rowToCapture = (row: CaptureRow): Capture => ({
@@ -32,6 +33,7 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   status: row.status as 'inbox' | 'archived',
   capturedAt: row.captured_at,
   archivedAt: row.archived_at ?? undefined,
+  pinnedAt: row.pinned_at ?? undefined,
 });
 
 /**
@@ -61,8 +63,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         const stmt = db.prepare(`
           INSERT INTO captures (
             id, organization_id, created_by_id, content, title,
-            source_url, source_app, status, captured_at, archived_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_url, source_app, status, captured_at, archived_at, pinned_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -75,7 +77,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.sourceApp ?? null,
           capture.status,
           capture.capturedAt,
-          capture.archivedAt ?? null
+          capture.archivedAt ?? null,
+          capture.pinnedAt ?? null
         );
 
         return okAsync(undefined);
@@ -102,7 +105,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
             content = ?,
             title = ?,
             status = ?,
-            archived_at = ?
+            archived_at = ?,
+            pinned_at = ?
           WHERE id = ?
         `);
 
@@ -111,6 +115,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.title ?? null,
           capture.status,
           capture.archivedAt ?? null,
+          capture.pinnedAt ?? null,
           capture.id
         );
 
@@ -137,7 +142,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           params.push(status);
         }
 
-        sql += ` ORDER BY captured_at DESC LIMIT ?`;
+        // Pinned captures first (non-null pinned_at), then by captured_at
+        sql += ` ORDER BY CASE WHEN pinned_at IS NOT NULL THEN 0 ELSE 1 END, pinned_at DESC, captured_at DESC LIMIT ?`;
         params.push(limit);
 
         const stmt = db.prepare(sql);

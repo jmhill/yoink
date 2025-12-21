@@ -11,6 +11,7 @@ export const CaptureSchema = z.object({
   status: z.enum(['inbox', 'archived']),
   capturedAt: z.string().datetime(),
   archivedAt: z.string().datetime().optional(),
+  pinnedAt: z.string().datetime().optional(),
 });
 
 export type Capture = z.infer<typeof CaptureSchema>;
@@ -28,6 +29,7 @@ export const UpdateCaptureSchema = z.object({
   title: z.string().max(200).optional(),
   content: z.string().min(1).max(10000).optional(),
   status: z.enum(['inbox', 'archived']).optional(),
+  pinned: z.boolean().optional(),
 });
 
 export type UpdateCapture = z.infer<typeof UpdateCaptureSchema>;

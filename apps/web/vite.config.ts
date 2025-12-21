@@ -60,7 +60,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@yoink/ui-base': path.resolve(__dirname, '../../packages/ui-base/src'),
     },
   },
   server: {

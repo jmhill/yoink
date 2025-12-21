@@ -85,6 +85,8 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 - [x] Fastify static file serving from /admin
 - [x] Dockerfile multi-stage build includes admin UI
 - [x] Rename organization functionality (PATCH endpoint + UI)
+- [x] Cache-control headers (no-cache for HTML, immutable for hashed assets)
+- [x] Custom 404 page with link to login
 
 ### Capture Inbox - Complete ✓
 - [x] Create apps/web scaffold (Vite + React + TanStack Router)

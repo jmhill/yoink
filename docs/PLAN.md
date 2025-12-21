@@ -327,13 +327,15 @@ After first deploy with health endpoint:
   - Archiving clears snooze
   - Pin and snooze can coexist
 
-### Acceptance Tests (Pending)
-- [ ] Create snoozing-captures.test.ts
-- [ ] Test snooze creation with valid future time
-- [ ] Test snooze appears in snoozed list, not inbox
-- [ ] Test expired snooze returns to inbox
-- [ ] Test unsnooze returns capture to inbox immediately
-- [ ] Test archive clears snooze
+### Acceptance Tests (Complete) ✓
+- [x] Create snoozing-captures.test.ts (11 tests)
+- [x] Test snooze creation with valid future time
+- [x] Test snooze appears in snoozed list, not inbox
+- [x] Test unsnooze returns capture to inbox immediately
+- [x] Test archive clears snooze
+- [x] Test pin and snooze can coexist
+- [x] Test validation: past time rejected, archived capture rejected
+- [x] Test not found handling for snooze/unsnooze
 
 ### Web App UI (Pending)
 - [ ] Add Snoozed tab (leftmost: Snoozed | Inbox | Archived)

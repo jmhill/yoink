@@ -319,7 +319,7 @@ jobs:
       - name: Generate version tag
         id: version
         run: |
-          VERSION=$(date -u +"%Y-%m-%d")-$(echo ${{ github.sha }} | cut -c1-7)
+          VERSION=$(date -u +"%Y%m%d-%H%M%S")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release

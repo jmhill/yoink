@@ -85,6 +85,7 @@ export default defineConfig({
           __dirname,
           'src/content/content-script.ts'
         ),
+        'theme-init': path.resolve(__dirname, 'src/theme-init.ts'),
       },
       output: {
         entryFileNames: '[name].js',

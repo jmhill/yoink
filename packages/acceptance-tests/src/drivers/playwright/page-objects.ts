@@ -107,8 +107,10 @@ export class InboxPage {
   async snoozeCapture(content: string, option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
     const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
     await card.hover();
-    // Click the snooze dropdown trigger
-    await card.getByLabel('Snooze').click();
+    // Click the snooze dropdown trigger using role selector (consistent with other button selectors)
+    await card.getByRole('button', { name: 'Snooze' }).click();
+    // Wait for the dropdown menu to appear
+    await this.page.locator('[data-slot="dropdown-menu-content"]').waitFor({ state: 'visible' });
     // Select the snooze option from dropdown - Radix uses data-slot for menu items
     const optionText = option === 'later-today' ? 'Later today' : option === 'tomorrow' ? 'Tomorrow' : 'Next week';
     await this.page.locator('[data-slot="dropdown-menu-item"]').filter({ hasText: optionText }).click();

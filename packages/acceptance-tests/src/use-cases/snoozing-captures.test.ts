@@ -10,7 +10,7 @@ import { NotFoundError, ValidationError } from '../dsl/index.js';
  */
 
 // Core snooze behavior
-// TODO: Add 'playwright' driver once UI selectors are debugged
+// TODO: Add 'playwright' driver once dropdown menu selector issue is resolved
 describeFeature('Snoozing captures', ['http'], ({ createActor, it, beforeEach }) => {
   let alice: Actor;
 

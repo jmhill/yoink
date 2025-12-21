@@ -70,7 +70,7 @@ export const createHttpActor = (
     },
 
     async listCaptures(): Promise<Capture[]> {
-      const response = await client.get('/api/captures?status=inbox', authHeaders());
+      const response = await client.get('/api/captures?status=inbox&snoozed=false', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -136,6 +136,32 @@ export const createHttpActor = (
         authHeaders()
       );
       return handleCaptureResponse(response, id);
+    },
+
+    async snoozeCapture(id: string, until: string): Promise<Capture> {
+      const response = await client.post(
+        `/api/captures/${id}/snooze`,
+        { until },
+        authHeaders()
+      );
+      return handleCaptureResponse(response, id);
+    },
+
+    async unsnoozeCapture(id: string): Promise<Capture> {
+      const response = await client.post(
+        `/api/captures/${id}/unsnooze`,
+        {},
+        authHeaders()
+      );
+      return handleCaptureResponse(response, id);
+    },
+
+    async listSnoozedCaptures(): Promise<Capture[]> {
+      const response = await client.get('/api/captures?status=inbox&snoozed=true', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ captures: Capture[] }>().captures;
     },
 
     async goToSettings(): Promise<void> {

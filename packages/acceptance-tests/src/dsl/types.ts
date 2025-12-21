@@ -19,6 +19,7 @@ export type Capture = {
   capturedAt: string;
   archivedAt?: string;
   pinnedAt?: string;
+  snoozedUntil?: string;
 };
 
 export type Organization = {

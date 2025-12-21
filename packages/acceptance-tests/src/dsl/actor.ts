@@ -23,6 +23,9 @@ export type Actor = {
   unarchiveCapture(id: string): Promise<Capture>;
   pinCapture(id: string): Promise<Capture>;
   unpinCapture(id: string): Promise<Capture>;
+  snoozeCapture(id: string, until: string): Promise<Capture>;
+  unsnoozeCapture(id: string): Promise<Capture>;
+  listSnoozedCaptures(): Promise<Capture[]>;
 
   // Session operations
   /**

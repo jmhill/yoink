@@ -6,7 +6,7 @@ import type {
   CreateCaptureInput,
   UpdateCaptureInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
+import { UnauthorizedError, NotFoundError, ValidationError, UnsupportedOperationError } from '../../dsl/index.js';
 import { ConfigPage, InboxPage, ArchivedPage, SettingsPage } from './page-objects.js';
 
 type ActorCredentials = {
@@ -276,6 +276,21 @@ export const createPlaywrightActor = (
       targetState.pinnedAt = undefined;
 
       return buildCapture(targetState);
+    },
+
+    async snoozeCapture(_id: string, _until: string): Promise<Capture> {
+      // TODO: Implement when snooze UI is added
+      throw new UnsupportedOperationError('snoozeCapture', 'playwright');
+    },
+
+    async unsnoozeCapture(_id: string): Promise<Capture> {
+      // TODO: Implement when snooze UI is added
+      throw new UnsupportedOperationError('unsnoozeCapture', 'playwright');
+    },
+
+    async listSnoozedCaptures(): Promise<Capture[]> {
+      // TODO: Implement when snoozed tab UI is added
+      throw new UnsupportedOperationError('listSnoozedCaptures', 'playwright');
     },
 
     async goToSettings(): Promise<void> {

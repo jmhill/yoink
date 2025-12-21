@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Yoink",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Quick capture from any webpage",
-  "permissions": ["activeTab", "storage", "contextMenus", "notifications"],
+  "permissions": ["activeTab", "storage", "contextMenus", "notifications", "scripting"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/index.html",
@@ -31,6 +31,13 @@
         "mac": "Command+Shift+Y"
       },
       "description": "Open Yoink popup"
+    },
+    "quick-capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y",
+        "mac": "Alt+Shift+Y"
+      },
+      "description": "Quick capture selected text"
     }
   },
   "icons": {

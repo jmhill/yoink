@@ -306,8 +306,8 @@ Ideas for future consideration, roughly prioritized:
 
 ### Tier 1: Quick Wins
 - [x] Dark mode with system preference detection
-- [ ] Extension: Fix notification feedback for context menu captures
-- [ ] Extension: Investigate keyboard shortcut not working (possible Brave conflict)
+- [x] Extension: Fix notification feedback for context menu captures
+- [x] Extension: Add Alt+Shift+Y as alternative quick capture shortcut
 - [ ] Optimistic updates for mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
 
 ### Tier 2: Feature Additions

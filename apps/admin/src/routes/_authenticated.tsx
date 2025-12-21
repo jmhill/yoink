@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect, isRedirect } from '@tanstack/react-router';
 import { tsrAdmin } from '@/api/client';
 import { useTheme, type Theme } from '@/lib/use-theme';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,12 @@ export const Route = createFileRoute('/_authenticated')({
       if (response.status !== 200) {
         throw redirect({ to: '/login' });
       }
-    } catch {
+    } catch (error) {
+      // Don't catch redirect errors - let them propagate
+      if (isRedirect(error)) {
+        throw error;
+      }
+      // Network or other errors - redirect to login
       throw redirect({ to: '/login' });
     }
   },

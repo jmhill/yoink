@@ -79,6 +79,18 @@ export const createApp = async (deps: AppDependencies) => {
   const adminDistPath = join(publicPath, 'admin');
   const webDistPath = publicPath;
   
+  // Cache control: assets have hashes so can be cached long-term,
+  // but HTML files should not be cached to ensure fresh deploys work
+  const setHeaders = (res: { setHeader: (name: string, value: string) => void }, path: string) => {
+    if (path.endsWith('.html')) {
+      // Don't cache HTML - ensures users get latest app version
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else if (path.includes('/assets/')) {
+      // Assets have content hashes - cache for 1 year
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  };
+
   // Serve web app at root (if build exists)
   if (existsSync(join(webDistPath, 'index.html'))) {
     await app.register(fastifyStatic, {
@@ -87,6 +99,7 @@ export const createApp = async (deps: AppDependencies) => {
       decorateReply: true,
       // Don't serve files that match API or admin routes
       serve: true,
+      setHeaders,
     });
   }
 
@@ -96,11 +109,15 @@ export const createApp = async (deps: AppDependencies) => {
       root: adminDistPath,
       prefix: '/admin/',
       decorateReply: false,
+      setHeaders,
     });
   }
 
   // SPA fallback - serve index.html for unmatched routes
   app.setNotFoundHandler((request, reply) => {
+    // Set no-cache for HTML fallback responses
+    reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    
     // Admin SPA routes
     if (request.url.startsWith('/admin')) {
       if (existsSync(adminDistPath)) {

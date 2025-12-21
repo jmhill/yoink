@@ -227,8 +227,18 @@ jobs:
 
       - name: Verify admin UI reachable
         run: |
-          curl -sf https://jhtc-yoink-api.fly.dev/admin/ | grep -q "<!DOCTYPE html>"
-          echo "Admin UI is reachable"
+          ADMIN_HTML=$(curl -sf https://jhtc-yoink-api.fly.dev/admin/)
+          
+          # Check that HTML is returned
+          echo "$ADMIN_HTML" | grep -q "<!DOCTYPE html>" || { echo "No HTML returned"; exit 1; }
+          
+          # Check that it's the admin app (has the expected title)
+          echo "$ADMIN_HTML" | grep -q "Yoink Admin" || { echo "Admin title not found - may be serving wrong page"; exit 1; }
+          
+          # Verify JS and CSS assets are referenced (basic sanity check)
+          echo "$ADMIN_HTML" | grep -q "/admin/assets/" || { echo "Admin assets not referenced"; exit 1; }
+          
+          echo "Admin UI is reachable and contains expected content"
 
   extension-build:
     name: Build Extension

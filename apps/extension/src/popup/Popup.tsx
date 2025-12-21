@@ -92,14 +92,14 @@ export function Popup() {
   // Not configured state
   if (status === 'not-configured') {
     return (
-      <div className="w-80 p-4">
+      <div className="w-80 p-4 bg-background text-foreground">
         <h1 className="text-lg font-semibold mb-2">Yoink</h1>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Please configure your API settings to start capturing.
         </p>
         <button
           onClick={openOptions}
-          className="w-full px-4 py-2 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+          className="w-full px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           Open Settings
         </button>
@@ -110,9 +110,9 @@ export function Popup() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="w-80 p-4">
+      <div className="w-80 p-4 bg-background text-foreground">
         <h1 className="text-lg font-semibold mb-2">Yoink</h1>
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -120,8 +120,8 @@ export function Popup() {
   // Success state
   if (status === 'success') {
     return (
-      <div className="w-80 p-4">
-        <div className="flex items-center justify-center gap-2 text-green-600">
+      <div className="w-80 p-4 bg-background text-foreground">
+        <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
           <svg
             className="w-6 h-6"
             fill="none"
@@ -143,7 +143,7 @@ export function Popup() {
 
   // Main capture form
   return (
-    <div className="w-80 p-4">
+    <div className="w-80 p-4 bg-background text-foreground">
       <h1 className="text-lg font-semibold mb-3">Yoink</h1>
 
       <form onSubmit={handleCapture} className="space-y-3">
@@ -153,21 +153,21 @@ export function Popup() {
             onChange={(e) => setContent(e.target.value)}
             placeholder="What do you want to capture?"
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+            className="w-full px-3 py-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             disabled={status === 'capturing'}
             autoFocus
           />
         </div>
 
         {sourceUrl && (
-          <div className="text-xs text-gray-500 truncate" title={sourceUrl}>
+          <div className="text-xs text-muted-foreground truncate" title={sourceUrl}>
             From: {sourceUrl}
           </div>
         )}
 
         {error && (
-          <div className="p-2 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
 
@@ -175,14 +175,14 @@ export function Popup() {
           <button
             type="submit"
             disabled={status === 'capturing'}
-            className="flex-1 px-4 py-2 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {status === 'capturing' ? 'Capturing...' : 'Capture'}
           </button>
           <button
             type="button"
             onClick={openOptions}
-            className="px-3 py-2 text-gray-500 hover:text-gray-700"
+            className="px-3 py-2 text-muted-foreground hover:text-foreground"
             title="Settings"
           >
             <svg

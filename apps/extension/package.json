@@ -13,6 +13,7 @@
   "dependencies": {
     "@ts-rest/core": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
+    "@yoink/theme": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

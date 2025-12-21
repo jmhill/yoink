@@ -305,7 +305,7 @@ After first deploy with health endpoint:
 Ideas for future consideration, roughly prioritized:
 
 ### Tier 1: Quick Wins
-- [ ] Dark mode with system preference detection
+- [x] Dark mode with system preference detection
 - [ ] Extension: Fix notification feedback for context menu captures
 - [ ] Extension: Investigate keyboard shortcut not working (possible Brave conflict)
 - [ ] Optimistic updates for mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))

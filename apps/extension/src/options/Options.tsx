@@ -97,22 +97,22 @@ export function Options() {
 
   if (status === 'loading') {
     return (
-      <div className="max-w-md mx-auto p-6">
+      <div className="max-w-md mx-auto p-6 bg-background text-foreground">
         <h1 className="text-xl font-semibold mb-4">Yoink Options</h1>
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto p-6">
+    <div className="max-w-md mx-auto p-6 bg-background text-foreground">
       <h1 className="text-xl font-semibold mb-4">Yoink Options</h1>
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
           <label
             htmlFor="apiUrl"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium mb-1"
           >
             API URL
           </label>
@@ -122,10 +122,10 @@ export function Options() {
             value={apiUrl}
             onChange={(e) => setApiUrl(e.target.value)}
             placeholder="https://your-yoink-api.fly.dev"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full px-3 py-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
             disabled={status === 'validating'}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             The base URL of your Yoink API server
           </p>
         </div>
@@ -133,7 +133,7 @@ export function Options() {
         <div>
           <label
             htmlFor="token"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium mb-1"
           >
             API Token
           </label>
@@ -143,23 +143,23 @@ export function Options() {
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="tokenId:secret"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full px-3 py-2 border border-input bg-background rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
             disabled={status === 'validating'}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Your API token in the format tokenId:secret
           </p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
 
         {status === 'success' && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-sm text-green-600">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+            <p className="text-sm text-green-600 dark:text-green-400">
               Configuration saved successfully!
             </p>
           </div>
@@ -169,7 +169,7 @@ export function Options() {
           <button
             type="submit"
             disabled={status === 'validating'}
-            className="flex-1 px-4 py-2 bg-orange-500 text-white font-medium rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {status === 'validating' ? 'Validating...' : 'Save'}
           </button>
@@ -177,7 +177,7 @@ export function Options() {
             type="button"
             onClick={handleClear}
             disabled={status === 'validating'}
-            className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-secondary text-secondary-foreground font-medium rounded-md hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Clear
           </button>

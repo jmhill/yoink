@@ -13,6 +13,7 @@ COPY tsconfig.base.json ./
 # Copy package manifests for all packages
 COPY packages/infrastructure/package.json ./packages/infrastructure/
 COPY packages/api-contracts/package.json ./packages/api-contracts/
+COPY packages/theme/package.json ./packages/theme/
 COPY apps/api/package.json ./apps/api/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/web/package.json ./apps/web/
@@ -23,6 +24,7 @@ RUN pnpm install --frozen-lockfile
 # Copy source files
 COPY packages/infrastructure/ ./packages/infrastructure/
 COPY packages/api-contracts/ ./packages/api-contracts/
+COPY packages/theme/ ./packages/theme/
 COPY apps/api/ ./apps/api/
 COPY apps/admin/ ./apps/admin/
 COPY apps/web/ ./apps/web/

@@ -314,7 +314,7 @@ Ideas for future consideration, roughly prioritized:
 - [x] Extension: Add Alt+Shift+Y as alternative quick capture shortcut
 - [x] Optimistic updates for web app mutations (create, archive, unarchive)
 - [x] Faster PWA update detection (5-min interval + visibility change listener with debounce)
-- [ ] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
+- [x] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
 
 ### Tier 2: Feature Additions
 - [ ] Pin capture to top (boolean flag + sort order)

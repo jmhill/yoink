@@ -30,6 +30,7 @@ import {
 import { tsrAdmin, tsrPublic } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/')({
   component: OrganizationsPage,
@@ -46,10 +47,68 @@ function OrganizationsPage() {
   });
 
   const createMutation = tsrAdmin.createOrganization.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+    onMutate: async ({ body }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({ queryKey: ['organizations'] });
+
+      // Snapshot current state for rollback
+      const previousData = tsrQueryClient.listOrganizations.getQueryData([
+        'organizations',
+      ]);
+
+      // Create optimistic organization with temp ID
+      const optimisticOrg = {
+        id: `temp-${Date.now()}`,
+        name: body.name,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (previousData?.status === 200) {
+        tsrQueryClient.listOrganizations.setQueryData(['organizations'], {
+          ...previousData,
+          body: {
+            ...previousData.body,
+            organizations: [...previousData.body.organizations, optimisticOrg],
+          },
+        });
+      }
+
+      // Clear form and close dialog immediately for snappy UX
       setNewOrgName('');
       setIsDialogOpen(false);
+
+      return { previousData, previousName: body.name };
+    },
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        tsrQueryClient.listOrganizations.setQueryData(
+          ['organizations'],
+          context.previousData
+        );
+      }
+      // Restore the form so user doesn't lose their input
+      if (context?.previousName) {
+        setNewOrgName(context.previousName);
+        setIsDialogOpen(true);
+      }
+
+      // Show error toast
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to create organization');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('Organization created');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server (replaces temp ID with real one)
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
 
@@ -135,11 +194,6 @@ function OrganizationsPage() {
                     />
                   </div>
                 </div>
-                {createMutation.error && (
-                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-                    Failed to create organization
-                  </div>
-                )}
                 <DialogFooter>
                   <Button type="submit" disabled={createMutation.isPending}>
                     {createMutation.isPending ? 'Creating...' : 'Create'}

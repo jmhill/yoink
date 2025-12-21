@@ -30,6 +30,7 @@ import {
 import { tsrAdmin } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
   component: OrganizationDetailPage,
@@ -55,17 +56,164 @@ function OrganizationDetailPage() {
   });
 
   const createUserMutation = tsrAdmin.createUser.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
+    onMutate: async ({ body }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({
+        queryKey: ['organizations', orgId, 'users'],
+      });
+
+      // Snapshot current state for rollback
+      const previousData = tsrQueryClient.listUsers.getQueryData([
+        'organizations',
+        orgId,
+        'users',
+      ]);
+
+      // Create optimistic user with temp ID
+      const optimisticUser = {
+        id: `temp-${Date.now()}`,
+        organizationId: orgId,
+        email: body.email,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (previousData?.status === 200) {
+        tsrQueryClient.listUsers.setQueryData(
+          ['organizations', orgId, 'users'],
+          {
+            ...previousData,
+            body: {
+              ...previousData.body,
+              users: [...previousData.body.users, optimisticUser],
+            },
+          }
+        );
+      }
+
+      // Clear form and close dialog immediately for snappy UX
       setNewUserEmail('');
       setIsDialogOpen(false);
+
+      return { previousData, previousEmail: body.email };
+    },
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        tsrQueryClient.listUsers.setQueryData(
+          ['organizations', orgId, 'users'],
+          context.previousData
+        );
+      }
+      // Restore the form so user doesn't lose their input
+      if (context?.previousEmail) {
+        setNewUserEmail(context.previousEmail);
+        setIsDialogOpen(true);
+      }
+
+      // Show error toast
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to create user');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('User created');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server (replaces temp ID with real one)
+      tsrQueryClient.invalidateQueries({
+        queryKey: ['organizations', orgId, 'users'],
+      });
     },
   });
 
   const updateOrgMutation = tsrAdmin.updateOrganization.useMutation({
-    onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
+    onMutate: async ({ body }) => {
+      // Cancel in-flight queries to prevent overwrites
+      await tsrQueryClient.cancelQueries({
+        queryKey: ['organizations', orgId],
+      });
+      await tsrQueryClient.cancelQueries({ queryKey: ['organizations'] });
+
+      // Snapshot current state for rollback
+      const previousOrg = tsrQueryClient.getOrganization.getQueryData([
+        'organizations',
+        orgId,
+      ]);
+      const previousList = tsrQueryClient.listOrganizations.getQueryData([
+        'organizations',
+      ]);
+
+      // Optimistically update org detail
+      if (previousOrg?.status === 200) {
+        tsrQueryClient.getOrganization.setQueryData(['organizations', orgId], {
+          ...previousOrg,
+          body: { ...previousOrg.body, name: body.name },
+        });
+      }
+
+      // Also update in org list if cached
+      if (previousList?.status === 200) {
+        tsrQueryClient.listOrganizations.setQueryData(['organizations'], {
+          ...previousList,
+          body: {
+            ...previousList.body,
+            organizations: previousList.body.organizations.map((org) =>
+              org.id === orgId ? { ...org, name: body.name } : org
+            ),
+          },
+        });
+      }
+
+      // Close dialog immediately for snappy UX
       setIsRenameDialogOpen(false);
+
+      return {
+        previousOrg,
+        previousList,
+        previousName: previousOrg?.status === 200 ? previousOrg.body.name : '',
+      };
+    },
+
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousOrg) {
+        tsrQueryClient.getOrganization.setQueryData(
+          ['organizations', orgId],
+          context.previousOrg
+        );
+      }
+      if (context?.previousList) {
+        tsrQueryClient.listOrganizations.setQueryData(
+          ['organizations'],
+          context.previousList
+        );
+      }
+      // Restore the dialog so user can retry
+      if (context?.previousName) {
+        setNewOrgName(context.previousName);
+        setIsRenameDialogOpen(true);
+      }
+
+      // Show error toast
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to rename organization');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('Organization renamed');
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency with server
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
 
@@ -199,11 +347,6 @@ function OrganizationDetailPage() {
                     />
                   </div>
                 </div>
-                {updateOrgMutation.error && (
-                  <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-                    Failed to rename organization
-                  </div>
-                )}
                 <DialogFooter>
                   <Button type="submit" disabled={updateOrgMutation.isPending}>
                     {updateOrgMutation.isPending ? 'Renaming...' : 'Rename'}
@@ -237,11 +380,6 @@ function OrganizationDetailPage() {
                   />
                 </div>
               </div>
-              {createUserMutation.error && (
-                <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-600">
-                  Failed to create user
-                </div>
-              )}
               <DialogFooter>
                 <Button type="submit" disabled={createUserMutation.isPending}>
                   {createUserMutation.isPending ? 'Creating...' : 'Create'}

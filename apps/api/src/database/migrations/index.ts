@@ -17,6 +17,7 @@ import { migration as createUsers } from './002-create-users.js';
 import { migration as createApiTokens } from './003-create-api-tokens.js';
 import { migration as createCaptures } from './004-create-captures.js';
 import { migration as addPinnedAt } from './005-add-pinned-at.js';
+import { migration as addSnoozedUntil } from './006-add-snoozed-until.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -24,6 +25,7 @@ export const migrations: Migration[] = [
   createApiTokens,
   createCaptures,
   addPinnedAt,
+  addSnoozedUntil,
 ];
 
 export type { Migration };

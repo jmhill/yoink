@@ -5,6 +5,8 @@ import type { StorageError } from './capture-errors.js';
 export type FindByOrganizationOptions = {
   organizationId: string;
   status?: 'inbox' | 'archived';
+  snoozed?: boolean; // true = only snoozed, false = exclude snoozed, undefined = no filtering
+  now?: string; // Current time for snooze comparison (ISO datetime)
   limit?: number;
   cursor?: string;
 };

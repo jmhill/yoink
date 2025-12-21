@@ -20,6 +20,7 @@ type CaptureRow = {
   captured_at: string;
   archived_at: string | null;
   pinned_at: string | null;
+  snoozed_until: string | null;
 };
 
 const rowToCapture = (row: CaptureRow): Capture => ({
@@ -34,6 +35,7 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   capturedAt: row.captured_at,
   archivedAt: row.archived_at ?? undefined,
   pinnedAt: row.pinned_at ?? undefined,
+  snoozedUntil: row.snoozed_until ?? undefined,
 });
 
 /**
@@ -63,8 +65,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         const stmt = db.prepare(`
           INSERT INTO captures (
             id, organization_id, created_by_id, content, title,
-            source_url, source_app, status, captured_at, archived_at, pinned_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_url, source_app, status, captured_at, archived_at, pinned_at, snoozed_until
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -78,7 +80,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.status,
           capture.capturedAt,
           capture.archivedAt ?? null,
-          capture.pinnedAt ?? null
+          capture.pinnedAt ?? null,
+          capture.snoozedUntil ?? null
         );
 
         return okAsync(undefined);
@@ -106,7 +109,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
             title = ?,
             status = ?,
             archived_at = ?,
-            pinned_at = ?
+            pinned_at = ?,
+            snoozed_until = ?
           WHERE id = ?
         `);
 
@@ -116,6 +120,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.status,
           capture.archivedAt ?? null,
           capture.pinnedAt ?? null,
+          capture.snoozedUntil ?? null,
           capture.id
         );
 
@@ -129,7 +134,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
       options: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {
       try {
-        const { organizationId, status, limit = 50 } = options;
+        const { organizationId, status, snoozed, now, limit = 50 } = options;
 
         let sql = `
           SELECT * FROM captures
@@ -142,8 +147,30 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           params.push(status);
         }
 
-        // Pinned captures first (non-null pinned_at), then by captured_at
-        sql += ` ORDER BY CASE WHEN pinned_at IS NOT NULL THEN 0 ELSE 1 END, pinned_at DESC, captured_at DESC LIMIT ?`;
+        // Handle snoozed filtering
+        // snoozed = true: only captures where snoozed_until > now
+        // snoozed = false: only captures where snoozed_until is null or snoozed_until <= now
+        // snoozed = undefined: no filtering by snooze status
+        if (snoozed !== undefined && now) {
+          if (snoozed) {
+            // Only snoozed items
+            sql += ` AND snoozed_until IS NOT NULL AND snoozed_until > ?`;
+            params.push(now);
+          } else {
+            // Exclude snoozed items (show expired snoozes and non-snoozed)
+            sql += ` AND (snoozed_until IS NULL OR snoozed_until <= ?)`;
+            params.push(now);
+          }
+        }
+
+        // Sorting depends on whether we're querying snoozed items
+        if (snoozed === true) {
+          // Snoozed view: sort by snooze time ascending (soonest first)
+          sql += ` ORDER BY snoozed_until ASC LIMIT ?`;
+        } else {
+          // Inbox/archived: Pinned captures first (non-null pinned_at), then by captured_at
+          sql += ` ORDER BY CASE WHEN pinned_at IS NOT NULL THEN 0 ELSE 1 END, pinned_at DESC, captured_at DESC LIMIT ?`;
+        }
         params.push(limit);
 
         const stmt = db.prepare(sql);

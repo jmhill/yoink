@@ -52,11 +52,38 @@ export const createFakeCaptureStore = (
       if (options.shouldFailOnFind) {
         return errAsync(storageError('Find failed'));
       }
-      const filtered = captures
+
+      const isSnoozed = (c: Capture): boolean => {
+        if (!c.snoozedUntil || !opts.now) return false;
+        return new Date(c.snoozedUntil) > new Date(opts.now);
+      };
+
+      let filtered = captures
         .filter((c) => c.organizationId === opts.organizationId)
-        .filter((c) => !opts.status || c.status === opts.status)
-        .sort((a, b) => {
-          // Pinned captures first
+        .filter((c) => !opts.status || c.status === opts.status);
+
+      // Handle snoozed filtering
+      if (opts.snoozed !== undefined && opts.now) {
+        if (opts.snoozed) {
+          // Only snoozed items
+          filtered = filtered.filter(isSnoozed);
+        } else {
+          // Exclude snoozed items
+          filtered = filtered.filter((c) => !isSnoozed(c));
+        }
+      }
+
+      // Sort based on view type
+      if (opts.snoozed === true) {
+        // Snoozed view: sort by snoozedUntil ASC (soonest first)
+        filtered = filtered.sort((a, b) => {
+          const aTime = new Date(a.snoozedUntil!).getTime();
+          const bTime = new Date(b.snoozedUntil!).getTime();
+          return aTime - bTime;
+        });
+      } else {
+        // Inbox/archived: Pinned captures first
+        filtered = filtered.sort((a, b) => {
           const aPinned = a.pinnedAt ? 1 : 0;
           const bPinned = b.pinnedAt ? 1 : 0;
           if (aPinned !== bPinned) {
@@ -68,8 +95,10 @@ export const createFakeCaptureStore = (
           }
           // Within unpinned, sort by capturedAt DESC
           return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
-        })
-        .slice(0, opts.limit ?? Infinity);
+        });
+      }
+
+      filtered = filtered.slice(0, opts.limit ?? Infinity);
       return okAsync({ captures: filtered });
     },
 

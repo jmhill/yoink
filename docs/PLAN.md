@@ -349,6 +349,13 @@ After first deploy with health endpoint:
 - [x] Unsnooze button on snoozed captures
 - [x] Optimistic updates for snooze/unsnooze mutations
 
+### Known Bugs
+- [ ] Snooze dropdown menu does not open when clicking the clock button
+  - The `onSelect` handler is correctly wired (changed from `onClick`)
+  - Radix UI DropdownMenu component may have interaction issues
+  - Playwright tests also fail to interact with the dropdown (timing out)
+  - HTTP API tests pass, confirming backend works correctly
+
 ### Design Decisions
 - **Snooze filtering**: Client compares `snoozedUntil` vs current time (no lazy DB updates)
 - **Status vs modifiers**: `status` is workflow (inbox/archived), `pinnedAt`/`snoozedUntil` are display modifiers

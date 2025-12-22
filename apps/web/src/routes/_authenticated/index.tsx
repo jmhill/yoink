@@ -99,7 +99,10 @@ function InboxPage() {
       // Refetch to ensure consistency with server (replaces temp ID with real one)
       tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
       // Keep focus on input for rapid multi-capture
-      inputRef.current?.focus();
+      // Use requestAnimationFrame to ensure focus happens after React's render cycle
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     },
   });
 

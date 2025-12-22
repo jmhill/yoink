@@ -387,6 +387,8 @@ Ideas for future consideration, roughly prioritized:
   - Settings page shows both Mode and Theme selectors
   - Admin panel has toggle buttons for mode and theme
   - Color theme stored in localStorage (`colorTheme` key)
+- [ ] App header improvements (pig icon, branding)
+- [x] Keep quick entry focused after submit for rapid multi-capture
 
 ### Won't Fix / Platform Limitations
 - ~~Fix highlight and share on mobile browser not including link~~
@@ -423,6 +425,7 @@ Ideas for future consideration, roughly prioritized:
   - Camera integration on Android for photo captures
   - Image attachment support in capture entity
   - Audio notes
+- [ ] Capture from email (forward-to-address or other mechanism)
 
 ### Tier 4: Deferred / Low Priority
 - [ ] Card layout with drag-and-drop reordering

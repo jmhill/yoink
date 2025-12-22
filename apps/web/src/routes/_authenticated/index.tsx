@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button, buttonVariants } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
@@ -24,6 +24,7 @@ export const Route = createFileRoute('/_authenticated/')({
 function InboxPage() {
   const isOnline = useNetworkStatus();
   const [newContent, setNewContent] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
@@ -99,6 +100,8 @@ function InboxPage() {
     onSettled: () => {
       // Refetch to ensure consistency with server (replaces temp ID with real one)
       tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      // Keep focus on input for rapid multi-capture
+      inputRef.current?.focus();
     },
   });
 
@@ -474,6 +477,7 @@ function InboxPage() {
       <form onSubmit={handleQuickAdd} className="mb-6">
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
             placeholder={isOnline ? 'Quick capture...' : 'Offline - cannot add captures'}

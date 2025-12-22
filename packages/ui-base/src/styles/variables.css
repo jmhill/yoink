@@ -48,6 +48,10 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    /* Swipe action colors (default light theme) */
+    --swipe-archive: #16a34a;
+    --swipe-snooze: #d97706;
+    --swipe-unarchive: #2563eb;
   }
 
   .dark {
@@ -82,6 +86,10 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    /* Swipe action colors (default dark theme) */
+    --swipe-archive: #22c55e;
+    --swipe-snooze: #f59e0b;
+    --swipe-unarchive: #3b82f6;
   }
 }
 
@@ -172,6 +180,10 @@
   --sidebar-accent-foreground: #343b58;
   --sidebar-border: #b4b5bd;
   --sidebar-ring: #2959aa;
+  /* Swipe action colors */
+  --swipe-archive: #385f0d;
+  --swipe-snooze: #8f5e15;
+  --swipe-unarchive: #2959aa;
 }
 
 /* Tokyo Night Dark (Storm variant) */
@@ -207,4 +219,8 @@
   --sidebar-accent-foreground: #c0caf5;
   --sidebar-border: #414868;
   --sidebar-ring: #7aa2f7;
+  /* Swipe action colors */
+  --swipe-archive: #9ece6a;
+  --swipe-snooze: #e0af68;
+  --swipe-unarchive: #7aa2f7;
 }

@@ -7,6 +7,7 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { Archive, Inbox, RotateCcw, Link as LinkIcon, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
+import { SwipeableCard } from '@/components/swipeable-card';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/archived')({
@@ -170,7 +171,17 @@ function ArchivedPage() {
       ) : (
         <div className="space-y-2">
           {captures.map((capture) => (
-            <Card key={capture.id} data-capture-id={capture.id}>
+            <SwipeableCard
+              key={capture.id}
+              data-capture-id={capture.id}
+              leftAction={{
+                icon: <Inbox className="h-5 w-5" />,
+                label: 'Unarchive',
+                type: 'unarchive',
+                onAction: () => handleUnarchive(capture.id),
+              }}
+              disabled={unarchiveMutation.isPending}
+            >
               <CardContent className="flex items-start justify-between gap-2 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="whitespace-pre-wrap break-words">{capture.content}</p>
@@ -200,7 +211,7 @@ function ArchivedPage() {
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               </CardContent>
-            </Card>
+            </SwipeableCard>
           ))}
         </div>
       )}

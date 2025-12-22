@@ -402,7 +402,12 @@ Ideas for future consideration, roughly prioritized:
   - Pinned captures appear first in inbox, sorted by pinnedAt (most recent first)
   - Archiving a pinned capture automatically unpins it
   - Visual indicator: accent border on left edge of pinned cards
-- [ ] Swipe-to-archive gesture on mobile
+- [x] Swipe gestures on mobile
+  - Inbox: swipe right to archive (green), swipe left to open snooze menu (amber)
+  - Archived: swipe left to unarchive (blue)
+  - Snoozed: swipe left to wake up (blue)
+  - Theme-aware colors (Tokyo Night uses palette colors)
+  - Visual feedback with icon/label reveal during swipe
 - [ ] Auto archive/delete captures after configurable number of days
 - [ ] Better social captures
   - [ ] Twitter/X improvements

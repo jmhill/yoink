@@ -17,6 +17,7 @@
     "@ts-rest/react-query": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/ui-base": "workspace:*",
+    "framer-motion": "^12.23.26",
     "lucide-react": "^0.561.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

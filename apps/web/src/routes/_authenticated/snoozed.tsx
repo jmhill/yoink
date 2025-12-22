@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
@@ -8,6 +9,7 @@ import { Archive, Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-r
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { SwipeableCard } from '@/components/swipeable-card';
+import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/snoozed')({
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/_authenticated/snoozed')({
 });
 
 function SnoozedPage() {
+  const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const tsrQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
@@ -105,7 +108,8 @@ function SnoozedPage() {
     },
   });
 
-  const handleUnsnooze = (id: string) => {
+  const handleUnsnooze = (id: string, direction: ExitDirection = 'right') => {
+    setExitDirections((prev) => ({ ...prev, [id]: direction }));
     unsnoozeMutation.mutate({
       params: { id },
       body: {},
@@ -184,58 +188,63 @@ function SnoozedPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <AnimatedList>
           {captures.map((capture) => (
-            <SwipeableCard
+            <AnimatedListItem
               key={capture.id}
-              data-capture-id={capture.id}
-              rightAction={{
-                icon: <Inbox className="h-5 w-5" />,
-                label: 'Wake up',
-                type: 'unarchive',
-                onAction: () => handleUnsnooze(capture.id),
-              }}
-              disabled={unsnoozeMutation.isPending}
+              id={capture.id}
+              exitDirection={exitDirections[capture.id] ?? 'right'}
             >
-              <CardContent className="flex items-start justify-between gap-2 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="whitespace-pre-wrap break-words">{capture.content}</p>
-                  {capture.sourceUrl && (
-                    <a
-                      href={capture.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-                      data-testid="source-url"
-                    >
-                      <LinkIcon className="h-3 w-3" />
-                      <span className="truncate">{capture.sourceUrl}</span>
-                    </a>
-                  )}
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{formatDate(capture.capturedAt)}</span>
-                    {capture.snoozedUntil && (
-                      <span className="flex items-center gap-1 text-amber-600">
-                        <Clock className="h-3 w-3" />
-                        {formatWakeTime(capture.snoozedUntil)}
-                      </span>
+              <SwipeableCard
+                data-capture-id={capture.id}
+                rightAction={{
+                  icon: <Inbox className="h-5 w-5" />,
+                  label: 'Wake up',
+                  type: 'unarchive',
+                  onAction: (direction) => handleUnsnooze(capture.id, direction === 'right' ? 'right' : 'left'),
+                }}
+                disabled={unsnoozeMutation.isPending}
+              >
+                <CardContent className="flex items-start justify-between gap-2 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+                    {capture.sourceUrl && (
+                      <a
+                        href={capture.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                        data-testid="source-url"
+                      >
+                        <LinkIcon className="h-3 w-3" />
+                        <span className="truncate">{capture.sourceUrl}</span>
+                      </a>
                     )}
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{formatDate(capture.capturedAt)}</span>
+                      {capture.snoozedUntil && (
+                        <span className="flex items-center gap-1 text-amber-600">
+                          <Clock className="h-3 w-3" />
+                          {formatWakeTime(capture.snoozedUntil)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleUnsnooze(capture.id)}
-                  disabled={unsnoozeMutation.isPending}
-                  title="Wake up now"
-                  aria-label="Unsnooze"
-                >
-                  <AlarmClockOff className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </SwipeableCard>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleUnsnooze(capture.id, 'right')}
+                    disabled={unsnoozeMutation.isPending}
+                    title="Wake up now"
+                    aria-label="Unsnooze"
+                  >
+                    <AlarmClockOff className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </SwipeableCard>
+            </AnimatedListItem>
           ))}
-        </div>
+        </AnimatedList>
       )}
     </div>
   );

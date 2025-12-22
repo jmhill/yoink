@@ -11,6 +11,7 @@ import { Archive, Link as LinkIcon, Pin, Clock } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
+export type ExitDirection = 'left' | 'right';
 
 export type CaptureCardProps = {
   capture: {
@@ -20,9 +21,9 @@ export type CaptureCardProps = {
     capturedAt: string;
     pinnedAt?: string | null;
   };
-  onArchive: (id: string) => void;
+  onArchive: (id: string, direction: ExitDirection) => void;
   onPin: (id: string, isPinned: boolean) => void;
-  onSnooze: (id: string, option: SnoozeOption) => void;
+  onSnooze: (id: string, option: SnoozeOption, direction: ExitDirection) => void;
   isArchiving?: boolean;
   isPinning?: boolean;
   isSnoozeing?: boolean;
@@ -42,14 +43,27 @@ export function CaptureCard({
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const isPinned = Boolean(capture.pinnedAt);
 
+  // Track if snooze was triggered by swipe (for exit direction)
+  const [snoozeSwipeDirection, setSnoozeSwipeDirection] = useState<ExitDirection | null>(null);
+
   const handleSwipeSnooze = () => {
     // Open the snooze dropdown when swiping left
+    setSnoozeSwipeDirection('left');
     setSnoozeOpen(true);
   };
 
   const handleSnoozeSelect = (option: SnoozeOption) => {
-    onSnooze(capture.id, option);
+    // Use swipe direction if available, otherwise default to 'left' for button clicks
+    onSnooze(capture.id, option, snoozeSwipeDirection ?? 'left');
     setSnoozeOpen(false);
+    setSnoozeSwipeDirection(null);
+  };
+
+  const handleSnoozeOpenChange = (open: boolean) => {
+    setSnoozeOpen(open);
+    if (!open) {
+      setSnoozeSwipeDirection(null);
+    }
   };
 
   return (
@@ -66,7 +80,7 @@ export function CaptureCard({
         icon: <Archive className="h-5 w-5" />,
         label: 'Archive',
         type: 'archive',
-        onAction: () => onArchive(capture.id),
+        onAction: () => onArchive(capture.id, 'right'),
       }}
       disabled={isArchiving || isSnoozeing}
     >
@@ -90,7 +104,7 @@ export function CaptureCard({
           </p>
         </div>
         <div className="flex gap-1">
-          <DropdownMenu open={snoozeOpen} onOpenChange={setSnoozeOpen}>
+          <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
             <DropdownMenuTrigger
               disabled={isSnoozeing}
               aria-label="Snooze"
@@ -122,7 +136,7 @@ export function CaptureCard({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => onArchive(capture.id)}
+            onClick={() => onArchive(capture.id, 'right')}
             disabled={isArchiving}
             title="Archive"
           >

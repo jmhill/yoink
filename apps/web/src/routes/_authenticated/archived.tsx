@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
@@ -8,6 +9,7 @@ import { Archive, Inbox, RotateCcw, Link as LinkIcon, Clock } from 'lucide-react
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { SwipeableCard } from '@/components/swipeable-card';
+import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/archived')({
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/_authenticated/archived')({
 });
 
 function ArchivedPage() {
+  const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const tsrQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
@@ -105,7 +108,8 @@ function ArchivedPage() {
     },
   });
 
-  const handleUnarchive = (id: string) => {
+  const handleUnarchive = (id: string, direction: ExitDirection = 'left') => {
+    setExitDirections((prev) => ({ ...prev, [id]: direction }));
     unarchiveMutation.mutate({
       params: { id },
       body: {},
@@ -169,51 +173,56 @@ function ArchivedPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <AnimatedList>
           {captures.map((capture) => (
-            <SwipeableCard
+            <AnimatedListItem
               key={capture.id}
-              data-capture-id={capture.id}
-              leftAction={{
-                icon: <Inbox className="h-5 w-5" />,
-                label: 'Unarchive',
-                type: 'unarchive',
-                onAction: () => handleUnarchive(capture.id),
-              }}
-              disabled={unarchiveMutation.isPending}
+              id={capture.id}
+              exitDirection={exitDirections[capture.id] ?? 'left'}
             >
-              <CardContent className="flex items-start justify-between gap-2 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="whitespace-pre-wrap break-words">{capture.content}</p>
-                  {capture.sourceUrl && (
-                    <a
-                      href={capture.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-                      data-testid="source-url"
-                    >
-                      <LinkIcon className="h-3 w-3" />
-                      <span className="truncate">{capture.sourceUrl}</span>
-                    </a>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(capture.capturedAt)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleUnarchive(capture.id)}
-                  disabled={unarchiveMutation.isPending}
-                  title="Move to inbox"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </SwipeableCard>
+              <SwipeableCard
+                data-capture-id={capture.id}
+                leftAction={{
+                  icon: <Inbox className="h-5 w-5" />,
+                  label: 'Unarchive',
+                  type: 'unarchive',
+                  onAction: (direction) => handleUnarchive(capture.id, direction === 'left' ? 'left' : 'right'),
+                }}
+                disabled={unarchiveMutation.isPending}
+              >
+                <CardContent className="flex items-start justify-between gap-2 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+                    {capture.sourceUrl && (
+                      <a
+                        href={capture.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                        data-testid="source-url"
+                      >
+                        <LinkIcon className="h-3 w-3" />
+                        <span className="truncate">{capture.sourceUrl}</span>
+                      </a>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(capture.capturedAt)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleUnarchive(capture.id, 'left')}
+                    disabled={unarchiveMutation.isPending}
+                    title="Move to inbox"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </SwipeableCard>
+            </AnimatedListItem>
           ))}
-        </div>
+        </AnimatedList>
       )}
     </div>
   );

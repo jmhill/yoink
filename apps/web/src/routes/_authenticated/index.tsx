@@ -10,7 +10,8 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { Archive, Inbox, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
-import { CaptureCard, type SnoozeOption } from '@/components/capture-card';
+import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
+import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/')({
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/_authenticated/')({
 function InboxPage() {
   const isOnline = useNetworkStatus();
   const [newContent, setNewContent] = useState('');
+  const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
 
@@ -367,7 +369,8 @@ function InboxPage() {
     });
   };
 
-  const handleArchive = (id: string) => {
+  const handleArchive = (id: string, direction: ExitDirection) => {
+    setExitDirections((prev) => ({ ...prev, [id]: direction }));
     archiveMutation.mutate({
       params: { id },
       body: {},
@@ -411,7 +414,8 @@ function InboxPage() {
     }
   };
 
-  const handleSnooze = (id: string, option: SnoozeOption) => {
+  const handleSnooze = (id: string, option: SnoozeOption, direction: ExitDirection) => {
+    setExitDirections((prev) => ({ ...prev, [id]: direction }));
     const until = getSnoozeTime(option);
     snoozeMutation.mutate({
       params: { id },
@@ -492,21 +496,26 @@ function InboxPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <AnimatedList>
           {captures.map((capture) => (
-            <CaptureCard
+            <AnimatedListItem
               key={capture.id}
-              capture={capture}
-              onArchive={handleArchive}
-              onPin={handlePin}
-              onSnooze={handleSnooze}
-              isArchiving={archiveMutation.isPending}
-              isPinning={pinMutationInternal.isPending || unpinMutationInternal.isPending}
-              isSnoozeing={snoozeMutation.isPending}
-              formatDate={formatDate}
-            />
+              id={capture.id}
+              exitDirection={exitDirections[capture.id] ?? 'right'}
+            >
+              <CaptureCard
+                capture={capture}
+                onArchive={handleArchive}
+                onPin={handlePin}
+                onSnooze={handleSnooze}
+                isArchiving={archiveMutation.isPending}
+                isPinning={pinMutationInternal.isPending || unpinMutationInternal.isPending}
+                isSnoozeing={snoozeMutation.isPending}
+                formatDate={formatDate}
+              />
+            </AnimatedListItem>
           ))}
-        </div>
+        </AnimatedList>
       )}
     </div>
   );

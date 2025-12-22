@@ -15,9 +15,18 @@
 
 /**
  * Theme Variables
- * Based on shadcn/ui neutral color palette with oklch colors.
+ * 
+ * Two-layer theming system:
+ * 1. Mode: .dark class toggles light/dark mode
+ * 2. Theme: .theme-* class selects color palette (default, tokyo-night)
+ * 
+ * Default theme uses shadcn/ui neutral color palette.
+ * Tokyo Night theme uses the popular VS Code theme colors.
  */
 @layer base {
+  /* ============================================
+   * DEFAULT THEME (Neutral)
+   * ============================================ */
   :root {
     --radius: 0.625rem;
     --background: oklch(1 0 0);
@@ -86,6 +95,7 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
   }
+
 }
 
 /**
@@ -142,4 +152,92 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ============================================
+ * TOKYO NIGHT THEME
+ * 
+ * Color palette from tokyo-night-vscode-theme
+ * https://github.com/tokyo-night/tokyo-night-vscode-theme
+ * 
+ * These rules are placed OUTSIDE @layer base to ensure
+ * they have higher specificity and override the defaults.
+ * 
+ * Key colors:
+ * - Background (night): #1a1b26
+ * - Foreground: #a9b1d6
+ * - Primary (blue): #7aa2f7
+ * - Accent (purple): #bb9af7
+ * - Destructive (red): #f7768e
+ * - Muted: #565f89
+ * ============================================ */
+
+/* Tokyo Night Light */
+:root.theme-tokyo-night {
+  --background: #d5d6db;
+  --foreground: #343b58;
+  --card: #e6e7ed;
+  --card-foreground: #343b58;
+  --popover: #e6e7ed;
+  --popover-foreground: #343b58;
+  --primary: #2959aa;
+  --primary-foreground: #e6e7ed;
+  --secondary: #c4c8da;
+  --secondary-foreground: #343b58;
+  --muted: #c4c8da;
+  --muted-foreground: #6c6e75;
+  --accent: #c4c8da;
+  --accent-foreground: #343b58;
+  --destructive: #8c4351;
+  --border: #b4b5bd;
+  --input: #b4b5bd;
+  --ring: #2959aa;
+  --chart-1: #2959aa;
+  --chart-2: #33635c;
+  --chart-3: #5a3e8e;
+  --chart-4: #8f5e15;
+  --chart-5: #385f0d;
+  --sidebar: #e6e7ed;
+  --sidebar-foreground: #343b58;
+  --sidebar-primary: #2959aa;
+  --sidebar-primary-foreground: #e6e7ed;
+  --sidebar-accent: #c4c8da;
+  --sidebar-accent-foreground: #343b58;
+  --sidebar-border: #b4b5bd;
+  --sidebar-ring: #2959aa;
+}
+
+/* Tokyo Night Dark (Storm variant) */
+:root.theme-tokyo-night.dark {
+  --background: #1a1b26;
+  --foreground: #a9b1d6;
+  --card: #24283b;
+  --card-foreground: #c0caf5;
+  --popover: #24283b;
+  --popover-foreground: #c0caf5;
+  --primary: #7aa2f7;
+  --primary-foreground: #1a1b26;
+  --secondary: #292e42;
+  --secondary-foreground: #c0caf5;
+  --muted: #292e42;
+  --muted-foreground: #565f89;
+  --accent: #292e42;
+  --accent-foreground: #c0caf5;
+  --destructive: #f7768e;
+  --border: #414868;
+  --input: #414868;
+  --ring: #7aa2f7;
+  --chart-1: #7aa2f7;
+  --chart-2: #73daca;
+  --chart-3: #bb9af7;
+  --chart-4: #e0af68;
+  --chart-5: #9ece6a;
+  --sidebar: #24283b;
+  --sidebar-foreground: #c0caf5;
+  --sidebar-primary: #7aa2f7;
+  --sidebar-primary-foreground: #1a1b26;
+  --sidebar-accent: #292e42;
+  --sidebar-accent-foreground: #c0caf5;
+  --sidebar-border: #414868;
+  --sidebar-ring: #7aa2f7;
 }

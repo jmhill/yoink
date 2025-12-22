@@ -2,25 +2,30 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tokenStorage } from '@/lib/token';
-import { useTheme, type Theme } from '@/lib/use-theme';
-import { ArrowLeft, LogOut, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
+import { ArrowLeft, LogOut, Sun, Moon, Monitor, Palette } from 'lucide-react';
 
 export const Route = createFileRoute('/_authenticated/settings')({
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode, colorTheme, setColorTheme } = useTheme();
 
   const handleLogout = () => {
     tokenStorage.remove();
     window.location.href = '/config';
   };
 
-  const themeOptions: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
+  const modeOptions: Array<{ value: ThemeMode; label: string; icon: typeof Sun }> = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark', label: 'Dark', icon: Moon },
     { value: 'system', label: 'System', icon: Monitor },
+  ];
+
+  const colorThemeOptions: Array<{ value: ColorTheme; label: string }> = [
+    { value: 'default', label: 'Default' },
+    { value: 'tokyo-night', label: 'Tokyo Night' },
   ];
 
   return (
@@ -40,19 +45,38 @@ function SettingsPage() {
             <CardTitle>Appearance</CardTitle>
             <CardDescription>Customize how Yoink looks</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              {themeOptions.map(({ value, label, icon: Icon }) => (
-                <Button
-                  key={value}
-                  variant={theme === value ? 'default' : 'outline'}
-                  onClick={() => setTheme(value)}
-                  className="flex-1"
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  {label}
-                </Button>
-              ))}
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Mode</label>
+              <div className="flex gap-2">
+                {modeOptions.map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    variant={mode === value ? 'default' : 'outline'}
+                    onClick={() => setMode(value)}
+                    className="flex-1"
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Theme</label>
+              <div className="flex gap-2">
+                {colorThemeOptions.map(({ value, label }) => (
+                  <Button
+                    key={value}
+                    variant={colorTheme === value ? 'default' : 'outline'}
+                    onClick={() => setColorTheme(value)}
+                    className="flex-1"
+                  >
+                    <Palette className="mr-2 h-4 w-4" />
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

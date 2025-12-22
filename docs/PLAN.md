@@ -376,9 +376,21 @@ Ideas for future consideration, roughly prioritized:
 - [x] Optimistic updates for web app mutations (create, archive, unarchive)
 - [x] Faster PWA update detection (5-min interval + visibility change listener with debounce)
 - [x] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
-- [ ] Fix bad network error state (red error message on "Failed to load captures")
-- [ ] Fix highlight and share on mobile browser not including link
-- [ ] More themes (tokyonight)
+- [x] Fix bad network error state (red error message on "Failed to load captures")
+  - Created reusable `ErrorState` component with context-aware actions
+  - 401 errors direct to Settings to reconfigure token
+  - Network errors show "Try Again" with refetch capability
+  - Header and tabs remain visible during errors (user can navigate)
+- [x] More themes (Tokyo Night)
+  - Two-layer theming: mode (light/dark/system) + color theme (default/tokyo-night)
+  - Tokyo Night colors from official VS Code theme palette
+  - Settings page shows both Mode and Theme selectors
+  - Admin panel has toggle buttons for mode and theme
+  - Color theme stored in localStorage (`colorTheme` key)
+
+### Won't Fix / Platform Limitations
+- ~~Fix highlight and share on mobile browser not including link~~
+  - **Reason**: Android platform limitation - when sharing selected text, the OS does not include the page URL in the share intent. The `url` parameter is empty and the URL is not embedded in `text` either. This is a known Android limitation ([Chromium bug #789379](https://bugs.chromium.org/p/chromium/issues/detail?id=789379)). Users should use "Share page" instead of text selection to include the source URL.
 
 ### Tier 2: Feature Additions
 - [x] Pin capture to top (boolean flag + sort order)

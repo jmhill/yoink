@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, redirect, isRedirect } from '@tanstack/react-router';
 import { tsrAdmin } from '@/api/client';
-import { useTheme, type Theme } from '@/lib/use-theme';
+import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
 import { Button } from '@yoink/ui-base/components/button';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, Palette } from 'lucide-react';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
@@ -25,26 +25,43 @@ export const Route = createFileRoute('/_authenticated')({
 });
 
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode, colorTheme, setColorTheme } = useTheme();
   
-  const cycleTheme = () => {
-    const order: Theme[] = ['light', 'dark', 'system'];
-    const currentIndex = order.indexOf(theme);
+  const cycleMode = () => {
+    const order: ThemeMode[] = ['light', 'dark', 'system'];
+    const currentIndex = order.indexOf(mode);
     const nextIndex = (currentIndex + 1) % order.length;
-    setTheme(order[nextIndex]);
+    setMode(order[nextIndex]);
   };
 
-  const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
+  const cycleColorTheme = () => {
+    const order: ColorTheme[] = ['default', 'tokyo-night'];
+    const currentIndex = order.indexOf(colorTheme);
+    const nextIndex = (currentIndex + 1) % order.length;
+    setColorTheme(order[nextIndex]);
+  };
+
+  const ModeIcon = mode === 'dark' ? Moon : mode === 'light' ? Sun : Monitor;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={cycleTheme}
-      title={`Theme: ${theme}`}
-    >
-      <Icon className="h-5 w-5" />
-    </Button>
+    <div className="flex gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={cycleMode}
+        title={`Mode: ${mode}`}
+      >
+        <ModeIcon className="h-5 w-5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={cycleColorTheme}
+        title={`Theme: ${colorTheme}`}
+      >
+        <Palette className="h-5 w-5" />
+      </Button>
+    </div>
   );
 }
 

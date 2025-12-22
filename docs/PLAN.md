@@ -408,6 +408,8 @@ Ideas for future consideration, roughly prioritized:
   - Snoozed: swipe right to wake up (blue)
   - Theme-aware colors (Tokyo Night uses palette colors)
   - Visual feedback with icon/label reveal during swipe
+  - Smooth animations: static backgrounds (no jank on swipe-back), exit animations with Framer Motion
+  - Cards slide out in swipe direction, remaining cards animate into place
 - [x] Better social captures (URL detection from text param)
   - [x] Twitter/X: Detects URL-only shares in text param, extracts to sourceUrl
   - [x] LinkedIn: Same URL detection logic works for LinkedIn shares

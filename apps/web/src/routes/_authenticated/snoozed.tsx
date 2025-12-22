@@ -189,7 +189,7 @@ function SnoozedPage() {
             <SwipeableCard
               key={capture.id}
               data-capture-id={capture.id}
-              leftAction={{
+              rightAction={{
                 icon: <Inbox className="h-5 w-5" />,
                 label: 'Wake up',
                 type: 'unarchive',

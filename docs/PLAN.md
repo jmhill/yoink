@@ -405,7 +405,7 @@ Ideas for future consideration, roughly prioritized:
 - [x] Swipe gestures on mobile
   - Inbox: swipe right to archive (green), swipe left to open snooze menu (amber)
   - Archived: swipe left to unarchive (blue)
-  - Snoozed: swipe left to wake up (blue)
+  - Snoozed: swipe right to wake up (blue)
   - Theme-aware colors (Tokyo Night uses palette colors)
   - Visual feedback with icon/label reveal during swipe
 - [ ] Auto archive/delete captures after configurable number of days

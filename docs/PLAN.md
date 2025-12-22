@@ -409,6 +409,12 @@ Ideas for future consideration, roughly prioritized:
   - [ ] LinkedIn improvements
 
 ### Tier 3: Architectural Work
+- [ ] Server-side user settings persistence
+  - Store settings (theme mode, color theme) in `settings` JSON column on users table
+  - GET/PATCH /api/user/settings endpoints
+  - Sync from server on app load, merge with localStorage
+  - Enables consistent settings across devices
+  - Migration: 007-add-user-settings.ts
 - [ ] Observability (logging, metrics, tracing)
 - [ ] Feature flagging infrastructure
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))

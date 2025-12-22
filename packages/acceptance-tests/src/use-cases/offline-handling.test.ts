@@ -3,7 +3,8 @@ import type { BrowserActor } from '../dsl/index.js';
 
 /**
  * Tests for offline handling in the PWA.
- * Verifies that the app properly handles network disconnection.
+ * Verifies that the app properly communicates network status
+ * and prevents operations that require connectivity.
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Offline handling [${ctx.driverName}]`, () => {
@@ -20,29 +21,28 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.goOnline();
     });
 
-    it('shows offline banner when network is disconnected', async () => {
+    it('warns user when network is disconnected', async () => {
       await alice.goOffline();
 
-      const bannerVisible = await alice.isOfflineBannerVisible();
-
-      expect(bannerVisible).toBe(true);
+      expect(await alice.seesOfflineWarning()).toBe(true);
     });
 
-    it('hides offline banner when network is restored', async () => {
+    it('clears warning when network is restored', async () => {
       await alice.goOffline();
       await alice.goOnline();
 
-      const bannerVisible = await alice.isOfflineBannerVisible();
-
-      expect(bannerVisible).toBe(false);
+      expect(await alice.seesOfflineWarning()).toBe(false);
     });
 
-    it('disables quick-add input when offline', async () => {
+    it('prevents adding captures when offline', async () => {
       await alice.goOffline();
 
-      const inputDisabled = await alice.isQuickAddDisabled();
+      expect(await alice.canAddCaptures()).toBe(false);
+    });
 
-      expect(inputDisabled).toBe(true);
+    it('allows adding captures when online', async () => {
+      // Verify baseline - should be able to add captures when online
+      expect(await alice.canAddCaptures()).toBe(true);
     });
   });
 });

@@ -82,9 +82,26 @@ export class InboxPage {
       await this.page.getByText(content).waitFor();
     }
     
-    // Get the real ID from the newly created capture card
+    // Get the real ID from the newly created capture card.
+    // We must wait for the server response to replace the optimistic temp ID.
+    // Optimistic updates use IDs like "temp-1234567890", real IDs are UUIDs.
     const card = this.page.locator('[data-capture-id]').filter({ hasText: content }).first();
-    const captureId = await card.getAttribute('data-capture-id');
+    
+    // Poll until we get a real UUID (not a temp ID from optimistic update)
+    let captureId: string | null = null;
+    const maxAttempts = 20;
+    for (let i = 0; i < maxAttempts; i++) {
+      captureId = await card.getAttribute('data-capture-id');
+      if (captureId && !captureId.startsWith('temp-')) {
+        break;
+      }
+      await this.page.waitForTimeout(100);
+    }
+    
+    // If we still have a temp ID, the server response didn't arrive in time
+    if (captureId?.startsWith('temp-')) {
+      throw new Error(`Timed out waiting for server to confirm capture creation. Got temp ID: ${captureId}`);
+    }
     
     return captureId;
   }

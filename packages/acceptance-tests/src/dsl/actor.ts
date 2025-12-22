@@ -64,14 +64,16 @@ export type BrowserActorOperations = {
   goOnline(): Promise<void>;
 
   /**
-   * Check if the offline banner is visible.
+   * Check if the user sees a warning about being offline.
+   * Returns true when the app is displaying offline status to the user.
    */
-  isOfflineBannerVisible(): Promise<boolean>;
+  seesOfflineWarning(): Promise<boolean>;
 
   /**
-   * Check if the quick-add input is disabled.
+   * Check if the user can add new captures.
+   * Returns false when the app prevents capture creation (e.g., when offline).
    */
-  isQuickAddDisabled(): Promise<boolean>;
+  canAddCaptures(): Promise<boolean>;
 };
 
 /**

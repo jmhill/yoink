@@ -188,12 +188,12 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('goOnline', 'http');
     },
 
-    async isOfflineBannerVisible(): Promise<boolean> {
-      throw new UnsupportedOperationError('isOfflineBannerVisible', 'http');
+    async seesOfflineWarning(): Promise<boolean> {
+      throw new UnsupportedOperationError('seesOfflineWarning', 'http');
     },
 
-    async isQuickAddDisabled(): Promise<boolean> {
-      throw new UnsupportedOperationError('isQuickAddDisabled', 'http');
+    async canAddCaptures(): Promise<boolean> {
+      throw new UnsupportedOperationError('canAddCaptures', 'http');
     },
   };
 };

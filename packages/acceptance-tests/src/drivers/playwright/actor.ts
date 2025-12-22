@@ -323,7 +323,7 @@ export const createPlaywrightActor = (
       await page.context().setOffline(false);
     },
 
-    async isOfflineBannerVisible(): Promise<boolean> {
+    async seesOfflineWarning(): Promise<boolean> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
@@ -340,21 +340,22 @@ export const createPlaywrightActor = (
       }
     },
 
-    async isQuickAddDisabled(): Promise<boolean> {
+    async canAddCaptures(): Promise<boolean> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline
       await inboxPage.goto();
 
-      // Wait for the offline placeholder to appear (indicates disabled state)
-      // The app changes the placeholder text when offline
+      // Check if the quick-add input is enabled
+      // When offline, the app disables the input and changes the placeholder
       const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
       try {
         await offlineInput.waitFor({ state: 'visible', timeout: 2000 });
-        return true;
+        return false; // Offline placeholder visible = cannot add captures
       } catch {
-        // Offline placeholder didn't appear - check if regular input is disabled
+        // Offline placeholder didn't appear - check if regular input is enabled
         const input = page.getByPlaceholder('Quick capture...');
-        return await input.isDisabled();
+        const isDisabled = await input.isDisabled();
+        return !isDisabled;
       }
     },
   };

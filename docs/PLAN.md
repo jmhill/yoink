@@ -387,7 +387,10 @@ Ideas for future consideration, roughly prioritized:
   - Settings page shows both Mode and Theme selectors
   - Admin panel has toggle buttons for mode and theme
   - Color theme stored in localStorage (`colorTheme` key)
-- [ ] App header improvements (pig icon, branding)
+- [x] App header improvements (pig icon, branding)
+  - Replaced "Yoink" text with clickable pig icon that links to inbox
+  - Extracted shared `Header` component to reduce duplication
+  - Increased settings icon size for visual balance
 - [x] Keep quick entry focused after submit for rapid multi-capture
 
 ### Won't Fix / Platform Limitations

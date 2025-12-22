@@ -4,7 +4,8 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Settings, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
+import { Archive, Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
+import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { toast } from 'sonner';
 
@@ -144,14 +145,7 @@ function SnoozedPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Yoink</h1>
-        <Button variant="ghost" size="icon" asChild title="Settings">
-          <Link to="/settings">
-            <Settings className="h-5 w-5" />
-          </Link>
-        </Button>
-      </div>
+      <Header />
 
       <Tabs defaultValue="snoozed" className="mb-6">
         <TabsList className="grid w-full grid-cols-3">

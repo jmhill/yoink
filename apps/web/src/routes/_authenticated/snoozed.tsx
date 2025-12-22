@@ -4,7 +4,8 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Settings, AlarmClockOff, Link as LinkIcon, WifiOff, Clock } from 'lucide-react';
+import { Archive, Inbox, Settings, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
+import { ErrorState } from '@/components/error-state';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/snoozed')({
@@ -14,7 +15,7 @@ export const Route = createFileRoute('/_authenticated/snoozed')({
 function SnoozedPage() {
   const tsrQueryClient = tsr.useQueryClient();
 
-  const { data, isPending, error } = tsr.list.useQuery({
+  const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'snoozed'],
     queryData: { query: { status: 'inbox' as const, snoozed: true } },
   });
@@ -139,33 +140,6 @@ function SnoozedPage() {
     return `Waking ${date.toLocaleDateString()}`;
   };
 
-  // Error state
-  if (error) {
-    if (isFetchError(error)) {
-      return (
-        <div className="container mx-auto max-w-2xl p-4">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <WifiOff className="mx-auto mb-2 h-8 w-8 text-yellow-600" />
-              <p className="text-muted-foreground">Unable to connect to the server.</p>
-              <p className="text-sm text-muted-foreground">Please check your internet connection.</p>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    return (
-      <div className="container mx-auto max-w-2xl p-4">
-        <Card>
-          <CardContent className="py-8 text-center text-red-600">
-            <p>Failed to load captures</p>
-            <p className="text-sm">Status: {error.status}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
@@ -202,7 +176,9 @@ function SnoozedPage() {
         </TabsList>
       </Tabs>
 
-      {isPending ? (
+      {error ? (
+        <ErrorState error={error} onRetry={() => refetch()} />
+      ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>
       ) : captures.length === 0 ? (
         <Card>

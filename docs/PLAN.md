@@ -408,20 +408,23 @@ Ideas for future consideration, roughly prioritized:
   - Snoozed: swipe right to wake up (blue)
   - Theme-aware colors (Tokyo Night uses palette colors)
   - Visual feedback with icon/label reveal during swipe
+- [x] Better social captures (URL detection from text param)
+  - [x] Twitter/X: Detects URL-only shares in text param, extracts to sourceUrl
+  - [x] LinkedIn: Same URL detection logic works for LinkedIn shares
+  - When apps share only a URL (in text param), it's extracted to sourceUrl
+  - Content shows editable placeholder "Shared from {hostname}"
+  - User can edit placeholder before saving
 - [ ] Auto archive/delete captures after configurable number of days
-- [ ] Better social captures
-  - [ ] Twitter/X improvements
-  - [ ] LinkedIn improvements
 
 ### Tier 3: Architectural Work
+- [ ] Observability (logging, metrics, tracing)
+- [ ] Feature flagging infrastructure
 - [ ] Server-side user settings persistence
   - Store settings (theme mode, color theme) in `settings` JSON column on users table
   - GET/PATCH /api/user/settings endpoints
   - Sync from server on app load, merge with localStorage
   - Enables consistent settings across devices
   - Migration: 007-add-user-settings.ts
-- [ ] Observability (logging, metrics, tracing)
-- [ ] Feature flagging infrastructure
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
   - Prerequisite for multi-org membership and improved auth UX
 - [ ] Admin panel improvements

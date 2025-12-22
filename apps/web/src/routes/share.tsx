@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/compone
 import { tsr } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
-import { extractContent, extractUrl, parseShareParams } from '@/lib/share';
+import {
+  extractContent,
+  extractUrl,
+  generatePlaceholder,
+  parseShareParams,
+} from '@/lib/share';
 import { toast } from 'sonner';
 import { WifiOff, X, Link as LinkIcon } from 'lucide-react';
 
@@ -24,8 +29,16 @@ function SharePage() {
   // Parse share params from URL on mount
   useEffect(() => {
     const params = parseShareParams(new URLSearchParams(window.location.search));
-    setContent(extractContent(params));
-    setSourceUrl(extractUrl(params));
+    const extractedContent = extractContent(params);
+    const extractedUrl = extractUrl(params);
+
+    // If content is empty but we have a URL, generate placeholder content
+    // The user can edit this before saving
+    const contentToShow =
+      extractedContent || generatePlaceholder(extractedUrl);
+
+    setContent(contentToShow);
+    setSourceUrl(extractedUrl);
   }, []);
 
   // Check if token is configured

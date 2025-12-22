@@ -40,14 +40,34 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(capture.sourceUrl).toBe(sharedUrl);
     });
 
-    it('can capture URL-only share', async () => {
+    it('can capture URL-only share via url param', async () => {
       const sharedUrl = `https://example.com/page-${Date.now()}`;
 
       const capture = await alice.shareContent({ url: sharedUrl });
 
-      // When only URL is shared, it becomes the content
-      expect(capture.content).toBe(sharedUrl);
+      // When only URL is shared, content is a placeholder and sourceUrl is set
+      expect(capture.content).toBe('Shared from example.com');
       expect(capture.sourceUrl).toBe(sharedUrl);
+    });
+
+    it('extracts URL from text param when apps share URL-only in text (like Twitter/X)', async () => {
+      // Twitter/X and LinkedIn share URLs in the text param, not the url param
+      const sharedUrl = 'https://x.com/user/status/123456789';
+
+      const capture = await alice.shareContent({ text: sharedUrl });
+
+      // URL should be extracted to sourceUrl, content should be placeholder
+      expect(capture.sourceUrl).toBe(sharedUrl);
+      expect(capture.content).toBe('Shared from x.com');
+    });
+
+    it('extracts URL from text param for LinkedIn shares', async () => {
+      const sharedUrl = 'https://www.linkedin.com/posts/user_post-123456';
+
+      const capture = await alice.shareContent({ text: sharedUrl });
+
+      expect(capture.sourceUrl).toBe(sharedUrl);
+      expect(capture.content).toBe('Shared from linkedin.com');
     });
   });
 });

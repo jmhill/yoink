@@ -9,6 +9,53 @@ import type {
 import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
 import { ConfigPage, InboxPage, ArchivedPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
+/**
+ * Mirrors the share.ts logic for determining expected content and sourceUrl
+ * from share intent params. This keeps the driver in sync with the app logic.
+ */
+function parseShareExpectations(params: {
+  text?: string;
+  url?: string;
+  title?: string;
+}): { expectedContent: string; expectedSourceUrl: string | undefined } {
+  // Check if text is URL-only (matches extractUrlFromText logic)
+  const textIsUrlOnly = (() => {
+    const trimmed = params.text?.trim() ?? '';
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      try {
+        new URL(trimmed);
+        return trimmed;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  })();
+
+  // Determine sourceUrl (explicit url param takes precedence)
+  const expectedSourceUrl = params.url?.trim() || textIsUrlOnly;
+
+  // Determine content (exclude URL-only text, generate placeholder if needed)
+  const textContent = textIsUrlOnly ? null : params.text;
+  const parts = [params.title, textContent].filter(
+    (p): p is string => Boolean(p && p.trim())
+  );
+  let expectedContent = parts.map((p) => p.trim()).join('\n\n');
+
+  // If content is empty but we have a URL, generate placeholder
+  if (!expectedContent && expectedSourceUrl) {
+    try {
+      const hostname = new URL(expectedSourceUrl).hostname.replace(/^www\./, '');
+      expectedContent = `Shared from ${hostname}`;
+    } catch {
+      expectedContent = 'Shared link';
+    }
+  }
+
+  return { expectedContent, expectedSourceUrl };
+}
+
 type ActorCredentials = {
   email: string;
   userId: string;
@@ -303,16 +350,17 @@ export const createPlaywrightActor = (
       // Wait for success and redirect to inbox
       await page.waitForURL('/', { timeout: 5000 });
 
-      // Get the real ID from the newly created capture
-      const content = params.text || params.url || '';
+      // Determine expected content and sourceUrl based on share logic
+      const { expectedContent, expectedSourceUrl } = parseShareExpectations(params);
+
       await inboxPage.waitForCapturesOrEmpty();
-      const captureId = await inboxPage.getCaptureIdByContent(content);
+      const captureId = await inboxPage.getCaptureIdByContent(expectedContent);
 
       if (!captureId) {
-        throw new Error('Failed to find shared capture in inbox');
+        throw new Error(`Failed to find shared capture in inbox with content: "${expectedContent}"`);
       }
 
-      return buildCapture(captureId, content, 'inbox', { sourceUrl: params.url });
+      return buildCapture(captureId, expectedContent, 'inbox', { sourceUrl: expectedSourceUrl });
     },
 
     async goOffline(): Promise<void> {

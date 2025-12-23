@@ -20,6 +20,7 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
 **Phase 4.6: Database Migration Infrastructure** - Complete ✓ (critical items)
 **Phase 5.5: Snooze Feature** - Complete ✓
+**Phase 6.1: Sentry Integration** - Complete ✓
 
 ---
 
@@ -358,6 +359,78 @@ After first deploy with health endpoint:
 
 ---
 
+## Phase 6: Observability
+
+**Goal**: Production-grade error tracking, performance monitoring, and structured logging
+
+### 6.1 Sentry Integration
+
+Error tracking and performance monitoring via Fly.io's Sentry partnership (1 year free Team Plan).
+
+#### Backend (apps/api) - Complete ✓
+- [x] Run `fly ext sentry create` to provision Sentry and set SENTRY_DSN secret
+- [x] Install `@sentry/node`
+- [x] Create `src/instrument.ts` for early Sentry initialization
+- [x] Update start script to use `--import` flag for ESM instrumentation
+- [x] Configure `setupFastifyErrorHandler(app)` for automatic error capture
+- [x] Enable tracing with `tracesSampleRate: 0.1` (10% sampling)
+
+#### Frontend (apps/web) - Complete ✓
+- [x] Install `@sentry/react`
+- [x] Create `src/instrument.ts` for initialization
+- [x] Configure `tanstackRouterBrowserTracingIntegration(router)` for route tracing
+- [x] Configure `replayIntegration()` with `replaysOnErrorSampleRate: 1.0`
+- [x] Set `tracePropagationTargets` to connect frontend→backend traces
+- [x] Pass VITE_SENTRY_DSN via Docker build arg in CI
+
+#### CI Configuration
+- [x] Add `SENTRY_DSN` as GitHub secret for frontend build
+- [x] Pass build arg in docker/build-push-action
+
+#### Configuration
+- Single Sentry project for unified frontend→backend trace view
+- Environment-aware: skip init when `SENTRY_DSN` not set (local dev)
+- Environment tags: `production`, `development`
+
+#### Deferred
+- [ ] Source map upload (requires Sentry auth token setup)
+- [ ] Release tracking (git commit version tagging)
+
+**Deliverable**: Errors and performance issues automatically captured with session context
+
+---
+
+### 6.2 Structured Logging
+
+OTEL-compatible structured logging using Pino (Fastify's built-in logger).
+
+- [ ] Enable Pino in Fastify with JSON output to stdout
+- [ ] Configure `pino-pretty` for human-readable development output
+- [ ] Add request context injection (requestId, userId, orgId)
+- [ ] Standardize log field names (`msg`, `level`, `time`, `requestId`, etc.)
+- [ ] Configure sensitive field redaction (tokens, passwords)
+- [ ] Set LOG_LEVEL environment variable support (default: `info`)
+- [ ] Document logging conventions
+
+#### Design Decisions
+- **Format**: JSON to stdout (Fly.io captures automatically)
+- **Dev experience**: `pino-pretty` for local development
+- **OTEL ready**: Field names compatible with future `@opentelemetry/instrumentation-pino`
+
+**Deliverable**: Consistent, searchable structured logs in Fly.io's log infrastructure
+
+---
+
+### 6.3 OTEL Tracing (Deferred)
+
+Full OpenTelemetry distributed tracing - to be implemented when needed.
+
+- [ ] Add `@opentelemetry/instrumentation-pino` for trace context in logs
+- [ ] Evaluate `pino-opentelemetry-transport` for direct log export
+- [ ] Consider full OTEL SDK for distributed tracing beyond Sentry
+
+---
+
 ## Future Enhancements
 
 Ideas for future consideration, roughly prioritized:
@@ -419,7 +492,6 @@ Ideas for future consideration, roughly prioritized:
 - [ ] Auto archive/delete captures after configurable number of days
 
 ### Tier 3: Architectural Work
-- [ ] Observability (logging, metrics, tracing)
 - [ ] Feature flagging infrastructure
 - [ ] Server-side user settings persistence
   - Store settings (theme mode, color theme) in `settings` JSON column on users table

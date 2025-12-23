@@ -1,6 +1,9 @@
 # Build stage
 FROM node:24-alpine AS builder
 
+# Build arguments for frontend environment variables
+ARG VITE_SENTRY_DSN
+
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 

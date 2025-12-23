@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { tsr } from './api/client';
+import { initSentry } from './instrument';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -12,6 +13,9 @@ const router = createRouter({
   routeTree,
   basepath: '/',
 });
+
+// Initialize Sentry with router for route-based tracing
+initSentry(router);
 
 declare module '@tanstack/react-router' {
   interface Register {

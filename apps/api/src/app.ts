@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
+import * as Sentry from '@sentry/node';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -112,6 +113,9 @@ export const createApp = async (deps: AppDependencies) => {
       setHeaders,
     });
   }
+
+  // Register Sentry error handler (must be after routes but before other error handlers)
+  Sentry.setupFastifyErrorHandler(app);
 
   // SPA fallback - serve index.html for unmatched routes
   app.setNotFoundHandler((request, reply) => {

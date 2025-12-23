@@ -209,7 +209,7 @@ A comprehensive security review identified the following priorities before shari
 - [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md)) - prerequisite for multi-org
 - [ ] Add container scanning (Trivy) to CI
 - [ ] Add SAST (CodeQL/Semgrep) to CI
-- [ ] Enable Dependabot for automated updates
+- [x] Enable Dependabot for automated updates
 
 ### Security Assessment Summary
 

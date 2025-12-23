@@ -321,6 +321,26 @@ export class TrashPage {
     await this.page.getByText(content).waitFor({ state: 'hidden' });
   }
 
+  async deleteCapture(content: string): Promise<void> {
+    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
+    await card.hover();
+    await card.getByRole('button', { name: 'Delete permanently' }).click();
+    // Wait for confirmation dialog
+    await this.page.getByRole('button', { name: 'Delete' }).click();
+    await this.page.getByText(content).waitFor({ state: 'hidden' });
+  }
+
+  async emptyTrash(): Promise<number> {
+    // Click the Empty Trash button
+    await this.page.getByRole('button', { name: 'Empty Trash' }).click();
+    // Wait for confirmation dialog and click confirm
+    await this.page.getByRole('dialog').getByRole('button', { name: 'Empty Trash' }).click();
+    // Wait for the trash to be empty
+    await this.page.getByText('No trashed captures').waitFor({ state: 'attached' });
+    // Return 0 as we can't easily get the count from UI
+    return 0;
+  }
+
   async goToInbox(): Promise<void> {
     await this.page.getByRole('link', { name: 'Inbox' }).click();
     await this.page.waitForURL('/');

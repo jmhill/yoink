@@ -10,6 +10,7 @@ import {
   NotFoundError,
   ValidationError,
   UnsupportedOperationError,
+  ConflictError,
 } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
@@ -162,6 +163,33 @@ export const createHttpActor = (
         throw new UnauthorizedError();
       }
       return response.json<{ captures: Capture[] }>().captures;
+    },
+
+    async deleteCapture(id: string): Promise<void> {
+      const response = await client.delete(`/api/captures/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Capture', id);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'Capture must be in trash before deletion');
+      }
+      // 204 No Content is success
+    },
+
+    async emptyTrash(): Promise<{ deletedCount: number }> {
+      const response = await client.post('/api/captures/trash/empty', {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ deletedCount: number }>();
     },
 
     async goToSettings(): Promise<void> {

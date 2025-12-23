@@ -23,6 +23,8 @@ export type CoreActor = {
   snoozeCapture(id: string, until: string): Promise<Capture>;
   unsnoozeCapture(id: string): Promise<Capture>;
   listSnoozedCaptures(): Promise<Capture[]>;
+  deleteCapture(id: string): Promise<void>;
+  emptyTrash(): Promise<{ deletedCount: number }>;
 };
 
 /**

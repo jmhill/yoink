@@ -302,6 +302,35 @@ export const createPlaywrightActor = (
       return captures.map(({ id, content }) => buildCapture(id, content, 'inbox'));
     },
 
+    async deleteCapture(id: string): Promise<void> {
+      await ensureConfigured();
+      await trashPage.goto();
+      await trashPage.waitForCapturesOrEmpty();
+
+      const content = await findCaptureContentById(id);
+      if (!content) {
+        throw new NotFoundError('Capture', id);
+      }
+
+      await trashPage.deleteCapture(content);
+    },
+
+    async emptyTrash(): Promise<{ deletedCount: number }> {
+      await ensureConfigured();
+      await trashPage.goto();
+      await trashPage.waitForCapturesOrEmpty();
+
+      // Get count before emptying
+      const captures = await trashPage.getCaptures();
+      const count = captures.length;
+
+      if (count > 0) {
+        await trashPage.emptyTrash();
+      }
+
+      return { deletedCount: count };
+    },
+
     async goToSettings(): Promise<void> {
       await ensureConfigured();
       await inboxPage.goto();

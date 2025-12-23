@@ -179,7 +179,7 @@ export const captureContract = c.router({
     pathParams: z.object({
       id: z.string().uuid(),
     }),
-    body: z.object({}),
+    body: null,
     responses: {
       204: z.undefined(),
       401: ErrorSchema,

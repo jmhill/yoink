@@ -17,6 +17,7 @@ export {
   NotFoundError,
   ValidationError,
   UnsupportedOperationError,
+  ConflictError,
 } from './errors.js';
 
 // Interfaces

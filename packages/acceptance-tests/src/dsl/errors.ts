@@ -51,3 +51,13 @@ export class UnsupportedOperationError extends DslError {
     super(`Operation '${operation}' is not supported by the ${driver} driver`);
   }
 }
+
+/**
+ * Thrown when an operation cannot be completed due to a conflict.
+ * For example, trying to delete a capture that is not in trash.
+ */
+export class ConflictError extends DslError {
+  constructor(message: string) {
+    super(message);
+  }
+}

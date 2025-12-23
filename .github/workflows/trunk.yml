@@ -107,7 +107,7 @@ jobs:
         run: docker pull registry.fly.io/jhtc-yoink-api:${{ github.sha }}
 
       - name: Install acceptance test dependencies
-        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests
+        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
 
       - name: Cache Playwright browsers
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v4
@@ -118,7 +118,7 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: devbox run pnpm --filter @yoink/acceptance-tests exec playwright install chromium
+        run: devbox run pnpm --filter @yoink/acceptance-testing exec playwright install chromium
 
       - name: Run E2E tests
         run: |

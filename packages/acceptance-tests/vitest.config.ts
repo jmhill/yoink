@@ -3,7 +3,9 @@ import MultiDriverReporter from './src/reporter.js';
 
 export default defineConfig({
   test: {
-    include: ['src/use-cases/**/*.test.ts'],
+    // Include both unit tests and acceptance tests
+    include: ['src/**/*.test.ts'],
+    // Only use custom reporter for acceptance tests (use-cases)
     reporters: process.env.CI
       ? ['verbose', 'json', 'github-actions', new MultiDriverReporter()]
       : ['verbose', new MultiDriverReporter()],

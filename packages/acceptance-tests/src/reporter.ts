@@ -14,13 +14,38 @@ type TestResultEntry = {
 };
 
 /**
- * Extract driver name from test name.
- * Test names end with [driverName], e.g., "can create capture [http]"
+ * Extract driver name from a suite or test name.
+ * Names containing [driverName], e.g., "Capturing notes [http]"
+ * Returns the name without the driver suffix and the driver name.
  */
-const extractDriver = (testName: string): { baseName: string; driver: string } | null => {
-  const match = testName.match(/^(.+)\s+\[(\w+)\]$/);
+const extractDriver = (name: string): { baseName: string; driver: string } | null => {
+  const match = name.match(/^(.+)\s+\[(\w+)\]$/);
   if (!match) return null;
-  return { baseName: match[1], driver: match[2] };
+  return { baseName: match[1].trim(), driver: match[2] };
+};
+
+/**
+ * Find the driver name from the feature path by looking for [driverName] suffix
+ * in any of the path segments.
+ */
+const findDriverInPath = (featurePath: string[]): string | null => {
+  for (const segment of featurePath) {
+    const parsed = extractDriver(segment);
+    if (parsed) return parsed.driver;
+  }
+  return null;
+};
+
+/**
+ * Build feature path without driver suffixes.
+ */
+const buildCleanFeaturePath = (featurePath: string[]): string => {
+  return featurePath
+    .map((segment) => {
+      const parsed = extractDriver(segment);
+      return parsed ? parsed.baseName : segment;
+    })
+    .join(' > ');
 };
 
 /**
@@ -53,24 +78,26 @@ export default class MultiDriverReporter implements Reporter {
 
   /**
    * Recursively collect all test cases from tasks.
+   * The driver name is extracted from suite names that contain [driverName] suffix.
    */
   private collectTests(tasks: Task[], featurePath: string[] = []): void {
     for (const task of tasks) {
       if (task.type === 'test') {
-        const parsed = extractDriver(task.name);
-        if (!parsed) continue;
+        // Find the driver from the suite path (e.g., "Capturing notes [http]")
+        const driver = findDriverInPath(featurePath);
+        if (!driver) continue;
 
-        const { baseName, driver } = parsed;
         this.drivers.add(driver);
 
-        // Build the full feature path
-        const feature = featurePath.join(' > ');
-        const fullKey = `${feature} > ${baseName}`;
+        // Build the feature path without driver suffixes
+        const feature = buildCleanFeaturePath(featurePath);
+        const testName = task.name;
+        const fullKey = `${feature} > ${testName}`;
 
         let result = this.results.get(fullKey);
         if (!result) {
           result = {
-            baseName,
+            baseName: testName,
             feature,
             drivers: {},
           };
@@ -87,11 +114,8 @@ export default class MultiDriverReporter implements Reporter {
           result.drivers[driver] = 'skip';
         }
       } else if (task.type === 'suite' && 'tasks' in task && task.tasks) {
-        // Build feature path from suite names, skip driver-specific suites
-        let childFeaturePath = [...featurePath];
-        if (!task.name.match(/^\[\w+\]$/)) {
-          childFeaturePath = [...featurePath, task.name];
-        }
+        // Add suite name to feature path (including driver suffix if present)
+        const childFeaturePath = [...featurePath, task.name];
         this.collectTests(task.tasks, childFeaturePath);
       }
     }

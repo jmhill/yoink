@@ -166,5 +166,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     healthChecker,
     admin,
     rateLimit: config.rateLimit,
+    log: config.log,
   });
 };

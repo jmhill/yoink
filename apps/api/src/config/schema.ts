@@ -89,6 +89,22 @@ export const RateLimitConfigSchema = z.object({
   adminLoginTimeWindow: z.string().default('15 minutes'),
 });
 
+// Log level enum matching Pino's levels
+export const LogLevelSchema = z.enum([
+  'fatal',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
+]);
+
+// Logging configuration
+export const LogConfigSchema = z.object({
+  level: LogLevelSchema.default('info'),
+  pretty: z.boolean().default(false),
+});
+
 // Full application configuration
 export const AppConfigSchema = z.object({
   server: ServerConfigSchema,
@@ -97,6 +113,7 @@ export const AppConfigSchema = z.object({
   seedToken: z.string().optional(),
   admin: AdminConfigSchema.optional(),
   rateLimit: RateLimitConfigSchema.optional(),
+  log: LogConfigSchema,
 });
 
 // Export inferred types
@@ -104,6 +121,8 @@ export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 export type ClockConfig = z.infer<typeof ClockConfigSchema>;
 export type AdminConfig = z.infer<typeof AdminConfigSchema>;
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
+export type LogLevel = z.infer<typeof LogLevelSchema>;
+export type LogConfig = z.infer<typeof LogConfigSchema>;
 export type IdGeneratorConfig = z.infer<typeof IdGeneratorConfigSchema>;
 export type PasswordHasherConfig = z.infer<typeof PasswordHasherConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

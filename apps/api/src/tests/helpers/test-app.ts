@@ -35,6 +35,7 @@ const testConfig: AppConfig = {
     passwordHasher: { type: 'fake' },
   },
   seedToken: TEST_TOKEN_SECRET,
+  log: { level: 'error', pretty: false }, // Quiet logs during tests
 };
 
 const testConfigWithAdmin: AppConfig = {

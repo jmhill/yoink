@@ -15,7 +15,8 @@ import type { HealthChecker } from './health/domain/health-checker.js';
 import type { AuthMiddleware } from './auth/application/auth-middleware.js';
 import type { AdminService } from './admin/domain/admin-service.js';
 import type { AdminSessionService } from './admin/domain/admin-session-service.js';
-import type { RateLimitConfig } from './config/schema.js';
+import type { RateLimitConfig, LogConfig } from './config/schema.js';
+import { createLoggerOptions } from './logging/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +31,7 @@ export type AppDependencies = {
   healthChecker: HealthChecker;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
+  log: LogConfig;
 };
 
 // Default rate limit configuration
@@ -42,7 +44,8 @@ const defaultRateLimitConfig: RateLimitConfig = {
 };
 
 export const createApp = async (deps: AppDependencies) => {
-  const app = Fastify();
+  const loggerOptions = createLoggerOptions(deps.log);
+  const app = Fastify({ logger: loggerOptions });
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
 
   // Register security plugins

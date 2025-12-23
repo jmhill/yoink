@@ -40,5 +40,11 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
       organizationId: result.value.organization.id,
       userId: result.value.user.id,
     };
+
+    // Bind auth context to request logger for all subsequent logs
+    request.log = request.log.child({
+      userId: request.authContext.userId,
+      orgId: request.authContext.organizationId,
+    });
   };
 };

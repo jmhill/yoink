@@ -16,7 +16,7 @@ const main = async () => {
   try {
     const { port, host } = config.server;
     await app.listen({ port, host });
-    console.log(`Server running at http://${host}:${port}`);
+    app.log.info({ port, host }, 'Server started');
   } catch (err) {
     app.log.error(err);
     process.exit(1);

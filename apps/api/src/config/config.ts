@@ -1,4 +1,12 @@
-import { type AppConfig, type DatabaseConfig, type AdminConfig, type RateLimitConfig } from './schema.js';
+import {
+  type AppConfig,
+  type DatabaseConfig,
+  type AdminConfig,
+  type RateLimitConfig,
+  type LogLevel,
+  type LogConfig,
+  LogLevelSchema,
+} from './schema.js';
 
 /**
  * Load admin configuration from environment variables.
@@ -43,6 +51,31 @@ const loadRateLimitConfig = (): RateLimitConfig => {
 };
 
 /**
+ * Parse log level from environment variable.
+ * Returns undefined if invalid, allowing default to be used.
+ */
+const parseLogLevel = (value: string | undefined): LogLevel | undefined => {
+  if (!value) return undefined;
+  const result = LogLevelSchema.safeParse(value.toLowerCase());
+  return result.success ? result.data : undefined;
+};
+
+/**
+ * Load logging configuration from environment variables.
+ * - LOG_LEVEL: fatal, error, warn, info, debug, trace (default: info in prod, debug in dev)
+ * - Pretty printing auto-enabled in development
+ */
+const loadLogConfig = (): LogConfig => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const defaultLevel: LogLevel = isProduction ? 'info' : 'debug';
+
+  return {
+    level: parseLogLevel(process.env.LOG_LEVEL) ?? defaultLevel,
+    pretty: !isProduction,
+  };
+};
+
+/**
  * Load application configuration from environment variables.
  * Returns production-ready defaults (sqlite, system clock, uuid, bcrypt).
  */
@@ -64,6 +97,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     seedToken: process.env.SEED_TOKEN,
     admin: await loadAdminConfig(),
     rateLimit: loadRateLimitConfig(),
+    log: loadLogConfig(),
   };
 };
 

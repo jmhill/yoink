@@ -12,6 +12,7 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
     idGenerator: { type: 'sequential' },
     passwordHasher: { type: 'fake' },
   },
+  log: { level: 'error', pretty: false },
   ...overrides,
 });
 

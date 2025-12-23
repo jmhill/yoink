@@ -14,13 +14,14 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 266 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 322 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
 **Phase 4.6: Database Migration Infrastructure** - Complete ✓ (critical items)
 **Phase 5.5: Snooze Feature** - Complete ✓
 **Phase 6.1: Sentry Integration** - Complete ✓
+**Phase 6.2: Structured Logging** - Complete ✓
 
 ---
 
@@ -400,21 +401,27 @@ Error tracking and performance monitoring via Fly.io's Sentry partnership (1 yea
 
 ---
 
-### 6.2 Structured Logging
+### 6.2 Structured Logging - Complete ✓
 
 OTEL-compatible structured logging using Pino (Fastify's built-in logger).
 
-- [ ] Enable Pino in Fastify with JSON output to stdout
-- [ ] Configure `pino-pretty` for human-readable development output
-- [ ] Add request context injection (requestId, userId, orgId)
-- [ ] Standardize log field names (`msg`, `level`, `time`, `requestId`, etc.)
-- [ ] Configure sensitive field redaction (tokens, passwords)
-- [ ] Set LOG_LEVEL environment variable support (default: `info`)
-- [ ] Document logging conventions
+- [x] Enable Pino in Fastify with JSON output to stdout
+- [x] Configure `pino-pretty` for human-readable development output
+- [x] Add request context injection (requestId, userId, orgId)
+- [x] Standardize log field names (`msg`, `level`, `time`, `requestId`, etc.)
+- [x] Configure sensitive field redaction (tokens, passwords)
+- [x] Set LOG_LEVEL environment variable support (default: `info` in prod, `debug` in dev)
+
+#### Implementation Details
+- **Log config**: `LogConfigSchema` in `config/schema.ts` with level and pretty options
+- **Logger factory**: `createLoggerOptions()` in `src/logging/logger.ts`
+- **Auth context**: Injected via `request.log.child()` in auth middleware
+- **Redaction**: Authorization header and cookies automatically redacted
+- **Environment variables**: `LOG_LEVEL` (fatal/error/warn/info/debug/trace)
 
 #### Design Decisions
 - **Format**: JSON to stdout (Fly.io captures automatically)
-- **Dev experience**: `pino-pretty` for local development
+- **Dev experience**: `pino-pretty` for local development (auto-enabled when `NODE_ENV !== 'production'`)
 - **OTEL ready**: Field names compatible with future `@opentelemetry/instrumentation-pino`
 
 **Deliverable**: Consistent, searchable structured logs in Fly.io's log infrastructure

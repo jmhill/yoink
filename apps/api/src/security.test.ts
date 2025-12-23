@@ -26,6 +26,7 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
     sessionSecret: 'a-32-character-secret-for-hmac!!',
   },
   rateLimit: defaultRateLimitConfig,
+  log: { level: 'error', pretty: false },
   ...overrides,
 });
 

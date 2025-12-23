@@ -106,8 +106,10 @@ jobs:
       - name: Pull pre-built image
         run: docker pull registry.fly.io/jhtc-yoink-api:${{ github.sha }}
 
-      - name: Install acceptance test dependencies
-        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
+      - name: Install and build acceptance test dependencies
+        run: |
+          devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
+          devbox run pnpm --filter @yoink/acceptance-testing build
 
       - name: Cache Playwright browsers
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v4

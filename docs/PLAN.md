@@ -27,7 +27,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
-**Phase 8: Capture → Task Flow** - Not Started (Vision Phase A)
+**Phase 8: Capture → Task Flow** - In Progress (Vision Phase A)
 
 ---
 
@@ -561,57 +561,137 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 
 See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for full context.
 
-### 8.1 Task Entity + API
-- [ ] Task schema: `id`, `title`, `dueDate?`, `completedAt?`, `pinnedAt?`, `order`, `captureId?`, `createdAt`
-- [ ] Migration 009-create-tasks.ts
-- [ ] TaskStore interface + SQLite adapter
-- [ ] TaskService with business rules
-- [ ] CRUD endpoints:
+**Key Design Decisions:**
+- Captures gain a third status: `processed` (permanently archived after becoming a task/note)
+- Processing a capture is a one-way operation - no "unprocess"
+- When a task is deleted, its source capture (if any) is also deleted
+- Pin moves from captures to tasks (captures are for triage only, not fussing)
+- New fields use `processed` language: `processedAt`, `processedToType`, `processedToId`
+- Process endpoint: `POST /api/captures/:id/process` with discriminated union body
+
+### 8.1 Remove Pin from Captures (UI First)
+Ordered for backwards compatibility: UI changes first, then API, then database.
+
+- [ ] **Web App**: Remove pin button from CaptureCard component
+- [ ] **Web App**: Remove pin-related optimistic updates and mutations
+- [ ] **Web App**: Remove pin sorting logic from inbox view
+- [ ] **Acceptance Tests**: Remove/update pin-related capture tests
+- [ ] **API Contract**: Remove pin/unpin endpoints from capture-contract
+- [ ] **Backend**: Remove pin/unpin commands, service methods, routes
+- [ ] **Migration 009**: Drop `pinned_at` column from captures (table rebuild)
+- [ ] **Schema**: Remove `pinnedAt` field from CaptureSchema
+
+### 8.2 Add Processing Fields to Captures
+- [ ] **Migration 010**: Add `processed_at`, `processed_to_type`, `processed_to_id` columns
+- [ ] **Schema**: Add `processedAt`, `processedToType`, `processedToId` to CaptureSchema
+- [ ] **Schema**: Add `processed` to status enum (`'inbox' | 'trashed' | 'processed'`)
+- [ ] **Backend**: Update list queries to exclude `status = 'processed'` from inbox/trash
+
+### 8.3 Task Entity Backend
+New domain following hexagonal architecture pattern.
+
+#### Domain Layer
+- [ ] `apps/api/src/tasks/domain/task.ts` - Task entity type
+- [ ] `task-store.ts` - Store interface (port)
+- [ ] `task-service.ts` - Business logic with neverthrow Result types
+- [ ] `task-commands.ts` - Command/query types
+- [ ] `task-errors.ts` - Domain error types
+
+#### Infrastructure
+- [ ] **Migration 011**: Create `tasks` table
+  - `id`, `organization_id`, `created_by_id`, `title`, `capture_id`
+  - `due_date`, `completed_at`, `pinned_at`, `order`, `created_at`
+- [ ] `sqlite-task-store.ts` - SQLite adapter
+- [ ] `fake-task-store.ts` - In-memory fake for unit tests
+
+#### API Contract
+- [ ] Add `packages/api-contracts/src/schemas/task.ts`
+- [ ] Add `packages/api-contracts/src/contracts/task-contract.ts`
   - POST /api/tasks (create)
-  - GET /api/tasks (list, with completed filter)
-  - GET /api/tasks/:id (get single)
+  - GET /api/tasks (list, with `completed` filter)
+  - GET /api/tasks/:id
   - PATCH /api/tasks/:id (update title, dueDate)
-  - POST /api/tasks/:id/complete, /uncomplete
-  - POST /api/tasks/:id/pin, /unpin
+  - POST /api/tasks/:id/complete
+  - POST /api/tasks/:id/uncomplete
+  - POST /api/tasks/:id/pin
+  - POST /api/tasks/:id/unpin
   - DELETE /api/tasks/:id
-- [ ] Reordering endpoint: PATCH /api/tasks/reorder
 
-### 8.2 Capture Triage Changes
-- [ ] Remove Pin from captures (breaking change)
-  - Remove `pinnedAt` field from CaptureSchema
-  - Remove pin/unpin endpoints
-  - Update web app to remove pin UI from captures
-- [ ] Add spawn tracking to captures
-  - Add `spawnedType` ('task' | null) and `spawnedId` (uuid | null) fields
-  - Migration 010-add-capture-spawn-fields.ts
-- [ ] Archive-on-spawn behavior
-  - Creating a task from capture automatically trashes the capture
-  - Link maintained via `captureId` on task
+#### Application Layer
+- [ ] `task-routes.ts` - Fastify routes
+- [ ] Wire up in `composition-root.ts`
 
-### 8.3 Desktop View
-- [ ] New /tasks route showing unfiled tasks
-- [ ] Task list with:
-  - Completion toggle (checkbox)
-  - Pin indicator (pinned tasks at top)
-  - Due date display
-  - Manual reordering (drag-and-drop or up/down buttons)
-- [ ] "Add task" quick input at top
-- [ ] Completed tasks section (collapsed by default)
+#### Unit Tests
+- [ ] `task-service.test.ts`
+- [ ] `sqlite-task-store.test.ts`
 
-### 8.4 Triage UI
-- [ ] "→ Task" action button on capture cards in inbox
-- [ ] Task creation modal:
-  - Title (pre-filled from capture content)
+### 8.4 Process Capture Endpoint
+Cross-entity operation: creates task + updates capture status.
+
+- [ ] **API Contract**: Add `POST /api/captures/:id/process` endpoint
+  - Request body (discriminated union):
+    ```typescript
+    { type: 'task', data: { title?: string, dueDate?: string } }
+    // Future: { type: 'note', data: { title?: string, content?: string } }
+    ```
+  - Response: The created Task
+- [ ] **Backend**: Add `ProcessCaptureCommand` with validation
+  - Capture must exist and be in `inbox` status
+  - Creates task with `captureId` reference
+  - Updates capture: `status = 'processed'`, sets `processedAt`, `processedToType`, `processedToId`
+- [ ] **Backend**: Cascade delete - when task deleted, delete associated capture too
+- [ ] **Unit Tests**: Process behavior, validation, cascade delete
+
+### 8.5 Acceptance Tests for Tasks
+- [ ] Create `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts`
+- [ ] Extend DSL types (`Task` type in `types.ts`)
+- [ ] Extend `CoreActor` interface with task methods:
+  - `createTask()`, `listTasks()`, `getTask()`, `updateTask()`
+  - `completeTask()`, `uncompleteTask()`
+  - `pinTask()`, `unpinTask()`, `deleteTask()`
+  - `processCapture(captureId, type, data)`
+- [ ] Implement HTTP driver for task operations
+- [ ] Implement Playwright driver + `TasksPage` page object
+
+#### Test Cases
+- [ ] Create task directly (not from capture)
+- [ ] Complete/uncomplete task
+- [ ] Pin/unpin task (pinned tasks appear first)
+- [ ] Delete task
+- [ ] Process capture to task
+- [ ] Processed capture excluded from inbox
+- [ ] Capture links back to task via `processedToId`
+- [ ] Deleting task also deletes source capture
+- [ ] Tasks isolated by organization
+
+### 8.6 Tasks Desktop UI
+- [ ] Create `/tasks` route in `apps/web/src/routes/_authenticated/tasks.tsx`
+- [ ] Create `TaskCard` component:
+  - Checkbox for completion toggle
+  - Pin button (filled when pinned)
+  - Due date display (if set)
+  - Delete button
+- [ ] Create `TaskList` with Framer Motion animations
+- [ ] Quick "Add task" input at top of tasks view
+- [ ] CRUD mutations with optimistic updates
+- [ ] Pin/unpin mutations with list re-sorting
+- [ ] Complete/uncomplete mutations
+
+### 8.7 Triage UI ("→ Task" Action)
+- [ ] Add "→ Task" button to `CaptureCard` in inbox (alongside Snooze/Trash)
+- [ ] Create `TaskCreationModal` component:
+  - Title input (pre-filled from capture content, first 100 chars)
   - Due date picker (optional)
   - Create button
-- [ ] After creation: capture moves to trash, user sees task view
+- [ ] On success: capture disappears from inbox, toast with "View task" link
+- [ ] Update tab navigation: Snoozed | Inbox | Tasks | Trash
 
-### 8.5 Navigation Updates
-- [ ] Add "Tasks" to main navigation (Desktop icon)
-- [ ] Tab order: Snoozed | Inbox | Tasks | Trash
-- [ ] Update extension popup to support task creation (future)
+### 8.8 Deferred (Post-Phase 8)
+- [ ] Task reordering (drag-and-drop or up/down buttons)
+- [ ] Completed tasks section (collapsed by default)
+- [ ] Due date views (Today, Upcoming, Someday)
 
-**Deliverable**: Captures can be triaged into tasks on a desktop view
+**Deliverable**: Captures can be processed into tasks on a desktop view. Tasks have pin, complete, delete. Processing is one-way and preserves capture as reference.
 
 ---
 

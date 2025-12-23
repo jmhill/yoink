@@ -2,13 +2,13 @@ import {
   beforeAll as vitestBeforeAll,
   afterAll as vitestAfterAll,
 } from 'vitest';
-import type { Driver, DriverCapability, DriverConfig } from '../drivers/index.js';
-import { createHttpDriver, createPlaywrightDriver } from '../drivers/index.js';
-import { createHttpClient } from '../drivers/http/http-client.js';
-import { createHttpAdmin } from '../drivers/http/admin.js';
-import { createHttpActor } from '../drivers/http/actor.js';
-import { getTestConfig } from '../config.js';
-import type { CoreActor, BrowserActor, AnonymousActor, Admin, Health } from '../dsl/index.js';
+import type { Driver, DriverCapability, DriverConfig } from './drivers/index.js';
+import { createHttpDriver, createPlaywrightDriver } from './drivers/index.js';
+import { createHttpClient } from './drivers/http/http-client.js';
+import { createHttpAdmin } from './drivers/http/admin.js';
+import { createHttpActor } from './drivers/http/actor.js';
+import { getTestConfig } from './config.js';
+import type { CoreActor, BrowserActor, AnonymousActor, Admin, Health } from './dsl/index.js';
 
 /**
  * Credentials for creating an actor with a specific token.

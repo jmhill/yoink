@@ -1,6 +1,6 @@
-import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
-import type { CoreActor } from '../dsl/index.js';
-import { NotFoundError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
+import type { CoreActor } from '@yoink/acceptance-testing';
+import { NotFoundError } from '@yoink/acceptance-testing';
 
 /**
  * Tests for multi-tenant isolation.

@@ -1,11 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import MultiDriverReporter from './src/reporter.js';
+import MultiDriverReporter from '@yoink/acceptance-testing/reporter';
 
 export default defineConfig({
   test: {
-    // Include both unit tests and acceptance tests
-    include: ['src/**/*.test.ts'],
-    // Only use custom reporter for acceptance tests (use-cases)
+    include: ['src/use-cases/**/*.test.ts'],
     reporters: process.env.CI
       ? ['verbose', 'json', 'github-actions', new MultiDriverReporter()]
       : ['verbose', new MultiDriverReporter()],

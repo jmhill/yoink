@@ -1,5 +1,5 @@
-import { usingDrivers, describe, it, expect, beforeEach, afterEach } from './harness.js';
-import { UnauthorizedError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach, afterEach } from '@yoink/acceptance-testing';
+import { UnauthorizedError } from '@yoink/acceptance-testing';
 
 usingDrivers(['http'] as const, (ctx) => {
   describe(`Authenticating [${ctx.driverName}]`, () => {

@@ -1,6 +1,6 @@
-import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
-import type { CoreActor } from '../dsl/index.js';
-import { NotFoundError, ValidationError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
+import type { CoreActor } from '@yoink/acceptance-testing';
+import { NotFoundError, ValidationError } from '@yoink/acceptance-testing';
 
 /**
  * Snooze functionality acceptance tests.

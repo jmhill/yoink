@@ -1,5 +1,5 @@
-import { usingDrivers, describe, it, expect, beforeAll, afterAll } from './harness.js';
-import { UnauthorizedError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeAll, afterAll } from '@yoink/acceptance-testing';
+import { UnauthorizedError } from '@yoink/acceptance-testing';
 
 /**
  * Tests for API token security.

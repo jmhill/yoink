@@ -1,5 +1,5 @@
-import { usingDrivers, describe, it, expect, beforeAll, afterAll } from './harness.js';
-import { NotFoundError, ValidationError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeAll, afterAll } from '@yoink/acceptance-testing';
+import { NotFoundError, ValidationError } from '@yoink/acceptance-testing';
 
 usingDrivers(['http'] as const, (ctx) => {
   describe(`Managing tenants [${ctx.driverName}]`, () => {

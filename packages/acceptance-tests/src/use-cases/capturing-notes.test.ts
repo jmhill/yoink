@@ -1,6 +1,6 @@
-import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
-import type { CoreActor, AnonymousActor } from '../dsl/index.js';
-import { UnauthorizedError, ValidationError } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
+import type { CoreActor, AnonymousActor } from '@yoink/acceptance-testing';
+import { UnauthorizedError, ValidationError } from '@yoink/acceptance-testing';
 
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Capturing notes [${ctx.driverName}]`, () => {

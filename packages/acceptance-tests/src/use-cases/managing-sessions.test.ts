@@ -1,5 +1,5 @@
-import { usingDrivers, describe, it, expect, beforeEach } from './harness.js';
-import type { BrowserActor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
+import type { BrowserActor } from '@yoink/acceptance-testing';
 
 /**
  * Tests for web app session management.

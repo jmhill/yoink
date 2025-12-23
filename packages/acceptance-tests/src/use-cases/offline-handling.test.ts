@@ -1,5 +1,5 @@
-import { usingDrivers, describe, it, expect, beforeEach, afterEach } from './harness.js';
-import type { BrowserActor } from '../dsl/index.js';
+import { usingDrivers, describe, it, expect, beforeEach, afterEach } from '@yoink/acceptance-testing';
+import type { BrowserActor } from '@yoink/acceptance-testing';
 
 /**
  * Tests for offline handling in the PWA.

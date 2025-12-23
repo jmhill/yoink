@@ -6,8 +6,10 @@
   "scripts": {
     "test": "vitest run"
   },
+  "dependencies": {
+    "@yoink/acceptance-testing": "workspace:*"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
     "@types/node": "^22.0.0",
     "vitest": "^3.2.0"
   }

@@ -1,4 +1,4 @@
-import { usingDrivers, describe, it, expect } from './harness.js';
+import { usingDrivers, describe, it, expect } from '@yoink/acceptance-testing';
 
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`System health [${ctx.driverName}]`, () => {

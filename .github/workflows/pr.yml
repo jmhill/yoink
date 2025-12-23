@@ -76,10 +76,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install and build acceptance test dependencies
-        run: |
-          devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
-          devbox run pnpm --filter @yoink/acceptance-testing build
+      - name: Install acceptance test dependencies
+        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
 
       - name: Cache Playwright browsers
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

@@ -49,6 +49,6 @@ done
 echo "==> Running acceptance tests (HTTP + Playwright drivers)..."
 TEST_BASE_URL="$TEST_BASE_URL" \
 TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
-pnpm --filter @yoink/acceptance-tests test
+pnpm turbo run test --filter=@yoink/acceptance-tests
 
 echo "==> E2E tests complete!"

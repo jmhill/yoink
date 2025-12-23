@@ -55,6 +55,8 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     needs: quality
+    # Skip for Dependabot PRs (no access to FLY_API_TOKEN secret)
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       - name: Checkout
@@ -87,6 +89,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: build-artifact
+    # Skip for Dependabot PRs (no Docker image to test)
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       - name: Checkout
@@ -246,6 +250,8 @@ jobs:
     name: Build Extension
     runs-on: ubuntu-latest
     needs: quality
+    # Skip for Dependabot PRs (only quality checks needed)
+    if: github.actor != 'dependabot[bot]'
 
     # Check if extension or api-contracts changed
     outputs:

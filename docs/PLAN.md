@@ -4,6 +4,8 @@ This document tracks the implementation progress of the Yoink universal capture 
 
 For the full design document and architectural details, see [PROJECT_BRIEF.md](./PROJECT_BRIEF.md).
 
+For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md).
+
 ---
 
 ## Current Status
@@ -23,7 +25,9 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 6.1: Sentry Integration** - Complete ✓
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
-**Phase 6.4: Deletion Features** - In Progress (backend complete, UI pending)
+**Phase 6.4: Deletion Features** - Complete ✓
+**Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
+**Phase 8: Capture → Task Flow** - Not Started (Vision Phase A)
 
 ---
 
@@ -466,7 +470,7 @@ This rename prepares for the deletion feature - users expect to delete items fro
 
 ---
 
-### 6.4 Deletion Features - In Progress
+### 6.4 Deletion Features - Complete ✓
 
 **Goal**: Allow permanent deletion of captures from trash, with auto-cleanup of old items
 
@@ -486,9 +490,19 @@ This rename prepares for the deletion feature - users expect to delete items fro
 - [x] Add `delete` and `emptyTrash` methods to CaptureService
 - [x] Add routes for delete and emptyTrash endpoints
 
-#### Pending
-- [ ] Acceptance tests for deletion behavior
-- [ ] Web app UI: delete buttons on trash items, "Empty Trash" button, confirmation dialogs
+#### Acceptance Tests - Complete ✓
+- [x] deleting-captures.test.ts with HTTP and Playwright drivers
+- [x] Test permanent deletion of trashed captures
+- [x] Test deleted captures excluded from inbox and trash lists
+- [x] Test empty trash bulk operation
+- [x] Test cannot delete non-trashed captures (409 error)
+
+#### Web App UI - Complete ✓
+- [x] Delete button on individual trash items with confirmation dialog
+- [x] "Empty Trash" button with confirmation dialog
+- [x] Optimistic updates for delete mutations
+
+#### Deferred
 - [ ] Auto-delete items in trash > 3 days (lazy cleanup on list)
 
 #### Design Decisions
@@ -496,7 +510,7 @@ This rename prepares for the deletion feature - users expect to delete items fro
 - **Trash requirement**: Can only delete items that are already in trash (409 error otherwise)
 - **Empty Trash**: Bulk operation that deletes all trashed items for the organization
 
-**Deliverable**: Users can permanently delete captures from trash
+**Deliverable**: Users can permanently delete captures from trash ✓
 
 ---
 
@@ -510,106 +524,176 @@ Full OpenTelemetry distributed tracing - to be implemented when needed.
 
 ---
 
+## Phase 7: Authentication Overhaul
+
+**Goal**: Replace API token UX with passkeys for proper user authentication before public release
+
+See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implementation plan.
+
+### 7.1 Passkeys Implementation
+- [ ] Add WebAuthn library (@simplewebauthn/server, @simplewebauthn/browser)
+- [ ] Database schema for passkey credentials
+- [ ] Registration flow (create passkey for existing user)
+- [ ] Authentication flow (sign in with passkey)
+- [ ] Session management (replace API tokens for web app)
+- [ ] Update web app to use passkey auth instead of token config
+
+### 7.2 Invitation System
+- [ ] Invitation entity (inviteCode, email, orgId, expiresAt, usedAt)
+- [ ] POST /api/admin/organizations/:id/invitations (create invite)
+- [ ] GET /api/invitations/:code (validate invite)
+- [ ] POST /api/invitations/:code/accept (register with passkey)
+- [ ] Admin UI for creating and managing invitations
+- [ ] Email notification (optional - can start with manual code sharing)
+
+### 7.3 Auth Migration
+- [ ] Deprecate token configuration page in web app
+- [ ] Keep API token auth for extension/programmatic access
+- [ ] Add "Devices" view in settings (manage passkeys)
+
+**Deliverable**: Users can sign in with passkeys, new users join via invitation
+
+---
+
+## Phase 8: Capture → Task Flow
+
+**Goal**: Implement Vision Phase A - captures become the entry point for tasks
+
+See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for full context.
+
+### 8.1 Task Entity + API
+- [ ] Task schema: `id`, `title`, `dueDate?`, `completedAt?`, `pinnedAt?`, `order`, `captureId?`, `createdAt`
+- [ ] Migration 009-create-tasks.ts
+- [ ] TaskStore interface + SQLite adapter
+- [ ] TaskService with business rules
+- [ ] CRUD endpoints:
+  - POST /api/tasks (create)
+  - GET /api/tasks (list, with completed filter)
+  - GET /api/tasks/:id (get single)
+  - PATCH /api/tasks/:id (update title, dueDate)
+  - POST /api/tasks/:id/complete, /uncomplete
+  - POST /api/tasks/:id/pin, /unpin
+  - DELETE /api/tasks/:id
+- [ ] Reordering endpoint: PATCH /api/tasks/reorder
+
+### 8.2 Capture Triage Changes
+- [ ] Remove Pin from captures (breaking change)
+  - Remove `pinnedAt` field from CaptureSchema
+  - Remove pin/unpin endpoints
+  - Update web app to remove pin UI from captures
+- [ ] Add spawn tracking to captures
+  - Add `spawnedType` ('task' | null) and `spawnedId` (uuid | null) fields
+  - Migration 010-add-capture-spawn-fields.ts
+- [ ] Archive-on-spawn behavior
+  - Creating a task from capture automatically trashes the capture
+  - Link maintained via `captureId` on task
+
+### 8.3 Desktop View
+- [ ] New /tasks route showing unfiled tasks
+- [ ] Task list with:
+  - Completion toggle (checkbox)
+  - Pin indicator (pinned tasks at top)
+  - Due date display
+  - Manual reordering (drag-and-drop or up/down buttons)
+- [ ] "Add task" quick input at top
+- [ ] Completed tasks section (collapsed by default)
+
+### 8.4 Triage UI
+- [ ] "→ Task" action button on capture cards in inbox
+- [ ] Task creation modal:
+  - Title (pre-filled from capture content)
+  - Due date picker (optional)
+  - Create button
+- [ ] After creation: capture moves to trash, user sees task view
+
+### 8.5 Navigation Updates
+- [ ] Add "Tasks" to main navigation (Desktop icon)
+- [ ] Tab order: Snoozed | Inbox | Tasks | Trash
+- [ ] Update extension popup to support task creation (future)
+
+**Deliverable**: Captures can be triaged into tasks on a desktop view
+
+---
+
+## Phase 9: Folders + Notes (Post-Launch)
+
+**Goal**: Vision Phase B - add organizational structure and reference material
+
+See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for details.
+
+### Planned Features
+- Folder entity (name, archivedAt)
+- Note entity (title, content/markdown, folderId, position for spatial layout)
+- Folder picker in task creation
+- "→ Note" action on captures
+- Split-view folder UI (tasks left, spatial notes right)
+- Markdown editor for notes
+
+**Estimated scope**: 4-6 weeks after Phase 8 stabilizes
+
+---
+
+## Phase 10: Polish + AI (Post-Launch)
+
+**Goal**: Vision Phase C - refine based on usage, add intelligent features
+
+### Planned Features
+- AI folder suggestions during triage
+- Due date views (Today, Upcoming, Someday)
+- Cross-folder task search
+- Quick capture directly to folder
+- Keyboard shortcuts for power users
+
+---
+
 ## Future Enhancements
 
-Ideas for future consideration, roughly prioritized:
+Items not on the critical path but worth considering. See Phase 7-10 for the main roadmap.
 
-### Maintenance and Chores
-- [x] Migrate away from deprecated TanStackRouterVite export
-  - Replaced `TanStackRouterVite` with `tanstackRouter` from `@tanstack/router-plugin/vite`
-  - Added recommended options: `{ target: 'react', autoCodeSplitting: true }`
-
-### Tier 1: Quick Wins
+### Completed Quick Wins
 - [x] Dark mode with system preference detection
-  - PWA: Uses theme CSS variables (`bg-background`, `text-muted-foreground`)
-  - Extension: External `theme-init.js` script (Manifest V3 CSP blocks inline scripts)
-- [x] Extension: Fix notification feedback for context menu captures
-- [x] Extension: Add Alt+Shift+Y as alternative quick capture shortcut
-- [x] Optimistic updates for web app mutations (create, archive, unarchive)
-- [x] Faster PWA update detection (5-min interval + visibility change listener with debounce)
-- [x] Optimistic updates for admin panel mutations (see [OPTIMISTIC_UPDATES.md](./OPTIMISTIC_UPDATES.md))
-- [x] Fix bad network error state (red error message on "Failed to load captures")
-  - Created reusable `ErrorState` component with context-aware actions
-  - 401 errors direct to Settings to reconfigure token
-  - Network errors show "Try Again" with refetch capability
-  - Header and tabs remain visible during errors (user can navigate)
-- [x] More themes (Tokyo Night)
-  - Two-layer theming: mode (light/dark/system) + color theme (default/tokyo-night)
-  - Tokyo Night colors from official VS Code theme palette
-  - Settings page shows both Mode and Theme selectors
-  - Admin panel has toggle buttons for mode and theme
-  - Color theme stored in localStorage (`colorTheme` key)
+- [x] Extension notification feedback + Alt+Shift+Y shortcut
+- [x] Optimistic updates for web app and admin panel mutations
+- [x] Faster PWA update detection
+- [x] Error state handling with context-aware actions
+- [x] Multiple themes (Tokyo Night)
 - [x] App header improvements (pig icon, branding)
-  - Replaced "Yoink" text with clickable pig icon that links to inbox
-  - Extracted shared `Header` component to reduce duplication
-  - Increased settings icon size for visual balance
-- [x] Keep quick entry focused after submit for rapid multi-capture
-
-### Won't Fix / Platform Limitations
-- ~~Fix highlight and share on mobile browser not including link~~
-  - **Reason**: Android platform limitation - when sharing selected text, the OS does not include the page URL in the share intent. The `url` parameter is empty and the URL is not embedded in `text` either. This is a known Android limitation ([Chromium bug #789379](https://bugs.chromium.org/p/chromium/issues/detail?id=789379)). Users should use "Share page" instead of text selection to include the source URL.
-
-### Tier 2: Feature Additions
-- [x] Pin capture to top (boolean flag + sort order)
-  - Pinned captures appear first in inbox, sorted by pinnedAt (most recent first)
-  - Archiving a pinned capture automatically unpins it
-  - Visual indicator: accent border on left edge of pinned cards
+- [x] Keep quick entry focused after submit
 - [x] Swipe gestures on mobile
-  - Inbox: swipe right to archive (green), swipe left to open snooze menu (amber)
-  - Archived: swipe left to unarchive (blue)
-  - Snoozed: swipe right to wake up (blue)
-  - Theme-aware colors (Tokyo Night uses palette colors)
-  - Visual feedback with icon/label reveal during swipe
-  - Smooth animations: static backgrounds (no jank on swipe-back), exit animations with Framer Motion
-  - Cards slide out in swipe direction, remaining cards animate into place
 - [x] Better social captures (URL detection from text param)
-  - [x] Twitter/X: Detects URL-only shares in text param, extracts to sourceUrl
-  - [x] LinkedIn: Same URL detection logic works for LinkedIn shares
-  - When apps share only a URL (in text param), it's extracted to sourceUrl
-  - Content shows editable placeholder "Shared from {hostname}"
-  - User can edit placeholder before saving
-- [ ] Auto-delete captures in trash after 3 days (see Phase 6.4)
+- [x] TanStack Router migration to new plugin API
 
-### Tier 3: Architectural Work
+### Capture Feature Backlog
+- [ ] Auto-delete captures in trash after 3 days (lazy cleanup on list query)
+- [ ] Rich media captures (camera/images) - likely Phase 9+
+- [ ] Capture from email (forward-to-address)
+- [ ] URL previews/thumbnails for captured links
+
+### Infrastructure Backlog
 - [ ] Feature flagging infrastructure
 - [ ] Server-side user settings persistence
-  - Store settings (theme mode, color theme) in `settings` JSON column on users table
-  - GET/PATCH /api/user/settings endpoints
-  - Sync from server on app load, merge with localStorage
-  - Enables consistent settings across devices
-  - Migration: 007-add-user-settings.ts
-- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md))
-  - Prerequisite for multi-org membership and improved auth UX
-- [ ] Admin panel improvements
-  - Duplicate email detection (reject creating user with existing email in org)
-  - Organization name uniqueness validation
-  - User deletion
-  - Organization deletion
-- [ ] Multi-org membership (users can belong to multiple organizations)
-  - Enables sharing workspaces with family/coworkers
-  - Requires auth model redesign, depends on passkeys
-- [ ] Capture editing
-  - Markdown rendering for capture content display
-  - Markdown editor for capture editing (with preview)
-- [ ] Rich media captures
-  - Camera integration on Android for photo captures
-  - Image attachment support in capture entity
-  - Audio notes
-- [ ] Capture from email (forward-to-address or other mechanism)
+- [ ] Admin panel improvements (duplicate detection, deletion)
+- [ ] Container scanning (Trivy) in CI
+- [ ] SAST (CodeQL/Semgrep) in CI
+- [ ] Source map upload for Sentry
+- [ ] Release tracking (git commit version tagging)
+- [ ] Pagination (when capture/task count warrants it)
 
-### Tier 4: Deferred / Low Priority
-- [ ] Card layout with drag-and-drop reordering
-- [ ] URL previews/thumbnails
-- [ ] Pagination (not needed while capture count is manageable)
-- [ ] Community edition (make Yoink self-hostable for anyone)
-
-### Tier 5: AI Features
-- [ ] Summarize links (AI-generated summaries for captured URLs)
-- [ ] RAG search over old captures (semantic search using embeddings)
+### Post-Launch Considerations
+- [ ] Multi-org membership (users belong to multiple organizations)
+- [ ] Community edition (self-hostable Yoink)
+- [ ] AI: Summarize captured links
+- [ ] AI: RAG search over captures and notes
 
 ### Removed from Consideration
-- ~~Pull-to-refresh~~ - Native browser/PWA behavior, already works
-- ~~Polling/SSE for data changes~~ - React Query's refetch handles this adequately
+- ~~Pull-to-refresh~~ - Native browser/PWA behavior works
+- ~~Polling/SSE for data changes~~ - React Query refetch is sufficient
+- ~~Pin on captures~~ - Removed by design (see Vision doc); Pin belongs on tasks/notes
+- ~~Capture editing (markdown)~~ - Captures stay raw; Notes (Phase 9) get markdown
+- ~~Card layout with drag-and-drop for captures~~ - Notes get spatial layout instead
+
+### Won't Fix / Platform Limitations
+- ~~Highlight and share on mobile including link~~ - Android limitation ([Chromium bug #789379](https://bugs.chromium.org/p/chromium/issues/detail?id=789379))
 
 ---
 

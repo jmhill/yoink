@@ -37,8 +37,8 @@ jobs:
       - name: Setup turbo cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: node_modules/.cache/turbo
-          key: ${{ runner.os }}-turbo-${{ hashFiles('packages/**', 'apps/**', 'pnpm-lock.yaml') }}
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-turbo-
 
@@ -87,8 +87,8 @@ jobs:
       - name: Setup turbo cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: node_modules/.cache/turbo
-          key: ${{ runner.os }}-turbo-${{ hashFiles('packages/**', 'apps/**', 'pnpm-lock.yaml') }}
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-turbo-
 

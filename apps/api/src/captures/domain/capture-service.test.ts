@@ -141,15 +141,15 @@ describe('createCaptureService', () => {
     });
 
     it('filters by status', async () => {
-      const archivedCapture = {
-        id: 'archived-capture-id',
+      const trashedCapture = {
+        id: 'trashed-capture-id',
         organizationId: 'org-123',
         createdById: 'user-456',
-        content: 'Archived capture',
-        status: 'archived' as const,
+        content: 'Trashed capture',
+        status: 'trashed' as const,
         capturedAt: '2025-01-15T09:00:00.000Z',
       };
-      const store = createFakeCaptureStore({ initialCaptures: [archivedCapture] });
+      const store = createFakeCaptureStore({ initialCaptures: [trashedCapture] });
       const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
       const idGenerator = createFakeIdGenerator(['inbox-capture-id']);
       const service = createCaptureService({ store, clock, idGenerator });
@@ -371,8 +371,8 @@ describe('createCaptureService', () => {
     });
   });
 
-  describe('archive', () => {
-    it('archives a capture and sets archivedAt', async () => {
+  describe('trash', () => {
+    it('trashes a capture and sets trashedAt', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
@@ -386,19 +386,19 @@ describe('createCaptureService', () => {
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.archive({
+      const result = await service.trash({
         id: 'capture-123',
         organizationId: 'org-123',
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.status).toBe('archived');
-        expect(result.value.archivedAt).toBe('2025-01-16T10:00:00.000Z');
+        expect(result.value.status).toBe('trashed');
+        expect(result.value.trashedAt).toBe('2025-01-16T10:00:00.000Z');
       }
     });
 
-    it('clears pinnedAt when archiving', async () => {
+    it('clears pinnedAt when trashing', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
@@ -413,7 +413,7 @@ describe('createCaptureService', () => {
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.archive({
+      const result = await service.trash({
         id: 'capture-123',
         organizationId: 'org-123',
       });
@@ -424,31 +424,31 @@ describe('createCaptureService', () => {
       }
     });
 
-    it('is idempotent - archiving already archived capture succeeds', async () => {
+    it('is idempotent - trashing already trashed capture succeeds', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
         createdById: 'user-456',
         content: 'Content',
-        status: 'archived' as const,
+        status: 'trashed' as const,
         capturedAt: '2025-01-15T10:00:00.000Z',
-        archivedAt: '2025-01-15T12:00:00.000Z',
+        trashedAt: '2025-01-15T12:00:00.000Z',
       };
       const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
       const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.archive({
+      const result = await service.trash({
         id: 'capture-123',
         organizationId: 'org-123',
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.status).toBe('archived');
-        // Original archivedAt is preserved
-        expect(result.value.archivedAt).toBe('2025-01-15T12:00:00.000Z');
+        expect(result.value.status).toBe('trashed');
+        // Original trashedAt is preserved
+        expect(result.value.trashedAt).toBe('2025-01-15T12:00:00.000Z');
       }
     });
 
@@ -458,7 +458,7 @@ describe('createCaptureService', () => {
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.archive({
+      const result = await service.trash({
         id: 'non-existent',
         organizationId: 'org-123',
       });
@@ -470,23 +470,23 @@ describe('createCaptureService', () => {
     });
   });
 
-  describe('unarchive', () => {
-    it('unarchives a capture and clears archivedAt', async () => {
+  describe('restore', () => {
+    it('restores a capture and clears trashedAt', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
         createdById: 'user-456',
         content: 'Content',
-        status: 'archived' as const,
+        status: 'trashed' as const,
         capturedAt: '2025-01-15T10:00:00.000Z',
-        archivedAt: '2025-01-15T12:00:00.000Z',
+        trashedAt: '2025-01-15T12:00:00.000Z',
       };
       const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
       const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.unarchive({
+      const result = await service.restore({
         id: 'capture-123',
         organizationId: 'org-123',
       });
@@ -494,11 +494,11 @@ describe('createCaptureService', () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value.status).toBe('inbox');
-        expect(result.value.archivedAt).toBeUndefined();
+        expect(result.value.trashedAt).toBeUndefined();
       }
     });
 
-    it('is idempotent - unarchiving inbox capture succeeds', async () => {
+    it('is idempotent - restoring inbox capture succeeds', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
@@ -512,7 +512,7 @@ describe('createCaptureService', () => {
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.unarchive({
+      const result = await service.restore({
         id: 'capture-123',
         organizationId: 'org-123',
       });
@@ -529,7 +529,7 @@ describe('createCaptureService', () => {
       const idGenerator = createFakeIdGenerator();
       const service = createCaptureService({ store, clock, idGenerator });
 
-      const result = await service.unarchive({
+      const result = await service.restore({
         id: 'non-existent',
         organizationId: 'org-123',
       });
@@ -594,15 +594,15 @@ describe('createCaptureService', () => {
       }
     });
 
-    it('returns error when trying to pin archived capture', async () => {
+    it('returns error when trying to pin trashed capture', async () => {
       const existingCapture = {
         id: 'capture-123',
         organizationId: 'org-123',
         createdById: 'user-456',
         content: 'Content',
-        status: 'archived' as const,
+        status: 'trashed' as const,
         capturedAt: '2025-01-15T10:00:00.000Z',
-        archivedAt: '2025-01-15T12:00:00.000Z',
+        trashedAt: '2025-01-15T12:00:00.000Z',
       };
       const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
       const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
@@ -616,7 +616,7 @@ describe('createCaptureService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe('CAPTURE_ALREADY_ARCHIVED');
+        expect(result.error.type).toBe('CAPTURE_ALREADY_TRASHED');
       }
     });
 
@@ -704,6 +704,162 @@ describe('createCaptureService', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+  });
+
+  describe('delete', () => {
+    it('permanently deletes a trashed capture', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'trashed' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+        trashedAt: '2025-01-15T12:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.delete({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      // Verify capture is no longer findable
+      const findResult = await service.find({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+      expect(findResult.isErr()).toBe(true);
+      if (findResult.isErr()) {
+        expect(findResult.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+
+    it('returns not in trash error when trying to delete inbox capture', async () => {
+      const existingCapture = {
+        id: 'capture-123',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        content: 'Content',
+        status: 'inbox' as const,
+        capturedAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeCaptureStore({ initialCaptures: [existingCapture] });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.delete({
+        id: 'capture-123',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_IN_TRASH');
+      }
+    });
+
+    it('returns not found error when capture does not exist', async () => {
+      const store = createFakeCaptureStore();
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.delete({
+        id: 'non-existent',
+        organizationId: 'org-123',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CAPTURE_NOT_FOUND');
+      }
+    });
+  });
+
+  describe('emptyTrash', () => {
+    it('deletes all trashed captures for organization', async () => {
+      const captures = [
+        {
+          id: 'inbox-1',
+          organizationId: 'org-123',
+          createdById: 'user-456',
+          content: 'Inbox content',
+          status: 'inbox' as const,
+          capturedAt: '2025-01-15T10:00:00.000Z',
+        },
+        {
+          id: 'trashed-1',
+          organizationId: 'org-123',
+          createdById: 'user-456',
+          content: 'Trashed content 1',
+          status: 'trashed' as const,
+          capturedAt: '2025-01-15T10:00:00.000Z',
+          trashedAt: '2025-01-15T12:00:00.000Z',
+        },
+        {
+          id: 'trashed-2',
+          organizationId: 'org-123',
+          createdById: 'user-456',
+          content: 'Trashed content 2',
+          status: 'trashed' as const,
+          capturedAt: '2025-01-15T10:00:00.000Z',
+          trashedAt: '2025-01-15T12:00:00.000Z',
+        },
+      ];
+      const store = createFakeCaptureStore({ initialCaptures: captures });
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.emptyTrash({ organizationId: 'org-123' });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.deletedCount).toBe(2);
+      }
+
+      // Verify inbox capture still exists
+      const listResult = await service.list({
+        organizationId: 'org-123',
+        status: 'inbox',
+      });
+      expect(listResult.isOk()).toBe(true);
+      if (listResult.isOk()) {
+        expect(listResult.value.captures).toHaveLength(1);
+        expect(listResult.value.captures[0].id).toBe('inbox-1');
+      }
+
+      // Verify trashed captures are gone
+      const trashResult = await service.list({
+        organizationId: 'org-123',
+        status: 'trashed',
+      });
+      expect(trashResult.isOk()).toBe(true);
+      if (trashResult.isOk()) {
+        expect(trashResult.value.captures).toHaveLength(0);
+      }
+    });
+
+    it('returns zero count when trash is empty', async () => {
+      const store = createFakeCaptureStore();
+      const clock = createFakeClock(new Date('2025-01-16T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createCaptureService({ store, clock, idGenerator });
+
+      const result = await service.emptyTrash({ organizationId: 'org-123' });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.deletedCount).toBe(0);
       }
     });
   });

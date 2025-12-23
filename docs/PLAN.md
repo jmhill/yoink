@@ -22,6 +22,8 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 **Phase 5.5: Snooze Feature** - Complete ✓
 **Phase 6.1: Sentry Integration** - Complete ✓
 **Phase 6.2: Structured Logging** - Complete ✓
+**Phase 6.3: Archive → Trash Rename** - Complete ✓
+**Phase 6.4: Deletion Features** - In Progress (backend complete, UI pending)
 
 ---
 
@@ -428,7 +430,77 @@ OTEL-compatible structured logging using Pino (Fastify's built-in logger).
 
 ---
 
-### 6.3 OTEL Tracing (Deferred)
+### 6.3 Archive → Trash Rename - Complete ✓
+
+**Goal**: Replace "Archive" terminology with "Trash" throughout the app for clearer user mental model
+
+This rename prepares for the deletion feature - users expect to delete items from "Trash", not "Archive".
+
+#### Database Migration
+- [x] Migration 007-rename-archive-to-trash.ts
+  - Renames `archived_at` column to `trashed_at`
+  - Converts status values from `'archived'` to `'trashed'`
+  - Uses table rebuild pattern for SQLite compatibility
+
+#### Schema & Contracts
+- [x] Update CaptureSchema: `status: 'archived'` → `'trashed'`, `archivedAt` → `trashedAt`
+- [x] Rename endpoints: `/archive` → `/trash`, `/unarchive` → `/restore`
+
+#### Backend
+- [x] Update capture store, service, commands, errors, routes
+- [x] Rename error type: `CaptureAlreadyArchivedError` → `CaptureAlreadyTrashedError`
+- [x] Update SQLite column mapping
+
+#### Acceptance Tests
+- [x] Update DSL types and actor methods
+- [x] Update all use-case tests (organizing-work, snoozing-captures, tenant-isolation)
+- [x] Update Playwright page objects (ArchivedPage → TrashPage)
+
+#### Web App
+- [x] Create `/trash` route (replacing `/archived`)
+- [x] Update tab navigation labels and icons
+- [x] Update swipe action types and CSS variables
+- [x] Update component props (onArchive → onTrash)
+
+**Deliverable**: Consistent "Trash" terminology throughout the app ✓
+
+---
+
+### 6.4 Deletion Features - In Progress
+
+**Goal**: Allow permanent deletion of captures from trash, with auto-cleanup of old items
+
+#### Database Migration - Complete ✓
+- [x] Migration 008-add-deleted-at.ts
+  - Adds `deleted_at` column for soft-delete functionality
+
+#### Schema & Contracts - Complete ✓
+- [x] Add DELETE /api/captures/:id endpoint (204 success, 409 if not in trash)
+- [x] Add POST /api/captures/trash/empty endpoint (returns deletedCount)
+
+#### Backend - Complete ✓
+- [x] Add `CaptureNotInTrashError` error type
+- [x] Add `DeleteCaptureCommand` and `EmptyTrashCommand` commands
+- [x] Add `softDelete` and `softDeleteTrashed` methods to CaptureStore
+- [x] Update SQLite queries to exclude soft-deleted captures (`deleted_at IS NULL`)
+- [x] Add `delete` and `emptyTrash` methods to CaptureService
+- [x] Add routes for delete and emptyTrash endpoints
+
+#### Pending
+- [ ] Acceptance tests for deletion behavior
+- [ ] Web app UI: delete buttons on trash items, "Empty Trash" button, confirmation dialogs
+- [ ] Auto-delete items in trash > 3 days (lazy cleanup on list)
+
+#### Design Decisions
+- **Soft-delete approach**: Items get `deletedAt` timestamp, remain in DB but hidden from all queries
+- **Trash requirement**: Can only delete items that are already in trash (409 error otherwise)
+- **Empty Trash**: Bulk operation that deletes all trashed items for the organization
+
+**Deliverable**: Users can permanently delete captures from trash
+
+---
+
+### 6.5 OTEL Tracing (Deferred)
 
 Full OpenTelemetry distributed tracing - to be implemented when needed.
 
@@ -496,7 +568,7 @@ Ideas for future consideration, roughly prioritized:
   - When apps share only a URL (in text param), it's extracted to sourceUrl
   - Content shows editable placeholder "Shared from {hostname}"
   - User can edit placeholder before saving
-- [ ] Auto archive/delete captures after configurable number of days
+- [ ] Auto-delete captures in trash after 3 days (see Phase 6.4)
 
 ### Tier 3: Architectural Work
 - [ ] Feature flagging infrastructure

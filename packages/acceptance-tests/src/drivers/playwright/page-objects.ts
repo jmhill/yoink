@@ -165,11 +165,11 @@ export class InboxPage {
     return null;
   }
 
-  async archiveCapture(content: string): Promise<void> {
-    // Find the card containing this content and click its archive button
+  async trashCapture(content: string): Promise<void> {
+    // Find the card containing this content and click its trash button
     const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
     await card.hover();
-    await card.getByRole('button', { name: 'Archive' }).click();
+    await card.getByRole('button', { name: 'Trash' }).click();
     // Wait for the capture to disappear
     await this.page.getByText(content).waitFor({ state: 'hidden' });
   }
@@ -209,9 +209,9 @@ export class InboxPage {
     await this.page.waitForURL('/snoozed');
   }
 
-  async goToArchived(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Archived' }).click();
-    await this.page.waitForURL('/archived');
+  async goToTrash(): Promise<void> {
+    await this.page.getByRole('link', { name: 'Trash' }).click();
+    await this.page.waitForURL('/trash');
   }
 
   async goToSettings(): Promise<void> {
@@ -250,13 +250,13 @@ export class SettingsPage {
 }
 
 /**
- * Page object for the archived page (/archived).
+ * Page object for the trash page (/trash).
  */
-export class ArchivedPage {
+export class TrashPage {
   constructor(private readonly page: Page) {}
 
   async goto(): Promise<void> {
-    await this.page.goto('/archived');
+    await this.page.goto('/trash');
   }
 
   async waitForLoad(): Promise<void> {
@@ -270,7 +270,7 @@ export class ArchivedPage {
   async waitForCapturesOrEmpty(): Promise<void> {
     await Promise.race([
       this.page.locator('[data-capture-id]').first().waitFor({ state: 'attached' }),
-      this.page.getByText('No archived captures').waitFor({ state: 'attached' }),
+      this.page.getByText('No trashed captures').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
@@ -314,10 +314,10 @@ export class ArchivedPage {
     return captures;
   }
 
-  async unarchiveCapture(content: string): Promise<void> {
+  async restoreCapture(content: string): Promise<void> {
     const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
     await card.hover();
-    await card.getByRole('button', { name: 'Move to inbox' }).click();
+    await card.getByRole('button', { name: 'Restore' }).click();
     await this.page.getByText(content).waitFor({ state: 'hidden' });
   }
 
@@ -327,7 +327,7 @@ export class ArchivedPage {
   }
 
   async isEmpty(): Promise<boolean> {
-    const emptyMessage = this.page.getByText('No archived captures');
+    const emptyMessage = this.page.getByText('No trashed captures');
     return await emptyMessage.isVisible();
   }
 }

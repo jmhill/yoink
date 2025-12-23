@@ -11,13 +11,13 @@ export type Capture = {
   id: string;
   content: string;
   title?: string;
-  status: 'inbox' | 'archived';
+  status: 'inbox' | 'trashed';
   sourceUrl?: string;
   sourceApp?: string;
   organizationId: string;
   createdById: string;
   capturedAt: string;
-  archivedAt?: string;
+  trashedAt?: string;
   pinnedAt?: string;
   snoozedUntil?: string;
 };

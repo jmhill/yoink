@@ -7,7 +7,7 @@ import type {
   UpdateCaptureInput,
 } from '../../dsl/index.js';
 import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
-import { ConfigPage, InboxPage, ArchivedPage, SettingsPage, SnoozedPage } from './page-objects.js';
+import { ConfigPage, InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -76,7 +76,7 @@ export const createPlaywrightActor = (
 ): Actor => {
   const configPage = new ConfigPage(page);
   const inboxPage = new InboxPage(page);
-  const archivedPage = new ArchivedPage(page);
+  const trashPage = new TrashPage(page);
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
 
@@ -97,7 +97,7 @@ export const createPlaywrightActor = (
   const buildCapture = (
     id: string,
     content: string,
-    status: 'inbox' | 'archived',
+    status: 'inbox' | 'trashed',
     extras?: Partial<Capture>
   ): Capture => ({
     id,
@@ -152,13 +152,13 @@ export const createPlaywrightActor = (
       return captures.map(({ id, content }) => buildCapture(id, content, 'inbox'));
     },
 
-    async listArchivedCaptures(): Promise<Capture[]> {
+    async listTrashedCaptures(): Promise<Capture[]> {
       await ensureConfigured();
-      await archivedPage.goto();
-      await archivedPage.waitForCapturesOrEmpty();
+      await trashPage.goto();
+      await trashPage.waitForCapturesOrEmpty();
 
-      const captures = await archivedPage.getCaptures();
-      return captures.map(({ id, content }) => buildCapture(id, content, 'archived'));
+      const captures = await trashPage.getCaptures();
+      return captures.map(({ id, content }: { id: string; content: string }) => buildCapture(id, content, 'trashed'));
     },
 
     async getCapture(id: string): Promise<Capture> {
@@ -172,12 +172,12 @@ export const createPlaywrightActor = (
         return buildCapture(id, content, 'inbox');
       }
 
-      // Check archived
-      await archivedPage.goto();
-      await archivedPage.waitForCapturesOrEmpty();
+      // Check trash
+      await trashPage.goto();
+      await trashPage.waitForCapturesOrEmpty();
       content = await findCaptureContentById(id);
       if (content) {
-        return buildCapture(id, content, 'archived');
+        return buildCapture(id, content, 'trashed');
       }
 
       // Check snoozed
@@ -208,7 +208,7 @@ export const createPlaywrightActor = (
       return buildCapture(id, input.content ?? content, 'inbox');
     },
 
-    async archiveCapture(id: string): Promise<Capture> {
+    async trashCapture(id: string): Promise<Capture> {
       await ensureConfigured();
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
@@ -218,21 +218,21 @@ export const createPlaywrightActor = (
         throw new NotFoundError('Capture', id);
       }
 
-      await inboxPage.archiveCapture(content);
-      return buildCapture(id, content, 'archived');
+      await inboxPage.trashCapture(content);
+      return buildCapture(id, content, 'trashed');
     },
 
-    async unarchiveCapture(id: string): Promise<Capture> {
+    async restoreCapture(id: string): Promise<Capture> {
       await ensureConfigured();
-      await archivedPage.goto();
-      await archivedPage.waitForCapturesOrEmpty();
+      await trashPage.goto();
+      await trashPage.waitForCapturesOrEmpty();
 
       const content = await findCaptureContentById(id);
       if (!content) {
         throw new NotFoundError('Capture', id);
       }
 
-      await archivedPage.unarchiveCapture(content);
+      await trashPage.restoreCapture(content);
       return buildCapture(id, content, 'inbox');
     },
 

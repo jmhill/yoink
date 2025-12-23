@@ -50,12 +50,12 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(unchanged.content).toBe('alice-original');
     });
 
-    it('users cannot archive captures from other organizations', async () => {
+    it('users cannot trash captures from other organizations', async () => {
       const aliceCapture = await alice.createCapture({
         content: 'alice-inbox-item',
       });
 
-      await expect(bob.archiveCapture(aliceCapture.id)).rejects.toThrow(NotFoundError);
+      await expect(bob.trashCapture(aliceCapture.id)).rejects.toThrow(NotFoundError);
 
       // Verify alice's capture is still in inbox
       const unchanged = await alice.getCapture(aliceCapture.id);

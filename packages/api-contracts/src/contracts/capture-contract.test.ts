@@ -44,4 +44,24 @@ describe('captureContract', () => {
     expect(captureContract.update.responses).toHaveProperty('200');
     expect(captureContract.update.responses).toHaveProperty('404');
   });
+
+  it('defines delete endpoint', () => {
+    expect(captureContract.delete.method).toBe('DELETE');
+    expect(captureContract.delete.path).toBe('/api/captures/:id');
+  });
+
+  it('has 204 and 404 and 409 responses for delete', () => {
+    expect(captureContract.delete.responses).toHaveProperty('204');
+    expect(captureContract.delete.responses).toHaveProperty('404');
+    expect(captureContract.delete.responses).toHaveProperty('409');
+  });
+
+  it('defines emptyTrash endpoint', () => {
+    expect(captureContract.emptyTrash.method).toBe('POST');
+    expect(captureContract.emptyTrash.path).toBe('/api/captures/trash/empty');
+  });
+
+  it('has 200 response for emptyTrash', () => {
+    expect(captureContract.emptyTrash.responses).toHaveProperty('200');
+  });
 });

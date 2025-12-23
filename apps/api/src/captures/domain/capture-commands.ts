@@ -9,7 +9,7 @@ export type CreateCaptureCommand = {
 
 export type ListCapturesQuery = {
   organizationId: string;
-  status?: 'inbox' | 'archived';
+  status?: 'inbox' | 'trashed';
   snoozed?: boolean; // true = only snoozed, false = exclude snoozed
   limit?: number;
   cursor?: string;
@@ -29,12 +29,12 @@ export type UpdateCaptureCommand = {
 };
 
 // Workflow operations
-export type ArchiveCaptureCommand = {
+export type TrashCaptureCommand = {
   id: string;
   organizationId: string;
 };
 
-export type UnarchiveCaptureCommand = {
+export type RestoreCaptureCommand = {
   id: string;
   organizationId: string;
 };
@@ -58,5 +58,15 @@ export type SnoozeCaptureCommand = {
 
 export type UnsnoozeCaptureCommand = {
   id: string;
+  organizationId: string;
+};
+
+// Deletion operations
+export type DeleteCaptureCommand = {
+  id: string;
+  organizationId: string;
+};
+
+export type EmptyTrashCommand = {
   organizationId: string;
 };

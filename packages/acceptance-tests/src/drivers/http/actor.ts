@@ -77,8 +77,8 @@ export const createHttpActor = (
       return response.json<{ captures: Capture[] }>().captures;
     },
 
-    async listArchivedCaptures(): Promise<Capture[]> {
-      const response = await client.get('/api/captures?status=archived', authHeaders());
+    async listTrashedCaptures(): Promise<Capture[]> {
+      const response = await client.get('/api/captures?status=trashed', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -102,18 +102,18 @@ export const createHttpActor = (
       return handleCaptureResponse(response, id);
     },
 
-    async archiveCapture(id: string): Promise<Capture> {
+    async trashCapture(id: string): Promise<Capture> {
       const response = await client.post(
-        `/api/captures/${id}/archive`,
+        `/api/captures/${id}/trash`,
         {},
         authHeaders()
       );
       return handleCaptureResponse(response, id);
     },
 
-    async unarchiveCapture(id: string): Promise<Capture> {
+    async restoreCapture(id: string): Promise<Capture> {
       const response = await client.post(
-        `/api/captures/${id}/unarchive`,
+        `/api/captures/${id}/restore`,
         {},
         authHeaders()
       );

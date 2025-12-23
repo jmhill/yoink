@@ -132,8 +132,8 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      archive: async ({ params, request }) => {
-        const result = await captureService.archive({
+      trash: async ({ params, request }) => {
+        const result = await captureService.trash({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
@@ -160,8 +160,8 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      unarchive: async ({ params, request }) => {
-        const result = await captureService.unarchive({
+      restore: async ({ params, request }) => {
+        const result = await captureService.restore({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
@@ -206,10 +206,10 @@ export const registerCaptureRoutes = async (
                   status: 404 as const,
                   body: { message: 'Capture not found' },
                 };
-              case 'CAPTURE_ALREADY_ARCHIVED':
+              case 'CAPTURE_ALREADY_TRASHED':
                 return {
                   status: 404 as const,
-                  body: { message: 'Cannot pin an archived capture' },
+                  body: { message: 'Cannot pin a trashed capture' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -268,10 +268,10 @@ export const registerCaptureRoutes = async (
                   status: 404 as const,
                   body: { message: 'Capture not found' },
                 };
-              case 'CAPTURE_ALREADY_ARCHIVED':
+              case 'CAPTURE_ALREADY_TRASHED':
                 return {
                   status: 400 as const,
-                  body: { message: 'Cannot snooze an archived capture' },
+                  body: { message: 'Cannot snooze a trashed capture' },
                 };
               case 'INVALID_SNOOZE_TIME':
                 return {
@@ -306,6 +306,61 @@ export const registerCaptureRoutes = async (
                   status: 404 as const,
                   body: { message: 'Capture not found' },
                 };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      delete: async ({ params, request }) => {
+        const result = await captureService.delete({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          () => ({
+            status: 204 as const,
+            body: undefined,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found' },
+                };
+              case 'CAPTURE_NOT_IN_TRASH':
+                return {
+                  status: 409 as const,
+                  body: { message: 'Capture must be in trash before it can be deleted' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      emptyTrash: async ({ request }) => {
+        const result = await captureService.emptyTrash({
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (data) => ({
+            status: 200 as const,
+            body: data,
+          }),
+          (error) => {
+            switch (error.type) {
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,

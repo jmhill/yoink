@@ -7,26 +7,30 @@ import type {
   ListCapturesQuery,
   FindCaptureQuery,
   UpdateCaptureCommand,
-  ArchiveCaptureCommand,
-  UnarchiveCaptureCommand,
+  TrashCaptureCommand,
+  RestoreCaptureCommand,
   PinCaptureCommand,
   UnpinCaptureCommand,
   SnoozeCaptureCommand,
   UnsnoozeCaptureCommand,
+  DeleteCaptureCommand,
+  EmptyTrashCommand,
 } from './capture-commands.js';
 import type {
   CreateCaptureError,
   ListCapturesError,
   FindCaptureError,
   UpdateCaptureError,
-  ArchiveCaptureError,
-  UnarchiveCaptureError,
+  TrashCaptureError,
+  RestoreCaptureError,
   PinCaptureError,
   UnpinCaptureError,
   SnoozeCaptureError,
   UnsnoozeCaptureError,
+  DeleteCaptureError,
+  EmptyTrashError,
 } from './capture-errors.js';
-import { captureNotFoundError, captureAlreadyArchivedError, invalidSnoozeTimeError } from './capture-errors.js';
+import { captureNotFoundError, captureAlreadyTrashedError, invalidSnoozeTimeError, captureNotInTrashError } from './capture-errors.js';
 
 export type CaptureServiceDependencies = {
   store: CaptureStore;
@@ -36,19 +40,27 @@ export type CaptureServiceDependencies = {
 
 export type ListCapturesResult = FindByOrganizationResult;
 
+export type EmptyTrashResult = {
+  deletedCount: number;
+};
+
 export type CaptureService = {
   create: (command: CreateCaptureCommand) => ResultAsync<Capture, CreateCaptureError>;
   list: (query: ListCapturesQuery) => ResultAsync<ListCapturesResult, ListCapturesError>;
+  find: (query: FindCaptureQuery) => ResultAsync<Capture, FindCaptureError>;
   findById: (query: FindCaptureQuery) => ResultAsync<Capture, FindCaptureError>;
   update: (command: UpdateCaptureCommand) => ResultAsync<Capture, UpdateCaptureError>;
   // Workflow operations
-  archive: (command: ArchiveCaptureCommand) => ResultAsync<Capture, ArchiveCaptureError>;
-  unarchive: (command: UnarchiveCaptureCommand) => ResultAsync<Capture, UnarchiveCaptureError>;
+  trash: (command: TrashCaptureCommand) => ResultAsync<Capture, TrashCaptureError>;
+  restore: (command: RestoreCaptureCommand) => ResultAsync<Capture, RestoreCaptureError>;
   // Display modifier operations
   pin: (command: PinCaptureCommand) => ResultAsync<Capture, PinCaptureError>;
   unpin: (command: UnpinCaptureCommand) => ResultAsync<Capture, UnpinCaptureError>;
   snooze: (command: SnoozeCaptureCommand) => ResultAsync<Capture, SnoozeCaptureError>;
   unsnooze: (command: UnsnoozeCaptureCommand) => ResultAsync<Capture, UnsnoozeCaptureError>;
+  // Deletion operations
+  delete: (command: DeleteCaptureCommand) => ResultAsync<void, DeleteCaptureError>;
+  emptyTrash: (command: EmptyTrashCommand) => ResultAsync<EmptyTrashResult, EmptyTrashError>;
 };
 
 export const createCaptureService = (
@@ -96,6 +108,10 @@ export const createCaptureService = (
       });
     },
 
+    find: (query: FindCaptureQuery): ResultAsync<Capture, FindCaptureError> => {
+      return findAndValidateOwnership(query.id, query.organizationId);
+    },
+
     findById: (query: FindCaptureQuery): ResultAsync<Capture, FindCaptureError> => {
       return findAndValidateOwnership(query.id, query.organizationId);
     },
@@ -112,26 +128,26 @@ export const createCaptureService = (
       });
     },
 
-    archive: (command: ArchiveCaptureCommand): ResultAsync<Capture, ArchiveCaptureError> => {
+    trash: (command: TrashCaptureCommand): ResultAsync<Capture, TrashCaptureError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if already archived, just return as-is
-        if (existing.status === 'archived') {
+        // Idempotent: if already trashed, just return as-is
+        if (existing.status === 'trashed') {
           return okAsync(existing);
         }
 
         const updatedCapture: Capture = {
           ...existing,
-          status: 'archived',
-          archivedAt: clock.now().toISOString(),
-          pinnedAt: undefined, // Archiving clears pin
-          snoozedUntil: undefined, // Archiving clears snooze
+          status: 'trashed',
+          trashedAt: clock.now().toISOString(),
+          pinnedAt: undefined, // Trashing clears pin
+          snoozedUntil: undefined, // Trashing clears snooze
         };
 
         return store.update(updatedCapture).map(() => updatedCapture);
       });
     },
 
-    unarchive: (command: UnarchiveCaptureCommand): ResultAsync<Capture, UnarchiveCaptureError> => {
+    restore: (command: RestoreCaptureCommand): ResultAsync<Capture, RestoreCaptureError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
         // Idempotent: if already in inbox, just return as-is
         if (existing.status === 'inbox') {
@@ -141,7 +157,7 @@ export const createCaptureService = (
         const updatedCapture: Capture = {
           ...existing,
           status: 'inbox',
-          archivedAt: undefined,
+          trashedAt: undefined,
         };
 
         return store.update(updatedCapture).map(() => updatedCapture);
@@ -150,9 +166,9 @@ export const createCaptureService = (
 
     pin: (command: PinCaptureCommand): ResultAsync<Capture, PinCaptureError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Can't pin archived captures
-        if (existing.status === 'archived') {
-          return errAsync(captureAlreadyArchivedError(command.id));
+        // Can't pin trashed captures
+        if (existing.status === 'trashed') {
+          return errAsync(captureAlreadyTrashedError(command.id));
         }
 
         // Idempotent: if already pinned, just return as-is
@@ -187,9 +203,9 @@ export const createCaptureService = (
 
     snooze: (command: SnoozeCaptureCommand): ResultAsync<Capture, SnoozeCaptureError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Can't snooze archived captures
-        if (existing.status === 'archived') {
-          return errAsync(captureAlreadyArchivedError(command.id));
+        // Can't snooze trashed captures
+        if (existing.status === 'trashed') {
+          return errAsync(captureAlreadyTrashedError(command.id));
         }
 
         // Validate snooze time is in the future
@@ -223,6 +239,23 @@ export const createCaptureService = (
 
         return store.update(updatedCapture).map(() => updatedCapture);
       });
+    },
+
+    delete: (command: DeleteCaptureCommand): ResultAsync<void, DeleteCaptureError> => {
+      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
+        // Can only delete captures that are in trash
+        if (existing.status !== 'trashed') {
+          return errAsync(captureNotInTrashError(command.id));
+        }
+
+        return store.softDelete(command.id);
+      });
+    },
+
+    emptyTrash: (command: EmptyTrashCommand): ResultAsync<EmptyTrashResult, EmptyTrashError> => {
+      return store.softDeleteTrashed(command.organizationId).map((deletedCount) => ({
+        deletedCount,
+      }));
     },
   };
 };

@@ -5,66 +5,66 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, RotateCcw, Link as LinkIcon, Clock } from 'lucide-react';
+import { Trash2, Inbox, RotateCcw, Link as LinkIcon, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/_authenticated/archived')({
-  component: ArchivedPage,
+export const Route = createFileRoute('/_authenticated/trash')({
+  component: TrashPage,
 });
 
-function ArchivedPage() {
+function TrashPage() {
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const tsrQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
-    queryKey: ['captures', 'archived'],
-    queryData: { query: { status: 'archived' as const } },
+    queryKey: ['captures', 'trashed'],
+    queryData: { query: { status: 'trashed' as const } },
   });
 
-  const unarchiveMutation = tsr.unarchive.useMutation({
+  const restoreMutation = tsr.restore.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
       await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
 
       // Snapshot current state for rollback
-      const previousArchived = tsrQueryClient.list.getQueryData([
+      const previousTrashed = tsrQueryClient.list.getQueryData([
         'captures',
-        'archived',
+        'trashed',
       ]);
       const previousInbox = tsrQueryClient.list.getQueryData([
         'captures',
         'inbox',
       ]);
 
-      // Find the capture being unarchived
-      if (previousArchived?.status === 200) {
-        const captureToUnarchive = previousArchived.body.captures.find(
+      // Find the capture being restored
+      if (previousTrashed?.status === 200) {
+        const captureToRestore = previousTrashed.body.captures.find(
           (c) => c.id === params.id
         );
 
-        // Remove from archived
-        tsrQueryClient.list.setQueryData(['captures', 'archived'], {
-          ...previousArchived,
+        // Remove from trashed
+        tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
+          ...previousTrashed,
           body: {
-            ...previousArchived.body,
-            captures: previousArchived.body.captures.filter(
+            ...previousTrashed.body,
+            captures: previousTrashed.body.captures.filter(
               (c) => c.id !== params.id
             ),
           },
         });
 
         // Add to inbox (if cache exists)
-        if (captureToUnarchive && previousInbox?.status === 200) {
+        if (captureToRestore && previousInbox?.status === 200) {
           tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
             ...previousInbox,
             body: {
               ...previousInbox.body,
               captures: [
-                { ...captureToUnarchive, status: 'inbox' as const },
+                { ...captureToRestore, status: 'inbox' as const },
                 ...previousInbox.body.captures,
               ],
             },
@@ -72,15 +72,15 @@ function ArchivedPage() {
         }
       }
 
-      return { previousArchived, previousInbox };
+      return { previousTrashed, previousInbox };
     },
 
     onError: (err, _variables, context) => {
       // Rollback on error
-      if (context?.previousArchived) {
+      if (context?.previousTrashed) {
         tsrQueryClient.list.setQueryData(
-          ['captures', 'archived'],
-          context.previousArchived
+          ['captures', 'trashed'],
+          context.previousTrashed
         );
       }
       if (context?.previousInbox) {
@@ -94,12 +94,12 @@ function ArchivedPage() {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to unarchive');
+        toast.error('Failed to restore');
       }
     },
 
     onSuccess: () => {
-      toast.success('Moved to inbox');
+      toast.success('Restored to inbox');
     },
 
     onSettled: () => {
@@ -108,9 +108,9 @@ function ArchivedPage() {
     },
   });
 
-  const handleUnarchive = (id: string, direction: ExitDirection = 'left') => {
+  const handleRestore = (id: string, direction: ExitDirection = 'left') => {
     setExitDirections((prev) => ({ ...prev, [id]: direction }));
-    unarchiveMutation.mutate({
+    restoreMutation.mutate({
       params: { id },
       body: {},
     });
@@ -137,7 +137,7 @@ function ArchivedPage() {
     <div className="container mx-auto max-w-2xl p-4">
       <Header />
 
-      <Tabs defaultValue="archived" className="mb-6">
+      <Tabs defaultValue="trash" className="mb-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="snoozed" asChild>
             <Link to="/snoozed" className="flex items-center gap-2">
@@ -151,10 +151,10 @@ function ArchivedPage() {
               Inbox
             </Link>
           </TabsTrigger>
-          <TabsTrigger value="archived" asChild>
-            <Link to="/archived" className="flex items-center gap-2">
-              <Archive className="h-4 w-4" />
-              Archived
+          <TabsTrigger value="trash" asChild>
+            <Link to="/trash" className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Trash
             </Link>
           </TabsTrigger>
         </TabsList>
@@ -167,9 +167,9 @@ function ArchivedPage() {
       ) : captures.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <Archive className="mx-auto mb-2 h-8 w-8" />
-            <p>No archived captures</p>
-            <p className="text-sm">Archived items will appear here</p>
+            <Trash2 className="mx-auto mb-2 h-8 w-8" />
+            <p>No trashed captures</p>
+            <p className="text-sm">Trashed items will appear here</p>
           </CardContent>
         </Card>
       ) : (
@@ -184,11 +184,11 @@ function ArchivedPage() {
                 data-capture-id={capture.id}
                 leftAction={{
                   icon: <Inbox className="h-5 w-5" />,
-                  label: 'Unarchive',
-                  type: 'unarchive',
-                  onAction: (direction) => handleUnarchive(capture.id, direction === 'left' ? 'left' : 'right'),
+                  label: 'Restore',
+                  type: 'restore',
+                  onAction: (direction) => handleRestore(capture.id, direction === 'left' ? 'left' : 'right'),
                 }}
-                disabled={unarchiveMutation.isPending}
+                disabled={restoreMutation.isPending}
               >
                 <CardContent className="flex items-start justify-between gap-2 py-3">
                   <div className="flex-1 min-w-0">
@@ -212,9 +212,9 @@ function ArchivedPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => handleUnarchive(capture.id, 'left')}
-                    disabled={unarchiveMutation.isPending}
-                    title="Move to inbox"
+                    onClick={() => handleRestore(capture.id, 'left')}
+                    disabled={restoreMutation.isPending}
+                    title="Restore"
                   >
                     <RotateCcw className="h-4 w-4" />
                   </Button>

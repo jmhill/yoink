@@ -82,7 +82,7 @@ export const createFakeCaptureStore = (
           return aTime - bTime;
         });
       } else {
-        // Inbox/archived: Pinned captures first
+        // Inbox/trashed: Pinned captures first
         filtered = filtered.sort((a, b) => {
           const aPinned = a.pinnedAt ? 1 : 0;
           const bPinned = b.pinnedAt ? 1 : 0;
@@ -102,5 +102,37 @@ export const createFakeCaptureStore = (
       return okAsync({ captures: filtered });
     },
 
+    softDelete: (id: string): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Delete failed'));
+      }
+      // Mark as deleted by removing from array (fake implementation)
+      // In real implementation, this would set deletedAt timestamp
+      const index = captures.findIndex((c) => c.id === id);
+      if (index !== -1) {
+        captures.splice(index, 1);
+      }
+      return okAsync(undefined);
+    },
+
+    softDeleteTrashed: (organizationId: string): ResultAsync<number, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Empty trash failed'));
+      }
+      // Remove all trashed captures for the organization
+      const initialLength = captures.length;
+      const trashedIds = captures
+        .filter((c) => c.organizationId === organizationId && c.status === 'trashed')
+        .map((c) => c.id);
+      
+      for (const id of trashedIds) {
+        const index = captures.findIndex((c) => c.id === id);
+        if (index !== -1) {
+          captures.splice(index, 1);
+        }
+      }
+      
+      return okAsync(initialLength - captures.length);
+    },
   };
 };

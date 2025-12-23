@@ -13,11 +13,11 @@ export type CoreActor = {
   // Capture operations
   createCapture(input: CreateCaptureInput): Promise<Capture>;
   listCaptures(): Promise<Capture[]>;
-  listArchivedCaptures(): Promise<Capture[]>;
+  listTrashedCaptures(): Promise<Capture[]>;
   getCapture(id: string): Promise<Capture>;
   updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture>;
-  archiveCapture(id: string): Promise<Capture>;
-  unarchiveCapture(id: string): Promise<Capture>;
+  trashCapture(id: string): Promise<Capture>;
+  restoreCapture(id: string): Promise<Capture>;
   pinCapture(id: string): Promise<Capture>;
   unpinCapture(id: string): Promise<Capture>;
   snoozeCapture(id: string, until: string): Promise<Capture>;

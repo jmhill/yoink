@@ -4,7 +4,7 @@ import type { StorageError } from './capture-errors.js';
 
 export type FindByOrganizationOptions = {
   organizationId: string;
-  status?: 'inbox' | 'archived';
+  status?: 'inbox' | 'trashed';
   snoozed?: boolean; // true = only snoozed, false = exclude snoozed, undefined = no filtering
   now?: string; // Current time for snooze comparison (ISO datetime)
   limit?: number;
@@ -23,4 +23,8 @@ export type CaptureStore = {
   findByOrganization(
     options: FindByOrganizationOptions
   ): ResultAsync<FindByOrganizationResult, StorageError>;
+  // Soft delete - sets deletedAt timestamp
+  softDelete(id: string): ResultAsync<void, StorageError>;
+  // Soft delete all trashed captures for an organization
+  softDeleteTrashed(organizationId: string): ResultAsync<number, StorageError>;
 };

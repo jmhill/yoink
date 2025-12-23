@@ -23,7 +23,7 @@ export const captureContract = c.router({
     method: 'GET',
     path: '/api/captures',
     query: z.object({
-      status: z.enum(['inbox', 'archived']).optional(),
+      status: z.enum(['inbox', 'trashed']).optional(),
       snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
       limit: z.coerce.number().min(1).max(100).default(50),
       cursor: z.string().uuid().optional(),
@@ -72,9 +72,9 @@ export const captureContract = c.router({
   },
 
   // Workflow operations
-  archive: {
+  trash: {
     method: 'POST',
-    path: '/api/captures/:id/archive',
+    path: '/api/captures/:id/trash',
     pathParams: z.object({
       id: z.string().uuid(),
     }),
@@ -85,12 +85,12 @@ export const captureContract = c.router({
       404: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'Archive a capture',
+    summary: 'Move a capture to trash',
   },
 
-  unarchive: {
+  restore: {
     method: 'POST',
-    path: '/api/captures/:id/unarchive',
+    path: '/api/captures/:id/restore',
     pathParams: z.object({
       id: z.string().uuid(),
     }),
@@ -101,7 +101,7 @@ export const captureContract = c.router({
       404: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'Unarchive a capture',
+    summary: 'Restore a capture from trash',
   },
 
   // Display modifier operations
@@ -170,6 +170,38 @@ export const captureContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Unsnooze a capture',
+  },
+
+  // Deletion operations
+  delete: {
+    method: 'DELETE',
+    path: '/api/captures/:id',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: z.object({}),
+    responses: {
+      204: z.undefined(),
+      401: ErrorSchema,
+      404: ErrorSchema,
+      409: ErrorSchema, // Capture must be in trash before deletion
+      500: ErrorSchema,
+    },
+    summary: 'Permanently delete a capture (must be in trash)',
+  },
+
+  emptyTrash: {
+    method: 'POST',
+    path: '/api/captures/trash/empty',
+    body: z.object({}),
+    responses: {
+      200: z.object({
+        deletedCount: z.number(),
+      }),
+      401: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Permanently delete all captures in trash',
   },
 }, {
     strictStatusCodes: true

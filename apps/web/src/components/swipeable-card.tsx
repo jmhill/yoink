@@ -3,7 +3,7 @@ import { Card } from '@yoink/ui-base/components/card';
 import { useSwipe, type SwipeState, type SwipeDirection } from '@/lib/use-swipe';
 import { cn } from '@yoink/ui-base/lib/utils';
 
-export type SwipeActionType = 'archive' | 'snooze' | 'unarchive';
+export type SwipeActionType = 'trash' | 'snooze' | 'restore';
 
 export type SwipeAction = {
   icon: ReactNode;

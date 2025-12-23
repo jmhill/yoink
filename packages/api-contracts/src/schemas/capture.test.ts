@@ -23,7 +23,7 @@ describe('CaptureSchema', () => {
       title: 'A title',
       sourceUrl: 'https://example.com/article',
       sourceApp: 'android-share',
-      archivedAt: '2025-01-16T10:00:00.000Z',
+      trashedAt: '2025-01-16T10:00:00.000Z',
     });
 
     expect(result.success).toBe(true);
@@ -74,10 +74,10 @@ describe('CaptureSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('validates archived status', () => {
+  it('validates trashed status', () => {
     const result = CaptureSchema.safeParse({
       ...validCapture,
-      status: 'archived',
+      status: 'trashed',
     });
 
     expect(result.success).toBe(true);
@@ -189,7 +189,7 @@ describe('UpdateCaptureSchema', () => {
     // UpdateCaptureSchema only accepts content/title, extra fields are stripped
     const result = UpdateCaptureSchema.safeParse({
       content: 'Valid content',
-      status: 'archived', // This is now handled by /archive endpoint
+      status: 'trashed', // This is now handled by /trash endpoint
       pinned: true, // This is now handled by /pin endpoint
     });
 

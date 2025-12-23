@@ -13,9 +13,9 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/trash'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedArchivedRouteImport } from './routes/_authenticated/archived'
 
 const ShareRoute = ShareRouteImport.update({
   id: '/share',
@@ -36,6 +36,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTrashRoute = AuthenticatedTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedSnoozedRoute = AuthenticatedSnoozedRouteImport.update({
   id: '/snoozed',
   path: '/snoozed',
@@ -46,26 +51,21 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedArchivedRoute = AuthenticatedArchivedRouteImport.update({
-  id: '/archived',
-  path: '/archived',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
-  '/archived': typeof AuthenticatedArchivedRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
+  '/trash': typeof AuthenticatedTrashRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
-  '/archived': typeof AuthenticatedArchivedRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
+  '/trash': typeof AuthenticatedTrashRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -73,24 +73,24 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/config': typeof ConfigRoute
   '/share': typeof ShareRoute
-  '/_authenticated/archived': typeof AuthenticatedArchivedRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
+  '/_authenticated/trash': typeof AuthenticatedTrashRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/config' | '/share' | '/archived' | '/settings' | '/snoozed' | '/'
+  fullPaths: '/config' | '/share' | '/settings' | '/snoozed' | '/trash' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/config' | '/share' | '/archived' | '/settings' | '/snoozed' | '/'
+  to: '/config' | '/share' | '/settings' | '/snoozed' | '/trash' | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/config'
     | '/share'
-    | '/_authenticated/archived'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
+    | '/_authenticated/trash'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -130,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/trash': {
+      id: '/_authenticated/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AuthenticatedTrashRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/snoozed': {
       id: '/_authenticated/snoozed'
       path: '/snoozed'
@@ -144,27 +151,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/archived': {
-      id: '/_authenticated/archived'
-      path: '/archived'
-      fullPath: '/archived'
-      preLoaderRoute: typeof AuthenticatedArchivedRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedArchivedRoute: typeof AuthenticatedArchivedRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
+  AuthenticatedTrashRoute: typeof AuthenticatedTrashRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedArchivedRoute: AuthenticatedArchivedRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,
+  AuthenticatedTrashRoute: AuthenticatedTrashRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

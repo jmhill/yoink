@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
-import { Archive, Link as LinkIcon, Pin, Clock } from 'lucide-react';
+import { Trash2, Link as LinkIcon, Pin, Clock } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -21,10 +21,10 @@ export type CaptureCardProps = {
     capturedAt: string;
     pinnedAt?: string | null;
   };
-  onArchive: (id: string, direction: ExitDirection) => void;
+  onTrash: (id: string, direction: ExitDirection) => void;
   onPin: (id: string, isPinned: boolean) => void;
   onSnooze: (id: string, option: SnoozeOption, direction: ExitDirection) => void;
-  isArchiving?: boolean;
+  isTrashing?: boolean;
   isPinning?: boolean;
   isSnoozeing?: boolean;
   formatDate: (date: string) => string;
@@ -32,10 +32,10 @@ export type CaptureCardProps = {
 
 export function CaptureCard({
   capture,
-  onArchive,
+  onTrash,
   onPin,
   onSnooze,
-  isArchiving = false,
+  isTrashing = false,
   isPinning = false,
   isSnoozeing = false,
   formatDate,
@@ -77,12 +77,12 @@ export function CaptureCard({
         onAction: handleSwipeSnooze,
       }}
       rightAction={{
-        icon: <Archive className="h-5 w-5" />,
-        label: 'Archive',
-        type: 'archive',
-        onAction: () => onArchive(capture.id, 'right'),
+        icon: <Trash2 className="h-5 w-5" />,
+        label: 'Trash',
+        type: 'trash',
+        onAction: () => onTrash(capture.id, 'right'),
       }}
-      disabled={isArchiving || isSnoozeing}
+      disabled={isTrashing || isSnoozeing}
     >
       <CardContent className="flex items-start justify-between gap-2 py-3">
         <div className="flex-1 min-w-0">
@@ -136,11 +136,11 @@ export function CaptureCard({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => onArchive(capture.id, 'right')}
-            disabled={isArchiving}
-            title="Archive"
+            onClick={() => onTrash(capture.id, 'right')}
+            disabled={isTrashing}
+            title="Trash"
           >
-            <Archive className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>

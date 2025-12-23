@@ -110,14 +110,14 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(snoozed.snoozedUntil).toBe(until);
     });
 
-    it('archiving a snoozed capture clears the snooze', async () => {
-      const capture = await alice.createCapture({ content: 'Archive snoozed' });
+    it('trashing a snoozed capture clears the snooze', async () => {
+      const capture = await alice.createCapture({ content: 'Trash snoozed' });
       await alice.snoozeCapture(capture.id, futureTime(2));
 
-      const archived = await alice.archiveCapture(capture.id);
+      const trashed = await alice.trashCapture(capture.id);
 
-      expect(archived.snoozedUntil).toBeUndefined();
-      expect(archived.status).toBe('archived');
+      expect(trashed.snoozedUntil).toBeUndefined();
+      expect(trashed.status).toBe('trashed');
     });
 
     it('can snooze and pin the same capture', async () => {
@@ -156,9 +156,9 @@ usingDrivers(['http'] as const, (ctx) => {
       );
     });
 
-    it('rejects snoozing an archived capture', async () => {
-      const capture = await alice.createCapture({ content: 'Archived snooze' });
-      await alice.archiveCapture(capture.id);
+    it('rejects snoozing a trashed capture', async () => {
+      const capture = await alice.createCapture({ content: 'Trashed snooze' });
+      await alice.trashCapture(capture.id);
 
       await expect(alice.snoozeCapture(capture.id, futureTime(2))).rejects.toThrow(
         ValidationError

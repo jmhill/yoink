@@ -9,8 +9,8 @@ export type CaptureNotFoundError = {
   readonly captureId: string;
 };
 
-export type CaptureAlreadyArchivedError = {
-  readonly type: 'CAPTURE_ALREADY_ARCHIVED';
+export type CaptureAlreadyTrashedError = {
+  readonly type: 'CAPTURE_ALREADY_TRASHED';
   readonly captureId: string;
 };
 
@@ -19,18 +19,25 @@ export type InvalidSnoozeTimeError = {
   readonly message: string;
 };
 
+export type CaptureNotInTrashError = {
+  readonly type: 'CAPTURE_NOT_IN_TRASH';
+  readonly captureId: string;
+};
+
 export type CreateCaptureError = StorageError;
 export type ListCapturesError = StorageError;
 export type FindCaptureError = StorageError | CaptureNotFoundError;
 export type UpdateCaptureError = StorageError | CaptureNotFoundError;
 
 // Explicit operation errors
-export type ArchiveCaptureError = StorageError | CaptureNotFoundError;
-export type UnarchiveCaptureError = StorageError | CaptureNotFoundError;
-export type PinCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyArchivedError;
+export type TrashCaptureError = StorageError | CaptureNotFoundError;
+export type RestoreCaptureError = StorageError | CaptureNotFoundError;
+export type PinCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyTrashedError;
 export type UnpinCaptureError = StorageError | CaptureNotFoundError;
-export type SnoozeCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyArchivedError | InvalidSnoozeTimeError;
+export type SnoozeCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyTrashedError | InvalidSnoozeTimeError;
 export type UnsnoozeCaptureError = StorageError | CaptureNotFoundError;
+export type DeleteCaptureError = StorageError | CaptureNotFoundError | CaptureNotInTrashError;
+export type EmptyTrashError = StorageError;
 
 export const storageError = (message: string, cause?: unknown): StorageError => ({
   type: 'STORAGE_ERROR',
@@ -43,12 +50,17 @@ export const captureNotFoundError = (captureId: string): CaptureNotFoundError =>
   captureId,
 });
 
-export const captureAlreadyArchivedError = (captureId: string): CaptureAlreadyArchivedError => ({
-  type: 'CAPTURE_ALREADY_ARCHIVED',
+export const captureAlreadyTrashedError = (captureId: string): CaptureAlreadyTrashedError => ({
+  type: 'CAPTURE_ALREADY_TRASHED',
   captureId,
 });
 
 export const invalidSnoozeTimeError = (message: string): InvalidSnoozeTimeError => ({
   type: 'INVALID_SNOOZE_TIME',
   message,
+});
+
+export const captureNotInTrashError = (captureId: string): CaptureNotInTrashError => ({
+  type: 'CAPTURE_NOT_IN_TRASH',
+  captureId,
 });

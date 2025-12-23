@@ -8,9 +8,9 @@ export const CaptureSchema = z.object({
   title: z.string().max(200).optional(),
   sourceUrl: z.string().url().optional(),
   sourceApp: z.string().max(100).optional(),
-  status: z.enum(['inbox', 'archived']),
+  status: z.enum(['inbox', 'trashed']),
   capturedAt: z.string().datetime(),
-  archivedAt: z.string().datetime().optional(),
+  trashedAt: z.string().datetime().optional(),
   pinnedAt: z.string().datetime().optional(),
   snoozedUntil: z.string().datetime().optional(),
 });

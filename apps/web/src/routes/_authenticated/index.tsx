@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, Clock } from 'lucide-react';
+import { Trash2, Inbox, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
@@ -106,7 +106,7 @@ function InboxPage() {
     },
   });
 
-  const archiveMutation = tsr.archive.useMutation({
+  const trashMutation = tsr.trash.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
       await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
@@ -116,14 +116,14 @@ function InboxPage() {
         'captures',
         'inbox',
       ]);
-      const previousArchived = tsrQueryClient.list.getQueryData([
+      const previousTrashed = tsrQueryClient.list.getQueryData([
         'captures',
-        'archived',
+        'trashed',
       ]);
 
-      // Find the capture being archived
+      // Find the capture being trashed
       if (previousInbox?.status === 200) {
-        const captureToArchive = previousInbox.body.captures.find(
+        const captureToTrash = previousInbox.body.captures.find(
           (c) => c.id === params.id
         );
 
@@ -138,22 +138,22 @@ function InboxPage() {
           },
         });
 
-        // Add to archived (if cache exists)
-        if (captureToArchive && previousArchived?.status === 200) {
-          tsrQueryClient.list.setQueryData(['captures', 'archived'], {
-            ...previousArchived,
+        // Add to trashed (if cache exists)
+        if (captureToTrash && previousTrashed?.status === 200) {
+          tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
+            ...previousTrashed,
             body: {
-              ...previousArchived.body,
+              ...previousTrashed.body,
               captures: [
-                { ...captureToArchive, status: 'archived' as const },
-                ...previousArchived.body.captures,
+                { ...captureToTrash, status: 'trashed' as const },
+                ...previousTrashed.body.captures,
               ],
             },
           });
         }
       }
 
-      return { previousInbox, previousArchived };
+      return { previousInbox, previousTrashed };
     },
 
     onError: (err, _variables, context) => {
@@ -164,10 +164,10 @@ function InboxPage() {
           context.previousInbox
         );
       }
-      if (context?.previousArchived) {
+      if (context?.previousTrashed) {
         tsrQueryClient.list.setQueryData(
-          ['captures', 'archived'],
-          context.previousArchived
+          ['captures', 'trashed'],
+          context.previousTrashed
         );
       }
 
@@ -175,12 +175,12 @@ function InboxPage() {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to archive');
+        toast.error('Failed to trash');
       }
     },
 
     onSuccess: () => {
-      toast.success('Archived');
+      toast.success('Moved to trash');
     },
 
     onSettled: () => {
@@ -372,9 +372,9 @@ function InboxPage() {
     });
   };
 
-  const handleArchive = (id: string, direction: ExitDirection) => {
+  const handleTrash = (id: string, direction: ExitDirection) => {
     setExitDirections((prev) => ({ ...prev, [id]: direction }));
-    archiveMutation.mutate({
+    trashMutation.mutate({
       params: { id },
       body: {},
     });
@@ -461,10 +461,10 @@ function InboxPage() {
               Inbox
             </Link>
           </TabsTrigger>
-          <TabsTrigger value="archived" asChild>
-            <Link to="/archived" className="flex items-center gap-2">
-              <Archive className="h-4 w-4" />
-              Archived
+          <TabsTrigger value="trash" asChild>
+            <Link to="/trash" className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Trash
             </Link>
           </TabsTrigger>
         </TabsList>
@@ -508,10 +508,10 @@ function InboxPage() {
             >
               <CaptureCard
                 capture={capture}
-                onArchive={handleArchive}
+                onTrash={handleTrash}
                 onPin={handlePin}
                 onSnooze={handleSnooze}
-                isArchiving={archiveMutation.isPending}
+                isTrashing={trashMutation.isPending}
                 isPinning={pinMutationInternal.isPending || unpinMutationInternal.isPending}
                 isSnoozeing={snoozeMutation.isPending}
                 formatDate={formatDate}

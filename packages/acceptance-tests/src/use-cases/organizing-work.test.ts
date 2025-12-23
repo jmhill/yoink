@@ -10,51 +10,51 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice@example.com');
     });
 
-    it('can archive a capture', async () => {
+    it('can trash a capture', async () => {
       const capture = await alice.createCapture({ content: 'Done with this' });
 
-      const archived = await alice.archiveCapture(capture.id);
+      const trashed = await alice.trashCapture(capture.id);
 
-      expect(archived.status).toBe('archived');
+      expect(trashed.status).toBe('trashed');
     });
 
-    it('can unarchive a capture', async () => {
+    it('can restore a capture', async () => {
       const capture = await alice.createCapture({ content: 'Maybe not done' });
-      await alice.archiveCapture(capture.id);
+      await alice.trashCapture(capture.id);
 
-      const restored = await alice.unarchiveCapture(capture.id);
+      const restored = await alice.restoreCapture(capture.id);
 
       expect(restored.status).toBe('inbox');
     });
 
-    it('removes archived captures from inbox list', async () => {
-      const capture = await alice.createCapture({ content: `archive-test-${Date.now()}` });
-      await alice.archiveCapture(capture.id);
+    it('removes trashed captures from inbox list', async () => {
+      const capture = await alice.createCapture({ content: `trash-test-${Date.now()}` });
+      await alice.trashCapture(capture.id);
 
       const inboxCaptures = await alice.listCaptures();
 
       expect(inboxCaptures.some((c) => c.content === capture.content)).toBe(false);
     });
 
-    it('shows archived captures in archived list', async () => {
-      const capture = await alice.createCapture({ content: `archived-list-${Date.now()}` });
-      await alice.archiveCapture(capture.id);
+    it('shows trashed captures in trash list', async () => {
+      const capture = await alice.createCapture({ content: `trashed-list-${Date.now()}` });
+      await alice.trashCapture(capture.id);
 
-      const archivedCaptures = await alice.listArchivedCaptures();
+      const trashedCaptures = await alice.listTrashedCaptures();
 
-      expect(archivedCaptures.some((c) => c.content === capture.content)).toBe(true);
+      expect(trashedCaptures.some((c) => c.content === capture.content)).toBe(true);
     });
 
-    it('moves unarchived captures back to inbox list', async () => {
-      const capture = await alice.createCapture({ content: `unarchive-test-${Date.now()}` });
-      await alice.archiveCapture(capture.id);
-      await alice.unarchiveCapture(capture.id);
+    it('moves restored captures back to inbox list', async () => {
+      const capture = await alice.createCapture({ content: `restore-test-${Date.now()}` });
+      await alice.trashCapture(capture.id);
+      await alice.restoreCapture(capture.id);
 
       const inboxCaptures = await alice.listCaptures();
-      const archivedCaptures = await alice.listArchivedCaptures();
+      const trashedCaptures = await alice.listTrashedCaptures();
 
       expect(inboxCaptures.some((c) => c.content === capture.content)).toBe(true);
-      expect(archivedCaptures.some((c) => c.content === capture.content)).toBe(false);
+      expect(trashedCaptures.some((c) => c.content === capture.content)).toBe(false);
     });
 
     it('can update capture content', async () => {
@@ -73,10 +73,10 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       await expect(alice.getCapture(nonExistentId)).rejects.toThrow(NotFoundError);
     });
 
-    it('returns not found when archiving non-existent capture', async () => {
+    it('returns not found when trashing non-existent capture', async () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-      await expect(alice.archiveCapture(nonExistentId)).rejects.toThrow(
+      await expect(alice.trashCapture(nonExistentId)).rejects.toThrow(
         NotFoundError
       );
     });
@@ -120,13 +120,13 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       expect(captures[0].id).toBe(first.id);
     });
 
-    it('archiving a pinned capture automatically unpins it', async () => {
-      const capture = await alice.createCapture({ content: 'Will be archived' });
+    it('trashing a pinned capture automatically unpins it', async () => {
+      const capture = await alice.createCapture({ content: 'Will be trashed' });
       await alice.pinCapture(capture.id);
 
-      const archived = await alice.archiveCapture(capture.id);
+      const trashed = await alice.trashCapture(capture.id);
 
-      expect(archived.pinnedAt).toBeUndefined();
+      expect(trashed.pinnedAt).toBeUndefined();
     });
 
     it('returns not found when pinning non-existent capture', async () => {
@@ -156,21 +156,21 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(updated.title).toBe('Important!');
     });
 
-    it('returns archivedAt when archiving', async () => {
+    it('returns trashedAt when trashing', async () => {
       const capture = await alice.createCapture({ content: 'Done with this' });
 
-      const archived = await alice.archiveCapture(capture.id);
+      const trashed = await alice.trashCapture(capture.id);
 
-      expect(archived.archivedAt).toBeDefined();
+      expect(trashed.trashedAt).toBeDefined();
     });
 
-    it('clears archivedAt when unarchiving', async () => {
+    it('clears trashedAt when restoring', async () => {
       const capture = await alice.createCapture({ content: 'Maybe not done' });
-      await alice.archiveCapture(capture.id);
+      await alice.trashCapture(capture.id);
 
-      const restored = await alice.unarchiveCapture(capture.id);
+      const restored = await alice.restoreCapture(capture.id);
 
-      expect(restored.archivedAt).toBeUndefined();
+      expect(restored.trashedAt).toBeUndefined();
     });
 
     it('rejects invalid capture id format', async () => {
@@ -185,8 +185,8 @@ usingDrivers(['http'] as const, (ctx) => {
       ).rejects.toThrow(ValidationError);
     });
 
-    it('rejects invalid id format when archiving', async () => {
-      await expect(alice.archiveCapture('not-a-uuid')).rejects.toThrow(
+    it('rejects invalid id format when trashing', async () => {
+      await expect(alice.trashCapture('not-a-uuid')).rejects.toThrow(
         ValidationError
       );
     });

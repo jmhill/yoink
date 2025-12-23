@@ -18,6 +18,8 @@ import { migration as createApiTokens } from './003-create-api-tokens.js';
 import { migration as createCaptures } from './004-create-captures.js';
 import { migration as addPinnedAt } from './005-add-pinned-at.js';
 import { migration as addSnoozedUntil } from './006-add-snoozed-until.js';
+import { migration as renameArchiveToTrash } from './007-rename-archive-to-trash.js';
+import { migration as addDeletedAt } from './008-add-deleted-at.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -26,6 +28,8 @@ export const migrations: Migration[] = [
   createCaptures,
   addPinnedAt,
   addSnoozedUntil,
+  renameArchiveToTrash,
+  addDeletedAt,
 ];
 
 export type { Migration };

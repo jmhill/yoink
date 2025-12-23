@@ -5,7 +5,7 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Archive, Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
+import { Trash2, Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { SwipeableCard } from '@/components/swipeable-card';
@@ -166,10 +166,10 @@ function SnoozedPage() {
               Inbox
             </Link>
           </TabsTrigger>
-          <TabsTrigger value="archived" asChild>
-            <Link to="/archived" className="flex items-center gap-2">
-              <Archive className="h-4 w-4" />
-              Archived
+          <TabsTrigger value="trash" asChild>
+            <Link to="/trash" className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Trash
             </Link>
           </TabsTrigger>
         </TabsList>
@@ -200,7 +200,7 @@ function SnoozedPage() {
                 rightAction={{
                   icon: <Inbox className="h-5 w-5" />,
                   label: 'Wake up',
-                  type: 'unarchive',
+                  type: 'restore',
                   onAction: (direction) => handleUnsnooze(capture.id, direction === 'right' ? 'right' : 'left'),
                 }}
                 disabled={unsnoozeMutation.isPending}

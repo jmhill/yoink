@@ -18,7 +18,7 @@ type CaptureRow = {
   source_app: string | null;
   status: string;
   captured_at: string;
-  archived_at: string | null;
+  trashed_at: string | null;
   pinned_at: string | null;
   snoozed_until: string | null;
 };
@@ -31,9 +31,9 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   title: row.title ?? undefined,
   sourceUrl: row.source_url ?? undefined,
   sourceApp: row.source_app ?? undefined,
-  status: row.status as 'inbox' | 'archived',
+  status: row.status as 'inbox' | 'trashed',
   capturedAt: row.captured_at,
-  archivedAt: row.archived_at ?? undefined,
+  trashedAt: row.trashed_at ?? undefined,
   pinnedAt: row.pinned_at ?? undefined,
   snoozedUntil: row.snoozed_until ?? undefined,
 });
@@ -65,7 +65,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         const stmt = db.prepare(`
           INSERT INTO captures (
             id, organization_id, created_by_id, content, title,
-            source_url, source_app, status, captured_at, archived_at, pinned_at, snoozed_until
+            source_url, source_app, status, captured_at, trashed_at, pinned_at, snoozed_until
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
@@ -79,7 +79,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.sourceApp ?? null,
           capture.status,
           capture.capturedAt,
-          capture.archivedAt ?? null,
+          capture.trashedAt ?? null,
           capture.pinnedAt ?? null,
           capture.snoozedUntil ?? null
         );
@@ -92,7 +92,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
 
     findById: (id: string): ResultAsync<Capture | null, StorageError> => {
       try {
-        const stmt = db.prepare(`SELECT * FROM captures WHERE id = ?`);
+        // Exclude soft-deleted captures
+        const stmt = db.prepare(`SELECT * FROM captures WHERE id = ? AND deleted_at IS NULL`);
         const row = stmt.get(id) as CaptureRow | undefined;
 
         return okAsync(row ? rowToCapture(row) : null);
@@ -108,7 +109,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
             content = ?,
             title = ?,
             status = ?,
-            archived_at = ?,
+            trashed_at = ?,
             pinned_at = ?,
             snoozed_until = ?
           WHERE id = ?
@@ -118,7 +119,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.content,
           capture.title ?? null,
           capture.status,
-          capture.archivedAt ?? null,
+          capture.trashedAt ?? null,
           capture.pinnedAt ?? null,
           capture.snoozedUntil ?? null,
           capture.id
@@ -139,6 +140,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         let sql = `
           SELECT * FROM captures
           WHERE organization_id = ?
+            AND deleted_at IS NULL
         `;
         const params: (string | number)[] = [organizationId];
 
@@ -181,6 +183,32 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         return okAsync({ captures });
       } catch (error) {
         return errAsync(storageError('Failed to find captures', error));
+      }
+    },
+
+    softDelete: (id: string): ResultAsync<void, StorageError> => {
+      try {
+        const stmt = db.prepare(`
+          UPDATE captures SET deleted_at = ?
+          WHERE id = ? AND deleted_at IS NULL
+        `);
+        stmt.run(new Date().toISOString(), id);
+        return okAsync(undefined);
+      } catch (error) {
+        return errAsync(storageError('Failed to delete capture', error));
+      }
+    },
+
+    softDeleteTrashed: (organizationId: string): ResultAsync<number, StorageError> => {
+      try {
+        const stmt = db.prepare(`
+          UPDATE captures SET deleted_at = ?
+          WHERE organization_id = ? AND status = 'trashed' AND deleted_at IS NULL
+        `);
+        const result = stmt.run(new Date().toISOString(), organizationId);
+        return okAsync(Number(result.changes));
+      } catch (error) {
+        return errAsync(storageError('Failed to empty trash', error));
       }
     },
   };

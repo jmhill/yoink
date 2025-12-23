@@ -69,7 +69,9 @@ export const rebuildTable = (db: DatabaseSync, options: RebuildTableOptions): vo
   // Disable foreign keys during rebuild
   db.exec('PRAGMA foreign_keys = OFF');
 
-  db.exec('BEGIN TRANSACTION');
+  // Use SAVEPOINT for nested transaction support - works whether or not we're already in a transaction
+  const savepointName = `rebuild_${tableName}_${Date.now()}`;
+  db.exec(`SAVEPOINT ${savepointName}`);
   try {
     // Create new table with temporary name
     const tempTableName = `${tableName}_new`;
@@ -93,9 +95,10 @@ export const rebuildTable = (db: DatabaseSync, options: RebuildTableOptions): vo
       db.exec(indexSql);
     }
 
-    db.exec('COMMIT');
+    db.exec(`RELEASE SAVEPOINT ${savepointName}`);
   } catch (error) {
-    db.exec('ROLLBACK');
+    db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+    db.exec(`RELEASE SAVEPOINT ${savepointName}`);
     throw error;
   } finally {
     // Restore foreign key setting

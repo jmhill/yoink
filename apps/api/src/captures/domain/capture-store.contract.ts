@@ -123,13 +123,13 @@ export const runCaptureStoreContractTests = (
 
       it('filters by status', async () => {
         const inbox = createTestCapture({ id: 'inbox-id', status: 'inbox' });
-        const archived = createTestCapture({
-          id: 'archived-id',
-          status: 'archived',
+        const trashed = createTestCapture({
+          id: 'trashed-id',
+          status: 'trashed',
         });
 
         await store.save(inbox);
-        await store.save(archived);
+        await store.save(trashed);
 
         const result = await store.findByOrganization({
           organizationId: inbox.organizationId,
@@ -226,22 +226,22 @@ export const runCaptureStoreContractTests = (
         }
       });
 
-      it('updates capture status and archivedAt', async () => {
+      it('updates capture status and trashedAt', async () => {
         const capture = createTestCapture({ id: 'capture-123', status: 'inbox' });
         await store.save(capture);
 
         const updatedCapture = {
           ...capture,
-          status: 'archived' as const,
-          archivedAt: '2025-01-16T10:00:00.000Z',
+          status: 'trashed' as const,
+          trashedAt: '2025-01-16T10:00:00.000Z',
         };
         await store.update(updatedCapture);
 
         const findResult = await store.findById('capture-123');
         expect(findResult.isOk()).toBe(true);
         if (findResult.isOk()) {
-          expect(findResult.value?.status).toBe('archived');
-          expect(findResult.value?.archivedAt).toBe('2025-01-16T10:00:00.000Z');
+          expect(findResult.value?.status).toBe('trashed');
+          expect(findResult.value?.trashedAt).toBe('2025-01-16T10:00:00.000Z');
         }
       });
 
@@ -259,18 +259,18 @@ export const runCaptureStoreContractTests = (
         }
       });
 
-      it('clears archivedAt when un-archiving', async () => {
+      it('clears trashedAt when restoring', async () => {
         const capture = createTestCapture({
           id: 'capture-123',
-          status: 'archived',
-          archivedAt: '2025-01-16T10:00:00.000Z',
+          status: 'trashed',
+          trashedAt: '2025-01-16T10:00:00.000Z',
         });
         await store.save(capture);
 
         const updatedCapture = {
           ...capture,
           status: 'inbox' as const,
-          archivedAt: undefined,
+          trashedAt: undefined,
         };
         await store.update(updatedCapture);
 
@@ -278,7 +278,7 @@ export const runCaptureStoreContractTests = (
         expect(findResult.isOk()).toBe(true);
         if (findResult.isOk()) {
           expect(findResult.value?.status).toBe('inbox');
-          expect(findResult.value?.archivedAt).toBeUndefined();
+          expect(findResult.value?.trashedAt).toBeUndefined();
         }
       });
     });

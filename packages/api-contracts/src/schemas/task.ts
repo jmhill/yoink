@@ -6,7 +6,7 @@ export const TaskSchema = z.object({
   createdById: z.string().uuid(),
   title: z.string().min(1).max(500),
   captureId: z.string().uuid().optional(), // Source capture, if any
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD format
+  dueDate: z.string().date().optional(), // YYYY-MM-DD format, validates actual date
   completedAt: z.string().datetime().optional(),
   pinnedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
@@ -16,14 +16,14 @@ export type Task = z.infer<typeof TaskSchema>;
 
 export const CreateTaskSchema = z.object({
   title: z.string().min(1).max(500),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dueDate: z.string().date().optional(),
 });
 
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
 
 export const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(), // null to clear
+  dueDate: z.string().date().nullable().optional(), // null to clear
 });
 
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;

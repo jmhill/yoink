@@ -53,9 +53,9 @@ function TasksPage() {
 
       const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
 
-      // Create optimistic task
+      // Create optimistic task with unique ID to avoid collisions
       const optimisticTask: Task = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${crypto.randomUUID()}`,
         organizationId: 'temp',
         createdById: 'temp',
         title: body.title,

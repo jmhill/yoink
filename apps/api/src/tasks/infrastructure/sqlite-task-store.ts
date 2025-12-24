@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
+import type { Clock } from '@yoink/infrastructure';
 import type {
   TaskStore,
   FindByOrganizationOptions,
@@ -50,7 +51,7 @@ const validateSchema = (db: DatabaseSync): void => {
   }
 };
 
-export const createSqliteTaskStore = (db: DatabaseSync): TaskStore => {
+export const createSqliteTaskStore = (db: DatabaseSync, clock: Clock): TaskStore => {
   validateSchema(db);
 
   return {
@@ -194,7 +195,7 @@ export const createSqliteTaskStore = (db: DatabaseSync): TaskStore => {
           UPDATE tasks SET deleted_at = ?
           WHERE id = ? AND deleted_at IS NULL
         `);
-        stmt.run(new Date().toISOString(), id);
+        stmt.run(clock.now().toISOString(), id);
         return okAsync(undefined);
       } catch (error) {
         return errAsync(storageError('Failed to delete task', error));

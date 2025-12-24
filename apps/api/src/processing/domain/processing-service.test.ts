@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { DatabaseSync } from 'node:sqlite';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import type { Capture, Task } from '@yoink/api-contracts';
 import { createProcessingService, type ProcessingService } from './processing-service.js';
@@ -12,6 +13,7 @@ describe('ProcessingService', () => {
   const clock = createFakeClock(now);
   const idGenerator = createFakeIdGenerator();
 
+  let db: DatabaseSync;
   let captureStore: CaptureStore;
   let taskStore: TaskStore;
   let service: ProcessingService;
@@ -27,9 +29,13 @@ describe('ProcessingService', () => {
   });
 
   beforeEach(() => {
+    // Create in-memory database for transaction support
+    // Fake stores don't use the db, but we need it for transaction wrapper
+    db = new DatabaseSync(':memory:');
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
     service = createProcessingService({
+      db,
       captureStore,
       taskStore,
       clock,
@@ -73,8 +79,8 @@ describe('ProcessingService', () => {
       expect(result._unsafeUnwrap().title).toBe('My custom task title');
     });
 
-    it('truncates capture content to 500 chars for default title', async () => {
-      const longContent = 'A'.repeat(600);
+    it('truncates capture content to 100 chars for default title', async () => {
+      const longContent = 'A'.repeat(200);
       const capture = createInboxCapture({ content: longContent });
       await captureStore.save(capture);
 
@@ -85,7 +91,7 @@ describe('ProcessingService', () => {
       });
 
       expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap().title).toBe('A'.repeat(500));
+      expect(result._unsafeUnwrap().title).toBe('A'.repeat(100));
     });
 
     it('sets dueDate when provided', async () => {

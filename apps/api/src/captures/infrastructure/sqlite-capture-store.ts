@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
+import type { Clock } from '@yoink/infrastructure';
 import type {
   CaptureStore,
   FindByOrganizationOptions,
@@ -61,7 +62,7 @@ const validateSchema = (db: DatabaseSync): void => {
   }
 };
 
-export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
+export const createSqliteCaptureStore = (db: DatabaseSync, clock: Clock): CaptureStore => {
   validateSchema(db);
 
   return {
@@ -200,7 +201,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           UPDATE captures SET deleted_at = ?
           WHERE id = ? AND deleted_at IS NULL
         `);
-        stmt.run(new Date().toISOString(), id);
+        stmt.run(clock.now().toISOString(), id);
         return okAsync(undefined);
       } catch (error) {
         return errAsync(storageError('Failed to delete capture', error));
@@ -213,7 +214,7 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           UPDATE captures SET deleted_at = ?
           WHERE organization_id = ? AND status = 'trashed' AND deleted_at IS NULL
         `);
-        const result = stmt.run(new Date().toISOString(), organizationId);
+        const result = stmt.run(clock.now().toISOString(), organizationId);
         return okAsync(Number(result.changes));
       } catch (error) {
         return errAsync(storageError('Failed to empty trash', error));

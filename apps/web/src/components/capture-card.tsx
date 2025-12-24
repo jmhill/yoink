@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
-import { Trash2, Link as LinkIcon, Clock, ArrowRight } from 'lucide-react';
+import { Trash2, Link as LinkIcon, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -24,7 +24,7 @@ export type CaptureCardProps = {
   onSnooze: (id: string, option: SnoozeOption, direction: ExitDirection) => void;
   onProcessToTask?: (capture: { id: string; content: string }) => void;
   isTrashing?: boolean;
-  isSnoozeing?: boolean;
+  isSnoozing?: boolean;
   isProcessing?: boolean;
   formatDate: (date: string) => string;
 };
@@ -35,7 +35,7 @@ export function CaptureCard({
   onSnooze,
   onProcessToTask,
   isTrashing = false,
-  isSnoozeing = false,
+  isSnoozing = false,
   isProcessing = false,
   formatDate,
 }: CaptureCardProps) {
@@ -79,7 +79,7 @@ export function CaptureCard({
         type: 'trash',
         onAction: () => onTrash(capture.id, 'right'),
       }}
-      disabled={isTrashing || isSnoozeing}
+      disabled={isTrashing || isSnoozing}
     >
       <CardContent className="flex items-start justify-between gap-2 py-3">
         <div className="flex-1 min-w-0">
@@ -109,12 +109,16 @@ export function CaptureCard({
               disabled={isProcessing}
               title="Convert to task"
             >
-              <ArrowRight className="h-4 w-4" />
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowRight className="h-4 w-4" />
+              )}
             </Button>
           )}
           <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
             <DropdownMenuTrigger
-              disabled={isSnoozeing}
+              disabled={isSnoozing}
               aria-label="Snooze"
               className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
             >

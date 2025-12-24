@@ -134,7 +134,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const healthChecker = createSqliteHealthChecker({ tokenStore });
 
   // Create capture store and service
-  const captureStore = createSqliteCaptureStore(db);
+  const captureStore = createSqliteCaptureStore(db, clock);
   const captureService = createCaptureService({
     store: captureStore,
     clock,
@@ -142,7 +142,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // Create task store and service
-  const taskStore = createSqliteTaskStore(db);
+  const taskStore = createSqliteTaskStore(db, clock);
   const taskService = createTaskService({
     store: taskStore,
     clock,
@@ -150,7 +150,9 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // Create processing service (cross-entity operations)
+  // Uses transactions for atomicity across stores
   const processingService = createProcessingService({
+    db,
     captureStore,
     taskStore,
     clock,

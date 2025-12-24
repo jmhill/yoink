@@ -27,7 +27,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
-**Phase 8: Capture → Task Flow** - In Progress (8.1-8.5 complete, next: 8.6 Bottom Navigation)
+**Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
 
@@ -689,41 +689,42 @@ Cross-entity operation: creates task + updates capture status.
 - [x] Deleting task also deletes source capture
 - [x] Tasks isolated by organization
 
-### 8.6 Bottom Navigation + Routing
+### 8.6 Bottom Navigation + Routing - Complete ✓
 Restructure web app for mobile-first bottom navigation.
 
-- [ ] Create bottom navigation component with `Inbox | Tasks` tabs
-- [ ] Restructure routing:
+- [x] Create bottom navigation component with `Inbox | Tasks` tabs
+- [x] Restructure routing:
   - `/` → Inbox view (default, with snoozed/inbox/trash sub-tabs)
   - `/tasks` → Tasks view (with today/upcoming/all sub-tabs)
   - Keep `/settings`, `/config`, `/share` routes
-- [ ] Update header to show current view name dynamically
-- [ ] Move sub-tabs (snoozed/inbox/trash) inside Inbox view component
+- [x] Update header to show current view name dynamically
+- [x] Add safe-area-bottom CSS for iOS PWA support
 
-### 8.7 Tasks View UI
-- [ ] Create `/tasks` route in `apps/web/src/routes/_authenticated/tasks.tsx`
-- [ ] Sub-tabs: Today | Upcoming | All
+### 8.7 Tasks View UI - Complete ✓
+- [x] Create `/tasks` route in `apps/web/src/routes/_authenticated/tasks.tsx`
+- [x] Sub-tabs: Today | Upcoming | All
   - Today: tasks where `dueDate === today`
   - Upcoming: tasks where `dueDate > today`
   - All: all tasks regardless of due date
-- [ ] Create `TaskCard` component:
+- [x] Create `TaskCard` component:
   - Checkbox for completion toggle
   - Pin button (filled when pinned)
   - Due date display (if set)
-  - Delete button
-- [ ] Create `TaskList` with Framer Motion animations
-- [ ] "+ Add task" button at bottom (opens inline input or modal)
-- [ ] CRUD mutations with optimistic updates
-- [ ] Pin/unpin mutations with list re-sorting
-- [ ] Complete/uncomplete mutations
+  - Delete button with confirmation
+- [x] Reuse existing AnimatedList for Framer Motion animations
+- [x] Inline quick-add input at top of tasks view
+- [x] CRUD mutations with optimistic updates
+- [x] Pin/unpin mutations with list re-sorting
+- [x] Complete/uncomplete mutations
+- [x] Add Checkbox component to ui-base package
 
-### 8.8 Triage UI ("→ Task" Action)
-- [ ] Add "→ Task" button to `CaptureCard` in inbox
-- [ ] Create `TaskCreationModal` component:
+### 8.8 Triage UI ("→ Task" Action) - Complete ✓
+- [x] Add "→ Task" button to `CaptureCard` in inbox
+- [x] Create `TaskCreationModal` component:
   - Title input (pre-filled from capture content, first 100 chars)
   - Due date picker (optional)
   - Create button
-- [ ] On success: capture disappears from inbox, toast with "View task" link
+- [x] On success: capture disappears from inbox, toast with "View" action to navigate to tasks
 
 ### 8.9 Deferred (Post-Phase 8)
 - [ ] Task reordering (drag-and-drop or up/down buttons)

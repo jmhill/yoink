@@ -1,11 +1,15 @@
 // Types
 export type {
   Capture,
+  Task,
   Organization,
   User,
   Token,
   CreateCaptureInput,
   UpdateCaptureInput,
+  CreateTaskInput,
+  UpdateTaskInput,
+  ProcessCaptureToTaskInput,
   CreateTokenResult,
   HealthStatus,
 } from './types.js';

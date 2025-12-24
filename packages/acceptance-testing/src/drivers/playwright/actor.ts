@@ -3,10 +3,14 @@ import type {
   Actor,
   AnonymousActor,
   Capture,
+  Task,
   CreateCaptureInput,
   UpdateCaptureInput,
+  CreateTaskInput,
+  UpdateTaskInput,
+  ProcessCaptureToTaskInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
+import { UnauthorizedError, NotFoundError, ValidationError, UnsupportedOperationError } from '../../dsl/index.js';
 import { ConfigPage, InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
 /**
@@ -301,6 +305,48 @@ export const createPlaywrightActor = (
       }
 
       return { deletedCount: count };
+    },
+
+    // Task operations - not yet implemented in UI (Phase 8.7)
+    // These will be implemented when the Tasks view UI is built
+    async processCaptureToTask(_captureId: string, _input?: ProcessCaptureToTaskInput): Promise<Task> {
+      throw new UnsupportedOperationError('processCaptureToTask', 'playwright');
+    },
+
+    async createTask(_input: CreateTaskInput): Promise<Task> {
+      throw new UnsupportedOperationError('createTask', 'playwright');
+    },
+
+    async listTasks(_filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]> {
+      throw new UnsupportedOperationError('listTasks', 'playwright');
+    },
+
+    async getTask(_id: string): Promise<Task> {
+      throw new UnsupportedOperationError('getTask', 'playwright');
+    },
+
+    async updateTask(_id: string, _input: UpdateTaskInput): Promise<Task> {
+      throw new UnsupportedOperationError('updateTask', 'playwright');
+    },
+
+    async completeTask(_id: string): Promise<Task> {
+      throw new UnsupportedOperationError('completeTask', 'playwright');
+    },
+
+    async uncompleteTask(_id: string): Promise<Task> {
+      throw new UnsupportedOperationError('uncompleteTask', 'playwright');
+    },
+
+    async pinTask(_id: string): Promise<Task> {
+      throw new UnsupportedOperationError('pinTask', 'playwright');
+    },
+
+    async unpinTask(_id: string): Promise<Task> {
+      throw new UnsupportedOperationError('unpinTask', 'playwright');
+    },
+
+    async deleteTask(_id: string): Promise<void> {
+      throw new UnsupportedOperationError('deleteTask', 'playwright');
     },
 
     async goToSettings(): Promise<void> {

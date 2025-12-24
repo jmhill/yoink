@@ -2,8 +2,12 @@ import type {
   Actor,
   AnonymousActor,
   Capture,
+  Task,
   CreateCaptureInput,
   UpdateCaptureInput,
+  CreateTaskInput,
+  UpdateTaskInput,
+  ProcessCaptureToTaskInput,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -172,6 +176,139 @@ export const createHttpActor = (
         throw new UnauthorizedError();
       }
       return response.json<{ deletedCount: number }>();
+    },
+
+    // Process capture to task
+    async processCaptureToTask(captureId: string, input?: ProcessCaptureToTaskInput): Promise<Task> {
+      const response = await client.post(
+        `/api/captures/${captureId}/process`,
+        { type: 'task', data: input ?? {} },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Capture', captureId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to process capture: ${response.body}`);
+      }
+      return response.json<Task>();
+    },
+
+    // Task operations
+    async createTask(input: CreateTaskInput): Promise<Task> {
+      const response = await client.post('/api/tasks', input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to create task: ${response.body}`);
+      }
+      return response.json<Task>();
+    },
+
+    async listTasks(filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]> {
+      const query = filter ? `?filter=${filter}` : '';
+      const response = await client.get(`/api/tasks${query}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
+    async getTask(id: string): Promise<Task> {
+      const response = await client.get(`/api/tasks/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      return response.json<Task>();
+    },
+
+    async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+      const response = await client.patch(`/api/tasks/${id}`, input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      return response.json<Task>();
+    },
+
+    async completeTask(id: string): Promise<Task> {
+      const response = await client.post(`/api/tasks/${id}/complete`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      return response.json<Task>();
+    },
+
+    async uncompleteTask(id: string): Promise<Task> {
+      const response = await client.post(`/api/tasks/${id}/uncomplete`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      return response.json<Task>();
+    },
+
+    async pinTask(id: string): Promise<Task> {
+      const response = await client.post(`/api/tasks/${id}/pin`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      return response.json<Task>();
+    },
+
+    async unpinTask(id: string): Promise<Task> {
+      const response = await client.post(`/api/tasks/${id}/unpin`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      return response.json<Task>();
+    },
+
+    async deleteTask(id: string): Promise<void> {
+      const response = await client.delete(`/api/tasks/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      // 204 No Content is success
     },
 
     async goToSettings(): Promise<void> {

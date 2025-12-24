@@ -9,7 +9,7 @@ export type CreateCaptureCommand = {
 
 export type ListCapturesQuery = {
   organizationId: string;
-  status?: 'inbox' | 'trashed';
+  status?: 'inbox' | 'trashed' | 'processed';
   snoozed?: boolean; // true = only snoozed, false = exclude snoozed
   limit?: number;
   cursor?: string;
@@ -59,4 +59,13 @@ export type DeleteCaptureCommand = {
 
 export type EmptyTrashCommand = {
   organizationId: string;
+};
+
+// Processing operations
+export type ProcessCaptureToTaskCommand = {
+  id: string;
+  organizationId: string;
+  createdById: string;
+  title?: string; // Defaults to capture content (first 500 chars)
+  dueDate?: string; // YYYY-MM-DD format
 };

@@ -1,7 +1,26 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { CaptureSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
+import { CaptureSchema, CaptureStatusSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
+import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
+
+// Request body for processing a capture into a task
+// Using discriminated union to support future processing types (e.g., note)
+export const ProcessCaptureToTaskSchema = z.object({
+  type: z.literal('task'),
+  data: z.object({
+    title: z.string().min(1).max(500).optional(), // Defaults to capture content
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD format
+  }),
+});
+
+export type ProcessCaptureToTask = z.infer<typeof ProcessCaptureToTaskSchema>;
+
+// Currently only supports 'task', but designed for future extensibility
+export const ProcessCaptureBodySchema = ProcessCaptureToTaskSchema;
+// Future: z.discriminatedUnion('type', [ProcessCaptureToTaskSchema, ProcessCaptureToNoteSchema])
+
+export type ProcessCaptureBody = z.infer<typeof ProcessCaptureBodySchema>;
 
 const c = initContract();
 
@@ -23,7 +42,7 @@ export const captureContract = c.router({
     method: 'GET',
     path: '/api/captures',
     query: z.object({
-      status: z.enum(['inbox', 'trashed']).optional(),
+      status: CaptureStatusSchema.optional(),
       snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
       limit: z.coerce.number().min(1).max(100).default(50),
       cursor: z.string().uuid().optional(),
@@ -170,6 +189,24 @@ export const captureContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Permanently delete all captures in trash',
+  },
+
+  // Processing operations - convert capture to task/note
+  process: {
+    method: 'POST',
+    path: '/api/captures/:id/process',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: ProcessCaptureBodySchema,
+    responses: {
+      201: TaskSchema, // Returns the created task
+      400: ErrorSchema, // Capture not in inbox or validation error
+      401: ErrorSchema,
+      404: ErrorSchema, // Capture not found
+      500: ErrorSchema,
+    },
+    summary: 'Process a capture into a task (or note in the future)',
   },
 }, {
     strictStatusCodes: true

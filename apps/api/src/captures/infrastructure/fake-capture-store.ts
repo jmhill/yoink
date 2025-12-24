@@ -4,6 +4,7 @@ import type {
   CaptureStore,
   FindByOrganizationOptions,
   FindByOrganizationResult,
+  MarkAsProcessedOptions,
 } from '../domain/capture-store.js';
 import { storageError, type StorageError } from '../domain/capture-errors.js';
 
@@ -123,6 +124,25 @@ export const createFakeCaptureStore = (
       }
       
       return okAsync(initialLength - captures.length);
+    },
+
+    markAsProcessed: (opts: MarkAsProcessedOptions): ResultAsync<Capture, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Mark as processed failed'));
+      }
+      const index = captures.findIndex((c) => c.id === opts.id);
+      if (index === -1) {
+        return errAsync(storageError('Capture not found'));
+      }
+      const updated: Capture = {
+        ...captures[index],
+        status: 'processed',
+        processedAt: opts.processedAt,
+        processedToType: opts.processedToType,
+        processedToId: opts.processedToId,
+      };
+      captures[index] = updated;
+      return okAsync(updated);
     },
   };
 };

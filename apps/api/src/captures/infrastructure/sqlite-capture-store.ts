@@ -5,6 +5,7 @@ import type {
   CaptureStore,
   FindByOrganizationOptions,
   FindByOrganizationResult,
+  MarkAsProcessedOptions,
 } from '../domain/capture-store.js';
 import { storageError, type StorageError } from '../domain/capture-errors.js';
 
@@ -20,6 +21,9 @@ type CaptureRow = {
   captured_at: string;
   trashed_at: string | null;
   snoozed_until: string | null;
+  processed_at: string | null;
+  processed_to_type: string | null;
+  processed_to_id: string | null;
 };
 
 const rowToCapture = (row: CaptureRow): Capture => ({
@@ -30,10 +34,13 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   title: row.title ?? undefined,
   sourceUrl: row.source_url ?? undefined,
   sourceApp: row.source_app ?? undefined,
-  status: row.status as 'inbox' | 'trashed',
+  status: row.status as 'inbox' | 'trashed' | 'processed',
   capturedAt: row.captured_at,
   trashedAt: row.trashed_at ?? undefined,
   snoozedUntil: row.snoozed_until ?? undefined,
+  processedAt: row.processed_at ?? undefined,
+  processedToType: (row.processed_to_type as 'task' | 'note') ?? undefined,
+  processedToId: row.processed_to_id ?? undefined,
 });
 
 /**
@@ -107,7 +114,10 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
             title = ?,
             status = ?,
             trashed_at = ?,
-            snoozed_until = ?
+            snoozed_until = ?,
+            processed_at = ?,
+            processed_to_type = ?,
+            processed_to_id = ?
           WHERE id = ?
         `);
 
@@ -117,6 +127,9 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.status,
           capture.trashedAt ?? null,
           capture.snoozedUntil ?? null,
+          capture.processedAt ?? null,
+          capture.processedToType ?? null,
+          capture.processedToId ?? null,
           capture.id
         );
 
@@ -204,6 +217,38 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         return okAsync(Number(result.changes));
       } catch (error) {
         return errAsync(storageError('Failed to empty trash', error));
+      }
+    },
+
+    markAsProcessed: (options: MarkAsProcessedOptions): ResultAsync<Capture, StorageError> => {
+      try {
+        const stmt = db.prepare(`
+          UPDATE captures SET
+            status = 'processed',
+            processed_at = ?,
+            processed_to_type = ?,
+            processed_to_id = ?
+          WHERE id = ? AND deleted_at IS NULL
+        `);
+
+        stmt.run(
+          options.processedAt,
+          options.processedToType,
+          options.processedToId,
+          options.id
+        );
+
+        // Fetch the updated capture to return
+        const selectStmt = db.prepare(`SELECT * FROM captures WHERE id = ? AND deleted_at IS NULL`);
+        const row = selectStmt.get(options.id) as CaptureRow | undefined;
+
+        if (!row) {
+          return errAsync(storageError('Capture not found after update'));
+        }
+
+        return okAsync(rowToCapture(row));
+      } catch (error) {
+        return errAsync(storageError('Failed to mark capture as processed', error));
       }
     },
   };

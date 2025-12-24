@@ -1,42 +1,40 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { captureContract } from '@yoink/api-contracts';
-import type { CaptureService } from '../domain/capture-service.js';
+import { taskContract } from '@yoink/api-contracts';
+import type { TaskService } from '../domain/task-service.js';
 import type { ProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
-export type CaptureRoutesDependencies = {
-  captureService: CaptureService;
+export type TaskRoutesDependencies = {
+  taskService: TaskService;
   processingService: ProcessingService;
   authMiddleware: AuthMiddleware;
 };
 
-export const registerCaptureRoutes = async (
+export const registerTaskRoutes = async (
   app: FastifyInstance,
-  deps: CaptureRoutesDependencies
+  deps: TaskRoutesDependencies
 ) => {
-  const { captureService, processingService, authMiddleware } = deps;
+  const { taskService, processingService, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', authMiddleware);
 
-    const captureRouter = s.router(captureContract, {
+    const taskRouter = s.router(taskContract, {
       create: async ({ body, request }) => {
-        const result = await captureService.create({
-          content: body.content,
+        const result = await taskService.create({
           title: body.title,
-          sourceUrl: body.sourceUrl,
-          sourceApp: body.sourceApp,
+          dueDate: body.dueDate,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 201 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
@@ -51,10 +49,9 @@ export const registerCaptureRoutes = async (
       },
 
       list: async ({ query, request }) => {
-        const result = await captureService.list({
+        const result = await taskService.list({
           organizationId: request.authContext.organizationId,
-          status: query.status,
-          snoozed: query.snoozed,
+          filter: query.filter,
           limit: query.limit,
           cursor: query.cursor,
         });
@@ -77,22 +74,22 @@ export const registerCaptureRoutes = async (
       },
 
       get: async ({ params, request }) => {
-        const result = await captureService.findById({
+        const result = await taskService.find({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -105,24 +102,24 @@ export const registerCaptureRoutes = async (
       },
 
       update: async ({ params, body, request }) => {
-        const result = await captureService.update({
+        const result = await taskService.update({
           id: params.id,
           organizationId: request.authContext.organizationId,
           title: body.title,
-          content: body.content,
+          dueDate: body.dueDate,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -134,23 +131,23 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      trash: async ({ params, request }) => {
-        const result = await captureService.trash({
+      complete: async ({ params, request }) => {
+        const result = await taskService.complete({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -162,23 +159,23 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      restore: async ({ params, request }) => {
-        const result = await captureService.restore({
+      uncomplete: async ({ params, request }) => {
+        const result = await taskService.uncomplete({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -190,34 +187,23 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      snooze: async ({ params, body, request }) => {
-        const result = await captureService.snooze({
+      pin: async ({ params, request }) => {
+        const result = await taskService.pin({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          until: body.until,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'CAPTURE_ALREADY_TRASHED':
-                return {
-                  status: 400 as const,
-                  body: { message: 'Cannot snooze a trashed capture' },
-                };
-              case 'INVALID_SNOOZE_TIME':
-                return {
-                  status: 400 as const,
-                  body: { message: error.message },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -229,23 +215,23 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      unsnooze: async ({ params, request }) => {
-        const result = await captureService.unsnooze({
+      unpin: async ({ params, request }) => {
+        const result = await taskService.unpin({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          (task) => ({
             status: 200 as const,
-            body: capture,
+            body: task,
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -258,7 +244,8 @@ export const registerCaptureRoutes = async (
       },
 
       delete: async ({ params, request }) => {
-        const result = await captureService.delete({
+        // Use processingService for cascade delete (deletes source capture too)
+        const result = await processingService.deleteTaskWithCascade({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
@@ -270,81 +257,10 @@ export const registerCaptureRoutes = async (
           }),
           (error) => {
             switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'CAPTURE_NOT_IN_TRASH':
-                return {
-                  status: 409 as const,
-                  body: { message: 'Capture must be in trash before it can be deleted' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      emptyTrash: async ({ request }) => {
-        const result = await captureService.emptyTrash({
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (data) => ({
-            status: 200 as const,
-            body: data,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      process: async ({ params, body, request }) => {
-        // Currently only supports 'task' type
-        if (body.type !== 'task') {
-          return {
-            status: 400 as const,
-            body: { message: 'Unsupported processing type' },
-          };
-        }
-
-        const result = await processingService.processCaptureToTask({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-          title: body.data.title,
-          dueDate: body.data.dueDate,
-        });
-
-        return result.match(
-          (task) => ({
-            status: 201 as const,
-            body: task,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'CAPTURE_NOT_IN_INBOX':
-                return {
-                  status: 400 as const,
-                  body: { message: 'Capture must be in inbox to be processed' },
+                  body: { message: 'Task not found' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -357,7 +273,7 @@ export const registerCaptureRoutes = async (
       },
     });
 
-    s.registerRouter(captureContract, captureRouter, authedApp, {
+    s.registerRouter(taskContract, taskRouter, authedApp, {
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {

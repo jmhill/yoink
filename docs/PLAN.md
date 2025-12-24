@@ -27,7 +27,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
-**Phase 8: Capture → Task Flow** - In Progress (8.1-8.4 complete, next: 8.5 Acceptance Tests)
+**Phase 8: Capture → Task Flow** - In Progress (8.1-8.5 complete, next: 8.6 Bottom Navigation)
 
 ---
 
@@ -666,27 +666,28 @@ Cross-entity operation: creates task + updates capture status.
 - `apps/api/src/processing/domain/processing-service.test.ts` - 13 tests
 - `apps/api/src/processing/domain/index.ts` - Module export
 
-### 8.5 Acceptance Tests for Tasks
-- [ ] Create `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts`
-- [ ] Extend DSL types (`Task` type in `types.ts`)
-- [ ] Extend `CoreActor` interface with task methods:
+### 8.5 Acceptance Tests for Tasks - Complete ✓
+- [x] Create `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts` (22 tests)
+- [x] Create `packages/acceptance-tests/src/use-cases/processing-captures.test.ts` (10 tests)
+- [x] Extend DSL types (`Task` type in `types.ts`)
+- [x] Extend `CoreActor` interface with task methods:
   - `createTask()`, `listTasks()`, `getTask()`, `updateTask()`
   - `completeTask()`, `uncompleteTask()`
   - `pinTask()`, `unpinTask()`, `deleteTask()`
   - `processCaptureToTask(captureId, data)`
-- [ ] Implement HTTP driver for task operations
-- [ ] Implement Playwright driver + `TasksPage` page object
+- [x] Implement HTTP driver for task operations
+- [x] Add placeholder stubs to Playwright actor (throws `UnsupportedOperationError` until UI)
 
-#### Test Cases
-- [ ] Create task directly (not from capture)
-- [ ] Complete/uncomplete task
-- [ ] Pin/unpin task (pinned tasks appear first)
-- [ ] Delete task
-- [ ] Process capture to task
-- [ ] Processed capture excluded from inbox
-- [ ] Capture links back to task via `processedToId`
-- [ ] Deleting task also deletes source capture
-- [ ] Tasks isolated by organization
+#### Test Cases (All Passing)
+- [x] Create task directly (not from capture)
+- [x] Complete/uncomplete task
+- [x] Pin/unpin task (pinned tasks appear first)
+- [x] Delete task
+- [x] Process capture to task
+- [x] Processed capture excluded from inbox
+- [x] Capture links back to task via `processedToId`
+- [x] Deleting task also deletes source capture
+- [x] Tasks isolated by organization
 
 ### 8.6 Bottom Navigation + Routing
 Restructure web app for mobile-first bottom navigation.

@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { Button } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Label } from '@yoink/ui-base/components/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@yoink/ui-base/components/dialog';
+import { CheckSquare } from 'lucide-react';
+
+type TaskCreationModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  capture: { id: string; content: string } | null;
+  onConfirm: (captureId: string, title: string, dueDate?: string) => void;
+  isLoading?: boolean;
+};
+
+export function TaskCreationModal({
+  open,
+  onOpenChange,
+  capture,
+  onConfirm,
+  isLoading = false,
+}: TaskCreationModalProps) {
+  // Default title: first 100 chars of capture content
+  const defaultTitle = capture?.content.slice(0, 100).trim() ?? '';
+  const [title, setTitle] = useState(defaultTitle);
+  const [dueDate, setDueDate] = useState('');
+
+  // Reset form when modal opens with new capture
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen && capture) {
+      setTitle(capture.content.slice(0, 100).trim());
+      setDueDate('');
+    }
+    onOpenChange(newOpen);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!capture || !title.trim()) return;
+    onConfirm(capture.id, title.trim(), dueDate || undefined);
+  };
+
+  // Get today's date in YYYY-MM-DD format for min date
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckSquare className="h-5 w-5" />
+            Create Task
+          </DialogTitle>
+          <DialogDescription>
+            Convert this capture into a task. You can edit the title and set an optional due date.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="task-title">Title</Label>
+            <Input
+              id="task-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Task title"
+              disabled={isLoading}
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="task-due-date">Due Date (optional)</Label>
+            <Input
+              id="task-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              min={today}
+              disabled={isLoading}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !title.trim()}>
+              {isLoading ? 'Creating...' : 'Create Task'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

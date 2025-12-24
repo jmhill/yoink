@@ -1,16 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState, useRef } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
-import { tsr } from '@/api/client';
+import { tsr, tsrTasks } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, Clock } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
+import { TaskCreationModal } from '@/components/task-creation-modal';
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
 
@@ -20,10 +21,14 @@ export const Route = createFileRoute('/_authenticated/')({
 
 function InboxPage() {
   const isOnline = useNetworkStatus();
+  const navigate = useNavigate();
   const [newContent, setNewContent] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskModalCapture, setTaskModalCapture] = useState<{ id: string; content: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
+  const tsrTasksQueryClient = tsrTasks.useQueryClient();
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
@@ -270,6 +275,64 @@ function InboxPage() {
     },
   });
 
+  // Process capture to task mutation
+  const processMutation = tsr.process.useMutation({
+    onMutate: async ({ params }) => {
+      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+
+      const previousInbox = tsrQueryClient.list.getQueryData([
+        'captures',
+        'inbox',
+      ]);
+
+      // Optimistically remove from inbox
+      if (previousInbox?.status === 200) {
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
+          body: {
+            ...previousInbox.body,
+            captures: previousInbox.body.captures.filter(
+              (c) => c.id !== params.id
+            ),
+          },
+        });
+      }
+
+      return { previousInbox };
+    },
+
+    onError: (err, _variables, context) => {
+      if (context?.previousInbox) {
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          context.previousInbox
+        );
+      }
+
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to create task');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('Task created', {
+        action: {
+          label: 'View',
+          onClick: () => navigate({ to: '/tasks' }),
+        },
+      });
+      setTaskModalOpen(false);
+      setTaskModalCapture(null);
+    },
+
+    onSettled: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      tsrTasksQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContent.trim()) return;
@@ -326,6 +389,19 @@ function InboxPage() {
     snoozeMutation.mutate({
       params: { id },
       body: { until },
+    });
+  };
+
+  const handleProcessToTask = (capture: { id: string; content: string }) => {
+    setTaskModalCapture(capture);
+    setTaskModalOpen(true);
+  };
+
+  const handleConfirmTask = (captureId: string, title: string, dueDate?: string) => {
+    setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
+    processMutation.mutate({
+      params: { id: captureId },
+      body: { type: 'task', data: { title, dueDate } },
     });
   };
 
@@ -413,14 +489,24 @@ function InboxPage() {
                 capture={capture}
                 onTrash={handleTrash}
                 onSnooze={handleSnooze}
+                onProcessToTask={handleProcessToTask}
                 isTrashing={trashMutation.isPending}
                 isSnoozeing={snoozeMutation.isPending}
+                isProcessing={processMutation.isPending}
                 formatDate={formatDate}
               />
             </AnimatedListItem>
           ))}
         </AnimatedList>
       )}
+
+      <TaskCreationModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        capture={taskModalCapture}
+        onConfirm={handleConfirmTask}
+        isLoading={processMutation.isPending}
+      />
     </div>
   );
 }

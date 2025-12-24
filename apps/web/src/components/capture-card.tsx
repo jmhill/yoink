@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
-import { Trash2, Link as LinkIcon, Clock } from 'lucide-react';
+import { Trash2, Link as LinkIcon, Clock, ArrowRight } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -22,8 +22,10 @@ export type CaptureCardProps = {
   };
   onTrash: (id: string, direction: ExitDirection) => void;
   onSnooze: (id: string, option: SnoozeOption, direction: ExitDirection) => void;
+  onProcessToTask?: (capture: { id: string; content: string }) => void;
   isTrashing?: boolean;
   isSnoozeing?: boolean;
+  isProcessing?: boolean;
   formatDate: (date: string) => string;
 };
 
@@ -31,8 +33,10 @@ export function CaptureCard({
   capture,
   onTrash,
   onSnooze,
+  onProcessToTask,
   isTrashing = false,
   isSnoozeing = false,
+  isProcessing = false,
   formatDate,
 }: CaptureCardProps) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
@@ -97,6 +101,17 @@ export function CaptureCard({
           </p>
         </div>
         <div className="flex gap-1">
+          {onProcessToTask && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onProcessToTask(capture)}
+              disabled={isProcessing}
+              title="Convert to task"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
           <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
             <DropdownMenuTrigger
               disabled={isSnoozeing}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -27,19 +27,16 @@ export function TaskCreationModal({
   onConfirm,
   isLoading = false,
 }: TaskCreationModalProps) {
-  // Default title: first 100 chars of capture content
-  const defaultTitle = capture?.content.slice(0, 100).trim() ?? '';
-  const [title, setTitle] = useState(defaultTitle);
+  const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
 
-  // Reset form when modal opens with new capture
-  const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen && capture) {
+  // Reset form when capture changes (new capture selected for processing)
+  useEffect(() => {
+    if (capture) {
       setTitle(capture.content.slice(0, 100).trim());
       setDueDate('');
     }
-    onOpenChange(newOpen);
-  };
+  }, [capture]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +48,7 @@ export function TaskCreationModal({
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -92,7 +89,7 @@ export function TaskCreationModal({
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleOpenChange(false)}
+              onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Cancel

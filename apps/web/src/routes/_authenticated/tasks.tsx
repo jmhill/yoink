@@ -15,7 +15,7 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsrTasks } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, List, CheckCheck } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import type { TaskFilter, Task } from '@yoink/api-contracts';
 
 const searchSchema = z.object({
-  filter: z.enum(['today', 'upcoming', 'all']).default('today'),
+  filter: z.enum(['today', 'upcoming', 'all', 'completed']).default('today'),
 });
 
 export const Route = createFileRoute('/_authenticated/tasks')({
@@ -338,7 +338,7 @@ function TasksPage() {
   const handleFilterChange = (newFilter: string) => {
     navigate({
       to: '/tasks',
-      search: { filter: newFilter as 'today' | 'upcoming' | 'all' },
+      search: { filter: newFilter as 'today' | 'upcoming' | 'all' | 'completed' },
     });
   };
 
@@ -356,37 +356,44 @@ function TasksPage() {
       <Header viewName="Tasks" />
 
       <Tabs value={filter} onValueChange={handleFilterChange} className="mb-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="today" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Today
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="today" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
+            <Calendar className="h-4 w-4 shrink-0" />
+            <span className="truncate">Today</span>
           </TabsTrigger>
-          <TabsTrigger value="upcoming" className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4" />
-            Upcoming
+          <TabsTrigger value="upcoming" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
+            <CalendarClock className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline truncate">Upcoming</span>
+            <span className="sm:hidden truncate">Soon</span>
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            All
+          <TabsTrigger value="all" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
+            <List className="h-4 w-4 shrink-0" />
+            <span className="truncate">All</span>
+          </TabsTrigger>
+          <TabsTrigger value="completed" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
+            <CheckCheck className="h-4 w-4 shrink-0" />
+            <span className="truncate">Done</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      <form onSubmit={handleQuickAdd} className="mb-6">
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            placeholder={`Add task${filter === 'today' ? ' for today' : ''}...`}
-            disabled={createMutation.isPending}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
-            {createMutation.isPending ? '...' : 'Add'}
-          </Button>
-        </div>
-      </form>
+      {filter !== 'completed' && (
+        <form onSubmit={handleQuickAdd} className="mb-6">
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              placeholder={`Add task${filter === 'today' ? ' for today' : ''}...`}
+              disabled={createMutation.isPending}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
+              {createMutation.isPending ? '...' : 'Add'}
+            </Button>
+          </div>
+        </form>
+      )}
 
       {error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
@@ -395,16 +402,22 @@ function TasksPage() {
       ) : tasks.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            <CheckSquare className="mx-auto mb-2 h-8 w-8" />
+            {filter === 'completed' ? (
+              <CheckCheck className="mx-auto mb-2 h-8 w-8" />
+            ) : (
+              <CheckSquare className="mx-auto mb-2 h-8 w-8" />
+            )}
             <p>
               {filter === 'today' && 'No tasks for today'}
               {filter === 'upcoming' && 'No upcoming tasks'}
               {filter === 'all' && 'No tasks yet'}
+              {filter === 'completed' && 'No completed tasks'}
             </p>
             <p className="text-sm">
               {filter === 'today' && 'Add a task above or process a capture'}
               {filter === 'upcoming' && 'Tasks with future due dates will appear here'}
               {filter === 'all' && 'Create your first task above'}
+              {filter === 'completed' && 'Complete a task to see it here'}
             </p>
           </CardContent>
         </Card>

@@ -726,9 +726,15 @@ Restructure web app for mobile-first bottom navigation.
   - Create button
 - [x] On success: capture disappears from inbox, toast with "View" action to navigate to tasks
 
-### 8.9 Deferred (Post-Phase 8)
+### 8.9 Completed Tasks Tab - Complete ✓
+- [x] Add "Done" tab to Tasks view (4th tab: Today | Soon | All | Done)
+- [x] Backend already supported `completed` filter
+- [x] Hide quick-add form on Done tab (can't create completed tasks)
+- [x] Empty state with "Complete a task to see it here" message
+- [x] Responsive tab labels ("Upcoming" → "Soon" on mobile)
+
+### 8.10 Deferred (Post-Phase 8)
 - [ ] Task reordering (drag-and-drop or up/down buttons)
-- [ ] Completed tasks section (collapsed by default)
 - [ ] Browse tab for folder navigation (Phase 9)
 - [ ] Desktop pane layout (future desktop enhancement)
 

@@ -560,6 +560,7 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 **Goal**: Implement Vision Phase A - captures become the entry point for tasks
 
 See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for full context.
+See [docs/mockups/](./mockups/) for UI wireframes - we're implementing the mobile-responsive design first.
 
 **Key Design Decisions:**
 - Captures gain a third status: `processed` (permanently archived after becoming a task/note)
@@ -568,18 +569,35 @@ See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) f
 - Pin moves from captures to tasks (captures are for triage only, not fussing)
 - New fields use `processed` language: `processedAt`, `processedToType`, `processedToId`
 - Process endpoint: `POST /api/captures/:id/process` with discriminated union body
+- Tasks without due dates appear only in "All" filter, not Today/Upcoming
+- Direct task creation is allowed (source capture is optional)
+- Share target always creates captures in inbox (no direct share-to-task)
 
-### 8.1 Remove Pin from Captures (UI First)
+**Navigation Architecture (Mobile-First):**
+```
+┌─────────────────────────────────────┐
+│ [🐷 {View Name}]        [Settings] │  ← Header
+├─────────────────────────────────────┤
+│ [Snoozed | Inbox | Trash]          │  ← Sub-tabs (Inbox view)
+│ or [Today | Upcoming | All]         │  ← Sub-tabs (Tasks view)
+├─────────────────────────────────────┤
+│         Content Area                │
+├─────────────────────────────────────┤
+│      [Inbox]    [Tasks]             │  ← Bottom nav (NEW)
+└─────────────────────────────────────┘
+```
+
+### 8.1 Remove Pin from Captures (UI First) - Complete ✓
 Ordered for backwards compatibility: UI changes first, then API, then database.
 
-- [ ] **Web App**: Remove pin button from CaptureCard component
-- [ ] **Web App**: Remove pin-related optimistic updates and mutations
-- [ ] **Web App**: Remove pin sorting logic from inbox view
-- [ ] **Acceptance Tests**: Remove/update pin-related capture tests
-- [ ] **API Contract**: Remove pin/unpin endpoints from capture-contract
-- [ ] **Backend**: Remove pin/unpin commands, service methods, routes
-- [ ] **Migration 009**: Drop `pinned_at` column from captures (table rebuild)
-- [ ] **Schema**: Remove `pinnedAt` field from CaptureSchema
+- [x] **Web App**: Remove pin button from CaptureCard component
+- [x] **Web App**: Remove pin-related optimistic updates and mutations
+- [x] **Web App**: Remove pin sorting logic from inbox view
+- [x] **Acceptance Tests**: Remove/update pin-related capture tests
+- [x] **API Contract**: Remove pin/unpin endpoints from capture-contract
+- [x] **Backend**: Remove pin/unpin commands, service methods, routes
+- [x] **Migration 009**: Drop `pinned_at` column from captures (table rebuild)
+- [x] **Schema**: Remove `pinnedAt` field from CaptureSchema
 
 ### 8.2 Add Processing Fields to Captures
 - [ ] **Migration 010**: Add `processed_at`, `processed_to_type`, `processed_to_id` columns
@@ -608,7 +626,7 @@ New domain following hexagonal architecture pattern.
 - [ ] Add `packages/api-contracts/src/schemas/task.ts`
 - [ ] Add `packages/api-contracts/src/contracts/task-contract.ts`
   - POST /api/tasks (create)
-  - GET /api/tasks (list, with `completed` filter)
+  - GET /api/tasks (list, with `completed` and `dueDate` filters)
   - GET /api/tasks/:id
   - PATCH /api/tasks/:id (update title, dueDate)
   - POST /api/tasks/:id/complete
@@ -649,7 +667,7 @@ Cross-entity operation: creates task + updates capture status.
   - `createTask()`, `listTasks()`, `getTask()`, `updateTask()`
   - `completeTask()`, `uncompleteTask()`
   - `pinTask()`, `unpinTask()`, `deleteTask()`
-  - `processCapture(captureId, type, data)`
+  - `processCaptureToTask(captureId, data)`
 - [ ] Implement HTTP driver for task operations
 - [ ] Implement Playwright driver + `TasksPage` page object
 
@@ -664,34 +682,49 @@ Cross-entity operation: creates task + updates capture status.
 - [ ] Deleting task also deletes source capture
 - [ ] Tasks isolated by organization
 
-### 8.6 Tasks Desktop UI
+### 8.6 Bottom Navigation + Routing
+Restructure web app for mobile-first bottom navigation.
+
+- [ ] Create bottom navigation component with `Inbox | Tasks` tabs
+- [ ] Restructure routing:
+  - `/` → Inbox view (default, with snoozed/inbox/trash sub-tabs)
+  - `/tasks` → Tasks view (with today/upcoming/all sub-tabs)
+  - Keep `/settings`, `/config`, `/share` routes
+- [ ] Update header to show current view name dynamically
+- [ ] Move sub-tabs (snoozed/inbox/trash) inside Inbox view component
+
+### 8.7 Tasks View UI
 - [ ] Create `/tasks` route in `apps/web/src/routes/_authenticated/tasks.tsx`
+- [ ] Sub-tabs: Today | Upcoming | All
+  - Today: tasks where `dueDate === today`
+  - Upcoming: tasks where `dueDate > today`
+  - All: all tasks regardless of due date
 - [ ] Create `TaskCard` component:
   - Checkbox for completion toggle
   - Pin button (filled when pinned)
   - Due date display (if set)
   - Delete button
 - [ ] Create `TaskList` with Framer Motion animations
-- [ ] Quick "Add task" input at top of tasks view
+- [ ] "+ Add task" button at bottom (opens inline input or modal)
 - [ ] CRUD mutations with optimistic updates
 - [ ] Pin/unpin mutations with list re-sorting
 - [ ] Complete/uncomplete mutations
 
-### 8.7 Triage UI ("→ Task" Action)
-- [ ] Add "→ Task" button to `CaptureCard` in inbox (alongside Snooze/Trash)
+### 8.8 Triage UI ("→ Task" Action)
+- [ ] Add "→ Task" button to `CaptureCard` in inbox
 - [ ] Create `TaskCreationModal` component:
   - Title input (pre-filled from capture content, first 100 chars)
   - Due date picker (optional)
   - Create button
 - [ ] On success: capture disappears from inbox, toast with "View task" link
-- [ ] Update tab navigation: Snoozed | Inbox | Tasks | Trash
 
-### 8.8 Deferred (Post-Phase 8)
+### 8.9 Deferred (Post-Phase 8)
 - [ ] Task reordering (drag-and-drop or up/down buttons)
 - [ ] Completed tasks section (collapsed by default)
-- [ ] Due date views (Today, Upcoming, Someday)
+- [ ] Browse tab for folder navigation (Phase 9)
+- [ ] Desktop pane layout (future desktop enhancement)
 
-**Deliverable**: Captures can be processed into tasks on a desktop view. Tasks have pin, complete, delete. Processing is one-way and preserves capture as reference.
+**Deliverable**: Mobile-first bottom navigation with Inbox and Tasks tabs. Captures can be processed into tasks. Tasks have pin, complete, delete, due dates. Processing is one-way and preserves capture as reference.
 
 ---
 

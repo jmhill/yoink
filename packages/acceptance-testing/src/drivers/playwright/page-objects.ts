@@ -174,22 +174,6 @@ export class InboxPage {
     await this.page.getByText(content).waitFor({ state: 'hidden' });
   }
 
-  async pinCapture(content: string): Promise<void> {
-    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
-    await card.hover();
-    await card.getByRole('button', { name: 'Pin' }).click();
-    // Wait for the pin action to complete - the button should now say "Unpin"
-    await card.getByRole('button', { name: 'Unpin' }).waitFor();
-  }
-
-  async unpinCapture(content: string): Promise<void> {
-    const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
-    await card.hover();
-    await card.getByRole('button', { name: 'Unpin' }).click();
-    // Wait for the unpin action to complete - the button should now say "Pin"
-    await card.getByRole('button', { name: 'Pin' }).waitFor();
-  }
-
   async snoozeCapture(content: string, option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
     const card = this.page.locator('[data-slot="card"]').filter({ hasText: content });
     await card.hover();

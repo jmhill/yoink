@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
-import { Trash2, Link as LinkIcon, Pin, Clock } from 'lucide-react';
+import { Trash2, Link as LinkIcon, Clock } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -19,13 +19,10 @@ export type CaptureCardProps = {
     content: string;
     sourceUrl?: string | null;
     capturedAt: string;
-    pinnedAt?: string | null;
   };
   onTrash: (id: string, direction: ExitDirection) => void;
-  onPin: (id: string, isPinned: boolean) => void;
   onSnooze: (id: string, option: SnoozeOption, direction: ExitDirection) => void;
   isTrashing?: boolean;
-  isPinning?: boolean;
   isSnoozeing?: boolean;
   formatDate: (date: string) => string;
 };
@@ -33,15 +30,12 @@ export type CaptureCardProps = {
 export function CaptureCard({
   capture,
   onTrash,
-  onPin,
   onSnooze,
   isTrashing = false,
-  isPinning = false,
   isSnoozeing = false,
   formatDate,
 }: CaptureCardProps) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
-  const isPinned = Boolean(capture.pinnedAt);
 
   // Track if snooze was triggered by swipe (for exit direction)
   const [snoozeSwipeDirection, setSnoozeSwipeDirection] = useState<ExitDirection | null>(null);
@@ -69,7 +63,6 @@ export function CaptureCard({
   return (
     <SwipeableCard
       data-capture-id={capture.id}
-      className={isPinned ? 'border-l-4 border-l-primary' : ''}
       leftAction={{
         icon: <Clock className="h-5 w-5" />,
         label: 'Snooze',
@@ -124,15 +117,6 @@ export function CaptureCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onPin(capture.id, isPinned)}
-            disabled={isPinning}
-            aria-label={isPinned ? 'Unpin' : 'Pin'}
-          >
-            <Pin className={`h-4 w-4 ${isPinned ? 'fill-current' : ''}`} />
-          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

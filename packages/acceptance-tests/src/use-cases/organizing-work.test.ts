@@ -89,51 +89,6 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('can pin a capture', async () => {
-      const capture = await alice.createCapture({ content: 'Important note' });
-
-      const pinned = await alice.pinCapture(capture.id);
-
-      expect(pinned.pinnedAt).toBeDefined();
-    });
-
-    it('can unpin a capture', async () => {
-      const capture = await alice.createCapture({ content: 'Less important' });
-      await alice.pinCapture(capture.id);
-
-      const unpinned = await alice.unpinCapture(capture.id);
-
-      expect(unpinned.pinnedAt).toBeUndefined();
-    });
-
-    it('pinned captures appear before unpinned in inbox', async () => {
-      // Create captures with slight delay to ensure different timestamps
-      const first = await alice.createCapture({ content: `first-${Date.now()}` });
-      await alice.createCapture({ content: `second-${Date.now()}` });
-
-      // Pin the first (older) capture
-      await alice.pinCapture(first.id);
-
-      const captures = await alice.listCaptures();
-
-      // Pinned capture should come first, even though it's older
-      expect(captures[0].id).toBe(first.id);
-    });
-
-    it('trashing a pinned capture automatically unpins it', async () => {
-      const capture = await alice.createCapture({ content: 'Will be trashed' });
-      await alice.pinCapture(capture.id);
-
-      const trashed = await alice.trashCapture(capture.id);
-
-      expect(trashed.pinnedAt).toBeUndefined();
-    });
-
-    it('returns not found when pinning non-existent capture', async () => {
-      const nonExistentId = '00000000-0000-0000-0000-000000000000';
-
-      await expect(alice.pinCapture(nonExistentId)).rejects.toThrow(NotFoundError);
-    });
   });
 });
 

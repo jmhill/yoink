@@ -32,8 +32,6 @@ export type UpdateCaptureError = StorageError | CaptureNotFoundError;
 // Explicit operation errors
 export type TrashCaptureError = StorageError | CaptureNotFoundError;
 export type RestoreCaptureError = StorageError | CaptureNotFoundError;
-export type PinCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyTrashedError;
-export type UnpinCaptureError = StorageError | CaptureNotFoundError;
 export type SnoozeCaptureError = StorageError | CaptureNotFoundError | CaptureAlreadyTrashedError | InvalidSnoozeTimeError;
 export type UnsnoozeCaptureError = StorageError | CaptureNotFoundError;
 export type DeleteCaptureError = StorageError | CaptureNotFoundError | CaptureNotInTrashError;

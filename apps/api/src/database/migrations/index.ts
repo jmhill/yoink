@@ -20,6 +20,7 @@ import { migration as addPinnedAt } from './005-add-pinned-at.js';
 import { migration as addSnoozedUntil } from './006-add-snoozed-until.js';
 import { migration as renameArchiveToTrash } from './007-rename-archive-to-trash.js';
 import { migration as addDeletedAt } from './008-add-deleted-at.js';
+import { migration as removePinnedAt } from './009-remove-pinned-at.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -30,6 +31,7 @@ export const migrations: Migration[] = [
   addSnoozedUntil,
   renameArchiveToTrash,
   addDeletedAt,
+  removePinnedAt,
 ];
 
 export type { Migration };

@@ -188,67 +188,6 @@ export const registerCaptureRoutes = async (
         );
       },
 
-      pin: async ({ params, request }) => {
-        const result = await captureService.pin({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (capture) => ({
-            status: 200 as const,
-            body: capture,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'CAPTURE_ALREADY_TRASHED':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Cannot pin a trashed capture' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      unpin: async ({ params, request }) => {
-        const result = await captureService.unpin({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (capture) => ({
-            status: 200 as const,
-            body: capture,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'CAPTURE_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Capture not found' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
       snooze: async ({ params, body, request }) => {
         const result = await captureService.snooze({
           id: params.id,

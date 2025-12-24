@@ -129,6 +129,7 @@ export function SwipeableCard({
         )}
         style={{
           transform: isActive ? `translateX(${deltaX}px)` : 'translateX(0)',
+          touchAction: 'pan-y',
         }}
         {...handlers}
       >

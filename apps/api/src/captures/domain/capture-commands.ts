@@ -40,16 +40,6 @@ export type RestoreCaptureCommand = {
 };
 
 // Display modifier operations
-export type PinCaptureCommand = {
-  id: string;
-  organizationId: string;
-};
-
-export type UnpinCaptureCommand = {
-  id: string;
-  organizationId: string;
-};
-
 export type SnoozeCaptureCommand = {
   id: string;
   organizationId: string;

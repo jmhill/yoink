@@ -121,24 +121,6 @@ export const createHttpActor = (
       return handleCaptureResponse(response, id);
     },
 
-    async pinCapture(id: string): Promise<Capture> {
-      const response = await client.post(
-        `/api/captures/${id}/pin`,
-        {},
-        authHeaders()
-      );
-      return handleCaptureResponse(response, id);
-    },
-
-    async unpinCapture(id: string): Promise<Capture> {
-      const response = await client.post(
-        `/api/captures/${id}/unpin`,
-        {},
-        authHeaders()
-      );
-      return handleCaptureResponse(response, id);
-    },
-
     async snoozeCapture(id: string, until: string): Promise<Capture> {
       const response = await client.post(
         `/api/captures/${id}/snooze`,

@@ -19,7 +19,6 @@ type CaptureRow = {
   status: string;
   captured_at: string;
   trashed_at: string | null;
-  pinned_at: string | null;
   snoozed_until: string | null;
 };
 
@@ -34,7 +33,6 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   status: row.status as 'inbox' | 'trashed',
   capturedAt: row.captured_at,
   trashedAt: row.trashed_at ?? undefined,
-  pinnedAt: row.pinned_at ?? undefined,
   snoozedUntil: row.snoozed_until ?? undefined,
 });
 
@@ -65,8 +63,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
         const stmt = db.prepare(`
           INSERT INTO captures (
             id, organization_id, created_by_id, content, title,
-            source_url, source_app, status, captured_at, trashed_at, pinned_at, snoozed_until
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            source_url, source_app, status, captured_at, trashed_at, snoozed_until
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -80,7 +78,6 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.status,
           capture.capturedAt,
           capture.trashedAt ?? null,
-          capture.pinnedAt ?? null,
           capture.snoozedUntil ?? null
         );
 
@@ -110,7 +107,6 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
             title = ?,
             status = ?,
             trashed_at = ?,
-            pinned_at = ?,
             snoozed_until = ?
           WHERE id = ?
         `);
@@ -120,7 +116,6 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           capture.title ?? null,
           capture.status,
           capture.trashedAt ?? null,
-          capture.pinnedAt ?? null,
           capture.snoozedUntil ?? null,
           capture.id
         );
@@ -170,8 +165,8 @@ export const createSqliteCaptureStore = (db: DatabaseSync): CaptureStore => {
           // Snoozed view: sort by snooze time ascending (soonest first)
           sql += ` ORDER BY snoozed_until ASC LIMIT ?`;
         } else {
-          // Inbox/archived: Pinned captures first (non-null pinned_at), then by captured_at
-          sql += ` ORDER BY CASE WHEN pinned_at IS NOT NULL THEN 0 ELSE 1 END, pinned_at DESC, captured_at DESC LIMIT ?`;
+          // Inbox/trashed: sort by captured_at DESC (newest first)
+          sql += ` ORDER BY captured_at DESC LIMIT ?`;
         }
         params.push(limit);
 

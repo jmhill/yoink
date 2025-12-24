@@ -82,18 +82,8 @@ export const createFakeCaptureStore = (
           return aTime - bTime;
         });
       } else {
-        // Inbox/trashed: Pinned captures first
+        // Inbox/trashed: sort by capturedAt DESC (newest first)
         filtered = filtered.sort((a, b) => {
-          const aPinned = a.pinnedAt ? 1 : 0;
-          const bPinned = b.pinnedAt ? 1 : 0;
-          if (aPinned !== bPinned) {
-            return bPinned - aPinned; // Pinned first
-          }
-          // Within pinned, sort by pinnedAt DESC
-          if (a.pinnedAt && b.pinnedAt) {
-            return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
-          }
-          // Within unpinned, sort by capturedAt DESC
           return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
         });
       }

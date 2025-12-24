@@ -18,8 +18,6 @@ export type CoreActor = {
   updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture>;
   trashCapture(id: string): Promise<Capture>;
   restoreCapture(id: string): Promise<Capture>;
-  pinCapture(id: string): Promise<Capture>;
-  unpinCapture(id: string): Promise<Capture>;
   snoozeCapture(id: string, until: string): Promise<Capture>;
   unsnoozeCapture(id: string): Promise<Capture>;
   listSnoozedCaptures(): Promise<Capture[]>;

@@ -18,7 +18,6 @@ export type Capture = {
   createdById: string;
   capturedAt: string;
   trashedAt?: string;
-  pinnedAt?: string;
   snoozedUntil?: string;
 };
 

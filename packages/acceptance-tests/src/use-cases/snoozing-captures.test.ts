@@ -120,17 +120,6 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(trashed.status).toBe('trashed');
     });
 
-    it('can snooze and pin the same capture', async () => {
-      const capture = await alice.createCapture({ content: 'Pin and snooze' });
-      const until = futureTime(2);
-
-      await alice.pinCapture(capture.id);
-      const snoozed = await alice.snoozeCapture(capture.id, until);
-
-      expect(snoozed.pinnedAt).toBeDefined();
-      expect(snoozed.snoozedUntil).toBe(until);
-    });
-
     it('returns not found when snoozing non-existent capture', async () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000';
 

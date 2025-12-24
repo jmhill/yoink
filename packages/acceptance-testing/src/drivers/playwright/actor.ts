@@ -236,34 +236,6 @@ export const createPlaywrightActor = (
       return buildCapture(id, content, 'inbox');
     },
 
-    async pinCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
-      await inboxPage.goto();
-      await inboxPage.waitForCapturesOrEmpty();
-
-      const content = await findCaptureContentById(id);
-      if (!content) {
-        throw new NotFoundError('Capture', id);
-      }
-
-      await inboxPage.pinCapture(content);
-      return buildCapture(id, content, 'inbox', { pinnedAt: new Date().toISOString() });
-    },
-
-    async unpinCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
-      await inboxPage.goto();
-      await inboxPage.waitForCapturesOrEmpty();
-
-      const content = await findCaptureContentById(id);
-      if (!content) {
-        throw new NotFoundError('Capture', id);
-      }
-
-      await inboxPage.unpinCapture(content);
-      return buildCapture(id, content, 'inbox');
-    },
-
     async snoozeCapture(id: string, until: string): Promise<Capture> {
       await ensureConfigured();
       await inboxPage.goto();

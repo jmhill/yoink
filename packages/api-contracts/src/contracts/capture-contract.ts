@@ -105,38 +105,6 @@ export const captureContract = c.router({
   },
 
   // Display modifier operations
-  pin: {
-    method: 'POST',
-    path: '/api/captures/:id/pin',
-    pathParams: z.object({
-      id: z.string().uuid(),
-    }),
-    body: z.object({}),
-    responses: {
-      200: CaptureSchema,
-      401: ErrorSchema,
-      404: ErrorSchema,
-      500: ErrorSchema,
-    },
-    summary: 'Pin a capture',
-  },
-
-  unpin: {
-    method: 'POST',
-    path: '/api/captures/:id/unpin',
-    pathParams: z.object({
-      id: z.string().uuid(),
-    }),
-    body: z.object({}),
-    responses: {
-      200: CaptureSchema,
-      401: ErrorSchema,
-      404: ErrorSchema,
-      500: ErrorSchema,
-    },
-    summary: 'Unpin a capture',
-  },
-
   snooze: {
     method: 'POST',
     path: '/api/captures/:id/snooze',

@@ -11,7 +11,6 @@ export const CaptureSchema = z.object({
   status: z.enum(['inbox', 'trashed']),
   capturedAt: z.string().datetime(),
   trashedAt: z.string().datetime().optional(),
-  pinnedAt: z.string().datetime().optional(),
   snoozedUntil: z.string().datetime().optional(),
 });
 

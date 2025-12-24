@@ -9,8 +9,6 @@ import type {
   UpdateCaptureCommand,
   TrashCaptureCommand,
   RestoreCaptureCommand,
-  PinCaptureCommand,
-  UnpinCaptureCommand,
   SnoozeCaptureCommand,
   UnsnoozeCaptureCommand,
   DeleteCaptureCommand,
@@ -23,8 +21,6 @@ import type {
   UpdateCaptureError,
   TrashCaptureError,
   RestoreCaptureError,
-  PinCaptureError,
-  UnpinCaptureError,
   SnoozeCaptureError,
   UnsnoozeCaptureError,
   DeleteCaptureError,
@@ -54,8 +50,6 @@ export type CaptureService = {
   trash: (command: TrashCaptureCommand) => ResultAsync<Capture, TrashCaptureError>;
   restore: (command: RestoreCaptureCommand) => ResultAsync<Capture, RestoreCaptureError>;
   // Display modifier operations
-  pin: (command: PinCaptureCommand) => ResultAsync<Capture, PinCaptureError>;
-  unpin: (command: UnpinCaptureCommand) => ResultAsync<Capture, UnpinCaptureError>;
   snooze: (command: SnoozeCaptureCommand) => ResultAsync<Capture, SnoozeCaptureError>;
   unsnooze: (command: UnsnoozeCaptureCommand) => ResultAsync<Capture, UnsnoozeCaptureError>;
   // Deletion operations
@@ -139,7 +133,6 @@ export const createCaptureService = (
           ...existing,
           status: 'trashed',
           trashedAt: clock.now().toISOString(),
-          pinnedAt: undefined, // Trashing clears pin
           snoozedUntil: undefined, // Trashing clears snooze
         };
 
@@ -164,43 +157,6 @@ export const createCaptureService = (
       });
     },
 
-    pin: (command: PinCaptureCommand): ResultAsync<Capture, PinCaptureError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Can't pin trashed captures
-        if (existing.status === 'trashed') {
-          return errAsync(captureAlreadyTrashedError(command.id));
-        }
-
-        // Idempotent: if already pinned, just return as-is
-        if (existing.pinnedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedCapture: Capture = {
-          ...existing,
-          pinnedAt: clock.now().toISOString(),
-        };
-
-        return store.update(updatedCapture).map(() => updatedCapture);
-      });
-    },
-
-    unpin: (command: UnpinCaptureCommand): ResultAsync<Capture, UnpinCaptureError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if already unpinned, just return as-is
-        if (!existing.pinnedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedCapture: Capture = {
-          ...existing,
-          pinnedAt: undefined,
-        };
-
-        return store.update(updatedCapture).map(() => updatedCapture);
-      });
-    },
-
     snooze: (command: SnoozeCaptureCommand): ResultAsync<Capture, SnoozeCaptureError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
         // Can't snooze trashed captures
@@ -215,7 +171,6 @@ export const createCaptureService = (
           return errAsync(invalidSnoozeTimeError('Snooze time must be in the future'));
         }
 
-        // Update snooze (keeps pinnedAt unchanged - can be both pinned and snoozed)
         const updatedCapture: Capture = {
           ...existing,
           snoozedUntil: command.until,

@@ -11,7 +11,7 @@ export type Capture = {
   id: string;
   content: string;
   title?: string;
-  status: 'inbox' | 'trashed';
+  status: 'inbox' | 'trashed' | 'processed';
   sourceUrl?: string;
   sourceApp?: string;
   organizationId: string;
@@ -19,6 +19,22 @@ export type Capture = {
   capturedAt: string;
   trashedAt?: string;
   snoozedUntil?: string;
+  // Processing fields - populated when capture is converted to task/note
+  processedAt?: string;
+  processedToType?: 'task' | 'note';
+  processedToId?: string;
+};
+
+export type Task = {
+  id: string;
+  title: string;
+  organizationId: string;
+  createdById: string;
+  captureId?: string; // Source capture, if any
+  dueDate?: string; // YYYY-MM-DD format
+  completedAt?: string;
+  pinnedAt?: string;
+  createdAt: string;
 };
 
 export type Organization = {
@@ -56,6 +72,21 @@ export type CreateCaptureInput = {
 export type UpdateCaptureInput = {
   content?: string;
   title?: string;
+};
+
+export type CreateTaskInput = {
+  title: string;
+  dueDate?: string; // YYYY-MM-DD format
+};
+
+export type UpdateTaskInput = {
+  title?: string;
+  dueDate?: string | null; // null to clear, undefined to keep unchanged
+};
+
+export type ProcessCaptureToTaskInput = {
+  title?: string; // Defaults to capture content
+  dueDate?: string; // YYYY-MM-DD format
 };
 
 // =============================================================================

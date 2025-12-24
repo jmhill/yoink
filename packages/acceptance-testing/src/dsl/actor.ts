@@ -1,4 +1,12 @@
-import type { Capture, CreateCaptureInput, UpdateCaptureInput } from './types.js';
+import type {
+  Capture,
+  Task,
+  CreateCaptureInput,
+  UpdateCaptureInput,
+  CreateTaskInput,
+  UpdateTaskInput,
+  ProcessCaptureToTaskInput,
+} from './types.js';
 
 /**
  * Core actor operations available in all drivers (HTTP and browser).
@@ -23,6 +31,20 @@ export type CoreActor = {
   listSnoozedCaptures(): Promise<Capture[]>;
   deleteCapture(id: string): Promise<void>;
   emptyTrash(): Promise<{ deletedCount: number }>;
+
+  // Process capture to task
+  processCaptureToTask(captureId: string, input?: ProcessCaptureToTaskInput): Promise<Task>;
+
+  // Task operations
+  createTask(input: CreateTaskInput): Promise<Task>;
+  listTasks(filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]>;
+  getTask(id: string): Promise<Task>;
+  updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
+  completeTask(id: string): Promise<Task>;
+  uncompleteTask(id: string): Promise<Task>;
+  pinTask(id: string): Promise<Task>;
+  unpinTask(id: string): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
 };
 
 /**

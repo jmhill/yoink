@@ -90,11 +90,6 @@ export function useSwipe(options: UseSwipeOptions = {}): UseSwipeReturn {
     }
 
     if (isSwipingRef.current) {
-      // Prevent page scroll while swiping (only if event is cancelable)
-      if (e.cancelable) {
-        e.preventDefault();
-      }
-
       const direction: SwipeDirection = deltaX > 0 ? 'right' : deltaX < 0 ? 'left' : null;
       const progress = Math.min(Math.abs(deltaX) / threshold, 1);
 

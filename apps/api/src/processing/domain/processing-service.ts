@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
@@ -15,8 +16,10 @@ import {
   taskNotFoundError,
   type TaskNotFoundError,
 } from '../../tasks/domain/task-errors.js';
+import { withTransaction } from '../../database/transaction.js';
 
 export type ProcessingServiceDependencies = {
+  db: DatabaseSync;
   captureStore: CaptureStore;
   taskStore: TaskStore;
   clock: Clock;
@@ -45,6 +48,11 @@ export type ProcessingService = {
 };
 
 /**
+ * Maximum length for task titles derived from capture content
+ */
+const MAX_TASK_TITLE_LENGTH = 100;
+
+/**
  * Truncates a string to the specified max length
  */
 const truncate = (str: string, maxLength: number): string => {
@@ -55,13 +63,13 @@ const truncate = (str: string, maxLength: number): string => {
 export const createProcessingService = (
   deps: ProcessingServiceDependencies
 ): ProcessingService => {
-  const { captureStore, taskStore, clock, idGenerator } = deps;
+  const { db, captureStore, taskStore, clock, idGenerator } = deps;
 
   return {
     processCaptureToTask: (
       command: ProcessCaptureToTaskCommand
     ): ResultAsync<Task, ProcessCaptureToTaskError> => {
-      // First, find and validate the capture
+      // First, find and validate the capture (outside transaction for read)
       return captureStore.findById(command.id).andThen((capture) => {
         // Check capture exists and belongs to the organization
         if (!capture || capture.organizationId !== command.organizationId) {
@@ -79,23 +87,25 @@ export const createProcessingService = (
           id: taskId,
           organizationId: command.organizationId,
           createdById: command.createdById,
-          title: command.title ?? truncate(capture.content, 500),
+          title: command.title ?? truncate(capture.content, MAX_TASK_TITLE_LENGTH),
           captureId: capture.id,
           dueDate: command.dueDate,
           createdAt: clock.now().toISOString(),
         };
 
-        // Save the task
-        return taskStore.save(task).andThen(() => {
-          // Mark the capture as processed
-          return captureStore
-            .markAsProcessed({
-              id: capture.id,
-              processedAt: clock.now().toISOString(),
-              processedToType: 'task',
-              processedToId: taskId,
-            })
-            .map(() => task);
+        // Wrap the write operations in a transaction for atomicity
+        return withTransaction(db, () => {
+          // Save the task and mark the capture as processed atomically
+          return taskStore.save(task).andThen(() => {
+            return captureStore
+              .markAsProcessed({
+                id: capture.id,
+                processedAt: clock.now().toISOString(),
+                processedToType: 'task',
+                processedToId: taskId,
+              })
+              .map(() => task);
+          });
         });
       });
     },
@@ -103,20 +113,23 @@ export const createProcessingService = (
     deleteTaskWithCascade: (
       command: DeleteTaskWithCascadeCommand
     ): ResultAsync<void, DeleteTaskWithCascadeError> => {
-      // First, find and validate the task
+      // First, find and validate the task (outside transaction for read)
       return taskStore.findById(command.id).andThen((task) => {
         // Check task exists and belongs to the organization
         if (!task || task.organizationId !== command.organizationId) {
           return errAsync(taskNotFoundError(command.id));
         }
 
-        // Delete the task
-        return taskStore.softDelete(command.id).andThen(() => {
-          // If the task has a source capture, delete it too
-          if (task.captureId) {
-            return captureStore.softDelete(task.captureId).map(() => undefined);
-          }
-          return okAsync(undefined);
+        // Wrap the delete operations in a transaction for atomicity
+        return withTransaction(db, () => {
+          // Delete the task
+          return taskStore.softDelete(command.id).andThen(() => {
+            // If the task has a source capture, delete it too
+            if (task.captureId) {
+              return captureStore.softDelete(task.captureId).map(() => undefined);
+            }
+            return okAsync(undefined);
+          });
         });
       });
     },

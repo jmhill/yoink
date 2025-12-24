@@ -31,6 +31,7 @@ export function TaskCreationModal({
   const [dueDate, setDueDate] = useState('');
 
   // Reset form when capture changes (new capture selected for processing)
+  // Note: 100 char limit matches backend MAX_TASK_TITLE_LENGTH in processing-service.ts
   useEffect(() => {
     if (capture) {
       setTitle(capture.content.slice(0, 100).trim());

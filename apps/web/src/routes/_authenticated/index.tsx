@@ -491,7 +491,7 @@ function InboxPage() {
                 onSnooze={handleSnooze}
                 onProcessToTask={handleProcessToTask}
                 isTrashing={trashMutation.isPending}
-                isSnoozeing={snoozeMutation.isPending}
+                isSnoozing={snoozeMutation.isPending}
                 isProcessing={processMutation.isPending}
                 formatDate={formatDate}
               />

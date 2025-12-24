@@ -24,6 +24,11 @@ export type CaptureNotInTrashError = {
   readonly captureId: string;
 };
 
+export type CaptureNotInInboxError = {
+  readonly type: 'CAPTURE_NOT_IN_INBOX';
+  readonly captureId: string;
+};
+
 export type CreateCaptureError = StorageError;
 export type ListCapturesError = StorageError;
 export type FindCaptureError = StorageError | CaptureNotFoundError;
@@ -60,5 +65,10 @@ export const invalidSnoozeTimeError = (message: string): InvalidSnoozeTimeError 
 
 export const captureNotInTrashError = (captureId: string): CaptureNotInTrashError => ({
   type: 'CAPTURE_NOT_IN_TRASH',
+  captureId,
+});
+
+export const captureNotInInboxError = (captureId: string): CaptureNotInInboxError => ({
+  type: 'CAPTURE_NOT_IN_INBOX',
   captureId,
 });

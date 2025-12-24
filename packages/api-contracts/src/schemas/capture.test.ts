@@ -83,6 +83,75 @@ describe('CaptureSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates processed status', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates capture with processing fields', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+      processedAt: '2025-01-16T10:00:00.000Z',
+      processedToType: 'task',
+      processedToId: '550e8400-e29b-41d4-a716-446655440003',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates processedToType as task', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+      processedAt: '2025-01-16T10:00:00.000Z',
+      processedToType: 'task',
+      processedToId: '550e8400-e29b-41d4-a716-446655440003',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('validates processedToType as note', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+      processedAt: '2025-01-16T10:00:00.000Z',
+      processedToType: 'note',
+      processedToId: '550e8400-e29b-41d4-a716-446655440003',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid processedToType', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+      processedAt: '2025-01-16T10:00:00.000Z',
+      processedToType: 'invalid',
+      processedToId: '550e8400-e29b-41d4-a716-446655440003',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid UUID for processedToId', () => {
+    const result = CaptureSchema.safeParse({
+      ...validCapture,
+      status: 'processed',
+      processedAt: '2025-01-16T10:00:00.000Z',
+      processedToType: 'task',
+      processedToId: 'not-a-uuid',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('rejects invalid UUID for id', () => {
     const result = CaptureSchema.safeParse({
       ...validCapture,

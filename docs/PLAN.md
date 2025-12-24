@@ -27,7 +27,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
-**Phase 8: Capture → Task Flow** - In Progress (Vision Phase A)
+**Phase 8: Capture → Task Flow** - In Progress (8.1-8.4 complete, next: 8.5 Acceptance Tests)
 
 ---
 
@@ -599,32 +599,33 @@ Ordered for backwards compatibility: UI changes first, then API, then database.
 - [x] **Migration 009**: Drop `pinned_at` column from captures (table rebuild)
 - [x] **Schema**: Remove `pinnedAt` field from CaptureSchema
 
-### 8.2 Add Processing Fields to Captures
-- [ ] **Migration 010**: Add `processed_at`, `processed_to_type`, `processed_to_id` columns
-- [ ] **Schema**: Add `processedAt`, `processedToType`, `processedToId` to CaptureSchema
-- [ ] **Schema**: Add `processed` to status enum (`'inbox' | 'trashed' | 'processed'`)
-- [ ] **Backend**: Update list queries to exclude `status = 'processed'` from inbox/trash
+### 8.2 Add Processing Fields to Captures - Complete ✓
+- [x] **Migration 010**: Add `processed_at`, `processed_to_type`, `processed_to_id` columns
+- [x] **Schema**: Add `processedAt`, `processedToType`, `processedToId` to CaptureSchema
+- [x] **Schema**: Add `processed` to status enum (`'inbox' | 'trashed' | 'processed'`)
+- [x] **Backend**: Update SQLite store to handle new fields in row mapping and updates
+- [x] **Contract**: Update list query to accept `processed` status filter
 
-### 8.3 Task Entity Backend
+### 8.3 Task Entity Backend - Complete ✓
 New domain following hexagonal architecture pattern.
 
 #### Domain Layer
-- [ ] `apps/api/src/tasks/domain/task.ts` - Task entity type
-- [ ] `task-store.ts` - Store interface (port)
-- [ ] `task-service.ts` - Business logic with neverthrow Result types
-- [ ] `task-commands.ts` - Command/query types
-- [ ] `task-errors.ts` - Domain error types
+- [x] `apps/api/src/tasks/domain/task.ts` - Task entity type (in schemas)
+- [x] `task-store.ts` - Store interface (port)
+- [x] `task-service.ts` - Business logic with neverthrow Result types
+- [x] `task-commands.ts` - Command/query types
+- [x] `task-errors.ts` - Domain error types
 
 #### Infrastructure
-- [ ] **Migration 011**: Create `tasks` table
+- [x] **Migration 011**: Create `tasks` table
   - `id`, `organization_id`, `created_by_id`, `title`, `capture_id`
   - `due_date`, `completed_at`, `pinned_at`, `order`, `created_at`
-- [ ] `sqlite-task-store.ts` - SQLite adapter
-- [ ] `fake-task-store.ts` - In-memory fake for unit tests
+- [x] `sqlite-task-store.ts` - SQLite adapter
+- [x] `fake-task-store.ts` - In-memory fake for unit tests
 
 #### API Contract
-- [ ] Add `packages/api-contracts/src/schemas/task.ts`
-- [ ] Add `packages/api-contracts/src/contracts/task-contract.ts`
+- [x] Add `packages/api-contracts/src/schemas/task.ts`
+- [x] Add `packages/api-contracts/src/contracts/task-contract.ts`
   - POST /api/tasks (create)
   - GET /api/tasks (list, with `completed` and `dueDate` filters)
   - GET /api/tasks/:id
@@ -636,29 +637,34 @@ New domain following hexagonal architecture pattern.
   - DELETE /api/tasks/:id
 
 #### Application Layer
-- [ ] `task-routes.ts` - Fastify routes
-- [ ] Wire up in `composition-root.ts`
+- [x] `task-routes.ts` - Fastify routes
+- [x] Wire up in `composition-root.ts`
 
 #### Unit Tests
-- [ ] `task-service.test.ts`
-- [ ] `sqlite-task-store.test.ts`
+- [x] `task-service.test.ts` - 27 tests
+- [x] Task schema tests - 25 tests
 
-### 8.4 Process Capture Endpoint
+### 8.4 Process Capture Endpoint - Complete ✓
 Cross-entity operation: creates task + updates capture status.
 
-- [ ] **API Contract**: Add `POST /api/captures/:id/process` endpoint
+- [x] **API Contract**: Add `POST /api/captures/:id/process` endpoint
   - Request body (discriminated union):
     ```typescript
     { type: 'task', data: { title?: string, dueDate?: string } }
     // Future: { type: 'note', data: { title?: string, content?: string } }
     ```
   - Response: The created Task
-- [ ] **Backend**: Add `ProcessCaptureCommand` with validation
+- [x] **Backend**: Add `ProcessCaptureCommand` with validation
   - Capture must exist and be in `inbox` status
   - Creates task with `captureId` reference
   - Updates capture: `status = 'processed'`, sets `processedAt`, `processedToType`, `processedToId`
-- [ ] **Backend**: Cascade delete - when task deleted, delete associated capture too
-- [ ] **Unit Tests**: Process behavior, validation, cascade delete
+- [x] **Backend**: Cascade delete - when task deleted, delete associated capture too
+- [x] **Unit Tests**: Process behavior, validation, cascade delete (13 tests in processing-service.test.ts)
+
+**New files created:**
+- `apps/api/src/processing/domain/processing-service.ts` - Cross-entity operations
+- `apps/api/src/processing/domain/processing-service.test.ts` - 13 tests
+- `apps/api/src/processing/domain/index.ts` - Module export
 
 ### 8.5 Acceptance Tests for Tasks
 - [ ] Create `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts`

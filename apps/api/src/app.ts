@@ -13,7 +13,7 @@ import { registerTaskRoutes } from './tasks/application/index.js';
 import { registerAdminRoutes } from './admin/application/index.js';
 import type { CaptureService } from './captures/domain/capture-service.js';
 import type { TaskService } from './tasks/domain/task-service.js';
-import type { ProcessingService } from './processing/domain/processing-service.js';
+import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
 import type { AuthMiddleware } from './auth/application/auth-middleware.js';
 import type { AdminService } from './admin/domain/admin-service.js';
@@ -31,7 +31,7 @@ export type AdminConfig = {
 export type AppDependencies = {
   captureService: CaptureService;
   taskService: TaskService;
-  processingService: ProcessingService;
+  captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
   admin?: AdminConfig;
@@ -75,12 +75,12 @@ export const createApp = async (deps: AppDependencies) => {
   await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
   await registerCaptureRoutes(app, {
     captureService: deps.captureService,
-    processingService: deps.processingService,
+    captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
-    processingService: deps.processingService,
+    captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });
 

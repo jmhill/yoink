@@ -2,12 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
-import type { ProcessingService } from '../../processing/domain/processing-service.js';
+import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;
-  processingService: ProcessingService;
+  captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
 
@@ -15,7 +15,7 @@ export const registerTaskRoutes = async (
   app: FastifyInstance,
   deps: TaskRoutesDependencies
 ) => {
-  const { taskService, processingService, authMiddleware } = deps;
+  const { taskService, captureProcessingService, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
@@ -244,8 +244,8 @@ export const registerTaskRoutes = async (
       },
 
       delete: async ({ params, request }) => {
-        // Use processingService for cascade delete (deletes source capture too)
-        const result = await processingService.deleteTaskWithCascade({
+        // Use captureProcessingService for cascade delete (deletes source capture too)
+        const result = await captureProcessingService.deleteTaskWithCascade({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });

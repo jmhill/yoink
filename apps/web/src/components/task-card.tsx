@@ -86,6 +86,7 @@ export function TaskCard({
           onCheckedChange={handleCheckboxChange}
           disabled={isLoading}
           className="mt-0.5"
+          aria-label={isCompleted ? `Mark task "${task.title}" as incomplete` : `Mark task "${task.title}" as complete`}
         />
         
         <div className="flex-1 min-w-0">
@@ -112,6 +113,7 @@ export function TaskCard({
             onClick={handlePinClick}
             disabled={isLoading}
             title={isPinned ? 'Unpin' : 'Pin'}
+            aria-label={isPinned ? `Unpin task "${task.title}"` : `Pin task "${task.title}"`}
             className={isPinned ? 'text-primary' : ''}
           >
             {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
@@ -122,6 +124,7 @@ export function TaskCard({
             onClick={() => onDelete(task.id)}
             disabled={isLoading}
             title="Delete"
+            aria-label={`Delete task "${task.title}"`}
             className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />

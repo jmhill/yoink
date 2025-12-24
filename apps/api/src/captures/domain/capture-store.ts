@@ -1,13 +1,17 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Capture, CaptureStatus, ProcessedToType } from '@yoink/api-contracts';
-import type { StorageError } from './capture-errors.js';
+import type { CaptureNotInInboxError, StorageError } from './capture-errors.js';
 
 export type MarkAsProcessedOptions = {
   id: string;
   processedAt: string;
   processedToType: ProcessedToType;
   processedToId: string;
+  /** If provided, the operation will fail if the capture is not in this status */
+  requiredStatus?: CaptureStatus;
 };
+
+export type MarkAsProcessedError = StorageError | CaptureNotInInboxError;
 
 export type FindByOrganizationOptions = {
   organizationId: string;
@@ -35,5 +39,7 @@ export type CaptureStore = {
   // Soft delete all trashed captures for an organization
   softDeleteTrashed(organizationId: string): ResultAsync<number, StorageError>;
   // Mark capture as processed (converted to task/note)
-  markAsProcessed(options: MarkAsProcessedOptions): ResultAsync<Capture, StorageError>;
+  // If requiredStatus is provided and the capture is not in that status,
+  // returns CaptureNotInInboxError (for atomic status verification within transactions)
+  markAsProcessed(options: MarkAsProcessedOptions): ResultAsync<Capture, MarkAsProcessedError>;
 };

@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { captureContract } from '@yoink/api-contracts';
+import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
 import type { CaptureService } from '../domain/capture-service.js';
-import type { ProcessingService } from '../../processing/domain/processing-service.js';
+import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
 export type CaptureRoutesDependencies = {
   captureService: CaptureService;
-  processingService: ProcessingService;
+  captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
 
@@ -15,7 +15,7 @@ export const registerCaptureRoutes = async (
   app: FastifyInstance,
   deps: CaptureRoutesDependencies
 ) => {
-  const { captureService, processingService, authMiddleware } = deps;
+  const { captureService, captureProcessingService, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
@@ -313,15 +313,15 @@ export const registerCaptureRoutes = async (
       },
 
       process: async ({ params, body, request }) => {
-        // Currently only supports 'task' type
-        if (body.type !== 'task') {
+        // Currently only supports 'task' type - use schema enum for type safety
+        if (body.type !== ProcessedToTypeSchema.enum.task) {
           return {
             status: 400 as const,
             body: { message: 'Unsupported processing type' },
           };
         }
 
-        const result = await processingService.processCaptureToTask({
+        const result = await captureProcessingService.processCaptureToTask({
           id: params.id,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,

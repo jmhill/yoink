@@ -6,7 +6,7 @@ import { createCaptureService } from './captures/domain/capture-service.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
-import { createProcessingService } from './processing/domain/processing-service.js';
+import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createTokenService } from './auth/domain/token-service.js';
 import { createAuthMiddleware } from './auth/application/auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
@@ -149,9 +149,9 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     idGenerator,
   });
 
-  // Create processing service (cross-entity operations)
+  // Create capture processing service (cross-entity operations)
   // Uses transactions for atomicity across stores
-  const processingService = createProcessingService({
+  const captureProcessingService = createCaptureProcessingService({
     db,
     captureStore,
     taskStore,
@@ -184,7 +184,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   return createApp({
     captureService,
     taskService,
-    processingService,
+    captureProcessingService,
     authMiddleware,
     healthChecker,
     admin,

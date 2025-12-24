@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { tokenStorage } from '@/lib/token';
+import { BottomNav } from '@/components/bottom-nav';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: () => {
@@ -12,8 +13,9 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <Outlet />
+      <BottomNav />
     </div>
   );
 }

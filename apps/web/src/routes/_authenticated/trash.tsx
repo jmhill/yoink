@@ -251,7 +251,7 @@ function TrashPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
-      <Header />
+      <Header viewName="Inbox" />
 
       <Tabs defaultValue="trash" className="mb-6">
         <TabsList className="grid w-full grid-cols-3">

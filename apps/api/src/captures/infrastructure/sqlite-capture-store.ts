@@ -7,8 +7,9 @@ import type {
   FindByOrganizationOptions,
   FindByOrganizationResult,
   MarkAsProcessedOptions,
+  MarkAsProcessedError,
 } from '../domain/capture-store.js';
-import { storageError, type StorageError } from '../domain/capture-errors.js';
+import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
 
 type CaptureRow = {
   id: string;
@@ -221,23 +222,52 @@ export const createSqliteCaptureStore = (db: DatabaseSync, clock: Clock): Captur
       }
     },
 
-    markAsProcessed: (options: MarkAsProcessedOptions): ResultAsync<Capture, StorageError> => {
+    markAsProcessed: (options: MarkAsProcessedOptions): ResultAsync<Capture, MarkAsProcessedError> => {
       try {
-        const stmt = db.prepare(`
+        // Build the UPDATE query with optional status check for atomic verification
+        let sql = `
           UPDATE captures SET
             status = 'processed',
             processed_at = ?,
             processed_to_type = ?,
             processed_to_id = ?
           WHERE id = ? AND deleted_at IS NULL
-        `);
-
-        stmt.run(
+        `;
+        const params: string[] = [
           options.processedAt,
           options.processedToType,
           options.processedToId,
-          options.id
-        );
+          options.id,
+        ];
+
+        // Add status check if requiredStatus is provided (for atomic verification)
+        if (options.requiredStatus) {
+          sql = `
+            UPDATE captures SET
+              status = 'processed',
+              processed_at = ?,
+              processed_to_type = ?,
+              processed_to_id = ?
+            WHERE id = ? AND deleted_at IS NULL AND status = ?
+          `;
+          params.push(options.requiredStatus);
+        }
+
+        const stmt = db.prepare(sql);
+        const result = stmt.run(...params);
+
+        // If requiredStatus was provided and no rows were updated, the status didn't match
+        if (options.requiredStatus && result.changes === 0) {
+          // Check if the capture exists but has wrong status
+          const checkStmt = db.prepare(`SELECT status FROM captures WHERE id = ? AND deleted_at IS NULL`);
+          const existing = checkStmt.get(options.id) as { status: string } | undefined;
+          
+          if (existing && existing.status !== options.requiredStatus) {
+            return errAsync(captureNotInInboxError(options.id));
+          }
+          // Capture doesn't exist
+          return errAsync(storageError('Capture not found'));
+        }
 
         // Fetch the updated capture to return
         const selectStmt = db.prepare(`SELECT * FROM captures WHERE id = ? AND deleted_at IS NULL`);

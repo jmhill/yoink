@@ -9,12 +9,12 @@ Our application has operations that span multiple aggregates:
 1. **Process Capture to Task**: Creates a task AND marks the source capture as processed
 2. **Delete Task with Cascade**: Deletes a task AND its source capture (if any)
 
-These operations need to be atomic - either both parts succeed or neither does. Currently, our `ProcessingService` orchestrates these operations by directly calling stores.
+These operations need to be atomic - either both parts succeed or neither does. Currently, our `CaptureProcessingService` orchestrates these operations by directly calling stores.
 
 ## Current Approach: Orchestration
 
 ```typescript
-// ProcessingService coordinates stores directly
+// CaptureProcessingService coordinates stores directly
 processCaptureToTask: (command) => {
   return captureStore.findById(command.id).andThen((capture) => {
     // Validation...
@@ -25,7 +25,7 @@ processCaptureToTask: (command) => {
 };
 ```
 
-The `ProcessingService` is the "coordinator" that knows both steps and executes them sequentially. We wrap this in a database transaction for atomicity.
+The `CaptureProcessingService` is the "coordinator" that knows both steps and executes them sequentially. We wrap this in a database transaction for atomicity.
 
 ## Alternative: Domain Events
 
@@ -112,7 +112,7 @@ eventDispatcher.subscribe('CaptureProcessed', (event: CaptureProcessedEvent) => 
 });
 ```
 
-### ProcessingService Becomes a Publisher
+### CaptureProcessingService Becomes a Publisher
 
 ```typescript
 processCaptureToTask: (command) => {
@@ -138,7 +138,7 @@ processCaptureToTask: (command) => {
 | Aspect | Orchestration | Domain Events |
 |--------|---------------|---------------|
 | **Atomicity** | Straightforward with transactions | Same (synchronous handlers in transaction) |
-| **Coupling** | ProcessingService knows both domains | Services decoupled, only know events |
+| **Coupling** | CaptureProcessingService knows both domains | Services decoupled, only know events |
 | **Complexity** | Lower - direct calls | Higher - dispatcher, handlers, event types |
 | **Traceability** | Linear call stack | Indirection through event handlers |
 | **Testability** | Test service directly | Can test services in isolation with fake events |
@@ -171,7 +171,7 @@ For this codebase, we chose orchestration because:
 3. **Monolithic deployment**: No microservices, no need for loose coupling
 4. **Simplicity**: Direct calls are easier to understand and debug
 
-We wrap `ProcessingService` operations in database transactions to ensure atomicity:
+We wrap `CaptureProcessingService` operations in database transactions to ensure atomicity:
 
 ```typescript
 processCaptureToTask: (command) => {
@@ -189,7 +189,7 @@ processCaptureToTask: (command) => {
 If the application grows to need domain events, the migration path is:
 
 1. **Add EventDispatcher** to composition root
-2. **Convert ProcessingService** to publish events instead of direct calls
+2. **Convert CaptureProcessingService** to publish events instead of direct calls
 3. **Add subscriptions** to existing services
 4. **Keep transactions** for synchronous, same-database operations
 5. **Later**: Move to async messaging if services need to be independently deployable

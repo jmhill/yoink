@@ -7,7 +7,6 @@ import type { TaskStore } from '../../tasks/domain/task-store.js';
 import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
 import {
   captureNotFoundError,
-  captureNotInInboxError,
   type CaptureNotFoundError,
   type CaptureNotInInboxError,
   type StorageError,
@@ -18,7 +17,7 @@ import {
 } from '../../tasks/domain/task-errors.js';
 import { withTransaction } from '../../database/transaction.js';
 
-export type ProcessingServiceDependencies = {
+export type CaptureProcessingServiceDependencies = {
   db: DatabaseSync;
   captureStore: CaptureStore;
   taskStore: TaskStore;
@@ -38,7 +37,7 @@ export type DeleteTaskWithCascadeCommand = {
 
 export type DeleteTaskWithCascadeError = StorageError | TaskNotFoundError;
 
-export type ProcessingService = {
+export type CaptureProcessingService = {
   processCaptureToTask: (
     command: ProcessCaptureToTaskCommand
   ) => ResultAsync<Task, ProcessCaptureToTaskError>;
@@ -60,25 +59,20 @@ const truncate = (str: string, maxLength: number): string => {
   return str.slice(0, maxLength);
 };
 
-export const createProcessingService = (
-  deps: ProcessingServiceDependencies
-): ProcessingService => {
+export const createCaptureProcessingService = (
+  deps: CaptureProcessingServiceDependencies
+): CaptureProcessingService => {
   const { db, captureStore, taskStore, clock, idGenerator } = deps;
 
   return {
     processCaptureToTask: (
       command: ProcessCaptureToTaskCommand
     ): ResultAsync<Task, ProcessCaptureToTaskError> => {
-      // First, find and validate the capture (outside transaction for read)
+      // First, find the capture (outside transaction for read)
       return captureStore.findById(command.id).andThen((capture) => {
         // Check capture exists and belongs to the organization
         if (!capture || capture.organizationId !== command.organizationId) {
           return errAsync(captureNotFoundError(command.id));
-        }
-
-        // Check capture is in inbox status
-        if (capture.status !== 'inbox') {
-          return errAsync(captureNotInInboxError(command.id));
         }
 
         // Create the task
@@ -94,6 +88,8 @@ export const createProcessingService = (
         };
 
         // Wrap the write operations in a transaction for atomicity
+        // The status check is done INSIDE the transaction via requiredStatus
+        // to prevent race conditions where two requests try to process the same capture
         return withTransaction(db, () => {
           // Save the task and mark the capture as processed atomically
           return taskStore.save(task).andThen(() => {
@@ -103,6 +99,8 @@ export const createProcessingService = (
                 processedAt: clock.now().toISOString(),
                 processedToType: 'task',
                 processedToId: taskId,
+                // Atomic status verification: will fail if capture is no longer in 'inbox' status
+                requiredStatus: 'inbox',
               })
               .map(() => task);
           });

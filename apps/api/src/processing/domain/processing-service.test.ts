@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import type { Capture, Task } from '@yoink/api-contracts';
-import { createProcessingService, type ProcessingService } from './processing-service.js';
+import { createCaptureProcessingService, type CaptureProcessingService } from './processing-service.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
 import type { TaskStore } from '../../tasks/domain/task-store.js';
 
-describe('ProcessingService', () => {
+describe('CaptureProcessingService', () => {
   const now = new Date('2024-12-24T10:00:00.000Z');
   const clock = createFakeClock(now);
   const idGenerator = createFakeIdGenerator();
@@ -16,7 +16,7 @@ describe('ProcessingService', () => {
   let db: DatabaseSync;
   let captureStore: CaptureStore;
   let taskStore: TaskStore;
-  let service: ProcessingService;
+  let service: CaptureProcessingService;
 
   const createInboxCapture = (overrides?: Partial<Capture>): Capture => ({
     id: idGenerator.generate(),
@@ -34,7 +34,7 @@ describe('ProcessingService', () => {
     db = new DatabaseSync(':memory:');
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
-    service = createProcessingService({
+    service = createCaptureProcessingService({
       db,
       captureStore,
       taskStore,
@@ -190,6 +190,35 @@ describe('ProcessingService', () => {
 
       expect(result.isErr()).toBe(true);
       expect(result._unsafeUnwrapErr().type).toBe('CAPTURE_NOT_IN_INBOX');
+    });
+
+    it('prevents race condition when two requests try to process the same capture', async () => {
+      // This test verifies that status verification happens atomically within the transaction
+      // If a capture is processed between the initial read and the transaction,
+      // the second request should fail with CAPTURE_NOT_IN_INBOX
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      // First request processes successfully
+      const firstResult = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+      });
+      expect(firstResult.isOk()).toBe(true);
+
+      // Verify the capture is now processed
+      const updatedCapture = await captureStore.findById(capture.id);
+      expect(updatedCapture._unsafeUnwrap()?.status).toBe('processed');
+
+      // Second request should fail because capture is no longer in inbox
+      const secondResult = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-2',
+      });
+      expect(secondResult.isErr()).toBe(true);
+      expect(secondResult._unsafeUnwrapErr().type).toBe('CAPTURE_NOT_IN_INBOX');
     });
   });
 

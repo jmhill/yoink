@@ -8,6 +8,7 @@ import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createTokenService } from './auth/domain/token-service.js';
+import { createMembershipService } from './auth/domain/membership-service.js';
 import { createAuthMiddleware } from './auth/application/auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
@@ -121,13 +122,23 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     silent,
   });
 
-  // Create token service
+  // Create auth services
   const tokenService = createTokenService({
     organizationStore,
     userStore,
     tokenStore,
     passwordHasher,
     clock,
+  });
+
+  // MembershipService - will be used when passkey/session auth is implemented (Phase 7.4+)
+  // For now, just ensuring dependencies are properly wired up.
+  createMembershipService({
+    membershipStore,
+    userStore,
+    organizationStore,
+    clock,
+    idGenerator,
   });
 
   // Create auth middleware

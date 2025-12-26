@@ -73,6 +73,16 @@ export const createSqliteOrganizationMembershipStore = (
       }
     },
 
+    findById: (id: string): ResultAsync<OrganizationMembership | null, MembershipStorageError> => {
+      try {
+        const stmt = db.prepare(`SELECT * FROM organization_memberships WHERE id = ?`);
+        const row = stmt.get(id) as MembershipRow | undefined;
+        return okAsync(row ? rowToMembership(row) : null);
+      } catch (error) {
+        return errAsync(membershipStorageError('Failed to find membership by id', error));
+      }
+    },
+
     findByUserAndOrg: (
       userId: string,
       organizationId: string

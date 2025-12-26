@@ -9,6 +9,9 @@ export type OrganizationMembershipStore = {
   /** Save a membership (create or update) */
   save(membership: OrganizationMembership): ResultAsync<void, MembershipStorageError>;
 
+  /** Find a membership by its ID */
+  findById(id: string): ResultAsync<OrganizationMembership | null, MembershipStorageError>;
+
   /** Find a specific membership by user and organization */
   findByUserAndOrg(
     userId: string,

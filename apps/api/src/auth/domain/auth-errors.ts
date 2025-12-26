@@ -117,3 +117,109 @@ export const organizationNotFoundError = (organizationId: string): OrganizationN
   type: 'ORGANIZATION_NOT_FOUND',
   organizationId,
 });
+
+// ============================================================================
+// Membership Service Errors
+// ============================================================================
+
+/** User already has a membership in the organization */
+export type AlreadyMemberError = {
+  readonly type: 'ALREADY_MEMBER';
+  readonly userId: string;
+  readonly organizationId: string;
+};
+
+/** Membership not found */
+export type MembershipNotFoundError = {
+  readonly type: 'MEMBERSHIP_NOT_FOUND';
+  readonly membershipId?: string;
+  readonly userId?: string;
+  readonly organizationId?: string;
+};
+
+/** Cannot remove owner from personal organization */
+export type CannotLeavePersonalOrgError = {
+  readonly type: 'CANNOT_LEAVE_PERSONAL_ORG';
+  readonly userId: string;
+  readonly organizationId: string;
+};
+
+/** Cannot change owner role */
+export type CannotChangeOwnerRoleError = {
+  readonly type: 'CANNOT_CHANGE_OWNER_ROLE';
+  readonly membershipId: string;
+};
+
+/** Organization must have at least one admin */
+export type LastAdminError = {
+  readonly type: 'LAST_ADMIN';
+  readonly organizationId: string;
+};
+
+/** Insufficient permissions for the operation */
+export type InsufficientPermissionsError = {
+  readonly type: 'INSUFFICIENT_PERMISSIONS';
+  readonly requiredRole: string;
+  readonly actualRole: string;
+};
+
+export type MembershipServiceError =
+  | AlreadyMemberError
+  | MembershipNotFoundError
+  | CannotLeavePersonalOrgError
+  | CannotChangeOwnerRoleError
+  | LastAdminError
+  | InsufficientPermissionsError
+  | UserNotFoundError
+  | OrganizationNotFoundError
+  | MembershipStorageError
+  | UserStorageError
+  | OrganizationStorageError;
+
+export const alreadyMemberError = (
+  userId: string,
+  organizationId: string
+): AlreadyMemberError => ({
+  type: 'ALREADY_MEMBER',
+  userId,
+  organizationId,
+});
+
+export const membershipNotFoundError = (options: {
+  membershipId?: string;
+  userId?: string;
+  organizationId?: string;
+}): MembershipNotFoundError => ({
+  type: 'MEMBERSHIP_NOT_FOUND',
+  ...options,
+});
+
+export const cannotLeavePersonalOrgError = (
+  userId: string,
+  organizationId: string
+): CannotLeavePersonalOrgError => ({
+  type: 'CANNOT_LEAVE_PERSONAL_ORG',
+  userId,
+  organizationId,
+});
+
+export const cannotChangeOwnerRoleError = (
+  membershipId: string
+): CannotChangeOwnerRoleError => ({
+  type: 'CANNOT_CHANGE_OWNER_ROLE',
+  membershipId,
+});
+
+export const lastAdminError = (organizationId: string): LastAdminError => ({
+  type: 'LAST_ADMIN',
+  organizationId,
+});
+
+export const insufficientPermissionsError = (
+  requiredRole: string,
+  actualRole: string
+): InsufficientPermissionsError => ({
+  type: 'INSUFFICIENT_PERMISSIONS',
+  requiredRole,
+  actualRole,
+});

@@ -23,16 +23,29 @@ export const createFakeOrganizationMembershipStore = (
       if (options.shouldFailOnSave) {
         return errAsync(membershipStorageError('Save failed'));
       }
-      // Check for existing by user+org (composite key)
-      const existingIndex = memberships.findIndex(
-        (m) => m.userId === membership.userId && m.organizationId === membership.organizationId
-      );
-      if (existingIndex >= 0) {
-        memberships[existingIndex] = membership;
+      // Check for existing by ID first, then by user+org (composite key)
+      const existingByIdIndex = memberships.findIndex((m) => m.id === membership.id);
+      if (existingByIdIndex >= 0) {
+        memberships[existingByIdIndex] = membership;
       } else {
-        memberships.push(membership);
+        const existingIndex = memberships.findIndex(
+          (m) => m.userId === membership.userId && m.organizationId === membership.organizationId
+        );
+        if (existingIndex >= 0) {
+          memberships[existingIndex] = membership;
+        } else {
+          memberships.push(membership);
+        }
       }
       return okAsync(undefined);
+    },
+
+    findById: (id: string): ResultAsync<OrganizationMembership | null, MembershipStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(membershipStorageError('Find failed'));
+      }
+      const found = memberships.find((m) => m.id === id);
+      return okAsync(found ?? null);
     },
 
     findByUserAndOrg: (

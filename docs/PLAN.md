@@ -16,7 +16,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 333 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 351 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
@@ -26,7 +26,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1 Database Schema complete)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.2 complete)
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -556,11 +556,13 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [x] Updated seed script to create membership when seeding user
 - [x] Keep `users.organization_id` for backwards compatibility (remove in 7.10)
 
-### 7.2 Membership Model
-- [ ] `OrganizationMembershipStore` interface and SQLite adapter
-- [ ] Extend `OrganizationService` with membership management
-- [ ] Update queries to use memberships instead of `users.organization_id`
-- [ ] Roles: `owner` (personal org), `admin`, `member`
+### 7.2 Membership Model - Complete ✓
+- [x] `OrganizationMembershipStore` interface and SQLite adapter (including `findById` method)
+- [x] `MembershipService` with membership management (addMember, removeMember, changeRole, hasRole)
+- [x] Domain error types for membership operations (AlreadyMember, CannotLeavePersonalOrg, LastAdmin, etc.)
+- [x] Role hierarchy enforcement: `owner` > `admin` > `member`
+- [x] 26 unit tests for MembershipService behavior
+- [ ] Update queries to use memberships instead of `users.organization_id` (deferred to 7.10)
 
 ### 7.3 Passkey Service
 - [ ] Install `@simplewebauthn/server` and `@simplewebauthn/browser`

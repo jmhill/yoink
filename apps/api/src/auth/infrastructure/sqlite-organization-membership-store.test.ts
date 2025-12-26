@@ -107,6 +107,31 @@ describe('createSqliteOrganizationMembershipStore', () => {
     });
   });
 
+  describe('findById', () => {
+    it('returns membership when found', async () => {
+      const membership = createTestMembership();
+      await store.save(membership);
+
+      const result = await store.findById(membership.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.id).toBe(membership.id);
+        expect(result.value?.role).toBe('member');
+      }
+    });
+
+    it('returns null when membership not found', async () => {
+      const result = await store.findById('non-existent-id');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
+    });
+  });
+
   describe('findByUserAndOrg', () => {
     it('returns membership when found', async () => {
       const membership = createTestMembership();

@@ -14,6 +14,7 @@ import {
   createSqliteOrganizationStore,
   createSqliteUserStore,
   createSqliteTokenStore,
+  createSqliteOrganizationMembershipStore,
   seedAuthData,
 } from './auth/infrastructure/index.js';
 import {
@@ -105,6 +106,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const organizationStore = createSqliteOrganizationStore(db);
   const userStore = createSqliteUserStore(db);
   const tokenStore = createSqliteTokenStore(db);
+  const membershipStore = createSqliteOrganizationMembershipStore(db);
 
   // Seed auth data if configured
   await seedAuthData({
@@ -112,6 +114,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     organizationStore,
     userStore,
     tokenStore,
+    membershipStore,
     passwordHasher,
     idGenerator,
     clock,

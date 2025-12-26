@@ -16,7 +16,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 322 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 333 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
@@ -26,7 +26,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
-**Phase 7: Authentication Overhaul** - Not Started (passkeys, invitations)
+**Phase 7: Authentication Overhaul** - In Progress (7.1 Database Schema complete)
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -530,28 +530,91 @@ Full OpenTelemetry distributed tracing - to be implemented when needed.
 
 See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implementation plan.
 
-### 7.1 Passkeys Implementation
-- [ ] Add WebAuthn library (@simplewebauthn/server, @simplewebauthn/browser)
-- [ ] Database schema for passkey credentials
-- [ ] Registration flow (create passkey for existing user)
-- [ ] Authentication flow (sign in with passkey)
-- [ ] Session management (replace API tokens for web app)
-- [ ] Update web app to use passkey auth instead of token config
+**Key Design Decisions:**
+- Passkeys replace token-copy-paste flow for web app users
+- API tokens remain for machine-to-machine auth (extension, CLI)
+- Invitation-only signup (no open registration)
+- Every user has a personal org (named after their email, cannot leave)
+- Users can be members of multiple organizations
+- Admin panel becomes internal super-admin tooling (unchanged)
 
-### 7.2 Invitation System
-- [ ] Invitation entity (inviteCode, email, orgId, expiresAt, usedAt)
-- [ ] POST /api/admin/organizations/:id/invitations (create invite)
-- [ ] GET /api/invitations/:code (validate invite)
-- [ ] POST /api/invitations/:code/accept (register with passkey)
-- [ ] Admin UI for creating and managing invitations
-- [ ] Email notification (optional - can start with manual code sharing)
+### 7.0 Test Infrastructure (Prerequisite)
+- [ ] Playwright driver: Add CDP virtual authenticator setup
+- [ ] Update Playwright actor creation to use invitation → passkey flow
+- [ ] HTTP driver: Continue using API tokens (no changes needed)
+- [ ] Verify test isolation still works (invitation per test)
 
-### 7.3 Auth Migration
-- [ ] Deprecate token configuration page in web app
-- [ ] Keep API token auth for extension/programmatic access
-- [ ] Add "Devices" view in settings (manage passkeys)
+### 7.1 Database Schema (Backwards Compatible) - Complete ✓
+- [x] Migration 012: Create `organization_memberships` table
+- [x] Migration 013: Create `invitations` table
+- [x] Migration 014: Create `passkey_credentials` table
+- [x] Migration 015: Create `user_sessions` table
+- [x] Migration 016: Make `users.email` globally unique (table rebuild)
+- [x] `OrganizationMembership` domain type and `OrganizationMembershipStore` interface
+- [x] `createSqliteOrganizationMembershipStore` adapter (10 tests)
+- [x] `createFakeOrganizationMembershipStore` for unit tests
+- [x] Updated seed script to create membership when seeding user
+- [x] Keep `users.organization_id` for backwards compatibility (remove in 7.10)
 
-**Deliverable**: Users can sign in with passkeys, new users join via invitation
+### 7.2 Membership Model
+- [ ] `OrganizationMembershipStore` interface and SQLite adapter
+- [ ] Extend `OrganizationService` with membership management
+- [ ] Update queries to use memberships instead of `users.organization_id`
+- [ ] Roles: `owner` (personal org), `admin`, `member`
+
+### 7.3 Passkey Service
+- [ ] Install `@simplewebauthn/server` and `@simplewebauthn/browser`
+- [ ] `PasskeyCredentialStore` interface and SQLite adapter
+- [ ] `PasskeyService` with registration and authentication ceremonies
+- [ ] Stateless challenge management (HMAC-signed, 5-minute TTL)
+- [ ] Unit tests with mocked WebAuthn responses
+
+### 7.4 Session Management
+- [ ] `UserSessionStore` interface and SQLite adapter
+- [ ] `SessionService` for create/validate/refresh/revoke
+- [ ] Session middleware (cookie-based, 7-day expiry with refresh)
+- [ ] Auth context includes `userId`, `currentOrganizationId`
+
+### 7.5 Invitation System
+- [ ] `InvitationStore` interface and SQLite adapter
+- [ ] `InvitationService` for create/validate/accept
+- [ ] API endpoints: create, validate, accept invitations
+- [ ] Signup creates: user, personal org, membership, passkey, session
+
+### 7.6 Auth API Endpoints
+- [ ] `POST /api/auth/passkey/register/options` and `/verify`
+- [ ] `POST /api/auth/passkey/login/options` and `/verify`
+- [ ] `POST /api/auth/logout`
+- [ ] `GET /api/auth/session`
+
+### 7.7 Web App Auth Overhaul
+- [ ] Login page (`/login`) with passkey authentication
+- [ ] Signup page (`/signup`) with invitation code + passkey registration
+- [ ] Replace `tokenStorage` with session-based auth
+- [ ] Update API client to use session cookies
+- [ ] Org switcher in header/settings
+- [ ] Remove `/config` page
+
+### 7.8 Settings & Credential Management
+- [ ] Passkeys section: list, add, remove passkeys
+- [ ] Organizations section: list memberships, switch org, leave org
+
+### 7.9 Org Admin Features in Web App
+- [ ] Members list page
+- [ ] Create invitation UI
+- [ ] Remove member
+- [ ] View pending invitations
+
+### 7.10 Cleanup
+- [ ] Migration: Remove `users.organization_id` column
+- [ ] Remove deprecated token config code
+- [ ] Update documentation
+
+### 7.11 User Token Self-Service (Deferred)
+- [ ] Token list in settings
+- [ ] Create/revoke tokens for extension/CLI use
+
+**Deliverable**: Users sign up via invitation, log in with passkeys, can belong to multiple orgs
 
 ---
 
@@ -864,7 +927,7 @@ application/      # HTTP layer
 See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing strategy.
 
 **Quick Reference:**
-- 188 unit tests (apps/api, packages/*)
+- 261 unit tests (apps/api, packages/*)
 - 92 acceptance tests (HTTP + Playwright)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
@@ -934,7 +997,10 @@ All API endpoints are under the `/api` prefix:
 | `DB_PATH` | SQLite database location | Yes (production) |
 | `SEED_TOKEN` | Bootstrap token secret | Optional (dev) |
 | `ADMIN_PASSWORD` | Admin panel password | Phase 2 |
-| `SESSION_SECRET` | Admin session signing | Phase 2 |
+| `SESSION_SECRET` | Admin + user session signing | Phase 2 |
+| `WEBAUTHN_RP_ID` | WebAuthn relying party ID | Phase 7 (e.g., `yoink.app`) |
+| `WEBAUTHN_RP_NAME` | WebAuthn relying party name | Phase 7 (e.g., `Yoink`) |
+| `WEBAUTHN_ORIGIN` | WebAuthn allowed origin | Phase 7 (e.g., `https://yoink.app`) |
 
 ---
 

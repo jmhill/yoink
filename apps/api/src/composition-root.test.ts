@@ -38,12 +38,13 @@ describe('bootstrapApp', () => {
     const app = await bootstrapApp({ config, infrastructure, silent: true });
 
     // The seeded token should work for authentication
-    // Token format is tokenId:secret, where tokenId is the first generated ID
+    // Token format is tokenId:secret
+    // With sequential ID generator: membership ID is #1, token ID is #2
     const response = await app.inject({
       method: 'POST',
       url: '/api/captures',
       headers: {
-        authorization: `Bearer 00000000-0000-4000-8000-000000000001:my-seed-token`,
+        authorization: `Bearer 00000000-0000-4000-8000-000000000002:my-seed-token`,
       },
       payload: { content: 'Test capture content' },
     });

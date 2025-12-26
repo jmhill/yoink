@@ -23,6 +23,11 @@ import { migration as addDeletedAt } from './008-add-deleted-at.js';
 import { migration as removePinnedAt } from './009-remove-pinned-at.js';
 import { migration as addProcessedFields } from './010-add-processed-fields.js';
 import { migration as createTasks } from './011-create-tasks.js';
+import { migration as createOrganizationMemberships } from './012-create-organization-memberships.js';
+import { migration as createInvitations } from './013-create-invitations.js';
+import { migration as createPasskeyCredentials } from './014-create-passkey-credentials.js';
+import { migration as createUserSessions } from './015-create-user-sessions.js';
+import { migration as addEmailUniqueConstraint } from './016-add-email-unique-constraint.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -36,6 +41,11 @@ export const migrations: Migration[] = [
   removePinnedAt,
   addProcessedFields,
   createTasks,
+  createOrganizationMemberships,
+  createInvitations,
+  createPasskeyCredentials,
+  createUserSessions,
+  addEmailUniqueConstraint,
 ];
 
 export type { Migration };

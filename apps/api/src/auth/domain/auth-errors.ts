@@ -16,6 +16,12 @@ export type OrganizationStorageError = {
   readonly cause?: unknown;
 };
 
+export type MembershipStorageError = {
+  readonly type: 'MEMBERSHIP_STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+};
+
 export const userStorageError = (
   message: string,
   cause?: unknown
@@ -39,6 +45,15 @@ export const organizationStorageError = (
   cause?: unknown
 ): OrganizationStorageError => ({
   type: 'ORGANIZATION_STORAGE_ERROR',
+  message,
+  cause,
+});
+
+export const membershipStorageError = (
+  message: string,
+  cause?: unknown
+): MembershipStorageError => ({
+  type: 'MEMBERSHIP_STORAGE_ERROR',
   message,
   cause,
 });

@@ -3,9 +3,11 @@ import { seedAuthData } from './seed.js';
 import { createFakeOrganizationStore } from './fake-organization-store.js';
 import { createFakeUserStore } from './fake-user-store.js';
 import { createFakeTokenStore } from './fake-token-store.js';
+import { createFakeOrganizationMembershipStore } from './fake-organization-membership-store.js';
 import type { Organization } from '../domain/organization.js';
 import type { User } from '../domain/user.js';
 import type { ApiToken } from '../domain/api-token.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
 import {
   createFakePasswordHasher,
   createFakeClock,
@@ -16,6 +18,7 @@ describe('seedAuthData', () => {
   let savedOrgs: Organization[];
   let savedUsers: User[];
   let savedTokens: ApiToken[];
+  let savedMemberships: OrganizationMembership[];
 
   // Helper to create stores that track saved items
   const createTrackingOrganizationStore = (initialOrganizations: Organization[] = []) => {
@@ -57,22 +60,38 @@ describe('seedAuthData', () => {
     };
   };
 
+  const createTrackingMembershipStore = (initialMemberships: OrganizationMembership[] = []) => {
+    savedMemberships = [...initialMemberships];
+    const store = createFakeOrganizationMembershipStore({ initialMemberships });
+    const originalSave = store.save.bind(store);
+    return {
+      ...store,
+      save: (membership: OrganizationMembership) => {
+        savedMemberships.push(membership);
+        return originalSave(membership);
+      },
+    };
+  };
+
   beforeEach(() => {
     savedOrgs = [];
     savedUsers = [];
     savedTokens = [];
+    savedMemberships = [];
   });
 
-  it('creates org, user, and token when SEED_TOKEN is provided and no tokens exist', async () => {
+  it('creates org, user, membership, and token when SEED_TOKEN is provided and no tokens exist', async () => {
     const organizationStore = createTrackingOrganizationStore();
     const userStore = createTrackingUserStore();
     const tokenStore = createTrackingTokenStore();
+    const membershipStore = createTrackingMembershipStore();
 
     await seedAuthData({
       seedToken: 'my-seed-token',
       organizationStore,
       userStore,
       tokenStore,
+      membershipStore,
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
@@ -86,6 +105,12 @@ describe('seedAuthData', () => {
     expect(savedUsers[0].organizationId).toBe(savedOrgs[0].id);
     expect(savedUsers[0].email).toBe('seed@localhost');
 
+    expect(savedMemberships).toHaveLength(1);
+    expect(savedMemberships[0].userId).toBe(savedUsers[0].id);
+    expect(savedMemberships[0].organizationId).toBe(savedOrgs[0].id);
+    expect(savedMemberships[0].role).toBe('owner');
+    expect(savedMemberships[0].isPersonalOrg).toBe(true);
+
     expect(savedTokens).toHaveLength(1);
     expect(savedTokens[0].userId).toBe(savedUsers[0].id);
     expect(savedTokens[0].tokenHash).toBe('fake-hash:my-seed-token');
@@ -96,12 +121,14 @@ describe('seedAuthData', () => {
     const organizationStore = createTrackingOrganizationStore();
     const userStore = createTrackingUserStore();
     const tokenStore = createTrackingTokenStore();
+    const membershipStore = createTrackingMembershipStore();
 
     await seedAuthData({
       seedToken: undefined,
       organizationStore,
       userStore,
       tokenStore,
+      membershipStore,
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
@@ -111,6 +138,7 @@ describe('seedAuthData', () => {
     expect(savedOrgs).toHaveLength(0);
     expect(savedUsers).toHaveLength(0);
     expect(savedTokens).toHaveLength(0);
+    expect(savedMemberships).toHaveLength(0);
   });
 
   it('does nothing when tokens already exist', async () => {
@@ -125,17 +153,20 @@ describe('seedAuthData', () => {
     const organizationStore = createTrackingOrganizationStore();
     const userStore = createTrackingUserStore();
     const tokenStore = createTrackingTokenStore([existingToken]);
+    const membershipStore = createTrackingMembershipStore();
 
     // Reset after creating stores (creating stores adds initial items to tracking arrays)
     savedOrgs = [];
     savedUsers = [];
     savedTokens = [];
+    savedMemberships = [];
 
     await seedAuthData({
       seedToken: 'my-seed-token',
       organizationStore,
       userStore,
       tokenStore,
+      membershipStore,
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),
@@ -145,18 +176,21 @@ describe('seedAuthData', () => {
     expect(savedOrgs).toHaveLength(0);
     expect(savedUsers).toHaveLength(0);
     expect(savedTokens).toHaveLength(0);
+    expect(savedMemberships).toHaveLength(0);
   });
 
   it('uses the hardcoded organization ID for backward compatibility', async () => {
     const organizationStore = createTrackingOrganizationStore();
     const userStore = createTrackingUserStore();
     const tokenStore = createTrackingTokenStore();
+    const membershipStore = createTrackingMembershipStore();
 
     await seedAuthData({
       seedToken: 'my-seed-token',
       organizationStore,
       userStore,
       tokenStore,
+      membershipStore,
       passwordHasher: createFakePasswordHasher(),
       idGenerator: createFakeIdGenerator(),
       clock: createFakeClock(new Date('2024-01-01T00:00:00.000Z')),

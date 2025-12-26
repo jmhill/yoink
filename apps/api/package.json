@@ -20,6 +20,7 @@
     "@fastify/rate-limit": "9",
     "@fastify/static": "^7.0.4",
     "@sentry/node": "^10.32.1",
+    "@simplewebauthn/server": "^13.2.2",
     "@ts-rest/fastify": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",

@@ -26,7 +26,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.2 complete)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.3 complete)
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -564,12 +564,13 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [x] 26 unit tests for MembershipService behavior
 - [ ] Update queries to use memberships instead of `users.organization_id` (deferred to 7.10)
 
-### 7.3 Passkey Service
-- [ ] Install `@simplewebauthn/server` and `@simplewebauthn/browser`
-- [ ] `PasskeyCredentialStore` interface and SQLite adapter
-- [ ] `PasskeyService` with registration and authentication ceremonies
-- [ ] Stateless challenge management (HMAC-signed, 5-minute TTL)
-- [ ] Unit tests with mocked WebAuthn responses
+### 7.3 Passkey Service - Complete ✓
+- [x] Install `@simplewebauthn/server` and `@simplewebauthn/browser`
+- [x] `PasskeyCredentialStore` interface and SQLite adapter (13 tests)
+- [x] `PasskeyService` with registration and authentication ceremonies (15 tests)
+- [x] Stateless challenge management (HMAC-signed, 5-minute TTL) (13 tests)
+- [x] Unit tests with mocked WebAuthn responses
+- [x] Added `WebAuthnConfigSchema` to config schema
 
 ### 7.4 Session Management
 - [ ] `UserSessionStore` interface and SQLite adapter

@@ -22,6 +22,12 @@ export type MembershipStorageError = {
   readonly cause?: unknown;
 };
 
+export type PasskeyCredentialStorageError = {
+  readonly type: 'PASSKEY_CREDENTIAL_STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+};
+
 export const userStorageError = (
   message: string,
   cause?: unknown
@@ -54,6 +60,15 @@ export const membershipStorageError = (
   cause?: unknown
 ): MembershipStorageError => ({
   type: 'MEMBERSHIP_STORAGE_ERROR',
+  message,
+  cause,
+});
+
+export const passkeyCredentialStorageError = (
+  message: string,
+  cause?: unknown
+): PasskeyCredentialStorageError => ({
+  type: 'PASSKEY_CREDENTIAL_STORAGE_ERROR',
   message,
   cause,
 });
@@ -222,4 +237,110 @@ export const insufficientPermissionsError = (
   type: 'INSUFFICIENT_PERMISSIONS',
   requiredRole,
   actualRole,
+});
+
+// ============================================================================
+// Passkey Service Errors
+// ============================================================================
+
+/** Credential not found during authentication */
+export type CredentialNotFoundError = {
+  readonly type: 'CREDENTIAL_NOT_FOUND';
+  readonly credentialId: string;
+};
+
+/** Challenge has expired */
+export type ChallengeExpiredError = {
+  readonly type: 'CHALLENGE_EXPIRED';
+};
+
+/** Challenge signature does not match */
+export type ChallengeMismatchError = {
+  readonly type: 'CHALLENGE_MISMATCH';
+};
+
+/** WebAuthn verification failed */
+export type VerificationFailedError = {
+  readonly type: 'VERIFICATION_FAILED';
+  readonly reason: string;
+};
+
+/** Signature counter indicates potential credential cloning */
+export type CounterReplayError = {
+  readonly type: 'COUNTER_REPLAY';
+  readonly expected: number;
+  readonly received: number;
+};
+
+/** Origin mismatch during verification */
+export type OriginMismatchError = {
+  readonly type: 'ORIGIN_MISMATCH';
+  readonly expected: string | string[];
+  readonly received: string;
+};
+
+/** RP ID mismatch during verification */
+export type RpIdMismatchError = {
+  readonly type: 'RP_ID_MISMATCH';
+  readonly expected: string | string[];
+  readonly received: string;
+};
+
+export type PasskeyServiceError =
+  | UserNotFoundError
+  | CredentialNotFoundError
+  | ChallengeExpiredError
+  | ChallengeMismatchError
+  | VerificationFailedError
+  | CounterReplayError
+  | OriginMismatchError
+  | RpIdMismatchError
+  | PasskeyCredentialStorageError
+  | UserStorageError;
+
+export const credentialNotFoundError = (
+  credentialId: string
+): CredentialNotFoundError => ({
+  type: 'CREDENTIAL_NOT_FOUND',
+  credentialId,
+});
+
+export const challengeExpiredError = (): ChallengeExpiredError => ({
+  type: 'CHALLENGE_EXPIRED',
+});
+
+export const challengeMismatchError = (): ChallengeMismatchError => ({
+  type: 'CHALLENGE_MISMATCH',
+});
+
+export const verificationFailedError = (reason: string): VerificationFailedError => ({
+  type: 'VERIFICATION_FAILED',
+  reason,
+});
+
+export const counterReplayError = (
+  expected: number,
+  received: number
+): CounterReplayError => ({
+  type: 'COUNTER_REPLAY',
+  expected,
+  received,
+});
+
+export const originMismatchError = (
+  expected: string | string[],
+  received: string
+): OriginMismatchError => ({
+  type: 'ORIGIN_MISMATCH',
+  expected,
+  received,
+});
+
+export const rpIdMismatchError = (
+  expected: string | string[],
+  received: string
+): RpIdMismatchError => ({
+  type: 'RP_ID_MISMATCH',
+  expected,
+  received,
 });

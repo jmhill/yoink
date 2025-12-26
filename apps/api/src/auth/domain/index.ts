@@ -7,10 +7,19 @@ export {
   type OrganizationMembership,
   type MembershipRole,
 } from './organization-membership.js';
+export {
+  PasskeyCredentialSchema,
+  PasskeyTransportSchema,
+  PasskeyDeviceTypeSchema,
+  type PasskeyCredential,
+  type PasskeyTransport,
+  type PasskeyDeviceType,
+} from './passkey-credential.js';
 export type { OrganizationStore } from './organization-store.js';
 export type { UserStore } from './user-store.js';
 export type { TokenStore } from './token-store.js';
 export type { OrganizationMembershipStore } from './organization-membership-store.js';
+export type { PasskeyCredentialStore } from './passkey-credential-store.js';
 export {
   createTokenService,
   type TokenService,
@@ -23,6 +32,7 @@ export {
   tokenStorageError,
   organizationStorageError,
   membershipStorageError,
+  passkeyCredentialStorageError,
   invalidTokenFormatError,
   tokenNotFoundError,
   invalidSecretError,
@@ -34,10 +44,18 @@ export {
   cannotChangeOwnerRoleError,
   lastAdminError,
   insufficientPermissionsError,
+  credentialNotFoundError,
+  challengeExpiredError,
+  challengeMismatchError,
+  verificationFailedError,
+  counterReplayError,
+  originMismatchError,
+  rpIdMismatchError,
   type UserStorageError,
   type TokenStorageError,
   type OrganizationStorageError,
   type MembershipStorageError,
+  type PasskeyCredentialStorageError,
   type InvalidTokenFormatError,
   type TokenNotFoundError,
   type InvalidSecretError,
@@ -51,6 +69,14 @@ export {
   type LastAdminError,
   type InsufficientPermissionsError,
   type MembershipServiceError,
+  type CredentialNotFoundError,
+  type ChallengeExpiredError,
+  type ChallengeMismatchError,
+  type VerificationFailedError,
+  type CounterReplayError,
+  type OriginMismatchError,
+  type RpIdMismatchError,
+  type PasskeyServiceError,
 } from './auth-errors.js';
 export {
   createMembershipService,
@@ -62,3 +88,21 @@ export {
   type GetMembershipQuery,
   type ListMembershipsQuery,
 } from './membership-service.js';
+export {
+  createChallengeManager,
+  type ChallengeManager,
+  type ChallengeManagerDependencies,
+  type ChallengePayload,
+  type ValidatedChallenge,
+  type ChallengeError,
+} from './challenge.js';
+export {
+  createPasskeyService,
+  type PasskeyService,
+  type PasskeyServiceDependencies,
+  type RegistrationOptions,
+  type AuthenticationOptions,
+  type VerifyRegistrationParams,
+  type VerifyAuthenticationParams,
+  type AuthenticationResult,
+} from './passkey-service.js';

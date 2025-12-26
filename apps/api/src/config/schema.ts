@@ -105,6 +105,18 @@ export const LogConfigSchema = z.object({
   pretty: z.boolean().default(false),
 });
 
+// WebAuthn configuration for passkey authentication
+export const WebAuthnConfigSchema = z.object({
+  /** Relying party ID - typically the domain (e.g., "yoink.app" or "localhost") */
+  rpId: z.string(),
+  /** Relying party name shown to users (e.g., "Yoink") */
+  rpName: z.string(),
+  /** Allowed origin(s) for WebAuthn (e.g., "https://yoink.app" or "http://localhost:3000") */
+  origin: z.union([z.string(), z.array(z.string())]),
+  /** Secret for signing challenges (HMAC) - must be at least 32 bytes */
+  challengeSecret: z.string().min(32),
+});
+
 // Full application configuration
 export const AppConfigSchema = z.object({
   server: ServerConfigSchema,
@@ -114,6 +126,7 @@ export const AppConfigSchema = z.object({
   admin: AdminConfigSchema.optional(),
   rateLimit: RateLimitConfigSchema.optional(),
   log: LogConfigSchema,
+  webauthn: WebAuthnConfigSchema.optional(),
 });
 
 // Export inferred types
@@ -123,6 +136,7 @@ export type AdminConfig = z.infer<typeof AdminConfigSchema>;
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type LogLevel = z.infer<typeof LogLevelSchema>;
 export type LogConfig = z.infer<typeof LogConfigSchema>;
+export type WebAuthnConfig = z.infer<typeof WebAuthnConfigSchema>;
 export type IdGeneratorConfig = z.infer<typeof IdGeneratorConfigSchema>;
 export type PasswordHasherConfig = z.infer<typeof PasswordHasherConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

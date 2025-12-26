@@ -1,5 +1,4 @@
 import type { Migration } from '../types.js';
-import { rebuildTable } from '../table-rebuild.js';
 
 /**
  * Adds a UNIQUE constraint on users.email for global email uniqueness.
@@ -8,8 +7,10 @@ import { rebuildTable } from '../table-rebuild.js';
  * With multi-org membership, a user's email must be globally unique since
  * users can belong to multiple organizations.
  *
- * This uses a table rebuild since SQLite doesn't support adding constraints
- * to existing tables.
+ * This uses a unique index rather than a table rebuild with a UNIQUE column
+ * constraint. Both achieve the same result (unique email enforcement), but
+ * a unique index is much simpler and doesn't require complex table rebuild
+ * logic that can interfere with foreign key references.
  *
  * Note: This migration will fail if there are duplicate emails across
  * organizations. If that's the case, a data migration will be needed first.
@@ -18,20 +19,10 @@ export const migration: Migration = {
   version: 16,
   name: 'add_email_unique_constraint',
   up: (db) => {
-    rebuildTable(db, {
-      tableName: 'users',
-      newSchema: `
-        CREATE TABLE users (
-          id TEXT PRIMARY KEY,
-          organization_id TEXT NOT NULL,
-          email TEXT NOT NULL UNIQUE,
-          created_at TEXT NOT NULL
-        )
-      `,
-      columnMapping: 'SELECT id, organization_id, email, created_at',
-      indexes: [
-        'CREATE INDEX idx_users_organization ON users(organization_id)',
-      ],
-    });
+    // Use CREATE UNIQUE INDEX instead of table rebuild
+    // This achieves the same uniqueness enforcement with much less complexity
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)
+    `);
   },
 };

@@ -38,11 +38,14 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       // Create an isolated tenant for this actor (via HTTP admin API)
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const orgName = `test-org-${suffix}`;
+      // Make email unique per actor to satisfy the global email uniqueness constraint
+      const [localPart, domain] = email.split('@');
+      const uniqueEmail = `${localPart}+${suffix}@${domain}`;
 
       await admin.login();
       try {
         const org = await admin.createOrganization(orgName);
-        const user = await admin.createUser(org.id, email);
+        const user = await admin.createUser(org.id, uniqueEmail);
         const { rawToken } = await admin.createToken(user.id, 'test-token');
 
         // Create a new page for this actor

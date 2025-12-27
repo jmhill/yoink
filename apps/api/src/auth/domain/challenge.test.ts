@@ -115,8 +115,10 @@ describe('createChallengeManager', () => {
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       
-      // Tamper with a character in the middle
-      const tamperedChallenge = challenge.slice(0, 20) + 'X' + challenge.slice(21);
+      // Tamper with a character in the middle by replacing it with a different character
+      const charAtPosition = challenge.charAt(20);
+      const replacementChar = charAtPosition === 'X' ? 'Y' : 'X';
+      const tamperedChallenge = challenge.slice(0, 20) + replacementChar + challenge.slice(21);
       
       const result = manager.validateChallenge(tamperedChallenge, 'registration');
       

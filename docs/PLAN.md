@@ -6,6 +6,8 @@ For the full design document and architectural details, see [PROJECT_BRIEF.md](.
 
 For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md).
 
+For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
+
 ---
 
 ## Current Status
@@ -27,6 +29,7 @@ For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./R
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - In Progress (7.1-7.3 complete)
+**Phase 7.5: Turso Database Migration** - Not Started (enables zero-downtime deploys)
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -621,6 +624,70 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 
 ---
 
+## Phase 7.5: Turso Database Migration
+
+**Goal**: Migrate from SQLite on Fly.io volume to Turso-hosted LibSQL for zero-downtime deployments
+
+See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
+
+**Why now?**
+- Phase 7.1-7.3 added new tables (memberships, passkeys, sessions) - good checkpoint before more schema changes
+- Phase 8 complete and stable
+- Single user makes downtime coordination trivial
+- Removes volume complexity before adding more infrastructure
+
+### 7.5.0 Turso Setup (Manual)
+- [ ] Create Turso account and database (`turso db create yoink-prod --location sjc`)
+- [ ] Restore data from Litestream S3 backup to Turso
+- [ ] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
+
+### 7.5.1 Dependencies
+- [ ] Add `@libsql/client` to `apps/api`
+
+### 7.5.2 Database Abstraction Layer
+- [ ] Create abstract `Database` interface in `database/types.ts`
+- [ ] Create LibSQL client implementation in `database/database.ts`
+- [ ] Update `DatabaseConfigSchema` for turso/file/memory discriminated union
+
+### 7.5.3 Update Store Implementations (7 files)
+- [ ] `sqlite-capture-store.ts` - convert to async
+- [ ] `sqlite-task-store.ts` - convert to async
+- [ ] `sqlite-user-store.ts` - convert to async
+- [ ] `sqlite-token-store.ts` - convert to async
+- [ ] `sqlite-organization-store.ts` - convert to async
+- [ ] `sqlite-organization-membership-store.ts` - convert to async
+- [ ] `sqlite-passkey-credential-store.ts` - convert to async
+
+### 7.5.4 Update Transaction & Migrator
+- [ ] Update `transaction.ts` for async transactions
+- [ ] Update `migrator.ts` for async migrations
+- [ ] Update all 16 migration files to async
+
+### 7.5.5 Update Entry Points
+- [ ] Update `composition-root.ts` - new `Infrastructure` type
+- [ ] Update `index.ts` - conditional directory creation
+- [ ] Update `migrate.ts` - Turso config loading
+
+### 7.5.6 Update Tests (11 files)
+- [ ] Create `database/test-utils.ts` helper
+- [ ] Update all store tests to use async test database
+- [ ] Update migrator and transaction tests
+
+### 7.5.7 Update Infrastructure
+- [ ] Remove `[mounts]` section from `fly.toml`
+- [ ] Change deploy strategy to `bluegreen`
+- [ ] Remove Litestream from `Dockerfile`
+- [ ] Simplify `run.sh`
+
+### 7.5.8 Deploy & Verify
+- [ ] Deploy to Fly.io
+- [ ] Verify zero-downtime during subsequent deploy
+- [ ] Delete Fly volume after confirming success
+
+**Deliverable**: Zero-downtime deployments enabled, simplified infrastructure (no volumes, no Litestream)
+
+---
+
 ## Phase 8: Capture → Task Flow
 
 **Goal**: Implement Vision Phase A - captures become the entry point for tasks
@@ -979,7 +1046,7 @@ Implemented performance and efficiency improvements to the CI pipeline:
 - **TDD**: All code written in response to failing tests
 - **Behavior testing**: Test through public APIs, not implementation
 - **Fake dependencies**: Clock, IdGenerator, PasswordHasher have fake implementations
-- **In-memory SQLite**: Integration tests use `:memory:` databases
+- **In-memory LibSQL**: Integration tests use `:memory:` databases via `@libsql/client`
 
 ### URL Structure
 
@@ -997,7 +1064,9 @@ All API endpoints are under the `/api` prefix:
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
-| `DB_PATH` | SQLite database location | Yes (production) |
+| `DB_PATH` | SQLite database location (local dev) | Local dev only |
+| `TURSO_DATABASE_URL` | Turso database URL | Yes (production, Phase 7.5+) |
+| `TURSO_AUTH_TOKEN` | Turso authentication token | Yes (production, Phase 7.5+) |
 | `SEED_TOKEN` | Bootstrap token secret | Optional (dev) |
 | `ADMIN_PASSWORD` | Admin panel password | Phase 2 |
 | `SESSION_SECRET` | Admin + user session signing | Phase 2 |

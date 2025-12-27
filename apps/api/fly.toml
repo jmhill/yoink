@@ -8,6 +8,16 @@ primary_region = 'sjc'
   dockerfile = "Dockerfile"
   ignorefile = "../../.dockerignore"
 
+[deploy]
+  # Rolling strategy is required for apps with volumes (canary/bluegreen don't work)
+  # Each machine is taken down and replaced one by one
+  strategy = "rolling"
+  
+  # Note: release_command can't be used for migrations because it doesn't have
+  # access to volumes. Migrations run in run.sh during app startup instead.
+  # If a migration fails, the health check will fail and the deploy will be
+  # marked as failed, but with only 1 machine there will be downtime.
+
 [env]
   NODE_ENV = "production"
   HOST = "0.0.0.0"
@@ -23,8 +33,9 @@ primary_region = 'sjc'
   processes = ['app']
 
 [[http_service.checks]]
+  # Health check that must pass before traffic is switched to new machines
   grace_period = "30s"
-  interval = "30s"
+  interval = "15s"
   method = "GET"
   path = "/api/health"
   timeout = "10s"

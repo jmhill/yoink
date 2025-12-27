@@ -2,7 +2,7 @@
 # See https://fly.io/docs/reference/configuration/ for documentation
 
 app = 'jhtc-yoink-api'
-primary_region = 'sjc'
+primary_region = 'iad'
 
 [build]
   dockerfile = "Dockerfile"
@@ -23,11 +23,10 @@ primary_region = 'sjc'
 [http_service]
   internal_port = 3000
   force_https = true
-  # Allow machines to stop when idle to save costs.
-  # With Turso (no local volumes), machines can safely stop/start.
+  # Keep at least one machine running to avoid cold start delays.
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [[http_service.checks]]

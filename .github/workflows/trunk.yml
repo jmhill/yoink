@@ -11,7 +11,7 @@ on:
       - ".github/workflows/claude*.yml"
 
 concurrency:
-  group: trunk-${{ github.sha }}
+  group: trunk-deploy
   cancel-in-progress: false
 
 jobs:
@@ -159,8 +159,6 @@ jobs:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
     needs: e2e-tests
-    outputs:
-      previous-image: ${{ steps.get-previous.outputs.image }}
 
     steps:
       - name: Checkout
@@ -169,16 +167,6 @@ jobs:
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@63da3ecc5e2793b98a3f2519b3d75d4f4c11cec2 # master
 
-      - name: Get previous deployment image
-        id: get-previous
-        run: |
-          # Get the currently running image before we deploy
-          PREVIOUS_IMAGE=$(flyctl status -a jhtc-yoink-api --json | jq -r '.Machines[0].config.image // empty')
-          echo "image=$PREVIOUS_IMAGE" >> $GITHUB_OUTPUT
-          echo "Previous image: $PREVIOUS_IMAGE"
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
       - name: Deploy pre-built image
         id: deploy
         run: flyctl deploy --image registry.fly.io/jhtc-yoink-api:${{ github.sha }} --config apps/api/fly.toml
@@ -186,19 +174,27 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Rollback on deploy failure
-        if: failure() && steps.get-previous.outputs.image != ''
+        if: failure()
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "Deploy failed! Rolling back to previous image..."
-          echo "Previous image: ${{ steps.get-previous.outputs.image }}"
+          echo "Deploy failed! Attempting rollback to last known good image..."
           
-          flyctl deploy --image "${{ steps.get-previous.outputs.image }}" \
-            --config apps/api/fly.toml \
-            --strategy immediate \
-            -a jhtc-yoink-api
+          # Authenticate with Fly.io registry
+          flyctl auth docker
           
-          echo "Rollback complete. Please investigate the failed deployment."
+          # Check if prod-latest tag exists
+          if docker pull registry.fly.io/jhtc-yoink-api:prod-latest 2>/dev/null; then
+            echo "Rolling back to prod-latest..."
+            flyctl deploy --image registry.fly.io/jhtc-yoink-api:prod-latest \
+              --config apps/api/fly.toml \
+              --strategy immediate \
+              -a jhtc-yoink-api
+            echo "Rollback complete. Please investigate the failed deployment."
+          else
+            echo "WARNING: No prod-latest tag found. Cannot auto-rollback."
+            echo "Manual intervention required."
+          fi
 
   smoke-test:
     name: Post-Deploy Smoke Test
@@ -286,22 +282,54 @@ jobs:
           
           echo "Admin UI is reachable and contains expected content"
 
-      - name: Rollback on failure
-        if: failure() && needs.deploy.outputs.previous-image != ''
+      - name: Tag image as production
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          echo "Smoke tests failed! Rolling back to previous image..."
-          echo "Previous image: ${{ needs.deploy.outputs.previous-image }}"
+          # Authenticate with Fly.io registry
+          flyctl auth docker
           
-          flyctl deploy --image "${{ needs.deploy.outputs.previous-image }}" \
-            --config apps/api/fly.toml \
-            --strategy immediate \
-            -a jhtc-yoink-api
+          # Generate timestamp tag
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          IMAGE="registry.fly.io/jhtc-yoink-api"
           
-          echo "Rollback complete. Please investigate the failed deployment."
+          # Pull the deployed image
+          docker pull "${IMAGE}:${{ github.sha }}"
           
-          # Still exit with failure to indicate the original deploy had issues
+          # Tag with timestamp for history
+          docker tag "${IMAGE}:${{ github.sha }}" "${IMAGE}:prod-${TIMESTAMP}"
+          docker push "${IMAGE}:prod-${TIMESTAMP}"
+          
+          # Tag as prod-latest (overwrite) for easy rollback
+          docker tag "${IMAGE}:${{ github.sha }}" "${IMAGE}:prod-latest"
+          docker push "${IMAGE}:prod-latest"
+          
+          echo "Tagged as prod-${TIMESTAMP} and prod-latest"
+
+      - name: Rollback on failure
+        if: failure()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "Smoke tests failed! Attempting rollback to last known good image..."
+          
+          # Authenticate with Fly.io registry
+          flyctl auth docker
+          
+          # Check if prod-latest tag exists
+          if docker pull registry.fly.io/jhtc-yoink-api:prod-latest 2>/dev/null; then
+            echo "Rolling back to prod-latest..."
+            flyctl deploy --image registry.fly.io/jhtc-yoink-api:prod-latest \
+              --config apps/api/fly.toml \
+              --strategy immediate \
+              -a jhtc-yoink-api
+            echo "Rollback complete. Please investigate the failed deployment."
+          else
+            echo "WARNING: No prod-latest tag found. Cannot auto-rollback."
+            echo "This is expected on the first deploy. Manual intervention may be required."
+          fi
+          
+          # Exit with failure to indicate the original deploy had issues
           exit 1
 
   extension-build:

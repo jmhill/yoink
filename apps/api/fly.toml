@@ -34,8 +34,10 @@ primary_region = 'sjc'
 
 [[http_service.checks]]
   # Health check that must pass before traffic is switched to new machines
+  # Note: With single machine + volume, rolling deploys cause brief downtime.
+  # Use longer intervals to reduce thrashing during deploy transitions.
   grace_period = "30s"
-  interval = "15s"
+  interval = "30s"
   method = "GET"
   path = "/api/health"
   timeout = "10s"

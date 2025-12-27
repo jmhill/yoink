@@ -29,7 +29,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - In Progress (7.1-7.3 complete)
-**Phase 7.5: Turso Database Migration** - In Progress (Phase 8 complete, infrastructure pending)
+**Phase 7.5: Turso Database Migration** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -636,10 +636,10 @@ See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
 - Single user makes downtime coordination trivial
 - Removes volume complexity before adding more infrastructure
 
-### 7.5.0 Turso Setup (Manual)
-- [ ] Create Turso account and database (`turso db create yoink-prod --location sjc`)
-- [ ] Restore data from Litestream S3 backup to Turso
-- [ ] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
+### 7.5.0 Turso Setup (Manual) - Complete ✓
+- [x] Create Turso account and database (`turso db create yoink-prod --location iad`)
+- [x] Restore data from Litestream S3 backup to Turso
+- [x] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
 
 ### 7.5.1 Dependencies - Complete ✓
 - [x] Add `@libsql/client` to `apps/api`
@@ -693,12 +693,13 @@ See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
 - [x] Simplify `run.sh`
 - [x] Delete `litestream.yml`
 
-### 7.5.8 Deploy & Verify
-- [ ] Deploy to Fly.io
-- [ ] Verify zero-downtime during subsequent deploy
-- [ ] Delete Fly volume after confirming success
+### 7.5.8 Deploy & Verify - Complete ✓
+- [x] Destroy old machine and volume (required to remove mount dependency)
+- [x] Deploy to Fly.io in `iad` region (East Coast, near Turso DB)
+- [x] Configure `min_machines_running = 1` to avoid cold starts
+- [x] Verify blue-green deployment strategy enabled
 
-**Deliverable**: Zero-downtime deployments enabled, simplified infrastructure (no volumes, no Litestream)
+**Deliverable**: Zero-downtime deployments enabled, simplified infrastructure (no volumes, no Litestream) ✓
 
 ---
 

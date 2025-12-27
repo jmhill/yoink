@@ -38,7 +38,16 @@ Turso was chosen because:
 - [x] Create Turso account and database
 - [x] Restore data from Litestream S3 backup
 - [x] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
-- [ ] Verify local development workflow with file-based LibSQL
+- [x] Verify local development workflow with file-based LibSQL
+
+## Migration Status: COMPLETE ✓
+
+The migration was completed on 2024-12-27. Key outcomes:
+- Database now hosted on Turso in `iad` region (East Coast)
+- Blue-green deployments enabled for zero-downtime deploys
+- Litestream backup system removed (Turso handles replication)
+- Fly.io volume deleted
+- Machine relocated from `sjc` to `iad` for lower latency to Turso
 
 ---
 
@@ -53,8 +62,8 @@ brew install tursodatabase/tap/turso
 # Login
 turso auth login
 
-# Create database in same region as Fly.io
-turso db create yoink-prod --location sjc
+# Create database in same region as Fly.io (East Coast)
+turso db create yoink-prod --location iad
 
 # Get connection URL
 turso db show yoink-prod --url
@@ -551,14 +560,14 @@ exec node --experimental-sqlite dist/index.js
 
 ---
 
-## Phase 10: Deploy & Verify
+## Phase 10: Deploy & Verify - COMPLETE ✓
 
 ### Pre-Deploy Checklist
 
-- [ ] All tests pass (`pnpm quality`)
-- [ ] Turso database created with data imported
-- [ ] Fly.io secrets set
-- [ ] Local development works with file-based LibSQL
+- [x] All tests pass (`pnpm quality`)
+- [x] Turso database created with data imported
+- [x] Fly.io secrets set
+- [x] Local development works with file-based LibSQL
 
 ### Deploy
 
@@ -579,13 +588,19 @@ while true; do
 done
 ```
 
-### Post-Deploy Cleanup
+### Post-Deploy Cleanup - COMPLETE ✓
+
+The old machine and volume were destroyed before deploying:
 
 ```bash
-# Delete Fly volume (after confirming everything works)
-fly volumes list -a jhtc-yoink-api
-fly volumes delete vol_XXXXX -a jhtc-yoink-api
+# Machine destroyed
+fly machines destroy 2860727bdde598 -a jhtc-yoink-api --force
+
+# Volume destroyed  
+fly volumes destroy vol_v87d7zeoj15o2jlr -a jhtc-yoink-api -y
 ```
+
+New machine deployed in `iad` region with `min_machines_running = 1`.
 
 ---
 

@@ -10,13 +10,8 @@ export default defineConfig({
     outputFile: {
       json: './test-results.json',
     },
-    // Run tests sequentially to avoid browser context conflicts
-    // when running Playwright tests alongside HTTP tests
+    // Each test file runs in its own fork with isolated browser/tenant.
+    // Files run in parallel, but tests within a file run sequentially.
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
   },
 });

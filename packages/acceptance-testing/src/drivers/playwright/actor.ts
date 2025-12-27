@@ -420,8 +420,12 @@ export const createPlaywrightActor = (
 
     async seesOfflineWarning(): Promise<boolean> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
-      // and the caller should ensure we're configured before going offline
-      await inboxPage.goto();
+      // and the caller should ensure we're configured before going offline.
+      // Also don't navigate if already on inbox - navigation fails when offline.
+      const currentUrl = page.url();
+      if (!currentUrl.endsWith('/') && !currentUrl.includes('/?')) {
+        await inboxPage.goto();
+      }
 
       // Wait for offline banner to appear (with timeout for robustness)
       // The banner appears when the useNetworkStatus hook detects offline state
@@ -437,8 +441,12 @@ export const createPlaywrightActor = (
 
     async canAddCaptures(): Promise<boolean> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
-      // and the caller should ensure we're configured before going offline
-      await inboxPage.goto();
+      // and the caller should ensure we're configured before going offline.
+      // Also don't navigate if already on inbox - navigation fails when offline.
+      const currentUrl = page.url();
+      if (!currentUrl.endsWith('/') && !currentUrl.includes('/?')) {
+        await inboxPage.goto();
+      }
 
       // Check if the quick-add input is enabled
       // When offline, the app disables the input and changes the placeholder

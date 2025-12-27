@@ -93,6 +93,21 @@ function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>About</CardTitle>
+            <CardDescription>App information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Version</span>
+              <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
+                {__COMMIT_SHA__ === 'dev' ? 'dev' : __COMMIT_SHA__.slice(0, 7)}
+              </code>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

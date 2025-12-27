@@ -82,6 +82,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             VITE_SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            VITE_COMMIT_SHA=${{ github.sha }}
 
   e2e-tests:
     name: E2E Tests

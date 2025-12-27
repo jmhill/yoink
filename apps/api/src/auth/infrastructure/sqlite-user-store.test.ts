@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { DatabaseSync } from 'node:sqlite';
 import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
-import { runMigrations } from '../../database/migrator.js';
-import { migrations } from '../../database/migrations.js';
+import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 
@@ -22,30 +20,29 @@ const createTestUser = (overrides: Partial<User> = {}): User => ({
 });
 
 describe('createSqliteUserStore', () => {
-  let db: DatabaseSync;
+  let db: Database;
   let store: UserStore;
 
-  beforeAll(() => {
-    db = new DatabaseSync(':memory:');
-    runMigrations(db, migrations);
+  beforeAll(async () => {
+    db = await createTestDatabase();
   });
 
-  afterAll(() => {
-    db.close();
+  afterAll(async () => {
+    await db.close();
   });
 
   beforeEach(async () => {
     // Clear data between tests (respecting foreign key order)
-    db.exec('DELETE FROM api_tokens');
-    db.exec('DELETE FROM captures');
-    db.exec('DELETE FROM users');
-    db.exec('DELETE FROM organizations');
+    await db.execute({ sql: 'DELETE FROM api_tokens' });
+    await db.execute({ sql: 'DELETE FROM captures' });
+    await db.execute({ sql: 'DELETE FROM users' });
+    await db.execute({ sql: 'DELETE FROM organizations' });
 
     // Create required parent organization
-    const orgStore = createSqliteOrganizationStore(db);
+    const orgStore = await createSqliteOrganizationStore(db);
     await orgStore.save(TEST_ORG);
 
-    store = createSqliteUserStore(db);
+    store = await createSqliteUserStore(db);
   });
 
   describe('save', () => {

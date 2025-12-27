@@ -7,7 +7,7 @@ const main = async () => {
   const config = await loadConfig();
 
   // Ensure database directory exists (only for file-based databases)
-  if (config.database.type === 'sqlite') {
+  if (config.database.type === 'file') {
     mkdirSync(dirname(config.database.path), { recursive: true });
   }
 

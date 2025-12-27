@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { ResultAsync } from 'neverthrow';
 import type { PasskeyCredential, PasskeyTransport } from '../domain/passkey-credential.js';
 import type { PasskeyCredentialStore } from '../domain/passkey-credential-store.js';
 import {
@@ -36,117 +36,109 @@ const rowToCredential = (row: PasskeyCredentialRow): PasskeyCredential => ({
 /**
  * Validates that the required database schema exists.
  */
-const validateSchema = (db: DatabaseSync): void => {
-  const table = db
-    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='passkey_credentials'`)
-    .get();
+const validateSchema = async (db: Database): Promise<void> => {
+  const result = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='passkey_credentials'`,
+  });
 
-  if (!table) {
+  if (result.rows.length === 0) {
     throw new Error(
       'PasskeyCredentialStore requires "passkey_credentials" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
 
-export const createSqlitePasskeyCredentialStore = (db: DatabaseSync): PasskeyCredentialStore => {
-  validateSchema(db);
+export const createSqlitePasskeyCredentialStore = async (
+  db: Database
+): Promise<PasskeyCredentialStore> => {
+  await validateSchema(db);
 
   return {
     save: (credential: PasskeyCredential): ResultAsync<void, PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO passkey_credentials (
-            id, user_id, public_key, counter, transports, device_type, backed_up, name, created_at, last_used_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run(
-          credential.id,
-          credential.userId,
-          credential.publicKey,
-          credential.counter,
-          credential.transports ? JSON.stringify(credential.transports) : null,
-          credential.deviceType,
-          credential.backedUp ? 1 : 0,
-          credential.name ?? null,
-          credential.createdAt,
-          credential.lastUsedAt ?? null
-        );
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to save passkey credential', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            INSERT INTO passkey_credentials (
+              id, user_id, public_key, counter, transports, device_type, backed_up, name, created_at, last_used_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            credential.id,
+            credential.userId,
+            credential.publicKey,
+            credential.counter,
+            credential.transports ? JSON.stringify(credential.transports) : null,
+            credential.deviceType,
+            credential.backedUp ? 1 : 0,
+            credential.name ?? null,
+            credential.createdAt,
+            credential.lastUsedAt ?? null,
+          ],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to save passkey credential', error)
+      ).map(() => undefined);
     },
 
     findById: (credentialId: string): ResultAsync<PasskeyCredential | null, PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM passkey_credentials WHERE id = ?
-        `);
-
-        const row = stmt.get(credentialId) as PasskeyCredentialRow | undefined;
-        return okAsync(row ? rowToCredential(row) : null);
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to find passkey credential', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM passkey_credentials WHERE id = ?`,
+          args: [credentialId],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to find passkey credential', error)
+      ).map((result) => {
+        const row = result.rows[0] as PasskeyCredentialRow | undefined;
+        return row ? rowToCredential(row) : null;
+      });
     },
 
     findByUserId: (userId: string): ResultAsync<PasskeyCredential[], PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM passkey_credentials WHERE user_id = ? ORDER BY created_at DESC
-        `);
-
-        const rows = stmt.all(userId) as PasskeyCredentialRow[];
-        return okAsync(rows.map(rowToCredential));
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to find passkey credentials by user', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM passkey_credentials WHERE user_id = ? ORDER BY created_at DESC`,
+          args: [userId],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to find passkey credentials by user', error)
+      ).map((result) => {
+        const rows = result.rows as PasskeyCredentialRow[];
+        return rows.map(rowToCredential);
+      });
     },
 
     updateCounter: (
       credentialId: string,
       newCounter: number
     ): ResultAsync<void, PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          UPDATE passkey_credentials SET counter = ? WHERE id = ?
-        `);
-
-        stmt.run(newCounter, credentialId);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to update passkey credential counter', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE passkey_credentials SET counter = ? WHERE id = ?`,
+          args: [newCounter, credentialId],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to update passkey credential counter', error)
+      ).map(() => undefined);
     },
 
     updateLastUsed: (
       credentialId: string,
       timestamp: string
     ): ResultAsync<void, PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          UPDATE passkey_credentials SET last_used_at = ? WHERE id = ?
-        `);
-
-        stmt.run(timestamp, credentialId);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to update passkey credential last used', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE passkey_credentials SET last_used_at = ? WHERE id = ?`,
+          args: [timestamp, credentialId],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to update passkey credential last used', error)
+      ).map(() => undefined);
     },
 
     delete: (credentialId: string): ResultAsync<void, PasskeyCredentialStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          DELETE FROM passkey_credentials WHERE id = ?
-        `);
-
-        stmt.run(credentialId);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(passkeyCredentialStorageError('Failed to delete passkey credential', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `DELETE FROM passkey_credentials WHERE id = ?`,
+          args: [credentialId],
+        }),
+        (error) => passkeyCredentialStorageError('Failed to delete passkey credential', error)
+      ).map(() => undefined);
     },
   };
 };

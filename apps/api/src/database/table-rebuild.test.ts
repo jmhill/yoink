@@ -1,40 +1,40 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DatabaseSync } from 'node:sqlite';
 import { rebuildTable } from './table-rebuild.js';
+import { createBareTestDatabase, type Database } from './test-utils.js';
 
 describe('rebuildTable', () => {
-  let db: DatabaseSync;
+  let db: Database;
 
   beforeEach(() => {
-    db = new DatabaseSync(':memory:');
+    db = createBareTestDatabase();
   });
 
-  afterEach(() => {
-    db.close();
+  afterEach(async () => {
+    await db.close();
   });
 
-  it('rebuilds table with new schema preserving data', () => {
+  it('rebuilds table with new schema preserving data', async () => {
     // Create original table and insert data
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         name TEXT,
         email TEXT
       )
-    `);
-    db.prepare('INSERT INTO users (id, name, email) VALUES (?, ?, ?)').run(
-      '1',
-      'Alice',
-      'alice@example.com'
-    );
-    db.prepare('INSERT INTO users (id, name, email) VALUES (?, ?, ?)').run(
-      '2',
-      'Bob',
-      'bob@example.com'
-    );
+    `,
+    });
+    await db.execute({
+      sql: 'INSERT INTO users (id, name, email) VALUES (?, ?, ?)',
+      args: ['1', 'Alice', 'alice@example.com'],
+    });
+    await db.execute({
+      sql: 'INSERT INTO users (id, name, email) VALUES (?, ?, ?)',
+      args: ['2', 'Bob', 'bob@example.com'],
+    });
 
     // Rebuild with added column
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'users',
       newSchema: `
         CREATE TABLE users (
@@ -48,7 +48,8 @@ describe('rebuildTable', () => {
     });
 
     // Verify data was preserved
-    const rows = db.prepare('SELECT * FROM users ORDER BY id').all() as {
+    const result = await db.execute({ sql: 'SELECT * FROM users ORDER BY id' });
+    const rows = result.rows as {
       id: string;
       name: string;
       email: string;
@@ -69,24 +70,25 @@ describe('rebuildTable', () => {
     });
   });
 
-  it('recreates indexes after rebuild', () => {
+  it('recreates indexes after rebuild', async () => {
     // Create original table with index
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         org_id TEXT,
         name TEXT
       )
-    `);
-    db.exec('CREATE INDEX idx_users_org ON users(org_id)');
-    db.prepare('INSERT INTO users (id, org_id, name) VALUES (?, ?, ?)').run(
-      '1',
-      'org-1',
-      'Alice'
-    );
+    `,
+    });
+    await db.execute({ sql: 'CREATE INDEX idx_users_org ON users(org_id)' });
+    await db.execute({
+      sql: 'INSERT INTO users (id, org_id, name) VALUES (?, ?, ?)',
+      args: ['1', 'org-1', 'Alice'],
+    });
 
     // Rebuild with indexes
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'users',
       newSchema: `
         CREATE TABLE users (
@@ -100,31 +102,31 @@ describe('rebuildTable', () => {
     });
 
     // Verify index exists
-    const indexes = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='users' AND name NOT LIKE 'sqlite_%'"
-      )
-      .all() as { name: string }[];
+    const result = await db.execute({
+      sql: "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='users' AND name NOT LIKE 'sqlite_%'",
+    });
+    const indexes = result.rows as { name: string }[];
     expect(indexes.map((i) => i.name)).toContain('idx_users_org');
   });
 
-  it('drops columns by excluding from column mapping', () => {
+  it('drops columns by excluding from column mapping', async () => {
     // Create original table with column to drop
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         name TEXT,
         legacy_field TEXT
       )
-    `);
-    db.prepare('INSERT INTO users (id, name, legacy_field) VALUES (?, ?, ?)').run(
-      '1',
-      'Alice',
-      'old-value'
-    );
+    `,
+    });
+    await db.execute({
+      sql: 'INSERT INTO users (id, name, legacy_field) VALUES (?, ?, ?)',
+      args: ['1', 'Alice', 'old-value'],
+    });
 
     // Rebuild without the legacy field
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'users',
       newSchema: `
         CREATE TABLE users (
@@ -136,30 +138,40 @@ describe('rebuildTable', () => {
     });
 
     // Verify column was dropped
-    const info = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+    const infoResult = await db.execute({ sql: 'PRAGMA table_info(users)' });
+    const info = infoResult.rows as { name: string }[];
     const columnNames = info.map((c) => c.name);
     expect(columnNames).toContain('id');
     expect(columnNames).toContain('name');
     expect(columnNames).not.toContain('legacy_field');
 
     // Verify data preserved
-    const rows = db.prepare('SELECT * FROM users').all() as { id: string; name: string }[];
+    const dataResult = await db.execute({ sql: 'SELECT * FROM users' });
+    const rows = dataResult.rows as { id: string; name: string }[];
     expect(rows[0]).toEqual({ id: '1', name: 'Alice' });
   });
 
-  it('transforms data during rebuild', () => {
+  it('transforms data during rebuild', async () => {
     // Create original table
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE items (
         id TEXT PRIMARY KEY,
         price_cents INTEGER
       )
-    `);
-    db.prepare('INSERT INTO items (id, price_cents) VALUES (?, ?)').run('1', 1000);
-    db.prepare('INSERT INTO items (id, price_cents) VALUES (?, ?)').run('2', 2500);
+    `,
+    });
+    await db.execute({
+      sql: 'INSERT INTO items (id, price_cents) VALUES (?, ?)',
+      args: ['1', 1000],
+    });
+    await db.execute({
+      sql: 'INSERT INTO items (id, price_cents) VALUES (?, ?)',
+      args: ['2', 2500],
+    });
 
     // Rebuild with transformed column
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'items',
       newSchema: `
         CREATE TABLE items (
@@ -171,26 +183,29 @@ describe('rebuildTable', () => {
     });
 
     // Verify transformation
-    const rows = db.prepare('SELECT * FROM items ORDER BY id').all() as {
-      id: string;
-      price_dollars: number;
-    }[];
+    const result = await db.execute({ sql: 'SELECT * FROM items ORDER BY id' });
+    const rows = result.rows as { id: string; price_dollars: number }[];
     expect(rows[0].price_dollars).toBe(10.0);
     expect(rows[1].price_dollars).toBe(25.0);
   });
 
-  it('rolls back on error during rebuild', () => {
+  it('rolls back on error during rebuild', async () => {
     // Create original table
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         name TEXT
       )
-    `);
-    db.prepare('INSERT INTO users (id, name) VALUES (?, ?)').run('1', 'Alice');
+    `,
+    });
+    await db.execute({
+      sql: 'INSERT INTO users (id, name) VALUES (?, ?)',
+      args: ['1', 'Alice'],
+    });
 
     // Attempt rebuild with invalid SQL
-    expect(() =>
+    await expect(
       rebuildTable(db, {
         tableName: 'users',
         newSchema: `
@@ -201,41 +216,48 @@ describe('rebuildTable', () => {
         `,
         columnMapping: 'SELECT id, nonexistent_column', // This will fail
       })
-    ).toThrow();
+    ).rejects.toThrow();
 
     // Original table should still exist with data intact
-    const rows = db.prepare('SELECT * FROM users').all() as { id: string; name: string }[];
+    const result = await db.execute({ sql: 'SELECT * FROM users' });
+    const rows = result.rows as { id: string; name: string }[];
     expect(rows).toHaveLength(1);
     expect(rows[0]).toEqual({ id: '1', name: 'Alice' });
   });
 
-  it('handles foreign keys by disabling during rebuild', () => {
+  it('handles foreign keys by disabling during rebuild', async () => {
     // Enable foreign keys
-    db.exec('PRAGMA foreign_keys = ON');
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
 
     // Create tables with foreign key relationship
-    db.exec(`
+    await db.execute({
+      sql: `
       CREATE TABLE organizations (
         id TEXT PRIMARY KEY,
         name TEXT
       )
-    `);
-    db.exec(`
+    `,
+    });
+    await db.execute({
+      sql: `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         org_id TEXT REFERENCES organizations(id),
         name TEXT
       )
-    `);
-    db.prepare('INSERT INTO organizations (id, name) VALUES (?, ?)').run('org-1', 'Acme');
-    db.prepare('INSERT INTO users (id, org_id, name) VALUES (?, ?, ?)').run(
-      '1',
-      'org-1',
-      'Alice'
-    );
+    `,
+    });
+    await db.execute({
+      sql: 'INSERT INTO organizations (id, name) VALUES (?, ?)',
+      args: ['org-1', 'Acme'],
+    });
+    await db.execute({
+      sql: 'INSERT INTO users (id, org_id, name) VALUES (?, ?, ?)',
+      args: ['1', 'org-1', 'Alice'],
+    });
 
     // Rebuild users table (should work despite FK)
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'users',
       newSchema: `
         CREATE TABLE users (
@@ -248,15 +270,13 @@ describe('rebuildTable', () => {
     });
 
     // Verify FK enforcement is restored
-    const fkStatus = db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number };
+    const fkResult = await db.execute({ sql: 'PRAGMA foreign_keys' });
+    const fkStatus = fkResult.rows[0] as { foreign_keys: number };
     expect(fkStatus.foreign_keys).toBe(1);
 
     // Verify data integrity
-    const rows = db.prepare('SELECT * FROM users').all() as {
-      id: string;
-      org_id: string;
-      name: string;
-    }[];
+    const dataResult = await db.execute({ sql: 'SELECT * FROM users' });
+    const rows = dataResult.rows as { id: string; org_id: string; name: string }[];
     expect(rows[0]).toEqual({ id: '1', org_id: 'org-1', name: 'Alice' });
   });
 });

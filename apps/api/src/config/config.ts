@@ -76,8 +76,33 @@ const loadLogConfig = (): LogConfig => {
 };
 
 /**
+ * Load database configuration from environment variables.
+ *
+ * Priority:
+ * 1. TURSO_DATABASE_URL → Turso cloud database
+ * 2. DB_PATH → Local file-based LibSQL
+ * 3. Default → ./data/captures.db (file)
+ */
+const loadDatabaseConfig = (): DatabaseConfig => {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+
+  if (tursoUrl) {
+    return {
+      type: 'turso',
+      url: tursoUrl,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    };
+  }
+
+  return {
+    type: 'file',
+    path: process.env.DB_PATH ?? './data/captures.db',
+  };
+};
+
+/**
  * Load application configuration from environment variables.
- * Returns production-ready defaults (sqlite, system clock, uuid, bcrypt).
+ * Returns production-ready defaults (file-based LibSQL, system clock, uuid, bcrypt).
  */
 export const loadConfig = async (): Promise<AppConfig> => {
   return {
@@ -85,10 +110,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
       port: parseInt(process.env.PORT ?? '3000', 10),
       host: process.env.HOST ?? '0.0.0.0',
     },
-    database: {
-      type: 'sqlite',
-      path: process.env.DB_PATH ?? './data/captures.db',
-    },
+    database: loadDatabaseConfig(),
     infrastructure: {
       clock: { type: 'system' },
       idGenerator: { type: 'uuid' },
@@ -103,10 +125,17 @@ export const loadConfig = async (): Promise<AppConfig> => {
 
 /**
  * Get the database path from config.
- * Returns the path for sqlite databases, or ':memory:' for in-memory databases.
+ * Returns the path for file databases, ':memory:' for in-memory, or the Turso URL.
  */
 export const getDatabasePath = (config: DatabaseConfig): string => {
-  return config.type === 'sqlite' ? config.path : ':memory:';
+  switch (config.type) {
+    case 'file':
+      return config.path;
+    case 'turso':
+      return config.url;
+    case 'memory':
+      return ':memory:';
+  }
 };
 
 // Re-export types for convenience

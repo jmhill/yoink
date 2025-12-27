@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
@@ -26,97 +26,95 @@ const rowToToken = (row: TokenRow): ApiToken => ({
  * Validates that the required database schema exists.
  * Throws an error if migrations have not been run.
  */
-const validateSchema = (db: DatabaseSync): void => {
-  const table = db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='api_tokens'`
-    )
-    .get();
+const validateSchema = async (db: Database): Promise<void> => {
+  const result = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='api_tokens'`,
+  });
 
-  if (!table) {
+  if (result.rows.length === 0) {
     throw new Error(
       'TokenStore requires "api_tokens" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
 
-export const createSqliteTokenStore = (db: DatabaseSync): TokenStore => {
-  validateSchema(db);
+export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> => {
+  await validateSchema(db);
 
   return {
     save: (token: ApiToken): ResultAsync<void, TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO api_tokens (id, user_id, token_hash, name, last_used_at, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run(
-          token.id,
-          token.userId,
-          token.tokenHash,
-          token.name,
-          token.lastUsedAt ?? null,
-          token.createdAt
-        );
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to save token', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            INSERT INTO api_tokens (id, user_id, token_hash, name, last_used_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            token.id,
+            token.userId,
+            token.tokenHash,
+            token.name,
+            token.lastUsedAt ?? null,
+            token.createdAt,
+          ],
+        }),
+        (error) => tokenStorageError('Failed to save token', error)
+      ).map(() => undefined);
     },
 
     findById: (id: string): ResultAsync<ApiToken | null, TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`SELECT * FROM api_tokens WHERE id = ?`);
-        const row = stmt.get(id) as TokenRow | undefined;
-        return okAsync(row ? rowToToken(row) : null);
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to find token', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM api_tokens WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => tokenStorageError('Failed to find token', error)
+      ).map((result) => {
+        const row = result.rows[0] as TokenRow | undefined;
+        return row ? rowToToken(row) : null;
+      });
     },
 
     findByUserId: (userId: string): ResultAsync<ApiToken[], TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC
-        `);
-        const rows = stmt.all(userId) as TokenRow[];
-        return okAsync(rows.map(rowToToken));
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to find tokens by user', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC`,
+          args: [userId],
+        }),
+        (error) => tokenStorageError('Failed to find tokens by user', error)
+      ).map((result) => {
+        const rows = result.rows as TokenRow[];
+        return rows.map(rowToToken);
+      });
     },
 
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          UPDATE api_tokens SET last_used_at = ? WHERE id = ?
-        `);
-        stmt.run(timestamp, id);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to update token last used', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE api_tokens SET last_used_at = ? WHERE id = ?`,
+          args: [timestamp, id],
+        }),
+        (error) => tokenStorageError('Failed to update token last used', error)
+      ).map(() => undefined);
     },
 
     delete: (id: string): ResultAsync<void, TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`DELETE FROM api_tokens WHERE id = ?`);
-        stmt.run(id);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to delete token', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `DELETE FROM api_tokens WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => tokenStorageError('Failed to delete token', error)
+      ).map(() => undefined);
     },
 
     hasAnyTokens: (): ResultAsync<boolean, TokenStorageError> => {
-      try {
-        const stmt = db.prepare(`SELECT 1 FROM api_tokens LIMIT 1`);
-        const row = stmt.get();
-        return okAsync(row !== undefined);
-      } catch (error) {
-        return errAsync(tokenStorageError('Failed to check for tokens', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT 1 FROM api_tokens LIMIT 1`,
+        }),
+        (error) => tokenStorageError('Failed to check for tokens', error)
+      ).map((result) => result.rows.length > 0);
     },
   };
 };

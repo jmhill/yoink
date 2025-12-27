@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from './database/types.js';
 import { createApp, type AdminConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
@@ -35,7 +35,7 @@ import {
 } from '@yoink/infrastructure';
 
 export type Infrastructure = {
-  database: { db: DatabaseSync };
+  database: Database;
   clock: Clock;
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;
@@ -101,13 +101,12 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const { config, infrastructure, silent } = options;
   const { database, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);
-  const { db } = database;
 
-  // Create auth stores
-  const organizationStore = createSqliteOrganizationStore(db);
-  const userStore = createSqliteUserStore(db);
-  const tokenStore = createSqliteTokenStore(db);
-  const membershipStore = createSqliteOrganizationMembershipStore(db);
+  // Create auth stores (async initialization for schema validation)
+  const organizationStore = await createSqliteOrganizationStore(database);
+  const userStore = await createSqliteUserStore(database);
+  const tokenStore = await createSqliteTokenStore(database);
+  const membershipStore = await createSqliteOrganizationMembershipStore(database);
 
   // Seed auth data if configured
   await seedAuthData({
@@ -147,16 +146,16 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   // Create health checker
   const healthChecker = createSqliteHealthChecker({ tokenStore });
 
-  // Create capture store and service
-  const captureStore = createSqliteCaptureStore(db, clock);
+  // Create capture store and service (async initialization)
+  const captureStore = await createSqliteCaptureStore(database, clock);
   const captureService = createCaptureService({
     store: captureStore,
     clock,
     idGenerator,
   });
 
-  // Create task store and service
-  const taskStore = createSqliteTaskStore(db, clock);
+  // Create task store and service (async initialization)
+  const taskStore = await createSqliteTaskStore(database, clock);
   const taskService = createTaskService({
     store: taskStore,
     clock,
@@ -166,7 +165,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   // Create capture processing service (cross-entity operations)
   // Uses transactions for atomicity across stores
   const captureProcessingService = createCaptureProcessingService({
-    db,
+    database,
     captureStore,
     taskStore,
     clock,

@@ -18,11 +18,11 @@ import type { Migration } from '../types.js';
 export const migration: Migration = {
   version: 16,
   name: 'add_email_unique_constraint',
-  up: (db) => {
+  up: async (db) => {
     // Use CREATE UNIQUE INDEX instead of table rebuild
     // This achieves the same uniqueness enforcement with much less complexity
-    db.exec(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)
-    `);
+    await db.execute({
+      sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email)`,
+    });
   },
 };

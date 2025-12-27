@@ -29,7 +29,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
 **Phase 7: Authentication Overhaul** - In Progress (7.1-7.3 complete)
-**Phase 7.5: Turso Database Migration** - Not Started (enables zero-downtime deploys)
+**Phase 7.5: Turso Database Migration** - In Progress (Phase 8 complete, infrastructure pending)
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
 ---
@@ -641,43 +641,57 @@ See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
 - [ ] Restore data from Litestream S3 backup to Turso
 - [ ] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
 
-### 7.5.1 Dependencies
-- [ ] Add `@libsql/client` to `apps/api`
+### 7.5.1 Dependencies - Complete ✓
+- [x] Add `@libsql/client` to `apps/api`
 
-### 7.5.2 Database Abstraction Layer
-- [ ] Create abstract `Database` interface in `database/types.ts`
-- [ ] Create LibSQL client implementation in `database/database.ts`
-- [ ] Update `DatabaseConfigSchema` for turso/file/memory discriminated union
+### 7.5.2 Database Abstraction Layer - Complete ✓
+- [x] Create abstract `Database` interface in `database/types.ts`
+- [x] Create LibSQL client implementation in `database/database.ts`
+- [x] Update `DatabaseConfigSchema` for turso/file/memory discriminated union
 
-### 7.5.3 Update Store Implementations (7 files)
-- [ ] `sqlite-capture-store.ts` - convert to async
-- [ ] `sqlite-task-store.ts` - convert to async
-- [ ] `sqlite-user-store.ts` - convert to async
-- [ ] `sqlite-token-store.ts` - convert to async
-- [ ] `sqlite-organization-store.ts` - convert to async
-- [ ] `sqlite-organization-membership-store.ts` - convert to async
-- [ ] `sqlite-passkey-credential-store.ts` - convert to async
+### 7.5.3 Update Store Implementations (7 files) - Complete ✓
+- [x] `sqlite-capture-store.ts` - convert to async
+- [x] `sqlite-task-store.ts` - convert to async
+- [x] `sqlite-user-store.ts` - convert to async
+- [x] `sqlite-token-store.ts` - convert to async
+- [x] `sqlite-organization-store.ts` - convert to async
+- [x] `sqlite-organization-membership-store.ts` - convert to async
+- [x] `sqlite-passkey-credential-store.ts` - convert to async
 
-### 7.5.4 Update Transaction & Migrator
-- [ ] Update `transaction.ts` for async transactions
-- [ ] Update `migrator.ts` for async migrations
-- [ ] Update all 16 migration files to async
+### 7.5.4 Update Transaction & Migrator - Complete ✓
+- [x] Update `transaction.ts` for async transactions
+- [x] Update `table-rebuild.ts` for async operations
+- [x] Update `migrator.ts` for async migrations
+- [x] Update all 16 migration files to async
 
-### 7.5.5 Update Entry Points
-- [ ] Update `composition-root.ts` - new `Infrastructure` type
-- [ ] Update `index.ts` - conditional directory creation
-- [ ] Update `migrate.ts` - Turso config loading
+### 7.5.5 Update Entry Points - Complete ✓
+- [x] Update `composition-root.ts` - new `Infrastructure` type
+- [x] Update `index.ts` - conditional directory creation
+- [x] Update `migrate.ts` - Turso config loading
+- [x] Update `processing-service.ts` - use `database` instead of `db`
 
-### 7.5.6 Update Tests (11 files)
-- [ ] Create `database/test-utils.ts` helper
-- [ ] Update all store tests to use async test database
-- [ ] Update migrator and transaction tests
+### 7.5.6 Update Tests (12 files) - Complete ✓
+- [x] Create `database/test-utils.ts` helper with `createTestDatabase()` and `createBareTestDatabase()`
+- [x] Update `database/migrator.test.ts`
+- [x] Update `database/transaction.test.ts`
+- [x] Update `database/table-rebuild.test.ts`
+- [x] Update `captures/infrastructure/sqlite-capture-store.test.ts`
+- [x] Update `auth/infrastructure/sqlite-organization-store.test.ts`
+- [x] Update `auth/infrastructure/sqlite-user-store.test.ts`
+- [x] Update `auth/infrastructure/sqlite-token-store.test.ts`
+- [x] Update `auth/infrastructure/sqlite-organization-membership-store.test.ts`
+- [x] Update `auth/infrastructure/sqlite-passkey-credential-store.test.ts`
+- [x] Update `composition-root.test.ts`
+- [x] Update `processing/domain/processing-service.test.ts`
+- [x] Update `security.test.ts`
+- [x] Update `tests/helpers/test-app.ts`
 
-### 7.5.7 Update Infrastructure
-- [ ] Remove `[mounts]` section from `fly.toml`
-- [ ] Change deploy strategy to `bluegreen`
-- [ ] Remove Litestream from `Dockerfile`
-- [ ] Simplify `run.sh`
+### 7.5.7 Update Infrastructure - Complete ✓
+- [x] Remove `[mounts]` section from `fly.toml`
+- [x] Change deploy strategy to `bluegreen`
+- [x] Remove Litestream from `Dockerfile`
+- [x] Simplify `run.sh`
+- [x] Delete `litestream.yml`
 
 ### 7.5.8 Deploy & Verify
 - [ ] Deploy to Fly.io

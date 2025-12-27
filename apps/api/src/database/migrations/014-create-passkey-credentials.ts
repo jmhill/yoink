@@ -15,23 +15,27 @@ import type { Migration } from '../types.js';
 export const migration: Migration = {
   version: 14,
   name: 'create_passkey_credentials',
-  up: (db) => {
-    db.exec(`
-      CREATE TABLE passkey_credentials (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        public_key TEXT NOT NULL,
-        counter INTEGER NOT NULL DEFAULT 0,
-        transports TEXT,
-        device_type TEXT NOT NULL CHECK (device_type IN ('singleDevice', 'multiDevice')),
-        backed_up INTEGER NOT NULL DEFAULT 0,
-        name TEXT,
-        created_at TEXT NOT NULL,
-        last_used_at TEXT
-      )
-    `);
+  up: async (db) => {
+    await db.execute({
+      sql: `
+        CREATE TABLE passkey_credentials (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          public_key TEXT NOT NULL,
+          counter INTEGER NOT NULL DEFAULT 0,
+          transports TEXT,
+          device_type TEXT NOT NULL CHECK (device_type IN ('singleDevice', 'multiDevice')),
+          backed_up INTEGER NOT NULL DEFAULT 0,
+          name TEXT,
+          created_at TEXT NOT NULL,
+          last_used_at TEXT
+        )
+      `,
+    });
 
     // Index for listing credentials by user
-    db.exec(`CREATE INDEX idx_passkey_credentials_user_id ON passkey_credentials(user_id)`);
+    await db.execute({
+      sql: `CREATE INDEX idx_passkey_credentials_user_id ON passkey_credentials(user_id)`,
+    });
   },
 };

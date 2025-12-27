@@ -13,26 +13,32 @@ import type { Migration } from '../types.js';
 export const migration: Migration = {
   version: 13,
   name: 'create_invitations',
-  up: (db) => {
-    db.exec(`
-      CREATE TABLE invitations (
-        id TEXT PRIMARY KEY,
-        code TEXT NOT NULL UNIQUE,
-        email TEXT,
-        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-        invited_by_user_id TEXT NOT NULL REFERENCES users(id),
-        role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
-        expires_at TEXT NOT NULL,
-        accepted_at TEXT,
-        accepted_by_user_id TEXT REFERENCES users(id),
-        created_at TEXT NOT NULL
-      )
-    `);
+  up: async (db) => {
+    await db.execute({
+      sql: `
+        CREATE TABLE invitations (
+          id TEXT PRIMARY KEY,
+          code TEXT NOT NULL UNIQUE,
+          email TEXT,
+          organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+          invited_by_user_id TEXT NOT NULL REFERENCES users(id),
+          role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+          expires_at TEXT NOT NULL,
+          accepted_at TEXT,
+          accepted_by_user_id TEXT REFERENCES users(id),
+          created_at TEXT NOT NULL
+        )
+      `,
+    });
 
     // Index for looking up invitation by code (primary lookup method)
-    db.exec(`CREATE UNIQUE INDEX idx_invitations_code ON invitations(code)`);
+    await db.execute({
+      sql: `CREATE UNIQUE INDEX idx_invitations_code ON invitations(code)`,
+    });
 
     // Index for listing pending invitations by organization
-    db.exec(`CREATE INDEX idx_invitations_org ON invitations(organization_id, accepted_at)`);
+    await db.execute({
+      sql: `CREATE INDEX idx_invitations_org ON invitations(organization_id, accepted_at)`,
+    });
   },
 };

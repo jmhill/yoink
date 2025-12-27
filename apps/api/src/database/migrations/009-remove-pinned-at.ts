@@ -4,10 +4,10 @@ import { rebuildTable } from '../table-rebuild.js';
 export const migration: Migration = {
   version: 9,
   name: 'remove_pinned_at',
-  up: (db) => {
+  up: async (db) => {
     // Rebuild captures table to remove pinned_at column
     // Pin functionality has been removed from captures
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'captures',
       newSchema: `
         CREATE TABLE captures (

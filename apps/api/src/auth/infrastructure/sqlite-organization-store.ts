@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { ResultAsync } from 'neverthrow';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import {
@@ -23,65 +23,61 @@ const rowToOrganization = (row: OrganizationRow): Organization => ({
  * Validates that the required database schema exists.
  * Throws an error if migrations have not been run.
  */
-const validateSchema = (db: DatabaseSync): void => {
-  const table = db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='organizations'`
-    )
-    .get();
+const validateSchema = async (db: Database): Promise<void> => {
+  const result = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='organizations'`,
+  });
 
-  if (!table) {
+  if (result.rows.length === 0) {
     throw new Error(
       'OrganizationStore requires "organizations" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
 
-export const createSqliteOrganizationStore = (
-  db: DatabaseSync
-): OrganizationStore => {
-  validateSchema(db);
+export const createSqliteOrganizationStore = async (
+  db: Database
+): Promise<OrganizationStore> => {
+  await validateSchema(db);
 
   return {
     save: (organization: Organization): ResultAsync<void, OrganizationStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO organizations (id, name, created_at)
-          VALUES (?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET name = excluded.name
-        `);
-
-        stmt.run(organization.id, organization.name, organization.createdAt);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(organizationStorageError('Failed to save organization', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            INSERT INTO organizations (id, name, created_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name = excluded.name
+          `,
+          args: [organization.id, organization.name, organization.createdAt],
+        }),
+        (error) => organizationStorageError('Failed to save organization', error)
+      ).map(() => undefined);
     },
 
     findById: (id: string): ResultAsync<Organization | null, OrganizationStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM organizations WHERE id = ?
-        `);
-
-        const row = stmt.get(id) as OrganizationRow | undefined;
-        return okAsync(row ? rowToOrganization(row) : null);
-      } catch (error) {
-        return errAsync(organizationStorageError('Failed to find organization', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM organizations WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => organizationStorageError('Failed to find organization', error)
+      ).map((result) => {
+        const row = result.rows[0] as OrganizationRow | undefined;
+        return row ? rowToOrganization(row) : null;
+      });
     },
 
     findAll: (): ResultAsync<Organization[], OrganizationStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM organizations ORDER BY created_at DESC
-        `);
-
-        const rows = stmt.all() as OrganizationRow[];
-        return okAsync(rows.map(rowToOrganization));
-      } catch (error) {
-        return errAsync(organizationStorageError('Failed to find all organizations', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM organizations ORDER BY created_at DESC`,
+        }),
+        (error) => organizationStorageError('Failed to find all organizations', error)
+      ).map((result) => {
+        const rows = result.rows as OrganizationRow[];
+        return rows.map(rowToOrganization);
+      });
     },
   };
 };

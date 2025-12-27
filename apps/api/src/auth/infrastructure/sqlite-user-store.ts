@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { ResultAsync } from 'neverthrow';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 import { userStorageError, type UserStorageError } from '../domain/auth-errors.js';
@@ -22,60 +22,59 @@ const rowToUser = (row: UserRow): User => ({
  * Validates that the required database schema exists.
  * Throws an error if migrations have not been run.
  */
-const validateSchema = (db: DatabaseSync): void => {
-  const table = db
-    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='users'`)
-    .get();
+const validateSchema = async (db: Database): Promise<void> => {
+  const result = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='users'`,
+  });
 
-  if (!table) {
+  if (result.rows.length === 0) {
     throw new Error(
       'UserStore requires "users" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
 
-export const createSqliteUserStore = (db: DatabaseSync): UserStore => {
-  validateSchema(db);
+export const createSqliteUserStore = async (db: Database): Promise<UserStore> => {
+  await validateSchema(db);
 
   return {
     save: (user: User): ResultAsync<void, UserStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO users (id, organization_id, email, created_at)
-          VALUES (?, ?, ?, ?)
-        `);
-
-        stmt.run(user.id, user.organizationId, user.email, user.createdAt);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(userStorageError('Failed to save user', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            INSERT INTO users (id, organization_id, email, created_at)
+            VALUES (?, ?, ?, ?)
+          `,
+          args: [user.id, user.organizationId, user.email, user.createdAt],
+        }),
+        (error) => userStorageError('Failed to save user', error)
+      ).map(() => undefined);
     },
 
     findById: (id: string): ResultAsync<User | null, UserStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM users WHERE id = ?
-        `);
-
-        const row = stmt.get(id) as UserRow | undefined;
-        return okAsync(row ? rowToUser(row) : null);
-      } catch (error) {
-        return errAsync(userStorageError('Failed to find user', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM users WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => userStorageError('Failed to find user', error)
+      ).map((result) => {
+        const row = result.rows[0] as UserRow | undefined;
+        return row ? rowToUser(row) : null;
+      });
     },
 
     findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM users WHERE organization_id = ? ORDER BY created_at DESC
-        `);
-
-        const rows = stmt.all(organizationId) as UserRow[];
-        return okAsync(rows.map(rowToUser));
-      } catch (error) {
-        return errAsync(userStorageError('Failed to find users by organization', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM users WHERE organization_id = ? ORDER BY created_at DESC`,
+          args: [organizationId],
+        }),
+        (error) => userStorageError('Failed to find users by organization', error)
+      ).map((result) => {
+        const rows = result.rows as UserRow[];
+        return rows.map(rowToUser);
+      });
     },
   };
 };

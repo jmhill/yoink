@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from './types.js';
 
 export type RebuildTableOptions = {
   /** The name of the table to rebuild */
@@ -33,7 +33,7 @@ export type RebuildTableOptions = {
  *
  * @example
  * // Add NOT NULL constraint and new column
- * rebuildTable(db, {
+ * await rebuildTable(db, {
  *   tableName: 'users',
  *   newSchema: `
  *     CREATE TABLE users (
@@ -48,7 +48,7 @@ export type RebuildTableOptions = {
  *
  * @example
  * // Drop a column
- * rebuildTable(db, {
+ * await rebuildTable(db, {
  *   tableName: 'users',
  *   newSchema: `
  *     CREATE TABLE users (
@@ -59,19 +59,20 @@ export type RebuildTableOptions = {
  *   columnMapping: 'SELECT id, name', // Excludes legacy_field
  * });
  */
-export const rebuildTable = (db: DatabaseSync, options: RebuildTableOptions): void => {
+export const rebuildTable = async (db: Database, options: RebuildTableOptions): Promise<void> => {
   const { tableName, newSchema, columnMapping, indexes = [] } = options;
 
   // Check if foreign keys are currently enabled so we can restore the setting
-  const fkStatus = db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number };
-  const fkWasEnabled = fkStatus.foreign_keys === 1;
+  const fkResult = await db.execute({ sql: 'PRAGMA foreign_keys' });
+  const fkWasEnabled = (fkResult.rows[0] as { foreign_keys: number }).foreign_keys === 1;
 
   // Disable foreign keys during rebuild
-  db.exec('PRAGMA foreign_keys = OFF');
+  await db.execute({ sql: 'PRAGMA foreign_keys = OFF' });
 
   // Use SAVEPOINT for nested transaction support - works whether or not we're already in a transaction
   const savepointName = `rebuild_${tableName}_${Date.now()}`;
-  db.exec(`SAVEPOINT ${savepointName}`);
+  await db.execute({ sql: `SAVEPOINT ${savepointName}` });
+
   try {
     // Create new table with temporary name
     const tempTableName = `${tableName}_new`;
@@ -79,31 +80,31 @@ export const rebuildTable = (db: DatabaseSync, options: RebuildTableOptions): vo
       new RegExp(`CREATE\\s+TABLE\\s+${tableName}\\b`, 'i'),
       `CREATE TABLE ${tempTableName}`
     );
-    db.exec(schemaWithTempName);
+    await db.execute({ sql: schemaWithTempName });
 
     // Copy data from old table to new table
-    db.exec(`INSERT INTO ${tempTableName} ${columnMapping} FROM ${tableName}`);
+    await db.execute({ sql: `INSERT INTO ${tempTableName} ${columnMapping} FROM ${tableName}` });
 
     // Drop old table
-    db.exec(`DROP TABLE ${tableName}`);
+    await db.execute({ sql: `DROP TABLE ${tableName}` });
 
     // Rename new table to original name
-    db.exec(`ALTER TABLE ${tempTableName} RENAME TO ${tableName}`);
+    await db.execute({ sql: `ALTER TABLE ${tempTableName} RENAME TO ${tableName}` });
 
     // Recreate indexes
     for (const indexSql of indexes) {
-      db.exec(indexSql);
+      await db.execute({ sql: indexSql });
     }
 
-    db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+    await db.execute({ sql: `RELEASE SAVEPOINT ${savepointName}` });
   } catch (error) {
-    db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
-    db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+    await db.execute({ sql: `ROLLBACK TO SAVEPOINT ${savepointName}` });
+    await db.execute({ sql: `RELEASE SAVEPOINT ${savepointName}` });
     throw error;
   } finally {
     // Restore foreign key setting
     if (fkWasEnabled) {
-      db.exec('PRAGMA foreign_keys = ON');
+      await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
     }
   }
 };

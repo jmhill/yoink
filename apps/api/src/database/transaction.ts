@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import type { ResultAsync } from 'neverthrow';
+import type { Database } from './types.js';
+import { ResultAsync } from 'neverthrow';
 
 /**
  * Wraps a function that returns a ResultAsync in a database transaction.
@@ -18,27 +18,27 @@ import type { ResultAsync } from 'neverthrow';
  * });
  * ```
  */
-export const withTransaction = <T, E>(
-  db: DatabaseSync,
+export const withTransaction = async <T, E>(
+  db: Database,
   fn: () => ResultAsync<T, E>
-): ResultAsync<T, E> => {
-  db.exec('BEGIN TRANSACTION');
+): Promise<ResultAsync<T, E>> => {
+  await db.execute({ sql: 'BEGIN TRANSACTION' });
 
   let result: ResultAsync<T, E>;
   try {
     result = fn();
   } catch (error) {
-    db.exec('ROLLBACK');
+    await db.execute({ sql: 'ROLLBACK' });
     throw error;
   }
 
   return result
-    .map((value) => {
-      db.exec('COMMIT');
+    .map(async (value) => {
+      await db.execute({ sql: 'COMMIT' });
       return value;
     })
-    .mapErr((error) => {
-      db.exec('ROLLBACK');
+    .mapErr(async (error) => {
+      await db.execute({ sql: 'ROLLBACK' });
       return error;
     });
 };

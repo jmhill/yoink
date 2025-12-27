@@ -35,9 +35,9 @@ Turso was chosen because:
 
 ## Pre-Migration Checklist
 
-- [ ] Create Turso account and database
-- [ ] Restore data from Litestream S3 backup
-- [ ] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
+- [x] Create Turso account and database
+- [x] Restore data from Litestream S3 backup
+- [x] Set Fly.io secrets (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`)
 - [ ] Verify local development workflow with file-based LibSQL
 
 ---

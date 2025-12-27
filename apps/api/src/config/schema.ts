@@ -1,18 +1,25 @@
 import { z } from 'zod';
 
 // Database configuration - discriminated union
-const SqliteDatabaseConfigSchema = z.object({
-  type: z.literal('sqlite'),
-  path: z.string(),
+const TursoDatabaseConfigSchema = z.object({
+  type: z.literal('turso'),
+  url: z.string(),
+  authToken: z.string().optional(),
 });
 
 const MemoryDatabaseConfigSchema = z.object({
   type: z.literal('memory'),
 });
 
+const FileDatabaseConfigSchema = z.object({
+  type: z.literal('file'),
+  path: z.string(),
+});
+
 export const DatabaseConfigSchema = z.discriminatedUnion('type', [
-  SqliteDatabaseConfigSchema,
+  TursoDatabaseConfigSchema,
   MemoryDatabaseConfigSchema,
+  FileDatabaseConfigSchema,
 ]);
 
 // Clock configuration - discriminated union

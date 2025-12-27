@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { DatabaseSync } from 'node:sqlite';
 import { createSqlitePasskeyCredentialStore } from './sqlite-passkey-credential-store.js';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { runMigrations } from '../../database/migrator.js';
-import { migrations } from '../../database/migrations.js';
+import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { PasskeyCredential } from '../domain/passkey-credential.js';
 import type { PasskeyCredentialStore } from '../domain/passkey-credential-store.js';
 
@@ -25,46 +23,45 @@ const createTestCredential = (
 });
 
 describe('createSqlitePasskeyCredentialStore', () => {
-  let db: DatabaseSync;
+  let db: Database;
   let store: PasskeyCredentialStore;
 
-  beforeAll(() => {
-    db = new DatabaseSync(':memory:');
-    runMigrations(db, migrations);
+  beforeAll(async () => {
+    db = await createTestDatabase();
   });
 
-  afterAll(() => {
-    db.close();
+  afterAll(async () => {
+    await db.close();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear data between tests (in correct order for foreign keys)
-    db.exec('DELETE FROM passkey_credentials');
-    db.exec('DELETE FROM organization_memberships');
-    db.exec('DELETE FROM api_tokens');
-    db.exec('DELETE FROM captures');
-    db.exec('DELETE FROM tasks');
-    db.exec('DELETE FROM users');
-    db.exec('DELETE FROM organizations');
+    await db.execute({ sql: 'DELETE FROM passkey_credentials' });
+    await db.execute({ sql: 'DELETE FROM organization_memberships' });
+    await db.execute({ sql: 'DELETE FROM api_tokens' });
+    await db.execute({ sql: 'DELETE FROM captures' });
+    await db.execute({ sql: 'DELETE FROM tasks' });
+    await db.execute({ sql: 'DELETE FROM users' });
+    await db.execute({ sql: 'DELETE FROM organizations' });
 
     // Set up test org and user for foreign key constraints
-    const orgStore = createSqliteOrganizationStore(db);
-    const userStore = createSqliteUserStore(db);
+    const orgStore = await createSqliteOrganizationStore(db);
+    const userStore = await createSqliteUserStore(db);
 
-    orgStore.save({
+    await orgStore.save({
       id: '550e8400-e29b-41d4-a716-446655440001',
       name: 'Test Org',
       createdAt: '2024-01-01T00:00:00.000Z',
     });
 
-    userStore.save({
+    await userStore.save({
       id: '550e8400-e29b-41d4-a716-446655440002',
       organizationId: '550e8400-e29b-41d4-a716-446655440001',
       email: 'user@test.com',
       createdAt: '2024-01-01T00:00:00.000Z',
     });
 
-    store = createSqlitePasskeyCredentialStore(db);
+    store = await createSqlitePasskeyCredentialStore(db);
   });
 
   describe('save', () => {
@@ -184,7 +181,7 @@ describe('createSqlitePasskeyCredentialStore', () => {
 
     it('does not return credentials from other users', async () => {
       // Create another user
-      const userStore = createSqliteUserStore(db);
+      const userStore = await createSqliteUserStore(db);
       await userStore.save({
         id: '550e8400-e29b-41d4-a716-446655440003',
         organizationId: '550e8400-e29b-41d4-a716-446655440001',

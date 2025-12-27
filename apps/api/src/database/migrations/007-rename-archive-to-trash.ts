@@ -4,11 +4,11 @@ import { rebuildTable } from '../table-rebuild.js';
 export const migration: Migration = {
   version: 7,
   name: 'rename_archive_to_trash',
-  up: (db) => {
+  up: async (db) => {
     // Rebuild captures table to:
     // 1. Rename archived_at column to trashed_at
     // 2. Update status values from 'archived' to 'trashed'
-    rebuildTable(db, {
+    await rebuildTable(db, {
       tableName: 'captures',
       newSchema: `
         CREATE TABLE captures (

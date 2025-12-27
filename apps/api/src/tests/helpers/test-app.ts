@@ -52,7 +52,7 @@ const testConfigWithAdmin: AppConfig = {
  */
 export const createTestApp = async () => {
   const infrastructure = createInfrastructure(testConfig);
-  runMigrations(infrastructure.database.db, migrations);
+  await runMigrations(infrastructure.database, migrations);
 
   return bootstrapApp({ config: testConfig, infrastructure, silent: true });
 };
@@ -63,7 +63,7 @@ export const createTestApp = async () => {
  */
 export const createTestAppWithAdmin = async () => {
   const infrastructure = createInfrastructure(testConfigWithAdmin);
-  runMigrations(infrastructure.database.db, migrations);
+  await runMigrations(infrastructure.database, migrations);
 
   return bootstrapApp({
     config: testConfigWithAdmin,

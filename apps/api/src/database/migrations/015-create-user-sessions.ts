@@ -15,22 +15,28 @@ import type { Migration } from '../types.js';
 export const migration: Migration = {
   version: 15,
   name: 'create_user_sessions',
-  up: (db) => {
-    db.exec(`
-      CREATE TABLE user_sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        current_organization_id TEXT NOT NULL REFERENCES organizations(id),
-        created_at TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        last_active_at TEXT NOT NULL
-      )
-    `);
+  up: async (db) => {
+    await db.execute({
+      sql: `
+        CREATE TABLE user_sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          current_organization_id TEXT NOT NULL REFERENCES organizations(id),
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          last_active_at TEXT NOT NULL
+        )
+      `,
+    });
 
     // Index for looking up sessions by user (for listing/revoking)
-    db.exec(`CREATE INDEX idx_user_sessions_user ON user_sessions(user_id)`);
+    await db.execute({
+      sql: `CREATE INDEX idx_user_sessions_user ON user_sessions(user_id)`,
+    });
 
     // Index for session cleanup (expired sessions)
-    db.exec(`CREATE INDEX idx_user_sessions_expires ON user_sessions(expires_at)`);
+    await db.execute({
+      sql: `CREATE INDEX idx_user_sessions_expires ON user_sessions(expires_at)`,
+    });
   },
 };

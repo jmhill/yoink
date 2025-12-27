@@ -36,7 +36,7 @@ describe('Security Features', () => {
   beforeEach(async () => {
     const config = createTestConfig();
     const infrastructure = createInfrastructure(config);
-    runMigrations(infrastructure.database.db, migrations);
+    await runMigrations(infrastructure.database, migrations);
     app = await bootstrapApp({ config, infrastructure, silent: true });
   });
 
@@ -129,7 +129,7 @@ describe('Security Features', () => {
         rateLimit: { ...defaultRateLimitConfig, enabled: false },
       });
       const infrastructure = createInfrastructure(config);
-      runMigrations(infrastructure.database.db, migrations);
+      await runMigrations(infrastructure.database, migrations);
       const appWithNoRateLimit = await bootstrapApp({ config, infrastructure, silent: true });
 
       // Make more than 5 login attempts - should all work (return 401 for wrong password)

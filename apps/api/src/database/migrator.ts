@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from './types.js';
 import type { Migration } from './types.js';
 
 export type MigrationResult = {
@@ -20,22 +20,28 @@ type MigrationRow = {
  * - Validates that existing migrations haven't changed names (consistency check)
  * - Returns which migrations were applied and which were already applied
  */
-export const runMigrations = (
-  db: DatabaseSync,
+export const runMigrations = async (
+  db: Database,
   migrations: Migration[]
-): MigrationResult => {
+): Promise<MigrationResult> => {
   // Create migrations tracking table if it doesn't exist
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      version INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      applied_at TEXT NOT NULL
-    )
-  `);
+  await db.execute({
+    sql: `
+      CREATE TABLE IF NOT EXISTS _migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TEXT NOT NULL
+      )
+    `,
+  });
 
   // Get already applied migrations
-  const rows = db.prepare('SELECT version, name FROM _migrations').all() as MigrationRow[];
-  const applied = new Map(rows.map((r) => [r.version, r.name]));
+  const { rows } = await db.execute({
+    sql: 'SELECT version, name FROM _migrations',
+  });
+  const applied = new Map(
+    (rows as MigrationRow[]).map((r) => [r.version, r.name])
+  );
 
   const result: MigrationResult = {
     applied: [],
@@ -61,19 +67,20 @@ export const runMigrations = (
     }
 
     // Apply the migration within a transaction
-    db.exec('BEGIN TRANSACTION');
+    await db.execute({ sql: 'BEGIN TRANSACTION' });
     try {
-      migration.up(db);
+      await migration.up(db);
 
       // Record as applied
-      db.prepare(
-        'INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)'
-      ).run(migration.version, migration.name, new Date().toISOString());
+      await db.execute({
+        sql: 'INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)',
+        args: [migration.version, migration.name, new Date().toISOString()],
+      });
 
-      db.exec('COMMIT');
+      await db.execute({ sql: 'COMMIT' });
       result.applied.push(migration.name);
     } catch (error) {
-      db.exec('ROLLBACK');
+      await db.execute({ sql: 'ROLLBACK' });
       throw error;
     }
   }

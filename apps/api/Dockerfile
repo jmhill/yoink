@@ -39,9 +39,6 @@ RUN pnpm build
 # Production stage
 FROM node:24-alpine AS runner
 
-# Install Litestream for SQLite backup/restore
-COPY --from=litestream/litestream:0.3.13 /usr/local/bin/litestream /usr/local/bin/litestream
-
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Create non-root user for security
@@ -70,14 +67,12 @@ COPY --from=builder /app/apps/web/dist ./apps/api/public
 # Copy admin UI static files to public/admin directory
 COPY --from=builder /app/apps/admin/dist ./apps/api/public/admin
 
-# Create data directory for SQLite and set ownership
-RUN mkdir -p /app/apps/api/data && \
-    chown -R nodejs:nodejs /app
-
-# Copy Litestream config and startup script
-COPY apps/api/litestream.yml /etc/litestream.yml
+# Copy startup script
 COPY apps/api/run.sh /app/run.sh
 RUN chmod +x /app/run.sh
+
+# Set ownership for non-root user
+RUN chown -R nodejs:nodejs /app
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

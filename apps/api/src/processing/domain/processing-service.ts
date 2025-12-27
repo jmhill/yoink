@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
@@ -18,7 +18,7 @@ import {
 import { withTransaction } from '../../database/transaction.js';
 
 export type CaptureProcessingServiceDependencies = {
-  db: DatabaseSync;
+  database: Database;
   captureStore: CaptureStore;
   taskStore: TaskStore;
   clock: Clock;
@@ -62,7 +62,7 @@ const truncate = (str: string, maxLength: number): string => {
 export const createCaptureProcessingService = (
   deps: CaptureProcessingServiceDependencies
 ): CaptureProcessingService => {
-  const { db, captureStore, taskStore, clock, idGenerator } = deps;
+  const { database, captureStore, taskStore, clock, idGenerator } = deps;
 
   return {
     processCaptureToTask: (
@@ -90,21 +90,24 @@ export const createCaptureProcessingService = (
         // Wrap the write operations in a transaction for atomicity
         // The status check is done INSIDE the transaction via requiredStatus
         // to prevent race conditions where two requests try to process the same capture
-        return withTransaction(db, () => {
-          // Save the task and mark the capture as processed atomically
-          return taskStore.save(task).andThen(() => {
-            return captureStore
-              .markAsProcessed({
-                id: capture.id,
-                processedAt: clock.now().toISOString(),
-                processedToType: 'task',
-                processedToId: taskId,
-                // Atomic status verification: will fail if capture is no longer in 'inbox' status
-                requiredStatus: 'inbox',
-              })
-              .map(() => task);
-          });
-        });
+        return ResultAsync.fromPromise(
+          withTransaction(database, () => {
+            // Save the task and mark the capture as processed atomically
+            return taskStore.save(task).andThen(() => {
+              return captureStore
+                .markAsProcessed({
+                  id: capture.id,
+                  processedAt: clock.now().toISOString(),
+                  processedToType: 'task',
+                  processedToId: taskId,
+                  // Atomic status verification: will fail if capture is no longer in 'inbox' status
+                  requiredStatus: 'inbox',
+                })
+                .map(() => task);
+            });
+          }),
+          (error) => error as ProcessCaptureToTaskError
+        ).andThen((result) => result);
       });
     },
 
@@ -119,16 +122,19 @@ export const createCaptureProcessingService = (
         }
 
         // Wrap the delete operations in a transaction for atomicity
-        return withTransaction(db, () => {
-          // Delete the task
-          return taskStore.softDelete(command.id).andThen(() => {
-            // If the task has a source capture, delete it too
-            if (task.captureId) {
-              return captureStore.softDelete(task.captureId).map(() => undefined);
-            }
-            return okAsync(undefined);
-          });
-        });
+        return ResultAsync.fromPromise(
+          withTransaction(database, () => {
+            // Delete the task
+            return taskStore.softDelete(command.id).andThen(() => {
+              // If the task has a source capture, delete it too
+              if (task.captureId) {
+                return captureStore.softDelete(task.captureId).map(() => undefined);
+              }
+              return okAsync(undefined);
+            });
+          }),
+          (error) => error as DeleteTaskWithCascadeError
+        ).andThen((result) => result);
       });
     },
   };

@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
-import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import type { Database } from '../../database/types.js';
+import { ResultAsync } from 'neverthrow';
 import type { OrganizationMembership, MembershipRole } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import {
@@ -29,117 +29,123 @@ const rowToMembership = (row: MembershipRow): OrganizationMembership => ({
  * Validates that the required database schema exists.
  * Throws an error if migrations have not been run.
  */
-const validateSchema = (db: DatabaseSync): void => {
-  const table = db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='organization_memberships'`
-    )
-    .get();
+const validateSchema = async (db: Database): Promise<void> => {
+  const result = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='organization_memberships'`,
+  });
 
-  if (!table) {
+  if (result.rows.length === 0) {
     throw new Error(
       'OrganizationMembershipStore requires "organization_memberships" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
 
-export const createSqliteOrganizationMembershipStore = (
-  db: DatabaseSync
-): OrganizationMembershipStore => {
-  validateSchema(db);
+export const createSqliteOrganizationMembershipStore = async (
+  db: Database
+): Promise<OrganizationMembershipStore> => {
+  await validateSchema(db);
 
   return {
     save: (membership: OrganizationMembership): ResultAsync<void, MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          INSERT INTO organization_memberships (id, user_id, organization_id, role, is_personal_org, joined_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON CONFLICT(user_id, organization_id) DO UPDATE SET 
-            role = excluded.role,
-            is_personal_org = excluded.is_personal_org
-        `);
-
-        stmt.run(
-          membership.id,
-          membership.userId,
-          membership.organizationId,
-          membership.role,
-          membership.isPersonalOrg ? 1 : 0,
-          membership.joinedAt
-        );
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to save membership', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            INSERT INTO organization_memberships (id, user_id, organization_id, role, is_personal_org, joined_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, organization_id) DO UPDATE SET 
+              role = excluded.role,
+              is_personal_org = excluded.is_personal_org
+          `,
+          args: [
+            membership.id,
+            membership.userId,
+            membership.organizationId,
+            membership.role,
+            membership.isPersonalOrg ? 1 : 0,
+            membership.joinedAt,
+          ],
+        }),
+        (error) => membershipStorageError('Failed to save membership', error)
+      ).map(() => undefined);
     },
 
     findById: (id: string): ResultAsync<OrganizationMembership | null, MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`SELECT * FROM organization_memberships WHERE id = ?`);
-        const row = stmt.get(id) as MembershipRow | undefined;
-        return okAsync(row ? rowToMembership(row) : null);
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to find membership by id', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM organization_memberships WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => membershipStorageError('Failed to find membership by id', error)
+      ).map((result) => {
+        const row = result.rows[0] as MembershipRow | undefined;
+        return row ? rowToMembership(row) : null;
+      });
     },
 
     findByUserAndOrg: (
       userId: string,
       organizationId: string
     ): ResultAsync<OrganizationMembership | null, MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM organization_memberships 
-          WHERE user_id = ? AND organization_id = ?
-        `);
-
-        const row = stmt.get(userId, organizationId) as MembershipRow | undefined;
-        return okAsync(row ? rowToMembership(row) : null);
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to find membership', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT * FROM organization_memberships 
+            WHERE user_id = ? AND organization_id = ?
+          `,
+          args: [userId, organizationId],
+        }),
+        (error) => membershipStorageError('Failed to find membership', error)
+      ).map((result) => {
+        const row = result.rows[0] as MembershipRow | undefined;
+        return row ? rowToMembership(row) : null;
+      });
     },
 
     findByUserId: (userId: string): ResultAsync<OrganizationMembership[], MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM organization_memberships 
-          WHERE user_id = ?
-          ORDER BY joined_at ASC
-        `);
-
-        const rows = stmt.all(userId) as MembershipRow[];
-        return okAsync(rows.map(rowToMembership));
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to find memberships by user', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT * FROM organization_memberships 
+            WHERE user_id = ?
+            ORDER BY joined_at ASC
+          `,
+          args: [userId],
+        }),
+        (error) => membershipStorageError('Failed to find memberships by user', error)
+      ).map((result) => {
+        const rows = result.rows as MembershipRow[];
+        return rows.map(rowToMembership);
+      });
     },
 
     findByOrganizationId: (
       organizationId: string
     ): ResultAsync<OrganizationMembership[], MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`
-          SELECT * FROM organization_memberships 
-          WHERE organization_id = ?
-          ORDER BY joined_at ASC
-        `);
-
-        const rows = stmt.all(organizationId) as MembershipRow[];
-        return okAsync(rows.map(rowToMembership));
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to find memberships by organization', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT * FROM organization_memberships 
+            WHERE organization_id = ?
+            ORDER BY joined_at ASC
+          `,
+          args: [organizationId],
+        }),
+        (error) => membershipStorageError('Failed to find memberships by organization', error)
+      ).map((result) => {
+        const rows = result.rows as MembershipRow[];
+        return rows.map(rowToMembership);
+      });
     },
 
     delete: (id: string): ResultAsync<void, MembershipStorageError> => {
-      try {
-        const stmt = db.prepare(`DELETE FROM organization_memberships WHERE id = ?`);
-        stmt.run(id);
-        return okAsync(undefined);
-      } catch (error) {
-        return errAsync(membershipStorageError('Failed to delete membership', error));
-      }
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `DELETE FROM organization_memberships WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => membershipStorageError('Failed to delete membership', error)
+      ).map(() => undefined);
     },
   };
 };

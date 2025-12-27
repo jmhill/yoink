@@ -20,7 +20,7 @@ describe('bootstrapApp', () => {
   it('creates a working app from config', async () => {
     const config = createTestConfig();
     const infrastructure = createInfrastructure(config);
-    runMigrations(infrastructure.database.db, migrations);
+    await runMigrations(infrastructure.database, migrations);
 
     const app = await bootstrapApp({ config, infrastructure, silent: true });
 
@@ -33,7 +33,7 @@ describe('bootstrapApp', () => {
   it('seeds auth data when seedToken is provided', async () => {
     const config = createTestConfig({ seedToken: 'my-seed-token' });
     const infrastructure = createInfrastructure(config);
-    runMigrations(infrastructure.database.db, migrations);
+    await runMigrations(infrastructure.database, migrations);
 
     const app = await bootstrapApp({ config, infrastructure, silent: true });
 

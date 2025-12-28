@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedAuthData } from './seed.js';
-import { createFakeOrganizationStore } from './fake-organization-store.js';
-import { createFakeUserStore } from './fake-user-store.js';
+import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
+import { createFakeOrganizationMembershipStore } from '../../organizations/infrastructure/fake-organization-membership-store.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
 import { createFakeTokenStore } from './fake-token-store.js';
-import { createFakeOrganizationMembershipStore } from './fake-organization-membership-store.js';
-import type { Organization } from '../domain/organization.js';
-import type { User } from '../domain/user.js';
+import type { Organization } from '../../organizations/domain/organization.js';
+import type { OrganizationMembership } from '../../organizations/domain/organization-membership.js';
+import type { User } from '../../users/domain/user.js';
 import type { ApiToken } from '../domain/api-token.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
 import {
   createFakePasswordHasher,
   createFakeClock,

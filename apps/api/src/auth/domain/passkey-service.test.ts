@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createFakeClock } from '@yoink/infrastructure';
 import { createPasskeyService, type PasskeyService } from './passkey-service.js';
 import { createFakePasskeyCredentialStore } from '../infrastructure/fake-passkey-credential-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import type { User } from './user.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
+import { createUserService } from '../../users/domain/user-service.js';
+import type { User } from '../../users/domain/user.js';
 import type { WebAuthnConfig } from '../../config/schema.js';
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
 
@@ -48,10 +49,11 @@ describe('createPasskeyService', () => {
     clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
     credentialStore = createFakePasskeyCredentialStore();
     userStore = createFakeUserStore({ initialUsers: [TEST_USER] });
+    const userService = createUserService({ userStore });
     
     service = createPasskeyService({
       credentialStore,
-      userStore,
+      userService,
       config: TEST_CONFIG,
       clock,
     });

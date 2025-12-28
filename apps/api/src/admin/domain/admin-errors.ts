@@ -1,8 +1,6 @@
-import type {
-  OrganizationStorageError,
-  UserStorageError,
-  TokenStorageError,
-} from '../../auth/domain/auth-errors.js';
+import type { OrganizationStorageError } from '../../organizations/domain/organization-errors.js';
+import type { UserStorageError } from '../../users/domain/user-errors.js';
+import type { TokenStorageError } from '../../auth/domain/auth-errors.js';
 
 // Re-export storage errors for convenience
 export type { OrganizationStorageError, UserStorageError, TokenStorageError };

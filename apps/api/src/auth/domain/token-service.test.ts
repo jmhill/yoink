@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTokenService, type TokenService } from './token-service.js';
-import type { Organization } from './organization.js';
-import type { User } from './user.js';
+import type { Organization } from '../../organizations/domain/organization.js';
+import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
+import type { User } from '../../users/domain/user.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
 import type { ApiToken } from './api-token.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
 

@@ -118,6 +118,50 @@ describe('createPasskeyService', () => {
     });
   });
 
+  describe('generateSignupRegistrationOptions', () => {
+    it('generates options for new user signup (no existing user required)', async () => {
+      const mockOptions = {
+        challenge: 'test-challenge',
+        rp: { name: 'Test App', id: 'localhost' },
+        user: { id: 'user-id', name: 'alice@example.com', displayName: 'alice@example.com' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+      };
+      
+      vi.mocked(mockGenerateRegOpts).mockResolvedValue(mockOptions as any);
+
+      const result = await service.generateSignupRegistrationOptions({
+        email: 'alice@example.com',
+        identifier: 'alice@example.com',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.options).toEqual(mockOptions);
+        expect(result.value.challenge).toBeDefined();
+        expect(typeof result.value.challenge).toBe('string');
+      }
+    });
+
+    it('generates options with empty excludeCredentials (new user)', async () => {
+      vi.mocked(mockGenerateRegOpts).mockResolvedValue({
+        challenge: 'test-challenge',
+      } as any);
+
+      await service.generateSignupRegistrationOptions({
+        email: 'alice@example.com',
+        identifier: 'alice@example.com',
+      });
+
+      expect(mockGenerateRegOpts).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userName: 'alice@example.com',
+          userDisplayName: 'alice@example.com',
+          excludeCredentials: [],
+        })
+      );
+    });
+  });
+
   describe('verifyRegistration', () => {
     it('saves credential on successful verification', async () => {
       // First generate registration options to get a valid challenge

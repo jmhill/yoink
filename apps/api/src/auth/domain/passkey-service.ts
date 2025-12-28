@@ -63,6 +63,13 @@ export type AuthenticationResult = {
   credentialId: string;
 };
 
+export type SignupRegistrationParams = {
+  /** Email for the new user (used as userName in WebAuthn) */
+  email: string;
+  /** A unique identifier to include in the challenge (e.g., invitation code or email) */
+  identifier: string;
+};
+
 export type PasskeyService = {
   /**
    * Generate registration options for a user to create a new passkey.
@@ -70,6 +77,14 @@ export type PasskeyService = {
    */
   generateRegistrationOptions(
     userId: string
+  ): ResultAsync<RegistrationOptions, PasskeyServiceError>;
+
+  /**
+   * Generate registration options for signup (user doesn't exist yet).
+   * Uses email as the user identifier in WebAuthn options.
+   */
+  generateSignupRegistrationOptions(
+    params: SignupRegistrationParams
   ): ResultAsync<RegistrationOptions, PasskeyServiceError>;
 
   /**
@@ -172,6 +187,39 @@ export const createPasskeyService = (
           }));
         });
       });
+    },
+
+    generateSignupRegistrationOptions: (
+      params: SignupRegistrationParams
+    ): ResultAsync<RegistrationOptions, PasskeyServiceError> => {
+      const { email, identifier } = params;
+
+      // Generate a challenge for signup (uses identifier instead of userId)
+      const challenge = challengeManager.generateRegistrationChallenge(identifier);
+
+      // No exclude credentials for signup (new user has no existing credentials)
+      return ResultAsync.fromPromise(
+        generateRegistrationOptions({
+          rpName: config.rpName,
+          rpID: config.rpId,
+          userName: email,
+          userDisplayName: email,
+          challenge,
+          excludeCredentials: [],
+          authenticatorSelection: {
+            residentKey: 'preferred',
+            userVerification: 'preferred',
+          },
+          attestationType: 'none',
+        }),
+        (error): PasskeyServiceError =>
+          verificationFailedError(
+            error instanceof Error ? error.message : 'Failed to generate options'
+          )
+      ).map((options) => ({
+        options,
+        challenge,
+      }));
     },
 
     verifyRegistration: (

@@ -131,4 +131,29 @@ describe('createSqliteUserStore', () => {
       }
     });
   });
+
+  describe('findByEmail', () => {
+    it('returns user when found by email', async () => {
+      const user = createTestUser({ email: 'alice@example.com' });
+      await store.save(user);
+
+      const result = await store.findByEmail('alice@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).not.toBeNull();
+        expect(result.value?.email).toBe('alice@example.com');
+        expect(result.value?.id).toBe(user.id);
+      }
+    });
+
+    it('returns null when user not found by email', async () => {
+      const result = await store.findByEmail('nonexistent@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
+    });
+  });
 });

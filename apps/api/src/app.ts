@@ -22,13 +22,23 @@ import type { RateLimitConfig, LogConfig } from './config/schema.js';
 import { createLoggerOptions } from './logging/index.js';
 import type { InvitationService } from './organizations/domain/invitation-service.js';
 import type { MembershipService } from './organizations/domain/membership-service.js';
+import type { SignupService } from './auth/domain/signup-service.js';
+import type { PasskeyService } from './auth/domain/passkey-service.js';
+import type { SessionService } from './auth/domain/session-service.js';
 import { registerInvitationRoutes } from './invitations/application/invitation-routes.js';
+import { registerSignupRoutes } from './auth/application/signup-routes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
+};
+
+export type SignupConfig = {
+  signupService: SignupService;
+  passkeyService: PasskeyService;
+  sessionService: SessionService;
 };
 
 export type AppDependencies = {
@@ -39,6 +49,7 @@ export type AppDependencies = {
   healthChecker: HealthChecker;
   invitationService: InvitationService;
   membershipService: MembershipService;
+  signup?: SignupConfig;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
   log: LogConfig;
@@ -100,6 +111,23 @@ export const createApp = async (deps: AppDependencies) => {
     membershipService: deps.membershipService,
     authMiddleware: deps.authMiddleware,
   });
+
+  // Signup routes - only registered if webauthn config is provided
+  if (deps.signup) {
+    await registerSignupRoutes(app, {
+      signupService: deps.signup.signupService,
+      passkeyService: deps.signup.passkeyService,
+      sessionService: deps.signup.sessionService,
+      sessionCookieName: 'yoink_session',
+      cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+      },
+    });
+  }
 
   // Serve static files in production
   const publicPath = join(__dirname, '../public');

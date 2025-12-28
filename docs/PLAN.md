@@ -18,7 +18,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 380 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 147 acceptance tests, 400 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
@@ -586,7 +586,7 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - Scheduled cleanup job for expired sessions (cron or startup task)
 - Session regeneration after authentication (session fixation protection)
 
-### 7.5 Invitation System - In Progress
+### 7.5 Invitation System - Complete ✓
 - [x] `Invitation` entity type with code, email restriction, expiry, acceptance tracking
 - [x] `InvitationStore` interface and SQLite adapter (13 tests)
 - [x] `createFakeInvitationStore` for unit tests
@@ -595,7 +595,7 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [x] API contract with endpoints: create, validate, accept, listPending
 - [x] Invitation routes (validate is public, others require auth)
 - [x] Wire up invitation routes in `composition-root.ts` and `app.ts`
-- [ ] Signup flow: creates user, personal org, membership, passkey, session
+- [x] Signup flow: creates user, personal org, membership, passkey, session (12 tests)
 
 **Implementation Notes:**
 - Invitation codes are 8 alphanumeric characters (excludes ambiguous chars I, O, 0, 1)
@@ -604,13 +604,17 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - Role assignment: invitations specify `admin` or `member` role
 - Validate endpoint is public (no auth) to allow checking before signup
 - Accept endpoint creates membership and marks invitation as used
+- Signup endpoints: `POST /api/auth/signup/options` and `POST /api/auth/signup/verify`
+- Signup creates: user, personal organization, personal org membership (owner), invited org membership, passkey credential, session
+- Session cookie set on successful signup with 7-day expiry
 
 ### 7.6 Auth API Endpoints
-- [ ] `POST /api/auth/passkey/register/options` and `/verify`
+- [x] `POST /api/auth/signup/options` and `/verify` (passkey registration during signup)
+- [ ] `POST /api/auth/passkey/register/options` and `/verify` (add passkey to existing account)
 - [ ] `POST /api/auth/passkey/login/options` and `/verify`
 - [ ] `POST /api/auth/logout`
 - [ ] `GET /api/auth/session`
-- [ ] Session cookie security: `httpOnly`, `secure`, `sameSite: strict`
+- [x] Session cookie security: `httpOnly`, `secure`, `sameSite: strict`
 
 ### 7.7 Web App Auth Overhaul
 - [ ] Login page (`/login`) with passkey authentication

@@ -31,6 +31,14 @@ export const createFakeUserStore = (
       return okAsync(found ?? null);
     },
 
+    findByEmail: (email: string): ResultAsync<User | null, UserStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(userStorageError('Find failed'));
+      }
+      const found = users.find((u) => u.email === email);
+      return okAsync(found ?? null);
+    },
+
     findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
       if (options.shouldFailOnFind) {
         return errAsync(userStorageError('Find failed'));

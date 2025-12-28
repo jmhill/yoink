@@ -26,6 +26,12 @@ export type UserService = {
   getUser(userId: string): ResultAsync<User | null, UserServiceError>;
 
   /**
+   * Get a user by email address.
+   * Returns null if user not found.
+   */
+  getUserByEmail(email: string): ResultAsync<User | null, UserServiceError>;
+
+  /**
    * Get all users belonging to an organization.
    */
   getUsersByOrganization(organizationId: string): ResultAsync<User[], UserServiceError>;
@@ -54,6 +60,10 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
   return {
     getUser(userId: string): ResultAsync<User | null, UserServiceError> {
       return userStore.findById(userId);
+    },
+
+    getUserByEmail(email: string): ResultAsync<User | null, UserServiceError> {
+      return userStore.findByEmail(email);
     },
 
     getUsersByOrganization(organizationId: string): ResultAsync<User[], UserServiceError> {

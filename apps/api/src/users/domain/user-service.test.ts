@@ -56,6 +56,29 @@ describe('UserService', () => {
     });
   });
 
+  describe('getUserByEmail', () => {
+    it('returns user when found by email', async () => {
+      const user = createTestUser({ email: 'alice@example.com' });
+      await userStore.save(user);
+
+      const result = await service.getUserByEmail('alice@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(user);
+      }
+    });
+
+    it('returns null when user not found by email', async () => {
+      const result = await service.getUserByEmail('nonexistent@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
+    });
+  });
+
   describe('getUsersByOrganization', () => {
     it('returns users for the organization', async () => {
       const orgId = '550e8400-e29b-41d4-a716-446655440010';

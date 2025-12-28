@@ -64,6 +64,19 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       });
     },
 
+    findByEmail: (email: string): ResultAsync<User | null, UserStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM users WHERE email = ?`,
+          args: [email],
+        }),
+        (error) => userStorageError('Failed to find user by email', error)
+      ).map((result) => {
+        const row = result.rows[0] as UserRow | undefined;
+        return row ? rowToUser(row) : null;
+      });
+    },
+
     findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({

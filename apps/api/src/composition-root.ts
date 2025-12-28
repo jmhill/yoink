@@ -1,5 +1,5 @@
 import type { Database } from './database/types.js';
-import { createApp, type AdminConfig } from './app.js';
+import { createApp, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
 import { createCaptureService } from './captures/domain/capture-service.js';
@@ -12,8 +12,13 @@ import { createAuthMiddleware } from './auth/application/auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
   createSqliteTokenStore,
+  createSqlitePasskeyCredentialStore,
+  createSqliteUserSessionStore,
   seedAuthData,
 } from './auth/infrastructure/index.js';
+import { createPasskeyService } from './auth/domain/passkey-service.js';
+import { createSessionService } from './auth/domain/session-service.js';
+import { createSignupService } from './auth/domain/signup-service.js';
 import { createSqliteOrganizationStore } from './organizations/infrastructure/sqlite-organization-store.js';
 import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
 import { createSqliteInvitationStore } from './organizations/infrastructure/sqlite-invitation-store.js';
@@ -161,6 +166,46 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   // Create auth middleware
   const authMiddleware = createAuthMiddleware({ tokenService });
 
+  // Passkey and session services (for signup flow)
+  // Only created if webauthn config is provided
+  let signupConfig: SignupConfig | undefined;
+  if (config.webauthn) {
+    const passkeyCredentialStore = await createSqlitePasskeyCredentialStore(database);
+    const userSessionStore = await createSqliteUserSessionStore(database);
+
+    const passkeyService = createPasskeyService({
+      credentialStore: passkeyCredentialStore,
+      userService,
+      config: config.webauthn,
+      clock,
+    });
+
+    const sessionService = createSessionService({
+      sessionStore: userSessionStore,
+      userService,
+      membershipService,
+      clock,
+      idGenerator,
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+      refreshThresholdMs: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    const signupService = createSignupService({
+      invitationStore,
+      userStore,
+      organizationStore,
+      membershipStore,
+      clock,
+      idGenerator,
+    });
+
+    signupConfig = {
+      signupService,
+      passkeyService,
+      sessionService,
+    };
+  }
+
   // Create health checker
   const healthChecker = createSqliteHealthChecker({ tokenStore });
 
@@ -220,6 +265,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     healthChecker,
     invitationService,
     membershipService,
+    signup: signupConfig,
     admin,
     rateLimit: config.rateLimit,
     log: config.log,

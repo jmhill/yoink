@@ -75,4 +75,29 @@ describe('createFakeUserStore', () => {
       }
     });
   });
+
+  describe('findByEmail', () => {
+    it('returns user when found by email', async () => {
+      const user = createTestUser({ email: 'alice@example.com' });
+      const store = createFakeUserStore({ initialUsers: [user] });
+
+      const result = await store.findByEmail('alice@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(user);
+      }
+    });
+
+    it('returns null when user not found by email', async () => {
+      const store = createFakeUserStore();
+
+      const result = await store.findByEmail('nonexistent@example.com');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBeNull();
+      }
+    });
+  });
 });

@@ -106,3 +106,22 @@ export {
   type VerifyAuthenticationParams,
   type AuthenticationResult,
 } from './passkey-service.js';
+export { UserSessionSchema, type UserSession } from './user-session.js';
+export type { UserSessionStore } from './user-session-store.js';
+export {
+  createSessionService,
+  type SessionService,
+  type SessionServiceDependencies,
+  type CreateSessionCommand,
+} from './session-service.js';
+export {
+  sessionStorageError,
+  noMembershipsError,
+  notAMemberError,
+  sessionNotFoundError,
+  type SessionStorageError,
+  type NoMembershipsError,
+  type NotAMemberError,
+  type SessionNotFoundError,
+  type SessionServiceError,
+} from './auth-errors.js';

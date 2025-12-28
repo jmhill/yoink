@@ -9,3 +9,8 @@ export {
   type FakePasskeyCredentialStoreOptions,
 } from './fake-passkey-credential-store.js';
 export { seedAuthData, type SeedDependencies } from './seed.js';
+export { createSqliteUserSessionStore } from './sqlite-user-session-store.js';
+export {
+  createFakeUserSessionStore,
+  type FakeUserSessionStoreOptions,
+} from './fake-user-session-store.js';

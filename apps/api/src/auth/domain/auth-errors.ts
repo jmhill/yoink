@@ -28,6 +28,12 @@ export type PasskeyCredentialStorageError = {
   readonly cause?: unknown;
 };
 
+export type SessionStorageError = {
+  readonly type: 'SESSION_STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+};
+
 export const userStorageError = (
   message: string,
   cause?: unknown
@@ -69,6 +75,15 @@ export const passkeyCredentialStorageError = (
   cause?: unknown
 ): PasskeyCredentialStorageError => ({
   type: 'PASSKEY_CREDENTIAL_STORAGE_ERROR',
+  message,
+  cause,
+});
+
+export const sessionStorageError = (
+  message: string,
+  cause?: unknown
+): SessionStorageError => ({
+  type: 'SESSION_STORAGE_ERROR',
   message,
   cause,
 });
@@ -343,4 +358,55 @@ export const rpIdMismatchError = (
   type: 'RP_ID_MISMATCH',
   expected,
   received,
+});
+
+// ============================================================================
+// Session Service Errors
+// ============================================================================
+
+/** User has no organization memberships */
+export type NoMembershipsError = {
+  readonly type: 'NO_MEMBERSHIPS';
+  readonly userId: string;
+};
+
+/** User is not a member of the specified organization */
+export type NotAMemberError = {
+  readonly type: 'NOT_A_MEMBER';
+  readonly userId: string;
+  readonly organizationId: string;
+};
+
+/** Session not found */
+export type SessionNotFoundError = {
+  readonly type: 'SESSION_NOT_FOUND';
+  readonly sessionId: string;
+};
+
+export type SessionServiceError =
+  | UserNotFoundError
+  | NoMembershipsError
+  | NotAMemberError
+  | SessionNotFoundError
+  | SessionStorageError
+  | UserStorageError
+  | MembershipStorageError;
+
+export const noMembershipsError = (userId: string): NoMembershipsError => ({
+  type: 'NO_MEMBERSHIPS',
+  userId,
+});
+
+export const notAMemberError = (
+  userId: string,
+  organizationId: string
+): NotAMemberError => ({
+  type: 'NOT_A_MEMBER',
+  userId,
+  organizationId,
+});
+
+export const sessionNotFoundError = (sessionId: string): SessionNotFoundError => ({
+  type: 'SESSION_NOT_FOUND',
+  sessionId,
 });

@@ -14,16 +14,16 @@ import { ResultAsync, errAsync } from 'neverthrow';
 import type { Clock } from '@yoink/infrastructure';
 import type { PasskeyCredential, PasskeyTransport } from './passkey-credential.js';
 import type { PasskeyCredentialStore } from './passkey-credential-store.js';
-import type { UserStore } from './user-store.js';
+import type { UserService } from '../../users/domain/user-service.js';
 import type { WebAuthnConfig } from '../../config/schema.js';
 import { createChallengeManager, type ChallengeManager } from './challenge.js';
 import {
-  userNotFoundError,
   credentialNotFoundError,
   challengeExpiredError,
   verificationFailedError,
   type PasskeyServiceError,
 } from './auth-errors.js';
+import { userNotFoundError } from '../../users/domain/user-errors.js';
 
 // ============================================================================
 // Types
@@ -31,7 +31,7 @@ import {
 
 export type PasskeyServiceDependencies = {
   credentialStore: PasskeyCredentialStore;
-  userStore: UserStore;
+  userService: UserService;
   config: WebAuthnConfig;
   clock: Clock;
 };
@@ -118,7 +118,7 @@ export type PasskeyService = {
 export const createPasskeyService = (
   deps: PasskeyServiceDependencies
 ): PasskeyService => {
-  const { credentialStore, userStore, config, clock } = deps;
+  const { credentialStore, userService, config, clock } = deps;
 
   const challengeManager: ChallengeManager = createChallengeManager({
     secret: config.challengeSecret,
@@ -133,7 +133,7 @@ export const createPasskeyService = (
     generateRegistrationOptions: (
       userId: string
     ): ResultAsync<RegistrationOptions, PasskeyServiceError> => {
-      return userStore.findById(userId).andThen((user) => {
+      return userService.getUser(userId).andThen((user) => {
         if (!user) {
           return errAsync(userNotFoundError(userId));
         }

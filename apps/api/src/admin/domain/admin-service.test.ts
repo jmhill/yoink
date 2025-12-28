@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createAdminService, type AdminService } from './admin-service.js';
-import { createFakeOrganizationStore } from '../../auth/infrastructure/fake-organization-store.js';
-import { createFakeUserStore } from '../../auth/infrastructure/fake-user-store.js';
+import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
 import { createFakeTokenStore } from '../../auth/infrastructure/fake-token-store.js';
-import type { Organization } from '../../auth/domain/organization.js';
-import type { User } from '../../auth/domain/user.js';
+import type { Organization } from '../../organizations/domain/organization.js';
+import type { User } from '../../users/domain/user.js';
 import {
   createFakeClock,
   createFakeIdGenerator,

@@ -1,10 +1,10 @@
 import { ResultAsync } from 'neverthrow';
 import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
-import type { Organization } from '../../auth/domain/organization.js';
-import type { User } from '../../auth/domain/user.js';
+import type { Organization } from '../../organizations/domain/organization.js';
+import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
+import type { User } from '../../users/domain/user.js';
+import type { UserStore } from '../../users/domain/user-store.js';
 import type { ApiToken } from '../../auth/domain/api-token.js';
-import type { OrganizationStore } from '../../auth/domain/organization-store.js';
-import type { UserStore } from '../../auth/domain/user-store.js';
 import type { TokenStore } from '../../auth/domain/token-store.js';
 import type {
   AdminServiceError,

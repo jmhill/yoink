@@ -383,14 +383,19 @@ export type SessionNotFoundError = {
   readonly sessionId: string;
 };
 
+import type { UserServiceError, UserNotFoundError as UserNotFoundErrorNew } from '../../users/domain/user-errors.js';
+import type { MembershipServiceError as MembershipServiceErrorNew } from '../../organizations/domain/organization-errors.js';
+
 export type SessionServiceError =
   | UserNotFoundError
+  | UserNotFoundErrorNew
   | NoMembershipsError
   | NotAMemberError
   | SessionNotFoundError
   | SessionStorageError
-  | UserStorageError
-  | MembershipServiceError;
+  | UserServiceError
+  | MembershipServiceError
+  | MembershipServiceErrorNew;
 
 export const noMembershipsError = (userId: string): NoMembershipsError => ({
   type: 'NO_MEMBERSHIPS',

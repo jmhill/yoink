@@ -6,13 +6,14 @@ import {
   USER_SESSION_COOKIE,
 } from './user-session-middleware.js';
 import { createSessionService, type SessionService } from '../domain/session-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
+import { createMembershipService } from '../../organizations/domain/membership-service.js';
+import { createUserService } from '../../users/domain/user-service.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import type { User } from '../domain/user.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
+import { createFakeOrganizationMembershipStore } from '../../organizations/infrastructure/fake-organization-membership-store.js';
+import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
+import type { User } from '../../users/domain/user.js';
+import type { OrganizationMembership } from '../../organizations/domain/organization-membership.js';
 
 describe('UserSessionMiddleware', () => {
   let sessionService: SessionService;
@@ -57,6 +58,7 @@ describe('UserSessionMiddleware', () => {
     idGenerator = createFakeIdGenerator();
     const sessionStore = createFakeUserSessionStore();
     const userStore = createFakeUserStore({ initialUsers: [testUser] });
+    const userService = createUserService({ userStore });
     const membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [personalOrgMembership],
     });
@@ -68,7 +70,7 @@ describe('UserSessionMiddleware', () => {
 
     const membershipService = createMembershipService({
       membershipStore,
-      userStore,
+      userService,
       organizationStore,
       clock,
       idGenerator,
@@ -76,7 +78,7 @@ describe('UserSessionMiddleware', () => {
 
     sessionService = createSessionService({
       sessionStore,
-      userStore,
+      userService,
       membershipService,
       clock,
       idGenerator,

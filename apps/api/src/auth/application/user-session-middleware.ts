@@ -63,10 +63,15 @@ export const createUserSessionMiddleware = (
 
     // Optionally refresh session if it's been idle
     // Note: We don't await this to avoid slowing down the request
-    sessionService.refreshSession(sessionId).then((refreshResult) => {
-      if (refreshResult.isErr()) {
-        request.log.warn({ error: refreshResult.error }, 'Session refresh failed');
-      }
-    });
+    // Using Promise.resolve() to get a proper Promise with .catch() support
+    Promise.resolve(sessionService.refreshSession(sessionId))
+      .then((refreshResult) => {
+        if (refreshResult.isErr()) {
+          request.log.warn({ error: refreshResult.error }, 'Session refresh failed');
+        }
+      })
+      .catch((err: unknown) => {
+        request.log.error({ error: err }, 'Unexpected session refresh error');
+      });
   };
 };

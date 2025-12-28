@@ -1,20 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import { createSessionService, type SessionService } from './session-service.js';
+import { createMembershipService, type MembershipService } from './membership-service.js';
 import type { UserSessionStore } from './user-session-store.js';
 import type { UserStore } from './user-store.js';
-import type { OrganizationMembershipStore } from './organization-membership-store.js';
 import type { User } from './user.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
+import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 
 describe('SessionService', () => {
   let service: SessionService;
   let sessionStore: UserSessionStore;
   let userStore: UserStore;
-  let membershipStore: OrganizationMembershipStore;
+  let membershipService: MembershipService;
   let clock: ReturnType<typeof createFakeClock>;
   let idGenerator: ReturnType<typeof createFakeIdGenerator>;
 
@@ -49,14 +50,30 @@ describe('SessionService', () => {
     idGenerator = createFakeIdGenerator();
     sessionStore = createFakeUserSessionStore();
     userStore = createFakeUserStore({ initialUsers: [testUser] });
-    membershipStore = createFakeOrganizationMembershipStore({
+
+    // Create MembershipService with its dependencies
+    const membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [personalOrgMembership, teamOrgMembership],
+    });
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [
+        { id: 'org-1', name: 'Personal Org', createdAt: '2024-01-01T00:00:00.000Z' },
+        { id: 'org-2', name: 'Team Org', createdAt: '2024-01-01T00:00:00.000Z' },
+      ],
+    });
+
+    membershipService = createMembershipService({
+      membershipStore,
+      userStore,
+      organizationStore,
+      clock,
+      idGenerator,
     });
 
     service = createSessionService({
       sessionStore,
       userStore,
-      membershipStore,
+      membershipService,
       clock,
       idGenerator,
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -107,20 +124,33 @@ describe('SessionService', () => {
         email: 'orphan@example.com',
         createdAt: '2024-01-01T00:00:00.000Z',
       };
-      userStore = createFakeUserStore({ initialUsers: [orphanUser] });
-      membershipStore = createFakeOrganizationMembershipStore({ initialMemberships: [] });
+      const orphanUserStore = createFakeUserStore({ initialUsers: [orphanUser] });
+      const emptyMembershipStore = createFakeOrganizationMembershipStore({ initialMemberships: [] });
+      const organizationStore = createFakeOrganizationStore({
+        initialOrganizations: [
+          { id: 'org-1', name: 'Org 1', createdAt: '2024-01-01T00:00:00.000Z' },
+        ],
+      });
 
-      service = createSessionService({
+      const orphanMembershipService = createMembershipService({
+        membershipStore: emptyMembershipStore,
+        userStore: orphanUserStore,
+        organizationStore,
+        clock,
+        idGenerator,
+      });
+
+      const orphanSessionService = createSessionService({
         sessionStore,
-        userStore,
-        membershipStore,
+        userStore: orphanUserStore,
+        membershipService: orphanMembershipService,
         clock,
         idGenerator,
         sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
         refreshThresholdMs: 24 * 60 * 60 * 1000,
       });
 
-      const result = await service.createSession({ userId: orphanUser.id });
+      const result = await orphanSessionService.createSession({ userId: orphanUser.id });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {

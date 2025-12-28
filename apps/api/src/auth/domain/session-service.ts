@@ -3,7 +3,7 @@ import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { UserSession } from './user-session.js';
 import type { UserSessionStore } from './user-session-store.js';
 import type { UserStore } from './user-store.js';
-import type { OrganizationMembershipStore } from './organization-membership-store.js';
+import type { MembershipService } from './membership-service.js';
 import {
   userNotFoundError,
   noMembershipsError,
@@ -76,7 +76,7 @@ export type SessionService = {
 export type SessionServiceDependencies = {
   sessionStore: UserSessionStore;
   userStore: UserStore;
-  membershipStore: OrganizationMembershipStore;
+  membershipService: MembershipService;
   clock: Clock;
   idGenerator: IdGenerator;
   /** Session TTL in milliseconds (default: 7 days) */
@@ -95,7 +95,7 @@ export const createSessionService = (
   const {
     sessionStore,
     userStore,
-    membershipStore,
+    membershipService,
     clock,
     idGenerator,
     sessionTtlMs,
@@ -112,8 +112,8 @@ export const createSessionService = (
           return errAsync(userNotFoundError(userId));
         }
 
-        // Get user's memberships
-        return membershipStore.findByUserId(userId).andThen((memberships) => {
+        // Get user's memberships via MembershipService
+        return membershipService.listMemberships({ userId }).andThen((memberships) => {
           if (memberships.length === 0) {
             return errAsync(noMembershipsError(userId));
           }
@@ -207,8 +207,8 @@ export const createSessionService = (
           return errAsync(sessionNotFoundError(sessionId));
         }
 
-        // Check if user is a member of the target org
-        return membershipStore.findByUserId(session.userId).andThen((memberships) => {
+        // Check if user is a member of the target org via MembershipService
+        return membershipService.listMemberships({ userId: session.userId }).andThen((memberships) => {
           const isMember = memberships.some((m) => m.organizationId === organizationId);
           if (!isMember) {
             return errAsync(notAMemberError(session.userId, organizationId));

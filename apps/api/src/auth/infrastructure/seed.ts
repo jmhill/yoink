@@ -1,8 +1,8 @@
 import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
-import type { OrganizationStore } from '../domain/organization-store.js';
-import type { UserStore } from '../domain/user-store.js';
+import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
+import type { OrganizationMembershipStore } from '../../organizations/domain/organization-membership-store.js';
+import type { UserStore } from '../../users/domain/user-store.js';
 import type { TokenStore } from '../domain/token-store.js';
-import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 
 // Use the same UUIDs as the hardcoded auth context for backward compatibility
 const SEED_ORG_ID = '550e8400-e29b-41d4-a716-446655440001';

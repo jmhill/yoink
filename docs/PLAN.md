@@ -28,7 +28,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.3 complete)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.4 complete)
 **Phase 7.5: Turso Database Migration** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
@@ -575,11 +575,11 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [x] Unit tests with mocked WebAuthn responses
 - [x] Added `WebAuthnConfigSchema` to config schema
 
-### 7.4 Session Management
-- [ ] `UserSessionStore` interface and SQLite adapter
-- [ ] `SessionService` for create/validate/refresh/revoke
-- [ ] Session middleware (cookie-based, 7-day expiry with refresh)
-- [ ] Auth context includes `userId`, `currentOrganizationId`
+### 7.4 Session Management - Complete ✓
+- [x] `UserSessionStore` interface and SQLite adapter (15 tests)
+- [x] `SessionService` for create/validate/refresh/revoke (18 tests)
+- [x] Session middleware (cookie-based, 7-day expiry with refresh) (6 tests)
+- [x] Auth context includes `userId`, `currentOrganizationId`
 
 ### 7.5 Invitation System
 - [ ] `InvitationStore` interface and SQLite adapter
@@ -886,6 +886,23 @@ Restructure web app for mobile-first bottom navigation.
 - [ ] Browse tab for folder navigation (Phase 9)
 - [ ] Desktop pane layout (future desktop enhancement)
 
+### 8.11 Task UX Polish (Pending)
+Issues discovered during exploratory testing that affect daily usability.
+
+#### Task Detail/Edit Modal
+- [ ] Create modal triggered by tapping task card (avoid checkbox tap target conflict)
+- [ ] Display original capture content (title, content, sourceUrl) if task has `captureId`
+- [ ] Edit task title inline
+- [ ] Change/set due date with date picker
+- [ ] Note: Capture is read-only snapshot - only task fields are editable
+
+#### Overdue Tasks in Today View
+- [ ] Change Today filter from `dueDate === today` to `dueDate <= today`
+- [ ] Due date color coding:
+  - Red: overdue (`dueDate < today`)
+  - Orange: today (`dueDate === today`)
+  - Green: upcoming (`dueDate > today`)
+
 **Deliverable**: Mobile-first bottom navigation with Inbox and Tasks tabs. Captures can be processed into tasks. Tasks have pin, complete, delete, due dates. Processing is one-way and preserves capture as reference.
 
 ---
@@ -1012,7 +1029,7 @@ application/      # HTTP layer
 See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing strategy.
 
 **Quick Reference:**
-- 261 unit tests (apps/api, packages/*)
+- 369+ unit tests (apps/api, packages/*)
 - 92 acceptance tests (HTTP + Playwright)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container

@@ -1,18 +1,18 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Clock, PasswordHasher } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
-import type { User } from './user.js';
+import type { Organization } from '../../organizations/domain/organization.js';
+import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
+import { organizationNotFoundError } from '../../organizations/domain/organization-errors.js';
+import type { User } from '../../users/domain/user.js';
+import type { UserStore } from '../../users/domain/user-store.js';
+import { userNotFoundError } from '../../users/domain/user-errors.js';
 import type { ApiToken } from './api-token.js';
-import type { OrganizationStore } from './organization-store.js';
-import type { UserStore } from './user-store.js';
 import type { TokenStore } from './token-store.js';
 import type { ValidateTokenQuery } from './token-queries.js';
 import {
   invalidTokenFormatError,
   tokenNotFoundError,
   invalidSecretError,
-  userNotFoundError,
-  organizationNotFoundError,
   type TokenValidationError,
 } from './auth-errors.js';
 

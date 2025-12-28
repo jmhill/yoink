@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqliteUserSessionStore } from './sqlite-user-session-store.js';
-import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
-import { createSqliteUserStore } from './sqlite-user-store.js';
+import { createSqliteOrganizationStore } from '../../organizations/infrastructure/sqlite-organization-store.js';
+import { createSqliteUserStore } from '../../users/infrastructure/sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { UserSessionStore } from '../domain/user-session-store.js';

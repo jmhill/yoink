@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqliteTokenStore } from './sqlite-token-store.js';
-import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
-import { createSqliteUserStore } from './sqlite-user-store.js';
+import { createSqliteOrganizationStore } from '../../organizations/infrastructure/sqlite-organization-store.js';
+import { createSqliteUserStore } from '../../users/infrastructure/sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';

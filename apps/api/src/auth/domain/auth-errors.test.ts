@@ -1,14 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  userStorageError,
   tokenStorageError,
-  organizationStorageError,
   invalidTokenFormatError,
   tokenNotFoundError,
   invalidSecretError,
-  userNotFoundError,
-  organizationNotFoundError,
 } from './auth-errors.js';
+import { userStorageError, userNotFoundError } from '../../users/domain/user-errors.js';
+import { organizationStorageError, organizationNotFoundError } from '../../organizations/domain/organization-errors.js';
 
 describe('auth-errors', () => {
   describe('userStorageError', () => {

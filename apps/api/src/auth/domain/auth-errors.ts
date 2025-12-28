@@ -390,7 +390,7 @@ export type SessionServiceError =
   | SessionNotFoundError
   | SessionStorageError
   | UserStorageError
-  | MembershipStorageError;
+  | MembershipServiceError;
 
 export const noMembershipsError = (userId: string): NoMembershipsError => ({
   type: 'NO_MEMBERSHIPS',

@@ -6,9 +6,11 @@ import {
   USER_SESSION_COOKIE,
 } from './user-session-middleware.js';
 import { createSessionService, type SessionService } from '../domain/session-service.js';
+import { createMembershipService } from '../domain/membership-service.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
+import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import type { User } from '../domain/user.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 
@@ -58,11 +60,24 @@ describe('UserSessionMiddleware', () => {
     const membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [personalOrgMembership],
     });
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [
+        { id: 'org-1', name: 'Personal Org', createdAt: '2024-01-01T00:00:00.000Z' },
+      ],
+    });
+
+    const membershipService = createMembershipService({
+      membershipStore,
+      userStore,
+      organizationStore,
+      clock,
+      idGenerator,
+    });
 
     sessionService = createSessionService({
       sessionStore,
       userStore,
-      membershipStore,
+      membershipService,
       clock,
       idGenerator,
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000,

@@ -8,16 +8,17 @@ import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createTokenService } from './auth/domain/token-service.js';
-import { createMembershipService } from './auth/domain/membership-service.js';
 import { createAuthMiddleware } from './auth/application/auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
-  createSqliteOrganizationStore,
-  createSqliteUserStore,
   createSqliteTokenStore,
-  createSqliteOrganizationMembershipStore,
   seedAuthData,
 } from './auth/infrastructure/index.js';
+import { createSqliteOrganizationStore } from './organizations/infrastructure/sqlite-organization-store.js';
+import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
+import { createSqliteUserStore } from './users/infrastructure/sqlite-user-store.js';
+import { createUserService } from './users/domain/user-service.js';
+import { createMembershipService } from './organizations/domain/membership-service.js';
 import {
   createAdminSessionService,
   createAdminService,
@@ -130,11 +131,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     clock,
   });
 
+  // Create UserService to be used by other services
+  const userService = createUserService({ userStore });
+
   // MembershipService - will be used when passkey/session auth is implemented (Phase 7.4+)
   // For now, just ensuring dependencies are properly wired up.
   createMembershipService({
     membershipStore,
-    userStore,
+    userService,
     organizationStore,
     clock,
     idGenerator,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { createSqliteOrganizationStore } from '../../auth/infrastructure/sqlite-organization-store.js';
+import { createSqliteOrganizationStore } from '../../organizations/infrastructure/sqlite-organization-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';

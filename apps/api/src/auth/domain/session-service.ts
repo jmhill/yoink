@@ -2,15 +2,15 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { UserSession } from './user-session.js';
 import type { UserSessionStore } from './user-session-store.js';
-import type { UserStore } from './user-store.js';
-import type { MembershipService } from './membership-service.js';
+import type { UserService } from '../../users/domain/user-service.js';
+import type { MembershipService } from '../../organizations/domain/membership-service.js';
 import {
-  userNotFoundError,
   noMembershipsError,
   notAMemberError,
   sessionNotFoundError,
   type SessionServiceError,
 } from './auth-errors.js';
+import { userNotFoundError } from '../../users/domain/user-errors.js';
 
 // ============================================================================
 // Commands (input types)
@@ -75,7 +75,7 @@ export type SessionService = {
 
 export type SessionServiceDependencies = {
   sessionStore: UserSessionStore;
-  userStore: UserStore;
+  userService: UserService;
   membershipService: MembershipService;
   clock: Clock;
   idGenerator: IdGenerator;
@@ -94,7 +94,7 @@ export const createSessionService = (
 ): SessionService => {
   const {
     sessionStore,
-    userStore,
+    userService,
     membershipService,
     clock,
     idGenerator,
@@ -106,8 +106,8 @@ export const createSessionService = (
     createSession(command: CreateSessionCommand): ResultAsync<UserSession, SessionServiceError> {
       const { userId, organizationId } = command;
 
-      // Verify user exists
-      return userStore.findById(userId).andThen((user) => {
+      // Verify user exists via UserService
+      return userService.getUser(userId).andThen((user) => {
         if (!user) {
           return errAsync(userNotFoundError(userId));
         }

@@ -1,20 +1,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import { createSessionService, type SessionService } from './session-service.js';
-import { createMembershipService, type MembershipService } from './membership-service.js';
+import { createMembershipService, type MembershipService } from '../../organizations/domain/membership-service.js';
+import { createUserService, type UserService } from '../../users/domain/user-service.js';
 import type { UserSessionStore } from './user-session-store.js';
-import type { UserStore } from './user-store.js';
-import type { User } from './user.js';
-import type { OrganizationMembership } from './organization-membership.js';
+import type { User } from '../../users/domain/user.js';
+import type { OrganizationMembership } from '../../organizations/domain/organization-membership.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
+import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
+import { createFakeOrganizationMembershipStore } from '../../organizations/infrastructure/fake-organization-membership-store.js';
+import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
 
 describe('SessionService', () => {
   let service: SessionService;
   let sessionStore: UserSessionStore;
-  let userStore: UserStore;
+  let userService: UserService;
   let membershipService: MembershipService;
   let clock: ReturnType<typeof createFakeClock>;
   let idGenerator: ReturnType<typeof createFakeIdGenerator>;
@@ -49,7 +49,9 @@ describe('SessionService', () => {
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
     idGenerator = createFakeIdGenerator();
     sessionStore = createFakeUserSessionStore();
-    userStore = createFakeUserStore({ initialUsers: [testUser] });
+
+    const userStore = createFakeUserStore({ initialUsers: [testUser] });
+    userService = createUserService({ userStore });
 
     // Create MembershipService with its dependencies
     const membershipStore = createFakeOrganizationMembershipStore({
@@ -64,7 +66,7 @@ describe('SessionService', () => {
 
     membershipService = createMembershipService({
       membershipStore,
-      userStore,
+      userService,
       organizationStore,
       clock,
       idGenerator,
@@ -72,7 +74,7 @@ describe('SessionService', () => {
 
     service = createSessionService({
       sessionStore,
-      userStore,
+      userService,
       membershipService,
       clock,
       idGenerator,
@@ -125,6 +127,8 @@ describe('SessionService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       };
       const orphanUserStore = createFakeUserStore({ initialUsers: [orphanUser] });
+      const orphanUserService = createUserService({ userStore: orphanUserStore });
+
       const emptyMembershipStore = createFakeOrganizationMembershipStore({ initialMemberships: [] });
       const organizationStore = createFakeOrganizationStore({
         initialOrganizations: [
@@ -134,7 +138,7 @@ describe('SessionService', () => {
 
       const orphanMembershipService = createMembershipService({
         membershipStore: emptyMembershipStore,
-        userStore: orphanUserStore,
+        userService: orphanUserService,
         organizationStore,
         clock,
         idGenerator,
@@ -142,7 +146,7 @@ describe('SessionService', () => {
 
       const orphanSessionService = createSessionService({
         sessionStore,
-        userStore: orphanUserStore,
+        userService: orphanUserService,
         membershipService: orphanMembershipService,
         clock,
         idGenerator,

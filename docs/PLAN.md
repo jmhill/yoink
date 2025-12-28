@@ -581,6 +581,11 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [x] Session middleware (cookie-based, 7-day expiry with refresh) (6 tests)
 - [x] Auth context includes `userId`, `currentOrganizationId`
 
+**Follow-up items (deferred):**
+- Session limit per user (e.g., max 10 active sessions) to prevent abuse/bloat
+- Scheduled cleanup job for expired sessions (cron or startup task)
+- Session regeneration after authentication (session fixation protection)
+
 ### 7.5 Invitation System
 - [ ] `InvitationStore` interface and SQLite adapter
 - [ ] `InvitationService` for create/validate/accept
@@ -592,6 +597,7 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - [ ] `POST /api/auth/passkey/login/options` and `/verify`
 - [ ] `POST /api/auth/logout`
 - [ ] `GET /api/auth/session`
+- [ ] Session cookie security: `httpOnly`, `secure`, `sameSite: strict`
 
 ### 7.7 Web App Auth Overhaul
 - [ ] Login page (`/login`) with passkey authentication

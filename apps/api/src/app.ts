@@ -20,6 +20,9 @@ import type { AdminService } from './admin/domain/admin-service.js';
 import type { AdminSessionService } from './admin/domain/admin-session-service.js';
 import type { RateLimitConfig, LogConfig } from './config/schema.js';
 import { createLoggerOptions } from './logging/index.js';
+import type { InvitationService } from './organizations/domain/invitation-service.js';
+import type { MembershipService } from './organizations/domain/membership-service.js';
+import { registerInvitationRoutes } from './invitations/application/invitation-routes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +37,8 @@ export type AppDependencies = {
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
+  invitationService: InvitationService;
+  membershipService: MembershipService;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
   log: LogConfig;
@@ -88,6 +93,13 @@ export const createApp = async (deps: AppDependencies) => {
   if (deps.admin) {
     await registerAdminRoutes(app, deps.admin, rateLimitConfig);
   }
+
+  // Invitation routes
+  await registerInvitationRoutes(app, {
+    invitationService: deps.invitationService,
+    membershipService: deps.membershipService,
+    authMiddleware: deps.authMiddleware,
+  });
 
   // Serve static files in production
   const publicPath = join(__dirname, '../public');

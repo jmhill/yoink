@@ -1,75 +1,81 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { invitationContract } from '@yoink/api-contracts';
 import type { InvitationService } from '../../organizations/domain/invitation-service.js';
 import type { MembershipService } from '../../organizations/domain/membership-service.js';
-import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
 import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;
   membershipService: MembershipService;
-  organizationStore: OrganizationStore;
   authMiddleware: AuthMiddleware;
+};
+
+// Helper to check if a route needs authentication
+const isPublicRoute = (request: FastifyRequest): boolean => {
+  return request.url.includes('/invitations/validate');
 };
 
 export const registerInvitationRoutes = async (
   app: FastifyInstance,
   deps: InvitationRoutesDependencies
 ) => {
-  const { invitationService, membershipService, organizationStore, authMiddleware } = deps;
+  const { invitationService, membershipService, authMiddleware } = deps;
   const s = initServer();
 
-  // Public routes (no auth required)
-  await app.register(async (publicApp) => {
-    // Validate endpoint - public, no auth needed
-    publicApp.post('/api/invitations/validate', async (request, reply) => {
-      const body = request.body as { code: string; email?: string };
-      
-      const result = await invitationService.validateInvitation({
-        code: body.code,
-        email: body.email,
-      });
-
-      if (result.isErr()) {
-        const error = result.error;
-        switch (error.type) {
-          case 'INVITATION_NOT_FOUND':
-            return reply.status(404).send({ message: 'Invitation not found' });
-          case 'INVITATION_EXPIRED':
-            return reply.status(410).send({ message: 'Invitation has expired' });
-          case 'INVITATION_ALREADY_ACCEPTED':
-            return reply.status(410).send({ message: 'Invitation has already been used' });
-          case 'INVITATION_EMAIL_MISMATCH':
-            return reply.status(400).send({ message: 'Email does not match invitation' });
-          default:
-            return reply.status(500).send({ message: 'Internal server error' });
-        }
+  // Register all invitation routes
+  await app.register(async (invitationApp) => {
+    // Apply auth middleware conditionally - skip for public routes
+    invitationApp.addHook('preHandler', async (request, reply) => {
+      if (isPublicRoute(request)) {
+        return; // Skip auth for public routes
       }
-
-      const invitation = result.value;
-      
-      // Include organization name for display
-      const orgResult = await organizationStore.findById(invitation.organizationId);
-      const orgName = orgResult.isOk() && orgResult.value 
-        ? orgResult.value.name 
-        : undefined;
-      
-      return reply.status(200).send({ ...invitation, organizationName: orgName });
+      return authMiddleware(request, reply);
     });
-  });
-
-  // Authenticated routes
-  await app.register(async (authedApp) => {
-    authedApp.addHook('preHandler', authMiddleware);
 
     const router = s.router(invitationContract, {
-      validate: async () => {
-        // This is handled by the public route above
-        // Return 404 to prevent double-handling
+      validate: async ({ body }) => {
+        const result = await invitationService.validateInvitation({
+          code: body.code,
+          email: body.email,
+        });
+
+        if (result.isErr()) {
+          const error = result.error;
+          switch (error.type) {
+            case 'INVITATION_NOT_FOUND':
+              return {
+                status: 404 as const,
+                body: { message: 'Invitation not found' },
+              };
+            case 'INVITATION_EXPIRED':
+              return {
+                status: 410 as const,
+                body: { message: 'Invitation has expired' },
+              };
+            case 'INVITATION_ALREADY_ACCEPTED':
+              return {
+                status: 410 as const,
+                body: { message: 'Invitation has already been used' },
+              };
+            case 'INVITATION_EMAIL_MISMATCH':
+              return {
+                status: 400 as const,
+                body: { message: 'Email does not match invitation' },
+              };
+            default:
+              return {
+                status: 500 as const,
+                body: { message: 'Internal server error' },
+              };
+          }
+        }
+
+        const invitation = result.value;
+
         return {
-          status: 404 as const,
-          body: { message: 'Use the public validate endpoint' },
+          status: 200 as const,
+          body: invitation,
         };
       },
 
@@ -235,7 +241,7 @@ export const registerInvitationRoutes = async (
       },
     });
 
-    s.registerRouter(invitationContract, router, authedApp, {
+    s.registerRouter(invitationContract, router, invitationApp, {
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {

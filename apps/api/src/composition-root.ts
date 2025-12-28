@@ -16,6 +16,8 @@ import {
 } from './auth/infrastructure/index.js';
 import { createSqliteOrganizationStore } from './organizations/infrastructure/sqlite-organization-store.js';
 import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
+import { createSqliteInvitationStore } from './organizations/infrastructure/sqlite-invitation-store.js';
+import { createInvitationService } from './organizations/domain/invitation-service.js';
 import { createSqliteUserStore } from './users/infrastructure/sqlite-user-store.js';
 import { createUserService } from './users/domain/user-service.js';
 import { createMembershipService } from './organizations/domain/membership-service.js';
@@ -30,6 +32,7 @@ import {
   createFakeIdGenerator,
   createBcryptPasswordHasher,
   createFakePasswordHasher,
+  createCodeGenerator,
   type Clock,
   type IdGenerator,
   type PasswordHasher,
@@ -134,14 +137,25 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   // Create UserService to be used by other services
   const userService = createUserService({ userStore });
 
-  // MembershipService - will be used when passkey/session auth is implemented (Phase 7.4+)
-  // For now, just ensuring dependencies are properly wired up.
-  createMembershipService({
+  // MembershipService - used by invitation routes for creating memberships
+  const membershipService = createMembershipService({
     membershipStore,
     userService,
     organizationStore,
     clock,
     idGenerator,
+  });
+
+  // InvitationService - manages organization invitations
+  const invitationStore = await createSqliteInvitationStore(database);
+  const codeGenerator = createCodeGenerator();
+  const invitationService = createInvitationService({
+    invitationStore,
+    organizationStore,
+    membershipStore,
+    clock,
+    idGenerator,
+    codeGenerator,
   });
 
   // Create auth middleware
@@ -204,6 +218,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     captureProcessingService,
     authMiddleware,
     healthChecker,
+    invitationService,
+    membershipService,
     admin,
     rateLimit: config.rateLimit,
     log: config.log,

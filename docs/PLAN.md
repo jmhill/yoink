@@ -18,7 +18,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 3: PWA + Android Share** - Complete ✓
 **Phase 3.1: PWA Polish** - Complete ✓
 **Phase 4: Browser Extension** - Complete ✓
-**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 351 unit tests)
+**Testing Infrastructure** - Complete ✓ (4-layer architecture, 92 acceptance tests, 380 unit tests)
 **CI/CD Optimizations** - Complete ✓
 **Multi-Driver E2E Test Runner** - Complete ✓
 **Phase 4.5: Security Hardening** - Complete ✓ (critical and medium items)
@@ -586,11 +586,24 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - Scheduled cleanup job for expired sessions (cron or startup task)
 - Session regeneration after authentication (session fixation protection)
 
-### 7.5 Invitation System
-- [ ] `InvitationStore` interface and SQLite adapter
-- [ ] `InvitationService` for create/validate/accept
-- [ ] API endpoints: create, validate, accept invitations
-- [ ] Signup creates: user, personal org, membership, passkey, session
+### 7.5 Invitation System - In Progress
+- [x] `Invitation` entity type with code, email restriction, expiry, acceptance tracking
+- [x] `InvitationStore` interface and SQLite adapter (13 tests)
+- [x] `createFakeInvitationStore` for unit tests
+- [x] `InvitationService` for create/validate/accept/listPending (18 tests)
+- [x] `CodeGenerator` infrastructure utility for generating invitation codes
+- [x] API contract with endpoints: create, validate, accept, listPending
+- [x] Invitation routes (validate is public, others require auth)
+- [x] Wire up invitation routes in `composition-root.ts` and `app.ts`
+- [ ] Signup flow: creates user, personal org, membership, passkey, session
+
+**Implementation Notes:**
+- Invitation codes are 8 alphanumeric characters (excludes ambiguous chars I, O, 0, 1)
+- Default expiry is 7 days
+- Optional email restriction: invitation can only be used by specific email
+- Role assignment: invitations specify `admin` or `member` role
+- Validate endpoint is public (no auth) to allow checking before signup
+- Accept endpoint creates membership and marks invitation as used
 
 ### 7.6 Auth API Endpoints
 - [ ] `POST /api/auth/passkey/register/options` and `/verify`

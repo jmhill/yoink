@@ -21,12 +21,15 @@ import { isInvitationExpired, isInvitationAccepted } from './invitation.js';
 
 export type CreateInvitationCommand = {
   organizationId: string;
-  invitedByUserId: string;
+  /** The user creating the invitation. Null for admin-created invitations. */
+  invitedByUserId: string | null;
   role: InvitationRole;
   /** Optional email restriction - only this email can use the invitation */
   email?: string;
   /** Optional custom expiry (default 7 days from now) */
   expiresInDays?: number;
+  /** Skip permission check (for admin-created invitations) */
+  skipPermissionCheck?: boolean;
 };
 
 export type ValidateInvitationQuery = {
@@ -114,13 +117,52 @@ export const createInvitationService = (
     createInvitation(
       command: CreateInvitationCommand
     ): ResultAsync<Invitation, InvitationServiceError> {
-      const { organizationId, invitedByUserId, role, email, expiresInDays = DEFAULT_EXPIRY_DAYS } =
-        command;
+      const {
+        organizationId,
+        invitedByUserId,
+        role,
+        email,
+        expiresInDays = DEFAULT_EXPIRY_DAYS,
+        skipPermissionCheck = false,
+      } = command;
 
       // Check organization exists
       return organizationStore.findById(organizationId).andThen((org) => {
         if (!org) {
           return errAsync(invitationOrgNotFoundError(organizationId));
+        }
+
+        // Helper to create the invitation (shared between both paths)
+        const createInvitationRecord = (): ResultAsync<Invitation, InvitationServiceError> => {
+          const now = clock.now();
+          const expiresAt = new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000);
+
+          const invitation: Invitation = {
+            id: idGenerator.generate(),
+            code: codeGenerator.generate(),
+            email: email ?? null,
+            organizationId,
+            invitedByUserId,
+            role,
+            expiresAt: expiresAt.toISOString(),
+            acceptedAt: null,
+            acceptedByUserId: null,
+            createdAt: now.toISOString(),
+          };
+
+          return invitationStore.save(invitation).map(() => invitation);
+        };
+
+        // Skip permission check for admin-created invitations
+        if (skipPermissionCheck) {
+          return createInvitationRecord();
+        }
+
+        // For non-admin invitations, invitedByUserId is required
+        if (!invitedByUserId) {
+          return errAsync(
+            insufficientInvitePermissionsError('admin', 'none')
+          );
         }
 
         // Check inviter has permission (must be admin or owner)
@@ -133,24 +175,7 @@ export const createInvitationService = (
               );
             }
 
-            // Create the invitation
-            const now = clock.now();
-            const expiresAt = new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000);
-
-            const invitation: Invitation = {
-              id: idGenerator.generate(),
-              code: codeGenerator.generate(),
-              email: email ?? null,
-              organizationId,
-              invitedByUserId,
-              role,
-              expiresAt: expiresAt.toISOString(),
-              acceptedAt: null,
-              acceptedByUserId: null,
-              createdAt: now.toISOString(),
-            };
-
-            return invitationStore.save(invitation).map(() => invitation);
+            return createInvitationRecord();
           });
       });
     },

@@ -28,6 +28,7 @@ import { migration as createInvitations } from './013-create-invitations.js';
 import { migration as createPasskeyCredentials } from './014-create-passkey-credentials.js';
 import { migration as createUserSessions } from './015-create-user-sessions.js';
 import { migration as addEmailUniqueConstraint } from './016-add-email-unique-constraint.js';
+import { migration as makeInvitationInvitedByNullable } from './017-make-invitation-invited-by-nullable.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -46,6 +47,7 @@ export const migrations: Migration[] = [
   createPasskeyCredentials,
   createUserSessions,
   addEmailUniqueConstraint,
+  makeInvitationInvitedByNullable,
 ];
 
 export type { Migration };

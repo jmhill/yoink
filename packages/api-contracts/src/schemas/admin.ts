@@ -57,6 +57,27 @@ export type ApiToken = z.infer<typeof ApiTokenSchema>;
 export type CreateToken = z.infer<typeof CreateTokenSchema>;
 export type CreateTokenResponse = z.infer<typeof CreateTokenResponseSchema>;
 
+// Invitation schemas (admin can create invitations without being org member)
+// organizationId comes from URL path params, not body
+export const AdminCreateInvitationSchema = z.object({
+  role: z.enum(['admin', 'member']).default('member'),
+  email: z.string().email().optional(),
+  expiresInDays: z.number().int().min(1).max(30).optional(),
+});
+
+export const AdminInvitationResponseSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  email: z.string().email().nullable(),
+  organizationId: z.string().uuid(),
+  role: z.enum(['admin', 'member']),
+  expiresAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+});
+
+export type AdminCreateInvitation = z.infer<typeof AdminCreateInvitationSchema>;
+export type AdminInvitationResponse = z.infer<typeof AdminInvitationResponseSchema>;
+
 // Admin session schemas
 export const LoginRequestSchema = z.object({
   password: z.string().min(1),

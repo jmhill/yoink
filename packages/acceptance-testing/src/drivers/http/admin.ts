@@ -3,7 +3,9 @@ import type {
   Organization,
   User,
   Token,
+  Invitation,
   CreateTokenResult,
+  CreateInvitationInput,
 } from '../../dsl/index.js';
 import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
@@ -153,5 +155,30 @@ export const createHttpAdmin = (
     if (response.statusCode !== 204) {
       throw new Error(`Failed to revoke token: ${response.body}`);
     }
+  },
+
+  async createInvitation(organizationId: string, input?: CreateInvitationInput): Promise<Invitation> {
+    const response = await client.post(
+      `/api/admin/organizations/${organizationId}/invitations`,
+      {
+        role: input?.role ?? 'member',
+        email: input?.email,
+        expiresInDays: input?.expiresInDays,
+      }
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Organization', organizationId);
+    }
+    if (response.statusCode === 400) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 201) {
+      throw new Error(`Failed to create invitation: ${response.body}`);
+    }
+    return response.json<Invitation>();
   },
 });

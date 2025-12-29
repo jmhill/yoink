@@ -12,7 +12,7 @@ import type {
   ProcessCaptureToTaskInput,
 } from '../../dsl/index.js';
 import { UnauthorizedError, NotFoundError, ValidationError, UnsupportedOperationError } from '../../dsl/index.js';
-import { ConfigPage, InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
+import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -65,7 +65,6 @@ type ActorCredentials = {
   email: string;
   userId: string;
   organizationId: string;
-  token: string;
 };
 
 /**
@@ -74,25 +73,18 @@ type ActorCredentials = {
  *
  * This driver reads real capture IDs from the DOM via data-capture-id attributes,
  * eliminating the need for synthetic ID tracking.
+ * 
+ * The actor is expected to be created after authentication (via signup flow),
+ * so the session cookie is already set in the page's browser context.
  */
 export const createPlaywrightActor = (
   page: Page,
   credentials: ActorCredentials
 ): Actor => {
-  const configPage = new ConfigPage(page);
   const inboxPage = new InboxPage(page);
   const trashPage = new TrashPage(page);
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
-
-  let isConfigured = false;
-
-  const ensureConfigured = async (): Promise<void> => {
-    if (!isConfigured) {
-      await configPage.configure(credentials.token);
-      isConfigured = true;
-    }
-  };
 
   /**
    * Build a minimal Capture object from ID and content.
@@ -133,7 +125,6 @@ export const createPlaywrightActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
-      await ensureConfigured();
       await inboxPage.goto();
 
       // Attempt to add the capture through the UI
@@ -149,7 +140,6 @@ export const createPlaywrightActor = (
     },
 
     async listCaptures(): Promise<Capture[]> {
-      await ensureConfigured();
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
 
@@ -158,7 +148,6 @@ export const createPlaywrightActor = (
     },
 
     async listTrashedCaptures(): Promise<Capture[]> {
-      await ensureConfigured();
       await trashPage.goto();
       await trashPage.waitForCapturesOrEmpty();
 
@@ -167,8 +156,6 @@ export const createPlaywrightActor = (
     },
 
     async getCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
-
       // Check inbox first
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
@@ -197,8 +184,6 @@ export const createPlaywrightActor = (
     },
 
     async updateCapture(id: string, input: UpdateCaptureInput): Promise<Capture> {
-      await ensureConfigured();
-
       // First verify the capture exists
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
@@ -214,7 +199,6 @@ export const createPlaywrightActor = (
     },
 
     async trashCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
 
@@ -228,7 +212,6 @@ export const createPlaywrightActor = (
     },
 
     async restoreCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
       await trashPage.goto();
       await trashPage.waitForCapturesOrEmpty();
 
@@ -242,7 +225,6 @@ export const createPlaywrightActor = (
     },
 
     async snoozeCapture(id: string, until: string): Promise<Capture> {
-      await ensureConfigured();
       await inboxPage.goto();
       await inboxPage.waitForCapturesOrEmpty();
 
@@ -257,7 +239,6 @@ export const createPlaywrightActor = (
     },
 
     async unsnoozeCapture(id: string): Promise<Capture> {
-      await ensureConfigured();
       await snoozedPage.goto();
       await snoozedPage.waitForCapturesOrEmpty();
 
@@ -271,7 +252,6 @@ export const createPlaywrightActor = (
     },
 
     async listSnoozedCaptures(): Promise<Capture[]> {
-      await ensureConfigured();
       await snoozedPage.goto();
       await snoozedPage.waitForCapturesOrEmpty();
 
@@ -280,7 +260,6 @@ export const createPlaywrightActor = (
     },
 
     async deleteCapture(id: string): Promise<void> {
-      await ensureConfigured();
       await trashPage.goto();
       await trashPage.waitForCapturesOrEmpty();
 
@@ -293,7 +272,6 @@ export const createPlaywrightActor = (
     },
 
     async emptyTrash(): Promise<{ deletedCount: number }> {
-      await ensureConfigured();
       await trashPage.goto();
       await trashPage.waitForCapturesOrEmpty();
 
@@ -351,16 +329,13 @@ export const createPlaywrightActor = (
     },
 
     async goToSettings(): Promise<void> {
-      await ensureConfigured();
       await inboxPage.goto();
       await inboxPage.goToSettings();
     },
 
     async logout(): Promise<void> {
-      await ensureConfigured();
       await settingsPage.goto();
       await settingsPage.logout();
-      isConfigured = false;
     },
 
     async requiresConfiguration(): Promise<boolean> {
@@ -379,8 +354,6 @@ export const createPlaywrightActor = (
     },
 
     async shareContent(params: { text?: string; url?: string; title?: string }): Promise<Capture> {
-      await ensureConfigured();
-
       // Build share URL with query params
       const searchParams = new URLSearchParams();
       if (params.text) searchParams.set('text', params.text);

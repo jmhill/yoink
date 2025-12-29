@@ -5,16 +5,16 @@ import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
-import { VirtualAuthenticator } from './page-objects.js';
+import { SignupPage, VirtualAuthenticator } from './page-objects.js';
 
 /**
  * Creates a Playwright driver that implements DSL interfaces via browser automation.
  * 
  * The Playwright driver:
- * - Uses the browser to interact with the web UI for Actor operations
+ * - Uses real passkey signup flow via the browser UI (with CDP virtual authenticator)
  * - Uses HTTP for Admin operations (admin UI is separate)
  * - Uses HTTP for Health operations (no UI for health)
- * - Supports CDP virtual authenticator for passkey testing
+ * - Each actor is created via fresh signup with unique invitation code
  */
 export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   // HTTP client for admin/health operations (no browser UI for these)
@@ -60,28 +60,63 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const uniqueEmail = `${localPart}+${suffix}@${domain}`;
 
       await admin.login();
+      let invitationCode: string;
+      let orgId: string;
       try {
         const org = await admin.createOrganization(orgName);
-        const user = await admin.createUser(org.id, uniqueEmail);
-        const { rawToken } = await admin.createToken(user.id, 'test-token');
-
-        // Create a new page for this actor
-        const page = await context.newPage();
-        
-        // Set up virtual authenticator for passkey testing
-        await setupVirtualAuthenticator(page);
-        
-        await page.goto(config.baseUrl);
-
-        return createPlaywrightActor(page, {
-          email,
-          userId: user.id,
-          organizationId: org.id,
-          token: rawToken,
-        });
+        orgId = org.id;
+        const invitation = await admin.createInvitation(org.id, { role: 'admin' });
+        invitationCode = invitation.code;
       } finally {
         await admin.logout();
       }
+
+      // Create a new page for this actor
+      const page = await context.newPage();
+      
+      // Set up virtual authenticator BEFORE navigating to signup
+      // This enables the browser's WebAuthn API to use the virtual authenticator
+      await setupVirtualAuthenticator(page);
+      
+      // Perform signup via the UI with the virtual authenticator
+      const signupPage = new SignupPage(page);
+      await signupPage.goto(invitationCode);
+      
+      // The code is pre-filled from URL, click continue to proceed to email step
+      await signupPage.clickContinue();
+      
+      // Fill email and device name
+      await signupPage.enterEmail(uniqueEmail);
+      await signupPage.enterDeviceName('Test Device');
+      
+      // Click create account - this triggers WebAuthn registration
+      // The virtual authenticator will automatically handle the credential creation
+      await signupPage.clickCreateAccount();
+      
+      // Wait for signup to complete and redirect to inbox
+      await signupPage.waitForSuccess();
+      
+      // Click "Go to Inbox" to continue
+      await page.getByRole('link', { name: 'Go to Inbox' }).click();
+      await page.waitForURL('/');
+
+      // Get user ID from session - we need to call the API
+      // The session cookie is already set from signup
+      const sessionResponse = await page.evaluate(async () => {
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to get session: ${response.status}`);
+        }
+        return response.json();
+      });
+
+      return createPlaywrightActor(page, {
+        email: uniqueEmail,
+        userId: (sessionResponse as { user: { id: string } }).user.id,
+        organizationId: orgId,
+      });
     },
 
     createAnonymousActor(): AnonymousActor {

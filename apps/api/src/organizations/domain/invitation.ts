@@ -22,7 +22,8 @@ export const InvitationSchema = z.object({
   code: z.string().min(8).max(12),
   email: z.string().email().nullable(),
   organizationId: z.string().uuid(),
-  invitedByUserId: z.string().uuid(),
+  /** The user who created this invitation. Null for admin-created invitations. */
+  invitedByUserId: z.string().uuid().nullable(),
   role: InvitationRoleSchema,
   expiresAt: z.string().datetime(),
   acceptedAt: z.string().datetime().nullable(),

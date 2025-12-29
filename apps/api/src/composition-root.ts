@@ -256,7 +256,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       passwordHasher,
     });
 
-    admin = { adminService, adminSessionService };
+    admin = { adminService, adminSessionService, invitationService };
   }
 
   return createApp({

@@ -4,12 +4,14 @@ import { initServer } from '@ts-rest/fastify';
 import { adminPublicContract, adminProtectedContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
+import type { InvitationService } from '../../organizations/domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
 import type { RateLimitConfig } from '../../config/schema.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
+  invitationService: InvitationService;
 };
 
 /**
@@ -25,7 +27,7 @@ export const registerAdminRoutes = async (
   deps: AdminRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { adminService, adminSessionService } = deps;
+  const { adminService, adminSessionService, invitationService } = deps;
   const s = initServer();
 
   // Register public admin routes with strict rate limiting
@@ -266,6 +268,53 @@ export const registerAdminRoutes = async (
             body: undefined,
           }),
           () => storageErrorResponse('Failed to revoke token')
+        );
+      },
+
+      createInvitation: async ({ params, body }: { params: { organizationId: string }; body: { role?: 'admin' | 'member'; email?: string; expiresInDays?: number } }) => {
+        // Check if organization exists
+        const orgResult = await adminService.getOrganization(params.organizationId);
+        const orgCheck = orgResult.match(
+          (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
+          () => storageErrorResponse('Failed to check organization')
+        );
+        if (orgCheck) return orgCheck;
+
+        // Create invitation using the invitation service
+        // Admin bypasses normal permission checks since they're the system admin
+        const result = await invitationService.createInvitation({
+          organizationId: params.organizationId,
+          invitedByUserId: null, // Admin-created invitations have no specific user
+          role: body.role ?? 'member',
+          email: body.email,
+          expiresInDays: body.expiresInDays,
+          skipPermissionCheck: true, // Admin can create invitations without being an org member
+        });
+
+        return result.match(
+          (invitation) => ({
+            status: 201 as const,
+            body: {
+              id: invitation.id,
+              code: invitation.code,
+              email: invitation.email,
+              organizationId: invitation.organizationId,
+              role: invitation.role,
+              expiresAt: invitation.expiresAt,
+              createdAt: invitation.createdAt,
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVITATION_ORG_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Organization not found' },
+                };
+              default:
+                return storageErrorResponse('Failed to create invitation');
+            }
+          }
         );
       },
     });

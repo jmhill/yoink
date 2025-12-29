@@ -3,6 +3,7 @@ import type {
   AnonymousActor,
   Capture,
   Task,
+  PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -15,6 +16,7 @@ import {
   ValidationError,
   UnsupportedOperationError,
   ConflictError,
+  CannotDeleteLastPasskeyError,
 } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
@@ -349,6 +351,38 @@ export const createHttpActor = (
 
     async shouldNotBeAbleToAddCaptures(): Promise<void> {
       throw new UnsupportedOperationError('shouldNotBeAbleToAddCaptures', 'http');
+    },
+
+    // Passkey operations
+    async registerPasskey(_name?: string): Promise<PasskeyCredentialInfo> {
+      // WebAuthn registration requires browser-level interaction or server-side mocking.
+      // For full passkey testing, use the Playwright driver with CDP virtual authenticator.
+      throw new UnsupportedOperationError('registerPasskey', 'http');
+    },
+
+    async listPasskeys(): Promise<PasskeyCredentialInfo[]> {
+      const response = await client.get('/api/auth/passkey/credentials', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ credentials: PasskeyCredentialInfo[] }>().credentials;
+    },
+
+    async deletePasskey(credentialId: string): Promise<void> {
+      const response = await client.delete(`/api/auth/passkey/credentials/${credentialId}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Passkey', credentialId);
+      }
+      if (response.statusCode === 403) {
+        throw new UnauthorizedError('You do not own this passkey');
+      }
+      if (response.statusCode === 409) {
+        throw new CannotDeleteLastPasskeyError();
+      }
+      // 200 is success
     },
   };
 };

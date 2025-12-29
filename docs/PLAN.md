@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.5 complete, 7.6a next)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6a complete, 7.6b next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -106,22 +106,26 @@ Playwright driver changes are only needed when testing the login/signup UI (7.7b
 
 **System Invariant**: Users must always have at least 1 passkey. This is enforced by preventing deletion of the last passkey.
 
-#### 7.6a Passkey Registration for Existing Users (Migration Path)
+#### 7.6a Passkey Registration for Existing Users (Migration Path) - Complete ✓
 **Goal**: Allow token-authenticated users to add passkeys and transition to session auth.
 
 This is the **migration path** for existing users who currently authenticate via API token. After registering a passkey, they immediately switch to session-based auth.
 
 - [x] `POST /api/auth/signup/options` and `/verify` (passkey registration during signup)
 - [x] Session cookie security: `httpOnly`, `secure`, `sameSite: strict`
-- [ ] Create combined auth middleware (accepts token OR session cookie)
-- [ ] `POST /api/auth/passkey/register/options` - Get WebAuthn registration options (requires auth)
-- [ ] `POST /api/auth/passkey/register/verify` - Verify passkey, save credential, create session (requires auth)
-- [ ] `GET /api/auth/passkey/credentials` - List user's passkeys (requires auth)
-- [ ] `DELETE /api/auth/passkey/credentials/:id` - Delete passkey with "can't delete last" guard
-- [ ] API contract: `passkey-contract.ts` with request/response schemas
-- [ ] Unit tests for combined auth middleware
-- [ ] Unit tests for passkey routes
-- [ ] Acceptance tests: `passkey-management.test.ts` (HTTP driver only - WebAuthn mocking)
+- [x] Create combined auth middleware (accepts token OR session cookie, session preferred)
+- [x] `POST /api/auth/passkey/register/options` - Get WebAuthn registration options (requires auth)
+- [x] `POST /api/auth/passkey/register/verify` - Verify passkey, save credential, create session (requires auth)
+- [x] `GET /api/auth/passkey/credentials` - List user's passkeys (requires auth)
+- [x] `DELETE /api/auth/passkey/credentials/:id` - Delete passkey with "can't delete last" guard
+- [x] API contract: `passkey-contract.ts` with request/response schemas
+- [x] Unit tests for combined auth middleware (8 tests)
+- [x] Unit tests for passkey routes (12 tests)
+- [x] Acceptance tests: `passkey-management.test.ts` (5 tests, HTTP driver only)
+- [x] `deleteCredentialForUser` method with ownership validation (4 tests)
+- [x] `CannotDeleteLastPasskeyError` and `CredentialOwnershipError` error types
+- [x] DSL extended with `registerPasskey`, `listPasskeys`, `deletePasskey` operations
+- [x] WebAuthn config loading from environment variables
 
 **Behavior on `/register/verify` success**:
 1. Verify WebAuthn registration response
@@ -392,20 +396,21 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.6a (Passkey Registration for Existing Users)
+### Current Focus: Phase 7.6b (Passkey Login)
 
 The immediate next steps are:
 
-1. **Create combined auth middleware** - Accepts either Bearer token OR session cookie, sets `request.authContext`
-2. **Create passkey-contract.ts** - API contract for passkey management endpoints
-3. **Implement passkey routes** - Wire up PasskeyService methods to HTTP endpoints
-4. **Write acceptance tests** - `passkey-management.test.ts` (HTTP driver only)
+1. **Create auth-contract.ts** - API contract for login/logout/session endpoints
+2. **Implement login routes** - `POST /api/auth/login/options` and `/verify` (public, no auth)
+3. **Implement logout route** - `POST /api/auth/logout` (requires session auth)
+4. **Implement session info route** - `GET /api/auth/session` (requires auth)
+5. **Write acceptance tests** - `authenticating-with-passkeys.test.ts`
 
 Key files to reference:
-- `apps/api/src/auth/application/auth-middleware.ts` - Current token-only middleware
-- `apps/api/src/auth/application/user-session-middleware.ts` - Session middleware (for reference)
-- `apps/api/src/auth/domain/passkey-service.ts` - Already implemented, has `generateRegistrationOptions`, `verifyRegistration`, `listCredentials`, `deleteCredential`
-- `apps/api/src/auth/application/signup-routes.ts` - Reference for how signup uses passkey service
-- `packages/api-contracts/src/contracts/signup-contract.ts` - Reference for contract structure
+- `apps/api/src/auth/domain/passkey-service.ts` - Has `generateAuthenticationOptions`, `verifyAuthentication`
+- `apps/api/src/auth/domain/session-service.ts` - Has `createSession`, `revokeSession`
+- `apps/api/src/auth/application/passkey-routes.ts` - Pattern for protected routes with combined auth
+- `apps/api/src/auth/application/signup-routes.ts` - Pattern for public routes
+- `packages/api-contracts/src/contracts/passkey-contract.ts` - Reference for contract structure
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

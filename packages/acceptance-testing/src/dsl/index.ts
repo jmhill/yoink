@@ -5,6 +5,7 @@ export type {
   Organization,
   User,
   Token,
+  PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -22,6 +23,7 @@ export {
   ValidationError,
   UnsupportedOperationError,
   ConflictError,
+  CannotDeleteLastPasskeyError,
 } from './errors.js';
 
 // Interfaces

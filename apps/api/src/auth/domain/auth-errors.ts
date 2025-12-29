@@ -139,6 +139,19 @@ export type RpIdMismatchError = {
   readonly received: string;
 };
 
+/** Cannot delete the user's last passkey */
+export type CannotDeleteLastPasskeyError = {
+  readonly type: 'CANNOT_DELETE_LAST_PASSKEY';
+  readonly userId: string;
+};
+
+/** User does not own this credential */
+export type CredentialOwnershipError = {
+  readonly type: 'CREDENTIAL_OWNERSHIP_ERROR';
+  readonly credentialId: string;
+  readonly userId: string;
+};
+
 export type PasskeyServiceError =
   | UserNotFoundError
   | CredentialNotFoundError
@@ -148,6 +161,8 @@ export type PasskeyServiceError =
   | CounterReplayError
   | OriginMismatchError
   | RpIdMismatchError
+  | CannotDeleteLastPasskeyError
+  | CredentialOwnershipError
   | PasskeyCredentialStorageError
   | UserStorageError;
 
@@ -196,6 +211,22 @@ export const rpIdMismatchError = (
   type: 'RP_ID_MISMATCH',
   expected,
   received,
+});
+
+export const cannotDeleteLastPasskeyError = (
+  userId: string
+): CannotDeleteLastPasskeyError => ({
+  type: 'CANNOT_DELETE_LAST_PASSKEY',
+  userId,
+});
+
+export const credentialOwnershipError = (
+  credentialId: string,
+  userId: string
+): CredentialOwnershipError => ({
+  type: 'CREDENTIAL_OWNERSHIP_ERROR',
+  credentialId,
+  userId,
 });
 
 // ============================================================================

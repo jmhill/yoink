@@ -4,6 +4,7 @@ import type {
   AnonymousActor,
   Capture,
   Task,
+  PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -468,6 +469,24 @@ export const createPlaywrightActor = (
       // Use Playwright's expect with auto-retry to wait for the offline input state
       const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
       await expect(offlineInput).toBeVisible();
+    },
+
+    // Passkey operations - will be implemented in Phase 7.7b with CDP virtual authenticator
+    async registerPasskey(_name?: string): Promise<PasskeyCredentialInfo> {
+      // TODO: Implement using CDP virtual authenticator in Phase 7.7b
+      // await cdpSession.send('WebAuthn.enable', { enableUI: false });
+      // await cdpSession.send('WebAuthn.addVirtualAuthenticator', { ... });
+      throw new UnsupportedOperationError('registerPasskey', 'playwright');
+    },
+
+    async listPasskeys(): Promise<PasskeyCredentialInfo[]> {
+      // TODO: Implement by navigating to Settings > Security section
+      throw new UnsupportedOperationError('listPasskeys', 'playwright');
+    },
+
+    async deletePasskey(_credentialId: string): Promise<void> {
+      // TODO: Implement by navigating to Settings > Security and clicking delete
+      throw new UnsupportedOperationError('deletePasskey', 'playwright');
     },
   };
 };

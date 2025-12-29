@@ -57,6 +57,15 @@ export type Token = {
   createdAt: string;
 };
 
+export type PasskeyCredentialInfo = {
+  id: string;
+  name?: string;
+  deviceType: 'singleDevice' | 'multiDevice';
+  backedUp: boolean;
+  createdAt: string;
+  lastUsedAt?: string;
+};
+
 // =============================================================================
 // Input Types
 // =============================================================================

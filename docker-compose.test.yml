@@ -12,6 +12,11 @@ services:
       - DB_PATH=/app/apps/api/data/captures.db
       # Disable rate limiting for E2E tests
       - RATE_LIMIT_ENABLED=false
+      # WebAuthn configuration for passkey testing
+      - WEBAUTHN_RP_ID=localhost
+      - WEBAUTHN_RP_NAME=Yoink Test
+      - WEBAUTHN_ORIGIN=http://localhost:3333
+      - WEBAUTHN_CHALLENGE_SECRET=test-challenge-secret-min-32-chars-long-for-hmac
     ports:
       - "3333:3000"
     healthcheck:

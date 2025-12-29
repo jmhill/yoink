@@ -5,6 +5,7 @@ import {
   type RateLimitConfig,
   type LogLevel,
   type LogConfig,
+  type WebAuthnConfig,
   LogLevelSchema,
 } from './schema.js';
 
@@ -101,6 +102,29 @@ const loadDatabaseConfig = (): DatabaseConfig => {
 };
 
 /**
+ * Load WebAuthn configuration from environment variables.
+ * Returns undefined if required variables are not set.
+ */
+const loadWebAuthnConfig = (): WebAuthnConfig | undefined => {
+  const rpId = process.env.WEBAUTHN_RP_ID;
+  const rpName = process.env.WEBAUTHN_RP_NAME;
+  const origin = process.env.WEBAUTHN_ORIGIN;
+  const challengeSecret = process.env.WEBAUTHN_CHALLENGE_SECRET;
+
+  // All fields are required
+  if (!rpId || !rpName || !origin || !challengeSecret) {
+    return undefined;
+  }
+
+  return {
+    rpId,
+    rpName,
+    origin,
+    challengeSecret,
+  };
+};
+
+/**
  * Load application configuration from environment variables.
  * Returns production-ready defaults (file-based LibSQL, system clock, uuid, bcrypt).
  */
@@ -120,6 +144,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     admin: await loadAdminConfig(),
     rateLimit: loadRateLimitConfig(),
     log: loadLogConfig(),
+    webauthn: loadWebAuthnConfig(),
   };
 };
 

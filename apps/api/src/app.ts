@@ -25,8 +25,10 @@ import type { MembershipService } from './organizations/domain/membership-servic
 import type { SignupService } from './auth/domain/signup-service.js';
 import type { PasskeyService } from './auth/domain/passkey-service.js';
 import type { SessionService } from './auth/domain/session-service.js';
+import type { TokenService } from './auth/domain/token-service.js';
 import { registerInvitationRoutes } from './invitations/application/invitation-routes.js';
 import { registerSignupRoutes } from './auth/application/signup-routes.js';
+import { registerPasskeyRoutes } from './auth/application/passkey-routes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +41,7 @@ export type SignupConfig = {
   signupService: SignupService;
   passkeyService: PasskeyService;
   sessionService: SessionService;
+  tokenService: TokenService;
 };
 
 export type AppDependencies = {
@@ -112,20 +115,33 @@ export const createApp = async (deps: AppDependencies) => {
     authMiddleware: deps.authMiddleware,
   });
 
+  // Session cookie configuration (shared between signup and passkey routes)
+  const sessionCookieName = 'yoink_session';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+  };
+
   // Signup routes - only registered if webauthn config is provided
   if (deps.signup) {
     await registerSignupRoutes(app, {
       signupService: deps.signup.signupService,
       passkeyService: deps.signup.passkeyService,
       sessionService: deps.signup.sessionService,
-      sessionCookieName: 'yoink_session',
-      cookieOptions: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      },
+      sessionCookieName,
+      cookieOptions,
+    });
+
+    // Passkey management routes (for existing users to add/manage passkeys)
+    await registerPasskeyRoutes(app, {
+      passkeyService: deps.signup.passkeyService,
+      sessionService: deps.signup.sessionService,
+      tokenService: deps.signup.tokenService,
+      sessionCookieName,
+      cookieOptions,
     });
   }
 

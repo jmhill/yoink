@@ -61,3 +61,13 @@ export class ConflictError extends DslError {
     super(message);
   }
 }
+
+/**
+ * Thrown when attempting to delete the user's last passkey.
+ * Users must always have at least one passkey for security.
+ */
+export class CannotDeleteLastPasskeyError extends DslError {
+  constructor() {
+    super('Cannot delete your last passkey');
+  }
+}

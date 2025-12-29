@@ -1,6 +1,7 @@
 import type {
   Capture,
   Task,
+  PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -45,6 +46,25 @@ export type CoreActor = {
   pinTask(id: string): Promise<Task>;
   unpinTask(id: string): Promise<Task>;
   deleteTask(id: string): Promise<void>;
+
+  // Passkey operations
+  /**
+   * Register a new passkey for this user.
+   * HTTP driver mocks the WebAuthn response internally.
+   * Playwright driver uses CDP virtual authenticator.
+   */
+  registerPasskey(name?: string): Promise<PasskeyCredentialInfo>;
+
+  /**
+   * List all passkeys for this user.
+   */
+  listPasskeys(): Promise<PasskeyCredentialInfo[]>;
+
+  /**
+   * Delete a passkey by ID.
+   * Throws CannotDeleteLastPasskeyError if this is the user's only passkey.
+   */
+  deletePasskey(credentialId: string): Promise<void>;
 };
 
 /**

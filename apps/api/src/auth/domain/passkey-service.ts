@@ -21,6 +21,8 @@ import {
   credentialNotFoundError,
   challengeExpiredError,
   verificationFailedError,
+  cannotDeleteLastPasskeyError,
+  credentialOwnershipError,
   type PasskeyServiceError,
 } from './auth-errors.js';
 import { userNotFoundError } from '../../users/domain/user-errors.js';
@@ -68,6 +70,11 @@ export type SignupRegistrationParams = {
   email: string;
   /** A unique identifier to include in the challenge (e.g., invitation code or email) */
   identifier: string;
+};
+
+export type DeleteCredentialForUserParams = {
+  credentialId: string;
+  userId: string;
 };
 
 export type PasskeyService = {
@@ -119,10 +126,20 @@ export type PasskeyService = {
   ): ResultAsync<PasskeyCredential[], PasskeyServiceError>;
 
   /**
-   * Delete a passkey credential.
+   * Delete a passkey credential (raw, no ownership check).
+   * @deprecated Use deleteCredentialForUser for user-facing operations.
    */
   deleteCredential(
     credentialId: string
+  ): ResultAsync<void, PasskeyServiceError>;
+
+  /**
+   * Delete a passkey credential with ownership validation and last-passkey guard.
+   * - Verifies the credential belongs to the specified user
+   * - Prevents deletion if this is the user's only passkey
+   */
+  deleteCredentialForUser(
+    params: DeleteCredentialForUserParams
   ): ResultAsync<void, PasskeyServiceError>;
 };
 
@@ -407,6 +424,33 @@ export const createPasskeyService = (
       credentialId: string
     ): ResultAsync<void, PasskeyServiceError> => {
       return credentialStore.delete(credentialId);
+    },
+
+    deleteCredentialForUser: (
+      params: DeleteCredentialForUserParams
+    ): ResultAsync<void, PasskeyServiceError> => {
+      const { credentialId, userId } = params;
+
+      // First check if credential exists and belongs to user
+      return credentialStore.findById(credentialId).andThen((credential) => {
+        if (!credential) {
+          return errAsync(credentialNotFoundError(credentialId));
+        }
+
+        if (credential.userId !== userId) {
+          return errAsync(credentialOwnershipError(credentialId, userId));
+        }
+
+        // Check if this is the user's last passkey
+        return credentialStore.findByUserId(userId).andThen((credentials) => {
+          if (credentials.length <= 1) {
+            return errAsync(cannotDeleteLastPasskeyError(userId));
+          }
+
+          // Safe to delete
+          return credentialStore.delete(credentialId);
+        });
+      });
     },
   };
 };

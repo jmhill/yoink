@@ -203,6 +203,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       signupService,
       passkeyService,
       sessionService,
+      tokenService,
     };
   }
 

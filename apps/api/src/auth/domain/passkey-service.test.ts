@@ -502,4 +502,103 @@ describe('createPasskeyService', () => {
       }
     });
   });
+
+  describe('deleteCredentialForUser', () => {
+    it('deletes a credential when user has multiple passkeys', async () => {
+      await credentialStore.save({
+        id: 'cred-1',
+        userId: TEST_USER.id,
+        publicKey: 'pk1',
+        counter: 0,
+        deviceType: 'multiDevice',
+        backedUp: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      await credentialStore.save({
+        id: 'cred-2',
+        userId: TEST_USER.id,
+        publicKey: 'pk2',
+        counter: 0,
+        deviceType: 'multiDevice',
+        backedUp: true,
+        createdAt: '2024-01-02T00:00:00.000Z',
+      });
+
+      const result = await service.deleteCredentialForUser({
+        credentialId: 'cred-1',
+        userId: TEST_USER.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+
+      const findResult = await credentialStore.findById('cred-1');
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).toBeNull();
+      }
+    });
+
+    it('returns error when trying to delete last passkey', async () => {
+      await credentialStore.save({
+        id: 'only-cred',
+        userId: TEST_USER.id,
+        publicKey: 'pk',
+        counter: 0,
+        deviceType: 'multiDevice',
+        backedUp: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const result = await service.deleteCredentialForUser({
+        credentialId: 'only-cred',
+        userId: TEST_USER.id,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CANNOT_DELETE_LAST_PASSKEY');
+      }
+
+      // Credential should still exist
+      const findResult = await credentialStore.findById('only-cred');
+      expect(findResult.isOk()).toBe(true);
+      if (findResult.isOk()) {
+        expect(findResult.value).not.toBeNull();
+      }
+    });
+
+    it('returns error when credential does not exist', async () => {
+      const result = await service.deleteCredentialForUser({
+        credentialId: 'non-existent',
+        userId: TEST_USER.id,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CREDENTIAL_NOT_FOUND');
+      }
+    });
+
+    it('returns error when user does not own the credential', async () => {
+      await credentialStore.save({
+        id: 'other-user-cred',
+        userId: 'other-user-id',
+        publicKey: 'pk',
+        counter: 0,
+        deviceType: 'multiDevice',
+        backedUp: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const result = await service.deleteCredentialForUser({
+        credentialId: 'other-user-cred',
+        userId: TEST_USER.id,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('CREDENTIAL_OWNERSHIP_ERROR');
+      }
+    });
+  });
 });

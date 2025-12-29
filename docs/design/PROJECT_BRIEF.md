@@ -464,7 +464,7 @@ Extension needs:
 
 ## 3. Implementation Phases
 
-> **Note**: For current progress and task tracking, see [PLAN.md](./PLAN.md).
+> **Note**: For current progress and task tracking, see [PLAN.md](../PLAN.md).
 
 ### Phase 1: Backend Foundation
 **Goal**: Working API with persistence and multi-tenant auth

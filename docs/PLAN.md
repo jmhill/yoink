@@ -2,11 +2,11 @@
 
 This document tracks the implementation progress of the Yoink universal capture system. It serves as a persistent "master plan" that carries context across Claude sessions.
 
-For the full design document and architectural details, see [PROJECT_BRIEF.md](./PROJECT_BRIEF.md).
+For the full design document and architectural details, see [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md).
 
-For the product vision and roadmap, see [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md).
+For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VISION.md).
 
-For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
+For the database migration plan, see [TURSO_MIGRATION.md](./completed/TURSO_MIGRATION.md).
 
 ---
 
@@ -215,7 +215,7 @@ A comprehensive security review identified the following priorities before shari
 - [x] Fix token enumeration timing oracle
 
 ### Deferred (Production Hardening)
-- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md)) - prerequisite for multi-org
+- [ ] Implement passkeys (see [PASSKEY_AUTHENTICATION.md](./design/PASSKEY_AUTHENTICATION.md)) - prerequisite for multi-org
 - [ ] Add container scanning (Trivy) to CI
 - [ ] Add SAST (CodeQL/Semgrep) to CI
 - [x] Enable Dependabot for automated updates
@@ -531,7 +531,7 @@ Full OpenTelemetry distributed tracing - to be implemented when needed.
 
 **Goal**: Replace API token UX with passkeys for proper user authentication before public release
 
-See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implementation plan.
+See [PASSKEY_AUTHENTICATION.md](./design/PASSKEY_AUTHENTICATION.md) for detailed implementation plan.
 
 **Key Design Decisions:**
 - Passkeys replace token-copy-paste flow for web app users
@@ -739,7 +739,7 @@ This ordering allows incremental deployment without breaking existing users:
 
 **Goal**: Migrate from SQLite on Fly.io volume to Turso-hosted LibSQL for zero-downtime deployments
 
-See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
+See [TURSO_MIGRATION.md](./completed/TURSO_MIGRATION.md) for detailed implementation plan.
 
 **Why now?**
 - Phase 7.1-7.3 added new tables (memberships, passkeys, sessions) - good checkpoint before more schema changes
@@ -818,7 +818,7 @@ See [TURSO_MIGRATION.md](./TURSO_MIGRATION.md) for detailed implementation plan.
 
 **Goal**: Implement Vision Phase A - captures become the entry point for tasks
 
-See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for full context.
+See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for full context.
 See [docs/mockups/](./mockups/) for UI wireframes - we're implementing the mobile-responsive design first.
 
 **Key Design Decisions:**
@@ -1022,7 +1022,7 @@ Issues discovered during exploratory testing that affect daily usability.
 
 **Goal**: Vision Phase B - add organizational structure and reference material
 
-See [REVISED_PRODUCT_VISION_20251223.md](./REVISED_PRODUCT_VISION_20251223.md) for details.
+See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for details.
 
 ### Planned Features
 - Folder entity (name, archivedAt)
@@ -1137,7 +1137,7 @@ application/      # HTTP layer
 
 ### Testing Infrastructure - Complete ✓
 
-See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing strategy.
+See [TESTING.md](./testing/TESTING.md) for comprehensive documentation on the testing strategy.
 
 **Quick Reference:**
 - 369+ unit tests (apps/api, packages/*)
@@ -1158,7 +1158,7 @@ See [TESTING.md](./TESTING.md) for comprehensive documentation on the testing st
   - All tests updated to use new pattern with `ctx.driverName` for driver-specific describe blocks
   - Fixed DSL violations in `authenticating.test.ts` and `token-security.test.ts`
 
-See [ACCEPTANCE_TEST_AUDIT.md](./ACCEPTANCE_TEST_AUDIT.md) for detailed findings.
+See [ACCEPTANCE_TEST_AUDIT.md](./testing/ACCEPTANCE_TEST_AUDIT.md) for detailed findings.
 
 ### CI/CD Optimizations
 
@@ -1250,7 +1250,7 @@ When implementing new features:
    - Opens at http://localhost:3333 with a fresh database
    - Useful for testing production builds before deploying
 
-See [TESTING.md](./TESTING.md) for comprehensive testing documentation.
+See [TESTING.md](./testing/TESTING.md) for comprehensive testing documentation.
 
 ---
 
@@ -1280,4 +1280,4 @@ Key files to reference:
 - `apps/api/src/auth/application/signup-routes.ts` - Reference for how signup uses passkey service
 - `packages/api-contracts/src/contracts/signup-contract.ts` - Reference for contract structure
 
-The PROJECT_BRIEF.md contains the full design specification. This PLAN.md tracks what's actually built.
+The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

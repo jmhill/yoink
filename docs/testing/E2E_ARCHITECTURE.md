@@ -1,6 +1,6 @@
 # E2E Testing Pipeline
 
-> **Note**: This document describes the original design. For current testing documentation, see [TESTING.md](./TESTING.md).
+> **Note**: This document describes the original design. For current testing documentation, see [TESTING.md](TESTING.md).
 
 > **Status: Implemented** ✓
 > 

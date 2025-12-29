@@ -1,6 +1,6 @@
 # E2E Multi-Driver Test Runner Plan
 
-> **Note**: This document describes the implementation plan. For current testing documentation, see [TESTING.md](./TESTING.md).
+> **Note**: This document describes the implementation plan. For current testing documentation, see [TESTING.md](../testing/TESTING.md).
 
 This document outlines the plan to overhaul the E2E test infrastructure to support running tests against multiple drivers (HTTP + Playwright) in a single test execution, with unified reporting.
 
@@ -442,6 +442,6 @@ Must fix the driver before testing harness changes.
 
 ## Related Documents
 
-- [E2E_TESTING_PLAN.md](./E2E_TESTING_PLAN.md) - Original 4-layer architecture design
-- [TESTING_STRATEGY.md](./TESTING_STRATEGY.md) - Overall testing philosophy
-- [PLAN.md](./PLAN.md) - Project implementation plan
+- [E2E_ARCHITECTURE.md](../testing/E2E_ARCHITECTURE.md) - Original 4-layer architecture design
+- [TESTING_STRATEGY.md](../architecture/TESTING_STRATEGY.md) - Overall testing philosophy
+- [PLAN.md](../PLAN.md) - Project implementation plan

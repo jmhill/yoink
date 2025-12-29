@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6a complete, 7.6b next)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6b complete, 7.6c next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -136,16 +136,23 @@ This is the **migration path** for existing users who currently authenticate via
 
 **Web app can clear localStorage token after success** - user is now session-authenticated.
 
-#### 7.6b Passkey Login (New Auth Flow)
+#### 7.6b Passkey Login (New Auth Flow) - Complete ✓
 **Goal**: Allow users to log in with passkey (no token needed).
 
-- [ ] `POST /api/auth/login/options` - Get WebAuthn authentication options (public, no auth required)
-- [ ] `POST /api/auth/login/verify` - Verify passkey, create session, set cookie (public)
-- [ ] `POST /api/auth/logout` - Revoke current session (requires auth)
-- [ ] `GET /api/auth/session` - Get current session info (requires auth)
-- [ ] API contract: `auth-contract.ts` for login/logout/session endpoints
-- [ ] Unit tests for login routes
-- [ ] Acceptance tests: `authenticating-with-passkeys.test.ts`
+- [x] `POST /api/auth/login/options` - Get WebAuthn authentication options (public, no auth required)
+- [x] `POST /api/auth/login/verify` - Verify passkey, create session, set cookie (public)
+- [x] `POST /api/auth/logout` - Revoke current session (requires auth)
+- [x] `GET /api/auth/session` - Get current session info (requires auth)
+- [x] API contract: `auth-contract.ts` for login/logout/session endpoints
+- [x] Unit tests for login routes (12 tests)
+- [x] Acceptance tests: `authenticating-with-passkeys.test.ts` (5 tests, HTTP driver only)
+
+**Implementation Notes:**
+- Login uses discoverable credentials (empty `allowCredentials`) - no email required
+- User selects passkey on device, credential ID identifies the user
+- Session cookie set on successful login with 7-day expiry
+- Logout clears cookie and revokes session from database
+- Session info endpoint returns minimal user data and current organization
 
 #### 7.6c Rate Limiting & Security
 - [ ] Rate limiting on login endpoints (brute force protection)
@@ -396,21 +403,18 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.6b (Passkey Login)
+### Current Focus: Phase 7.6c (Rate Limiting)
 
 The immediate next steps are:
 
-1. **Create auth-contract.ts** - API contract for login/logout/session endpoints
-2. **Implement login routes** - `POST /api/auth/login/options` and `/verify` (public, no auth)
-3. **Implement logout route** - `POST /api/auth/logout` (requires session auth)
-4. **Implement session info route** - `GET /api/auth/session` (requires auth)
-5. **Write acceptance tests** - `authenticating-with-passkeys.test.ts`
+1. **Rate limiting on login endpoints** - Brute force protection
+2. **Rate limiting on passkey registration** - Abuse prevention
 
 Key files to reference:
-- `apps/api/src/auth/domain/passkey-service.ts` - Has `generateAuthenticationOptions`, `verifyAuthentication`
-- `apps/api/src/auth/domain/session-service.ts` - Has `createSession`, `revokeSession`
-- `apps/api/src/auth/application/passkey-routes.ts` - Pattern for protected routes with combined auth
-- `apps/api/src/auth/application/signup-routes.ts` - Pattern for public routes
-- `packages/api-contracts/src/contracts/passkey-contract.ts` - Reference for contract structure
+- `apps/api/src/auth/application/auth-routes.ts` - Login endpoints to rate limit
+- `apps/api/src/auth/application/signup-routes.ts` - Signup endpoints to rate limit
+- `apps/api/src/app.ts` - Global rate limit config pattern
+
+Alternatively, skip to **Phase 7.7a (Settings Passkey Management)** to enable existing users to add passkeys through the web UI.
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

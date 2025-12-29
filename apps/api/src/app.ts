@@ -29,6 +29,8 @@ import type { TokenService } from './auth/domain/token-service.js';
 import { registerInvitationRoutes } from './invitations/application/invitation-routes.js';
 import { registerSignupRoutes } from './auth/application/signup-routes.js';
 import { registerPasskeyRoutes } from './auth/application/passkey-routes.js';
+import { registerAuthRoutes } from './auth/application/auth-routes.js';
+import type { UserService } from './users/domain/user-service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +44,7 @@ export type SignupConfig = {
   passkeyService: PasskeyService;
   sessionService: SessionService;
   tokenService: TokenService;
+  userService: UserService;
 };
 
 export type AppDependencies = {
@@ -139,6 +142,16 @@ export const createApp = async (deps: AppDependencies) => {
     await registerPasskeyRoutes(app, {
       passkeyService: deps.signup.passkeyService,
       sessionService: deps.signup.sessionService,
+      tokenService: deps.signup.tokenService,
+      sessionCookieName,
+      cookieOptions,
+    });
+
+    // Auth routes (login, logout, session)
+    await registerAuthRoutes(app, {
+      passkeyService: deps.signup.passkeyService,
+      sessionService: deps.signup.sessionService,
+      userService: deps.signup.userService,
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,

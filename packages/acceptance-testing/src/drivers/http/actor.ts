@@ -384,6 +384,14 @@ export const createHttpActor = (
       }
       // 200 is success
     },
+
+    async getSessionInfo(): Promise<{ user: { id: string; email: string }; organizationId: string }> {
+      const response = await client.get('/api/auth/session', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ user: { id: string; email: string }; organizationId: string }>();
+    },
   };
 };
 

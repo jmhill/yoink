@@ -65,6 +65,15 @@ export type CoreActor = {
    * Throws CannotDeleteLastPasskeyError if this is the user's only passkey.
    */
   deletePasskey(credentialId: string): Promise<void>;
+
+  /**
+   * Get current session info.
+   * Returns user info and current organization.
+   */
+  getSessionInfo(): Promise<{
+    user: { id: string; email: string };
+    organizationId: string;
+  }>;
 };
 
 /**

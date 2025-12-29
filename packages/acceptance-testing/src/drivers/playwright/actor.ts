@@ -488,6 +488,12 @@ export const createPlaywrightActor = (
       // TODO: Implement by navigating to Settings > Security and clicking delete
       throw new UnsupportedOperationError('deletePasskey', 'playwright');
     },
+
+    async getSessionInfo(): Promise<{ user: { id: string; email: string }; organizationId: string }> {
+      // For Playwright, we could implement this via UI navigation to settings
+      // or via a direct API call. For now, throw unsupported.
+      throw new UnsupportedOperationError('getSessionInfo', 'playwright');
+    },
   };
 };
 

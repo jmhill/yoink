@@ -52,6 +52,9 @@ export type BaseContext = {
 export type HttpContext = BaseContext & {
   driverName: 'http';
 
+  /** Base URL of the API server */
+  baseUrl: string;
+
   /**
    * Create an Admin with a specific password (for testing wrong credentials).
    */
@@ -99,6 +102,7 @@ const createHttpContext = (driver: Driver, config: DriverConfig): HttpContext =>
 
   return {
     driverName: 'http',
+    baseUrl: config.baseUrl,
     admin: driver.admin,
     health: driver.health,
     createActor: (email: string) => driver.createActor(email) as Promise<CoreActor>,

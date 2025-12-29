@@ -438,18 +438,60 @@ For more realistic testing:
 
 ## Migration Path
 
-### For Existing Admin
+### For Existing Web App Users (Token → Passkey)
 
-1. Deploy passkey support with password fallback
-2. Register passkey(s) via admin panel
-3. (Optional) Remove password authentication
-4. (Optional) Require multiple passkeys for recovery
+Existing users authenticate via API token stored in localStorage. The migration path:
 
-### For Future End Users
+1. **Deploy passkey registration endpoints** (7.6a)
+   - Combined auth middleware accepts both token and session cookie
+   - `/api/auth/passkey/register/options` and `/verify` endpoints
 
-1. Passkey-first registration (no passwords)
-2. Support discoverable credentials (username-less login)
-3. Consider "add another device" flow via QR codes
+2. **Deploy Settings UI** (7.7a)
+   - "Add Passkey" in Settings → Security section
+   - User registers passkey while still token-authenticated
+
+3. **On passkey registration success**:
+   - Server creates session and sets cookie
+   - Web app clears localStorage token
+   - User is now session-authenticated
+
+4. **Deploy login pages** (7.6b + 7.7b)
+   - New `/login` and `/signup` routes
+   - Both token and session auth work during transition
+
+5. **Remove token auth from web app** (7.7c)
+   - Delete `/config` page and `tokenStorage` utility
+   - Web app relies on session cookies only
+   - API tokens remain valid for extension/CLI
+
+**System Invariant**: Users must always have at least 1 passkey. Deletion of last passkey is prevented.
+
+### For New Users (Invitation → Passkey)
+
+New users go through the invitation-based signup flow:
+
+1. Receive invitation code (created by admin or existing user)
+2. Visit `/signup`, enter invitation code and email
+3. Register passkey during signup
+4. Session created automatically, user is authenticated
+
+### For Admin Panel
+
+The admin panel uses a separate authentication system (password-based admin sessions). Passkey support for admin is deferred. The admin panel is used for:
+
+- Creating organizations and users
+- Managing API tokens
+- Creating invitations
+
+### For Browser Extension (Future - 7.11)
+
+The extension currently uses API tokens configured manually. Future enhancement:
+
+1. User authenticates with passkey in extension popup
+2. Extension requests scoped API token from server
+3. Token stored in extension storage for subsequent requests
+
+This keeps the simple Bearer token pattern for API calls while using passkeys for the human authentication step.
 
 ## References
 

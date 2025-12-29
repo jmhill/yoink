@@ -28,7 +28,7 @@ For the database migration plan, see [TURSO_MIGRATION.md](./TURSO_MIGRATION.md).
 **Phase 6.2: Structured Logging** - Complete ✓
 **Phase 6.3: Archive → Trash Rename** - Complete ✓
 **Phase 6.4: Deletion Features** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.4 complete)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.5 complete, 7.6a next)
 **Phase 7.5: Turso Database Migration** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓ (8.1-8.8 all phases done)
 
@@ -541,10 +541,13 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - Users can be members of multiple organizations
 - Admin panel becomes internal super-admin tooling (unchanged)
 
-### 7.0 Test Infrastructure (Prerequisite)
+### 7.0 Test Infrastructure (Deferred to 7.7b)
+
+Playwright driver changes are only needed when testing the login/signup UI (7.7b). HTTP driver tests can continue using API tokens for the foreseeable future.
+
 - [ ] Playwright driver: Add CDP virtual authenticator setup
 - [ ] Update Playwright actor creation to use invitation → passkey flow
-- [ ] HTTP driver: Continue using API tokens (no changes needed)
+- [x] HTTP driver: Continue using API tokens (no changes needed)
 - [ ] Verify test isolation still works (invitation per test)
 
 ### 7.1 Database Schema (Backwards Compatible) - Complete ✓
@@ -609,24 +612,90 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 - Session cookie set on successful signup with 7-day expiry
 
 ### 7.6 Auth API Endpoints
+
+**System Invariant**: Users must always have at least 1 passkey. This is enforced by preventing deletion of the last passkey.
+
+#### 7.6a Passkey Registration for Existing Users (Migration Path)
+**Goal**: Allow token-authenticated users to add passkeys and transition to session auth.
+
+This is the **migration path** for existing users who currently authenticate via API token. After registering a passkey, they immediately switch to session-based auth.
+
 - [x] `POST /api/auth/signup/options` and `/verify` (passkey registration during signup)
-- [ ] `POST /api/auth/passkey/register/options` and `/verify` (add passkey to existing account)
-- [ ] `POST /api/auth/passkey/login/options` and `/verify`
-- [ ] `POST /api/auth/logout`
-- [ ] `GET /api/auth/session`
 - [x] Session cookie security: `httpOnly`, `secure`, `sameSite: strict`
+- [ ] Create combined auth middleware (accepts token OR session cookie)
+- [ ] `POST /api/auth/passkey/register/options` - Get WebAuthn registration options (requires auth)
+- [ ] `POST /api/auth/passkey/register/verify` - Verify passkey, save credential, create session (requires auth)
+- [ ] `GET /api/auth/passkey/credentials` - List user's passkeys (requires auth)
+- [ ] `DELETE /api/auth/passkey/credentials/:id` - Delete passkey with "can't delete last" guard
+- [ ] API contract: `passkey-contract.ts` with request/response schemas
+- [ ] Unit tests for combined auth middleware
+- [ ] Unit tests for passkey routes
+- [ ] Acceptance tests: `passkey-management.test.ts` (HTTP driver only - WebAuthn mocking)
+
+**Behavior on `/register/verify` success**:
+1. Verify WebAuthn registration response
+2. Save passkey credential to database
+3. Create user session
+4. Set session cookie (`httpOnly`, `secure`, `sameSite: strict`)
+5. Return credential info (id, name, createdAt)
+
+**Web app can clear localStorage token after success** - user is now session-authenticated.
+
+#### 7.6b Passkey Login (New Auth Flow)
+**Goal**: Allow users to log in with passkey (no token needed).
+
+- [ ] `POST /api/auth/login/options` - Get WebAuthn authentication options (public, no auth required)
+- [ ] `POST /api/auth/login/verify` - Verify passkey, create session, set cookie (public)
+- [ ] `POST /api/auth/logout` - Revoke current session (requires auth)
+- [ ] `GET /api/auth/session` - Get current session info (requires auth)
+- [ ] API contract: `auth-contract.ts` for login/logout/session endpoints
+- [ ] Unit tests for login routes
+- [ ] Acceptance tests: `authenticating-with-passkeys.test.ts`
+
+#### 7.6c Rate Limiting & Security
+- [ ] Rate limiting on login endpoints (brute force protection)
+- [ ] Rate limiting on passkey registration (abuse prevention)
 
 ### 7.7 Web App Auth Overhaul
-- [ ] Login page (`/login`) with passkey authentication
-- [ ] Signup page (`/signup`) with invitation code + passkey registration
-- [ ] Replace `tokenStorage` with session-based auth
-- [ ] Update API client to use session cookies
-- [ ] Org switcher in header/settings
-- [ ] Remove `/config` page
 
-### 7.8 Settings & Credential Management
-- [ ] Passkeys section: list, add, remove passkeys
-- [ ] Organizations section: list memberships, switch org, leave org
+Split into deployment-friendly chunks to enable zero-downtime migration:
+
+#### 7.7a Settings Passkey Management (Deploy First)
+**Prerequisite**: 7.6a complete
+
+This allows existing token-authenticated users to add passkeys without changing the main auth flow.
+
+- [ ] Install `@simplewebauthn/browser` dependency
+- [ ] Add "Security" section to Settings page
+- [ ] "Add Passkey" button and registration flow
+- [ ] Device name input with suggested default (based on user agent if detectable)
+- [ ] Passkey list component (name, created date, last used)
+- [ ] Delete passkey with confirmation dialog
+- [ ] Disable delete button for last passkey (show tooltip explaining why)
+- [ ] On passkey registration success: clear localStorage token, show success toast
+- [ ] Retry option if passkey registration fails
+
+#### 7.7b Login & Signup Pages (Deploy Second)
+**Prerequisite**: 7.6b complete
+
+- [ ] Create `/login` page with "Sign in with Passkey" button
+- [ ] Create `/signup` page with invitation code input + passkey registration
+- [ ] Update root route guard: check for session cookie, redirect to `/login` if missing
+- [ ] Handle 401 errors: redirect to `/login` with return URL
+
+#### 7.7c Remove Token Auth from Web App (Deploy Third)
+**Prerequisite**: 7.7a and 7.7b complete, existing users have migrated to passkeys
+
+- [ ] Remove `/config` page entirely
+- [ ] Remove `tokenStorage` utility from codebase
+- [ ] Update API client to rely on session cookies only (no Bearer token header)
+- [ ] Update error handling: 401 → redirect to `/login`
+- [ ] Clean up any remaining token-related code
+
+### 7.8 Settings & Organization Management
+- [ ] Organizations section in Settings: list memberships with current org indicator
+- [ ] Switch organization functionality (updates session's `currentOrganizationId`)
+- [ ] Leave organization with guards (cannot leave personal org, cannot leave as last admin)
 
 ### 7.9 Org Admin Features in Web App
 - [ ] Members list page
@@ -636,12 +705,31 @@ See [PASSKEY_AUTHENTICATION.md](./PASSKEY_AUTHENTICATION.md) for detailed implem
 
 ### 7.10 Cleanup
 - [ ] Migration: Remove `users.organization_id` column
-- [ ] Remove deprecated token config code
+- [ ] Update queries to use memberships table exclusively
 - [ ] Update documentation
 
 ### 7.11 User Token Self-Service (Deferred)
 - [ ] Token list in settings
 - [ ] Create/revoke tokens for extension/CLI use
+
+### Deployment Strategy (Zero-Downtime Migration)
+
+This ordering allows incremental deployment without breaking existing users:
+
+| Step | Deploy | User Experience |
+|------|--------|-----------------|
+| 1 | 7.6a (passkey registration endpoints) | No visible change yet |
+| 2 | 7.7a (Settings passkey UI) | Users can add passkeys while still using token auth |
+| 3 | **Migration window** | Prompt existing users to add passkeys |
+| 4 | 7.6b (login endpoints) | No visible change yet |
+| 5 | 7.7b (login/signup pages) | New auth flow available, both flows work |
+| 6 | 7.7c (remove token auth from web) | Token auth removed from web app |
+
+**For single-user scenario**: Deploy steps 1-2, add passkey in Settings, then deploy steps 3-6.
+
+**For multi-user scenario**: After step 2, show in-app banner prompting users to add passkeys before step 6.
+
+**Note**: API tokens remain valid for extension/CLI after step 6. Only the web app stops accepting token auth.
 
 **Deliverable**: Users sign up via invitation, log in with passkeys, can belong to multiple orgs
 
@@ -1107,13 +1195,20 @@ Implemented performance and efficiency improvements to the CI pipeline:
 
 All API endpoints are under the `/api` prefix:
 
-| Path | Purpose |
-|------|---------|
-| `/api/health` | Health check |
-| `/api/captures` | Capture CRUD (Bearer token auth) |
-| `/api/admin/*` | Admin API (session cookie auth) |
-| `/admin` | Admin panel UI (static files) |
-| `/` | Reserved for web app (Capture Inbox) |
+| Path | Purpose | Auth |
+|------|---------|------|
+| `/api/health` | Health check | None |
+| `/api/captures` | Capture CRUD | Token or session |
+| `/api/tasks` | Task CRUD | Token or session |
+| `/api/auth/signup/*` | New user signup | None (public) |
+| `/api/auth/login/*` | Passkey login | None (public) |
+| `/api/auth/logout` | Logout | Session |
+| `/api/auth/session` | Current session info | Token or session |
+| `/api/auth/passkey/*` | Passkey management | Token or session |
+| `/api/invitations/*` | Invitation management | Mixed (validate is public) |
+| `/api/admin/*` | Admin API | Admin session cookie |
+| `/admin` | Admin panel UI | Static files |
+| `/` | Web app | Static files |
 
 ### Environment Variables
 
@@ -1168,5 +1263,21 @@ When resuming work on this project:
 3. Read recent git commits for implementation context
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
+
+### Current Focus: Phase 7.6a (Passkey Registration for Existing Users)
+
+The immediate next steps are:
+
+1. **Create combined auth middleware** - Accepts either Bearer token OR session cookie, sets `request.authContext`
+2. **Create passkey-contract.ts** - API contract for passkey management endpoints
+3. **Implement passkey routes** - Wire up PasskeyService methods to HTTP endpoints
+4. **Write acceptance tests** - `passkey-management.test.ts` (HTTP driver only)
+
+Key files to reference:
+- `apps/api/src/auth/application/auth-middleware.ts` - Current token-only middleware
+- `apps/api/src/auth/application/user-session-middleware.ts` - Session middleware (for reference)
+- `apps/api/src/auth/domain/passkey-service.ts` - Already implemented, has `generateRegistrationOptions`, `verifyRegistration`, `listCredentials`, `deleteCredential`
+- `apps/api/src/auth/application/signup-routes.ts` - Reference for how signup uses passkey service
+- `packages/api-contracts/src/contracts/signup-contract.ts` - Reference for contract structure
 
 The PROJECT_BRIEF.md contains the full design specification. This PLAN.md tracks what's actually built.

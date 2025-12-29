@@ -86,16 +86,28 @@ export type BrowserActorOperations = {
   goOnline(): Promise<void>;
 
   /**
-   * Check if the user sees a warning about being offline.
-   * Returns true when the app is displaying offline status to the user.
+   * Assert that the offline warning banner is visible.
+   * Uses Playwright's auto-retry to wait for the banner to appear.
    */
-  seesOfflineWarning(): Promise<boolean>;
+  shouldSeeOfflineWarning(): Promise<void>;
 
   /**
-   * Check if the user can add new captures.
-   * Returns false when the app prevents capture creation (e.g., when offline).
+   * Assert that the offline warning banner is not visible.
+   * Uses Playwright's auto-retry to wait for the banner to disappear.
    */
-  canAddCaptures(): Promise<boolean>;
+  shouldNotSeeOfflineWarning(): Promise<void>;
+
+  /**
+   * Assert that the user can add new captures (input is enabled).
+   * Uses Playwright's auto-retry to wait for the input to be enabled.
+   */
+  shouldBeAbleToAddCaptures(): Promise<void>;
+
+  /**
+   * Assert that the user cannot add new captures (input is disabled/offline).
+   * Uses Playwright's auto-retry to wait for the offline state.
+   */
+  shouldNotBeAbleToAddCaptures(): Promise<void>;
 };
 
 /**

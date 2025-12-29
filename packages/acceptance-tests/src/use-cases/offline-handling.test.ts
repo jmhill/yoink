@@ -1,4 +1,4 @@
-import { usingDrivers, describe, it, expect, beforeEach, afterEach } from '@yoink/acceptance-testing';
+import { usingDrivers, describe, it, beforeEach, afterEach } from '@yoink/acceptance-testing';
 import type { BrowserActor } from '@yoink/acceptance-testing';
 
 /**
@@ -24,25 +24,25 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('warns user when network is disconnected', async () => {
       await alice.goOffline();
 
-      expect(await alice.seesOfflineWarning()).toBe(true);
+      await alice.shouldSeeOfflineWarning();
     });
 
     it('clears warning when network is restored', async () => {
       await alice.goOffline();
       await alice.goOnline();
 
-      expect(await alice.seesOfflineWarning()).toBe(false);
+      await alice.shouldNotSeeOfflineWarning();
     });
 
     it('prevents adding captures when offline', async () => {
       await alice.goOffline();
 
-      expect(await alice.canAddCaptures()).toBe(false);
+      await alice.shouldNotBeAbleToAddCaptures();
     });
 
     it('allows adding captures when online', async () => {
       // Verify baseline - should be able to add captures when online
-      expect(await alice.canAddCaptures()).toBe(true);
+      await alice.shouldBeAbleToAddCaptures();
     });
   });
 });

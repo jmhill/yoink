@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 import type {
   Actor,
   AnonymousActor,
@@ -418,7 +418,7 @@ export const createPlaywrightActor = (
       await page.context().setOffline(false);
     },
 
-    async seesOfflineWarning(): Promise<boolean> {
+    async shouldSeeOfflineWarning(): Promise<void> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline.
       // Also don't navigate if already on inbox - navigation fails when offline.
@@ -427,39 +427,47 @@ export const createPlaywrightActor = (
         await inboxPage.goto();
       }
 
-      // Wait for offline banner to appear (with timeout for robustness)
-      // The banner appears when the useNetworkStatus hook detects offline state
+      // Use Playwright's expect with auto-retry to wait for the banner to appear
       const banner = page.getByText("You're offline");
-      try {
-        await banner.waitFor({ state: 'visible', timeout: 2000 });
-        return true;
-      } catch {
-        // Banner didn't appear within timeout
-        return false;
-      }
+      await expect(banner).toBeVisible();
     },
 
-    async canAddCaptures(): Promise<boolean> {
+    async shouldNotSeeOfflineWarning(): Promise<void> {
       // Note: Don't call ensureConfigured() here - we may be testing offline state
       // and the caller should ensure we're configured before going offline.
-      // Also don't navigate if already on inbox - navigation fails when offline.
       const currentUrl = page.url();
       if (!currentUrl.endsWith('/') && !currentUrl.includes('/?')) {
         await inboxPage.goto();
       }
 
-      // Check if the quick-add input is enabled
-      // When offline, the app disables the input and changes the placeholder
-      const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
-      try {
-        await offlineInput.waitFor({ state: 'visible', timeout: 2000 });
-        return false; // Offline placeholder visible = cannot add captures
-      } catch {
-        // Offline placeholder didn't appear - check if regular input is enabled
-        const input = page.getByPlaceholder('Quick capture...');
-        const isDisabled = await input.isDisabled();
-        return !isDisabled;
+      // Use Playwright's expect with auto-retry to wait for the banner to disappear
+      const banner = page.getByText("You're offline");
+      await expect(banner).toBeHidden();
+    },
+
+    async shouldBeAbleToAddCaptures(): Promise<void> {
+      // Note: Don't call ensureConfigured() here - we may be testing offline state
+      const currentUrl = page.url();
+      if (!currentUrl.endsWith('/') && !currentUrl.includes('/?')) {
+        await inboxPage.goto();
       }
+
+      // Use Playwright's expect with auto-retry to wait for the online input state
+      const input = page.getByPlaceholder('Quick capture...');
+      await expect(input).toBeVisible();
+      await expect(input).toBeEnabled();
+    },
+
+    async shouldNotBeAbleToAddCaptures(): Promise<void> {
+      // Note: Don't call ensureConfigured() here - we may be testing offline state
+      const currentUrl = page.url();
+      if (!currentUrl.endsWith('/') && !currentUrl.includes('/?')) {
+        await inboxPage.goto();
+      }
+
+      // Use Playwright's expect with auto-retry to wait for the offline input state
+      const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
+      await expect(offlineInput).toBeVisible();
     },
   };
 };

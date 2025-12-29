@@ -335,12 +335,20 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('goOnline', 'http');
     },
 
-    async seesOfflineWarning(): Promise<boolean> {
-      throw new UnsupportedOperationError('seesOfflineWarning', 'http');
+    async shouldSeeOfflineWarning(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOfflineWarning', 'http');
     },
 
-    async canAddCaptures(): Promise<boolean> {
-      throw new UnsupportedOperationError('canAddCaptures', 'http');
+    async shouldNotSeeOfflineWarning(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeOfflineWarning', 'http');
+    },
+
+    async shouldBeAbleToAddCaptures(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeAbleToAddCaptures', 'http');
+    },
+
+    async shouldNotBeAbleToAddCaptures(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotBeAbleToAddCaptures', 'http');
     },
   };
 };

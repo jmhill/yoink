@@ -9,6 +9,8 @@ import {
   ApiTokenSchema,
   CreateTokenSchema,
   CreateTokenResponseSchema,
+  AdminCreateInvitationSchema,
+  AdminInvitationResponseSchema,
   LoginRequestSchema,
   LoginResponseSchema,
   SessionResponseSchema,
@@ -219,6 +221,24 @@ export const adminProtectedContract = c.router(
         500: ErrorSchema,
       },
       summary: 'Revoke (delete) an API token (idempotent)',
+    },
+
+    // Invitations
+    createInvitation: {
+      method: 'POST',
+      path: '/api/admin/organizations/:organizationId/invitations',
+      pathParams: z.object({
+        organizationId: z.string().uuid(),
+      }),
+      body: AdminCreateInvitationSchema,
+      responses: {
+        201: AdminInvitationResponseSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Create an invitation to join an organization',
     },
   },
   {

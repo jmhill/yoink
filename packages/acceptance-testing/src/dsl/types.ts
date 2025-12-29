@@ -66,6 +66,22 @@ export type PasskeyCredentialInfo = {
   lastUsedAt?: string;
 };
 
+export type Invitation = {
+  id: string;
+  code: string;
+  email: string | null;
+  organizationId: string;
+  role: 'admin' | 'member';
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type CreateInvitationInput = {
+  role?: 'admin' | 'member';
+  email?: string;
+  expiresInDays?: number;
+};
+
 // =============================================================================
 // Input Types
 // =============================================================================

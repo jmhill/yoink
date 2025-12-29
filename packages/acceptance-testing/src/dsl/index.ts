@@ -5,6 +5,7 @@ export type {
   Organization,
   User,
   Token,
+  Invitation,
   PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
@@ -12,6 +13,7 @@ export type {
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
   CreateTokenResult,
+  CreateInvitationInput,
   HealthStatus,
 } from './types.js';
 

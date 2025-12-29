@@ -2,7 +2,9 @@ import type {
   Organization,
   User,
   Token,
+  Invitation,
   CreateTokenResult,
+  CreateInvitationInput,
 } from './types.js';
 
 /**
@@ -33,4 +35,7 @@ export type Admin = {
   createToken(userId: string, name: string): Promise<CreateTokenResult>;
   listTokens(userId: string): Promise<Token[]>;
   revokeToken(tokenId: string): Promise<void>;
+
+  // Invitation management
+  createInvitation(organizationId: string, input?: CreateInvitationInput): Promise<Invitation>;
 };

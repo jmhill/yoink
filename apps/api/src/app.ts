@@ -31,12 +31,12 @@ import { registerSignupRoutes } from './auth/application/signup-routes.js';
 import { registerPasskeyRoutes } from './auth/application/passkey-routes.js';
 import { registerAuthRoutes } from './auth/application/auth-routes.js';
 import type { UserService } from './users/domain/user-service.js';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
+  invitationService: InvitationService;
 };
 
 export type SignupConfig = {

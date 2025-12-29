@@ -17,7 +17,7 @@ import type { Organization } from '../../organizations/domain/organization.js';
 import type { OrganizationMembership } from '../../organizations/domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { PasskeyCredential } from '../domain/passkey-credential.js';
-import type { WebAuthnConfig } from '../../config/schema.js';
+import type { WebAuthnConfig, RateLimitConfig } from '../../config/schema.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
@@ -95,6 +95,18 @@ describe('auth routes', () => {
     challengeSecret: 'test-secret-that-is-at-least-32-bytes-long-for-hmac',
   };
 
+  const rateLimitConfig: RateLimitConfig = {
+    enabled: false, // Disable rate limiting in unit tests
+    globalMax: 100,
+    globalTimeWindow: '1 minute',
+    adminLoginMax: 5,
+    adminLoginTimeWindow: '15 minutes',
+    authLoginMax: 10,
+    authLoginTimeWindow: '15 minutes',
+    signupMax: 5,
+    signupTimeWindow: '1 hour',
+  };
+
   beforeEach(async () => {
     vi.resetAllMocks();
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
@@ -155,7 +167,7 @@ describe('auth routes', () => {
         path: '/',
         maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
       },
-    });
+    }, rateLimitConfig);
 
     await app.ready();
   });

@@ -68,6 +68,10 @@ const defaultRateLimitConfig: RateLimitConfig = {
   globalTimeWindow: '1 minute',
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
+  authLoginMax: 10,
+  authLoginTimeWindow: '15 minutes',
+  signupMax: 5,
+  signupTimeWindow: '1 hour',
 };
 
 export const createApp = async (deps: AppDependencies) => {
@@ -136,7 +140,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       sessionCookieName,
       cookieOptions,
-    });
+    }, rateLimitConfig);
 
     // Passkey management routes (for existing users to add/manage passkeys)
     await registerPasskeyRoutes(app, {
@@ -155,7 +159,7 @@ export const createApp = async (deps: AppDependencies) => {
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,
-    });
+    }, rateLimitConfig);
   }
 
   // Serve static files in production

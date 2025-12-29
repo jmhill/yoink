@@ -94,6 +94,12 @@ export const RateLimitConfigSchema = z.object({
   // Strict rate limit for admin login (brute force protection)
   adminLoginMax: z.number().default(5),
   adminLoginTimeWindow: z.string().default('15 minutes'),
+  // Rate limit for passkey login (brute force protection)
+  authLoginMax: z.number().default(10),
+  authLoginTimeWindow: z.string().default('15 minutes'),
+  // Rate limit for signup/passkey registration (abuse prevention)
+  signupMax: z.number().default(5),
+  signupTimeWindow: z.string().default('1 hour'),
 });
 
 // Log level enum matching Pino's levels

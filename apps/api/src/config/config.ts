@@ -48,6 +48,10 @@ const loadRateLimitConfig = (): RateLimitConfig => {
     globalTimeWindow: process.env.RATE_LIMIT_GLOBAL_WINDOW ?? '1 minute',
     adminLoginMax: parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN_MAX ?? '5', 10),
     adminLoginTimeWindow: process.env.RATE_LIMIT_ADMIN_LOGIN_WINDOW ?? '15 minutes',
+    authLoginMax: parseInt(process.env.RATE_LIMIT_AUTH_LOGIN_MAX ?? '10', 10),
+    authLoginTimeWindow: process.env.RATE_LIMIT_AUTH_LOGIN_WINDOW ?? '15 minutes',
+    signupMax: parseInt(process.env.RATE_LIMIT_SIGNUP_MAX ?? '5', 10),
+    signupTimeWindow: process.env.RATE_LIMIT_SIGNUP_WINDOW ?? '1 hour',
   };
 };
 

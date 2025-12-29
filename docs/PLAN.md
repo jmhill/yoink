@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6b complete, 7.6c next)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6c complete, 7.7a next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -154,9 +154,15 @@ This is the **migration path** for existing users who currently authenticate via
 - Logout clears cookie and revokes session from database
 - Session info endpoint returns minimal user data and current organization
 
-#### 7.6c Rate Limiting & Security
-- [ ] Rate limiting on login endpoints (brute force protection)
-- [ ] Rate limiting on passkey registration (abuse prevention)
+#### 7.6c Rate Limiting & Security - Complete ✓
+- [x] Rate limiting on login endpoints (brute force protection)
+- [x] Rate limiting on passkey registration (abuse prevention)
+
+**Implementation Notes:**
+- Auth login endpoints (`/api/auth/login/*`): 10 requests per 15 minutes per IP
+- Signup endpoints (`/api/auth/signup/*`): 5 requests per hour per IP
+- Configurable via environment variables: `RATE_LIMIT_AUTH_LOGIN_MAX`, `RATE_LIMIT_AUTH_LOGIN_WINDOW`, `RATE_LIMIT_SIGNUP_MAX`, `RATE_LIMIT_SIGNUP_WINDOW`
+- Rate limiting is disabled when `RATE_LIMIT_ENABLED=false` (for testing)
 
 ### 7.7 Web App Auth Overhaul
 
@@ -403,18 +409,19 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.6c (Rate Limiting)
+### Current Focus: Phase 7.7a (Settings Passkey Management)
 
 The immediate next steps are:
 
-1. **Rate limiting on login endpoints** - Brute force protection
-2. **Rate limiting on passkey registration** - Abuse prevention
+1. **Install `@simplewebauthn/browser`** dependency in web app
+2. **Add "Security" section to Settings page** with passkey management UI
+3. **Implement "Add Passkey" flow** with device name input
+4. **Passkey list component** showing name, created date, last used
+5. **Delete passkey** with confirmation dialog and "can't delete last" guard
 
 Key files to reference:
-- `apps/api/src/auth/application/auth-routes.ts` - Login endpoints to rate limit
-- `apps/api/src/auth/application/signup-routes.ts` - Signup endpoints to rate limit
-- `apps/api/src/app.ts` - Global rate limit config pattern
-
-Alternatively, skip to **Phase 7.7a (Settings Passkey Management)** to enable existing users to add passkeys through the web UI.
+- `apps/web/src/routes/_authenticated/settings.tsx` - Settings page to extend
+- `packages/api-contracts/src/contracts/passkey-contract.ts` - API contracts for passkey management
+- `apps/web/src/api/client.ts` - API client for making requests
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import { authContract } from '@yoink/api-contracts';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
@@ -10,6 +11,7 @@ import {
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
+import type { RateLimitConfig } from '../../config/schema.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -33,7 +35,8 @@ const isPublicRoute = (request: FastifyRequest): boolean => {
 
 export const registerAuthRoutes = async (
   app: FastifyInstance,
-  deps: AuthRoutesDependencies
+  deps: AuthRoutesDependencies,
+  rateLimitConfig: RateLimitConfig
 ) => {
   const { passkeyService, sessionService, userService, tokenService, sessionCookieName, cookieOptions } = deps;
   const s = initServer();
@@ -57,6 +60,16 @@ export const registerAuthRoutes = async (
   const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
 
   await app.register(async (authApp) => {
+    // Apply strict rate limiting to login endpoints (brute force protection)
+    // Only if rate limiting is enabled
+    if (rateLimitConfig.enabled) {
+      await authApp.register(rateLimit, {
+        max: rateLimitConfig.authLoginMax,
+        timeWindow: rateLimitConfig.authLoginTimeWindow,
+        keyGenerator: (request) => request.ip,
+      });
+    }
+
     // Apply auth middleware conditionally - skip for public routes
     authApp.addHook('preHandler', async (request, reply) => {
       if (isPublicRoute(request)) {

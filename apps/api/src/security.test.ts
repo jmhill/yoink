@@ -11,6 +11,10 @@ const defaultRateLimitConfig: RateLimitConfig = {
   globalTimeWindow: '1 minute',
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
+  authLoginMax: 10,
+  authLoginTimeWindow: '15 minutes',
+  signupMax: 5,
+  signupTimeWindow: '1 hour',
 };
 
 const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
@@ -24,6 +28,12 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
   admin: {
     password: 'test-admin-password',
     sessionSecret: 'a-32-character-secret-for-hmac!!',
+  },
+  webauthn: {
+    rpId: 'localhost',
+    rpName: 'Test App',
+    origin: 'http://localhost:3000',
+    challengeSecret: 'a-32-character-secret-for-hmac!!',
   },
   rateLimit: defaultRateLimitConfig,
   log: { level: 'error', pretty: false },
@@ -142,6 +152,122 @@ describe('Security Features', () => {
         // Should get 401 (wrong password), not 429 (rate limited)
         expect(response.statusCode).toBe(401);
       }
+    });
+  });
+
+  describe('Rate Limiting on Auth Login', () => {
+    it('allows login attempts within rate limit', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login/options',
+        payload: {},
+      });
+
+      // Should get 200 (login options returned)
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 429 after exceeding rate limit on login options', async () => {
+      // Make 11 login options attempts (limit is 10 per 15 minutes)
+      for (let i = 0; i < 10; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/login/options',
+          payload: {},
+        });
+      }
+
+      // 11th attempt should be rate limited
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login/options',
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(429);
+    });
+
+    it('returns 429 after exceeding rate limit on login verify', async () => {
+      // Make 11 login verify attempts (limit is 10 per 15 minutes)
+      for (let i = 0; i < 10; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/login/verify',
+          payload: { challenge: 'fake-challenge', credential: {} },
+        });
+      }
+
+      // 11th attempt should be rate limited
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login/verify',
+        payload: { challenge: 'fake-challenge', credential: {} },
+      });
+
+      expect(response.statusCode).toBe(429);
+    });
+  });
+
+  describe('Rate Limiting on Signup', () => {
+    it('allows signup attempts within rate limit', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/signup/options',
+        payload: { code: 'TESTCODE', email: 'test@example.com' },
+      });
+
+      // Should get 404 (invitation not found), not rate limited
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 429 after exceeding rate limit on signup options', async () => {
+      // Make 6 signup options attempts (limit is 5 per hour)
+      for (let i = 0; i < 5; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/signup/options',
+          payload: { code: 'TESTCODE', email: 'test@example.com' },
+        });
+      }
+
+      // 6th attempt should be rate limited
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/signup/options',
+        payload: { code: 'TESTCODE', email: 'test@example.com' },
+      });
+
+      expect(response.statusCode).toBe(429);
+    });
+
+    it('returns 429 after exceeding rate limit on signup verify', async () => {
+      // Make 6 signup verify attempts (limit is 5 per hour)
+      for (let i = 0; i < 5; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/signup/verify',
+          payload: {
+            code: 'TESTCODE',
+            email: 'test@example.com',
+            challenge: 'fake-challenge',
+            credential: {},
+          },
+        });
+      }
+
+      // 6th attempt should be rate limited
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/signup/verify',
+        payload: {
+          code: 'TESTCODE',
+          email: 'test@example.com',
+          challenge: 'fake-challenge',
+          credential: {},
+        },
+      });
+
+      expect(response.statusCode).toBe(429);
     });
   });
 });

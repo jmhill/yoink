@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import { signupContract } from '@yoink/api-contracts';
 import type { SignupService } from '../domain/signup-service.js';
 import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
+import type { RateLimitConfig } from '../../config/schema.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;
@@ -24,13 +26,24 @@ export type SignupRoutesDependencies = {
 
 export const registerSignupRoutes = async (
   app: FastifyInstance,
-  deps: SignupRoutesDependencies
+  deps: SignupRoutesDependencies,
+  rateLimitConfig: RateLimitConfig
 ) => {
   const { signupService, passkeyService, sessionService, sessionCookieName, cookieOptions } = deps;
   const s = initServer();
 
   // All signup routes are public (no auth required)
   await app.register(async (publicApp) => {
+    // Apply strict rate limiting for signup (abuse prevention)
+    // Only if rate limiting is enabled
+    if (rateLimitConfig.enabled) {
+      await publicApp.register(rateLimit, {
+        max: rateLimitConfig.signupMax,
+        timeWindow: rateLimitConfig.signupTimeWindow,
+        keyGenerator: (request) => request.ip,
+      });
+    }
+
     const router = s.router(signupContract, {
       options: async ({ body }) => {
         const { code, email } = body;

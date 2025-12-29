@@ -1,4 +1,142 @@
-import type { Page } from '@playwright/test';
+import type { Page, CDPSession } from '@playwright/test';
+
+/**
+ * Page object for the login page (/login).
+ * Handles passkey-based authentication.
+ */
+export class LoginPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(): Promise<void> {
+    await this.page.goto('/login');
+  }
+
+  async clickSignInWithPasskey(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Sign in with Passkey' }).click();
+  }
+
+  async hasError(): Promise<boolean> {
+    return await this.page.locator('.bg-destructive\\/10').isVisible();
+  }
+
+  async getErrorMessage(): Promise<string | null> {
+    const errorBox = this.page.locator('.bg-destructive\\/10');
+    if (await errorBox.isVisible()) {
+      return await errorBox.textContent();
+    }
+    return null;
+  }
+}
+
+/**
+ * Page object for the signup page (/signup).
+ * Handles invitation-based account creation with passkey.
+ */
+export class SignupPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(code?: string): Promise<void> {
+    const url = code ? `/signup?code=${code}` : '/signup';
+    await this.page.goto(url);
+  }
+
+  async enterInvitationCode(code: string): Promise<void> {
+    await this.page.getByLabel('Invitation Code').fill(code.toUpperCase());
+  }
+
+  async clickContinue(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Continue' }).click();
+  }
+
+  async enterEmail(email: string): Promise<void> {
+    await this.page.getByLabel('Email').fill(email);
+  }
+
+  async enterDeviceName(name: string): Promise<void> {
+    await this.page.getByLabel('Device Name').fill(name);
+  }
+
+  async clickCreateAccount(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Create account with Passkey' }).click();
+  }
+
+  async waitForSuccess(): Promise<void> {
+    await this.page.getByText('Welcome to Yoink!').waitFor({ state: 'visible' });
+  }
+
+  async hasError(): Promise<boolean> {
+    return await this.page.locator('.bg-destructive\\/10').isVisible();
+  }
+
+  async getErrorMessage(): Promise<string | null> {
+    const errorBox = this.page.locator('.bg-destructive\\/10');
+    if (await errorBox.isVisible()) {
+      return await errorBox.textContent();
+    }
+    return null;
+  }
+}
+
+/**
+ * Helper for setting up a CDP virtual authenticator for WebAuthn testing.
+ * This allows automated testing of passkey registration and authentication.
+ */
+export class VirtualAuthenticator {
+  private authenticatorId: string | null = null;
+
+  constructor(private readonly cdpSession: CDPSession) {}
+
+  /**
+   * Enable WebAuthn and add a virtual authenticator.
+   * Should be called before any passkey operations.
+   */
+  async setup(): Promise<void> {
+    await this.cdpSession.send('WebAuthn.enable', { enableUI: false });
+    
+    const result = await this.cdpSession.send('WebAuthn.addVirtualAuthenticator', {
+      options: {
+        protocol: 'ctap2',
+        transport: 'internal',
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+      },
+    });
+    
+    this.authenticatorId = result.authenticatorId;
+  }
+
+  /**
+   * Clean up the virtual authenticator.
+   */
+  async teardown(): Promise<void> {
+    if (this.authenticatorId) {
+      await this.cdpSession.send('WebAuthn.removeVirtualAuthenticator', {
+        authenticatorId: this.authenticatorId,
+      });
+      this.authenticatorId = null;
+    }
+    await this.cdpSession.send('WebAuthn.disable');
+  }
+
+  /**
+   * Get all credentials registered with the virtual authenticator.
+   */
+  async getCredentials(): Promise<Array<{ credentialId: string; userHandle: string | undefined }>> {
+    if (!this.authenticatorId) {
+      throw new Error('Virtual authenticator not initialized');
+    }
+
+    const result = await this.cdpSession.send('WebAuthn.getCredentials', {
+      authenticatorId: this.authenticatorId,
+    });
+
+    return result.credentials.map((c) => ({
+      credentialId: c.credentialId,
+      userHandle: c.userHandle,
+    }));
+  }
+}
 
 /**
  * Page object for the token configuration page (/config).
@@ -221,8 +359,11 @@ export class SettingsPage {
 
   async logout(): Promise<void> {
     await this.page.getByRole('button', { name: 'Log out' }).click();
-    // Wait for redirect to config page
-    await this.page.waitForURL('**/config');
+    // Wait for redirect to login page (new auth flow) or config page (legacy)
+    await Promise.race([
+      this.page.waitForURL('**/login'),
+      this.page.waitForURL('**/config'),
+    ]);
   }
 
   async goBack(): Promise<void> {
@@ -230,6 +371,83 @@ export class SettingsPage {
       this.page.locator('a[href="/"]')
     ).click();
     await this.page.waitForURL('/');
+  }
+
+  /**
+   * Click the "Add Passkey" button in the Security section.
+   */
+  async clickAddPasskey(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Add Passkey' }).click();
+  }
+
+  /**
+   * Fill in the device name in the Add Passkey dialog.
+   */
+  async fillDeviceName(name: string): Promise<void> {
+    await this.page.getByLabel('Device Name').fill(name);
+  }
+
+  /**
+   * Click "Register Passkey" in the Add Passkey dialog.
+   */
+  async clickRegisterPasskey(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Register Passkey' }).click();
+  }
+
+  /**
+   * Wait for the passkey registration to complete successfully.
+   */
+  async waitForPasskeyRegistered(): Promise<void> {
+    // The dialog should close on success
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Get the list of passkeys displayed in the Security section.
+   */
+  async getPasskeyList(): Promise<Array<{ name: string }>> {
+    // Wait for security section to load
+    await this.page.getByText('Manage your passkeys').waitFor({ state: 'visible' });
+
+    // Find passkey items (they have a delete button)
+    const items = this.page.locator('[class*="rounded-lg border"]').filter({
+      has: this.page.locator('button[title*="Delete"]'),
+    });
+
+    const count = await items.count();
+    const passkeys: Array<{ name: string }> = [];
+
+    for (let i = 0; i < count; i++) {
+      const item = items.nth(i);
+      const nameElement = item.locator('p.font-medium').first();
+      const name = await nameElement.textContent();
+      if (name) {
+        passkeys.push({ name });
+      }
+    }
+
+    return passkeys;
+  }
+
+  /**
+   * Delete a passkey by name.
+   */
+  async deletePasskey(name: string): Promise<void> {
+    const item = this.page.locator('[class*="rounded-lg border"]').filter({ hasText: name });
+    await item.getByRole('button').click();
+    // Confirm deletion in dialog
+    await this.page.getByRole('button', { name: 'Delete' }).click();
+    // Wait for dialog to close
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Check if the delete button for a passkey is disabled (last passkey guard).
+   */
+  async isDeleteDisabled(name: string): Promise<boolean> {
+    const item = this.page.locator('[class*="rounded-lg border"]').filter({ hasText: name });
+    const deleteButton = item.getByRole('button');
+    return await deleteButton.isDisabled();
   }
 }
 

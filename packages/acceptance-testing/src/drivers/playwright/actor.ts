@@ -502,14 +502,14 @@ export const createPlaywrightActor = (
  * Attempts operations without configuring a token.
  *
  * This actor verifies that the app properly enforces authentication
- * by checking that unauthenticated users are redirected to /config.
+ * by checking that unauthenticated users are redirected to /login (or /config for legacy).
  */
 export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
   /**
    * Ensures we're truly anonymous by clearing any stored token,
-   * then navigates to the app and verifies redirect to /config.
+   * then navigates to the app and verifies redirect to login/config.
    */
-  const ensureRedirectsToConfig = async (): Promise<void> => {
+  const ensureRedirectsToAuth = async (): Promise<void> => {
     // Clear any existing token to ensure we're truly anonymous
     await page.goto('/');
     await page.evaluate(() => localStorage.removeItem('yoink_api_token'));
@@ -517,25 +517,28 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     // Navigate to the app root
     await page.goto('/');
 
-    // The app should redirect to /config because no token is set
-    // Use waitForURL to actually verify the redirect happens
-    await page.waitForURL('**/config', { timeout: 5000 });
+    // The app should redirect to /login (new auth) or /config (legacy)
+    // because no token/session is set
+    await Promise.race([
+      page.waitForURL('**/login', { timeout: 5000 }),
+      page.waitForURL('**/config', { timeout: 5000 }),
+    ]);
   };
 
   return {
     async createCapture(_input: CreateCaptureInput): Promise<Capture> {
-      await ensureRedirectsToConfig();
+      await ensureRedirectsToAuth();
       // Successfully redirected means auth is enforced
       throw new UnauthorizedError();
     },
 
     async listCaptures(): Promise<Capture[]> {
-      await ensureRedirectsToConfig();
+      await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },
 
     async getCapture(_id: string): Promise<Capture> {
-      await ensureRedirectsToConfig();
+      await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },
   };

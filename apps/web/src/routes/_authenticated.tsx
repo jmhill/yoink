@@ -1,12 +1,24 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { tokenStorage } from '@/lib/token';
 import { AppNav } from '@/components/bottom-nav';
+import { getSession } from '@/api/auth';
 
 export const Route = createFileRoute('/_authenticated')({
-  beforeLoad: () => {
-    if (!tokenStorage.isConfigured()) {
-      throw redirect({ to: '/config' });
+  beforeLoad: async ({ location }) => {
+    // Check if we have a token (legacy auth)
+    if (tokenStorage.isConfigured()) {
+      return; // Token auth - let request proceed
     }
+
+    // Check if we have a valid session (passkey auth)
+    const sessionResult = await getSession();
+    if (sessionResult.ok) {
+      return; // Session auth - let request proceed
+    }
+
+    // Not authenticated - redirect to login with return URL
+    const searchParams = location.pathname !== '/' ? { returnTo: location.pathname } : undefined;
+    throw redirect({ to: '/login', search: searchParams });
   },
   component: AuthenticatedLayout,
 });

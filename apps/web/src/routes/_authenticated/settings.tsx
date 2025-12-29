@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tokenStorage } from '@/lib/token';
 import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
-import { ArrowLeft, LogOut, Sun, Moon, Monitor, Palette } from 'lucide-react';
+import { ArrowLeft, LogOut, Sun, Moon, Monitor, Palette, Loader2 } from 'lucide-react';
+import { SecuritySection } from '@/components/security-section';
+import { logout } from '@/api/auth';
 
 export const Route = createFileRoute('/_authenticated/settings')({
   component: SettingsPage,
@@ -11,10 +14,14 @@ export const Route = createFileRoute('/_authenticated/settings')({
 
 function SettingsPage() {
   const { mode, setMode, colorTheme, setColorTheme } = useTheme();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    // Clear token (if exists) and revoke session
     tokenStorage.remove();
-    window.location.href = '/config';
+    await logout();
+    window.location.href = '/login';
   };
 
   const modeOptions: Array<{ value: ThemeMode; label: string; icon: typeof Sun }> = [
@@ -81,15 +88,26 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
+        <SecuritySection />
+
         <Card>
           <CardHeader>
             <CardTitle>Account</CardTitle>
             <CardDescription>Manage your session</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="destructive" onClick={handleLogout} className="w-full">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
+            <Button variant="destructive" onClick={handleLogout} disabled={isLoggingOut} className="w-full">
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>

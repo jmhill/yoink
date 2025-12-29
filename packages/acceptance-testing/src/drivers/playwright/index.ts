@@ -1,10 +1,11 @@
-import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { chromium, type Browser, type BrowserContext, type Page, type CDPSession } from '@playwright/test';
 import type { Driver, DriverConfig } from '../types.js';
 import type { Actor, AnonymousActor } from '../../dsl/index.js';
 import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
+import { VirtualAuthenticator } from './page-objects.js';
 
 /**
  * Creates a Playwright driver that implements DSL interfaces via browser automation.
@@ -13,6 +14,7 @@ import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.j
  * - Uses the browser to interact with the web UI for Actor operations
  * - Uses HTTP for Admin operations (admin UI is separate)
  * - Uses HTTP for Health operations (no UI for health)
+ * - Supports CDP virtual authenticator for passkey testing
  */
 export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   // HTTP client for admin/health operations (no browser UI for these)
@@ -22,6 +24,21 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
+
+  // Track virtual authenticators per page for cleanup
+  const pageAuthenticators = new Map<Page, { cdpSession: CDPSession; authenticator: VirtualAuthenticator }>();
+
+  /**
+   * Set up a virtual authenticator for a page.
+   * This enables passkey testing via CDP WebAuthn API.
+   */
+  const setupVirtualAuthenticator = async (page: Page): Promise<VirtualAuthenticator> => {
+    const cdpSession = await page.context().newCDPSession(page);
+    const authenticator = new VirtualAuthenticator(cdpSession);
+    await authenticator.setup();
+    pageAuthenticators.set(page, { cdpSession, authenticator });
+    return authenticator;
+  };
 
   return {
     name: 'playwright',
@@ -50,6 +67,10 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
         // Create a new page for this actor
         const page = await context.newPage();
+        
+        // Set up virtual authenticator for passkey testing
+        await setupVirtualAuthenticator(page);
+        
         await page.goto(config.baseUrl);
 
         return createPlaywrightActor(page, {
@@ -111,6 +132,17 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
     },
 
     async teardown(): Promise<void> {
+      // Clean up virtual authenticators
+      for (const [page, { authenticator, cdpSession }] of pageAuthenticators) {
+        try {
+          await authenticator.teardown();
+          await cdpSession.detach();
+        } catch {
+          // Ignore errors during cleanup (page may already be closed)
+        }
+        pageAuthenticators.delete(page);
+      }
+
       if (context) {
         await context.close();
         context = null;

@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.6c complete, 7.7a next)
+**Phase 7: Authentication Overhaul** - In Progress (7.1-7.7b complete, 7.7c next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -32,14 +32,14 @@ See [PASSKEY_AUTHENTICATION.md](./design/PASSKEY_AUTHENTICATION.md) for detailed
 - Users can be members of multiple organizations
 - Admin panel becomes internal super-admin tooling (unchanged)
 
-### 7.0 Test Infrastructure (Deferred to 7.7b)
+### 7.0 Test Infrastructure - Complete ✓
 
-Playwright driver changes are only needed when testing the login/signup UI (7.7b). HTTP driver tests can continue using API tokens for the foreseeable future.
+Playwright driver updated to support new auth flow while maintaining backward compatibility with token auth.
 
-- [ ] Playwright driver: Add CDP virtual authenticator setup
-- [ ] Update Playwright actor creation to use invitation → passkey flow
+- [x] Playwright driver: Add CDP virtual authenticator setup
 - [x] HTTP driver: Continue using API tokens (no changes needed)
-- [ ] Verify test isolation still works (invitation per test)
+- [x] Page objects for login, signup, and passkey management
+- [x] Virtual authenticator teardown in driver cleanup
 
 ### 7.1 Database Schema (Backwards Compatible) - Complete ✓
 - [x] Migration 012: Create `organization_memberships` table
@@ -168,28 +168,43 @@ This is the **migration path** for existing users who currently authenticate via
 
 Split into deployment-friendly chunks to enable zero-downtime migration:
 
-#### 7.7a Settings Passkey Management (Deploy First)
+#### 7.7a Settings Passkey Management (Deploy First) - Complete ✓
 **Prerequisite**: 7.6a complete
 
 This allows existing token-authenticated users to add passkeys without changing the main auth flow.
 
-- [ ] Install `@simplewebauthn/browser` dependency
-- [ ] Add "Security" section to Settings page
-- [ ] "Add Passkey" button and registration flow
-- [ ] Device name input with suggested default (based on user agent if detectable)
-- [ ] Passkey list component (name, created date, last used)
-- [ ] Delete passkey with confirmation dialog
-- [ ] Disable delete button for last passkey (show tooltip explaining why)
-- [ ] On passkey registration success: clear localStorage token, show success toast
-- [ ] Retry option if passkey registration fails
+- [x] Install `@simplewebauthn/browser` dependency (already installed)
+- [x] Add "Security" section to Settings page
+- [x] "Add Passkey" button and registration flow
+- [x] Device name input with suggested default (based on user agent)
+- [x] Passkey list component (name, created date, last used, sync status)
+- [x] Delete passkey with confirmation dialog
+- [x] Disable delete button for last passkey (with tooltip)
+- [x] On passkey registration success: clear localStorage token
+- [x] Inline error display for registration failures
 
-#### 7.7b Login & Signup Pages (Deploy Second)
+**Implementation Notes:**
+- `apps/web/src/api/passkey.ts` - Passkey API client with registration flow
+- `apps/web/src/components/security-section.tsx` - Security UI components
+- Device name suggestion parses user agent for browser/platform
+
+#### 7.7b Login & Signup Pages (Deploy Second) - Complete ✓
 **Prerequisite**: 7.6b complete
 
-- [ ] Create `/login` page with "Sign in with Passkey" button
-- [ ] Create `/signup` page with invitation code input + passkey registration
-- [ ] Update root route guard: check for session cookie, redirect to `/login` if missing
-- [ ] Handle 401 errors: redirect to `/login` with return URL
+- [x] Create `/login` page with "Sign in with Passkey" button
+- [x] Create `/signup` page with invitation code input + passkey registration
+- [x] Update root route guard: check for token OR session, redirect to `/login` if neither
+- [x] Handle 401 errors: redirect to `/login` with return URL
+- [x] Update logout to call API and redirect to `/login`
+
+**Implementation Notes:**
+- `apps/web/src/api/auth.ts` - Auth API client (login, logout, signup, session check)
+- `apps/web/src/routes/login.tsx` - Passkey login page
+- `apps/web/src/routes/signup.tsx` - Multi-step signup (code validation → email/passkey)
+- `apps/web/src/routes/_authenticated.tsx` - Route guard checks both token and session
+- `apps/web/src/api/client.ts` - 401 handling redirects to /login, includes credentials
+- Signup supports `?code=` query param for direct invitation links
+- Login supports `?returnTo=` query param for post-login redirect
 
 #### 7.7c Remove Token Auth from Web App (Deploy Third)
 **Prerequisite**: 7.7a and 7.7b complete, existing users have migrated to passkeys
@@ -409,19 +424,21 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.7a (Settings Passkey Management)
+### Current Focus: Phase 7.7c (Remove Token Auth from Web App)
 
 The immediate next steps are:
 
-1. **Install `@simplewebauthn/browser`** dependency in web app
-2. **Add "Security" section to Settings page** with passkey management UI
-3. **Implement "Add Passkey" flow** with device name input
-4. **Passkey list component** showing name, created date, last used
-5. **Delete passkey** with confirmation dialog and "can't delete last" guard
+1. **Remove `/config` page** entirely
+2. **Remove `tokenStorage` utility** from codebase
+3. **Update API client** to rely on session cookies only (no Bearer token header)
+4. **Clean up remaining token-related code**
 
-Key files to reference:
-- `apps/web/src/routes/_authenticated/settings.tsx` - Settings page to extend
-- `packages/api-contracts/src/contracts/passkey-contract.ts` - API contracts for passkey management
-- `apps/web/src/api/client.ts` - API client for making requests
+Key files to modify:
+- `apps/web/src/routes/config.tsx` - Delete this file
+- `apps/web/src/lib/token.ts` - Delete this file
+- `apps/web/src/api/client.ts` - Remove token handling
+- `apps/web/src/routes/_authenticated.tsx` - Remove token check
+
+**Note**: Ensure existing users have registered passkeys before deploying this change.
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

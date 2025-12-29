@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShareRouteImport } from './routes/share'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
@@ -18,9 +20,19 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShareRoute = ShareRouteImport.update({
   id: '/share',
   path: '/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfigRoute = ConfigRouteImport.update({
@@ -60,7 +72,9 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/config': typeof ConfigRoute
+  '/login': typeof LoginRoute
   '/share': typeof ShareRoute
+  '/signup': typeof SignupRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -69,7 +83,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/config': typeof ConfigRoute
+  '/login': typeof LoginRoute
   '/share': typeof ShareRoute
+  '/signup': typeof SignupRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -80,7 +96,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/config': typeof ConfigRoute
+  '/login': typeof LoginRoute
   '/share': typeof ShareRoute
+  '/signup': typeof SignupRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
@@ -91,7 +109,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/config'
+    | '/login'
     | '/share'
+    | '/signup'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -100,7 +120,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/config'
+    | '/login'
     | '/share'
+    | '/signup'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -110,7 +132,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/config'
+    | '/login'
     | '/share'
+    | '/signup'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
     | '/_authenticated/tasks'
@@ -121,16 +145,32 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ConfigRoute: typeof ConfigRoute
+  LoginRoute: typeof LoginRoute
   ShareRoute: typeof ShareRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/share': {
       id: '/share'
       path: '/share'
       fullPath: '/share'
       preLoaderRoute: typeof ShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/config': {
@@ -208,7 +248,9 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ConfigRoute: ConfigRoute,
+  LoginRoute: LoginRoute,
   ShareRoute: ShareRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

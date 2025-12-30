@@ -18,7 +18,7 @@ import type { HealthChecker } from './health/domain/health-checker.js';
 import type { AuthMiddleware } from './auth/application/auth-middleware.js';
 import type { AdminService } from './admin/domain/admin-service.js';
 import type { AdminSessionService } from './admin/domain/admin-session-service.js';
-import type { RateLimitConfig, LogConfig } from './config/schema.js';
+import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
 import { createLoggerOptions } from './logging/index.js';
 import type { InvitationService } from './organizations/domain/invitation-service.js';
 import type { MembershipService } from './organizations/domain/membership-service.js';
@@ -59,6 +59,7 @@ export type AppDependencies = {
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
   log: LogConfig;
+  cookie: CookieConfig;
 };
 
 // Default rate limit configuration
@@ -112,7 +113,7 @@ export const createApp = async (deps: AppDependencies) => {
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
-    await registerAdminRoutes(app, deps.admin, rateLimitConfig);
+    await registerAdminRoutes(app, { ...deps.admin, cookieConfig: deps.cookie }, rateLimitConfig);
   }
 
   // Invitation routes
@@ -123,17 +124,13 @@ export const createApp = async (deps: AppDependencies) => {
   });
 
   // Session cookie configuration (shared between signup and passkey routes)
-  const sessionCookieName = 'yoink_session';
-  // COOKIE_SECURE env var allows explicitly setting secure cookie flag (for testing over HTTP)
-  const secureCookie = process.env.COOKIE_SECURE !== undefined
-    ? process.env.COOKIE_SECURE === 'true'
-    : process.env.NODE_ENV === 'production';
+  const sessionCookieName = deps.cookie.sessionName;
   const cookieOptions = {
     httpOnly: true,
-    secure: secureCookie,
+    secure: deps.cookie.secure,
     sameSite: 'strict' as const,
     path: '/',
-    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    maxAge: deps.cookie.maxAge,
   };
 
   // Signup routes - only registered if webauthn config is provided

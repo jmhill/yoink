@@ -242,15 +242,15 @@ export class InboxPage {
     
     await addButton.click();
     
-    // Wait for the capture to appear (indicates success)
-    if (content.trim()) {
-      await this.page.getByText(content).waitFor();
-    }
-    
     // Get the real ID from the newly created capture card.
     // We must wait for the server response to replace the optimistic temp ID.
     // Optimistic updates use IDs like "temp-1234567890", real IDs are UUIDs.
+    // Use .first() to avoid strict mode violations when optimistic updates
+    // briefly show duplicate elements with the same content.
     const card = this.page.locator('[data-capture-id]').filter({ hasText: content }).first();
+    
+    // Wait for the card to be visible
+    await card.waitFor({ state: 'visible' });
     
     // Poll until we get a real UUID (not a temp ID from optimistic update)
     let captureId: string | null = null;

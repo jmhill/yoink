@@ -318,12 +318,6 @@ export const createPasskeyService = (
 
       const expectedOrigins = normalizeOrigin(config.origin);
 
-      console.log('[PasskeyService] Calling verifyRegistrationResponse:', {
-        expectedOrigins,
-        expectedRPID: config.rpId,
-        responseId: response.id,
-      });
-      
       return ResultAsync.fromPromise(
         verifyRegistrationResponse({
           response,
@@ -333,7 +327,6 @@ export const createPasskeyService = (
           requireUserVerification: true,
         }),
         (error): PasskeyServiceError => {
-          console.error('[PasskeyService] verifyRegistrationResponse error:', error);
           return verificationFailedError(
             error instanceof Error ? error.message : 'Registration verification failed'
           );

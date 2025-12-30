@@ -6,12 +6,13 @@ import type { AdminService } from '../domain/admin-service.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
 import type { InvitationService } from '../../organizations/domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
-import type { RateLimitConfig } from '../../config/schema.js';
+import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
+  cookieConfig: CookieConfig;
 };
 
 /**
@@ -27,7 +28,7 @@ export const registerAdminRoutes = async (
   deps: AdminRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { adminService, adminSessionService, invitationService } = deps;
+  const { adminService, adminSessionService, invitationService, cookieConfig } = deps;
   const s = initServer();
 
   // Register public admin routes with strict rate limiting
@@ -55,7 +56,7 @@ export const registerAdminRoutes = async (
 
         reply.setCookie(ADMIN_SESSION_COOKIE, result.sessionToken!, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
+          secure: cookieConfig.secure,
           sameSite: 'strict',
           path: '/',
           maxAge: 24 * 60 * 60, // 24 hours
@@ -272,16 +273,9 @@ export const registerAdminRoutes = async (
       },
 
       createInvitation: async ({ params, body }: { params: { organizationId: string }; body: { role?: 'admin' | 'member'; email?: string; expiresInDays?: number } }) => {
-        // Check if organization exists
-        const orgResult = await adminService.getOrganization(params.organizationId);
-        const orgCheck = orgResult.match(
-          (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
-          () => storageErrorResponse('Failed to check organization')
-        );
-        if (orgCheck) return orgCheck;
-
         // Create invitation using the invitation service
         // Admin bypasses normal permission checks since they're the system admin
+        // Note: Organization existence is validated by the invitation service
         const result = await invitationService.createInvitation({
           organizationId: params.organizationId,
           invitedByUserId: null, // Admin-created invitations have no specific user

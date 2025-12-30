@@ -208,12 +208,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
   // Create auth middleware - uses combined auth if WebAuthn is enabled
   // Combined auth supports both session cookies (for passkey users) and Bearer tokens
-  const sessionCookieName = 'yoink_session';
   const authMiddleware = signupConfig
     ? createCombinedAuthMiddleware({
         tokenService,
         sessionService: signupConfig.sessionService,
-        sessionCookieName,
+        sessionCookieName: config.cookie.sessionName,
       })
     : createAuthMiddleware({ tokenService });
 
@@ -280,5 +279,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     admin,
     rateLimit: config.rateLimit,
     log: config.log,
+    cookie: config.cookie,
   });
 };

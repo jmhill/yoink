@@ -37,6 +37,7 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
   },
   rateLimit: defaultRateLimitConfig,
   log: { level: 'error', pretty: false },
+  cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
   ...overrides,
 });
 

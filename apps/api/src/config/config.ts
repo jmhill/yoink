@@ -6,6 +6,7 @@ import {
   type LogLevel,
   type LogConfig,
   type WebAuthnConfig,
+  type CookieConfig,
   LogLevelSchema,
 } from './schema.js';
 
@@ -129,6 +130,50 @@ const loadWebAuthnConfig = (): WebAuthnConfig | undefined => {
 };
 
 /**
+ * Load cookie configuration from environment variables.
+ * 
+ * COOKIE_SECURE controls whether cookies require HTTPS:
+ * - 'true': Secure cookies (requires HTTPS)
+ * - 'false': Insecure cookies (allows HTTP, for testing)
+ * - Not set: Defaults based on NODE_ENV (production = secure)
+ * 
+ * Invalid values will throw an error to prevent misconfiguration.
+ */
+const loadCookieConfig = (): CookieConfig => {
+  const cookieSecureEnv = process.env.COOKIE_SECURE;
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  let secure: boolean;
+  
+  if (cookieSecureEnv !== undefined) {
+    // Validate explicit value
+    if (cookieSecureEnv !== 'true' && cookieSecureEnv !== 'false') {
+      throw new Error(
+        `Invalid COOKIE_SECURE value: "${cookieSecureEnv}". Must be "true" or "false".`
+      );
+    }
+    secure = cookieSecureEnv === 'true';
+    
+    // Warn if running insecure in production
+    if (!secure && isProduction) {
+      console.warn(
+        'WARNING: COOKIE_SECURE=false in production. ' +
+        'Cookies will be sent over HTTP, which is insecure.'
+      );
+    }
+  } else {
+    // Default based on NODE_ENV
+    secure = isProduction;
+  }
+  
+  return {
+    secure,
+    sessionName: process.env.COOKIE_SESSION_NAME ?? 'yoink_session',
+    maxAge: parseInt(process.env.COOKIE_MAX_AGE ?? String(7 * 24 * 60 * 60), 10),
+  };
+};
+
+/**
  * Load application configuration from environment variables.
  * Returns production-ready defaults (file-based LibSQL, system clock, uuid, bcrypt).
  */
@@ -149,6 +194,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     rateLimit: loadRateLimitConfig(),
     log: loadLogConfig(),
     webauthn: loadWebAuthnConfig(),
+    cookie: loadCookieConfig(),
   };
 };
 

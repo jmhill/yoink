@@ -130,6 +130,16 @@ export const WebAuthnConfigSchema = z.object({
   challengeSecret: z.string().min(32),
 });
 
+// Cookie configuration for session management
+export const CookieConfigSchema = z.object({
+  /** Whether to set the Secure flag on cookies (requires HTTPS) */
+  secure: z.boolean(),
+  /** Cookie name for user sessions */
+  sessionName: z.string().default('yoink_session'),
+  /** Cookie max age in seconds (default: 7 days) */
+  maxAge: z.number().default(7 * 24 * 60 * 60),
+});
+
 // Full application configuration
 export const AppConfigSchema = z.object({
   server: ServerConfigSchema,
@@ -140,6 +150,7 @@ export const AppConfigSchema = z.object({
   rateLimit: RateLimitConfigSchema.optional(),
   log: LogConfigSchema,
   webauthn: WebAuthnConfigSchema.optional(),
+  cookie: CookieConfigSchema,
 });
 
 // Export inferred types
@@ -150,6 +161,7 @@ export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type LogLevel = z.infer<typeof LogLevelSchema>;
 export type LogConfig = z.infer<typeof LogConfigSchema>;
 export type WebAuthnConfig = z.infer<typeof WebAuthnConfigSchema>;
+export type CookieConfig = z.infer<typeof CookieConfigSchema>;
 export type IdGeneratorConfig = z.infer<typeof IdGeneratorConfigSchema>;
 export type PasswordHasherConfig = z.infer<typeof PasswordHasherConfigSchema>;
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

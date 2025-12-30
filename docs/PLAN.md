@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.1-7.7b complete, 7.7c next)
+**Phase 7: Authentication Overhaul** - In Progress (7.0-7.7b complete, PR #11 pending merge, 7.7c next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -40,6 +40,16 @@ Playwright driver updated to support new auth flow while maintaining backward co
 - [x] HTTP driver: Continue using API tokens (no changes needed)
 - [x] Page objects for login, signup, and passkey management
 - [x] Virtual authenticator teardown in driver cleanup
+
+**PR #11 Fixes** (pending merge):
+- [x] Fix `invited_by_user_id` nullable for admin-created invitations (migration 017)
+- [x] Fix WebAuthn challenge verification for CDP Virtual Authenticator encoding differences
+- [x] Add `COOKIE_SECURE` env var for HTTP-based E2E testing
+- [x] Use `combinedAuthMiddleware` for all authenticated routes when WebAuthn is enabled
+- [x] Update share page to support session-based auth
+- [x] Create isolated browser context per actor for cookie isolation
+- [x] Add `CookieConfig` to configuration system with proper validation
+- [x] Add tests for `skipPermissionCheck` and null `invitedByUserId` scenarios
 
 ### 7.1 Database Schema (Backwards Compatible) - Complete ✓
 - [x] Migration 012: Create `organization_memberships` table
@@ -349,8 +359,8 @@ application/      # HTTP layer
 See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 
 **Quick Reference:**
-- 400+ unit tests (apps/api, packages/*)
-- 92 acceptance tests (HTTP + Playwright)
+- 440+ unit tests (apps/api, packages/*)
+- 157 acceptance tests (HTTP + Playwright drivers)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 
@@ -384,6 +394,10 @@ See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 | `WEBAUTHN_RP_ID` | WebAuthn relying party ID | Phase 7 |
 | `WEBAUTHN_RP_NAME` | WebAuthn relying party name | Phase 7 |
 | `WEBAUTHN_ORIGIN` | WebAuthn allowed origin | Phase 7 |
+| `WEBAUTHN_CHALLENGE_SECRET` | HMAC secret for challenge signing | Phase 7 |
+| `COOKIE_SECURE` | Cookie security (`true`/`false`) | Optional (defaults based on NODE_ENV) |
+| `COOKIE_SESSION_NAME` | Session cookie name | Optional (default: `yoink_session`) |
+| `COOKIE_MAX_AGE` | Session cookie max age in seconds | Optional (default: 7 days) |
 
 ---
 
@@ -424,9 +438,13 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.7c (Remove Token Auth from Web App)
+### Current Focus: PR #11 Review → Phase 7.7c
 
-The immediate next steps are:
+**Immediate**: Merge PR #11 (Enable Playwright E2E tests with passkey authentication)
+
+PR #11 fixes multiple issues preventing E2E tests from working with passkey-based authentication. All 157 acceptance tests now pass with both HTTP and Playwright drivers. See PR for details.
+
+**After PR #11 merges**: Phase 7.7c (Remove Token Auth from Web App)
 
 1. **Remove `/config` page** entirely
 2. **Remove `tokenStorage` utility** from codebase

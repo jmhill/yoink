@@ -10,7 +10,9 @@ import { rebuildTable } from '../table-rebuild.js';
  * admin-created invitations from working.
  *
  * Changes:
- * - invited_by_user_id: TEXT NOT NULL REFERENCES users(id) -> TEXT (nullable, no FK)
+ * - invited_by_user_id: TEXT NOT NULL REFERENCES users(id) -> TEXT REFERENCES users(id) ON DELETE SET NULL
+ * - Column is now nullable (for admin-created invitations)
+ * - FK constraint maintained with ON DELETE SET NULL (if inviter is deleted, set to null)
  */
 export const migration: Migration = {
   version: 17,
@@ -24,7 +26,7 @@ export const migration: Migration = {
           code TEXT NOT NULL UNIQUE,
           email TEXT,
           organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-          invited_by_user_id TEXT,
+          invited_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
           role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
           expires_at TEXT NOT NULL,
           accepted_at TEXT,

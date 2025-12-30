@@ -150,6 +150,98 @@ describe('InvitationService', () => {
         expect(result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
       }
     });
+
+    describe('admin-created invitations (skipPermissionCheck)', () => {
+      it('allows invitation creation with null invitedByUserId when skipPermissionCheck is true', async () => {
+        const result = await service.createInvitation({
+          organizationId: TEST_ORG.id,
+          invitedByUserId: null,
+          role: 'member',
+          skipPermissionCheck: true,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value.invitedByUserId).toBeNull();
+          expect(result.value.organizationId).toBe(TEST_ORG.id);
+          expect(result.value.role).toBe('member');
+        }
+      });
+
+      it('fails when invitedByUserId is null and skipPermissionCheck is false', async () => {
+        const result = await service.createInvitation({
+          organizationId: TEST_ORG.id,
+          invitedByUserId: null,
+          role: 'member',
+          skipPermissionCheck: false,
+        });
+
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
+        }
+      });
+
+      it('fails when invitedByUserId is null and skipPermissionCheck is not specified', async () => {
+        const result = await service.createInvitation({
+          organizationId: TEST_ORG.id,
+          invitedByUserId: null,
+          role: 'member',
+        });
+
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
+        }
+      });
+
+      it('respects custom expiresInDays when using skipPermissionCheck', async () => {
+        const result = await service.createInvitation({
+          organizationId: TEST_ORG.id,
+          invitedByUserId: null,
+          role: 'admin',
+          expiresInDays: 30,
+          skipPermissionCheck: true,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          // 30 days from Jan 15 = Feb 14
+          expect(result.value.expiresAt).toBe('2024-02-14T12:00:00.000Z');
+          expect(result.value.role).toBe('admin');
+        }
+      });
+
+      it('allows admin-created invitation with email restriction', async () => {
+        const result = await service.createInvitation({
+          organizationId: TEST_ORG.id,
+          invitedByUserId: null,
+          role: 'member',
+          email: 'invited@example.com',
+          skipPermissionCheck: true,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value.email).toBe('invited@example.com');
+          expect(result.value.invitedByUserId).toBeNull();
+        }
+      });
+
+      it('still validates organization exists even with skipPermissionCheck', async () => {
+        const result = await service.createInvitation({
+          organizationId: 'non-existent-org',
+          invitedByUserId: null,
+          role: 'member',
+          skipPermissionCheck: true,
+        });
+
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.type).toBe('INVITATION_ORG_NOT_FOUND');
+        }
+      });
+    });
   });
 
   describe('validateInvitation', () => {

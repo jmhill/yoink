@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.62.0",
-    "@tanstack/react-router": "^1.142.11",
+    "@tanstack/react-query": "^5.90.16",
+    "@tanstack/react-router": "^1.144.0",
     "@ts-rest/core": "^3.52.0",
     "@ts-rest/react-query": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",

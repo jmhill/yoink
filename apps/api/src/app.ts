@@ -124,9 +124,13 @@ export const createApp = async (deps: AppDependencies) => {
 
   // Session cookie configuration (shared between signup and passkey routes)
   const sessionCookieName = 'yoink_session';
+  // COOKIE_SECURE env var allows explicitly setting secure cookie flag (for testing over HTTP)
+  const secureCookie = process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: secureCookie,
     sameSite: 'strict' as const,
     path: '/',
     maxAge: 7 * 24 * 60 * 60, // 7 days in seconds

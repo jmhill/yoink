@@ -4,6 +4,7 @@ import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
+import { getSession } from '@/api/auth';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import {
   extractContent,
@@ -25,6 +26,7 @@ function SharePage() {
   const [sourceUrl, setSourceUrl] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   // Parse share params from URL on mount
   useEffect(() => {
@@ -41,13 +43,28 @@ function SharePage() {
     setSourceUrl(extractedUrl);
   }, []);
 
-  // Check if token is configured
+  // Check authentication (supports both token and session-based auth)
   useEffect(() => {
-    if (!tokenStorage.isConfigured()) {
-      // Redirect to config with a message using window.location
-      // to avoid TanStack Router type issues with search params
-      window.location.href = '/config?from=share';
-    }
+    const checkAuth = async () => {
+      // Check if we have a token (legacy auth)
+      if (tokenStorage.isConfigured()) {
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // Check if we have a valid session (passkey auth)
+      const sessionResult = await getSession();
+      if (sessionResult.ok) {
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // Not authenticated - redirect to login
+      setIsAuthenticated(false);
+      window.location.href = '/login?returnTo=/share' + window.location.search;
+    };
+
+    checkAuth();
   }, []);
 
   const handleClose = () => {
@@ -96,8 +113,8 @@ function SharePage() {
     }
   };
 
-  // Don't render if not configured (will redirect)
-  if (!tokenStorage.isConfigured()) {
+  // Don't render until auth check completes, or if not authenticated (will redirect)
+  if (isAuthenticated === null || isAuthenticated === false) {
     return null;
   }
 

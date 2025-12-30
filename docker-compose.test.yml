@@ -12,6 +12,8 @@ services:
       - DB_PATH=/app/apps/api/data/captures.db
       # Disable rate limiting for E2E tests
       - RATE_LIMIT_ENABLED=false
+      # Disable secure cookies (we test over HTTP, not HTTPS)
+      - COOKIE_SECURE=false
       # WebAuthn configuration for passkey testing
       - WEBAUTHN_RP_ID=localhost
       - WEBAUTHN_RP_NAME=Yoink Test

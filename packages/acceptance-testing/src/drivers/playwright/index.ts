@@ -15,6 +15,7 @@ import { SignupPage, VirtualAuthenticator } from './page-objects.js';
  * - Uses HTTP for Admin operations (admin UI is separate)
  * - Uses HTTP for Health operations (no UI for health)
  * - Each actor is created via fresh signup with unique invitation code
+ * - Each actor gets its own browser context for session cookie isolation
  */
 export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   // HTTP client for admin/health operations (no browser UI for these)
@@ -23,7 +24,9 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   const health = createHttpHealth(httpClient);
 
   let browser: Browser | null = null;
-  let context: BrowserContext | null = null;
+  
+  // Each actor gets its own browser context for cookie isolation
+  const actorContexts: BrowserContext[] = [];
 
   // Track virtual authenticators per page for cleanup
   const pageAuthenticators = new Map<Page, { cdpSession: CDPSession; authenticator: VirtualAuthenticator }>();
@@ -48,9 +51,22 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
     health,
 
     async createActor(email: string): Promise<Actor> {
-      if (!context) {
+      if (!browser) {
         throw new Error('Driver not initialized. Call setup() first.');
       }
+
+      const debug = (msg: string) => {
+        if (process.env.DEBUG_PLAYWRIGHT) {
+          console.log(`[Playwright] ${msg}`);
+        }
+      };
+
+      // Create an isolated browser context for this actor (cookie isolation)
+      const context = await browser.newContext({
+        baseURL: config.baseUrl,
+      });
+      actorContexts.push(context);
+      debug('Created isolated browser context');
 
       // Create an isolated tenant for this actor (via HTTP admin API)
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -59,58 +75,119 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const [localPart, domain] = email.split('@');
       const uniqueEmail = `${localPart}+${suffix}@${domain}`;
 
+      debug(`Creating actor with email: ${uniqueEmail}`);
+      
       await admin.login();
+      debug('Admin logged in');
+      
       let invitationCode: string;
       let orgId: string;
       try {
         const org = await admin.createOrganization(orgName);
         orgId = org.id;
+        debug(`Created org: ${orgId}`);
+        
         const invitation = await admin.createInvitation(org.id, { role: 'admin' });
         invitationCode = invitation.code;
+        debug(`Created invitation: ${invitationCode}`);
       } finally {
         await admin.logout();
+        debug('Admin logged out');
       }
 
-      // Create a new page for this actor
+      // Create a new page for this actor in their isolated context
       const page = await context.newPage();
+      debug('Created new page');
       
       // Set up virtual authenticator BEFORE navigating to signup
       // This enables the browser's WebAuthn API to use the virtual authenticator
       await setupVirtualAuthenticator(page);
+      debug('Virtual authenticator set up');
       
       // Perform signup via the UI with the virtual authenticator
       const signupPage = new SignupPage(page);
       await signupPage.goto(invitationCode);
+      debug(`Navigated to signup with code: ${invitationCode}`);
       
-      // The code is pre-filled from URL, click continue to proceed to email step
-      await signupPage.clickContinue();
+      // Wait for the page to auto-validate the code and reach the details step
+      // (navigating with ?code=XXX triggers auto-validation)
+      debug('Waiting for details step...');
+      await signupPage.waitForDetailsStep();
+      debug('Reached details step');
+      
+      // Check for errors during validation
+      if (await signupPage.hasError()) {
+        const error = await signupPage.getErrorMessage();
+        throw new Error(`Signup validation failed: ${error}`);
+      }
       
       // Fill email and device name
       await signupPage.enterEmail(uniqueEmail);
+      debug('Filled email');
       await signupPage.enterDeviceName('Test Device');
+      debug('Filled device name');
       
       // Click create account - this triggers WebAuthn registration
       // The virtual authenticator will automatically handle the credential creation
+      debug('Clicking create account...');
       await signupPage.clickCreateAccount();
+      debug('Clicked create account, waiting for WebAuthn...');
       
-      // Wait for signup to complete and redirect to inbox
-      await signupPage.waitForSuccess();
+      // Wait for signup to complete - check for either success or error
+      try {
+        // Race between success and error states
+        const result = await Promise.race([
+          signupPage.waitForSuccess().then(() => 'success' as const),
+          page.locator('.bg-destructive\\/10').waitFor({ state: 'visible', timeout: 15000 }).then(() => 'error' as const),
+        ]);
+        
+        if (result === 'error') {
+          const errorMsg = await signupPage.getErrorMessage();
+          debug(`Signup failed with error: ${errorMsg}`);
+          throw new Error(`Signup failed: ${errorMsg}`);
+        }
+      } catch (e) {
+        // If both fail, log page state for debugging
+        debug(`Timeout waiting for signup result, current URL: ${page.url()}`);
+        const content = await page.content();
+        debug(`Page content (first 1000 chars): ${content.substring(0, 1000)}`);
+        throw e;
+      }
+      debug('Signup success!');
       
-      // Click "Go to Inbox" to continue
-      await page.getByRole('link', { name: 'Go to Inbox' }).click();
-      await page.waitForURL('/');
+      // Wait for auto-redirect to home page (happens after 2 seconds)
+      await signupPage.waitForRedirect();
+      debug('Redirected to home');
 
-      // Get user ID from session - we need to call the API
+      // Get user ID from session - we need to call the API  
       // The session cookie is already set from signup
-      const sessionResponse = await page.evaluate(async () => {
+      
+      // Set a timeout for the page.evaluate call
+      const sessionPromise = page.evaluate(async () => {
         const response = await fetch('/api/auth/session', {
           credentials: 'include',
         });
         if (!response.ok) {
-          throw new Error(`Failed to get session: ${response.status}`);
+          const text = await response.text();
+          throw new Error(`Failed to get session: ${response.status} - ${text}`);
         }
         return response.json();
       });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Session fetch timed out after 5s')), 5000);
+      });
+      
+      let sessionResponse;
+      try {
+        sessionResponse = await Promise.race([sessionPromise, timeoutPromise]);
+      } catch (e) {
+        debug(`Session fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+        debug(`Current page URL: ${page.url()}`);
+        throw e;
+      }
+      
+      debug(`Session validated, user: ${(sessionResponse as { user: { id: string } }).user.id}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
@@ -120,17 +197,23 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
     },
 
     createAnonymousActor(): AnonymousActor {
-      if (!context) {
+      if (!browser) {
         throw new Error('Driver not initialized. Call setup() first.');
       }
 
-      // Create a page without a token configured
-      // We need to return synchronously, so we'll create the page lazily
+      // Create a dedicated context for anonymous actor
+      let context: BrowserContext | null = null;
       let page: Page | null = null;
       
       const getPage = async (): Promise<Page> => {
         if (!page) {
-          page = await context!.newPage();
+          if (!context) {
+            context = await browser!.newContext({
+              baseURL: config.baseUrl,
+            });
+            actorContexts.push(context);
+          }
+          page = await context.newPage();
         }
         return page;
       };
@@ -159,11 +242,6 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       browser = await chromium.launch({
         headless: true,
       });
-      
-      // Create a browser context (isolated session)
-      context = await browser.newContext({
-        baseURL: config.baseUrl,
-      });
     },
 
     async teardown(): Promise<void> {
@@ -178,10 +256,16 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         pageAuthenticators.delete(page);
       }
 
-      if (context) {
-        await context.close();
-        context = null;
+      // Close all actor contexts
+      for (const context of actorContexts) {
+        try {
+          await context.close();
+        } catch {
+          // Ignore errors during cleanup
+        }
       }
+      actorContexts.length = 0;
+
       if (browser) {
         await browser.close();
         browser = null;

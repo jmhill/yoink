@@ -123,11 +123,14 @@ export const registerSignupRoutes = async (
         return signupResult.match(
           async ({ user, personalOrganization, invitedOrganization }) => {
             // Verify the passkey registration
+            // skipUserIdCheck is true because the challenge was created with email as identifier
+            // during /signup/options, before the user existed
             const verifyResult = await passkeyService.verifyRegistration({
               userId: user.id,
               challenge,
               response: credential as RegistrationResponseJSON,
               credentialName,
+              skipUserIdCheck: true,
             });
 
             if (verifyResult.isErr()) {

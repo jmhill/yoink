@@ -40,6 +40,25 @@ export class SignupPage {
     await this.page.goto(url);
   }
 
+  /**
+   * Wait for the page to reach the details step (after code validation).
+   * When navigating with ?code=XXX, the page auto-validates and transitions.
+   */
+  async waitForDetailsStep(): Promise<void> {
+    // Wait for either the email field (details step) or an error
+    await Promise.race([
+      this.page.getByLabel('Email').waitFor({ state: 'visible', timeout: 10000 }),
+      this.page.locator('.bg-destructive\\/10').waitFor({ state: 'visible', timeout: 10000 }),
+    ]);
+  }
+
+  /**
+   * Check if we're on the code entry step.
+   */
+  async isOnCodeStep(): Promise<boolean> {
+    return await this.page.getByLabel('Invitation Code').isVisible();
+  }
+
   async enterInvitationCode(code: string): Promise<void> {
     await this.page.getByLabel('Invitation Code').fill(code.toUpperCase());
   }
@@ -62,6 +81,14 @@ export class SignupPage {
 
   async waitForSuccess(): Promise<void> {
     await this.page.getByText('Welcome to Yoink!').waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Wait for redirect to home page after signup success.
+   * The signup page auto-redirects after 2 seconds.
+   */
+  async waitForRedirect(): Promise<void> {
+    await this.page.waitForURL('/', { timeout: 5000 });
   }
 
   async hasError(): Promise<boolean> {

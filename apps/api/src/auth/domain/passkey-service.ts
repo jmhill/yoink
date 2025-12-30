@@ -53,6 +53,12 @@ export type VerifyRegistrationParams = {
   challenge: string;
   response: RegistrationResponseJSON;
   credentialName?: string;
+  /**
+   * Skip userId validation in the challenge.
+   * Used during signup where the challenge was created with email as identifier,
+   * but verification happens after the user is created (with a real userId).
+   */
+  skipUserIdCheck?: boolean;
 };
 
 export type VerifyAuthenticationParams = {
@@ -161,6 +167,56 @@ export const createPasskeyService = (
     return Array.isArray(origin) ? origin : [origin];
   };
 
+  /**
+   * Creates a challenge verifier that handles encoding differences.
+   * 
+   * The issue: We pass challenge as a base64url string to generateRegistrationOptions.
+   * The @simplewebauthn/browser library treats this as a base64url-encoded value and
+   * decodes it to bytes, which it then passes to the browser's WebAuthn API.
+   * 
+   * The browser stores those bytes in clientDataJSON, base64url-encoded. But some
+   * implementations (like CDP virtual authenticator) use standard base64.
+   * 
+   * Additionally, if the received challenge is in base64 format (not base64url),
+   * and its decoded value equals our original base64url challenge STRING (not bytes),
+   * then the browser double-encoded the challenge.
+   */
+  const createChallengeVerifier = (expectedChallenge: string) => {
+    return (receivedChallenge: string): boolean => {
+      // Direct match
+      if (receivedChallenge === expectedChallenge) {
+        return true;
+      }
+      
+      try {
+        // Case 1: The received challenge bytes should equal expected challenge bytes
+        // This is the standard WebAuthn case
+        const expectedBytes = Buffer.from(expectedChallenge, 'base64url');
+        let receivedBytes = Buffer.from(receivedChallenge, 'base64url');
+        if (receivedBytes.equals(expectedBytes)) {
+          return true;
+        }
+        
+        // Try with standard base64 decoding
+        receivedBytes = Buffer.from(receivedChallenge, 'base64');
+        if (receivedBytes.equals(expectedBytes)) {
+          return true;
+        }
+        
+        // Case 2: The received challenge is the expected challenge STRING encoded as base64
+        // This happens with some virtual authenticator implementations
+        const decodedString = Buffer.from(receivedChallenge, 'base64').toString('utf-8');
+        if (decodedString === expectedChallenge) {
+          return true;
+        }
+        
+        return false;
+      } catch {
+        return false;
+      }
+    };
+  };
+
   return {
     generateRegistrationOptions: (
       userId: string
@@ -242,7 +298,7 @@ export const createPasskeyService = (
     verifyRegistration: (
       params: VerifyRegistrationParams
     ): ResultAsync<PasskeyCredential, PasskeyServiceError> => {
-      const { userId, challenge, response, credentialName } = params;
+      const { userId, challenge, response, credentialName, skipUserIdCheck } = params;
 
       // Validate challenge
       const challengeResult = challengeManager.validateChallenge(challenge, 'registration');
@@ -255,22 +311,33 @@ export const createPasskeyService = (
       }
 
       const validatedChallenge = challengeResult.value;
-      if (validatedChallenge.payload.userId !== userId) {
+      // Skip userId check during signup (challenge was created with email, not userId)
+      if (!skipUserIdCheck && validatedChallenge.payload.userId !== userId) {
         return errAsync(verificationFailedError('Challenge user mismatch'));
       }
 
+      const expectedOrigins = normalizeOrigin(config.origin);
+
+      console.log('[PasskeyService] Calling verifyRegistrationResponse:', {
+        expectedOrigins,
+        expectedRPID: config.rpId,
+        responseId: response.id,
+      });
+      
       return ResultAsync.fromPromise(
         verifyRegistrationResponse({
           response,
-          expectedChallenge: challenge,
-          expectedOrigin: normalizeOrigin(config.origin),
+          expectedChallenge: createChallengeVerifier(challenge),
+          expectedOrigin: expectedOrigins,
           expectedRPID: config.rpId,
           requireUserVerification: true,
         }),
-        (error): PasskeyServiceError =>
-          verificationFailedError(
+        (error): PasskeyServiceError => {
+          console.error('[PasskeyService] verifyRegistrationResponse error:', error);
+          return verificationFailedError(
             error instanceof Error ? error.message : 'Registration verification failed'
-          )
+          );
+        }
       ).andThen((verification) => {
         if (!verification.verified || !verification.registrationInfo) {
           return errAsync(verificationFailedError('Registration verification failed'));
@@ -383,7 +450,7 @@ export const createPasskeyService = (
         return ResultAsync.fromPromise(
           verifyAuthenticationResponse({
             response,
-            expectedChallenge: challenge,
+            expectedChallenge: createChallengeVerifier(challenge),
             expectedOrigin: normalizeOrigin(config.origin),
             expectedRPID: config.rpId,
             credential: webauthnCredential,

@@ -339,13 +339,17 @@ export const createPlaywrightActor = (
     },
 
     async requiresConfiguration(): Promise<boolean> {
-      // Try to navigate to inbox and check if we get redirected to /config
+      // Try to navigate to inbox and check if we get redirected to auth
       await page.goto('/');
 
-      // Wait for either the inbox to load or redirect to config
-      // The app redirects to /config if no token is set
+      // Wait for redirect to either:
+      // - /config (token auth - no token configured)
+      // - /login (passkey auth - no session)
       try {
-        await page.waitForURL('**/config', { timeout: 2000 });
+        await Promise.race([
+          page.waitForURL('**/config', { timeout: 2000 }),
+          page.waitForURL('**/login', { timeout: 2000 }),
+        ]);
         return true;
       } catch {
         // No redirect happened within timeout, so we're on the inbox

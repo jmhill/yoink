@@ -9,6 +9,7 @@ import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createTokenService } from './auth/domain/token-service.js';
 import { createAuthMiddleware } from './auth/application/auth-middleware.js';
+import { createCombinedAuthMiddleware } from './auth/application/combined-auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
   createSqliteTokenStore,
@@ -163,9 +164,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     codeGenerator,
   });
 
-  // Create auth middleware
-  const authMiddleware = createAuthMiddleware({ tokenService });
-
   // Passkey and session services (for signup flow)
   // Only created if webauthn config is provided
   let signupConfig: SignupConfig | undefined;
@@ -207,6 +205,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       userService,
     };
   }
+
+  // Create auth middleware - uses combined auth if WebAuthn is enabled
+  // Combined auth supports both session cookies (for passkey users) and Bearer tokens
+  const sessionCookieName = 'yoink_session';
+  const authMiddleware = signupConfig
+    ? createCombinedAuthMiddleware({
+        tokenService,
+        sessionService: signupConfig.sessionService,
+        sessionCookieName,
+      })
+    : createAuthMiddleware({ tokenService });
 
   // Create health checker
   const healthChecker = createSqliteHealthChecker({ tokenStore });

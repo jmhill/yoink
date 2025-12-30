@@ -166,10 +166,19 @@ const loadCookieConfig = (): CookieConfig => {
     secure = isProduction;
   }
   
+  // Validate and parse maxAge
+  const maxAgeStr = process.env.COOKIE_MAX_AGE ?? String(7 * 24 * 60 * 60);
+  const maxAge = parseInt(maxAgeStr, 10);
+  if (isNaN(maxAge) || maxAge <= 0) {
+    throw new Error(
+      `Invalid COOKIE_MAX_AGE value: "${maxAgeStr}". Must be a positive integer.`
+    );
+  }
+  
   return {
     secure,
     sessionName: process.env.COOKIE_SESSION_NAME ?? 'yoink_session',
-    maxAge: parseInt(process.env.COOKIE_MAX_AGE ?? String(7 * 24 * 60 * 60), 10),
+    maxAge,
   };
 };
 

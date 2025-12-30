@@ -235,6 +235,12 @@ export const createPlaywrightActor = (
 
       // For simplicity, we use 'tomorrow' as the snooze option in UI tests
       await inboxPage.snoozeCapture(content, 'tomorrow');
+      
+      // Wait for the capture element to be fully detached from DOM by ID.
+      // This is more reliable than waiting for text to be hidden, especially
+      // in CI where React Query cache invalidation timing can vary.
+      await page.locator(`[data-capture-id="${id}"]`).waitFor({ state: 'detached', timeout: 5000 });
+      
       return buildCapture(id, content, 'inbox', { snoozedUntil: until });
     },
 

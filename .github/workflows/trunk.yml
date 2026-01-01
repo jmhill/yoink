@@ -168,33 +168,12 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@63da3ecc5e2793b98a3f2519b3d75d4f4c11cec2 # master
 
       - name: Deploy pre-built image
-        id: deploy
+        # Blue-green deployment handles rollback automatically if health checks fail.
+        # The new machine must pass health checks before traffic is switched.
+        # If deploy fails, Fly.io cleans up the green machines - no manual rollback needed.
         run: flyctl deploy --image registry.fly.io/jhtc-yoink-api:${{ github.sha }} --config apps/api/fly.toml
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      - name: Rollback on deploy failure
-        if: failure()
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          echo "Deploy failed! Attempting rollback to last known good image..."
-          
-          # Authenticate with Fly.io registry
-          flyctl auth docker
-          
-          # Check if prod-latest tag exists
-          if docker pull registry.fly.io/jhtc-yoink-api:prod-latest 2>/dev/null; then
-            echo "Rolling back to prod-latest..."
-            flyctl deploy --image registry.fly.io/jhtc-yoink-api:prod-latest \
-              --config apps/api/fly.toml \
-              --strategy immediate \
-              -a jhtc-yoink-api
-            echo "Rollback complete. Please investigate the failed deployment."
-          else
-            echo "WARNING: No prod-latest tag found. Cannot auto-rollback."
-            echo "Manual intervention required."
-          fi
 
   smoke-test:
     name: Post-Deploy Smoke Test

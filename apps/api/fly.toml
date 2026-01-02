@@ -9,10 +9,10 @@ primary_region = 'iad'
   ignorefile = "../../.dockerignore"
 
 [deploy]
-  # Blue-green deployment for zero-downtime deploys.
-  # New machine starts, passes health checks, then old machine is stopped.
-  # This works because we use Turso (remote database) instead of local volumes.
-  strategy = "bluegreen"
+  # Rolling deployment updates machines one at a time.
+  # More reliable than bluegreen for single-machine setups.
+  # When scaling to multiple regions later, consider switching to bluegreen.
+  strategy = "rolling"
 
 [env]
   NODE_ENV = "production"

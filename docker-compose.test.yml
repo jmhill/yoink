@@ -21,9 +21,15 @@ services:
       - WEBAUTHN_CHALLENGE_SECRET=test-challenge-secret-min-32-chars-long-for-hmac
     ports:
       - "3333:3000"
+    volumes:
+      # Persist database between migration run and app start
+      - db-data:/app/apps/api/data
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 2s
       timeout: 5s
       retries: 15
       start_period: 5s
+
+volumes:
+  db-data:

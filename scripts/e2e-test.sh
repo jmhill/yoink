@@ -17,13 +17,22 @@ cleanup() {
 
 trap cleanup EXIT
 
-echo "==> Starting Docker container..."
+echo "==> Building Docker image..."
 if [ -n "$IMAGE" ]; then
     echo "    Using pre-built image: $IMAGE"
-    docker compose -f "$COMPOSE_FILE" up -d
 else
     echo "    Building from Dockerfile..."
-    docker compose -f "$COMPOSE_FILE" up --build -d
+    docker compose -f "$COMPOSE_FILE" build
+fi
+
+echo "==> Running database migrations..."
+docker compose -f "$COMPOSE_FILE" run --rm api node dist/migrate.js
+
+echo "==> Starting Docker container..."
+if [ -n "$IMAGE" ]; then
+    docker compose -f "$COMPOSE_FILE" up -d
+else
+    docker compose -f "$COMPOSE_FILE" up -d
 fi
 
 echo "==> Waiting for health endpoint..."

@@ -71,9 +71,8 @@ COPY --from=builder /app/apps/web/dist ./apps/api/public
 # Copy admin UI static files to public/admin directory
 COPY --from=builder /app/apps/admin/dist ./apps/api/public/admin
 
-# Copy startup script
-COPY apps/api/run.sh /app/run.sh
-RUN chmod +x /app/run.sh
+# Create data directory for SQLite database
+RUN mkdir -p /app/apps/api/data
 
 # Set ownership for non-root user
 RUN chown -R nodejs:nodejs /app
@@ -89,4 +88,9 @@ WORKDIR /app/apps/api
 # Switch to non-root user
 USER nodejs
 
-CMD ["/app/run.sh"]
+# Start the application directly.
+# Migrations are handled separately:
+# - Fly.io: release_command in fly.toml runs migrations before deploy
+# - E2E tests: e2e-test.sh runs migrations via docker compose run
+# - Local dev: pnpm run dev runs migrate:dev script
+CMD ["node", "dist/index.js"]

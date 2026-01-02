@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Build stage
 FROM node:24-alpine AS builder
 
@@ -22,8 +23,9 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/web/package.json ./apps/web/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with cache mount for pnpm store
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # Copy source files
 COPY packages/infrastructure/ ./packages/infrastructure/
@@ -33,8 +35,9 @@ COPY apps/api/ ./apps/api/
 COPY apps/admin/ ./apps/admin/
 COPY apps/web/ ./apps/web/
 
-# Build all packages using Turborepo
-RUN pnpm build
+# Build all packages using Turborepo with cache mount
+RUN --mount=type=cache,id=turbo,target=/app/.turbo \
+    pnpm build
 
 # Production stage
 FROM node:24-alpine AS runner
@@ -54,7 +57,8 @@ COPY packages/api-contracts/package.json ./packages/api-contracts/
 COPY apps/api/package.json ./apps/api/
 
 # Install production dependencies only (ignore prepare script which runs husky)
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy built artifacts
 COPY --from=builder /app/packages/infrastructure/dist ./packages/infrastructure/dist

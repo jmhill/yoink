@@ -33,6 +33,12 @@ const isPublicRoute = (request: FastifyRequest): boolean => {
   return request.url.includes('/auth/login/');
 };
 
+// Helper to check if request is a login verification attempt
+// Only these should be rate limited (brute force protection)
+const isLoginVerifyRoute = (request: FastifyRequest): boolean => {
+  return request.url.includes('/auth/login/verify') && request.method === 'POST';
+};
+
 export const registerAuthRoutes = async (
   app: FastifyInstance,
   deps: AuthRoutesDependencies,
@@ -60,13 +66,16 @@ export const registerAuthRoutes = async (
   const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
 
   await app.register(async (authApp) => {
-    // Apply strict rate limiting to login endpoints (brute force protection)
+    // Apply strict rate limiting only to login verify endpoint (brute force protection)
+    // The /login/options endpoint is not rate limited as it doesn't validate credentials
     // Only if rate limiting is enabled
     if (rateLimitConfig.enabled) {
       await authApp.register(rateLimit, {
         max: rateLimitConfig.authLoginMax,
         timeWindow: rateLimitConfig.authLoginTimeWindow,
         keyGenerator: (request) => request.ip,
+        // Only apply rate limiting to the login verify endpoint
+        allowList: (request) => !isLoginVerifyRoute(request),
       });
     }
 

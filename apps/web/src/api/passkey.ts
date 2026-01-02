@@ -42,7 +42,7 @@ export const getPasskeyRegistrationOptions = async (): Promise<
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Failed to get registration options' };
+    return { ok: false, error: body.message || 'Failed to get registration options' };
   }
 
   const data = await response.json();
@@ -66,7 +66,7 @@ export const verifyPasskeyRegistration = async (options: {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Failed to verify registration' };
+    return { ok: false, error: body.message || 'Failed to verify registration' };
   }
 
   const data = await response.json();
@@ -87,7 +87,7 @@ export const listPasskeys = async (): Promise<
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Failed to list passkeys' };
+    return { ok: false, error: body.message || 'Failed to list passkeys' };
   }
 
   const data = await response.json();
@@ -108,7 +108,7 @@ export const deletePasskey = async (
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Failed to delete passkey' };
+    return { ok: false, error: body.message || 'Failed to delete passkey' };
   }
 
   const data = await response.json();

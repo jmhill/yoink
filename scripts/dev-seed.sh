@@ -27,6 +27,13 @@ copy_to_clipboard() {
 export SEED_TOKEN="dev-token"
 export ADMIN_PASSWORD="admin"
 
+# WebAuthn configuration for passkey authentication
+export WEBAUTHN_RP_ID="localhost"
+export WEBAUTHN_RP_NAME="Yoink Dev"
+export WEBAUTHN_ORIGIN="http://localhost:5174"
+export WEBAUTHN_CHALLENGE_SECRET="dev-challenge-secret-at-least-32-chars"
+export COOKIE_SECURE="false"
+
 # Start server and capture initial output to extract token
 # Then continue streaming output
 pnpm exec tsx watch --experimental-sqlite src/index.ts 2>&1 | while IFS= read -r line; do

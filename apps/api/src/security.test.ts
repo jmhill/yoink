@@ -168,9 +168,14 @@ describe('Security Features', () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it('returns 429 after exceeding rate limit on login options', async () => {
-      // Make 11 login options attempts (limit is 10 per 15 minutes)
-      for (let i = 0; i < 10; i++) {
+    it('does not rate limit login options endpoint', async () => {
+      // Login options is not rate limited - only login verify is
+      // This allows the login flow to work properly since it requires 2 requests:
+      // 1. POST options (get challenge)
+      // 2. POST verify (submit signed challenge)
+      // Rate limiting only the verify endpoint prevents brute force while
+      // allowing legitimate users to complete the full login flow
+      for (let i = 0; i < 15; i++) {
         await app.inject({
           method: 'POST',
           url: '/api/auth/login/options',
@@ -178,14 +183,35 @@ describe('Security Features', () => {
         });
       }
 
-      // 11th attempt should be rate limited
+      // Should still get 200 even after many requests
       const response = await app.inject({
         method: 'POST',
         url: '/api/auth/login/options',
         payload: {},
       });
 
-      expect(response.statusCode).toBe(429);
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('does not rate limit session endpoint', async () => {
+      // Session checks happen frequently during normal app usage
+      // They should not count towards the login rate limit
+      for (let i = 0; i < 15; i++) {
+        await app.inject({
+          method: 'GET',
+          url: '/api/auth/session',
+        });
+      }
+
+      // Should still be able to attempt login after many session checks
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login/verify',
+        payload: { challenge: 'fake-challenge', credential: {} },
+      });
+
+      // Should get 400 (invalid challenge) not 429 (rate limited)
+      expect(response.statusCode).toBe(400);
     });
 
     it('returns 429 after exceeding rate limit on login verify', async () => {

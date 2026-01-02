@@ -23,7 +23,7 @@ export const getSession = async (): Promise<
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Not authenticated' };
+    return { ok: false, error: body.message || 'Not authenticated' };
   }
 
   const data = await response.json();
@@ -45,7 +45,7 @@ const getLoginOptions = async (): Promise<
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Failed to get login options' };
+    return { ok: false, error: body.message || 'Failed to get login options' };
   }
 
   const data = await response.json();
@@ -68,7 +68,7 @@ const verifyLogin = async (options: {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Login failed' };
+    return { ok: false, error: body.message || 'Login failed' };
   }
 
   const data = await response.json();
@@ -120,7 +120,7 @@ export const logout = async (): Promise<ApiResponse<{ success: true }>> => {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.error || 'Logout failed' };
+    return { ok: false, error: body.message || 'Logout failed' };
   }
 
   return { ok: true, data: { success: true } };
@@ -155,7 +155,7 @@ export const validateInvitation = async (
     if (response.status === 410) {
       return { ok: false, error: 'Invitation has expired or already been used' };
     }
-    return { ok: false, error: body.error || 'Invalid invitation' };
+    return { ok: false, error: body.message || 'Invalid invitation' };
   }
 
   const data = await response.json();
@@ -186,7 +186,7 @@ const getSignupOptions = async (options: {
     if (response.status === 410) {
       return { ok: false, error: 'Invitation has expired or already been used' };
     }
-    return { ok: false, error: body.error || 'Failed to get signup options' };
+    return { ok: false, error: body.message || 'Failed to get signup options' };
   }
 
   const data = await response.json();
@@ -215,7 +215,7 @@ const verifySignup = async (options: {
     if (response.status === 409) {
       return { ok: false, error: 'An account with this email already exists' };
     }
-    return { ok: false, error: body.error || 'Signup failed' };
+    return { ok: false, error: body.message || 'Signup failed' };
   }
 
   const data = await response.json();

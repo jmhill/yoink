@@ -390,6 +390,48 @@ See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 
+#### Acceptance Test Driver Strategy
+
+The acceptance tests use a multi-driver architecture following Dave Farley's 4-layer ATDD approach:
+
+| Driver | Auth Mechanism | What It Tests |
+|--------|----------------|---------------|
+| `http` | Bearer token | Core API functionality via direct HTTP calls |
+| `playwright` | Session cookie (via passkey) | Full web app UI with real browser automation |
+
+**Why only two drivers?**
+
+We considered adding an `http-session` driver to test session-based API access without a browser, but decided against it:
+
+1. **WebAuthn requires real cryptography**: Session auth requires passkey signup, which needs valid WebAuthn credentials. The Playwright driver uses Chrome's CDP virtual authenticator to generate real cryptographic credentials. Mocking WebAuthn responses doesn't work because the server validates signatures.
+
+2. **Playwright already covers session auth**: The Playwright driver tests the full web app including session-based authentication. If Playwright tests pass, we know session auth works correctly.
+
+3. **Different purposes, not redundant coverage**: 
+   - `http` driver tests the API contract and token auth path (used by extension/CLI)
+   - `playwright` driver tests the web app user experience including passkey auth
+   
+4. **Simplicity over marginal value**: A hybrid approach (browser for signup, HTTP for operations) would add complexity for marginal benefit. The session middleware is already tested indirectly through Playwright.
+
+**When to use each driver:**
+
+```typescript
+// Core API behavior - runs on both drivers
+usingDrivers(['http', 'playwright'] as const, (ctx) => {
+  it('can create a capture', async () => { ... });
+});
+
+// API-specific validation - HTTP only (no UI equivalent)
+usingDrivers(['http'] as const, (ctx) => {
+  it('rejects invalid UUID format', async () => { ... });
+});
+
+// Browser-specific behavior - Playwright only
+usingDrivers(['playwright'] as const, (ctx) => {
+  it('shows offline banner when disconnected', async () => { ... });
+});
+```
+
 ### URL Structure
 
 | Path | Purpose | Auth |

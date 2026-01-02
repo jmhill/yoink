@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.0-7.8 complete, 7.9 next)
+**Phase 7: Authentication Overhaul** - In Progress (7.0-7.9 complete, 7.10 next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -277,11 +277,20 @@ To complete token removal, delete/update these files:
 - Frontend auto-switches to personal org when leaving current org
 - DSL extended with `switchOrganization`, `leaveOrganization`, and updated `getSessionInfo`
 
-### 7.9 Org Admin Features in Web App
-- [ ] Members list page
-- [ ] Create invitation UI
-- [ ] Remove member
-- [ ] View pending invitations
+### 7.9 Org Admin Features in Web App - Complete ✓
+- [x] Members list page
+- [x] Create invitation UI
+- [x] Remove member
+- [x] View pending invitations
+
+**Implementation Notes:**
+- `apps/web/src/routes/_authenticated/settings/members.tsx` - Members list with role badges
+- `apps/web/src/routes/_authenticated/settings/invitations.tsx` - Pending invitations list with revoke
+- `apps/web/src/components/create-invitation-dialog.tsx` - Invitation creation with role/email options
+- `apps/web/src/components/remove-member-dialog.tsx` - Member removal with confirmation
+- Role hierarchy enforced: owners can remove admins, admins can remove members, nobody can remove owners
+- Permission badges: Owner, Admin, Member displayed in members list
+- Acceptance tests: `managing-invitations.test.ts` (6 tests), `managing-members.test.ts` (4 tests)
 
 ### 7.10 Cleanup
 - [ ] Migration: Remove `users.organization_id` column
@@ -407,7 +416,7 @@ See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 
 **Quick Reference:**
 - 440+ unit tests (apps/api, packages/*)
-- 157 acceptance tests (HTTP + Playwright drivers)
+- 185 acceptance tests (HTTP + Playwright drivers)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 
@@ -527,31 +536,33 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.9 Org Admin Features
+### Current Focus: Phase 7.10 Cleanup
 
-**Completed in Phase 7.8:**
-1. Switch Organization - OrganizationSwitcher dropdown in header
-2. Leave Organization - OrganizationsSection in Settings with leave confirmation dialog
+**Completed in Phase 7.9:**
+1. Members list page with role badges and remove functionality
+2. Create invitation UI with role selection and optional email restriction
+3. Pending invitations list with revoke functionality
+4. Role-based access control for member management
 
-**Key files for 7.8:**
-- `apps/api/src/organizations/application/organization-routes.ts` - Switch/leave endpoints (9 unit tests)
-- `apps/web/src/components/organization-switcher.tsx` - Dropdown for org switching
-- `apps/web/src/components/organizations-section.tsx` - Settings card with leave functionality
-- `apps/web/src/api/auth.ts` - Added `leaveOrganization()`, fixed `SessionOrganization.role` type
-- `packages/acceptance-testing/src/dsl/actor.ts` - Added `switchOrganization`, `leaveOrganization`, extended `getSessionInfo`
-- `packages/acceptance-tests/src/use-cases/switching-organizations.test.ts` - Acceptance tests (Playwright + HTTP)
-- `packages/acceptance-tests/src/use-cases/leaving-organizations.test.ts` - Acceptance tests (Playwright + HTTP)
+**Key files for 7.9:**
+- `apps/api/src/organizations/application/organization-routes.ts` - Members/invitations endpoints
+- `apps/web/src/routes/_authenticated/settings/members.tsx` - Members list UI
+- `apps/web/src/routes/_authenticated/settings/invitations.tsx` - Invitations list UI
+- `apps/web/src/components/create-invitation-dialog.tsx` - Invitation creation dialog
+- `apps/web/src/components/remove-member-dialog.tsx` - Member removal confirmation
+- `packages/acceptance-tests/src/use-cases/managing-invitations.test.ts` - 6 acceptance tests
+- `packages/acceptance-tests/src/use-cases/managing-members.test.ts` - 4 acceptance tests
 
-**Next up (Phase 7.9):**
-- Members list page
-- Create invitation UI
-- Remove member functionality
-- View pending invitations
+**Next up (Phase 7.10 Cleanup):**
+- Remove `users.organization_id` column (migration)
+- Update queries to use memberships table exclusively
+- Update documentation
 
-**Design decisions from 7.8:**
-- Org switcher only shows if user has 2+ organizations
-- Leave button disabled for personal orgs (with tooltip)
-- After leaving current org, frontend switches to personal org and reloads
-- Acceptance tests run on Playwright only for session-based operations (HTTP tests verify UnsupportedOperationError)
+**Design decisions from 7.9:**
+- Role hierarchy: owner > admin > member
+- Owners can remove anyone, admins can only remove members
+- Members can view members list but cannot remove anyone
+- Invitations show role, email restriction, and expiry date
+- Test harness auto-logins admin in beforeAll for all test files
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

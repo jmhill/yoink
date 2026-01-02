@@ -9,13 +9,24 @@ import type { SignupOptionsResponse, SignupVerifyResponse } from '@yoink/api-con
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
+export type SessionOrganization = {
+  id: string;
+  name: string;
+  isPersonal: boolean;
+  role: 'admin' | 'member';
+};
+
+export type SessionInfo = {
+  user: { id: string; email: string };
+  organizationId: string;
+  organizations: SessionOrganization[];
+};
+
 /**
  * Get session info for the current user.
  * Used to check if user is authenticated.
  */
-export const getSession = async (): Promise<
-  ApiResponse<{ user: { id: string; email: string }; organizationId: string }>
-> => {
+export const getSession = async (): Promise<ApiResponse<SessionInfo>> => {
   const response = await fetch('/api/auth/session', {
     method: 'GET',
     credentials: 'include',
@@ -107,6 +118,27 @@ export const loginWithPasskey = async (): Promise<
     challenge: optionsResult.data.challenge,
     credential,
   });
+};
+
+/**
+ * Switch the current organization for the session.
+ */
+export const switchOrganization = async (
+  organizationId: string
+): Promise<ApiResponse<{ success: true }>> => {
+  const response = await fetch('/api/organizations/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ organizationId }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    return { ok: false, error: body.message || 'Failed to switch organization' };
+  }
+
+  return { ok: true, data: { success: true } };
 };
 
 /**

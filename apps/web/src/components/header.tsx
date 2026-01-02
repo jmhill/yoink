@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { Settings } from 'lucide-react';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 type HeaderProps = {
   viewName?: string;
@@ -13,6 +14,7 @@ export function Header({ viewName }: HeaderProps) {
         <Link to="/" title="Yoink">
           <img src="/icon-192x192.png" alt="Yoink" className="h-10 w-10 rounded-lg" />
         </Link>
+        <OrganizationSwitcher />
         {viewName && (
           <span className="text-lg font-medium text-foreground">{viewName}</span>
         )}

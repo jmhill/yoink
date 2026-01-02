@@ -251,10 +251,29 @@ To complete token removal, delete/update these files:
 
 **Note**: API tokens remain valid for extension/CLI use. Only the web app will stop accepting token auth.
 
-### 7.8 Settings & Organization Management
-- [ ] Organizations section in Settings: list memberships with current org indicator
-- [ ] Switch organization functionality (updates session's `currentOrganizationId`)
-- [ ] Leave organization with guards (cannot leave personal org, cannot leave as last admin)
+### 7.8 Settings & Organization Management - In Progress
+
+**Story 1: Switch Organization** (pig icon dropdown in header) - Complete ✓
+- [x] API contract: `organization-contract.ts` with switch/leave endpoint schemas
+- [x] Extend `GET /api/auth/session` to return `organizations` array (id, name, isPersonal, role)
+- [x] Fix acceptance test DSL: `createToken`/`listTokens` now require `organizationId` parameter
+- [x] Implement `POST /api/organizations/switch` endpoint handler
+- [x] Create `OrganizationSwitcher` dropdown component (shows org name, dropdown with all orgs)
+- [x] Update Header to use OrganizationSwitcher
+- [x] On switch: reload page to refresh data for new org context
+
+**Story 2: Leave Organization** (in Settings page)
+- [ ] Implement `POST /api/organizations/:id/leave` endpoint handler
+- [ ] Add "Organizations" card to Settings page listing memberships
+- [ ] Show "Personal" badge for personal organizations
+- [ ] "Leave" button with confirmation dialog (disabled for personal orgs)
+- [ ] Guards: cannot leave personal org, cannot leave as last admin
+
+**Implementation Notes:**
+- Session response now includes full org list for switcher dropdown
+- `SessionService.switchOrganization()` already exists in backend
+- `MembershipService.removeMember()` already has leave guards
+- Acceptance tests needed: `switching-organizations.test.ts`, `leaving-organizations.test.ts`
 
 ### 7.9 Org Admin Features in Web App
 - [ ] Members list page
@@ -506,21 +525,36 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.8 Settings & Organization Management
+### Current Focus: Phase 7.8 Organization Switching & Leave
 
-**Completed**: Phase 7.7c (Remove Token Auth from Web App)
+**Completed in last session:**
+1. Extended `GET /api/auth/session` to return user's organizations list
+2. Created `organization-contract.ts` with switch/leave endpoint schemas
+3. Fixed acceptance test DSL for org-scoped token operations
 
-The web app now uses session-based authentication exclusively. Token-based auth has been fully removed:
-- Deleted `/config` page and `tokenStorage` utility
-- Updated API client to use session cookies only
-- All auth checks now use `getSession()` API
+**Key files modified:**
+- `packages/api-contracts/src/schemas/auth.ts` - Added `SessionOrganizationSchema`
+- `packages/api-contracts/src/contracts/organization-contract.ts` - New contract
+- `apps/api/src/auth/application/auth-routes.ts` - Session returns organizations
+- `packages/acceptance-testing/src/dsl/admin.ts` - `createToken`/`listTokens` signatures changed
 
-**Next Steps**: Phase 7.8 (Settings & Organization Management)
+**Story 1: Switch Organization - Completed**
+- `POST /api/organizations/switch` route handler implemented in `apps/api/src/organizations/application/organization-routes.ts`
+- `OrganizationSwitcher` component shows org name dropdown (hidden if user has only 1 org)
+- Header updated to include OrganizationSwitcher next to logo
+- On switch: page reloads to refresh data with new org context
+- Unit tests cover API behavior (4 tests)
+- Note: Acceptance tests use token auth, not sessions, so switch org is tested via unit tests only
 
-1. **Organizations section in Settings**: List user's organization memberships with current org indicator
-2. **Switch organization functionality**: Update session's `currentOrganizationId`
-3. **Leave organization**: With guards (cannot leave personal org, cannot leave as last admin)
+**Next steps (Story 2: Leave Organization):**
+1. Implement `POST /api/organizations/:id/leave` route handler
+2. Add Organizations card to Settings page
+3. Add acceptance tests
 
-**Note**: API tokens remain valid for extension/CLI use. Only the web app uses session-based auth now.
+**Design decisions:**
+- Pig icon in header becomes org switcher dropdown
+- Current org shows checkmark, personal orgs get "Personal" badge
+- On switch, reload page entirely (simpler than cache invalidation)
+- Leave org from Settings page, not from dropdown
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

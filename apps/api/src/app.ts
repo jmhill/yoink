@@ -31,6 +31,7 @@ import { registerInvitationRoutes } from './invitations/application/invitation-r
 import { registerSignupRoutes } from './auth/application/signup-routes.js';
 import { registerPasskeyRoutes } from './auth/application/passkey-routes.js';
 import { registerAuthRoutes } from './auth/application/auth-routes.js';
+import { registerOrganizationRoutes } from './organizations/application/organization-routes.js';
 import type { UserService } from './users/domain/user-service.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -165,6 +166,13 @@ export const createApp = async (deps: AppDependencies) => {
       sessionCookieName,
       cookieOptions,
     }, rateLimitConfig);
+
+    // Organization routes (switch, leave)
+    await registerOrganizationRoutes(app, {
+      sessionService: deps.signup.sessionService,
+      membershipService: deps.membershipService,
+      sessionCookieName,
+    });
   }
 
   // Serve static files in production

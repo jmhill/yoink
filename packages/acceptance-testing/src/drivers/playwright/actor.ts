@@ -5,11 +5,14 @@ import type {
   Capture,
   Task,
   PasskeyCredentialInfo,
+  Member,
+  Invitation,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  CreateInvitationInput,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -19,6 +22,8 @@ import {
   CannotLeavePersonalOrgError,
   LastAdminError,
   NotMemberError,
+  ForbiddenError,
+  CannotRemoveSelfError,
 } from '../../dsl/index.js';
 import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
@@ -547,6 +552,165 @@ export const createPlaywrightActor = (
 
       // Reload the page to reflect the change
       await page.reload();
+    },
+
+    // =========================================================================
+    // Organization Member Management
+    // =========================================================================
+
+    async listMembers(): Promise<Member[]> {
+      // Get current org from session
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.get(`/api/organizations/${orgId}/members`);
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (response.status() === 403) {
+        throw new ForbiddenError();
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to list members: ${response.status()}`);
+      }
+
+      const data = await response.json();
+      return data.members;
+    },
+
+    async removeMember(userId: string): Promise<void> {
+      // Check if trying to remove self
+      if (userId === credentials.userId) {
+        throw new CannotRemoveSelfError();
+      }
+
+      // Get current org from session
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.delete(`/api/organizations/${orgId}/members/${userId}`);
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (response.status() === 403) {
+        throw new ForbiddenError();
+      }
+
+      if (response.status() === 400) {
+        const body = await response.json();
+        if (body.message?.includes('yourself')) {
+          throw new CannotRemoveSelfError();
+        }
+        if (body.message?.includes('last admin') || body.message?.includes('last owner')) {
+          throw new LastAdminError();
+        }
+        throw new Error(body.message || 'Cannot remove member');
+      }
+
+      if (response.status() === 404) {
+        throw new NotFoundError('Member', userId);
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to remove member: ${response.status()}`);
+      }
+    },
+
+    // =========================================================================
+    // Invitation Management
+    // =========================================================================
+
+    async createInvitation(input?: CreateInvitationInput): Promise<Invitation> {
+      // Get current org from session
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.post('/api/invitations', {
+        data: {
+          organizationId: orgId,
+          role: input?.role ?? 'member',
+          email: input?.email,
+          expiresInDays: input?.expiresInDays,
+        },
+      });
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (response.status() === 403) {
+        throw new ForbiddenError();
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to create invitation: ${response.status()}`);
+      }
+
+      return response.json();
+    },
+
+    async listPendingInvitations(): Promise<Invitation[]> {
+      // Get current org from session
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.get(`/api/organizations/${orgId}/invitations`);
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (response.status() === 403) {
+        throw new ForbiddenError();
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to list invitations: ${response.status()}`);
+      }
+
+      const data = await response.json();
+      return data.invitations;
+    },
+
+    async revokeInvitation(invitationId: string): Promise<void> {
+      const response = await page.request.delete(`/api/invitations/${invitationId}`);
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (response.status() === 403) {
+        throw new ForbiddenError();
+      }
+
+      if (response.status() === 404) {
+        throw new NotFoundError('Invitation', invitationId);
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to revoke invitation: ${response.status()}`);
+      }
     },
   };
 };

@@ -76,24 +76,17 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const uniqueEmail = `${localPart}+${suffix}@${domain}`;
 
       debug(`Creating actor with email: ${uniqueEmail}`);
-      
-      await admin.login();
-      debug('Admin logged in');
-      
-      let invitationCode: string;
-      let orgId: string;
-      try {
-        const org = await admin.createOrganization(orgName);
-        orgId = org.id;
-        debug(`Created org: ${orgId}`);
-        
-        const invitation = await admin.createInvitation(org.id, { role: 'admin' });
-        invitationCode = invitation.code;
-        debug(`Created invitation: ${invitationCode}`);
-      } finally {
-        await admin.logout();
-        debug('Admin logged out');
-      }
+
+      // Use admin to create org and invitation.
+      // NOTE: Tests are expected to call ctx.admin.login() in beforeAll.
+      // We do NOT log in/out here because it would interfere with the test's admin session.
+      const org = await admin.createOrganization(orgName);
+      const orgId = org.id;
+      debug(`Created org: ${orgId}`);
+
+      const invitation = await admin.createInvitation(org.id, { role: 'admin' });
+      const invitationCode = invitation.code;
+      debug(`Created invitation: ${invitationCode}`);
 
       // Create a new page for this actor in their isolated context
       const page = await context.newPage();
@@ -193,6 +186,119 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         email: uniqueEmail,
         userId: (sessionResponse as { user: { id: string } }).user.id,
         organizationId: orgId,
+      });
+    },
+
+    async createActorWithInvitation(invitationCode: string, email: string): Promise<Actor> {
+      if (!browser) {
+        throw new Error('Driver not initialized. Call setup() first.');
+      }
+
+      const debug = (msg: string) => {
+        if (process.env.DEBUG_PLAYWRIGHT) {
+          console.log(`[Playwright:Invitation] ${msg}`);
+        }
+      };
+
+      // Create an isolated browser context for this actor (cookie isolation)
+      const context = await browser.newContext({
+        baseURL: config.baseUrl,
+      });
+      actorContexts.push(context);
+      debug('Created isolated browser context');
+
+      // Make email unique per actor to satisfy the global email uniqueness constraint
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const [localPart, domain] = email.split('@');
+      const uniqueEmail = `${localPart}+${suffix}@${domain}`;
+      debug(`Creating actor with email: ${uniqueEmail}`);
+
+      // Create a new page for this actor in their isolated context
+      const page = await context.newPage();
+      debug('Created new page');
+
+      // Set up virtual authenticator BEFORE navigating to signup
+      await setupVirtualAuthenticator(page);
+      debug('Virtual authenticator set up');
+
+      // Perform signup via the UI with the provided invitation code
+      const signupPage = new SignupPage(page);
+      await signupPage.goto(invitationCode);
+      debug(`Navigated to signup with code: ${invitationCode}`);
+
+      // Wait for the page to auto-validate the code and reach the details step
+      debug('Waiting for details step...');
+      await signupPage.waitForDetailsStep();
+      debug('Reached details step');
+
+      // Check for errors during validation
+      if (await signupPage.hasError()) {
+        const error = await signupPage.getErrorMessage();
+        throw new Error(`Signup validation failed: ${error}`);
+      }
+
+      // Fill email and device name
+      await signupPage.enterEmail(uniqueEmail);
+      debug('Filled email');
+      await signupPage.enterDeviceName('Test Device');
+      debug('Filled device name');
+
+      // Click create account - this triggers WebAuthn registration
+      debug('Clicking create account...');
+      await signupPage.clickCreateAccount();
+      debug('Clicked create account, waiting for WebAuthn...');
+
+      // Wait for signup to complete
+      try {
+        const result = await Promise.race([
+          signupPage.waitForSuccess().then(() => 'success' as const),
+          page.locator('.bg-destructive\\/10').waitFor({ state: 'visible', timeout: 15000 }).then(() => 'error' as const),
+        ]);
+
+        if (result === 'error') {
+          const errorMsg = await signupPage.getErrorMessage();
+          debug(`Signup failed with error: ${errorMsg}`);
+          throw new Error(`Signup failed: ${errorMsg}`);
+        }
+      } catch (e) {
+        debug(`Timeout waiting for signup result, current URL: ${page.url()}`);
+        throw e;
+      }
+      debug('Signup success!');
+
+      // Wait for auto-redirect to home page
+      await signupPage.waitForRedirect();
+      debug('Redirected to home');
+
+      // Get user ID and org ID from session
+      const sessionPromise = page.evaluate(async () => {
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Failed to get session: ${response.status} - ${text}`);
+        }
+        return response.json();
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Session fetch timed out after 5s')), 5000);
+      });
+
+      let sessionResponse;
+      try {
+        sessionResponse = await Promise.race([sessionPromise, timeoutPromise]);
+      } catch (e) {
+        debug(`Session fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      }
+
+      const typedSession = sessionResponse as { user: { id: string }; organizationId: string };
+      debug(`Session validated, user: ${typedSession.user.id}, org: ${typedSession.organizationId}`);
+
+      return createPlaywrightActor(page, {
+        email: uniqueEmail,
+        userId: typedSession.user.id,
+        organizationId: typedSession.organizationId,
       });
     },
 

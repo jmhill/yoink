@@ -100,3 +100,22 @@ export class NotMemberError extends DslError {
     super(`Not a member of organization: ${organizationId}`);
   }
 }
+
+/**
+ * Thrown when a user does not have permission to perform an operation.
+ */
+export class ForbiddenError extends DslError {
+  constructor(message = 'Permission denied') {
+    super(message);
+  }
+}
+
+/**
+ * Thrown when attempting to remove yourself from an organization.
+ * Use the leave endpoint instead.
+ */
+export class CannotRemoveSelfError extends DslError {
+  constructor() {
+    super('Cannot remove yourself. Use leave instead.');
+  }
+}

@@ -2,11 +2,14 @@ import type {
   Capture,
   Task,
   PasskeyCredentialInfo,
+  Member,
+  Invitation,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  CreateInvitationInput,
 } from './types.js';
 
 /**
@@ -160,6 +163,54 @@ export type BrowserActorOperations = {
    * Uses Playwright's auto-retry to wait for the offline state.
    */
   shouldNotBeAbleToAddCaptures(): Promise<void>;
+
+  // ==========================================================================
+  // Organization Member Management
+  // ==========================================================================
+
+  /**
+   * List all members of the current organization.
+   * All members can view the member list.
+   */
+  listMembers(): Promise<Member[]>;
+
+  /**
+   * Remove a member from the current organization.
+   * - Admins can remove members
+   * - Owners can remove admins and members
+   * - Cannot remove self (use leaveOrganization instead)
+   * - Cannot remove the last owner
+   * @throws ForbiddenError if insufficient permissions
+   * @throws CannotRemoveSelfError if trying to remove self
+   * @throws LastAdminError if removing the last admin/owner
+   */
+  removeMember(userId: string): Promise<void>;
+
+  // ==========================================================================
+  // Invitation Management
+  // ==========================================================================
+
+  /**
+   * Create an invitation to the current organization.
+   * Only admins and owners can create invitations.
+   * @throws ForbiddenError if user is not admin/owner
+   */
+  createInvitation(input?: CreateInvitationInput): Promise<Invitation>;
+
+  /**
+   * List pending invitations for the current organization.
+   * Only admins and owners can view pending invitations.
+   * @throws ForbiddenError if user is not admin/owner
+   */
+  listPendingInvitations(): Promise<Invitation[]>;
+
+  /**
+   * Revoke a pending invitation.
+   * Only admins and owners can revoke invitations.
+   * @throws ForbiddenError if user is not admin/owner
+   * @throws NotFoundError if invitation does not exist
+   */
+  revokeInvitation(invitationId: string): Promise<void>;
 };
 
 /**

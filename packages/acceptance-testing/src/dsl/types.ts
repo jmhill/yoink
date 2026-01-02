@@ -81,6 +81,13 @@ export type CreateInvitationInput = {
   expiresInDays?: number;
 };
 
+export type Member = {
+  userId: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member';
+  joinedAt: string;
+};
+
 // =============================================================================
 // Input Types
 // =============================================================================

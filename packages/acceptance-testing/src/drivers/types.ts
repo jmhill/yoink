@@ -39,6 +39,13 @@ export type Driver = {
   createActor(email: string): Promise<Actor>;
 
   /**
+   * Create an actor by accepting an existing invitation.
+   * Used for testing multi-org scenarios.
+   * Only supported by Playwright driver.
+   */
+  createActorWithInvitation?(invitationCode: string, email: string): Promise<Actor>;
+
+  /**
    * Create an unauthenticated actor.
    * All operations will throw UnauthorizedError.
    */

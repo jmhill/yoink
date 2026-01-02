@@ -6,6 +6,7 @@ export type {
   User,
   Token,
   Invitation,
+  Member,
   PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
@@ -29,6 +30,8 @@ export {
   CannotLeavePersonalOrgError,
   LastAdminError,
   NotMemberError,
+  ForbiddenError,
+  CannotRemoveSelfError,
 } from './errors.js';
 
 // Interfaces

@@ -21,6 +21,8 @@ export {
   CannotLeavePersonalOrgError,
   LastAdminError,
   NotMemberError,
+  ForbiddenError,
+  CannotRemoveSelfError,
 } from './dsl/index.js';
 
 export type {

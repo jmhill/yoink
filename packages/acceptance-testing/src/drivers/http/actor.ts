@@ -422,6 +422,28 @@ export const createHttpActor = (
       // The HTTP driver uses token auth, so this operation is not supported.
       throw new UnsupportedOperationError('leaveOrganization', 'http');
     },
+
+    // Member management operations require session-based auth
+    async listMembers(): Promise<{ userId: string; email: string; role: 'owner' | 'admin' | 'member'; joinedAt: string }[]> {
+      throw new UnsupportedOperationError('listMembers', 'http');
+    },
+
+    async removeMember(_userId: string): Promise<void> {
+      throw new UnsupportedOperationError('removeMember', 'http');
+    },
+
+    // Invitation management operations require session-based auth
+    async createInvitation(_input?: { role?: 'admin' | 'member'; email?: string; expiresInDays?: number }): Promise<{ id: string; code: string; email: string | null; organizationId: string; role: 'admin' | 'member'; expiresAt: string; createdAt: string }> {
+      throw new UnsupportedOperationError('createInvitation', 'http');
+    },
+
+    async listPendingInvitations(): Promise<{ id: string; code: string; email: string | null; organizationId: string; role: 'admin' | 'member'; expiresAt: string; createdAt: string }[]> {
+      throw new UnsupportedOperationError('listPendingInvitations', 'http');
+    },
+
+    async revokeInvitation(_invitationId: string): Promise<void> {
+      throw new UnsupportedOperationError('revokeInvitation', 'http');
+    },
   };
 };
 

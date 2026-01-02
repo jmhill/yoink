@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.0-7.9 complete, 7.10 next)
+**Phase 7: Authentication Overhaul** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -292,14 +292,27 @@ To complete token removal, delete/update these files:
 - Permission badges: Owner, Admin, Member displayed in members list
 - Acceptance tests: `managing-invitations.test.ts` (6 tests), `managing-members.test.ts` (4 tests)
 
-### 7.10 Cleanup
-- [ ] Migration: Remove `users.organization_id` column
-- [ ] Update queries to use memberships table exclusively
-- [ ] Update documentation
+### 7.10 Cleanup - Complete ✓
+- [x] Migration: Remove `users.organization_id` column (Migration 020)
+- [x] Update queries to use memberships table exclusively
+- [x] Update documentation
 
-### 7.11 User Token Self-Service (Deferred)
-- [ ] Token list in settings
-- [ ] Create/revoke tokens for extension/CLI use
+**Implementation Notes:**
+- Migration 020 uses `rebuildTable` utility to remove the column
+- User domain types and stores no longer reference `organizationId`
+- Auth context uses memberships + sessions for organization context
+
+### 7.11 User Token Self-Service - Complete ✓
+- [x] Token list in settings (Organization tab)
+- [x] Create/revoke tokens for extension/CLI use
+- [x] Maximum 2 tokens per user per organization
+
+**Implementation Notes:**
+- `POST /api/auth/tokens` - Create token (returns raw token once)
+- `GET /api/auth/tokens` - List tokens for current user/org
+- `DELETE /api/auth/tokens/:id` - Revoke token (ownership validated)
+- UI in Settings > Organization tab > API Tokens section
+- Acceptance tests: `managing-tokens.test.ts` (9 tests)
 
 ### Deployment Strategy (Zero-Downtime Migration)
 
@@ -536,33 +549,24 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 7.10 Cleanup
+### Current Focus: Phase 9 (Folders + Notes)
 
-**Completed in Phase 7.9:**
-1. Members list page with role badges and remove functionality
-2. Create invitation UI with role selection and optional email restriction
-3. Pending invitations list with revoke functionality
-4. Role-based access control for member management
+**Phase 7 Complete!** The authentication overhaul is now finished:
+- Passkey-based authentication for web app users
+- Session-based auth with 7-day expiry
+- Invitation-only signup with multi-org support
+- User token self-service for extension/CLI access
+- Full acceptance test coverage
 
-**Key files for 7.9:**
-- `apps/api/src/organizations/application/organization-routes.ts` - Members/invitations endpoints
-- `apps/web/src/routes/_authenticated/settings/members.tsx` - Members list UI
-- `apps/web/src/routes/_authenticated/settings/invitations.tsx` - Invitations list UI
-- `apps/web/src/components/create-invitation-dialog.tsx` - Invitation creation dialog
-- `apps/web/src/components/remove-member-dialog.tsx` - Member removal confirmation
-- `packages/acceptance-tests/src/use-cases/managing-invitations.test.ts` - 6 acceptance tests
-- `packages/acceptance-tests/src/use-cases/managing-members.test.ts` - 4 acceptance tests
+**Key files for 7.11 (Token Self-Service):**
+- `apps/api/src/auth/domain/user-token-service.ts` - Token CRUD operations
+- `apps/api/src/auth/application/token-routes.ts` - HTTP endpoints
+- `packages/api-contracts/src/contracts/token-contract.ts` - API contract
+- `apps/web/src/components/tokens-section.tsx` - UI component
+- `apps/web/src/api/tokens.ts` - API client
+- `packages/acceptance-tests/src/use-cases/managing-tokens.test.ts` - Acceptance tests
 
-**Next up (Phase 7.10 Cleanup):**
-- Remove `users.organization_id` column (migration)
-- Update queries to use memberships table exclusively
-- Update documentation
-
-**Design decisions from 7.9:**
-- Role hierarchy: owner > admin > member
-- Owners can remove anyone, admins can only remove members
-- Members can view members list but cannot remove anyone
-- Invitations show role, email restriction, and expiry date
-- Test harness auto-logins admin in beforeAll for all test files
+**Next up (Phase 9 - Folders + Notes):**
+See Phase 9 section above for planned features.
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

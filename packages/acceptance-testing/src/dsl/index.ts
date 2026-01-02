@@ -32,6 +32,7 @@ export {
   NotMemberError,
   ForbiddenError,
   CannotRemoveSelfError,
+  TokenLimitReachedError,
 } from './errors.js';
 
 // Interfaces

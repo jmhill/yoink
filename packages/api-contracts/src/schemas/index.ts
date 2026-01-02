@@ -8,3 +8,4 @@ export * from './organization.js';
 export * from './passkey.js';
 export * from './signup.js';
 export * from './task.js';
+export * from './token.js';

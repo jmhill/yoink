@@ -32,7 +32,9 @@ import { registerSignupRoutes } from './auth/application/signup-routes.js';
 import { registerPasskeyRoutes } from './auth/application/passkey-routes.js';
 import { registerAuthRoutes } from './auth/application/auth-routes.js';
 import { registerOrganizationRoutes } from './organizations/application/organization-routes.js';
+import { registerTokenRoutes } from './auth/application/token-routes.js';
 import type { UserService } from './users/domain/user-service.js';
+import type { UserTokenService } from './auth/domain/user-token-service.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {
@@ -47,6 +49,7 @@ export type SignupConfig = {
   sessionService: SessionService;
   tokenService: TokenService;
   userService: UserService;
+  userTokenService: UserTokenService;
 };
 
 export type AppDependencies = {
@@ -173,6 +176,14 @@ export const createApp = async (deps: AppDependencies) => {
       membershipService: deps.membershipService,
       userService: deps.signup.userService,
       authMiddleware: deps.authMiddleware,
+    });
+
+    // User token self-service routes
+    await registerTokenRoutes(app, {
+      userTokenService: deps.signup.userTokenService,
+      sessionService: deps.signup.sessionService,
+      tokenService: deps.signup.tokenService,
+      sessionCookieName,
     });
   }
 

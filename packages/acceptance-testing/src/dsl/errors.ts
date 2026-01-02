@@ -119,3 +119,12 @@ export class CannotRemoveSelfError extends DslError {
     super('Cannot remove yourself. Use leave instead.');
   }
 }
+
+/**
+ * Thrown when a user has reached the maximum number of API tokens.
+ */
+export class TokenLimitReachedError extends DslError {
+  constructor(limit: number) {
+    super(`You can have at most ${limit} API tokens per organization`);
+  }
+}

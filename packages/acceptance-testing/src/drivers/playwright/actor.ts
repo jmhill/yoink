@@ -4,6 +4,8 @@ import type {
   AnonymousActor,
   Capture,
   Task,
+  Token,
+  CreateTokenResult,
   PasskeyCredentialInfo,
   Member,
   Invitation,
@@ -24,6 +26,7 @@ import {
   NotMemberError,
   ForbiddenError,
   CannotRemoveSelfError,
+  TokenLimitReachedError,
 } from '../../dsl/index.js';
 import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
@@ -483,6 +486,55 @@ export const createPlaywrightActor = (
     async deletePasskey(_credentialId: string): Promise<void> {
       // TODO: Implement by navigating to Settings > Security and clicking delete
       throw new UnsupportedOperationError('deletePasskey', 'playwright');
+    },
+
+    // API Token operations - use API directly since we have session cookie
+    async listTokens(): Promise<Token[]> {
+      const response = await page.request.get('/api/auth/tokens');
+      if (!response.ok()) {
+        if (response.status() === 401) {
+          throw new UnauthorizedError();
+        }
+        throw new Error(`Failed to list tokens: ${response.status()}`);
+      }
+      const data = await response.json();
+      return data.tokens;
+    },
+
+    async createToken(name: string): Promise<CreateTokenResult> {
+      const response = await page.request.post('/api/auth/tokens', {
+        data: { name },
+      });
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message || 'Invalid request');
+      }
+      if (response.status() === 409) {
+        throw new TokenLimitReachedError(2);
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create token: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async revokeToken(tokenId: string): Promise<void> {
+      const response = await page.request.delete(`/api/auth/tokens/${tokenId}`);
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Token', tokenId);
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('You do not own this token');
+      }
+      // 200 is success
     },
 
     async getSessionInfo(): Promise<{

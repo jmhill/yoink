@@ -200,6 +200,78 @@ describe('createSqliteTokenStore', () => {
     });
   });
 
+  describe('findByUserAndOrganization', () => {
+    it('returns empty array when no tokens exist', async () => {
+      const result = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('returns tokens for the specified user and organization', async () => {
+      const token = createTestToken({ name: 'my-token' });
+      await store.save(token);
+
+      const result = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].name).toBe('my-token');
+      }
+    });
+
+    it('does not return tokens from other organizations', async () => {
+      // This would fail FK constraint with a real other-org, so we just verify filtering works
+      // by saving a valid token and querying with a different org
+      await store.save(createTestToken());
+
+      const result = await store.findByUserAndOrganization(TEST_USER.id, 'other-org-id');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('does not return tokens from other users', async () => {
+      await store.save(createTestToken());
+
+      const result = await store.findByUserAndOrganization('other-user-id', TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual([]);
+      }
+    });
+
+    it('returns tokens ordered by createdAt desc', async () => {
+      const token1 = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440003',
+        name: 'first-token',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      const token2 = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        name: 'second-token',
+        createdAt: '2024-02-01T00:00:00.000Z',
+      });
+      await store.save(token1);
+      await store.save(token2);
+
+      const result = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].name).toBe('second-token');
+        expect(result.value[1].name).toBe('first-token');
+      }
+    });
+  });
+
   describe('delete', () => {
     it('removes a token from the database', async () => {
       const token = createTestToken();

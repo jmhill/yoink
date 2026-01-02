@@ -4,6 +4,8 @@ import type {
   PasskeyCredentialInfo,
   Member,
   Invitation,
+  Token,
+  CreateTokenResult,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -68,6 +70,30 @@ export type CoreActor = {
    * Throws CannotDeleteLastPasskeyError if this is the user's only passkey.
    */
   deletePasskey(credentialId: string): Promise<void>;
+
+  // ==========================================================================
+  // API Token Self-Service
+  // ==========================================================================
+
+  /**
+   * List all API tokens for this user in the current organization.
+   */
+  listTokens(): Promise<Token[]>;
+
+  /**
+   * Create a new API token for this user in the current organization.
+   * Returns the token info and the raw token value (shown only once).
+   * @throws TokenLimitReachedError if user has reached the max tokens (2 per org)
+   */
+  createToken(name: string): Promise<CreateTokenResult>;
+
+  /**
+   * Revoke (delete) an API token by ID.
+   * Only the token owner can revoke their own tokens.
+   * @throws NotFoundError if token does not exist
+   * @throws ForbiddenError if user does not own the token
+   */
+  revokeToken(tokenId: string): Promise<void>;
 
   /**
    * Get current session info.

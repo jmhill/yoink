@@ -3,6 +3,8 @@ import type {
   AnonymousActor,
   Capture,
   Task,
+  Token,
+  CreateTokenResult,
   PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
@@ -16,7 +18,9 @@ import {
   ValidationError,
   UnsupportedOperationError,
   ConflictError,
+  ForbiddenError,
   CannotDeleteLastPasskeyError,
+  TokenLimitReachedError,
 } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
@@ -381,6 +385,47 @@ export const createHttpActor = (
       }
       if (response.statusCode === 409) {
         throw new CannotDeleteLastPasskeyError();
+      }
+      // 200 is success
+    },
+
+    // API Token operations
+    async listTokens(): Promise<Token[]> {
+      const response = await client.get('/api/auth/tokens', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      return response.json<{ tokens: Token[] }>().tokens;
+    },
+
+    async createToken(name: string): Promise<CreateTokenResult> {
+      const response = await client.post('/api/auth/tokens', { name }, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        throw new TokenLimitReachedError(2);
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to create token: ${response.body}`);
+      }
+      return response.json<CreateTokenResult>();
+    },
+
+    async revokeToken(tokenId: string): Promise<void> {
+      const response = await client.delete(`/api/auth/tokens/${tokenId}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Token', tokenId);
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('You do not own this token');
       }
       // 200 is success
     },

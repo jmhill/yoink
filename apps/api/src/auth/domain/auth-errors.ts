@@ -279,3 +279,59 @@ export const sessionNotFoundError = (sessionId: string): SessionNotFoundError =>
   type: 'SESSION_NOT_FOUND',
   sessionId,
 });
+
+// ============================================================================
+// User Token Service Errors
+// ============================================================================
+
+/** Token not found */
+export type UserTokenNotFoundError = {
+  readonly type: 'USER_TOKEN_NOT_FOUND';
+  readonly tokenId: string;
+};
+
+/** User does not own this token */
+export type TokenOwnershipError = {
+  readonly type: 'TOKEN_OWNERSHIP_ERROR';
+  readonly tokenId: string;
+  readonly userId: string;
+};
+
+/** User has reached the maximum number of tokens for this organization */
+export type TokenLimitReachedError = {
+  readonly type: 'TOKEN_LIMIT_REACHED';
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly limit: number;
+};
+
+export type UserTokenServiceError =
+  | UserTokenNotFoundError
+  | TokenOwnershipError
+  | TokenLimitReachedError
+  | TokenStorageError;
+
+export const userTokenNotFoundError = (tokenId: string): UserTokenNotFoundError => ({
+  type: 'USER_TOKEN_NOT_FOUND',
+  tokenId,
+});
+
+export const tokenOwnershipError = (
+  tokenId: string,
+  userId: string
+): TokenOwnershipError => ({
+  type: 'TOKEN_OWNERSHIP_ERROR',
+  tokenId,
+  userId,
+});
+
+export const tokenLimitReachedError = (
+  userId: string,
+  organizationId: string,
+  limit: number
+): TokenLimitReachedError => ({
+  type: 'TOKEN_LIMIT_REACHED',
+  userId,
+  organizationId,
+  limit,
+});

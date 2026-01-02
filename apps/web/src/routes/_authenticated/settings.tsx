@@ -9,6 +9,7 @@ import { SecuritySection } from '@/components/security-section';
 import { OrganizationsSection } from '@/components/organizations-section';
 import { MembersSection } from '@/components/members-section';
 import { InvitationsSection } from '@/components/invitations-section';
+import { TokensSection } from '@/components/tokens-section';
 import { logout, getSession, type SessionInfo, type SessionOrganization } from '@/api/auth';
 
 export const Route = createFileRoute('/_authenticated/settings')({
@@ -187,6 +188,9 @@ function SettingsPage() {
                   organizationName={currentOrg.name}
                 />
               )}
+
+              {/* API Tokens - user can manage their own */}
+              <TokensSection />
 
               {/* Organizations list - switch/leave */}
               <OrganizationsSection />

@@ -20,6 +20,7 @@ import {
 import { createPasskeyService } from './auth/domain/passkey-service.js';
 import { createSessionService } from './auth/domain/session-service.js';
 import { createSignupService } from './auth/domain/signup-service.js';
+import { createUserTokenService } from './auth/domain/user-token-service.js';
 import { createSqliteOrganizationStore } from './organizations/infrastructure/sqlite-organization-store.js';
 import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
 import { createSqliteInvitationStore } from './organizations/infrastructure/sqlite-invitation-store.js';
@@ -200,12 +201,21 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       idGenerator,
     });
 
+    const userTokenService = createUserTokenService({
+      tokenStore,
+      clock,
+      idGenerator,
+      passwordHasher,
+      maxTokensPerUserPerOrg: 2,
+    });
+
     signupConfig = {
       signupService,
       passkeyService,
       sessionService,
       tokenService,
       userService,
+      userTokenService,
     };
   }
 

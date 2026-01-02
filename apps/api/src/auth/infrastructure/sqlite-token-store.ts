@@ -104,6 +104,19 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       });
     },
 
+    findByUserAndOrganization: (userId: string, organizationId: string): ResultAsync<ApiToken[], TokenStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM api_tokens WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC`,
+          args: [userId, organizationId],
+        }),
+        (error) => tokenStorageError('Failed to find tokens by user and organization', error)
+      ).map((result) => {
+        const rows = result.rows as TokenRow[];
+        return rows.map(rowToToken);
+      });
+    },
+
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({

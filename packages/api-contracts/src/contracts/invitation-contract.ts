@@ -90,6 +90,27 @@ export const invitationContract = c.router({
     },
     summary: 'List pending invitations for an organization',
   },
+
+  /**
+   * Revoke a pending invitation.
+   * Requires admin/owner permissions in the invitation's organization.
+   */
+  revoke: {
+    method: 'DELETE',
+    path: '/api/invitations/:invitationId',
+    pathParams: z.object({
+      invitationId: z.string().uuid(),
+    }),
+    body: z.undefined(),
+    responses: {
+      204: z.undefined(), // Success, no content
+      401: ErrorSchema, // Not authenticated
+      403: ErrorSchema, // Insufficient permissions
+      404: ErrorSchema, // Invitation not found
+      500: ErrorSchema,
+    },
+    summary: 'Revoke a pending invitation',
+  },
 }, {
   strictStatusCodes: true,
 });

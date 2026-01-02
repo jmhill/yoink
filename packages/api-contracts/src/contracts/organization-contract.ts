@@ -4,6 +4,7 @@ import {
   SwitchOrganizationRequestSchema,
   SwitchOrganizationResponseSchema,
   LeaveOrganizationResponseSchema,
+  ListMembersResponseSchema,
 } from '../schemas/organization.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -48,6 +49,54 @@ export const organizationContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Leave an organization',
+  },
+
+  /**
+   * List members of an organization.
+   * All members can view the member list.
+   * Requires auth (token or session).
+   */
+  listMembers: {
+    method: 'GET',
+    path: '/api/organizations/:organizationId/members',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+    }),
+    responses: {
+      200: ListMembersResponseSchema,
+      401: ErrorSchema, // Not authenticated
+      403: ErrorSchema, // Not a member of the organization
+      404: ErrorSchema, // Organization not found
+      500: ErrorSchema,
+    },
+    summary: 'List organization members',
+  },
+
+  /**
+   * Remove a member from an organization.
+   * - Admins can remove members (but not other admins)
+   * - Owners can remove admins and members
+   * - Cannot remove self (use leave instead)
+   * - Cannot remove the last owner
+   * Requires auth (token or session).
+   */
+  removeMember: {
+    method: 'DELETE',
+    path: '/api/organizations/:organizationId/members/:userId',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+      userId: z.string().uuid(),
+    }),
+    body: z.undefined(),
+    responses: {
+      204: z.undefined(), // Success, no content
+      400: ErrorSchema, // Cannot remove self, last admin, etc.
+      401: ErrorSchema, // Not authenticated
+      403: ErrorSchema, // Insufficient permissions
+      404: ErrorSchema, // Member not found
+      500: ErrorSchema,
+    },
+    summary: 'Remove a member from an organization',
   },
 }, {
   strictStatusCodes: true,

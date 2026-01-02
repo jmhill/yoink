@@ -4,19 +4,11 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 import type { PasskeyCredentialInfo } from '@yoink/api-contracts';
-import { tokenStorage } from '@/lib/token';
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  const token = tokenStorage.get();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
+const JSON_HEADERS: HeadersInit = {
+  'Content-Type': 'application/json',
 };
 
 /**
@@ -27,7 +19,7 @@ export const getPasskeyRegistrationOptions = async (): Promise<
 > => {
   const response = await fetch('/api/auth/passkey/register/options', {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: JSON_HEADERS,
     credentials: 'include',
     body: JSON.stringify({}),
   });
@@ -51,7 +43,7 @@ export const verifyPasskeyRegistration = async (options: {
 }): Promise<ApiResponse<{ credential: PasskeyCredentialInfo }>> => {
   const response = await fetch('/api/auth/passkey/register/verify', {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: JSON_HEADERS,
     credentials: 'include',
     body: JSON.stringify(options),
   });
@@ -73,7 +65,6 @@ export const listPasskeys = async (): Promise<
 > => {
   const response = await fetch('/api/auth/passkey/credentials', {
     method: 'GET',
-    headers: getAuthHeaders(),
     credentials: 'include',
   });
 
@@ -94,7 +85,6 @@ export const deletePasskey = async (
 ): Promise<ApiResponse<{ message: string }>> => {
   const response = await fetch(`/api/auth/passkey/credentials/${encodeURIComponent(credentialId)}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
     credentials: 'include',
   });
 
@@ -112,7 +102,6 @@ export const deletePasskey = async (
  * 1. Get registration options from server
  * 2. Prompt user for WebAuthn registration via browser
  * 3. Send response to server for verification
- * 4. Clear token on success (user is now session-authenticated)
  */
 export const registerPasskey = async (
   deviceName?: string
@@ -136,20 +125,11 @@ export const registerPasskey = async (
   }
 
   // Step 3: Verify with server
-  const verifyResult = await verifyPasskeyRegistration({
+  return verifyPasskeyRegistration({
     challenge: optionsResult.data.challenge,
     credential,
     credentialName: deviceName,
   });
-
-  if (!verifyResult.ok) {
-    return verifyResult;
-  }
-
-  // Step 4: Clear token - user is now session-authenticated
-  tokenStorage.remove();
-
-  return verifyResult;
 };
 
 /**

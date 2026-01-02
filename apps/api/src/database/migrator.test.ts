@@ -181,7 +181,15 @@ describe('runMigrations', () => {
     expect(tablesResult.rows).toHaveLength(1);
   });
 
-  it('rolls back failed migration leaving database unchanged', async () => {
+  it('does not record failed migration but may leave partial state', async () => {
+    // Note: With Turso HTTP, raw SQL transactions don't persist across requests,
+    // so migrations cannot be rolled back atomically. Migrations that need atomic
+    // behavior should use db.batch() internally.
+    //
+    // This test verifies that:
+    // 1. The migration failure is propagated with context
+    // 2. The failed migration is NOT recorded in _migrations
+    // 3. Successfully applied migrations before the failure are preserved
     const migrations: Migration[] = [
       {
         version: 1,
@@ -195,6 +203,7 @@ describe('runMigrations', () => {
         name: 'failing_migration',
         up: async (db) => {
           // Create a table, then fail mid-migration
+          // In a real scenario, use batch() for atomic behavior
           await db.execute({ sql: 'CREATE TABLE partial (id TEXT PRIMARY KEY)' });
           throw new Error('Migration failed intentionally');
         },
@@ -204,20 +213,22 @@ describe('runMigrations', () => {
     // First migration should succeed
     await runMigrations(db, migrations.slice(0, 1));
 
-    // Second migration should fail and rollback
+    // Second migration should fail with context
     await expect(runMigrations(db, migrations)).rejects.toThrow(
-      'Migration failed intentionally'
+      'Migration 2 (failing_migration) failed: Migration failed intentionally'
     );
 
-    // The partial table should NOT exist (rolled back)
+    // First migration should still be recorded
     const tablesResult = await db.execute({
       sql: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
     });
     const tableNames = (tablesResult.rows as { name: string }[]).map((t) => t.name);
     expect(tableNames).toContain('foo'); // First migration persisted
-    expect(tableNames).not.toContain('partial'); // Failed migration rolled back
 
-    // Migration 2 should NOT be recorded
+    // Note: The 'partial' table may exist because migrations don't auto-rollback
+    // without using batch(). This is expected for Turso HTTP compatibility.
+
+    // Failed migration should NOT be recorded in _migrations
     const recordsResult = await db.execute({
       sql: 'SELECT version, name FROM _migrations ORDER BY version',
     });

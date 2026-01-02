@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
-import { tokenStorage } from '@/lib/token';
 import { getSession } from '@/api/auth';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import {
@@ -43,16 +42,9 @@ function SharePage() {
     setSourceUrl(extractedUrl);
   }, []);
 
-  // Check authentication (supports both token and session-based auth)
+  // Check authentication via session
   useEffect(() => {
     const checkAuth = async () => {
-      // Check if we have a token (legacy auth)
-      if (tokenStorage.isConfigured()) {
-        setIsAuthenticated(true);
-        return;
-      }
-
-      // Check if we have a valid session (passkey auth)
       const sessionResult = await getSession();
       if (sessionResult.ok) {
         setIsAuthenticated(true);

@@ -1,16 +1,10 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { tokenStorage } from '@/lib/token';
 import { AppNav } from '@/components/bottom-nav';
 import { getSession } from '@/api/auth';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
-    // Check if we have a token (legacy auth)
-    if (tokenStorage.isConfigured()) {
-      return; // Token auth - let request proceed
-    }
-
-    // Check if we have a valid session (passkey auth)
+    // Check if we have a valid session
     const sessionResult = await getSession();
     if (sessionResult.ok) {
       return; // Session auth - let request proceed

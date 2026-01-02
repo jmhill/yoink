@@ -2,7 +2,6 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
-import { tokenStorage } from '@/lib/token';
 import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
 import { ArrowLeft, LogOut, Sun, Moon, Monitor, Palette, Loader2 } from 'lucide-react';
 import { SecuritySection } from '@/components/security-section';
@@ -18,8 +17,6 @@ function SettingsPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    // Clear token (if exists) and revoke session
-    tokenStorage.remove();
     await logout();
     window.location.href = '/login';
   };

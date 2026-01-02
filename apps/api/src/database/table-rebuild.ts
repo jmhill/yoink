@@ -18,18 +18,21 @@ export type RebuildTableOptions = {
  * that ALTER TABLE cannot handle (dropping columns, changing types, adding
  * NOT NULL constraints, etc.).
  *
+ * Uses db.batch() for atomic execution, which works correctly with both
+ * local SQLite and Turso HTTP connections (where raw SQL transactions
+ * don't persist across requests).
+ *
  * The process:
  * 1. Disable foreign key enforcement
- * 2. Start a transaction
- * 3. Create new table with desired schema (as tableName_new)
- * 4. Copy data from old table to new table
- * 5. Drop old table
- * 6. Rename new table to original name
- * 7. Recreate indexes
- * 8. Commit and re-enable foreign keys
+ * 2. Create new table with desired schema (as tableName_new)
+ * 3. Copy data from old table to new table
+ * 4. Drop old table
+ * 5. Rename new table to original name
+ * 6. Recreate indexes
+ * 7. Re-enable foreign keys
  *
- * If any step fails, the transaction is rolled back and the original table
- * remains unchanged.
+ * All steps (2-6) run atomically in a single batch. If any step fails,
+ * the entire batch is rolled back and the original table remains unchanged.
  *
  * @example
  * // Add NOT NULL constraint and new column
@@ -62,16 +65,8 @@ export type RebuildTableOptions = {
 export const rebuildTable = async (db: Database, options: RebuildTableOptions): Promise<void> => {
   const { tableName, newSchema, columnMapping, indexes = [] } = options;
 
-  // Check if foreign keys are currently enabled so we can restore the setting
-  const fkResult = await db.execute({ sql: 'PRAGMA foreign_keys' });
-  const fkWasEnabled = (fkResult.rows[0] as { foreign_keys: number }).foreign_keys === 1;
-
-  // Disable foreign keys during rebuild
+  // Disable foreign keys during rebuild (must be outside the batch)
   await db.execute({ sql: 'PRAGMA foreign_keys = OFF' });
-
-  // Use SAVEPOINT for nested transaction support - works whether or not we're already in a transaction
-  const savepointName = `rebuild_${tableName}_${Date.now()}`;
-  await db.execute({ sql: `SAVEPOINT ${savepointName}` });
 
   try {
     // Create new table with temporary name
@@ -80,31 +75,22 @@ export const rebuildTable = async (db: Database, options: RebuildTableOptions): 
       new RegExp(`CREATE\\s+TABLE\\s+${tableName}\\b`, 'i'),
       `CREATE TABLE ${tempTableName}`
     );
-    await db.execute({ sql: schemaWithTempName });
 
-    // Copy data from old table to new table
-    await db.execute({ sql: `INSERT INTO ${tempTableName} ${columnMapping} FROM ${tableName}` });
+    // Build batch of all rebuild operations
+    const batchQueries: { sql: string }[] = [
+      { sql: schemaWithTempName },
+      { sql: `INSERT INTO ${tempTableName} ${columnMapping} FROM ${tableName}` },
+      { sql: `DROP TABLE ${tableName}` },
+      { sql: `ALTER TABLE ${tempTableName} RENAME TO ${tableName}` },
+      ...indexes.map((indexSql) => ({ sql: indexSql })),
+    ];
 
-    // Drop old table
-    await db.execute({ sql: `DROP TABLE ${tableName}` });
-
-    // Rename new table to original name
-    await db.execute({ sql: `ALTER TABLE ${tempTableName} RENAME TO ${tableName}` });
-
-    // Recreate indexes
-    for (const indexSql of indexes) {
-      await db.execute({ sql: indexSql });
-    }
-
-    await db.execute({ sql: `RELEASE SAVEPOINT ${savepointName}` });
-  } catch (error) {
-    await db.execute({ sql: `ROLLBACK TO SAVEPOINT ${savepointName}` });
-    await db.execute({ sql: `RELEASE SAVEPOINT ${savepointName}` });
-    throw error;
+    // Execute all operations atomically
+    // db.batch() runs as a transaction, so if any statement fails,
+    // all changes are rolled back automatically
+    await db.batch(batchQueries, 'write');
   } finally {
-    // Restore foreign key setting
-    if (fkWasEnabled) {
-      await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
-    }
+    // Re-enable foreign keys
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
   }
 };

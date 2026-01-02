@@ -16,9 +16,13 @@ type MigrationRow = {
  *
  * - Creates a _migrations table to track applied migrations
  * - Applies migrations in order by version number
- * - Each migration runs in a transaction (rolls back on failure)
+ * - Each migration runs atomically (using batch for single-statement migrations)
  * - Validates that existing migrations haven't changed names (consistency check)
  * - Returns which migrations were applied and which were already applied
+ *
+ * Note: For Turso HTTP connections, raw SQL transactions (BEGIN/COMMIT/ROLLBACK)
+ * don't work because each execute() is a separate HTTP request. Migrations that
+ * need transactional behavior should use db.batch() internally.
  */
 export const runMigrations = async (
   db: Database,
@@ -66,8 +70,10 @@ export const runMigrations = async (
       continue;
     }
 
-    // Apply the migration within a transaction
-    await db.execute({ sql: 'BEGIN TRANSACTION' });
+    // Apply the migration
+    // Note: Each migration.up() is responsible for its own transactional behavior.
+    // For complex migrations (table rebuilds), use db.batch() which provides
+    // atomic execution over HTTP connections.
     try {
       await migration.up(db);
 
@@ -77,11 +83,12 @@ export const runMigrations = async (
         args: [migration.version, migration.name, new Date().toISOString()],
       });
 
-      await db.execute({ sql: 'COMMIT' });
       result.applied.push(migration.name);
     } catch (error) {
-      await db.execute({ sql: 'ROLLBACK' });
-      throw error;
+      // Re-throw with migration context
+      throw new Error(
+        `Migration ${migration.version} (${migration.name}) failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

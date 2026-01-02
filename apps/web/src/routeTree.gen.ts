@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/trash'
@@ -33,11 +32,6 @@ const ShareRoute = ShareRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfigRoute = ConfigRouteImport.update({
-  id: '/config',
-  path: '/config',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -71,7 +65,6 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/config': typeof ConfigRoute
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
@@ -82,7 +75,6 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
-  '/config': typeof ConfigRoute
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
@@ -95,7 +87,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/config': typeof ConfigRoute
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
@@ -108,7 +99,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/config'
     | '/login'
     | '/share'
     | '/signup'
@@ -119,7 +109,6 @@ export interface FileRouteTypes {
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/config'
     | '/login'
     | '/share'
     | '/signup'
@@ -131,7 +120,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
-    | '/config'
     | '/login'
     | '/share'
     | '/signup'
@@ -144,7 +132,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  ConfigRoute: typeof ConfigRoute
   LoginRoute: typeof LoginRoute
   ShareRoute: typeof ShareRoute
   SignupRoute: typeof SignupRoute
@@ -171,13 +158,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/config': {
-      id: '/config'
-      path: '/config'
-      fullPath: '/config'
-      preLoaderRoute: typeof ConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -247,7 +227,6 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
-  ConfigRoute: ConfigRoute,
   LoginRoute: LoginRoute,
   ShareRoute: ShareRoute,
   SignupRoute: SignupRoute,

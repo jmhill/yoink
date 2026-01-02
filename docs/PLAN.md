@@ -11,7 +11,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 ## Current Status
 
 **Phases 1-6: Foundation through Observability** - Complete ✓
-**Phase 7: Authentication Overhaul** - In Progress (7.0-7.7b complete, PR #11 pending merge, 7.7c next)
+**Phase 7: Authentication Overhaul** - In Progress (7.0-7.7c complete, 7.8 next)
 **Phase 8: Capture → Task Flow** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
@@ -216,14 +216,23 @@ This allows existing token-authenticated users to add passkeys without changing 
 - Signup supports `?code=` query param for direct invitation links
 - Login supports `?returnTo=` query param for post-login redirect
 
-#### 7.7c Remove Token Auth from Web App (Deploy Third)
+#### 7.7c Remove Token Auth from Web App (Deploy Third) - Complete ✓
 **Prerequisite**: 7.7a and 7.7b complete, existing users have migrated to passkeys
 
-- [ ] Remove `/config` page entirely
-- [ ] Remove `tokenStorage` utility from codebase
-- [ ] Update API client to rely on session cookies only (no Bearer token header)
-- [ ] Update error handling: 401 → redirect to `/login`
-- [ ] Clean up any remaining token-related code
+- [x] Remove `/config` page entirely
+- [x] Remove `tokenStorage` utility from codebase
+- [x] Update API client to rely on session cookies only (no Bearer token header)
+- [x] Update error handling: 401 → redirect to `/login`
+- [x] Clean up any remaining token-related code
+
+**Files Modified:**
+- Deleted `apps/web/src/routes/config.tsx`
+- Deleted `apps/web/src/lib/token.ts`
+- Updated `apps/web/src/api/client.ts` - Removed token handling
+- Updated `apps/web/src/api/passkey.ts` - Removed token handling
+- Updated `apps/web/src/routes/_authenticated.tsx` - Removed token check
+- Updated `apps/web/src/routes/share.tsx` - Removed token check
+- Updated `apps/web/src/routes/_authenticated/settings.tsx` - Removed tokenStorage.remove()
 
 ### 7.8 Settings & Organization Management
 - [ ] Organizations section in Settings: list memberships with current org indicator
@@ -438,25 +447,21 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: PR #11 Review → Phase 7.7c
+### Current Focus: Phase 7.8 Settings & Organization Management
 
-**Immediate**: Merge PR #11 (Enable Playwright E2E tests with passkey authentication)
+**Completed**: Phase 7.7c (Remove Token Auth from Web App)
 
-PR #11 fixes multiple issues preventing E2E tests from working with passkey-based authentication. All 157 acceptance tests now pass with both HTTP and Playwright drivers. See PR for details.
+The web app now uses session-based authentication exclusively. Token-based auth has been fully removed:
+- Deleted `/config` page and `tokenStorage` utility
+- Updated API client to use session cookies only
+- All auth checks now use `getSession()` API
 
-**After PR #11 merges**: Phase 7.7c (Remove Token Auth from Web App)
+**Next Steps**: Phase 7.8 (Settings & Organization Management)
 
-1. **Remove `/config` page** entirely
-2. **Remove `tokenStorage` utility** from codebase
-3. **Update API client** to rely on session cookies only (no Bearer token header)
-4. **Clean up remaining token-related code**
+1. **Organizations section in Settings**: List user's organization memberships with current org indicator
+2. **Switch organization functionality**: Update session's `currentOrganizationId`
+3. **Leave organization**: With guards (cannot leave personal org, cannot leave as last admin)
 
-Key files to modify:
-- `apps/web/src/routes/config.tsx` - Delete this file
-- `apps/web/src/lib/token.ts` - Delete this file
-- `apps/web/src/api/client.ts` - Remove token handling
-- `apps/web/src/routes/_authenticated.tsx` - Remove token check
-
-**Note**: Ensure existing users have registered passkeys before deploying this change.
+**Note**: API tokens remain valid for extension/CLI use. Only the web app uses session-based auth now.
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.

@@ -9,6 +9,7 @@ import { createHttpAdmin } from './drivers/http/admin.js';
 import { createHttpActor } from './drivers/http/actor.js';
 import { getTestConfig } from './config.js';
 import type { CoreActor, BrowserActor, AnonymousActor, Admin, Health } from './dsl/index.js';
+import { UnsupportedOperationError } from './dsl/index.js';
 
 /**
  * Credentials for creating an actor with a specific token.
@@ -78,6 +79,19 @@ export type PlaywrightContext = Omit<BaseContext, 'createActor'> & {
    * Create an authenticated actor with browser capabilities.
    */
   createActor: (email: string) => Promise<BrowserActor>;
+
+  /**
+   * Create an actor by accepting an invitation code.
+   * Used for testing multi-org scenarios where a user joins an existing org.
+   */
+  createActorWithInvitation: (invitationCode: string, email: string) => Promise<BrowserActor>;
+
+  /**
+   * Create an actor with specific pre-existing credentials.
+   * In Playwright driver, this returns a BrowserActor for type compatibility in tests.
+   * Used for testing UnsupportedOperationError scenarios.
+   */
+  createActorWithCredentials: (credentials: ActorCredentials) => BrowserActor;
 };
 
 /**
@@ -122,6 +136,19 @@ const createPlaywrightContext = (driver: Driver): PlaywrightContext => ({
   health: driver.health,
   createActor: (email: string) => driver.createActor(email) as Promise<BrowserActor>,
   createAnonymousActor: () => driver.createAnonymousActor(),
+  createActorWithInvitation: (invitationCode: string, email: string) => {
+    if (!driver.createActorWithInvitation) {
+      throw new UnsupportedOperationError('createActorWithInvitation', 'playwright');
+    }
+    return driver.createActorWithInvitation(invitationCode, email) as Promise<BrowserActor>;
+  },
+  createActorWithCredentials: (credentials: ActorCredentials) => {
+    // For Playwright, we return a BrowserActor that throws UnsupportedOperationError
+    // for browser-specific operations. This is used for testing that operations
+    // properly throw UnsupportedOperationError when called via HTTP driver type tests.
+    const httpClient = createHttpClient(getTestConfig().baseUrl);
+    return createHttpActor(httpClient, credentials) as unknown as BrowserActor;
+  },
 });
 
 /**
@@ -217,9 +244,12 @@ export function usingDrivers(
     // Setup and teardown for this driver
     vitestBeforeAll(async () => {
       await driver.setup();
+      // Login admin for actor creation (orgs, invitations, tokens)
+      await driver.admin.login();
     });
 
     vitestAfterAll(async () => {
+      await driver.admin.logout();
       await driver.teardown();
     });
 

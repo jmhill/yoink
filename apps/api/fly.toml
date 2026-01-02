@@ -28,7 +28,7 @@ primary_region = 'iad'
   internal_port = 3000
   force_https = true
   # Keep at least one machine running to avoid cold start delays.
-  auto_stop_machines = 'stop'
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 1
   processes = ['app']

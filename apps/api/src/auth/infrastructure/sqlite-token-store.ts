@@ -7,6 +7,7 @@ import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors
 type TokenRow = {
   id: string;
   user_id: string;
+  organization_id: string;
   token_hash: string;
   name: string;
   last_used_at: string | null;
@@ -16,6 +17,7 @@ type TokenRow = {
 const rowToToken = (row: TokenRow): ApiToken => ({
   id: row.id,
   userId: row.user_id,
+  organizationId: row.organization_id,
   tokenHash: row.token_hash,
   name: row.name,
   lastUsedAt: row.last_used_at ?? undefined,
@@ -46,12 +48,13 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            INSERT INTO api_tokens (id, user_id, token_hash, name, last_used_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO api_tokens (id, user_id, organization_id, token_hash, name, last_used_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
             token.id,
             token.userId,
+            token.organizationId,
             token.tokenHash,
             token.name,
             token.lastUsedAt ?? null,
@@ -82,6 +85,19 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
           args: [userId],
         }),
         (error) => tokenStorageError('Failed to find tokens by user', error)
+      ).map((result) => {
+        const rows = result.rows as TokenRow[];
+        return rows.map(rowToToken);
+      });
+    },
+
+    findByOrganizationId: (organizationId: string): ResultAsync<ApiToken[], TokenStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM api_tokens WHERE organization_id = ? ORDER BY created_at DESC`,
+          args: [organizationId],
+        }),
+        (error) => tokenStorageError('Failed to find tokens by organization', error)
       ).map((result) => {
         const rows = result.rows as TokenRow[];
         return rows.map(rowToToken);

@@ -39,6 +39,14 @@ export const createFakeTokenStore = (
       return okAsync(found);
     },
 
+    findByOrganizationId: (organizationId: string): ResultAsync<ApiToken[], TokenStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(tokenStorageError('Find failed'));
+      }
+      const found = tokens.filter((t) => t.organizationId === organizationId);
+      return okAsync(found);
+    },
+
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Update failed'));

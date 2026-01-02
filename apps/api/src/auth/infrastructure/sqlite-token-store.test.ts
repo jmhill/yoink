@@ -22,6 +22,7 @@ const TEST_USER = {
 const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
   id: '550e8400-e29b-41d4-a716-446655440003',
   userId: TEST_USER.id,
+  organizationId: TEST_ORG.id,
   tokenHash: 'bcrypt-hash-here',
   name: 'default-token',
   createdAt: '2024-01-01T00:00:00.000Z',

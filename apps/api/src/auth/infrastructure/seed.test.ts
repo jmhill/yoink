@@ -135,6 +135,7 @@ describe('seedAuthData', () => {
 
     expect(savedTokens).toHaveLength(1);
     expect(savedTokens[0].userId).toBe(savedUsers[0].id);
+    expect(savedTokens[0].organizationId).toBe(savedOrgs[0].id);
     expect(savedTokens[0].tokenHash).toBe('fake-hash:my-seed-token');
     expect(savedTokens[0].name).toBe('seed-token');
 
@@ -174,6 +175,7 @@ describe('seedAuthData', () => {
     const existingToken: ApiToken = {
       id: 'existing-token',
       userId: 'existing-user',
+      organizationId: 'existing-org',
       tokenHash: 'hash',
       name: 'existing',
       createdAt: '2024-01-01T00:00:00.000Z',

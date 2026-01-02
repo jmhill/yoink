@@ -104,6 +104,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> 
   const saveTokenResult = await tokenStore.save({
     id: tokenId,
     userId: SEED_USER_ID,
+    organizationId: SEED_ORG_ID,
     tokenHash,
     name: 'seed-token',
     createdAt: now,

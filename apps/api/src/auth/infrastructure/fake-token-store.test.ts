@@ -5,6 +5,7 @@ import type { ApiToken } from '../domain/api-token.js';
 const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
   id: 'token-123',
   userId: 'user-456',
+  organizationId: 'org-789',
   tokenHash: 'hashed-secret',
   name: 'test-token',
   createdAt: '2024-01-01T00:00:00.000Z',

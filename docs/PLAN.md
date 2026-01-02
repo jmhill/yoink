@@ -13,6 +13,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 **Phases 1-6: Foundation through Observability** - Complete ✓
 **Phase 7: Authentication Overhaul** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓
+**Invitation Flow Improvements** - Complete ✓
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
 
@@ -428,8 +429,8 @@ application/      # HTTP layer
 See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 
 **Quick Reference:**
-- 440+ unit tests (apps/api, packages/*)
-- 185 acceptance tests (HTTP + Playwright drivers)
+- 500+ unit tests (apps/api, packages/*)
+- 197 acceptance tests (HTTP + Playwright drivers)
 - `pnpm quality` - Unit tests, type checking, builds
 - `pnpm e2e:test` - Acceptance tests against Docker container
 
@@ -565,6 +566,12 @@ When resuming work on this project:
 - `apps/web/src/components/tokens-section.tsx` - UI component
 - `apps/web/src/api/tokens.ts` - API client
 - `packages/acceptance-tests/src/use-cases/managing-tokens.test.ts` - Acceptance tests
+
+**Recent Improvements:**
+- Invitation flow for authenticated users - existing users can accept invites without re-signup
+- Workspace indicator in header - always shows current organization name
+- Organizations section moved from Organization tab to User tab in settings
+- Improved test reporter - default Vitest reporter locally, markdown table in CI
 
 **Next up (Phase 9 - Folders + Notes):**
 See Phase 9 section above for planned features.

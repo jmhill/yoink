@@ -122,6 +122,9 @@ function SettingsPage() {
 
           <SecuritySection />
 
+          {/* Organizations - user's memberships across all orgs */}
+          <OrganizationsSection />
+
           <Card>
             <CardHeader>
               <CardTitle>Account</CardTitle>
@@ -191,9 +194,6 @@ function SettingsPage() {
 
               {/* API Tokens - user can manage their own */}
               <TokensSection />
-
-              {/* Organizations list - switch/leave */}
-              <OrganizationsSection />
             </>
           )}
 

@@ -489,6 +489,10 @@ export const createHttpActor = (
     async revokeInvitation(_invitationId: string): Promise<void> {
       throw new UnsupportedOperationError('revokeInvitation', 'http');
     },
+
+    async acceptInvitation(_code: string): Promise<{ organizationId: string; organizationName: string; role: 'admin' | 'member' }> {
+      throw new UnsupportedOperationError('acceptInvitation', 'http');
+    },
   };
 };
 

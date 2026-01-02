@@ -133,3 +133,9 @@ export type HealthStatus = {
   status: 'healthy' | 'unhealthy';
   database: 'connected' | 'disconnected';
 };
+
+export type AcceptInvitationResult = {
+  organizationId: string;
+  organizationName: string;
+  role: 'admin' | 'member';
+};

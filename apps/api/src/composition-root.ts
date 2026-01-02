@@ -25,6 +25,7 @@ import { createSqliteOrganizationStore } from './organizations/infrastructure/sq
 import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
 import { createSqliteInvitationStore } from './organizations/infrastructure/sqlite-invitation-store.js';
 import { createInvitationService } from './organizations/domain/invitation-service.js';
+import { createOrganizationService } from './organizations/domain/organization-service.js';
 import { createSqliteUserStore } from './users/infrastructure/sqlite-user-store.js';
 import { createUserService } from './users/domain/user-service.js';
 import { createMembershipService } from './organizations/domain/membership-service.js';
@@ -153,6 +154,13 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const membershipService = createMembershipService({
     membershipStore,
     userService,
+    organizationStore,
+    clock,
+    idGenerator,
+  });
+
+  // OrganizationService - manages organization CRUD
+  const organizationService = createOrganizationService({
     organizationStore,
     clock,
     idGenerator,
@@ -289,6 +297,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     healthChecker,
     invitationService,
     membershipService,
+    organizationService,
     organizationStore,
     signup: signupConfig,
     admin,

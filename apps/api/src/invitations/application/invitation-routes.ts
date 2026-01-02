@@ -3,11 +3,13 @@ import { initServer } from '@ts-rest/fastify';
 import { invitationContract } from '@yoink/api-contracts';
 import type { InvitationService } from '../../organizations/domain/invitation-service.js';
 import type { MembershipService } from '../../organizations/domain/membership-service.js';
+import type { OrganizationService } from '../../organizations/domain/organization-service.js';
 import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;
   membershipService: MembershipService;
+  organizationService: OrganizationService;
   authMiddleware: AuthMiddleware;
 };
 
@@ -20,7 +22,7 @@ export const registerInvitationRoutes = async (
   app: FastifyInstance,
   deps: InvitationRoutesDependencies
 ) => {
-  const { invitationService, membershipService, authMiddleware } = deps;
+  const { invitationService, membershipService, organizationService, authMiddleware } = deps;
   const s = initServer();
 
   // Register all invitation routes
@@ -73,9 +75,18 @@ export const registerInvitationRoutes = async (
 
         const invitation = result.value;
 
+        // Fetch organization name to include in response for display
+        const orgResult = await organizationService.getOrganization(invitation.organizationId);
+        const organizationName = orgResult.isOk() && orgResult.value
+          ? orgResult.value.name
+          : undefined;
+
         return {
           status: 200 as const,
-          body: invitation,
+          body: {
+            ...invitation,
+            organizationName,
+          },
         };
       },
 

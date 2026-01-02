@@ -12,6 +12,7 @@ import type {
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
   CreateInvitationInput,
+  AcceptInvitationResult,
 } from './types.js';
 
 /**
@@ -237,6 +238,16 @@ export type BrowserActorOperations = {
    * @throws NotFoundError if invitation does not exist
    */
   revokeInvitation(invitationId: string): Promise<void>;
+
+  /**
+   * Accept an invitation to join an organization.
+   * Used by existing authenticated users to join a new organization.
+   * Automatically switches to the new organization after accepting.
+   * @throws NotFoundError if invitation does not exist
+   * @throws AlreadyMemberError if user is already a member of the organization
+   * @throws ValidationError if invitation is expired or already used
+   */
+  acceptInvitation(code: string): Promise<AcceptInvitationResult>;
 };
 
 /**

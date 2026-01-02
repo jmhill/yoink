@@ -15,6 +15,7 @@ export type {
   ProcessCaptureToTaskInput,
   CreateTokenResult,
   CreateInvitationInput,
+  AcceptInvitationResult,
   HealthStatus,
 } from './types.js';
 
@@ -33,6 +34,7 @@ export {
   ForbiddenError,
   CannotRemoveSelfError,
   TokenLimitReachedError,
+  AlreadyMemberError,
 } from './errors.js';
 
 // Interfaces

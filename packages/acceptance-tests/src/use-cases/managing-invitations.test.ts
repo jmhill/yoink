@@ -169,6 +169,51 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const pendingAfter = await owner.listPendingInvitations();
       expect(pendingAfter.some((i) => i.id === invitation.id)).toBe(false);
     });
+
+    it('existing user can accept invitation to join organization', async () => {
+      // Create an existing user (they get their own personal org)
+      const existingUser = await ctx.createActor('existing-user@example.com');
+      const originalOrgId = existingUser.organizationId;
+
+      // Create a target org with an invitation
+      const targetOrg = await ctx.admin.createOrganization('Target Org');
+      const invitation = await ctx.admin.createInvitation(targetOrg.id, { role: 'member' });
+
+      // Existing user accepts the invitation
+      const result = await existingUser.acceptInvitation(invitation.code);
+
+      // User should now be a member of the new org
+      expect(result.organizationId).toBe(targetOrg.id);
+      expect(result.organizationName).toBe('Target Org');
+      expect(result.role).toBe('member');
+
+      // Verify session was updated to use new org
+      const session = await existingUser.getSessionInfo();
+      expect(session.organizationId).toBe(targetOrg.id);
+      expect(session.organizations.some((o) => o.id === targetOrg.id)).toBe(true);
+      expect(session.organizations.some((o) => o.id === originalOrgId)).toBe(true);
+    });
+
+    it('accepting invitation fails if already a member', async () => {
+      // Create an org and add a user
+      const org = await ctx.admin.createOrganization('Already Member Org');
+      const memberInvite = await ctx.admin.createInvitation(org.id, { role: 'member' });
+      const member = await ctx.createActorWithInvitation(memberInvite.code, 'already-member@example.com');
+
+      // Create another invitation to the same org
+      const secondInvite = await ctx.admin.createInvitation(org.id, { role: 'admin' });
+
+      // User tries to accept second invitation to org they're already in
+      // Should get AlreadyMemberError
+      await expect(member.acceptInvitation(secondInvite.code)).rejects.toThrow('Already a member');
+    });
+
+    it('accepting invitation fails for expired invitation', async () => {
+      const existingUser = await ctx.createActor('expired-invite@example.com');
+
+      // Use a code that looks valid but doesn't exist or is expired
+      await expect(existingUser.acceptInvitation('EXPIRED1')).rejects.toThrow();
+    });
   });
 });
 

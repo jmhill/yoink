@@ -9,6 +9,7 @@ import type {
   PasskeyCredentialInfo,
   Member,
   Invitation,
+  AcceptInvitationResult,
   CreateCaptureInput,
   UpdateCaptureInput,
   CreateTaskInput,
@@ -27,6 +28,7 @@ import {
   ForbiddenError,
   CannotRemoveSelfError,
   TokenLimitReachedError,
+  AlreadyMemberError,
 } from '../../dsl/index.js';
 import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
@@ -763,6 +765,92 @@ export const createPlaywrightActor = (
       if (!response.ok()) {
         throw new Error(`Failed to revoke invitation: ${response.status()}`);
       }
+    },
+
+    async acceptInvitation(code: string): Promise<AcceptInvitationResult> {
+      // Navigate to the join page which will handle the acceptance flow
+      await page.goto(`/join/${code}`);
+
+      // Wait for the page to settle into one of the expected states:
+      // 1. Error message (invitation invalid, already member, etc.)
+      // 2. Join confirmation UI (with Join button)
+      // 3. Redirect to signup (for unauthenticated users)
+      
+      const errorElement = page.locator('[data-testid="invitation-error"]');
+      const orgNameElement = page.locator('[data-testid="invitation-org-name"]');
+      const joinButton = page.getByRole('button', { name: /join/i });
+
+      // Wait for either error, confirmation UI, or signup redirect
+      try {
+        await Promise.race([
+          errorElement.waitFor({ state: 'visible', timeout: 15000 }),
+          orgNameElement.waitFor({ state: 'visible', timeout: 15000 }),
+          page.waitForURL(/\/signup/, { timeout: 15000 }),
+        ]);
+      } catch {
+        throw new Error(`Timeout waiting for join page to load. Current URL: ${page.url()}`);
+      }
+
+      // Check if we got redirected to signup (shouldn't happen for authenticated users)
+      if (page.url().includes('/signup')) {
+        throw new Error('Unexpected redirect to signup - user may not be authenticated');
+      }
+
+      // Check for error state (validation failed before showing confirmation)
+      if (await errorElement.isVisible()) {
+        const errorText = await errorElement.textContent();
+        if (errorText?.includes('Already a member')) {
+          throw new AlreadyMemberError();
+        }
+        if (errorText?.includes('not found') || errorText?.includes('Not found')) {
+          throw new NotFoundError('Invitation', code);
+        }
+        if (errorText?.includes('expired') || errorText?.includes('already been used')) {
+          throw new ValidationError(errorText || 'Invitation expired or already used');
+        }
+        throw new Error(errorText || 'Failed to accept invitation');
+      }
+
+      // We should be in confirmation state - get org info
+      const organizationName = await orgNameElement.textContent() || '';
+      const roleElement = page.locator('[data-testid="invitation-role"]');
+      const roleText = await roleElement.textContent() || 'member';
+      const role = roleText.toLowerCase().includes('admin') ? 'admin' : 'member';
+
+      // Click join
+      await joinButton.click();
+
+      // Wait for either success (redirect to home) or error state
+      try {
+        await Promise.race([
+          page.waitForURL('/', { timeout: 10000 }),
+          errorElement.waitFor({ state: 'visible', timeout: 10000 }),
+        ]);
+      } catch {
+        throw new Error('Timeout waiting for join result');
+      }
+
+      // Check if we got an error after clicking join
+      if (await errorElement.isVisible()) {
+        const errorText = await errorElement.textContent();
+        if (errorText?.includes('Already a member')) {
+          throw new AlreadyMemberError();
+        }
+        throw new Error(errorText || 'Failed to accept invitation');
+      }
+
+      // Get session info to confirm the switch
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+
+      return {
+        organizationId: sessionData.organizationId,
+        organizationName: organizationName.trim(),
+        role: role as 'admin' | 'member',
+      };
     },
   };
 };

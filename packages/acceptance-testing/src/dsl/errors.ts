@@ -128,3 +128,12 @@ export class TokenLimitReachedError extends DslError {
     super(`You can have at most ${limit} API tokens per organization`);
   }
 }
+
+/**
+ * Thrown when a user is already a member of the organization they are trying to join.
+ */
+export class AlreadyMemberError extends DslError {
+  constructor(organizationId?: string) {
+    super(organizationId ? `Already a member of organization: ${organizationId}` : 'Already a member');
+  }
+}

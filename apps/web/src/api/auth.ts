@@ -221,6 +221,48 @@ export const validateInvitation = async (
 };
 
 /**
+ * Accept an invitation (for existing authenticated users).
+ * This adds the user to the organization and returns the accepted invitation info.
+ */
+export const acceptInvitation = async (
+  code: string
+): Promise<
+  ApiResponse<{
+    id: string;
+    organizationId: string;
+    organizationName: string;
+    role: 'admin' | 'member';
+  }>
+> => {
+  const response = await fetch('/api/invitations/accept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      return { ok: false, error: 'Not authenticated' };
+    }
+    if (response.status === 404) {
+      return { ok: false, error: 'Invitation not found' };
+    }
+    if (response.status === 409) {
+      return { ok: false, error: 'Already a member of this organization' };
+    }
+    if (response.status === 410) {
+      return { ok: false, error: 'Invitation has expired or already been used' };
+    }
+    return { ok: false, error: body.message || 'Failed to accept invitation' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
+/**
  * Get signup options from server (for passkey registration during signup).
  */
 const getSignupOptions = async (options: {

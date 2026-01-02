@@ -7,9 +7,11 @@ export default defineConfig({
     // Playwright tests require significant setup time (org creation, invitation,
     // passkey signup flow ~2-3s per actor). 30s timeout accommodates this.
     testTimeout: 30000,
+    // CI: Use verbose output + github-actions annotations + markdown table for PR summary
+    // Local: Use default reporter + JSON for easy failure analysis
     reporters: process.env.CI
       ? ['verbose', 'json', 'github-actions', new MultiDriverReporter()]
-      : ['verbose', new MultiDriverReporter()],
+      : ['default', 'json'],
     outputFile: {
       json: './test-results.json',
     },

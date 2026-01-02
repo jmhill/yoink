@@ -1,10 +1,8 @@
 #!/bin/sh
 set -e
 
-# Run migrations before starting the app
-# With Turso, migrations run against the remote database
-echo "Running database migrations..."
-node dist/migrate.js
+# Migrations are run via Fly.io release_command (see fly.toml)
+# This ensures they run exactly once per deploy, before any machines are updated.
 
 # Start the application
 echo "Starting application..."

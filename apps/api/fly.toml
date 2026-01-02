@@ -13,6 +13,10 @@ primary_region = 'iad'
   # More reliable than bluegreen for single-machine setups.
   # When scaling to multiple regions later, consider switching to bluegreen.
   strategy = "rolling"
+  # Run migrations once per deploy, before updating any machines.
+  # This prevents migration failures from leaving the app in a broken state.
+  # The release command runs in a temporary VM that is destroyed after completion.
+  release_command = "node dist/migrate.js"
 
 [env]
   NODE_ENV = "production"

@@ -7,8 +7,15 @@ import { UnauthorizedError, NotFoundError, TokenLimitReachedError } from '@yoink
  * Users can create, list, and revoke their own API tokens.
  * Tokens are scoped to organizations (one user can have different tokens per org).
  * Maximum 2 tokens per user per organization.
+ *
+ * NOTE: The HTTP driver creates actors with a bootstrap token (named 'test-token')
+ * for API authentication. This token counts toward the 2-token limit, so actors
+ * start with 1 token already.
  */
 usingDrivers(['http'] as const, (ctx) => {
+  // The HTTP driver creates a 'test-token' for each actor during setup
+  const BOOTSTRAP_TOKEN_NAME = 'test-token';
+
   describe(`Managing API tokens [${ctx.driverName}]`, () => {
     beforeAll(async () => {
       await ctx.admin.login();
@@ -19,12 +26,14 @@ usingDrivers(['http'] as const, (ctx) => {
     });
 
     describe('listing tokens', () => {
-      it('returns empty list for user with no tokens', async () => {
+      it('lists the bootstrap token for a new actor', async () => {
         const alice = await ctx.createActor('alice-token-list@example.com');
 
         const tokens = await alice.listTokens();
 
-        expect(tokens).toEqual([]);
+        // HTTP driver actors start with 1 token (used for API auth)
+        expect(tokens).toHaveLength(1);
+        expect(tokens[0].name).toBe(BOOTSTRAP_TOKEN_NAME);
       });
 
       it('requires authentication to list tokens', async () => {
@@ -49,24 +58,25 @@ usingDrivers(['http'] as const, (ctx) => {
         expect(result.rawToken).toMatch(/^[^:]+:[^:]+$/); // tokenId:secret format
       });
 
-      it('lists the created token', async () => {
+      it('lists the created token alongside the bootstrap token', async () => {
         const carol = await ctx.createActor('carol-token-list@example.com');
 
         await carol.createToken('My CLI Token');
 
         const tokens = await carol.listTokens();
-        expect(tokens).toHaveLength(1);
-        expect(tokens[0].name).toBe('My CLI Token');
+        // Bootstrap token + newly created token
+        expect(tokens).toHaveLength(2);
+        expect(tokens.map((t) => t.name)).toContain('My CLI Token');
+        expect(tokens.map((t) => t.name)).toContain(BOOTSTRAP_TOKEN_NAME);
       });
 
       it('enforces the 2-token limit per user per org', async () => {
         const dave = await ctx.createActor('dave-token-limit@example.com');
 
-        // Create 2 tokens (the limit)
-        await dave.createToken('Token 1');
+        // Dave already has 1 token (bootstrap), can create 1 more
         await dave.createToken('Token 2');
 
-        // Third token should fail
+        // Third token should fail (bootstrap + Token 2 = 2, at limit)
         await expect(dave.createToken('Token 3')).rejects.toThrow(TokenLimitReachedError);
       });
 
@@ -86,15 +96,16 @@ usingDrivers(['http'] as const, (ctx) => {
       it('revokes a token owned by the user', async () => {
         const eve = await ctx.createActor('eve-token-revoke@example.com');
 
-        // Create a token
+        // Create a token (eve now has 2: bootstrap + this one)
         const result = await eve.createToken('Token to revoke');
 
-        // Revoke it
+        // Revoke the newly created token
         await eve.revokeToken(result.token.id);
 
-        // Verify it's gone
+        // Verify only the bootstrap token remains
         const tokens = await eve.listTokens();
-        expect(tokens).toEqual([]);
+        expect(tokens).toHaveLength(1);
+        expect(tokens[0].name).toBe(BOOTSTRAP_TOKEN_NAME);
       });
 
       it('returns not found for non-existent token', async () => {

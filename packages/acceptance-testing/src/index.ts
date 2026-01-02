@@ -23,6 +23,7 @@ export {
   NotMemberError,
   ForbiddenError,
   CannotRemoveSelfError,
+  TokenLimitReachedError,
 } from './dsl/index.js';
 
 export type {

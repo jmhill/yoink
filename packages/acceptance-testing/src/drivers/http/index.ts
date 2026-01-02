@@ -32,7 +32,7 @@ export const createHttpDriver = (config: DriverConfig): Driver => {
       try {
         const org = await admin.createOrganization(orgName);
         const user = await admin.createUser(org.id, uniqueEmail);
-        const { rawToken } = await admin.createToken(user.id, 'test-token');
+        const { rawToken } = await admin.createToken(org.id, user.id, 'test-token');
 
         return createHttpActor(client, {
           email,

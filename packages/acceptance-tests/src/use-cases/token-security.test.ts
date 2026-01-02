@@ -19,7 +19,7 @@ usingDrivers(['http'] as const, (ctx) => {
       // Setup: Create org, user, and token
       const org = await ctx.admin.createOrganization(`revoke-test-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `revoke-user-${Date.now()}@example.com`);
-      const { rawToken, token } = await ctx.admin.createToken(user.id, 'to-be-revoked');
+      const { rawToken, token } = await ctx.admin.createToken(org.id, user.id, 'to-be-revoked');
 
       // Create actor with the token
       const actor = ctx.createActorWithCredentials({

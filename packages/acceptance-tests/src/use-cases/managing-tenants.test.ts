@@ -78,7 +78,6 @@ usingDrivers(['http'] as const, (ctx) => {
       const user = await ctx.admin.createUser(org.id, email);
 
       expect(user.email).toBe(email);
-      expect(user.organizationId).toBe(org.id);
       expect(user.id).toBeDefined();
       expect(user.createdAt).toBeDefined();
     });
@@ -108,7 +107,7 @@ usingDrivers(['http'] as const, (ctx) => {
       const org = await ctx.admin.createOrganization(`token-test-org-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `token-user-${Date.now()}@example.com`);
 
-      const result = await ctx.admin.createToken(user.id, 'my-laptop');
+      const result = await ctx.admin.createToken(org.id, user.id, 'my-laptop');
 
       expect(result.token.name).toBe('my-laptop');
       expect(result.token.userId).toBe(user.id);
@@ -119,9 +118,9 @@ usingDrivers(['http'] as const, (ctx) => {
     it('can list tokens for a user', async () => {
       const org = await ctx.admin.createOrganization(`list-tokens-org-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `list-tokens-user-${Date.now()}@example.com`);
-      const created = await ctx.admin.createToken(user.id, 'test-device');
+      const created = await ctx.admin.createToken(org.id, user.id, 'test-device');
 
-      const tokens = await ctx.admin.listTokens(user.id);
+      const tokens = await ctx.admin.listTokens(org.id, user.id);
 
       expect(tokens).toContainEqual(
         expect.objectContaining({ id: created.token.id })
@@ -131,11 +130,11 @@ usingDrivers(['http'] as const, (ctx) => {
     it('can revoke a token', async () => {
       const org = await ctx.admin.createOrganization(`revoke-token-org-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `revoke-token-user-${Date.now()}@example.com`);
-      const created = await ctx.admin.createToken(user.id, 'to-revoke');
+      const created = await ctx.admin.createToken(org.id, user.id, 'to-revoke');
 
       await ctx.admin.revokeToken(created.token.id);
 
-      const tokens = await ctx.admin.listTokens(user.id);
+      const tokens = await ctx.admin.listTokens(org.id, user.id);
       expect(tokens).not.toContainEqual(
         expect.objectContaining({ id: created.token.id })
       );
@@ -145,7 +144,7 @@ usingDrivers(['http'] as const, (ctx) => {
       // This is an integration test that verifies the full flow works
       const org = await ctx.admin.createOrganization(`e2e-org-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `e2e-user-${Date.now()}@example.com`);
-      const { rawToken } = await ctx.admin.createToken(user.id, 'e2e-token');
+      const { rawToken } = await ctx.admin.createToken(org.id, user.id, 'e2e-token');
 
       // We need to test this via the actor, but we're in admin context here
       // This test is covered by the capturing-notes tests where we create actors

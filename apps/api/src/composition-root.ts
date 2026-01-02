@@ -279,6 +279,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     healthChecker,
     invitationService,
     membershipService,
+    organizationStore,
     signup: signupConfig,
     admin,
     rateLimit: config.rateLimit,

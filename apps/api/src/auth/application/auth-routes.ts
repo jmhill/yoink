@@ -6,6 +6,8 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { UserService } from '../../users/domain/user-service.js';
+import type { MembershipService } from '../../organizations/domain/membership-service.js';
+import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -17,6 +19,8 @@ export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
   sessionService: SessionService;
   userService: UserService;
+  membershipService: MembershipService;
+  organizationStore: OrganizationStore;
   tokenService?: TokenService;
   sessionCookieName: string;
   cookieOptions: {
@@ -44,7 +48,7 @@ export const registerAuthRoutes = async (
   deps: AuthRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { passkeyService, sessionService, userService, tokenService, sessionCookieName, cookieOptions } = deps;
+  const { passkeyService, sessionService, userService, membershipService, organizationStore, tokenService, sessionCookieName, cookieOptions } = deps;
   const s = initServer();
 
   // Create combined auth middleware if tokenService is provided
@@ -224,6 +228,31 @@ export const registerAuthRoutes = async (
 
         const user = userResult.value;
 
+        // Get user's memberships
+        const membershipsResult = await membershipService.listMemberships({ userId });
+        if (membershipsResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to get memberships' },
+          };
+        }
+
+        const memberships = membershipsResult.value;
+
+        // Fetch organization details for each membership
+        const organizations = await Promise.all(
+          memberships.map(async (membership) => {
+            const orgResult = await organizationStore.findById(membership.organizationId);
+            const org = orgResult.isOk() ? orgResult.value : null;
+            return {
+              id: membership.organizationId,
+              name: org?.name ?? 'Unknown Organization',
+              isPersonal: membership.isPersonalOrg,
+              role: membership.role,
+            };
+          })
+        );
+
         return {
           status: 200 as const,
           body: {
@@ -232,6 +261,7 @@ export const registerAuthRoutes = async (
               email: user.email,
             },
             organizationId,
+            organizations,
           },
         };
       },

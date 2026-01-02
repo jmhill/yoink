@@ -71,6 +71,18 @@ export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
 // ============================================================================
 
 /**
+ * Organization membership info returned in session.
+ */
+export const SessionOrganizationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  isPersonal: z.boolean(),
+  role: z.enum(['owner', 'admin', 'member']),
+});
+
+export type SessionOrganization = z.infer<typeof SessionOrganizationSchema>;
+
+/**
  * Response containing current session information.
  */
 export const SessionInfoResponseSchema = z.object({
@@ -79,6 +91,7 @@ export const SessionInfoResponseSchema = z.object({
     email: z.string().email(),
   }),
   organizationId: z.string(),
+  organizations: z.array(SessionOrganizationSchema),
 });
 
 export type SessionInfoResponse = z.infer<typeof SessionInfoResponseSchema>;

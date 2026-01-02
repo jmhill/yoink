@@ -22,6 +22,7 @@ import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.j
 import { createLoggerOptions } from './logging/index.js';
 import type { InvitationService } from './organizations/domain/invitation-service.js';
 import type { MembershipService } from './organizations/domain/membership-service.js';
+import type { OrganizationStore } from './organizations/domain/organization-store.js';
 import type { SignupService } from './auth/domain/signup-service.js';
 import type { PasskeyService } from './auth/domain/passkey-service.js';
 import type { SessionService } from './auth/domain/session-service.js';
@@ -55,6 +56,7 @@ export type AppDependencies = {
   healthChecker: HealthChecker;
   invitationService: InvitationService;
   membershipService: MembershipService;
+  organizationStore: OrganizationStore;
   signup?: SignupConfig;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
@@ -157,6 +159,8 @@ export const createApp = async (deps: AppDependencies) => {
       passkeyService: deps.signup.passkeyService,
       sessionService: deps.signup.sessionService,
       userService: deps.signup.userService,
+      membershipService: deps.membershipService,
+      organizationStore: deps.organizationStore,
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,

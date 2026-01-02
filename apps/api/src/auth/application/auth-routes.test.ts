@@ -158,6 +158,8 @@ describe('auth routes', () => {
       passkeyService,
       sessionService,
       userService,
+      membershipService,
+      organizationStore,
       sessionCookieName: USER_SESSION_COOKIE,
       cookieOptions: {
         httpOnly: true,

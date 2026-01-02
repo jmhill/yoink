@@ -14,6 +14,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/trash'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
@@ -42,6 +43,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTrashRoute = AuthenticatedTrashRouteImport.update({
   id: '/trash',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/trash': typeof AuthenticatedTrashRoute
+  '/join/$code': typeof JoinCodeRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/trash': typeof AuthenticatedTrashRoute
+  '/join/$code': typeof JoinCodeRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/trash': typeof AuthenticatedTrashRoute
+  '/join/$code': typeof JoinCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/snoozed'
     | '/tasks'
     | '/trash'
+    | '/join/$code'
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/snoozed'
     | '/tasks'
     | '/trash'
+    | '/join/$code'
     | '/'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_authenticated/snoozed'
     | '/_authenticated/tasks'
     | '/_authenticated/trash'
+    | '/join/$code'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
@@ -135,6 +147,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ShareRoute: typeof ShareRoute
   SignupRoute: typeof SignupRoute
+  JoinCodeRoute: typeof JoinCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -173,6 +186,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/trash': {
       id: '/_authenticated/trash'
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ShareRoute: ShareRoute,
   SignupRoute: SignupRoute,
+  JoinCodeRoute: JoinCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,13 +15,37 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsrTasks } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List, CheckCheck } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import type { TaskFilter, Task } from '@yoink/api-contracts';
+
+/**
+ * Helper to get today's date in YYYY-MM-DD format
+ */
+const getTodayStr = () => new Date().toISOString().split('T')[0];
+
+/**
+ * Split tasks into overdue and due today for the Today view
+ */
+const splitTodayTasks = (tasks: Task[]): { overdue: Task[]; dueToday: Task[] } => {
+  const todayStr = getTodayStr();
+  const overdue: Task[] = [];
+  const dueToday: Task[] = [];
+
+  for (const task of tasks) {
+    if (task.dueDate && task.dueDate < todayStr) {
+      overdue.push(task);
+    } else {
+      dueToday.push(task);
+    }
+  }
+
+  return { overdue, dueToday };
+};
 
 const searchSchema = z.object({
   filter: z.enum(['today', 'upcoming', 'all', 'completed']).default('today'),
@@ -31,6 +55,95 @@ export const Route = createFileRoute('/_authenticated/tasks')({
   validateSearch: searchSchema,
   component: TasksPage,
 });
+
+type TodayTaskListProps = {
+  tasks: Task[];
+  exitDirections: Record<string, ExitDirection>;
+  onComplete: (id: string) => void;
+  onUncomplete: (id: string) => void;
+  onPin: (id: string) => void;
+  onUnpin: (id: string) => void;
+  onDelete: (id: string) => void;
+  isLoading: boolean;
+};
+
+/**
+ * Renders the Today view with overdue tasks grouped separately at the top
+ */
+function TodayTaskList({
+  tasks,
+  exitDirections,
+  onComplete,
+  onUncomplete,
+  onPin,
+  onUnpin,
+  onDelete,
+  isLoading,
+}: TodayTaskListProps) {
+  const { overdue, dueToday } = splitTodayTasks(tasks);
+
+  return (
+    <div className="space-y-6">
+      {overdue.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">Overdue</span>
+          </div>
+          <AnimatedList>
+            {overdue.map((task) => (
+              <AnimatedListItem
+                key={task.id}
+                id={task.id}
+                exitDirection={exitDirections[task.id] ?? 'right'}
+              >
+                <TaskCard
+                  task={task}
+                  onComplete={onComplete}
+                  onUncomplete={onUncomplete}
+                  onPin={onPin}
+                  onUnpin={onUnpin}
+                  onDelete={onDelete}
+                  isLoading={isLoading}
+                />
+              </AnimatedListItem>
+            ))}
+          </AnimatedList>
+        </div>
+      )}
+
+      {dueToday.length > 0 && (
+        <div>
+          {overdue.length > 0 && (
+            <div className="mb-2 flex items-center gap-2 text-orange-600 dark:text-orange-400">
+              <Calendar className="h-4 w-4" />
+              <span className="text-sm font-medium">Due Today</span>
+            </div>
+          )}
+          <AnimatedList>
+            {dueToday.map((task) => (
+              <AnimatedListItem
+                key={task.id}
+                id={task.id}
+                exitDirection={exitDirections[task.id] ?? 'right'}
+              >
+                <TaskCard
+                  task={task}
+                  onComplete={onComplete}
+                  onUncomplete={onUncomplete}
+                  onPin={onPin}
+                  onUnpin={onUnpin}
+                  onDelete={onDelete}
+                  isLoading={isLoading}
+                />
+              </AnimatedListItem>
+            ))}
+          </AnimatedList>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TasksPage() {
   const { filter } = useSearch({ from: '/_authenticated/tasks' });
@@ -421,6 +534,17 @@ function TasksPage() {
             </p>
           </CardContent>
         </Card>
+      ) : filter === 'today' ? (
+        <TodayTaskList
+          tasks={tasks}
+          exitDirections={exitDirections}
+          onComplete={handleComplete}
+          onUncomplete={handleUncomplete}
+          onPin={handlePin}
+          onUnpin={handleUnpin}
+          onDelete={(id) => setDeleteConfirmId(id)}
+          isLoading={isLoading}
+        />
       ) : (
         <AnimatedList>
           {tasks.map((task) => (

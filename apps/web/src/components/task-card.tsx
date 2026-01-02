@@ -43,11 +43,13 @@ export function TaskCard({
     }
   };
 
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+
   const formatDueDate = (dueDate: string) => {
     const today = new Date();
     const due = new Date(dueDate + 'T00:00:00'); // Parse as local date
     
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getTodayStr();
     const tomorrowDate = new Date(today);
     tomorrowDate.setDate(today.getDate() + 1);
     const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
@@ -64,9 +66,24 @@ export function TaskCard({
     }
   };
 
-  const isDueDatePast = (dueDate: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dueDate < today;
+  /**
+   * Get the color class for a due date:
+   * - Overdue (past): red (destructive)
+   * - Today: orange (warning)
+   * - Future: green (success)
+   */
+  const getDueDateColorClass = (dueDate: string): string => {
+    const todayStr = getTodayStr();
+    if (dueDate < todayStr) {
+      // Overdue - red
+      return 'text-destructive';
+    } else if (dueDate === todayStr) {
+      // Today - orange
+      return 'text-orange-600 dark:text-orange-400';
+    } else {
+      // Future - green
+      return 'text-green-600 dark:text-green-400';
+    }
   };
 
   return (
@@ -96,9 +113,9 @@ export function TaskCard({
           
           {task.dueDate && (
             <div className={`mt-1 flex items-center gap-1 text-xs ${
-              isDueDatePast(task.dueDate) && !isCompleted
-                ? 'text-destructive'
-                : 'text-muted-foreground'
+              isCompleted
+                ? 'text-muted-foreground'
+                : getDueDateColorClass(task.dueDate)
             }`}>
               <Calendar className="h-3 w-3" />
               <span>{formatDueDate(task.dueDate)}</span>

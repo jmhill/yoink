@@ -320,3 +320,152 @@ export const signupWithPasskey = async (options: {
     credentialName: deviceName,
   });
 };
+
+// ============================================================================
+// Member Management
+// ============================================================================
+
+export type Member = {
+  userId: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member';
+  joinedAt: string;
+};
+
+/**
+ * List members of the current organization.
+ */
+export const listMembers = async (
+  organizationId: string
+): Promise<ApiResponse<{ members: Member[] }>> => {
+  const response = await fetch(`/api/organizations/${organizationId}/members`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    return { ok: false, error: body.message || 'Failed to list members' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
+/**
+ * Remove a member from the current organization.
+ */
+export const removeMember = async (
+  organizationId: string,
+  userId: string
+): Promise<ApiResponse<void>> => {
+  const response = await fetch(`/api/organizations/${organizationId}/members/${userId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      return { ok: false, error: body.message || 'Insufficient permissions' };
+    }
+    if (response.status === 400) {
+      return { ok: false, error: body.message || 'Cannot remove this member' };
+    }
+    return { ok: false, error: body.message || 'Failed to remove member' };
+  }
+
+  return { ok: true, data: undefined };
+};
+
+// ============================================================================
+// Invitation Management
+// ============================================================================
+
+export type Invitation = {
+  id: string;
+  code: string;
+  email: string | null;
+  organizationId: string;
+  role: 'admin' | 'member';
+  expiresAt: string;
+  createdAt: string;
+};
+
+/**
+ * Create an invitation to the current organization.
+ */
+export const createInvitation = async (
+  organizationId: string,
+  options: { role?: 'admin' | 'member'; email?: string }
+): Promise<ApiResponse<Invitation>> => {
+  const response = await fetch('/api/invitations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      organizationId,
+      role: options.role ?? 'member',
+      email: options.email,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      return { ok: false, error: 'You do not have permission to create invitations' };
+    }
+    return { ok: false, error: body.message || 'Failed to create invitation' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
+/**
+ * List pending invitations for the current organization.
+ */
+export const listPendingInvitations = async (
+  organizationId: string
+): Promise<ApiResponse<{ invitations: Invitation[] }>> => {
+  const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      return { ok: false, error: 'You do not have permission to view invitations' };
+    }
+    return { ok: false, error: body.message || 'Failed to list invitations' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
+/**
+ * Revoke a pending invitation.
+ */
+export const revokeInvitation = async (
+  invitationId: string
+): Promise<ApiResponse<void>> => {
+  const response = await fetch(`/api/invitations/${invitationId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      return { ok: false, error: 'You do not have permission to revoke this invitation' };
+    }
+    if (response.status === 404) {
+      return { ok: false, error: 'Invitation not found' };
+    }
+    return { ok: false, error: body.message || 'Failed to revoke invitation' };
+  }
+
+  return { ok: true, data: undefined };
+};

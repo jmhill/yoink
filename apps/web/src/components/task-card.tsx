@@ -12,6 +12,7 @@ type TaskCardProps = {
   onPin: (id: string) => void;
   onUnpin: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (task: Task) => void;
   isLoading?: boolean;
 };
 
@@ -22,6 +23,7 @@ export function TaskCard({
   onPin,
   onUnpin,
   onDelete,
+  onEdit,
   isLoading = false,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
@@ -106,7 +108,12 @@ export function TaskCard({
           aria-label={isCompleted ? `Mark task "${task.title}" as incomplete` : `Mark task "${task.title}" as complete`}
         />
         
-        <div className="flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={() => onEdit?.(task)}
+          className="flex-1 min-w-0 text-left hover:bg-muted/50 -mx-2 px-2 py-1 -my-1 rounded transition-colors cursor-pointer"
+          disabled={isLoading}
+        >
           <p className={`break-words ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
             {task.title}
           </p>
@@ -121,7 +128,7 @@ export function TaskCard({
               <span>{formatDueDate(task.dueDate)}</span>
             </div>
           )}
-        </div>
+        </button>
 
         <div className="flex gap-1">
           <Button

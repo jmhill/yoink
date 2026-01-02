@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -13,15 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { tsrTasks } from '@/api/client';
+import { tsrTasks, tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
+import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
-import type { TaskFilter, Task } from '@yoink/api-contracts';
+import type { TaskFilter, Task, Capture } from '@yoink/api-contracts';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -64,6 +65,7 @@ type TodayTaskListProps = {
   onPin: (id: string) => void;
   onUnpin: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
   isLoading: boolean;
 };
 
@@ -78,6 +80,7 @@ function TodayTaskList({
   onPin,
   onUnpin,
   onDelete,
+  onEdit,
   isLoading,
 }: TodayTaskListProps) {
   const { overdue, dueToday } = splitTodayTasks(tasks);
@@ -104,6 +107,7 @@ function TodayTaskList({
                   onPin={onPin}
                   onUnpin={onUnpin}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                   isLoading={isLoading}
                 />
               </AnimatedListItem>
@@ -134,6 +138,7 @@ function TodayTaskList({
                   onPin={onPin}
                   onUnpin={onUnpin}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                   isLoading={isLoading}
                 />
               </AnimatedListItem>
@@ -151,8 +156,11 @@ function TasksPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [sourceCapture, setSourceCapture] = useState<Capture | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
+  const captureQueryClient = tsr.useQueryClient();
 
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', filter],
@@ -414,6 +422,85 @@ function TasksPage() {
     },
   });
 
+  // Update mutation
+  const updateMutation = tsrTasks.update.useMutation({
+    onMutate: async ({ params, body }) => {
+      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+
+      if (previousTasks?.status === 200 && body) {
+        tsrQueryClient.list.setQueryData(['tasks', filter], {
+          ...previousTasks,
+          body: {
+            ...previousTasks.body,
+            tasks: previousTasks.body.tasks.map((t) =>
+              t.id === params.id
+                ? {
+                    ...t,
+                    title: body.title ?? t.title,
+                    dueDate: body.dueDate === null ? undefined : body.dueDate ?? t.dueDate,
+                  }
+                : t
+            ),
+          },
+        });
+      }
+
+      return { previousTasks };
+    },
+
+    onError: (err, _variables, context) => {
+      if (context?.previousTasks) {
+        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+      }
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to update task');
+      }
+    },
+
+    onSuccess: () => {
+      toast.success('Task updated');
+      setEditingTask(null);
+      setSourceCapture(null);
+    },
+
+    onSettled: () => {
+      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  // Fetch source capture when editing a task with captureId
+  const [isFetchingCapture, setIsFetchingCapture] = useState(false);
+  
+  useEffect(() => {
+    if (editingTask?.captureId) {
+      setIsFetchingCapture(true);
+      // Use the cached data if available
+      const cachedData = captureQueryClient.get.getQueryData(['capture', editingTask.captureId]);
+      if (cachedData?.status === 200) {
+        setSourceCapture(cachedData.body);
+        setIsFetchingCapture(false);
+      } else {
+        // Fetch via the API
+        fetch(`/api/captures/${editingTask.captureId}`, { credentials: 'include' })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            setSourceCapture(data);
+            setIsFetchingCapture(false);
+          })
+          .catch(() => {
+            setSourceCapture(null);
+            setIsFetchingCapture(false);
+          });
+      }
+    } else {
+      setSourceCapture(null);
+      setIsFetchingCapture(false);
+    }
+  }, [editingTask?.captureId, captureQueryClient]);
+
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -452,6 +539,17 @@ function TasksPage() {
     navigate({
       to: '/tasks',
       search: { filter: newFilter as 'today' | 'upcoming' | 'all' | 'completed' },
+    });
+  };
+
+  const handleEdit = (task: Task) => {
+    setEditingTask(task);
+  };
+
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null }) => {
+    updateMutation.mutate({
+      params: { id: taskId },
+      body: updates,
     });
   };
 
@@ -543,6 +641,7 @@ function TasksPage() {
           onPin={handlePin}
           onUnpin={handleUnpin}
           onDelete={(id) => setDeleteConfirmId(id)}
+          onEdit={handleEdit}
           isLoading={isLoading}
         />
       ) : (
@@ -560,6 +659,7 @@ function TasksPage() {
                 onPin={handlePin}
                 onUnpin={handleUnpin}
                 onDelete={(id) => setDeleteConfirmId(id)}
+                onEdit={handleEdit}
                 isLoading={isLoading}
               />
             </AnimatedListItem>
@@ -589,6 +689,22 @@ function TasksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task edit modal */}
+      <TaskEditModal
+        open={editingTask !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingTask(null);
+            setSourceCapture(null);
+          }
+        }}
+        task={editingTask}
+        sourceCapture={sourceCapture}
+        onSave={handleSaveEdit}
+        isLoading={updateMutation.isPending}
+        isFetchingCapture={isFetchingCapture}
+      />
     </div>
   );
 }

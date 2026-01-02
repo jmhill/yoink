@@ -108,31 +108,35 @@ describe('AdminService', () => {
     });
   });
 
-  describe('users', () => {
+  describe('users (read-only)', () => {
     let testOrg: Organization;
+    let testUser: User;
 
     beforeEach(async () => {
-      const result = await service.createOrganization('Test Org');
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        testOrg = result.value;
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (orgResult.isOk()) {
+        testOrg = orgResult.value;
       }
-    });
 
-    it('creates a user', async () => {
-      const result = await service.createUser(testOrg.id, 'user@example.com');
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value.email).toBe('user@example.com');
-        expect(result.value.organizationId).toBe(testOrg.id);
-        expect(result.value.createdAt).toBe('2024-06-15T12:00:00.000Z');
-      }
+      // Users are now created via signup flow, so we add them directly to the store
+      testUser = {
+        id: 'user-1',
+        organizationId: testOrg.id,
+        email: 'user@example.com',
+        createdAt: '2024-06-15T12:00:00.000Z',
+      };
+      await userStore.save(testUser);
     });
 
     it('lists users in an organization', async () => {
-      await service.createUser(testOrg.id, 'user1@example.com');
-      await service.createUser(testOrg.id, 'user2@example.com');
+      const user2: User = {
+        id: 'user-2',
+        organizationId: testOrg.id,
+        email: 'user2@example.com',
+        createdAt: '2024-06-15T12:00:00.000Z',
+      };
+      await userStore.save(user2);
 
       const result = await service.listUsers(testOrg.id);
 
@@ -147,28 +151,29 @@ describe('AdminService', () => {
       expect(otherOrgResult.isOk()).toBe(true);
       if (!otherOrgResult.isOk()) return;
 
-      await service.createUser(testOrg.id, 'user1@example.com');
-      await service.createUser(otherOrgResult.value.id, 'user2@example.com');
+      const otherUser: User = {
+        id: 'other-user',
+        organizationId: otherOrgResult.value.id,
+        email: 'other@example.com',
+        createdAt: '2024-06-15T12:00:00.000Z',
+      };
+      await userStore.save(otherUser);
 
       const result = await service.listUsers(testOrg.id);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toHaveLength(1);
-        expect(result.value[0].email).toBe('user1@example.com');
+        expect(result.value[0].email).toBe('user@example.com');
       }
     });
 
     it('gets a user by ID', async () => {
-      const createResult = await service.createUser(testOrg.id, 'user@example.com');
-      expect(createResult.isOk()).toBe(true);
-      if (!createResult.isOk()) return;
-
-      const findResult = await service.getUser(createResult.value.id);
+      const findResult = await service.getUser(testUser.id);
 
       expect(findResult.isOk()).toBe(true);
       if (findResult.isOk()) {
-        expect(findResult.value).toEqual(createResult.value);
+        expect(findResult.value).toEqual(testUser);
       }
     });
 
@@ -182,35 +187,49 @@ describe('AdminService', () => {
     });
   });
 
-  describe('tokens', () => {
+  describe('tokens (scoped to organizations)', () => {
+    let testOrg: Organization;
     let testUser: User;
 
     beforeEach(async () => {
       const orgResult = await service.createOrganization('Test Org');
       expect(orgResult.isOk()).toBe(true);
       if (!orgResult.isOk()) return;
+      testOrg = orgResult.value;
 
-      const userResult = await service.createUser(orgResult.value.id, 'user@example.com');
-      expect(userResult.isOk()).toBe(true);
-      if (userResult.isOk()) {
-        testUser = userResult.value;
-      }
+      // Users are created via signup flow
+      testUser = {
+        id: 'user-1',
+        organizationId: testOrg.id,
+        email: 'user@example.com',
+        createdAt: '2024-06-15T12:00:00.000Z',
+      };
+      await userStore.save(testUser);
     });
 
-    it('creates a token and returns raw token value', async () => {
-      const result = await service.createToken(testUser.id, 'my-device');
+    it('creates a token scoped to an organization', async () => {
+      const result = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'my-device',
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value.token.name).toBe('my-device');
         expect(result.value.token.userId).toBe(testUser.id);
+        expect(result.value.token.organizationId).toBe(testOrg.id);
         expect(result.value.rawToken).toContain(':');
         expect(result.value.rawToken.startsWith(result.value.token.id)).toBe(true);
       }
     });
 
     it('does not include tokenHash in returned token', async () => {
-      const result = await service.createToken(testUser.id, 'my-device');
+      const result = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'my-device',
+      });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -219,30 +238,68 @@ describe('AdminService', () => {
       }
     });
 
-    it('lists tokens for a user without tokenHash', async () => {
-      await service.createToken(testUser.id, 'device-1');
-      await service.createToken(testUser.id, 'device-2');
+    it('lists tokens for an organization without tokenHash', async () => {
+      await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'device-1',
+      });
+      await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'device-2',
+      });
 
-      const result = await service.listTokens(testUser.id);
+      const result = await service.listTokens(testOrg.id);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toHaveLength(2);
         result.value.forEach((token) => {
           expect((token as Record<string, unknown>).tokenHash).toBeUndefined();
+          expect(token.organizationId).toBe(testOrg.id);
         });
       }
     });
 
+    it('only lists tokens for the specified organization', async () => {
+      const otherOrgResult = await service.createOrganization('Other Org');
+      expect(otherOrgResult.isOk()).toBe(true);
+      if (!otherOrgResult.isOk()) return;
+
+      await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'device-1',
+      });
+      await service.createToken({
+        organizationId: otherOrgResult.value.id,
+        userId: testUser.id,
+        name: 'device-2',
+      });
+
+      const result = await service.listTokens(testOrg.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].name).toBe('device-1');
+      }
+    });
+
     it('revokes (deletes) a token', async () => {
-      const createResult = await service.createToken(testUser.id, 'my-device');
+      const createResult = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: 'my-device',
+      });
       expect(createResult.isOk()).toBe(true);
       if (!createResult.isOk()) return;
 
       const revokeResult = await service.revokeToken(createResult.value.token.id);
       expect(revokeResult.isOk()).toBe(true);
 
-      const listResult = await service.listTokens(testUser.id);
+      const listResult = await service.listTokens(testOrg.id);
       expect(listResult.isOk()).toBe(true);
       if (listResult.isOk()) {
         expect(listResult.value).toHaveLength(0);

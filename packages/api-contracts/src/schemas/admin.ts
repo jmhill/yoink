@@ -27,23 +27,22 @@ export const UserSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
-export const CreateUserSchema = z.object({
-  email: z.string().email(),
-});
-
 export type User = z.infer<typeof UserSchema>;
-export type CreateUser = z.infer<typeof CreateUserSchema>;
 
 // Token schemas (note: we don't expose tokenHash to the client)
+// Tokens are scoped to organizations
 export const ApiTokenSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  organizationId: z.string().uuid(),
   name: z.string().min(1).max(100),
   lastUsedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
 });
 
+// Creating a token requires userId in the body (org comes from URL)
 export const CreateTokenSchema = z.object({
+  userId: z.string().uuid(),
   name: z.string().min(1).max(100),
 });
 
@@ -56,6 +55,12 @@ export const CreateTokenResponseSchema = z.object({
 export type ApiToken = z.infer<typeof ApiTokenSchema>;
 export type CreateToken = z.infer<typeof CreateTokenSchema>;
 export type CreateTokenResponse = z.infer<typeof CreateTokenResponseSchema>;
+
+// Legacy export for backwards compatibility (to be removed)
+export const CreateUserSchema = z.object({
+  email: z.string().email(),
+});
+export type CreateUser = z.infer<typeof CreateUserSchema>;
 
 // Invitation schemas (admin can create invitations without being org member)
 // organizationId comes from URL path params, not body

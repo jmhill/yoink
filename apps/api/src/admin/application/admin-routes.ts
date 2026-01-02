@@ -181,25 +181,6 @@ export const registerAdminRoutes = async (
         );
       },
 
-      createUser: async ({ params, body }: { params: { organizationId: string }; body: { email: string } }) => {
-        // Check if organization exists
-        const orgResult = await adminService.getOrganization(params.organizationId);
-        const orgCheck = orgResult.match(
-          (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
-          () => storageErrorResponse('Failed to check organization')
-        );
-        if (orgCheck) return orgCheck;
-
-        const result = await adminService.createUser(params.organizationId, body.email);
-        return result.match(
-          (user) => ({
-            status: 201 as const,
-            body: user,
-          }),
-          () => storageErrorResponse('Failed to create user')
-        );
-      },
-
       getUser: async ({ params }: { params: { id: string } }) => {
         const result = await adminService.getUser(params.id);
         return result.match(
@@ -219,16 +200,16 @@ export const registerAdminRoutes = async (
         );
       },
 
-      listTokens: async ({ params }: { params: { userId: string } }) => {
-        // Check if user exists
-        const userResult = await adminService.getUser(params.userId);
-        const userCheck = userResult.match(
-          (user) => (user ? null : { status: 404 as const, body: { message: 'User not found' } }),
-          () => storageErrorResponse('Failed to check user')
+      listTokens: async ({ params }: { params: { organizationId: string } }) => {
+        // Check if organization exists
+        const orgResult = await adminService.getOrganization(params.organizationId);
+        const orgCheck = orgResult.match(
+          (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
+          () => storageErrorResponse('Failed to check organization')
         );
-        if (userCheck) return userCheck;
+        if (orgCheck) return orgCheck;
 
-        const result = await adminService.listTokens(params.userId);
+        const result = await adminService.listTokens(params.organizationId);
         return result.match(
           (tokens) => ({
             status: 200 as const,
@@ -238,16 +219,28 @@ export const registerAdminRoutes = async (
         );
       },
 
-      createToken: async ({ params, body }: { params: { userId: string }; body: { name: string } }) => {
+      createToken: async ({ params, body }: { params: { organizationId: string }; body: { userId: string; name: string } }) => {
+        // Check if organization exists
+        const orgResult = await adminService.getOrganization(params.organizationId);
+        const orgCheck = orgResult.match(
+          (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
+          () => storageErrorResponse('Failed to check organization')
+        );
+        if (orgCheck) return orgCheck;
+
         // Check if user exists
-        const userResult = await adminService.getUser(params.userId);
+        const userResult = await adminService.getUser(body.userId);
         const userCheck = userResult.match(
           (user) => (user ? null : { status: 404 as const, body: { message: 'User not found' } }),
           () => storageErrorResponse('Failed to check user')
         );
         if (userCheck) return userCheck;
 
-        const result = await adminService.createToken(params.userId, body.name);
+        const result = await adminService.createToken({
+          organizationId: params.organizationId,
+          userId: body.userId,
+          name: body.name,
+        });
         return result.match(
           (tokenResult) => ({
             status: 201 as const,

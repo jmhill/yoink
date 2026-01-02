@@ -22,6 +22,12 @@ export type AdminServiceDependencies = {
   passwordHasher: PasswordHasher;
 };
 
+export type CreateTokenCommand = {
+  organizationId: string;
+  userId: string;
+  name: string;
+};
+
 export type CreateTokenResult = {
   token: ApiTokenView; // View without hash, not full ApiToken
   rawToken: string; // The full tokenId:secret value
@@ -40,14 +46,13 @@ export type AdminService = {
     newName: string
   ): ResultAsync<Organization | null, OrganizationStorageError>;
 
-  // Users
+  // Users (read-only - users are created via signup flow)
   listUsers(organizationId: string): ResultAsync<User[], UserStorageError>;
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
-  createUser(organizationId: string, email: string): ResultAsync<User, UserStorageError>;
 
-  // Tokens
-  listTokens(userId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
-  createToken(userId: string, name: string): ResultAsync<CreateTokenResult, AdminServiceError>;
+  // Tokens (scoped to organizations)
+  listTokens(organizationId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
+  createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError>;
   revokeToken(id: string): ResultAsync<void, TokenStorageError>;
 };
 
@@ -103,7 +108,7 @@ export const createAdminService = (
       });
     },
 
-    // Users
+    // Users (read-only)
     listUsers(organizationId: string) {
       return userStore.findByOrganizationId(organizationId);
     },
@@ -112,23 +117,13 @@ export const createAdminService = (
       return userStore.findById(id);
     },
 
-    createUser(organizationId: string, email: string) {
-      const user: User = {
-        id: idGenerator.generate(),
-        organizationId,
-        email,
-        createdAt: clock.now().toISOString(),
-      };
-
-      return userStore.save(user).map(() => user);
-    },
-
     // Tokens
-    listTokens(userId: string) {
-      return tokenStore.findByUserId(userId).map((tokens) => tokens.map(toApiTokenView));
+    listTokens(organizationId: string) {
+      return tokenStore.findByOrganizationId(organizationId).map((tokens) => tokens.map(toApiTokenView));
     },
 
-    createToken(userId: string, name: string): ResultAsync<CreateTokenResult, AdminServiceError> {
+    createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError> {
+      const { organizationId, userId, name } = command;
       const tokenId = idGenerator.generate();
       const secret = idGenerator.generate(); // Use UUID as secret for sufficient entropy
 
@@ -145,6 +140,7 @@ export const createAdminService = (
         const token: ApiToken = {
           id: tokenId,
           userId,
+          organizationId,
           tokenHash,
           name,
           createdAt: clock.now().toISOString(),

@@ -5,7 +5,6 @@ import {
   CreateOrganizationSchema,
   UpdateOrganizationSchema,
   UserSchema,
-  CreateUserSchema,
   ApiTokenSchema,
   CreateTokenSchema,
   CreateTokenResponseSchema,
@@ -124,7 +123,7 @@ export const adminProtectedContract = c.router(
       summary: 'Update an organization',
     },
 
-    // Users
+    // Users (read-only - users are created via signup flow)
     listUsers: {
       method: 'GET',
       path: '/api/admin/organizations/:organizationId/users',
@@ -142,23 +141,6 @@ export const adminProtectedContract = c.router(
       summary: 'List users in an organization',
     },
 
-    createUser: {
-      method: 'POST',
-      path: '/api/admin/organizations/:organizationId/users',
-      pathParams: z.object({
-        organizationId: z.string().uuid(),
-      }),
-      body: CreateUserSchema,
-      responses: {
-        201: UserSchema,
-        400: ErrorSchema,
-        401: ErrorSchema,
-        404: ErrorSchema,
-        500: ErrorSchema,
-      },
-      summary: 'Create a new user in an organization',
-    },
-
     getUser: {
       method: 'GET',
       path: '/api/admin/users/:id',
@@ -174,12 +156,12 @@ export const adminProtectedContract = c.router(
       summary: 'Get a user by ID',
     },
 
-    // Tokens
+    // Tokens (scoped to organizations)
     listTokens: {
       method: 'GET',
-      path: '/api/admin/users/:userId/tokens',
+      path: '/api/admin/organizations/:organizationId/tokens',
       pathParams: z.object({
-        userId: z.string().uuid(),
+        organizationId: z.string().uuid(),
       }),
       responses: {
         200: z.object({
@@ -189,14 +171,14 @@ export const adminProtectedContract = c.router(
         404: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: 'List tokens for a user',
+      summary: 'List tokens for an organization',
     },
 
     createToken: {
       method: 'POST',
-      path: '/api/admin/users/:userId/tokens',
+      path: '/api/admin/organizations/:organizationId/tokens',
       pathParams: z.object({
-        userId: z.string().uuid(),
+        organizationId: z.string().uuid(),
       }),
       body: CreateTokenSchema,
       responses: {
@@ -206,7 +188,7 @@ export const adminProtectedContract = c.router(
         404: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: 'Create a new API token for a user',
+      summary: 'Create a new API token for a user in an organization',
     },
 
     revokeToken: {

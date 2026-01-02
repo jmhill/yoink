@@ -167,11 +167,12 @@ export const createApp = async (deps: AppDependencies) => {
       cookieOptions,
     }, rateLimitConfig);
 
-    // Organization routes (switch, leave)
+    // Organization routes (switch, leave, members)
     await registerOrganizationRoutes(app, {
       sessionService: deps.signup.sessionService,
       membershipService: deps.membershipService,
-      sessionCookieName,
+      userService: deps.signup.userService,
+      authMiddleware: deps.authMiddleware,
     });
   }
 

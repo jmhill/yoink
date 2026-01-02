@@ -23,4 +23,7 @@ export type InvitationStore = {
 
   /** Find all invitations by organization (including expired/accepted, for history) */
   findByOrganization(organizationId: string): ResultAsync<Invitation[], InvitationStorageError>;
+
+  /** Delete an invitation by ID */
+  delete(id: string): ResultAsync<void, InvitationStorageError>;
 };

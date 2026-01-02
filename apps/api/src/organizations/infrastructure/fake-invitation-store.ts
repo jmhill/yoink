@@ -74,5 +74,16 @@ export const createFakeInvitationStore = (
       found.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return okAsync(found);
     },
+
+    delete: (id: string): ResultAsync<void, InvitationStorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(invitationStorageError('Delete failed'));
+      }
+      const index = invitations.findIndex((i) => i.id === id);
+      if (index >= 0) {
+        invitations.splice(index, 1);
+      }
+      return okAsync(undefined);
+    },
   };
 };

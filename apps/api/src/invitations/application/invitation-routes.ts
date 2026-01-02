@@ -239,6 +239,39 @@ export const registerInvitationRoutes = async (
           })
         );
       },
+
+      revoke: async ({ params, request }) => {
+        const result = await invitationService.revokeInvitation({
+          invitationId: params.invitationId,
+          revokedByUserId: request.authContext.userId,
+        });
+
+        return result.match(
+          () => ({
+            status: 204 as const,
+            body: undefined,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVITATION_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Invitation not found' },
+                };
+              case 'INSUFFICIENT_INVITE_PERMISSIONS':
+                return {
+                  status: 403 as const,
+                  body: { message: 'Insufficient permissions to revoke invitation' },
+                };
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(invitationContract, router, invitationApp, {

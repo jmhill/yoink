@@ -1,69 +1,39 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { organizationContract } from '@yoink/api-contracts';
 import type { SessionService } from '../../auth/domain/session-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
+import type { UserService } from '../../users/domain/user-service.js';
+import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
 
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
   membershipService: MembershipService;
-  sessionCookieName: string;
-};
-
-/**
- * Middleware to validate session and attach it to the request.
- * Only supports session cookies (not API tokens) since switching org
- * is a session-based operation.
- */
-const createSessionMiddleware = (
-  sessionService: SessionService,
-  sessionCookieName: string
-) => {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
-    const sessionId = request.cookies[sessionCookieName];
-
-    if (!sessionId) {
-      return reply.status(401).send({ message: 'Authentication required' });
-    }
-
-    const sessionResult = await sessionService.validateSession(sessionId);
-
-    if (sessionResult.isErr()) {
-      return reply.status(500).send({ message: 'Failed to validate session' });
-    }
-
-    const session = sessionResult.value;
-    if (!session) {
-      return reply.status(401).send({ message: 'Invalid or expired session' });
-    }
-
-    // Attach session to request for route handlers
-    request.userSession = session;
-  };
+  userService: UserService;
+  authMiddleware: AuthMiddleware;
 };
 
 export const registerOrganizationRoutes = async (
   app: FastifyInstance,
   deps: OrganizationRoutesDependencies
 ) => {
-  const { sessionService, membershipService, sessionCookieName } = deps;
+  const { sessionService, membershipService, userService, authMiddleware } = deps;
   const s = initServer();
 
-  const sessionMiddleware = createSessionMiddleware(sessionService, sessionCookieName);
-
   await app.register(async (orgApp) => {
-    // Apply session middleware to all routes
-    orgApp.addHook('preHandler', sessionMiddleware);
+    // Apply combined auth middleware (supports both token and session auth)
+    orgApp.addHook('preHandler', authMiddleware);
 
     const router = s.router(organizationContract, {
       switch: async ({ body, request }) => {
         const { organizationId } = body;
         const session = request.userSession;
 
+        // Switch requires a session (not just token auth)
         if (!session) {
           return {
-            status: 401 as const,
-            body: { message: 'Authentication required' },
+            status: 400 as const,
+            body: { message: 'Organization switching requires session authentication (not token)' },
           };
         }
 
@@ -138,6 +108,195 @@ export const registerOrganizationRoutes = async (
             return {
               status: 500 as const,
               body: { message: 'Failed to leave organization' },
+            };
+          }
+        );
+      },
+
+      listMembers: async ({ params, request }) => {
+        const { organizationId } = params;
+        const session = request.userSession;
+
+        if (!session) {
+          return {
+            status: 401 as const,
+            body: { message: 'Authentication required' },
+          };
+        }
+
+        // Check if user is a member of this organization
+        const membershipResult = await membershipService.getMembership({
+          userId: session.userId,
+          organizationId,
+        });
+
+        if (membershipResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to check membership' },
+          };
+        }
+
+        if (!membershipResult.value) {
+          return {
+            status: 403 as const,
+            body: { message: 'Not a member of this organization' },
+          };
+        }
+
+        // Get all members
+        const membersResult = await membershipService.listMemberships({
+          organizationId,
+        });
+
+        if (membersResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to list members' },
+          };
+        }
+
+        const memberships = membersResult.value;
+
+        // Fetch user details for all members
+        const userIds = memberships.map((m) => m.userId);
+        const usersResult = await userService.getUsersByIds(userIds);
+
+        if (usersResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to fetch user details' },
+          };
+        }
+
+        const usersById = new Map(usersResult.value.map((u) => [u.id, u]));
+
+        // Combine membership and user data
+        const members = memberships.map((m) => {
+          const user = usersById.get(m.userId);
+          return {
+            userId: m.userId,
+            email: user?.email ?? 'unknown',
+            role: m.role,
+            joinedAt: m.joinedAt,
+          };
+        });
+
+        return {
+          status: 200 as const,
+          body: { members },
+        };
+      },
+
+      removeMember: async ({ params, request }) => {
+        const { organizationId, userId: targetUserId } = params;
+        const session = request.userSession;
+
+        if (!session) {
+          return {
+            status: 401 as const,
+            body: { message: 'Authentication required' },
+          };
+        }
+
+        // Cannot remove self - use leave instead
+        if (targetUserId === session.userId) {
+          return {
+            status: 400 as const,
+            body: { message: 'Cannot remove yourself. Use leave instead.' },
+          };
+        }
+
+        // Get caller's membership to check permissions
+        const callerMembershipResult = await membershipService.getMembership({
+          userId: session.userId,
+          organizationId,
+        });
+
+        if (callerMembershipResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to check membership' },
+          };
+        }
+
+        const callerMembership = callerMembershipResult.value;
+        if (!callerMembership) {
+          return {
+            status: 403 as const,
+            body: { message: 'Not a member of this organization' },
+          };
+        }
+
+        // Get target's membership
+        const targetMembershipResult = await membershipService.getMembership({
+          userId: targetUserId,
+          organizationId,
+        });
+
+        if (targetMembershipResult.isErr()) {
+          return {
+            status: 500 as const,
+            body: { message: 'Failed to check target membership' },
+          };
+        }
+
+        const targetMembership = targetMembershipResult.value;
+        if (!targetMembership) {
+          return {
+            status: 404 as const,
+            body: { message: 'User is not a member of this organization' },
+          };
+        }
+
+        // Permission checks:
+        // - owner can remove anyone (except themselves, already checked)
+        // - admin can only remove members (not other admins)
+        // - member cannot remove anyone
+        const callerRole = callerMembership.role;
+        const targetRole = targetMembership.role;
+
+        if (callerRole === 'member') {
+          return {
+            status: 403 as const,
+            body: { message: 'Insufficient permissions to remove members' },
+          };
+        }
+
+        if (callerRole === 'admin' && (targetRole === 'admin' || targetRole === 'owner')) {
+          return {
+            status: 403 as const,
+            body: { message: 'Admins can only remove members, not other admins or owners' },
+          };
+        }
+
+        // Perform removal
+        const result = await membershipService.removeMember({
+          organizationId,
+          userId: targetUserId,
+        });
+
+        return result.match(
+          () => ({
+            status: 204 as const,
+            body: undefined,
+          }),
+          (error) => {
+            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
+              return {
+                status: 404 as const,
+                body: { message: 'Member not found' },
+              };
+            }
+            if (error.type === 'LAST_ADMIN') {
+              return {
+                status: 400 as const,
+                body: { message: 'Cannot remove the last admin' },
+              };
+            }
+            return {
+              status: 500 as const,
+              body: { message: 'Failed to remove member' },
             };
           }
         );

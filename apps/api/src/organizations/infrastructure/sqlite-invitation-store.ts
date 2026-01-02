@@ -155,5 +155,15 @@ export const createSqliteInvitationStore = async (
         return rows.map(rowToInvitation);
       });
     },
+
+    delete: (id: string): ResultAsync<void, InvitationStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `DELETE FROM invitations WHERE id = ?`,
+          args: [id],
+        }),
+        (error) => invitationStorageError('Failed to delete invitation', error)
+      ).map(() => undefined);
+    },
   };
 };

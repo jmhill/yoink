@@ -47,6 +47,12 @@ export type ListPendingInvitationsQuery = {
   organizationId: string;
 };
 
+export type RevokeInvitationCommand = {
+  invitationId: string;
+  /** The user revoking the invitation - for permission check */
+  revokedByUserId: string;
+};
+
 // ============================================================================
 // Service Interface
 // ============================================================================
@@ -82,6 +88,14 @@ export type InvitationService = {
   listPendingInvitations(
     query: ListPendingInvitationsQuery
   ): ResultAsync<Invitation[], InvitationServiceError>;
+
+  /**
+   * Revoke (delete) an invitation.
+   * Only admins/owners of the organization can revoke invitations.
+   */
+  revokeInvitation(
+    command: RevokeInvitationCommand
+  ): ResultAsync<void, InvitationServiceError>;
 };
 
 // ============================================================================
@@ -249,6 +263,33 @@ export const createInvitationService = (
     ): ResultAsync<Invitation[], InvitationServiceError> {
       const currentTime = clock.now().toISOString();
       return invitationStore.findPendingByOrganization(query.organizationId, currentTime);
+    },
+
+    revokeInvitation(
+      command: RevokeInvitationCommand
+    ): ResultAsync<void, InvitationServiceError> {
+      const { invitationId, revokedByUserId } = command;
+
+      // Find the invitation
+      return invitationStore.findById(invitationId).andThen((invitation) => {
+        if (!invitation) {
+          return errAsync(invitationNotFoundError({ invitationId }));
+        }
+
+        // Check revoker has permission (must be admin or owner of the org)
+        return membershipStore
+          .findByUserAndOrg(revokedByUserId, invitation.organizationId)
+          .andThen((membership) => {
+            if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+              return errAsync(
+                insufficientInvitePermissionsError('admin', membership?.role ?? 'none')
+              );
+            }
+
+            // Delete the invitation
+            return invitationStore.delete(invitationId);
+          });
+      });
     },
   };
 };

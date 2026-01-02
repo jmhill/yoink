@@ -10,10 +10,12 @@ import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserSessionStore } from '../../auth/infrastructure/fake-user-session-store.js';
+import { createCombinedAuthMiddleware } from '../../auth/application/combined-auth-middleware.js';
 import type { User } from '../../users/domain/user.js';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../../auth/domain/user-session.js';
+import type { TokenService } from '../../auth/domain/token-service.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
@@ -115,10 +117,26 @@ describe('organization routes', () => {
     app = Fastify();
     await app.register(cookie);
 
+    // Create a combined auth middleware that only uses session cookies
+    // (no token support needed for unit tests)
+    const authMiddleware = createCombinedAuthMiddleware({
+      tokenService: {
+        validateToken: () =>
+          Promise.resolve({
+            isOk: () => false,
+            isErr: () => true,
+            error: { type: 'INVALID_TOKEN_FORMAT' as const },
+          }),
+      } as unknown as TokenService,
+      sessionService,
+      sessionCookieName: USER_SESSION_COOKIE,
+    });
+
     await registerOrganizationRoutes(app, {
       sessionService,
       membershipService,
-      sessionCookieName: USER_SESSION_COOKIE,
+      userService,
+      authMiddleware,
     });
 
     await app.ready();

@@ -53,6 +53,7 @@ describe('combinedAuthMiddleware', () => {
   const testToken: ApiToken = {
     id: '550e8400-e29b-41d4-a716-446655440003',
     userId: testUser.id,
+    organizationId: testOrg.id,
     tokenHash: 'fake-hash:valid-token',
     name: 'test-token',
     createdAt: '2024-01-01T00:00:00.000Z',

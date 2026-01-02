@@ -96,14 +96,16 @@ export const createTokenService = (
             return errAsync(invalidSecretError(parsed.tokenId));
           }
 
-          return userStore.findById(token.userId).andThen((user) => {
-            if (!user) {
-              return errAsync(userNotFoundError(token.userId));
+          // Use token.organizationId to determine the org context
+          // Tokens are now scoped to organizations, so we use the token's org, not the user's
+          return organizationStore.findById(token.organizationId).andThen((organization) => {
+            if (!organization) {
+              return errAsync(organizationNotFoundError(token.organizationId));
             }
 
-            return organizationStore.findById(user.organizationId).andThen((organization) => {
-              if (!organization) {
-                return errAsync(organizationNotFoundError(user.organizationId));
+            return userStore.findById(token.userId).andThen((user) => {
+              if (!user) {
+                return errAsync(userNotFoundError(token.userId));
               }
 
               // Update lastUsedAt (fire and forget - we don't want to fail validation if this fails)

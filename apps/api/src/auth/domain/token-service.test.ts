@@ -25,6 +25,7 @@ describe('TokenService', () => {
   const testToken: ApiToken = {
     id: '550e8400-e29b-41d4-a716-446655440003',
     userId: testUser.id,
+    organizationId: testOrg.id,
     tokenHash: 'fake-hash:my-secret-token',
     name: 'test-token',
     createdAt: '2024-01-01T00:00:00.000Z',
@@ -131,6 +132,7 @@ describe('TokenService', () => {
     const orphanToken: ApiToken = {
       id: 'orphan-token-id',
       userId: 'non-existent-user',
+      organizationId: testOrg.id,
       tokenHash: 'fake-hash:orphan-secret',
       name: 'orphan-token',
       createdAt: '2024-01-01T00:00:00.000Z',
@@ -170,6 +172,7 @@ describe('TokenService', () => {
     const orphanToken: ApiToken = {
       id: 'orphan-token-id',
       userId: orphanUser.id,
+      organizationId: 'non-existent-org',
       tokenHash: 'fake-hash:orphan-secret',
       name: 'orphan-token',
       createdAt: '2024-01-01T00:00:00.000Z',

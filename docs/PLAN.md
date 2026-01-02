@@ -216,23 +216,40 @@ This allows existing token-authenticated users to add passkeys without changing 
 - Signup supports `?code=` query param for direct invitation links
 - Login supports `?returnTo=` query param for post-login redirect
 
-#### 7.7c Remove Token Auth from Web App (Deploy Third) - Complete ✓
+#### 7.7c Remove Token Auth from Web App (Deploy Third) - Partial ✓
 **Prerequisite**: 7.7a and 7.7b complete, existing users have migrated to passkeys
 
 - [x] Remove `/config` page entirely
-- [x] Remove `tokenStorage` utility from codebase
-- [x] Update API client to rely on session cookies only (no Bearer token header)
+- [ ] Remove `tokenStorage` utility from codebase *(kept for backwards compatibility)*
+- [ ] Update API client to rely on session cookies only *(token fallback kept)*
 - [x] Update error handling: 401 → redirect to `/login`
-- [x] Clean up any remaining token-related code
+- [ ] Clean up any remaining token-related code *(deferred)*
+
+**Current State (Backwards Compatible):**
+The web app now prefers session-based auth but falls back to token auth for existing users who haven't yet registered passkeys. This allows zero-downtime migration.
 
 **Files Modified:**
 - Deleted `apps/web/src/routes/config.tsx`
-- Deleted `apps/web/src/lib/token.ts`
-- Updated `apps/web/src/api/client.ts` - Removed token handling
-- Updated `apps/web/src/api/passkey.ts` - Removed token handling
-- Updated `apps/web/src/routes/_authenticated.tsx` - Removed token check
-- Updated `apps/web/src/routes/share.tsx` - Removed token check
-- Updated `apps/web/src/routes/_authenticated/settings.tsx` - Removed tokenStorage.remove()
+- Updated `apps/web/src/lib/token.ts` - Simplified, marked for removal
+- Updated `apps/web/src/api/client.ts` - Session preferred, token fallback
+- Updated `apps/web/src/api/passkey.ts` - Token fallback for registration
+- Updated `apps/web/src/routes/_authenticated.tsx` - Session preferred, token fallback
+- Updated `apps/web/src/routes/share.tsx` - Session preferred, token fallback
+
+**Token Removal Criteria:**
+Remove token auth from the web app when ALL of the following are true:
+1. All existing users have registered at least one passkey
+2. Users have confirmed they can log in successfully with passkeys
+3. No users are relying on token auth for web app access
+
+To complete token removal, delete/update these files:
+- `apps/web/src/lib/token.ts` - Delete entirely
+- `apps/web/src/api/client.ts` - Remove token fallback in `createApi()`
+- `apps/web/src/api/passkey.ts` - Remove `getAuthHeaders()` and `tokenStorage` usage
+- `apps/web/src/routes/_authenticated.tsx` - Remove `tokenStorage.isConfigured()` check
+- `apps/web/src/routes/share.tsx` - Remove `tokenStorage.isConfigured()` check
+
+**Note**: API tokens remain valid for extension/CLI use. Only the web app will stop accepting token auth.
 
 ### 7.8 Settings & Organization Management
 - [ ] Organizations section in Settings: list memberships with current org indicator

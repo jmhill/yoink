@@ -4,6 +4,7 @@ import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
 import { getSession } from '@/api/auth';
+import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import {
   extractContent,
@@ -42,11 +43,20 @@ function SharePage() {
     setSourceUrl(extractedUrl);
   }, []);
 
-  // Check authentication via session
+  // Check authentication (session preferred, token fallback for backwards compatibility)
   useEffect(() => {
     const checkAuth = async () => {
+      // Check session first (passkey auth)
       const sessionResult = await getSession();
       if (sessionResult.ok) {
+        setIsAuthenticated(true);
+        return;
+      }
+
+      // Backwards compatibility: Check if we have a token (legacy auth)
+      // Remove this check once all users have registered passkeys.
+      // See docs/PLAN.md Phase 7.7c for removal criteria.
+      if (tokenStorage.isConfigured()) {
         setIsAuthenticated(true);
         return;
       }

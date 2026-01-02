@@ -1,5 +1,6 @@
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
 import { captureContract, taskContract } from '@yoink/api-contracts';
+import { tokenStorage } from '@/lib/token';
 
 /**
  * Redirect to login page with current path as return URL.
@@ -18,13 +19,26 @@ const redirectToLogin = () => {
 };
 
 /**
- * Shared API fetcher that uses session cookies for authentication.
- * Redirects to login on 401 Unauthorized responses.
+ * Shared API fetcher that uses session cookies for authentication,
+ * with fallback to Bearer token for backwards compatibility.
+ * 
+ * NOTE: Token fallback is for existing users who haven't migrated to passkeys yet.
+ * Remove token handling once all users have registered passkeys.
+ * See docs/PLAN.md Phase 7.7c for removal criteria.
  */
 const createApi = () => async (args: { path: string; method: string; headers: HeadersInit; body?: BodyInit | null }) => {
+  const headers = new Headers(args.headers);
+  
+  // Backwards compatibility: Include Bearer token if configured
+  // The server's combinedAuthMiddleware will prefer session cookies over tokens
+  const token = tokenStorage.get();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const response = await fetch(args.path, {
     method: args.method,
-    headers: args.headers,
+    headers,
     credentials: 'include', // Include session cookies
     body: args.body,
   });

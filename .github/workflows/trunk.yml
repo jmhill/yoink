@@ -222,11 +222,6 @@ jobs:
       - name: Setup Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@63da3ecc5e2793b98a3f2519b3d75d4f4c11cec2 # master
 
-      - name: Wait for deployment to stabilize
-        # Give Fly.io proxy time to propagate routing after deploy
-        # Single-machine deploys need extra time for proxy cache updates
-        run: sleep 30
-
       - name: Health check with retry
         id: health-check
         run: |

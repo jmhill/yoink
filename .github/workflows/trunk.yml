@@ -159,10 +159,41 @@ jobs:
             cat "$REPORT_FILE" >> $GITHUB_STEP_SUMMARY
           fi
 
+  migration-check:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
+
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
+        with:
+          enable-cache: 'true'
+
+      - name: Setup pnpm cache
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: devbox run pnpm install --frozen-lockfile --filter @yoink/api...
+
+      - name: Test pending migrations
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN_READONLY }}
+        run: devbox run pnpm --filter @yoink/api exec tsx src/test-migrations.ts
+
   deploy:
     name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: e2e-tests
+    needs: [e2e-tests, migration-check]
 
     steps:
       - name: Checkout

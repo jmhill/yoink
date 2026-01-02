@@ -181,6 +181,29 @@ export const registerAdminRoutes = async (
         );
       },
 
+      createUser: async ({ params, body }: { params: { organizationId: string }; body: { email: string } }) => {
+        const result = await adminService.createUser({
+          organizationId: params.organizationId,
+          email: body.email,
+        });
+
+        return result.match(
+          (user) => ({
+            status: 201 as const,
+            body: user,
+          }),
+          (error) => {
+            if (error.type === 'ORGANIZATION_STORAGE_ERROR' && error.message === 'Organization not found') {
+              return {
+                status: 404 as const,
+                body: { message: 'Organization not found' },
+              };
+            }
+            return storageErrorResponse('Failed to create user');
+          }
+        );
+      },
+
       getUser: async ({ params }: { params: { id: string } }) => {
         const result = await adminService.getUser(params.id);
         return result.match(

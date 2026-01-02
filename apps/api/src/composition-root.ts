@@ -260,6 +260,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
     const adminService = createAdminService({
       organizationStore,
+      organizationMembershipStore: membershipStore,
       userStore,
       tokenStore,
       clock,

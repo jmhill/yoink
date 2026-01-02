@@ -1,7 +1,9 @@
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, errAsync } from 'neverthrow';
 import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
 import type { Organization } from '../../organizations/domain/organization.js';
 import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
+import type { OrganizationMembership } from '../../organizations/domain/organization-membership.js';
+import type { OrganizationMembershipStore } from '../../organizations/domain/organization-membership-store.js';
 import type { User } from '../../users/domain/user.js';
 import type { UserStore } from '../../users/domain/user-store.js';
 import type { ApiToken } from '../../auth/domain/api-token.js';
@@ -15,11 +17,17 @@ import type {
 
 export type AdminServiceDependencies = {
   organizationStore: OrganizationStore;
+  organizationMembershipStore: OrganizationMembershipStore;
   userStore: UserStore;
   tokenStore: TokenStore;
   clock: Clock;
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;
+};
+
+export type CreateUserCommand = {
+  organizationId: string;
+  email: string;
 };
 
 export type CreateTokenCommand = {
@@ -46,9 +54,10 @@ export type AdminService = {
     newName: string
   ): ResultAsync<Organization | null, OrganizationStorageError>;
 
-  // Users (read-only - users are created via signup flow)
+  // Users
   listUsers(organizationId: string): ResultAsync<User[], UserStorageError>;
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
+  createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError>;
 
   // Tokens (scoped to organizations)
   listTokens(organizationId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
@@ -66,6 +75,7 @@ export const createAdminService = (
 ): AdminService => {
   const {
     organizationStore,
+    organizationMembershipStore,
     userStore,
     tokenStore,
     clock,
@@ -108,13 +118,50 @@ export const createAdminService = (
       });
     },
 
-    // Users (read-only)
+    // Users
     listUsers(organizationId: string) {
       return userStore.findByOrganizationId(organizationId);
     },
 
     getUser(id: string) {
       return userStore.findById(id);
+    },
+
+    createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {
+      const { organizationId, email } = command;
+      const now = clock.now().toISOString();
+      const userId = idGenerator.generate();
+
+      // Check if org exists first
+      return organizationStore.findById(organizationId).andThen((org) => {
+        if (!org) {
+          return errAsync({
+            type: 'ORGANIZATION_STORAGE_ERROR' as const,
+            message: 'Organization not found',
+          });
+        }
+
+        const user: User = {
+          id: userId,
+          organizationId,
+          email,
+          createdAt: now,
+        };
+
+        const membership: OrganizationMembership = {
+          id: idGenerator.generate(),
+          userId,
+          organizationId,
+          role: 'member',
+          isPersonalOrg: false,
+          joinedAt: now,
+        };
+
+        // Save user and membership
+        return userStore.save(user).andThen(() =>
+          organizationMembershipStore.save(membership).map(() => user)
+        );
+      });
     },
 
     // Tokens

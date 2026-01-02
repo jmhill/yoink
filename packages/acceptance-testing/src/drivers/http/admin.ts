@@ -126,9 +126,21 @@ export const createHttpAdmin = (
   },
 
   async createToken(userId: string, name: string): Promise<CreateTokenResult> {
-    const response = await client.post(`/api/admin/users/${userId}/tokens`, {
-      name,
-    });
+    // First get the user to find their organizationId
+    const userResponse = await client.get(`/api/admin/users/${userId}`);
+    if (userResponse.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (userResponse.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    const user = userResponse.json<User>();
+
+    // Now create the token using the org-scoped endpoint
+    const response = await client.post(
+      `/api/admin/organizations/${user.organizationId}/tokens`,
+      { userId, name }
+    );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -140,11 +152,26 @@ export const createHttpAdmin = (
   },
 
   async listTokens(userId: string): Promise<Token[]> {
-    const response = await client.get(`/api/admin/users/${userId}/tokens`);
+    // First get the user to find their organizationId
+    const userResponse = await client.get(`/api/admin/users/${userId}`);
+    if (userResponse.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (userResponse.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    const user = userResponse.json<User>();
+
+    // List tokens for the organization and filter by userId
+    const response = await client.get(
+      `/api/admin/organizations/${user.organizationId}/tokens`
+    );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
-    return response.json<{ tokens: Token[] }>().tokens;
+    const allTokens = response.json<{ tokens: Token[] }>().tokens;
+    // Filter to only this user's tokens
+    return allTokens.filter(token => token.userId === userId);
   },
 
   async revokeToken(tokenId: string): Promise<void> {

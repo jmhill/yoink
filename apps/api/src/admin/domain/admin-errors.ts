@@ -1,9 +1,9 @@
-import type { OrganizationStorageError } from '../../organizations/domain/organization-errors.js';
+import type { OrganizationStorageError, MembershipStorageError } from '../../organizations/domain/organization-errors.js';
 import type { UserStorageError } from '../../users/domain/user-errors.js';
 import type { TokenStorageError } from '../../auth/domain/auth-errors.js';
 
 // Re-export storage errors for convenience
-export type { OrganizationStorageError, UserStorageError, TokenStorageError };
+export type { OrganizationStorageError, MembershipStorageError, UserStorageError, TokenStorageError };
 
 // Admin-specific error types
 export type OrganizationNotFoundError = {
@@ -24,6 +24,7 @@ export type TokenNotFoundError = {
 // Union type for all admin service errors
 export type AdminServiceError =
   | OrganizationStorageError
+  | MembershipStorageError
   | UserStorageError
   | TokenStorageError
   | OrganizationNotFoundError

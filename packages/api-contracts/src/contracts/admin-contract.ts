@@ -5,6 +5,7 @@ import {
   CreateOrganizationSchema,
   UpdateOrganizationSchema,
   UserSchema,
+  CreateUserSchema,
   ApiTokenSchema,
   CreateTokenSchema,
   CreateTokenResponseSchema,
@@ -123,7 +124,7 @@ export const adminProtectedContract = c.router(
       summary: 'Update an organization',
     },
 
-    // Users (read-only - users are created via signup flow)
+    // Users
     listUsers: {
       method: 'GET',
       path: '/api/admin/organizations/:organizationId/users',
@@ -139,6 +140,23 @@ export const adminProtectedContract = c.router(
         500: ErrorSchema,
       },
       summary: 'List users in an organization',
+    },
+
+    createUser: {
+      method: 'POST',
+      path: '/api/admin/organizations/:organizationId/users',
+      pathParams: z.object({
+        organizationId: z.string().uuid(),
+      }),
+      body: CreateUserSchema,
+      responses: {
+        201: UserSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Create a system user in an organization (for API integrations)',
     },
 
     getUser: {

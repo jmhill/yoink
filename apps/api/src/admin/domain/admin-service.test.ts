@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createAdminService, type AdminService } from './admin-service.js';
 import { createFakeOrganizationStore } from '../../organizations/infrastructure/fake-organization-store.js';
+import { createFakeOrganizationMembershipStore } from '../../organizations/infrastructure/fake-organization-membership-store.js';
 import { createFakeUserStore } from '../../users/infrastructure/fake-user-store.js';
 import { createFakeTokenStore } from '../../auth/infrastructure/fake-token-store.js';
 import type { Organization } from '../../organizations/domain/organization.js';
@@ -14,16 +15,19 @@ import {
 describe('AdminService', () => {
   let service: AdminService;
   let organizationStore: ReturnType<typeof createFakeOrganizationStore>;
+  let organizationMembershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
   let userStore: ReturnType<typeof createFakeUserStore>;
   let tokenStore: ReturnType<typeof createFakeTokenStore>;
 
   beforeEach(() => {
     organizationStore = createFakeOrganizationStore();
+    organizationMembershipStore = createFakeOrganizationMembershipStore();
     userStore = createFakeUserStore();
     tokenStore = createFakeTokenStore();
 
     service = createAdminService({
       organizationStore,
+      organizationMembershipStore,
       userStore,
       tokenStore,
       clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),

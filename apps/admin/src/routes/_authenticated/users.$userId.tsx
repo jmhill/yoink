@@ -58,15 +58,17 @@ function UserDetailPage() {
     enabled: !!user?.organizationId,
   });
 
+  // Tokens are now scoped to organizations, not users
   const { data: tokensData, isPending: tokensPending } = tsrAdmin.listTokens.useQuery({
-    queryKey: ['users', userId, 'tokens'],
-    queryData: { params: { userId } },
+    queryKey: ['organizations', user?.organizationId ?? '', 'tokens'],
+    queryData: { params: { organizationId: user?.organizationId ?? '' } },
+    enabled: !!user?.organizationId,
   });
 
   const createTokenMutation = tsrAdmin.createToken.useMutation({
     onSuccess: (data) => {
       if (data.status === 201) {
-        tsrQueryClient.invalidateQueries({ queryKey: ['users', userId, 'tokens'] });
+        tsrQueryClient.invalidateQueries({ queryKey: ['organizations', user?.organizationId ?? '', 'tokens'] });
         setCreatedToken(data.body.rawToken);
         setNewTokenName('');
         setIsCreateDialogOpen(false);
@@ -77,7 +79,7 @@ function UserDetailPage() {
 
   const revokeTokenMutation = tsrAdmin.revokeToken.useMutation({
     onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['users', userId, 'tokens'] });
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', user?.organizationId ?? '', 'tokens'] });
       toast.success('Token revoked');
     },
     onError: (err) => {
@@ -91,9 +93,10 @@ function UserDetailPage() {
 
   const handleCreateToken = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     createTokenMutation.mutate({
-      params: { userId },
-      body: { name: newTokenName },
+      params: { organizationId: user.organizationId },
+      body: { userId, name: newTokenName },
     });
   };
 
@@ -161,7 +164,9 @@ function UserDetailPage() {
   }
 
   const organization = orgData?.status === 200 ? orgData.body : null;
-  const tokens = tokensData?.status === 200 ? tokensData.body.tokens : [];
+  // Filter tokens to only show those belonging to this user
+  const allTokens = tokensData?.status === 200 ? tokensData.body.tokens : [];
+  const tokens = allTokens.filter(token => token.userId === userId);
 
   if (!user || !organization) {
     return (

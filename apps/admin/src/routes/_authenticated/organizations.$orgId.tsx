@@ -29,7 +29,7 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsrAdmin } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { WifiOff } from 'lucide-react';
+import { WifiOff, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
@@ -39,8 +39,10 @@ export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
 function OrganizationDetailPage() {
   const { orgId } = Route.useParams();
   const navigate = useNavigate();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState('');
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [createdInviteUrl, setCreatedInviteUrl] = useState<string | null>(null);
+  const [isInviteResultDialogOpen, setIsInviteResultDialogOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const tsrQueryClient = tsrAdmin.useQueryClient();
@@ -55,81 +57,43 @@ function OrganizationDetailPage() {
     queryData: { params: { organizationId: orgId } },
   });
 
-  const createUserMutation = tsrAdmin.createUser.useMutation({
-    onMutate: async ({ body }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({
-        queryKey: ['organizations', orgId, 'users'],
-      });
-
-      // Snapshot current state for rollback
-      const previousData = tsrQueryClient.listUsers.getQueryData([
-        'organizations',
-        orgId,
-        'users',
-      ]);
-
-      // Create optimistic user with temp ID
-      const optimisticUser = {
-        id: `temp-${Date.now()}`,
-        organizationId: orgId,
-        email: body.email,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (previousData?.status === 200) {
-        tsrQueryClient.listUsers.setQueryData(
-          ['organizations', orgId, 'users'],
-          {
-            ...previousData,
-            body: {
-              ...previousData.body,
-              users: [...previousData.body.users, optimisticUser],
-            },
-          }
-        );
+  const createInvitationMutation = tsrAdmin.createInvitation.useMutation({
+    onSuccess: (data) => {
+      if (data.status === 201) {
+        // Construct the invitation URL from the code
+        const baseUrl = window.location.origin.replace('admin.', '');
+        setCreatedInviteUrl(`${baseUrl}/join/${data.body.code}`);
+        setInviteEmail('');
+        setIsInviteDialogOpen(false);
+        setIsInviteResultDialogOpen(true);
       }
-
-      // Clear form and close dialog immediately for snappy UX
-      setNewUserEmail('');
-      setIsDialogOpen(false);
-
-      return { previousData, previousEmail: body.email };
     },
-
-    onError: (err, _variables, context) => {
-      // Rollback on error
-      if (context?.previousData) {
-        tsrQueryClient.listUsers.setQueryData(
-          ['organizations', orgId, 'users'],
-          context.previousData
-        );
-      }
-      // Restore the form so user doesn't lose their input
-      if (context?.previousEmail) {
-        setNewUserEmail(context.previousEmail);
-        setIsDialogOpen(true);
-      }
-
-      // Show error toast
+    onError: (err) => {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to create user');
+        toast.error('Failed to create invitation');
       }
     },
-
-    onSuccess: () => {
-      toast.success('User created');
-    },
-
-    onSettled: () => {
-      // Refetch to ensure consistency with server (replaces temp ID with real one)
-      tsrQueryClient.invalidateQueries({
-        queryKey: ['organizations', orgId, 'users'],
-      });
-    },
   });
+
+  const handleCreateInvitation = (e: React.FormEvent) => {
+    e.preventDefault();
+    createInvitationMutation.mutate({
+      params: { organizationId: orgId },
+      body: {
+        role: 'member',
+        ...(inviteEmail ? { email: inviteEmail } : {}),
+      },
+    });
+  };
+
+  const handleCopyInviteUrl = async () => {
+    if (createdInviteUrl) {
+      await navigator.clipboard.writeText(createdInviteUrl);
+      toast.success('Invitation URL copied to clipboard');
+    }
+  };
 
   const updateOrgMutation = tsrAdmin.updateOrganization.useMutation({
     onMutate: async ({ body }) => {
@@ -216,14 +180,6 @@ function OrganizationDetailPage() {
       tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
-
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    createUserMutation.mutate({
-      params: { organizationId: orgId },
-      body: { email: newUserEmail },
-    });
-  };
 
   const handleRenameOrganization = (e: React.FormEvent) => {
     e.preventDefault();
@@ -355,39 +311,64 @@ function OrganizationDetailPage() {
               </form>
             </DialogContent>
           </Dialog>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>Create User</Button>
+              <Button>
+                <Mail className="mr-2 h-4 w-4" />
+                Invite User
+              </Button>
             </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleCreateUser}>
+            <DialogContent>
+              <form onSubmit={handleCreateInvitation}>
+                <DialogHeader>
+                  <DialogTitle>Invite User</DialogTitle>
+                  <DialogDescription>
+                    Create an invitation link for {organization.name}. Optionally restrict to a specific email.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email (optional)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="Enter email or leave blank for open invite"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={createInvitationMutation.isPending}>
+                    {createInvitationMutation.isPending ? 'Creating...' : 'Create Invitation'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Invitation Created Result Dialog */}
+          <Dialog open={isInviteResultDialogOpen} onOpenChange={setIsInviteResultDialogOpen}>
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create User</DialogTitle>
+                <DialogTitle>Invitation Created</DialogTitle>
                 <DialogDescription>
-                  Add a new user to {organization.name}.
+                  Share this link with the user you want to invite. The link will expire in 7 days.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newUserEmail}
-                    onChange={(e) => setNewUserEmail(e.target.value)}
-                    placeholder="Enter user email"
-                    required
-                  />
+              <div className="my-4">
+                <div className="rounded-md bg-gray-100 p-3">
+                  <code className="break-all text-sm">{createdInviteUrl}</code>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={createUserMutation.isPending}>
-                  {createUserMutation.isPending ? 'Creating...' : 'Create'}
+                <Button variant="outline" onClick={handleCopyInviteUrl}>
+                  Copy to Clipboard
                 </Button>
+                <Button onClick={() => setIsInviteResultDialogOpen(false)}>Done</Button>
               </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -395,13 +376,13 @@ function OrganizationDetailPage() {
         <CardHeader>
           <CardTitle>Users</CardTitle>
           <CardDescription>
-            Click on a user to manage their API tokens.
+            Click on a user to manage their API tokens. Invite new users with the button above.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
             <p className="text-gray-500">
-              No users yet. Create one to get started.
+              No users yet. Invite someone to get started.
             </p>
           ) : (
             <Table>

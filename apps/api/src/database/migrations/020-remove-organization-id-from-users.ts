@@ -15,7 +15,13 @@ export const migration: Migration = {
   name: 'remove_organization_id_from_users',
   up: async (db) => {
     // SQLite approach: create new table, copy data, drop old, rename new
+    // Made idempotent to handle partial application from previous failed runs
     
+    // 0. Clean up any leftover users_new from a previous failed run
+    await db.execute({
+      sql: `DROP TABLE IF EXISTS users_new`,
+    });
+
     // 1. Create new table without organization_id
     await db.execute({
       sql: `

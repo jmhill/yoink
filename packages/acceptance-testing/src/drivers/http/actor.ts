@@ -385,12 +385,42 @@ export const createHttpActor = (
       // 200 is success
     },
 
-    async getSessionInfo(): Promise<{ user: { id: string; email: string }; organizationId: string }> {
+    async getSessionInfo(): Promise<{
+      user: { id: string; email: string };
+      organizationId: string;
+      organizations: Array<{
+        id: string;
+        name: string;
+        isPersonal: boolean;
+        role: 'owner' | 'admin' | 'member';
+      }>;
+    }> {
       const response = await client.get('/api/auth/session', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
-      return response.json<{ user: { id: string; email: string }; organizationId: string }>();
+      return response.json<{
+        user: { id: string; email: string };
+        organizationId: string;
+        organizations: Array<{
+          id: string;
+          name: string;
+          isPersonal: boolean;
+          role: 'owner' | 'admin' | 'member';
+        }>;
+      }>();
+    },
+
+    async switchOrganization(_organizationId: string): Promise<void> {
+      // Organization switching requires session-based auth (not token auth).
+      // The HTTP driver uses token auth, so this operation is not supported.
+      throw new UnsupportedOperationError('switchOrganization', 'http');
+    },
+
+    async leaveOrganization(_organizationId: string): Promise<void> {
+      // Leaving an organization requires session-based auth (not token auth).
+      // The HTTP driver uses token auth, so this operation is not supported.
+      throw new UnsupportedOperationError('leaveOrganization', 'http');
     },
   };
 };

@@ -73,6 +73,12 @@ export type CoreActor = {
   getSessionInfo(): Promise<{
     user: { id: string; email: string };
     organizationId: string;
+    organizations: Array<{
+      id: string;
+      name: string;
+      isPersonal: boolean;
+      role: 'owner' | 'admin' | 'member';
+    }>;
   }>;
 };
 
@@ -85,6 +91,23 @@ export type BrowserActorOperations = {
    * Navigate to the settings page.
    */
   goToSettings(): Promise<void>;
+
+  /**
+   * Switch to a different organization.
+   * Only works with session auth (not token auth).
+   * Reloads the page after switching.
+   */
+  switchOrganization(organizationId: string): Promise<void>;
+
+  /**
+   * Leave an organization.
+   * Only works with session auth (not token auth).
+   * If leaving the current org, switches to personal org first.
+   * Reloads the page after leaving.
+   * @throws CannotLeavePersonalOrgError if trying to leave personal org
+   * @throws LastAdminError if user is the last admin
+   */
+  leaveOrganization(organizationId: string): Promise<void>;
 
   /**
    * Log out of the current session.

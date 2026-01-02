@@ -13,7 +13,7 @@ export type SessionOrganization = {
   id: string;
   name: string;
   isPersonal: boolean;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
 };
 
 export type SessionInfo = {
@@ -136,6 +136,32 @@ export const switchOrganization = async (
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     return { ok: false, error: body.message || 'Failed to switch organization' };
+  }
+
+  return { ok: true, data: { success: true } };
+};
+
+/**
+ * Leave an organization.
+ * Returns specific error messages for personal org and last admin cases.
+ */
+export const leaveOrganization = async (
+  organizationId: string
+): Promise<ApiResponse<{ success: true }>> => {
+  const response = await fetch(`/api/organizations/${organizationId}/leave`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 404) {
+      return { ok: false, error: 'Not a member of this organization' };
+    }
+    if (response.status === 400) {
+      return { ok: false, error: body.message || 'Cannot leave this organization' };
+    }
+    return { ok: false, error: body.message || 'Failed to leave organization' };
   }
 
   return { ok: true, data: { success: true } };

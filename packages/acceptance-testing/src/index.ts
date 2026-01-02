@@ -17,6 +17,10 @@ export {
   ValidationError,
   UnsupportedOperationError,
   ConflictError,
+  CannotDeleteLastPasskeyError,
+  CannotLeavePersonalOrgError,
+  LastAdminError,
+  NotMemberError,
 } from './dsl/index.js';
 
 export type {

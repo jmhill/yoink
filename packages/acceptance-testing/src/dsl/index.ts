@@ -26,6 +26,9 @@ export {
   UnsupportedOperationError,
   ConflictError,
   CannotDeleteLastPasskeyError,
+  CannotLeavePersonalOrgError,
+  LastAdminError,
+  NotMemberError,
 } from './errors.js';
 
 // Interfaces

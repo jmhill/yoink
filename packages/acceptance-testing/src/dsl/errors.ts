@@ -71,3 +71,32 @@ export class CannotDeleteLastPasskeyError extends DslError {
     super('Cannot delete your last passkey');
   }
 }
+
+/**
+ * Thrown when attempting to leave a personal organization.
+ * Users cannot leave their personal organization.
+ */
+export class CannotLeavePersonalOrgError extends DslError {
+  constructor() {
+    super('Cannot leave your personal organization');
+  }
+}
+
+/**
+ * Thrown when the last admin attempts to leave an organization.
+ * The organization must have at least one admin.
+ */
+export class LastAdminError extends DslError {
+  constructor() {
+    super('Cannot leave as the last admin');
+  }
+}
+
+/**
+ * Thrown when a user is not a member of the specified organization.
+ */
+export class NotMemberError extends DslError {
+  constructor(organizationId: string) {
+    super(`Not a member of organization: ${organizationId}`);
+  }
+}

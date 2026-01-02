@@ -11,7 +11,15 @@ import type {
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError, UnsupportedOperationError } from '../../dsl/index.js';
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  UnsupportedOperationError,
+  CannotLeavePersonalOrgError,
+  LastAdminError,
+  NotMemberError,
+} from '../../dsl/index.js';
 import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
 
 /**
@@ -472,10 +480,73 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('deletePasskey', 'playwright');
     },
 
-    async getSessionInfo(): Promise<{ user: { id: string; email: string }; organizationId: string }> {
-      // For Playwright, we could implement this via UI navigation to settings
-      // or via a direct API call. For now, throw unsupported.
-      throw new UnsupportedOperationError('getSessionInfo', 'playwright');
+    async getSessionInfo(): Promise<{
+      user: { id: string; email: string };
+      organizationId: string;
+      organizations: Array<{
+        id: string;
+        name: string;
+        isPersonal: boolean;
+        role: 'owner' | 'admin' | 'member';
+      }>;
+    }> {
+      // Use the API directly since we have session cookie in the browser context
+      const response = await page.request.get('/api/auth/session');
+      if (!response.ok()) {
+        throw new UnauthorizedError();
+      }
+      return response.json();
+    },
+
+    async switchOrganization(organizationId: string): Promise<void> {
+      const response = await page.request.post('/api/organizations/switch', {
+        data: { organizationId },
+      });
+
+      if (response.status() === 400) {
+        throw new NotMemberError(organizationId);
+      }
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to switch organization: ${response.status()}`);
+      }
+
+      // Reload the page to reflect the new org context
+      await page.reload();
+    },
+
+    async leaveOrganization(organizationId: string): Promise<void> {
+      const response = await page.request.post(`/api/organizations/${organizationId}/leave`);
+
+      if (response.status() === 404) {
+        throw new NotMemberError(organizationId);
+      }
+
+      if (response.status() === 400) {
+        const body = await response.json();
+        if (body.message?.includes('personal')) {
+          throw new CannotLeavePersonalOrgError();
+        }
+        if (body.message?.includes('last admin')) {
+          throw new LastAdminError();
+        }
+        throw new Error(body.message || 'Cannot leave organization');
+      }
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+
+      if (!response.ok()) {
+        throw new Error(`Failed to leave organization: ${response.status()}`);
+      }
+
+      // Reload the page to reflect the change
+      await page.reload();
     },
   };
 };

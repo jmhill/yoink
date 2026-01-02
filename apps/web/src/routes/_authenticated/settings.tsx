@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoin
 import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
 import { ArrowLeft, LogOut, Sun, Moon, Monitor, Palette, Loader2 } from 'lucide-react';
 import { SecuritySection } from '@/components/security-section';
+import { OrganizationsSection } from '@/components/organizations-section';
 import { logout } from '@/api/auth';
 
 export const Route = createFileRoute('/_authenticated/settings')({
@@ -86,6 +87,8 @@ function SettingsPage() {
         </Card>
 
         <SecuritySection />
+
+        <OrganizationsSection />
 
         <Card>
           <CardHeader>

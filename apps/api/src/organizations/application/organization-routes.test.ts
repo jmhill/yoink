@@ -174,4 +174,62 @@ describe('organization routes', () => {
       expect(response.statusCode).toBe(400);
     });
   });
+
+  describe('POST /api/organizations/:organizationId/leave', () => {
+    it('leaves an organization the user is a member of', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ success: true });
+    });
+
+    it('returns 404 when not a member of the organization', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${otherOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json().message).toContain('Not a member');
+    });
+
+    it('returns 400 when trying to leave personal organization', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${personalOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toContain('Cannot leave your personal organization');
+    });
+
+    // Note: The LAST_ADMIN case is thoroughly tested in membership-service.test.ts
+    // The routes layer simply forwards the domain error to a 400 response.
+    // Testing it here would require significant setup duplication.
+
+    it('returns 401 without authentication', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('returns 400 for invalid organizationId format', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/organizations/not-a-uuid/leave',
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
 });

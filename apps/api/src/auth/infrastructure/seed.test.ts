@@ -124,7 +124,6 @@ describe('seedAuthData', () => {
     expect(savedOrgs[0].name).toBe('My Captures');
 
     expect(savedUsers).toHaveLength(1);
-    expect(savedUsers[0].organizationId).toBe(savedOrgs[0].id);
     expect(savedUsers[0].email).toBe('seed@localhost');
 
     expect(savedMemberships).toHaveLength(1);

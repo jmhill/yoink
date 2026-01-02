@@ -56,7 +56,6 @@ describe('createSqliteUserSessionStore', () => {
 
     await userStore.save({
       id: USER_ID,
-      organizationId: ORG_ID,
       email: 'user@test.com',
       createdAt: '2024-01-01T00:00:00.000Z',
     });
@@ -146,7 +145,6 @@ describe('createSqliteUserSessionStore', () => {
       const otherUserId = '550e8400-e29b-41d4-a716-446655440003';
       await userStore.save({
         id: otherUserId,
-        organizationId: ORG_ID,
         email: 'other@test.com',
         createdAt: '2024-01-01T00:00:00.000Z',
       });
@@ -276,8 +274,7 @@ describe('createSqliteUserSessionStore', () => {
       const otherUserId = '550e8400-e29b-41d4-a716-446655440003';
       await userStore.save({
         id: otherUserId,
-        organizationId: ORG_ID,
-        email: 'other@test.com',
+        email: 'other3@test.com',
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 

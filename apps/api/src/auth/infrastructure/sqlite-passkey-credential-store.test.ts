@@ -56,7 +56,6 @@ describe('createSqlitePasskeyCredentialStore', () => {
 
     await userStore.save({
       id: '550e8400-e29b-41d4-a716-446655440002',
-      organizationId: '550e8400-e29b-41d4-a716-446655440001',
       email: 'user@test.com',
       createdAt: '2024-01-01T00:00:00.000Z',
     });
@@ -184,7 +183,6 @@ describe('createSqlitePasskeyCredentialStore', () => {
       const userStore = await createSqliteUserStore(db);
       await userStore.save({
         id: '550e8400-e29b-41d4-a716-446655440003',
-        organizationId: '550e8400-e29b-41d4-a716-446655440001',
         email: 'other@test.com',
         createdAt: '2024-01-01T00:00:00.000Z',
       });

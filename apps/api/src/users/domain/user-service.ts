@@ -9,7 +9,6 @@ import type { UserServiceError } from './user-errors.js';
 
 export type CreateUserCommand = {
   id: string;
-  organizationId: string;
   email: string;
   createdAt: string;
 };
@@ -32,9 +31,9 @@ export type UserService = {
   getUserByEmail(email: string): ResultAsync<User | null, UserServiceError>;
 
   /**
-   * Get all users belonging to an organization.
+   * Get users by their IDs.
    */
-  getUsersByOrganization(organizationId: string): ResultAsync<User[], UserServiceError>;
+  getUsersByIds(userIds: string[]): ResultAsync<User[], UserServiceError>;
 
   /**
    * Create a new user.
@@ -66,14 +65,13 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
       return userStore.findByEmail(email);
     },
 
-    getUsersByOrganization(organizationId: string): ResultAsync<User[], UserServiceError> {
-      return userStore.findByOrganizationId(organizationId);
+    getUsersByIds(userIds: string[]): ResultAsync<User[], UserServiceError> {
+      return userStore.findByIds(userIds);
     },
 
     createUser(command: CreateUserCommand): ResultAsync<User, UserServiceError> {
       const user: User = {
         id: command.id,
-        organizationId: command.organizationId,
         email: command.email,
         createdAt: command.createdAt,
       };

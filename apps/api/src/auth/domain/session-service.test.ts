@@ -22,7 +22,6 @@ describe('SessionService', () => {
   // Test fixtures
   const testUser: User = {
     id: 'user-1',
-    organizationId: 'org-1',
     email: 'alice@example.com',
     createdAt: '2024-01-01T00:00:00.000Z',
   };
@@ -122,7 +121,6 @@ describe('SessionService', () => {
       // Create a user with no memberships
       const orphanUser: User = {
         id: 'orphan-user',
-        organizationId: 'org-1',
         email: 'orphan@example.com',
         createdAt: '2024-01-01T00:00:00.000Z',
       };

@@ -1,19 +1,11 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { createSqliteOrganizationStore } from '../../organizations/infrastructure/sqlite-organization-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 
-const TEST_ORG = {
-  id: '550e8400-e29b-41d4-a716-446655440001',
-  name: 'Test Organization',
-  createdAt: '2024-01-01T00:00:00.000Z',
-};
-
 const createTestUser = (overrides: Partial<User> = {}): User => ({
   id: '550e8400-e29b-41d4-a716-446655440002',
-  organizationId: TEST_ORG.id,
   email: 'test@example.com',
   createdAt: '2024-01-01T00:00:00.000Z',
   ...overrides,
@@ -36,11 +28,6 @@ describe('createSqliteUserStore', () => {
     await db.execute({ sql: 'DELETE FROM api_tokens' });
     await db.execute({ sql: 'DELETE FROM captures' });
     await db.execute({ sql: 'DELETE FROM users' });
-    await db.execute({ sql: 'DELETE FROM organizations' });
-
-    // Create required parent organization
-    const orgStore = await createSqliteOrganizationStore(db);
-    await orgStore.save(TEST_ORG);
 
     store = await createSqliteUserStore(db);
   });
@@ -85,9 +72,9 @@ describe('createSqliteUserStore', () => {
     });
   });
 
-  describe('findByOrganizationId', () => {
-    it('returns empty array when no users exist for organization', async () => {
-      const result = await store.findByOrganizationId(TEST_ORG.id);
+  describe('findByIds', () => {
+    it('returns empty array when no ids provided', async () => {
+      const result = await store.findByIds([]);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -95,7 +82,7 @@ describe('createSqliteUserStore', () => {
       }
     });
 
-    it('returns all users for the organization ordered by createdAt desc', async () => {
+    it('returns all users matching the ids ordered by createdAt desc', async () => {
       const user1 = createTestUser({
         id: '550e8400-e29b-41d4-a716-446655440002',
         email: 'first@example.com',
@@ -106,10 +93,16 @@ describe('createSqliteUserStore', () => {
         email: 'second@example.com',
         createdAt: '2024-02-01T00:00:00.000Z',
       });
+      const user3 = createTestUser({
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        email: 'third@example.com',
+        createdAt: '2024-03-01T00:00:00.000Z',
+      });
       await store.save(user1);
       await store.save(user2);
+      await store.save(user3);
 
-      const result = await store.findByOrganizationId(TEST_ORG.id);
+      const result = await store.findByIds([user1.id, user2.id]);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -119,11 +112,11 @@ describe('createSqliteUserStore', () => {
       }
     });
 
-    it('only returns users for the specified organization', async () => {
+    it('returns empty array when no users match the ids', async () => {
       const user = createTestUser();
       await store.save(user);
 
-      const result = await store.findByOrganizationId('other-org-id');
+      const result = await store.findByIds(['non-existent-id']);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {

@@ -1,19 +1,17 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
+import { ResultAsync, okAsync } from 'neverthrow';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 import { userStorageError, type UserStorageError } from '../domain/user-errors.js';
 
 type UserRow = {
   id: string;
-  organization_id: string;
   email: string;
   created_at: string;
 };
 
 const rowToUser = (row: UserRow): User => ({
   id: row.id,
-  organizationId: row.organization_id,
   email: row.email,
   createdAt: row.created_at,
 });
@@ -42,10 +40,10 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            INSERT INTO users (id, organization_id, email, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO users (id, email, created_at)
+            VALUES (?, ?, ?)
           `,
-          args: [user.id, user.organizationId, user.email, user.createdAt],
+          args: [user.id, user.email, user.createdAt],
         }),
         (error) => userStorageError('Failed to save user', error)
       ).map(() => undefined);
@@ -77,13 +75,18 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       });
     },
 
-    findByOrganizationId: (organizationId: string): ResultAsync<User[], UserStorageError> => {
+    findByIds: (ids: string[]): ResultAsync<User[], UserStorageError> => {
+      if (ids.length === 0) {
+        return okAsync([]);
+      }
+
+      const placeholders = ids.map(() => '?').join(', ');
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT * FROM users WHERE organization_id = ? ORDER BY created_at DESC`,
-          args: [organizationId],
+          sql: `SELECT * FROM users WHERE id IN (${placeholders}) ORDER BY created_at DESC`,
+          args: ids,
         }),
-        (error) => userStorageError('Failed to find users by organization', error)
+        (error) => userStorageError('Failed to find users by ids', error)
       ).map((result) => {
         const rows = result.rows as UserRow[];
         return rows.map(rowToUser);

@@ -22,7 +22,6 @@ export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 // User schemas
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  organizationId: z.string().uuid(),
   email: z.string().email(),
   createdAt: z.string().datetime(),
 });

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -32,12 +33,19 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
+// User belongs to org via membership, so we pass orgId as a search param
+const userSearchSchema = z.object({
+  orgId: z.string().uuid(),
+});
+
 export const Route = createFileRoute('/_authenticated/users/$userId')({
   component: UserDetailPage,
+  validateSearch: userSearchSchema,
 });
 
 function UserDetailPage() {
   const { userId } = Route.useParams();
+  const { orgId } = Route.useSearch();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
@@ -51,24 +59,22 @@ function UserDetailPage() {
 
   const user = userData?.status === 200 ? userData.body : null;
 
-  // Fetch organization once we have the user
+  // Fetch organization from the search param
   const { data: orgData, isPending: orgPending } = tsrAdmin.getOrganization.useQuery({
-    queryKey: ['organizations', user?.organizationId ?? ''],
-    queryData: { params: { id: user?.organizationId ?? '' } },
-    enabled: !!user?.organizationId,
+    queryKey: ['organizations', orgId],
+    queryData: { params: { id: orgId } },
   });
 
-  // Tokens are now scoped to organizations, not users
+  // Tokens are scoped to organizations
   const { data: tokensData, isPending: tokensPending } = tsrAdmin.listTokens.useQuery({
-    queryKey: ['organizations', user?.organizationId ?? '', 'tokens'],
-    queryData: { params: { organizationId: user?.organizationId ?? '' } },
-    enabled: !!user?.organizationId,
+    queryKey: ['organizations', orgId, 'tokens'],
+    queryData: { params: { organizationId: orgId } },
   });
 
   const createTokenMutation = tsrAdmin.createToken.useMutation({
     onSuccess: (data) => {
       if (data.status === 201) {
-        tsrQueryClient.invalidateQueries({ queryKey: ['organizations', user?.organizationId ?? '', 'tokens'] });
+        tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
         setCreatedToken(data.body.rawToken);
         setNewTokenName('');
         setIsCreateDialogOpen(false);
@@ -79,7 +85,7 @@ function UserDetailPage() {
 
   const revokeTokenMutation = tsrAdmin.revokeToken.useMutation({
     onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', user?.organizationId ?? '', 'tokens'] });
+      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
       toast.success('Token revoked');
     },
     onError: (err) => {
@@ -95,7 +101,7 @@ function UserDetailPage() {
     e.preventDefault();
     if (!user) return;
     createTokenMutation.mutate({
-      params: { organizationId: user.organizationId },
+      params: { organizationId: orgId },
       body: { userId, name: newTokenName },
     });
   };

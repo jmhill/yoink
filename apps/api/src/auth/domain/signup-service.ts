@@ -252,10 +252,9 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
         const personalOrgId = idGenerator.generate();
         const personalOrgName = `${email}'s Workspace`;
 
-        // Create user
+        // Create user (no organizationId - memberships track org relationships)
         const user = {
           id: userId,
-          organizationId: personalOrgId, // Primary org is personal org
           email,
           createdAt: now,
         };

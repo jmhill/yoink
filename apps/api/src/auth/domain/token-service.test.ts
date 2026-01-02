@@ -17,7 +17,6 @@ describe('TokenService', () => {
 
   const testUser: User = {
     id: '550e8400-e29b-41d4-a716-446655440002',
-    organizationId: testOrg.id,
     email: 'test@example.com',
     createdAt: '2024-01-01T00:00:00.000Z',
   };
@@ -164,7 +163,6 @@ describe('TokenService', () => {
     // Create user belonging to non-existent org
     const orphanUser: User = {
       id: 'orphan-user-id',
-      organizationId: 'non-existent-org',
       email: 'orphan@example.com',
       createdAt: '2024-01-01T00:00:00.000Z',
     };

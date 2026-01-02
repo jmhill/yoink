@@ -72,10 +72,9 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> 
     throw new Error('Failed to seed organization');
   }
 
-  // Create default user
+  // Create default user (no organizationId - memberships track org relationships)
   const saveUserResult = await userStore.save({
     id: SEED_USER_ID,
-    organizationId: SEED_ORG_ID,
     email: 'seed@localhost',
     createdAt: now,
   });

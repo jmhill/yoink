@@ -22,7 +22,6 @@ describe('UserSessionMiddleware', () => {
 
   const testUser: User = {
     id: 'user-1',
-    organizationId: 'org-1',
     email: 'alice@example.com',
     createdAt: '2024-01-01T00:00:00.000Z',
   };

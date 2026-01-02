@@ -6,7 +6,6 @@ import type { UserStore } from './user-store.js';
 
 const createTestUser = (overrides: Partial<User> = {}): User => ({
   id: '550e8400-e29b-41d4-a716-446655440001',
-  organizationId: '550e8400-e29b-41d4-a716-446655440002',
   email: 'test@example.com',
   createdAt: '2024-01-01T00:00:00.000Z',
   ...overrides,
@@ -79,26 +78,25 @@ describe('UserService', () => {
     });
   });
 
-  describe('getUsersByOrganization', () => {
-    it('returns users for the organization', async () => {
-      const orgId = '550e8400-e29b-41d4-a716-446655440010';
-      const user1 = createTestUser({ id: 'user-1', organizationId: orgId });
-      const user2 = createTestUser({ id: 'user-2', organizationId: orgId });
+  describe('getUsersByIds', () => {
+    it('returns users for the given IDs', async () => {
+      const user1 = createTestUser({ id: 'user-1', email: 'user1@example.com' });
+      const user2 = createTestUser({ id: 'user-2', email: 'user2@example.com' });
       await userStore.save(user1);
       await userStore.save(user2);
 
-      const result = await service.getUsersByOrganization(orgId);
+      const result = await service.getUsersByIds(['user-1', 'user-2']);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toHaveLength(2);
-        expect(result.value.map(u => u.id)).toContain('user-1');
-        expect(result.value.map(u => u.id)).toContain('user-2');
+        expect(result.value.map((u: User) => u.id)).toContain('user-1');
+        expect(result.value.map((u: User) => u.id)).toContain('user-2');
       }
     });
 
-    it('returns empty array when no users exist for organization', async () => {
-      const result = await service.getUsersByOrganization('org-with-no-users');
+    it('returns empty array when no users exist for given IDs', async () => {
+      const result = await service.getUsersByIds(['non-existent-1', 'non-existent-2']);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -110,7 +108,7 @@ describe('UserService', () => {
       const failingStore = createFakeUserStore({ shouldFailOnFind: true });
       const failingService = createUserService({ userStore: failingStore });
 
-      const result = await failingService.getUsersByOrganization('any-org');
+      const result = await failingService.getUsersByIds(['any-id']);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -123,7 +121,6 @@ describe('UserService', () => {
     it('creates and returns a new user', async () => {
       const command = {
         id: '550e8400-e29b-41d4-a716-446655440099',
-        organizationId: '550e8400-e29b-41d4-a716-446655440002',
         email: 'new@example.com',
         createdAt: '2024-06-01T00:00:00.000Z',
       };
@@ -134,7 +131,6 @@ describe('UserService', () => {
       if (result.isOk()) {
         expect(result.value.id).toBe(command.id);
         expect(result.value.email).toBe('new@example.com');
-        expect(result.value.organizationId).toBe(command.organizationId);
       }
 
       // Verify user is persisted
@@ -151,7 +147,6 @@ describe('UserService', () => {
 
       const result = await failingService.createUser({
         id: '550e8400-e29b-41d4-a716-446655440099',
-        organizationId: '550e8400-e29b-41d4-a716-446655440002',
         email: 'new@example.com',
         createdAt: '2024-06-01T00:00:00.000Z',
       });

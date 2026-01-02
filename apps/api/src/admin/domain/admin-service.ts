@@ -55,7 +55,7 @@ export type AdminService = {
   ): ResultAsync<Organization | null, OrganizationStorageError>;
 
   // Users
-  listUsers(organizationId: string): ResultAsync<User[], UserStorageError>;
+  listUsers(organizationId: string): ResultAsync<User[], AdminServiceError>;
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
   createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError>;
 
@@ -120,7 +120,13 @@ export const createAdminService = (
 
     // Users
     listUsers(organizationId: string) {
-      return userStore.findByOrganizationId(organizationId);
+      // Get memberships for the org, then fetch users by their IDs
+      return organizationMembershipStore
+        .findByOrganizationId(organizationId)
+        .andThen((memberships) => {
+          const userIds = memberships.map((m) => m.userId);
+          return userStore.findByIds(userIds);
+        });
     },
 
     getUser(id: string) {
@@ -143,7 +149,6 @@ export const createAdminService = (
 
         const user: User = {
           id: userId,
-          organizationId,
           email,
           createdAt: now,
         };

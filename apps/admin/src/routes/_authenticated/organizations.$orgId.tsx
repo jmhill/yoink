@@ -401,6 +401,7 @@ function OrganizationDetailPage() {
                       navigate({
                         to: '/users/$userId',
                         params: { userId: user.id },
+                        search: { orgId },
                       })
                     }
                   >

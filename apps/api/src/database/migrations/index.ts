@@ -31,6 +31,7 @@ import { migration as addEmailUniqueConstraint } from './016-add-email-unique-co
 import { migration as makeInvitationInvitedByNullable } from './017-make-invitation-invited-by-nullable.js';
 import { migration as backfillOrganizationMemberships } from './018-backfill-organization-memberships.js';
 import { migration as addOrganizationIdToTokens } from './019-add-organization-id-to-tokens.js';
+import { migration as removeOrganizationIdFromUsers } from './020-remove-organization-id-from-users.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -52,6 +53,7 @@ export const migrations: Migration[] = [
   makeInvitationInvitedByNullable,
   backfillOrganizationMemberships,
   addOrganizationIdToTokens,
+  removeOrganizationIdFromUsers,
 ];
 
 export type { Migration };

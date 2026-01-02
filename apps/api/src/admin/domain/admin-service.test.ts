@@ -124,23 +124,38 @@ describe('AdminService', () => {
       }
 
       // Users are now created via signup flow, so we add them directly to the store
+      // along with their membership
       testUser = {
         id: 'user-1',
-        organizationId: testOrg.id,
         email: 'user@example.com',
         createdAt: '2024-06-15T12:00:00.000Z',
       };
       await userStore.save(testUser);
+      await organizationMembershipStore.save({
+        id: 'membership-1',
+        userId: testUser.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-06-15T12:00:00.000Z',
+      });
     });
 
     it('lists users in an organization', async () => {
       const user2: User = {
         id: 'user-2',
-        organizationId: testOrg.id,
         email: 'user2@example.com',
         createdAt: '2024-06-15T12:00:00.000Z',
       };
       await userStore.save(user2);
+      await organizationMembershipStore.save({
+        id: 'membership-2',
+        userId: user2.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-06-15T12:00:00.000Z',
+      });
 
       const result = await service.listUsers(testOrg.id);
 
@@ -157,11 +172,19 @@ describe('AdminService', () => {
 
       const otherUser: User = {
         id: 'other-user',
-        organizationId: otherOrgResult.value.id,
         email: 'other@example.com',
         createdAt: '2024-06-15T12:00:00.000Z',
       };
       await userStore.save(otherUser);
+      // This user is a member of the OTHER org, not testOrg
+      await organizationMembershipStore.save({
+        id: 'membership-other',
+        userId: otherUser.id,
+        organizationId: otherOrgResult.value.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-06-15T12:00:00.000Z',
+      });
 
       const result = await service.listUsers(testOrg.id);
 
@@ -204,7 +227,6 @@ describe('AdminService', () => {
       // Users are created via signup flow
       testUser = {
         id: 'user-1',
-        organizationId: testOrg.id,
         email: 'user@example.com',
         createdAt: '2024-06-15T12:00:00.000Z',
       };

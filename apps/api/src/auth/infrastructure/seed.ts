@@ -1,6 +1,7 @@
-import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
+import type { Clock, IdGenerator, PasswordHasher, CodeGenerator } from '@yoink/infrastructure';
 import type { OrganizationStore } from '../../organizations/domain/organization-store.js';
 import type { OrganizationMembershipStore } from '../../organizations/domain/organization-membership-store.js';
+import type { InvitationStore } from '../../organizations/domain/invitation-store.js';
 import type { UserStore } from '../../users/domain/user-store.js';
 import type { TokenStore } from '../domain/token-store.js';
 
@@ -8,25 +9,38 @@ import type { TokenStore } from '../domain/token-store.js';
 const SEED_ORG_ID = '550e8400-e29b-41d4-a716-446655440001';
 const SEED_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 
+// Fixed invitation code for dev - makes it predictable for scripting
+const SEED_INVITATION_CODE = 'DEVLOCAL';
+
 export type SeedDependencies = {
   seedToken: string | undefined;
+  seedInvitationEmail: string | undefined;
   organizationStore: OrganizationStore;
   userStore: UserStore;
   tokenStore: TokenStore;
   membershipStore: OrganizationMembershipStore;
+  invitationStore: InvitationStore;
   passwordHasher: PasswordHasher;
   idGenerator: IdGenerator;
+  codeGenerator: CodeGenerator;
   clock: Clock;
   silent?: boolean;
 };
 
-export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
+export type SeedResult = {
+  /** The invitation code if one was created */
+  invitationCode?: string;
+};
+
+export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> => {
   const {
     seedToken,
+    seedInvitationEmail,
     organizationStore,
     userStore,
     tokenStore,
     membershipStore,
+    invitationStore,
     passwordHasher,
     idGenerator,
     clock,
@@ -34,7 +48,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
 
   // Skip if no seed token configured
   if (!seedToken) {
-    return;
+    return {};
   }
 
   // Skip if tokens already exist (seeding already done)
@@ -43,7 +57,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
     throw new Error('Failed to check for existing tokens during seeding');
   }
   if (hasTokensResult.value) {
-    return;
+    return {};
   }
 
   const now = clock.now().toISOString();
@@ -102,4 +116,35 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<void> => {
   if (!deps.silent) {
     console.log(`Seeded API token: ${tokenId}:${seedToken}`);
   }
+
+  // Create invitation for passkey signup if email is configured
+  let invitationCode: string | undefined;
+  if (seedInvitationEmail) {
+    const invitationId = idGenerator.generate();
+    invitationCode = SEED_INVITATION_CODE;
+    const expiresAt = new Date(clock.now().getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year
+
+    const saveInvitationResult = await invitationStore.save({
+      id: invitationId,
+      code: invitationCode,
+      email: seedInvitationEmail,
+      organizationId: SEED_ORG_ID,
+      invitedByUserId: SEED_USER_ID,
+      role: 'member',
+      expiresAt: expiresAt.toISOString(),
+      acceptedAt: null,
+      acceptedByUserId: null,
+      createdAt: now,
+    });
+
+    if (saveInvitationResult.isErr()) {
+      throw new Error('Failed to seed invitation');
+    }
+
+    if (!deps.silent) {
+      console.log(`Seeded invitation code: ${invitationCode} (for ${seedInvitationEmail})`);
+    }
+  }
+
+  return { invitationCode };
 };

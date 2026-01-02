@@ -146,6 +146,8 @@ export const AppConfigSchema = z.object({
   database: DatabaseConfigSchema,
   infrastructure: InfrastructureConfigSchema,
   seedToken: z.string().optional(),
+  /** Email for seeded invitation (for local dev passkey signup) */
+  seedInvitationEmail: z.string().email().optional(),
   admin: AdminConfigSchema.optional(),
   rateLimit: RateLimitConfigSchema.optional(),
   log: LogConfigSchema,

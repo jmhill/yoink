@@ -34,20 +34,45 @@ export WEBAUTHN_ORIGIN="http://localhost:5174"
 export WEBAUTHN_CHALLENGE_SECRET="dev-challenge-secret-at-least-32-chars"
 export COOKIE_SECURE="false"
 
-# Start server and capture initial output to extract token
+# Seed invitation for passkey signup (separate from token user)
+export SEED_INVITATION_EMAIL="dev@localhost"
+
+# Track what we've seen so we can print the summary once
+SEEN_TOKEN=""
+SEEN_INVITATION=""
+
+print_summary() {
+  echo ""
+  echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+  if [[ -n "$SEEN_TOKEN" ]]; then
+    echo -e "  ${GREEN}Dev Token:${NC}  $SEEN_TOKEN"
+  fi
+  if [[ -n "$SEEN_INVITATION" ]]; then
+    echo -e "  ${GREEN}Signup URL:${NC} http://localhost:5174/signup?code=$SEEN_INVITATION"
+    copy_to_clipboard "http://localhost:5174/signup?code=$SEEN_INVITATION"
+  fi
+  echo ""
+  echo -e "  ${CYAN}Web App:${NC}    http://localhost:5174"
+  echo -e "  ${CYAN}Admin:${NC}      http://localhost:5173  ${YELLOW}(password: admin)${NC}"
+  echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+  echo ""
+}
+
+# Start server and capture initial output to extract token and invitation
 # Then continue streaming output
 pnpm exec tsx watch --experimental-sqlite src/index.ts 2>&1 | while IFS= read -r line; do
   echo "$line"
   if [[ "$line" == *"Seeded API token:"* ]]; then
-    TOKEN=$(echo "$line" | awk '{print $NF}')
-    echo ""
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-    echo -e "  ${GREEN}Dev Token:${NC} $TOKEN"
-    copy_to_clipboard "$TOKEN"
-    echo ""
-    echo -e "  ${CYAN}Web App:${NC}   http://localhost:5174"
-    echo -e "  ${CYAN}Admin:${NC}     http://localhost:5173  ${YELLOW}(password: admin)${NC}"
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-    echo ""
+    SEEN_TOKEN=$(echo "$line" | awk '{print $NF}')
+  fi
+  if [[ "$line" == *"Seeded invitation code:"* ]]; then
+    SEEN_INVITATION=$(echo "$line" | awk '{print $4}')
+  fi
+  # Print summary once we've seen both (or after invitation if no token)
+  if [[ -n "$SEEN_INVITATION" && (-n "$SEEN_TOKEN" || "$line" == *"Seeded invitation code:"*) ]]; then
+    print_summary
+    # Reset so we don't print again
+    SEEN_TOKEN=""
+    SEEN_INVITATION=""
   fi
 done

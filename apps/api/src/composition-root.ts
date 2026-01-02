@@ -117,16 +117,21 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const userStore = await createSqliteUserStore(database);
   const tokenStore = await createSqliteTokenStore(database);
   const membershipStore = await createSqliteOrganizationMembershipStore(database);
+  const invitationStore = await createSqliteInvitationStore(database);
+  const codeGenerator = createCodeGenerator();
 
   // Seed auth data if configured
   await seedAuthData({
     seedToken: config.seedToken,
+    seedInvitationEmail: config.seedInvitationEmail,
     organizationStore,
     userStore,
     tokenStore,
     membershipStore,
+    invitationStore,
     passwordHasher,
     idGenerator,
+    codeGenerator,
     clock,
     silent,
   });
@@ -153,8 +158,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // InvitationService - manages organization invitations
-  const invitationStore = await createSqliteInvitationStore(database);
-  const codeGenerator = createCodeGenerator();
   const invitationService = createInvitationService({
     invitationStore,
     organizationStore,

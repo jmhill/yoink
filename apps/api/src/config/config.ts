@@ -199,6 +199,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
       passwordHasher: { type: 'bcrypt' },
     },
     seedToken: process.env.SEED_TOKEN,
+    seedInvitationEmail: process.env.SEED_INVITATION_EMAIL,
     admin: await loadAdminConfig(),
     rateLimit: loadRateLimitConfig(),
     log: loadLogConfig(),

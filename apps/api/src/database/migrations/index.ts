@@ -30,6 +30,7 @@ import { migration as createUserSessions } from './015-create-user-sessions.js';
 import { migration as addEmailUniqueConstraint } from './016-add-email-unique-constraint.js';
 import { migration as makeInvitationInvitedByNullable } from './017-make-invitation-invited-by-nullable.js';
 import { migration as backfillOrganizationMemberships } from './018-backfill-organization-memberships.js';
+import { migration as addOrganizationIdToTokens } from './019-add-organization-id-to-tokens.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -50,6 +51,7 @@ export const migrations: Migration[] = [
   addEmailUniqueConstraint,
   makeInvitationInvitedByNullable,
   backfillOrganizationMemberships,
+  addOrganizationIdToTokens,
 ];
 
 export type { Migration };

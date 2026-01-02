@@ -59,6 +59,32 @@ usingDrivers(['http'] as const, (ctx) => {
         expect(todayTasks.some((t) => t.title === 'Due tomorrow')).toBe(false);
       });
 
+      it('includes overdue tasks in today filter', async () => {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+
+        await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
+        await alice.createTask({ title: 'Due today', dueDate: today });
+
+        const todayTasks = await alice.listTasks('today');
+
+        expect(todayTasks.some((t) => t.title === 'Overdue task')).toBe(true);
+        expect(todayTasks.some((t) => t.title === 'Due today')).toBe(true);
+      });
+
+      it('excludes overdue tasks from upcoming filter', async () => {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+        await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
+        await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
+
+        const upcomingTasks = await alice.listTasks('upcoming');
+
+        expect(upcomingTasks.some((t) => t.title === 'Overdue task')).toBe(false);
+        expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);
+      });
+
       it('filters tasks by upcoming', async () => {
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];

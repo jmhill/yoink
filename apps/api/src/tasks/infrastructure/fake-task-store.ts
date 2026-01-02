@@ -65,7 +65,8 @@ export const createFakeTaskStore = (
       const today = opts.today ?? new Date().toISOString().split('T')[0];
       switch (opts.filter) {
         case 'today':
-          filtered = filtered.filter((t) => t.dueDate === today && !t.completedAt);
+          // Include tasks due today OR overdue (due before today)
+          filtered = filtered.filter((t) => t.dueDate && t.dueDate <= today && !t.completedAt);
           break;
         case 'upcoming':
           filtered = filtered.filter((t) => t.dueDate && t.dueDate > today && !t.completedAt);

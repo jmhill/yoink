@@ -132,8 +132,8 @@ export const createSqliteTaskStore = async (
       // Apply filter
       switch (filter) {
         case 'today':
-          // Tasks due today (and not completed)
-          sql += ` AND due_date = ? AND completed_at IS NULL`;
+          // Tasks due today OR overdue (due before today), and not completed
+          sql += ` AND due_date <= ? AND completed_at IS NULL`;
           params.push(today ?? new Date().toISOString().split('T')[0]);
           break;
         case 'upcoming':

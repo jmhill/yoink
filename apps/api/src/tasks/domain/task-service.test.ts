@@ -145,6 +145,85 @@ describe('createTaskService', () => {
       }
     });
 
+    it('includes overdue tasks in today filter', async () => {
+      const overdueTask = {
+        id: 'overdue-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Overdue task',
+        dueDate: '2025-01-14', // yesterday
+        createdAt: '2025-01-14T10:00:00.000Z',
+      };
+      const todayTask = {
+        id: 'today-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Today task',
+        dueDate: '2025-01-15', // today
+        createdAt: '2025-01-15T10:00:00.000Z',
+      };
+      const tomorrowTask = {
+        id: 'tomorrow-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Tomorrow task',
+        dueDate: '2025-01-16', // tomorrow
+        createdAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeTaskStore({ initialTasks: [overdueTask, todayTask, tomorrowTask] });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createTaskService({ store, clock, idGenerator });
+
+      const result = await service.list({
+        organizationId: 'org-123',
+        filter: 'today',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.tasks).toHaveLength(2);
+        expect(result.value.tasks.some((t) => t.title === 'Overdue task')).toBe(true);
+        expect(result.value.tasks.some((t) => t.title === 'Today task')).toBe(true);
+        expect(result.value.tasks.some((t) => t.title === 'Tomorrow task')).toBe(false);
+      }
+    });
+
+    it('excludes overdue tasks from upcoming filter', async () => {
+      const overdueTask = {
+        id: 'overdue-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Overdue task',
+        dueDate: '2025-01-14', // yesterday
+        createdAt: '2025-01-14T10:00:00.000Z',
+      };
+      const tomorrowTask = {
+        id: 'tomorrow-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Tomorrow task',
+        dueDate: '2025-01-16', // tomorrow
+        createdAt: '2025-01-15T10:00:00.000Z',
+      };
+      const store = createFakeTaskStore({ initialTasks: [overdueTask, tomorrowTask] });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createTaskService({ store, clock, idGenerator });
+
+      const result = await service.list({
+        organizationId: 'org-123',
+        filter: 'upcoming',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.tasks).toHaveLength(1);
+        expect(result.value.tasks.some((t) => t.title === 'Overdue task')).toBe(false);
+        expect(result.value.tasks.some((t) => t.title === 'Tomorrow task')).toBe(true);
+      }
+    });
+
     it('filters by upcoming', async () => {
       const todayTask = {
         id: 'today-task',

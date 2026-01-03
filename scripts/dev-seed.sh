@@ -35,7 +35,8 @@ export WEBAUTHN_CHALLENGE_SECRET="dev-challenge-secret-at-least-32-chars"
 export COOKIE_SECURE="false"
 
 # Seed invitation for passkey signup (separate from token user)
-export SEED_INVITATION_EMAIL="dev@localhost"
+# Using .test TLD (IETF reserved for testing) to ensure email passes validation
+export SEED_INVITATION_EMAIL="dev@localhost.test"
 
 # Track what we've seen so we can print the summary once
 SEEN_TOKEN=""

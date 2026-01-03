@@ -24,27 +24,42 @@ apps/api/data/captures.db
 
 ## Production Database
 
-Production data is stored on Fly.io with Litestream replication to S3-compatible storage (Tigris). There are two ways to access it:
+Production data is stored in [Turso](https://turso.tech/), a hosted LibSQL database. The migration from file-based SQLite with Litestream was completed in Phase 7.5.
 
-### Option 1: Download Backup (Recommended)
+### Turso CLI Access
 
-Use the provided script to download a point-in-time snapshot:
+For quick queries, use the Turso CLI:
 
 ```bash
-./scripts/download-prod-db.sh
+# Install Turso CLI (if not installed)
+brew install tursodatabase/tap/turso
+
+# Authenticate
+turso auth login
+
+# Connect to the production database
+turso db shell yoink-prod
 ```
 
-This will:
-1. Fetch credentials from Fly.io (requires authenticated Fly CLI)
-2. Run Litestream restore in a Docker container
-3. Save the database to `./tmp/prod-backup.db`
+**Notes:**
+- This queries the live production database
+- Be careful with write operations
+- SQL interface similar to sqlite3
 
-**Prerequisites:**
-- [Fly CLI](https://fly.io/docs/hands-on/install-flyctl/) installed and authenticated (`fly auth login`)
-- Docker running
+### Download for Local Exploration
+
+To explore production data safely in a GUI tool:
+
+```bash
+# Export database dump
+turso db shell yoink-prod ".dump" > tmp/prod-dump.sql
+
+# Create local SQLite file from dump
+sqlite3 tmp/prod-backup.db < tmp/prod-dump.sql
+```
 
 **Connecting with Beekeeper Studio:**
-1. Run the download script
+1. Run the export commands above
 2. Open Beekeeper Studio
 3. New Connection -> SQLite
 4. Browse to: `tmp/prod-backup.db`
@@ -52,34 +67,34 @@ This will:
 **Notes:**
 - This is a point-in-time snapshot, not live data
 - Safe for exploration - no risk of modifying production
-- Re-run the script to get a fresh backup
-
-### Option 2: SSH + sqlite3 CLI
-
-For quick one-off queries without downloading:
-
-```bash
-fly ssh console -a jhtc-yoink-api
-sqlite3 /app/apps/api/data/captures.db
-```
-
-**Notes:**
-- This queries the live production database
-- Be careful with write operations
-- CLI-only interface (no visual browsing)
+- Re-run the export to get a fresh backup
 
 ## Database Schema
 
 The database contains the following tables:
 
+**Core Domain:**
 - `organizations` - Multi-tenant organizations
-- `users` - Users belonging to organizations
-- `api_tokens` - Authentication tokens for API access
+- `users` - Users (email-based identity)
 - `captures` - The captured notes/content
-- `admin_sessions` - Admin panel sessions
+- `tasks` - Tasks created from captures or directly
 
-To explore the schema in sqlite3:
+**Authentication & Authorization:**
+- `api_tokens` - Authentication tokens for API/extension access
+- `passkey_credentials` - WebAuthn passkey credentials for web app login
+- `user_sessions` - Session tokens for web app authentication
+- `organization_memberships` - User membership in organizations (with roles)
+- `invitations` - Pending invitations to join organizations
 
+To explore the schema:
+
+**Turso CLI:**
+```sql
+.tables
+.schema captures
+```
+
+**sqlite3 (local):**
 ```sql
 .tables
 .schema captures

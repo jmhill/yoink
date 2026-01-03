@@ -343,14 +343,133 @@ This ordering allows incremental deployment without breaking existing users:
 **Goal**: Vision Phase B - add organizational structure and reference material
 
 See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for details.
+See [mockups/README.md](./mockups/README.md) for UI design reference.
 
-### Planned Features
-- Folder entity (name, archivedAt)
-- Note entity (title, content/markdown, folderId, position for spatial layout)
-- Folder picker in task creation
-- "→ Note" action on captures
-- Split-view folder UI (tasks left, spatial notes right)
-- Markdown editor for notes
+### Open Design Questions (Decide Before Implementation)
+
+1. **Note size**: Are notes always small cards, or can they be long-form documents?
+2. **Folder nesting**: Flat folders only, or nested hierarchy? (Recommendation: flat to start)
+3. **Archive behavior**: When a folder is archived, what happens to its tasks and notes?
+   - Option A: Tasks/notes remain visible but folder is hidden from picker
+   - Option B: Tasks/notes are also hidden (cascading archive)
+   - Option C: Tasks/notes move to Desktop (orphaned)
+
+### 9.1 Folder Entity - Not Started
+
+**Database Schema:**
+```sql
+CREATE TABLE folders (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  created_by_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  archived_at TEXT,
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  FOREIGN KEY (created_by_id) REFERENCES users(id)
+);
+```
+
+**Implementation:**
+- [ ] Migration 021: Create `folders` table
+- [ ] `packages/api-contracts/src/schemas/folder.ts` - Folder schema
+- [ ] `packages/api-contracts/src/contracts/folder-contract.ts` - API contract
+- [ ] `apps/api/src/folders/domain/` - Store interface, service, errors
+- [ ] `apps/api/src/folders/infrastructure/sqlite-folder-store.ts`
+- [ ] `apps/api/src/folders/application/folder-routes.ts`
+- [ ] Wire up in `composition-root.ts`
+- [ ] Acceptance tests: `managing-folders.test.ts`
+
+**API Endpoints:**
+- `POST /api/folders` - Create folder
+- `GET /api/folders` - List folders (with `includeArchived` query param)
+- `GET /api/folders/:id` - Get folder
+- `PATCH /api/folders/:id` - Update folder (name)
+- `POST /api/folders/:id/archive` - Archive folder
+- `POST /api/folders/:id/unarchive` - Unarchive folder
+- `DELETE /api/folders/:id` - Delete empty folder
+
+### 9.2 Add folderId to Tasks - Not Started
+
+- [ ] Migration 022: Add `folder_id` column to `tasks` table
+- [ ] Update `TaskSchema` with optional `folderId`
+- [ ] Update `CreateTaskSchema` with optional `folderId`
+- [ ] Update task store and service
+- [ ] Add folder filter to task list endpoint
+- [ ] Update acceptance tests
+- [ ] Update web UI task creation to include folder picker
+
+### 9.3 Note Entity - Not Started
+
+**Database Schema:**
+```sql
+CREATE TABLE notes (
+  id TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL,
+  created_by_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  folder_id TEXT,
+  capture_id TEXT,
+  position_x REAL,
+  position_y REAL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  FOREIGN KEY (created_by_id) REFERENCES users(id),
+  FOREIGN KEY (folder_id) REFERENCES folders(id),
+  FOREIGN KEY (capture_id) REFERENCES captures(id)
+);
+```
+
+**Implementation:**
+- [ ] Migration 023: Create `notes` table
+- [ ] `packages/api-contracts/src/schemas/note.ts` - Note schema
+- [ ] `packages/api-contracts/src/contracts/note-contract.ts` - API contract
+- [ ] `apps/api/src/notes/domain/` - Store interface, service, errors
+- [ ] `apps/api/src/notes/infrastructure/sqlite-note-store.ts`
+- [ ] `apps/api/src/notes/application/note-routes.ts`
+- [ ] Wire up in `composition-root.ts`
+- [ ] Acceptance tests: `managing-notes.test.ts`
+
+**API Endpoints:**
+- `POST /api/notes` - Create note
+- `GET /api/notes` - List notes (with `folderId` filter)
+- `GET /api/notes/:id` - Get note
+- `PATCH /api/notes/:id` - Update note (title, content, position)
+- `DELETE /api/notes/:id` - Delete note
+
+### 9.4 Process Capture to Note - Not Started
+
+- [ ] Extend `POST /api/captures/:id/process` to support `type: 'note'`
+- [ ] Update `ProcessCaptureToTaskInput` → `ProcessCaptureInput` (discriminated union)
+- [ ] Add "→ Note" button to capture card in inbox
+- [ ] Note creation modal with title, folder picker
+- [ ] Acceptance tests: `processing-captures-to-notes.test.ts`
+
+### 9.5 Folder UI - Not Started
+
+- [ ] Folder list sidebar/drawer
+- [ ] Create folder dialog
+- [ ] Folder detail view (split: tasks left, notes right)
+- [ ] Archive/unarchive folder
+- [ ] Folder picker component (reusable for task/note creation)
+
+### 9.6 Note UI - Not Started
+
+- [ ] Note card component with title preview
+- [ ] Note editor with markdown support
+- [ ] Spatial layout with drag positioning (Phase 9 stretch goal)
+- [ ] Note creation from "→ Note" action
+
+### Desktop Behavior Notes
+
+Per [mockups/README.md](./mockups/README.md):
+- **Desktop** = tasks/notes with `folderId = null`
+- **Today/Upcoming filters** aggregate across Desktop + all Folders
+- **All filter** shows Desktop-only unfiled tasks (no aggregation)
+- **Folder views** are scoped to that folder only
 
 **Estimated scope**: 4-6 weeks after Phase 8 stabilizes
 
@@ -440,9 +559,9 @@ See [TESTING.md](./testing/TESTING.md) for comprehensive documentation.
 
 **Quick Reference:**
 - 500+ unit tests (apps/api, packages/*)
-- 197 acceptance tests (HTTP + Playwright drivers)
+- 199 acceptance tests (HTTP + Playwright drivers)
 - `pnpm quality` - Unit tests, type checking, builds
-- `pnpm e2e:test` - Acceptance tests against Docker container
+- `./scripts/e2e-test.sh` - Acceptance tests against Docker container
 
 #### Acceptance Test Driver Strategy
 
@@ -562,28 +681,40 @@ When resuming work on this project:
 
 ### Current Focus: Phase 9 (Folders + Notes)
 
-**Phase 7 Complete!** The authentication overhaul is now finished:
+**Phases 1-8 Complete!** The foundation is solid:
+- Capture → Task flow working
 - Passkey-based authentication for web app users
 - Session-based auth with 7-day expiry
 - Invitation-only signup with multi-org support
 - User token self-service for extension/CLI access
-- Full acceptance test coverage
+- Task UX polish (overdue handling, edit modal, color coding)
+- Full acceptance test coverage (199+ acceptance tests, 500+ unit tests)
 
-**Key files for 7.11 (Token Self-Service):**
-- `apps/api/src/auth/domain/user-token-service.ts` - Token CRUD operations
-- `apps/api/src/auth/application/token-routes.ts` - HTTP endpoints
-- `packages/api-contracts/src/contracts/token-contract.ts` - API contract
-- `apps/web/src/components/tokens-section.tsx` - UI component
-- `apps/web/src/api/tokens.ts` - API client
-- `packages/acceptance-tests/src/use-cases/managing-tokens.test.ts` - Acceptance tests
+**Before Starting Phase 9:**
+1. Answer the open design questions in Phase 9 section (note size, folder nesting, archive behavior)
+2. Follow TDD: Write acceptance tests first, then implement
 
-**Recent Improvements:**
-- Invitation flow for authenticated users - existing users can accept invites without re-signup
-- Workspace indicator in header - always shows current organization name
-- Organizations section moved from Organization tab to User tab in settings
-- Improved test reporter - default Vitest reporter locally, markdown table in CI
+**Implementation Order for Phase 9:**
+1. **9.1 Folders** - Simplest new entity, foundation for the rest
+2. **9.2 Add folderId to Tasks** - Extends existing entity
+3. **9.3 Notes** - New entity with markdown and spatial layout
+4. **9.4 Process Capture to Note** - Extends existing process flow
+5. **9.5-9.6 UI** - Frontend implementation
 
-**Next up (Phase 9 - Folders + Notes):**
-See Phase 9 section above for planned features.
+**Key Reference Files:**
+- `apps/api/src/tasks/` - Pattern to follow for folders/notes domain
+- `packages/api-contracts/src/schemas/task.ts` - Schema pattern
+- `packages/api-contracts/src/contracts/task-contract.ts` - Contract pattern
+- `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts` - Test pattern
+- `docs/mockups/README.md` - UI design reference for desktop/folder views
 
-The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the full design specification. This PLAN.md tracks what's actually built.
+**DSL Extensions Needed:**
+The acceptance test DSL (`packages/acceptance-testing/src/dsl/`) needs:
+- `Folder` type in `types.ts`
+- `Note` type in `types.ts`
+- `folderId` added to `Task` and `CreateTaskInput` types
+- Folder operations on `CoreActor`: `createFolder`, `listFolders`, `getFolder`, `updateFolder`, `archiveFolder`, `unarchiveFolder`, `deleteFolder`
+- Note operations on `CoreActor`: `createNote`, `listNotes`, `getNote`, `updateNote`, `deleteNote`
+- `processCaptureToNote` method on `CoreActor`
+
+The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the original design specification. The [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) has the evolved vision including folders and notes. This PLAN.md tracks what's actually built.

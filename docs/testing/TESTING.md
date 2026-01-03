@@ -13,19 +13,19 @@ This document describes the testing architecture for Yoink, covering acceptance 
 
 ```
                     ┌─────────────────────┐
-                    │  Acceptance Tests   │  58 tests
+                    │  Acceptance Tests   │  199 tests
                     │  (packages/         │  Full system behavior
                     │   acceptance-tests) │  against Docker container
                     └──────────┬──────────┘
                                │
               ┌────────────────┴────────────────┐
-              │       Functional API Tests      │  ~50 tests
+              │       Functional API Tests      │  ~100 tests
               │       (apps/api/**/*.test.ts)   │  Route handlers via
               │                                 │  Fastify inject
               └────────────────┬────────────────┘
                                │
        ┌───────────────────────┴───────────────────────┐
-       │           Domain & Store Unit Tests           │  172 tests
+       │           Domain & Store Unit Tests           │  400+ tests
        │    (apps/api/**/domain/*.test.ts)             │  Services, stores,
        │    (packages/**/src/*.test.ts)                │  infrastructure
        └───────────────────────────────────────────────┘
@@ -229,9 +229,9 @@ A single vitest run executes each test against all applicable drivers:
 - CI displays report in GitHub Actions step summary
 
 **Current test counts:**
-- HTTP driver: 44 tests
-- Playwright driver: 14 tests
-- Total: 58 tests
+- HTTP driver: ~150 tests
+- Playwright driver: ~50 tests
+- Total: 199 tests (as of Phase 8.11)
 
 ### Writing Acceptance Tests
 

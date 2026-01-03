@@ -380,6 +380,14 @@ See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for details.
 - [ ] Migration checksum validation
 - [ ] Migration dry-run mode
 
+### Technical Debt
+- [ ] Refactor frontend API layer to use ts-rest clients
+  - Replace raw `fetch` calls in `apps/web/src/api/auth.ts`, `tokens.ts`, `passkey.ts` with ts-rest clients
+  - Use `initClient` from `@ts-rest/core` with existing contracts
+  - Benefits: type-safe requests/responses, contract enforcement at compile time, consistent error handling
+  - Use `ClientInferResponses` type helpers for proper error type discrimination
+  - See https://ts-rest.com/client/fetch and https://ts-rest.com/contract/type-helpers
+
 ### Feature Ideas
 - [ ] Rich media captures (camera/images)
 - [ ] Capture from email (forward-to-address)
@@ -388,10 +396,12 @@ See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for details.
 - [ ] Server-side user settings persistence
 - [ ] Pagination (when capture/task count warrants it)
 
-### Task UX Polish (Phase 8.11 - Deferred)
-- [ ] Task detail/edit modal with capture content display
-- [ ] Overdue tasks in Today view (`dueDate <= today`)
-- [ ] Due date color coding (red=overdue, orange=today, green=upcoming)
+### Task UX Polish (Phase 8.11) - Complete ✓
+- [x] Overdue tasks in Today view (`dueDate <= today`)
+- [x] Overdue section grouping in Today view (separate "Overdue" section at top)
+- [x] Task detail/edit modal (click task title to edit)
+- [x] Source capture content display in edit modal
+- [x] Due date color coding (red=overdue, orange=today, green=future)
 
 ---
 

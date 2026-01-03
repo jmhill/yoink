@@ -312,7 +312,10 @@ function InboxPage() {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error('Failed to create task');
+        // ts-rest throws the response object for non-2xx statuses
+        const errorResponse = err as { status?: number; body?: { message?: string } };
+        const message = errorResponse.body?.message ?? 'Failed to create task';
+        toast.error(message);
       }
     },
 

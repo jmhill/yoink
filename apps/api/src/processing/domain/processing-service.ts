@@ -1,4 +1,3 @@
-import type { Database } from '../../database/types.js';
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
@@ -15,10 +14,8 @@ import {
   taskNotFoundError,
   type TaskNotFoundError,
 } from '../../tasks/domain/task-errors.js';
-import { withTransaction } from '../../database/transaction.js';
 
 export type CaptureProcessingServiceDependencies = {
-  database: Database;
   captureStore: CaptureStore;
   taskStore: TaskStore;
   clock: Clock;
@@ -62,7 +59,7 @@ const truncate = (str: string, maxLength: number): string => {
 export const createCaptureProcessingService = (
   deps: CaptureProcessingServiceDependencies
 ): CaptureProcessingService => {
-  const { database, captureStore, taskStore, clock, idGenerator } = deps;
+  const { captureStore, taskStore, clock, idGenerator } = deps;
 
   return {
     processCaptureToTask: (
@@ -87,54 +84,43 @@ export const createCaptureProcessingService = (
           createdAt: clock.now().toISOString(),
         };
 
-        // Wrap the write operations in a transaction for atomicity
-        // The status check is done INSIDE the transaction via requiredStatus
-        // to prevent race conditions where two requests try to process the same capture
-        return ResultAsync.fromPromise(
-          withTransaction(database, () => {
-            // Save the task and mark the capture as processed atomically
-            return taskStore.save(task).andThen(() => {
-              return captureStore
-                .markAsProcessed({
-                  id: capture.id,
-                  processedAt: clock.now().toISOString(),
-                  processedToType: 'task',
-                  processedToId: taskId,
-                  // Atomic status verification: will fail if capture is no longer in 'inbox' status
-                  requiredStatus: 'inbox',
-                })
-                .map(() => task);
-            });
-          }),
-          (error) => error as ProcessCaptureToTaskError
-        ).andThen((result) => result);
+        // Execute operations sequentially
+        // Note: withTransaction doesn't work with Turso HTTP (each execute is a separate request)
+        // The requiredStatus check provides atomicity for the status verification
+        return taskStore.save(task).andThen(() => {
+          return captureStore
+            .markAsProcessed({
+              id: capture.id,
+              processedAt: clock.now().toISOString(),
+              processedToType: 'task',
+              processedToId: taskId,
+              // Atomic status verification: will fail if capture is no longer in 'inbox' status
+              requiredStatus: 'inbox',
+            })
+            .map(() => task);
+        });
       });
     },
 
     deleteTaskWithCascade: (
       command: DeleteTaskWithCascadeCommand
     ): ResultAsync<void, DeleteTaskWithCascadeError> => {
-      // First, find and validate the task (outside transaction for read)
+      // First, find and validate the task
       return taskStore.findById(command.id).andThen((task) => {
         // Check task exists and belongs to the organization
         if (!task || task.organizationId !== command.organizationId) {
           return errAsync(taskNotFoundError(command.id));
         }
 
-        // Wrap the delete operations in a transaction for atomicity
-        return ResultAsync.fromPromise(
-          withTransaction(database, () => {
-            // Delete the task
-            return taskStore.softDelete(command.id).andThen(() => {
-              // If the task has a source capture, delete it too
-              if (task.captureId) {
-                return captureStore.softDelete(task.captureId).map(() => undefined);
-              }
-              return okAsync(undefined);
-            });
-          }),
-          (error) => error as DeleteTaskWithCascadeError
-        ).andThen((result) => result);
+        // Delete the task first
+        // Note: Not using withTransaction because it doesn't work with Turso HTTP
+        return taskStore.softDelete(command.id).andThen(() => {
+          // If the task has a source capture, delete it too
+          if (task.captureId) {
+            return captureStore.softDelete(task.captureId);
+          }
+          return okAsync(undefined);
+        });
       });
     },
   };

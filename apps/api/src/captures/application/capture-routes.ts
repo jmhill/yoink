@@ -41,6 +41,7 @@ export const registerCaptureRoutes = async (
           (error) => {
             switch (error.type) {
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -67,6 +68,7 @@ export const registerCaptureRoutes = async (
           (error) => {
             switch (error.type) {
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -95,6 +97,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture not found' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -125,6 +128,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture not found' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -153,6 +157,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture not found' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -181,6 +186,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture not found' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -220,6 +226,7 @@ export const registerCaptureRoutes = async (
                   body: { message: error.message },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -248,6 +255,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture not found' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -281,6 +289,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture must be in trash before it can be deleted' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -303,6 +312,7 @@ export const registerCaptureRoutes = async (
           (error) => {
             switch (error.type) {
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -347,6 +357,7 @@ export const registerCaptureRoutes = async (
                   body: { message: 'Capture must be in inbox to be processed' },
                 };
               case 'STORAGE_ERROR':
+              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },

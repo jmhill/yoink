@@ -4,7 +4,6 @@ import type { Capture, Task } from '@yoink/api-contracts';
 import { createCaptureProcessingService, type CaptureProcessingService } from './processing-service.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import { createBareTestDatabase, type Database } from '../../database/test-utils.js';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
 import type { TaskStore } from '../../tasks/domain/task-store.js';
 
@@ -13,7 +12,6 @@ describe('CaptureProcessingService', () => {
   const clock = createFakeClock(now);
   const idGenerator = createFakeIdGenerator();
 
-  let database: Database;
   let captureStore: CaptureStore;
   let taskStore: TaskStore;
   let service: CaptureProcessingService;
@@ -29,13 +27,9 @@ describe('CaptureProcessingService', () => {
   });
 
   beforeEach(() => {
-    // Create in-memory database for transaction support
-    // Fake stores don't use the db, but we need it for transaction wrapper
-    database = createBareTestDatabase();
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
     service = createCaptureProcessingService({
-      database,
       captureStore,
       taskStore,
       clock,

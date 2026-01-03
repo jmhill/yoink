@@ -257,9 +257,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // Create capture processing service (cross-entity operations)
-  // Uses transactions for atomicity across stores
   const captureProcessingService = createCaptureProcessingService({
-    database,
     captureStore,
     taskStore,
     clock,

@@ -51,12 +51,14 @@ function SignupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlCode]);
 
-  // Set suggested device name when reaching details step
+  // Set suggested device name when reaching details step (only once)
   useEffect(() => {
-    if (step === 'details' && !deviceName) {
+    if (step === 'details') {
       setDeviceName(suggestDeviceName());
     }
-  }, [step, deviceName]);
+    // Only run when step changes, not when deviceName changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const handleValidateCode = async (codeToValidate?: string) => {
     const inviteCode = codeToValidate || code;

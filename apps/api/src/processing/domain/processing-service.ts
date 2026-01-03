@@ -85,7 +85,6 @@ export const createCaptureProcessingService = (
         };
 
         // Execute operations sequentially
-        // Note: withTransaction doesn't work with Turso HTTP (each execute is a separate request)
         // The requiredStatus check provides atomicity for the status verification
         return taskStore.save(task).andThen(() => {
           return captureStore
@@ -112,8 +111,7 @@ export const createCaptureProcessingService = (
           return errAsync(taskNotFoundError(command.id));
         }
 
-        // Delete the task first
-        // Note: Not using withTransaction because it doesn't work with Turso HTTP
+        // Delete the task first, then its source capture if any
         return taskStore.softDelete(command.id).andThen(() => {
           // If the task has a source capture, delete it too
           if (task.captureId) {

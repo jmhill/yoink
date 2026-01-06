@@ -4,7 +4,7 @@ This document tracks the implementation progress of the Yoink universal capture 
 
 For the full design document and architectural details, see [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md).
 
-For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VISION.md).
+For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VISION.md).
 
 ---
 
@@ -14,6 +14,7 @@ For the product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT_VIS
 **Phase 7: Authentication Overhaul** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓
 **Invitation Flow Improvements** - Complete ✓
+**Phase 8.5: Architecture Cleanup** - In Progress
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
 
@@ -338,21 +339,91 @@ This ordering allows incremental deployment without breaking existing users:
 
 ---
 
+## Phase 8.5: Architecture Cleanup
+
+**Goal**: Establish proper modular monolith architecture before adding new entities
+
+See [MODULAR_MONOLITH.md](./architecture/MODULAR_MONOLITH.md) for detailed design document.
+
+**Why Now?**
+Adding folders and notes on top of current architecture would compound existing boundary violations. Cleaning up now creates a solid foundation for Phase 9 and beyond.
+
+### 8.5.1 ESLint Setup (Foundation) - Not Started
+- [ ] Install `eslint` and `eslint-plugin-boundaries`
+- [ ] Create `apps/api/eslint.config.js` with element definitions
+- [ ] Configure permissive rules (warn, not error) to establish baseline
+- [ ] Run ESLint and document current violations
+- [ ] Add `lint` script to package.json
+
+**Deliverable:** ESLint configured, baseline violations documented
+
+### 8.5.2 Module Consolidation - Not Started
+- [ ] Create `identity/` directory structure
+- [ ] Move `users/` files into `identity/`
+- [ ] Move `auth/` files into `identity/`
+- [ ] Move `OrganizationMembership` from `organizations/` to `identity/`
+- [ ] Move `invitations/application/` into `organizations/application/`
+- [ ] Delete empty directories
+- [ ] Create clean `index.ts` files for each layer
+- [ ] Update all import paths
+- [ ] Run `pnpm quality` and fix any breaks
+
+**Deliverable:** Consolidated module structure
+
+### 8.5.3 Clean Up Re-exports - Not Started
+- [ ] Identify all external consumers of re-exported types
+- [ ] Update imports to use canonical sources
+- [ ] Remove re-exports from identity/domain/index.ts
+- [ ] Ensure index.ts only exports public API
+
+**Deliverable:** Clean entry points with no re-exports
+
+### 8.5.4 Fix Service Boundary Violations - Not Started
+- [ ] Add missing service methods (UserService.getUsersByIds, OrganizationService.listOrganizations, etc.)
+- [ ] Refactor `TokenService` to use `UserService` (internal to identity)
+- [ ] Refactor `SignupService` to use services
+- [ ] Refactor `AdminService` to be a facade
+- [ ] Remove direct store imports in services
+- [ ] Update composition-root.ts with new dependency wiring
+
+**Deliverable:** No service imports stores from another module
+
+### 8.5.5 Enforce Boundaries - Not Started
+- [ ] Change ESLint rules from warn to error
+- [ ] Enable entry-point restrictions
+- [ ] Fix any remaining violations
+- [ ] Add ESLint to CI pipeline
+- [ ] Document module contracts
+
+**Deliverable:** Strict boundary enforcement in CI
+
+### 8.5.6 Aggregate Persistence - Not Started
+- [ ] Create `UserIdentityStore` for atomic user+org+membership creation
+- [ ] Refactor `SignupService` to use `UserIdentityStore`
+- [ ] Test atomic behavior with `db.batch()`
+- [ ] Document `db.batch()` patterns
+
+**Deliverable:** Atomic aggregate persistence for signup
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
 
-See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for details.
+**Prerequisite**: Complete Phase 8.5 (Architecture Cleanup) first.
+
+See [FOLDERS_AND_NOTES_DESIGN.md](./design/FOLDERS_AND_NOTES_DESIGN.md) for detailed design decisions.
+See [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) for product context.
 See [mockups/README.md](./mockups/README.md) for UI design reference.
 
-### Open Design Questions (Decide Before Implementation)
+### Design Decisions (Resolved)
 
-1. **Note size**: Are notes always small cards, or can they be long-form documents?
-2. **Folder nesting**: Flat folders only, or nested hierarchy? (Recommendation: flat to start)
-3. **Archive behavior**: When a folder is archived, what happens to its tasks and notes?
-   - Option A: Tasks/notes remain visible but folder is hidden from picker
-   - Option B: Tasks/notes are also hidden (cascading archive)
-   - Option C: Tasks/notes move to Desktop (orphaned)
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| **Note size** | Cards-with-expansion (50K char limit) | Preserves spatial metaphor, allows real documentation |
+| **Folder nesting** | Flat only | Simpler, matches "cabinet drawer" metaphor, can expand later |
+| **Archive behavior** | Query-time filtering on `folder.archived_at` | Single source of truth, instant toggle, no cascade updates |
 
 ### 9.1 Folder Entity - Not Started
 
@@ -679,7 +750,7 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Phase 9 (Folders + Notes)
+### Current Focus: Phase 8.5 (Architecture Cleanup)
 
 **Phases 1-8 Complete!** The foundation is solid:
 - Capture → Task flow working
@@ -690,31 +761,31 @@ When resuming work on this project:
 - Task UX polish (overdue handling, edit modal, color coding)
 - Full acceptance test coverage (199+ acceptance tests, 500+ unit tests)
 
-**Before Starting Phase 9:**
-1. Answer the open design questions in Phase 9 section (note size, folder nesting, archive behavior)
-2. Follow TDD: Write acceptance tests first, then implement
+**Why Architecture Cleanup Before Phase 9?**
+Adding new entities (folders, notes) on top of current architecture would compound existing boundary violations. Phase 8.5 establishes:
+- ESLint-enforced module boundaries
+- Clean `index.ts` entry points
+- Services call services (not foreign stores)
+- AdminService as facade pattern
+- Atomic aggregate persistence with `db.batch()`
 
-**Implementation Order for Phase 9:**
-1. **9.1 Folders** - Simplest new entity, foundation for the rest
-2. **9.2 Add folderId to Tasks** - Extends existing entity
-3. **9.3 Notes** - New entity with markdown and spatial layout
-4. **9.4 Process Capture to Note** - Extends existing process flow
-5. **9.5-9.6 UI** - Frontend implementation
+**Implementation Order for Phase 8.5:**
+1. **8.5.1 ESLint Setup** - Install and configure `eslint-plugin-boundaries`
+2. **8.5.2 Module Consolidation** - Merge `auth/` + `users/` → `identity/`
+3. **8.5.3 Clean Up Re-exports** - Remove the 60+ re-exports in `auth/domain/index.ts`
+4. **8.5.4 Fix Service Boundaries** - Services call services, not foreign stores
+5. **8.5.5 Enforce Boundaries** - ESLint errors in CI
+6. **8.5.6 Aggregate Persistence** - `db.batch()` for atomic signup
 
 **Key Reference Files:**
-- `apps/api/src/tasks/` - Pattern to follow for folders/notes domain
-- `packages/api-contracts/src/schemas/task.ts` - Schema pattern
-- `packages/api-contracts/src/contracts/task-contract.ts` - Contract pattern
-- `packages/acceptance-tests/src/use-cases/managing-tasks.test.ts` - Test pattern
-- `docs/mockups/README.md` - UI design reference for desktop/folder views
+- `docs/architecture/MODULAR_MONOLITH.md` - Architecture design document
+- `apps/api/src/auth/domain/index.ts` - Current re-export anti-pattern (to be fixed)
+- `apps/api/src/admin/domain/admin-service.ts` - To become facade pattern
+- `apps/api/src/auth/domain/signup-service.ts` - Multi-aggregate operation to fix
 
-**DSL Extensions Needed:**
-The acceptance test DSL (`packages/acceptance-testing/src/dsl/`) needs:
-- `Folder` type in `types.ts`
-- `Note` type in `types.ts`
-- `folderId` added to `Task` and `CreateTaskInput` types
-- Folder operations on `CoreActor`: `createFolder`, `listFolders`, `getFolder`, `updateFolder`, `archiveFolder`, `unarchiveFolder`, `deleteFolder`
-- Note operations on `CoreActor`: `createNote`, `listNotes`, `getNote`, `updateNote`, `deleteNote`
-- `processCaptureToNote` method on `CoreActor`
+**After Phase 8.5:**
+- Phase 9 design decisions are already resolved (see `docs/design/FOLDERS_AND_NOTES_DESIGN.md`)
+- Follow TDD: Write acceptance tests first, then implement
+- New entities will follow the clean patterns established in Phase 8.5
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the original design specification. The [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) has the evolved vision including folders and notes. This PLAN.md tracks what's actually built.

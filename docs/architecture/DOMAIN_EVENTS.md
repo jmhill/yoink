@@ -1,6 +1,8 @@
 # Domain Events Architecture
 
-This document explores domain events as an architectural pattern and how it could fit into this codebase. We document the tradeoffs and explain our current choice to use orchestration with transactions.
+> **Note:** This document is partially outdated. The `withTransaction` helper has been removed because it doesn't work with Turso HTTP connections. See [MODULAR_MONOLITH.md](./MODULAR_MONOLITH.md) for the current architectural direction, which uses `db.batch()` for aggregate atomicity and defers event sourcing to a future spike.
+
+This document explores domain events as an architectural pattern and how it could fit into this codebase.
 
 ## The Problem: Cross-Aggregate Operations
 
@@ -8,24 +10,33 @@ Our application has operations that span multiple aggregates:
 
 1. **Process Capture to Task**: Creates a task AND marks the source capture as processed
 2. **Delete Task with Cascade**: Deletes a task AND its source capture (if any)
+3. **User Signup**: Creates user, personal organization, memberships, accepts invitation
 
-These operations need to be atomic - either both parts succeed or neither does. Currently, our `CaptureProcessingService` orchestrates these operations by directly calling stores.
+These operations ideally need atomicity - either all parts succeed or none do.
 
-## Current Approach: Orchestration
+## Current Approach: Sequential Operations with Optimistic Concurrency
+
+Since Turso HTTP doesn't support connection-level transactions (each `db.execute()` is a separate HTTP request), we use:
+
+1. **Optimistic concurrency checks** - e.g., `requiredStatus: 'inbox'` on `markAsProcessed`
+2. **`db.batch()`** - for operations within a single aggregate that spans multiple tables
+3. **Idempotent/retriable operations** - design for eventual consistency where full atomicity isn't possible
 
 ```typescript
-// CaptureProcessingService coordinates stores directly
+// Current approach - no transaction wrapper
 processCaptureToTask: (command) => {
   return captureStore.findById(command.id).andThen((capture) => {
-    // Validation...
+    // ...
     return taskStore.save(task).andThen(() => {
-      return captureStore.markAsProcessed({ ... });
+      return captureStore.markAsProcessed({
+        // requiredStatus provides optimistic concurrency
+        requiredStatus: 'inbox',
+        // ...
+      });
     });
   });
 };
 ```
-
-The `CaptureProcessingService` is the "coordinator" that knows both steps and executes them sequentially. We wrap this in a database transaction for atomicity.
 
 ## Alternative: Domain Events
 
@@ -112,33 +123,12 @@ eventDispatcher.subscribe('CaptureProcessed', (event: CaptureProcessedEvent) => 
 });
 ```
 
-### CaptureProcessingService Becomes a Publisher
-
-```typescript
-processCaptureToTask: (command) => {
-  return captureStore.findById(command.id).andThen((capture) => {
-    // Validation...
-    
-    // Publish event - handlers run synchronously within transaction
-    return eventDispatcher.publish({
-      type: 'CaptureProcessed',
-      captureId: capture.id,
-      organizationId: command.organizationId,
-      createdById: command.createdById,
-      title: command.title ?? truncate(capture.content, 100),
-      dueDate: command.dueDate,
-      processedAt: clock.now().toISOString(),
-    });
-  });
-};
-```
-
 ## Tradeoffs
 
 | Aspect | Orchestration | Domain Events |
 |--------|---------------|---------------|
-| **Atomicity** | Straightforward with transactions | Same (synchronous handlers in transaction) |
-| **Coupling** | CaptureProcessingService knows both domains | Services decoupled, only know events |
+| **Atomicity** | Requires db.batch() or accept eventual consistency | Same - events don't solve atomicity alone |
+| **Coupling** | Workflow knows both domains | Services decoupled, only know events |
 | **Complexity** | Lower - direct calls | Higher - dispatcher, handlers, event types |
 | **Traceability** | Linear call stack | Indirection through event handlers |
 | **Testability** | Test service directly | Can test services in isolation with fake events |
@@ -155,46 +145,26 @@ Domain events are particularly valuable when:
 
 ## When Orchestration is Simpler
 
-Orchestration is the better choice when:
+Orchestration (workflow pattern) is the better choice when:
 
 1. **Few cross-domain operations**: Only 2-3 operations that span aggregates
-2. **Single database**: All data in one database, transactions are cheap
+2. **Simple flows**: Linear A-then-B operations, not complex choreography
 3. **Small team**: No need for service isolation
-4. **Simple flows**: Linear A-then-B operations, not complex choreography
 
-## Our Decision: Orchestration with Transactions
+## Current Direction
 
-For this codebase, we chose orchestration because:
+See [MODULAR_MONOLITH.md](./MODULAR_MONOLITH.md) for the current architectural direction:
 
-1. **Scope is limited**: Only 2 cross-aggregate operations exist
-2. **Single SQLite database**: Transactions are straightforward and reliable
-3. **Monolithic deployment**: No microservices, no need for loose coupling
-4. **Simplicity**: Direct calls are easier to understand and debug
+1. **Module consolidation** - Merge related modules (auth+users → identity)
+2. **Clean boundaries** - ESLint enforces module entry points
+3. **Services call services** - No cross-module store access
+4. **`db.batch()` for aggregates** - Atomic persistence within an aggregate
+5. **Workflows for cross-aggregate** - Accept eventual consistency with optimistic concurrency
 
-We wrap `CaptureProcessingService` operations in database transactions to ensure atomicity:
-
-```typescript
-processCaptureToTask: (command) => {
-  return withTransaction(db, () => {
-    // All store operations here are atomic
-    return captureStore.findById(command.id).andThen((capture) => {
-      // ...
-    });
-  });
-};
-```
-
-## Future Evolution
-
-If the application grows to need domain events, the migration path is:
-
-1. **Add EventDispatcher** to composition root
-2. **Convert CaptureProcessingService** to publish events instead of direct calls
-3. **Add subscriptions** to existing services
-4. **Keep transactions** for synchronous, same-database operations
-5. **Later**: Move to async messaging if services need to be independently deployable
-
-The key insight: domain events and orchestration aren't mutually exclusive. You can start with orchestration and introduce events incrementally as complexity grows.
+Event sourcing remains a future option if:
+- We need guaranteed atomicity across aggregates
+- We want a complete audit trail
+- The complexity tradeoff becomes worthwhile
 
 ## References
 

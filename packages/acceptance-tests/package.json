@@ -10,7 +10,7 @@
     "@yoink/acceptance-testing": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.19.5",
     "vitest": "^3.2.0"
   }
 }

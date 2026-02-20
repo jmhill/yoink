@@ -43,8 +43,8 @@ const AuthenticatedOrganizationsOrgIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/login': typeof LoginRoute
   '/': typeof AuthenticatedIndexRoute
+  '/login': typeof LoginRoute
   '/organizations/$orgId': typeof AuthenticatedOrganizationsOrgIdRoute
   '/users/$userId': typeof AuthenticatedUsersUserIdRoute
 }
@@ -64,7 +64,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login' | '/' | '/organizations/$orgId' | '/users/$userId'
+  fullPaths: '/' | '/login' | '/organizations/$orgId' | '/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to: '/login' | '/' | '/organizations/$orgId' | '/users/$userId'
   id:
@@ -93,7 +93,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }

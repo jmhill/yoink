@@ -71,6 +71,7 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
@@ -79,7 +80,6 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AuthenticatedTasksRoute
   '/trash': typeof AuthenticatedTrashRoute
   '/join/$code': typeof JoinCodeRoute
-  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -108,6 +108,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/login'
     | '/share'
     | '/signup'
@@ -116,7 +117,6 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/trash'
     | '/join/$code'
-    | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -176,7 +176,7 @@ declare module '@tanstack/react-router' {
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }

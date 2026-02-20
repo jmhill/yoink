@@ -87,7 +87,8 @@ export const runMigrations = async (
     } catch (error) {
       // Re-throw with migration context
       throw new Error(
-        `Migration ${migration.version} (${migration.name}) failed: ${error instanceof Error ? error.message : String(error)}`
+        `Migration ${migration.version} (${migration.name}) failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }

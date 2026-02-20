@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx,js,jsx}\"",
     "test": "vitest run"
   },
   "dependencies": {

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx,js,jsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

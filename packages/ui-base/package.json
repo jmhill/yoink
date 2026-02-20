@@ -11,6 +11,9 @@
     "./styles/globals.css": "./src/styles/globals.css",
     "./styles/theme.css": "./src/styles/theme.css"
   },
+  "scripts": {
+    "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx,js,jsx}\""
+  },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-dialog": "^1.1.14",

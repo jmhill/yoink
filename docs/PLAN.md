@@ -348,12 +348,22 @@ See [MODULAR_MONOLITH.md](./architecture/MODULAR_MONOLITH.md) for detailed desig
 **Why Now?**
 Adding folders and notes on top of current architecture would compound existing boundary violations. Cleaning up now creates a solid foundation for Phase 9 and beyond.
 
-### 8.5.1 ESLint Setup (Foundation) - Not Started
-- [ ] Install `eslint` and `eslint-plugin-boundaries`
-- [ ] Create `apps/api/eslint.config.js` with element definitions
-- [ ] Configure permissive rules (warn, not error) to establish baseline
-- [ ] Run ESLint and document current violations
-- [ ] Add `lint` script to package.json
+### 8.5.1 ESLint Setup (Foundation) - Complete ✓
+- [x] Install `eslint` and `eslint-plugin-boundaries`
+- [x] Create `apps/api/eslint.config.js` with element definitions
+- [x] Configure permissive rules (warn, not error) to establish baseline
+- [x] Run ESLint and document current violations
+- [x] Add `lint` script to package.json
+
+Baseline documented in `docs/architecture/ESLINT_BASELINE.md`.
+
+**Linting Warning Baseline (Current)**
+- `boundaries/no-unknown` (warn): imports span legacy module layout, migrations, and tests. Resolve during 8.5.2–8.5.4 after module consolidation and index cleanup.
+- `boundaries/element-types` (warn): permissive until service boundaries are fixed. Tighten and promote to error in 8.5.5.
+- `react-hooks/exhaustive-deps` (warn): legacy hook patterns in web/admin UI. Fix during 8.5.4 or before Phase 9 UI work.
+- `react-hooks/set-state-in-effect` (warn): state initialization in effects. Refactor to event-driven or derived state during 8.5.4 or before Phase 9 UI work.
+- `@typescript-eslint/no-explicit-any` (warn): legacy typing gaps, mostly in API auth tests. Replace with proper types during 8.5.2–8.5.4.
+- `no-undef`/`no-redeclare` disabled in base config because TypeScript handles these; no action planned.
 
 **Deliverable:** ESLint configured, baseline violations documented
 

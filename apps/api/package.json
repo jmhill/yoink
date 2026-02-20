@@ -10,6 +10,7 @@
     "start": "node --experimental-sqlite --import ./dist/instrument.js dist/index.js",
     "migrate": "node --experimental-sqlite dist/migrate.js",
     "migrate:dev": "tsx --experimental-sqlite src/migrate.ts",
+    "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

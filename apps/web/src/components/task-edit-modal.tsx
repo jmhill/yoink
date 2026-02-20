@@ -137,9 +137,21 @@ export function TaskEditModal({
                   {isFetchingCapture ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : sourceCapture ? (
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {sourceCapture.content}
-                    </p>
+                    <div className="space-y-2">
+                      {sourceCapture.sourceUrl && (
+                        <a
+                          href={sourceCapture.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary underline break-all"
+                        >
+                          {sourceCapture.sourceUrl}
+                        </a>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {sourceCapture.content}
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground italic">
                       Original capture not available

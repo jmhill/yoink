@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -22,7 +22,7 @@ import { TaskCard } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
-import type { TaskFilter, Task, Capture } from '@yoink/api-contracts';
+import type { TaskFilter, Task } from '@yoink/api-contracts';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -157,10 +157,15 @@ function TasksPage() {
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [sourceCapture, setSourceCapture] = useState<Capture | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
-  const captureQueryClient = tsr.useQueryClient();
+
+  const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
+    queryKey: ['capture', editingTask?.captureId ?? ''],
+    queryData: { params: { id: editingTask?.captureId ?? '' } },
+    enabled: !!editingTask?.captureId,
+  });
+  const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
 
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', filter],
@@ -463,43 +468,12 @@ function TasksPage() {
     onSuccess: () => {
       toast.success('Task updated');
       setEditingTask(null);
-      setSourceCapture(null);
     },
 
     onSettled: () => {
       tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
-
-  // Fetch source capture when editing a task with captureId
-  const [isFetchingCapture, setIsFetchingCapture] = useState(false);
-  
-  useEffect(() => {
-    if (editingTask?.captureId) {
-      setIsFetchingCapture(true);
-      // Use the cached data if available
-      const cachedData = captureQueryClient.get.getQueryData(['capture', editingTask.captureId]);
-      if (cachedData?.status === 200) {
-        setSourceCapture(cachedData.body);
-        setIsFetchingCapture(false);
-      } else {
-        // Fetch via the API
-        fetch(`/api/captures/${editingTask.captureId}`, { credentials: 'include' })
-          .then(res => res.ok ? res.json() : null)
-          .then(data => {
-            setSourceCapture(data);
-            setIsFetchingCapture(false);
-          })
-          .catch(() => {
-            setSourceCapture(null);
-            setIsFetchingCapture(false);
-          });
-      }
-    } else {
-      setSourceCapture(null);
-      setIsFetchingCapture(false);
-    }
-  }, [editingTask?.captureId, captureQueryClient]);
 
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -696,7 +670,6 @@ function TasksPage() {
         onOpenChange={(open) => {
           if (!open) {
             setEditingTask(null);
-            setSourceCapture(null);
           }
         }}
         task={editingTask}

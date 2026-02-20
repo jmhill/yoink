@@ -11,13 +11,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.16",
-    "@tanstack/react-router": "^1.144.0",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-router": "^1.161.3",
     "@ts-rest/core": "^3.52.0",
     "@ts-rest/react-query": "^3.52.0",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/ui-base": "workspace:*",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^0.575.0",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -31,7 +31,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.0",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"

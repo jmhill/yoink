@@ -16,6 +16,9 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress
 
+Recent updates:
+- Composition testing plan tightened (`COMPOSITION-TESTING-PLAN.md`)
+
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
 
 ---

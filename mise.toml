@@ -1,0 +1,13 @@
+# Dev toolchain for yoink. On Omarchy, mise is already activated in your shell
+# (via ~/.local/share/omarchy/default/bash/init), so cd'ing into this repo puts
+# the versions below on PATH automatically — no direnv, no `devbox run` prefix.
+#
+# Editor language servers are intentionally NOT pinned here — they are a global
+# (per-user) concern, not a project build input:
+#   - Helix:  mise use -g "npm:typescript-language-server@latest"
+#   - nvim:   installed globally by Mason (:LazyExtras -> lang.typescript = vtsls)
+
+[tools]
+node = "24"
+pnpm = "9.15.0"  # keep in sync with packageManager in package.json
+flyctl = "latest"

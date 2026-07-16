@@ -44,6 +44,6 @@ All capture queries are scoped to the authenticated user's organization.
 ## Running
 
 ```bash
-devbox run pnpm dev    # Development mode with watch (from this directory)
-devbox run pnpm start  # Production mode (from this directory)
+pnpm dev    # Development mode with watch (from this directory)
+pnpm start  # Production mode (from this directory)
 ```

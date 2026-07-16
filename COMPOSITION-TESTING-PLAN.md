@@ -137,13 +137,13 @@ Concrete checks:
 
 ```bash
 # Run all tests including new composition tests
-devbox run pnpm test
+pnpm test
 
 # Run only composition tests
-devbox run pnpm test -- apps/api/src/tests/composition
+pnpm test -- apps/api/src/tests/composition
 
 # Verify quality checks pass
-devbox run pnpm quality
+pnpm quality
 ```
 
 ### Documentation

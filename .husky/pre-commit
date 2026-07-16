@@ -1,1 +1,1 @@
-devbox run pnpm quality
+mise exec -- pnpm quality

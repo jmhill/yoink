@@ -30,6 +30,10 @@ jobs:
         run: pnpm quality
 
       - name: Security audit
+        # pnpm 9's audit hits npm's retired legacy endpoint (HTTP 410) and always
+        # fails; the fix ships only in pnpm 11 (bulk advisory endpoint). Non-blocking
+        # until the pnpm 9 -> 11 upgrade lands. See #46.
+        continue-on-error: true
         run: pnpm audit --audit-level=high
 
   build-artifact:

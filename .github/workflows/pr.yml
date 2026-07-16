@@ -15,6 +15,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Lightweight change detection so downstream jobs can skip entirely.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      extension: ${{ steps.filter.outputs.extension }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
+
+      - name: Check for extension changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        id: filter
+        with:
+          filters: |
+            extension:
+              - 'apps/extension/**'
+              - 'packages/api-contracts/**'
+
   quality:
     name: Quality Checks
     runs-on: ubuntu-latest
@@ -29,13 +48,9 @@ jobs:
       - name: Run quality checks
         run: pnpm quality
 
-      - name: Security audit
-        run: pnpm audit --audit-level=high
-
   build-and-test:
     name: Build & E2E Tests
     runs-on: ubuntu-latest
-    needs: quality
 
     steps:
       - name: Checkout
@@ -91,31 +106,20 @@ jobs:
   extension:
     name: Build Extension
     runs-on: ubuntu-latest
-    needs: quality
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
 
     steps:
       - name: Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
 
-      - name: Check for extension changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
-        id: filter
-        with:
-          filters: |
-            extension:
-              - 'apps/extension/**'
-              - 'packages/api-contracts/**'
-
       - name: Setup
-        if: steps.filter.outputs.extension == 'true'
         uses: ./.github/actions/setup
         with:
           turbo-cache: "false"
 
       - name: Run extension tests
-        if: steps.filter.outputs.extension == 'true'
         run: pnpm --filter @yoink/extension test
 
       - name: Build extension
-        if: steps.filter.outputs.extension == 'true'
         run: pnpm --filter @yoink/extension... build

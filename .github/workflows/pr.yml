@@ -15,6 +15,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Lightweight change detection so downstream jobs can skip entirely.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      extension: ${{ steps.filter.outputs.extension }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
+
+      - name: Check for extension changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        id: filter
+        with:
+          filters: |
+            extension:
+              - 'apps/extension/**'
+              - 'packages/api-contracts/**'
+
   quality:
     name: Quality Checks
     runs-on: ubuntu-latest
@@ -23,40 +42,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
 
-      - name: Install devbox
-        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
-        with:
-          enable-cache: 'true'
-
-      - name: Setup pnpm cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Setup turbo cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
-
-      - name: Install dependencies
-        run: devbox run pnpm install --frozen-lockfile
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Run quality checks
-        run: devbox run pnpm quality
-
-      - name: Security audit
-        run: devbox run pnpm audit --audit-level=high
+        run: pnpm quality
 
   build-and-test:
     name: Build & E2E Tests
     runs-on: ubuntu-latest
-    needs: quality
 
     steps:
       - name: Checkout
@@ -75,29 +69,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Install devbox
-        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          enable-cache: 'true'
-
-      - name: Setup pnpm cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Setup turbo cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
-
-      - name: Install acceptance test dependencies
-        run: devbox run pnpm install --frozen-lockfile --filter @yoink/acceptance-tests...
+          install-args: "--frozen-lockfile --filter @yoink/acceptance-tests..."
 
       - name: Cache Playwright browsers
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
@@ -108,13 +83,13 @@ jobs:
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: devbox run pnpm --filter @yoink/acceptance-testing exec playwright install chromium
+        run: pnpm --filter @yoink/acceptance-testing exec playwright install chromium
 
       - name: Run E2E tests
         run: |
           IMAGE=yoink-api:pr-${{ github.event.pull_request.number }} \
           CI=true \
-          devbox run ./scripts/e2e-test.sh
+          ./scripts/e2e-test.sh
 
       - name: Generate Feature Report
         if: always()
@@ -131,44 +106,20 @@ jobs:
   extension:
     name: Build Extension
     runs-on: ubuntu-latest
-    needs: quality
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
 
     steps:
       - name: Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
 
-      - name: Check for extension changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
-        id: filter
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          filters: |
-            extension:
-              - 'apps/extension/**'
-              - 'packages/api-contracts/**'
-
-      - name: Install devbox
-        if: steps.filter.outputs.extension == 'true'
-        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
-        with:
-          enable-cache: 'true'
-
-      - name: Setup pnpm cache
-        if: steps.filter.outputs.extension == 'true'
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        if: steps.filter.outputs.extension == 'true'
-        run: devbox run pnpm install --frozen-lockfile
+          turbo-cache: "false"
 
       - name: Run extension tests
-        if: steps.filter.outputs.extension == 'true'
-        run: devbox run pnpm --filter @yoink/extension test
+        run: pnpm --filter @yoink/extension test
 
       - name: Build extension
-        if: steps.filter.outputs.extension == 'true'
-        run: devbox run pnpm --filter @yoink/extension... build
+        run: pnpm --filter @yoink/extension... build

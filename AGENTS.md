@@ -4,13 +4,14 @@ Yoink is a personal "universal inbox" for quick text capture from browser and mo
 
 ## Development Commands
 
-All commands run through devbox. The project uses pnpm workspaces.
+The toolchain (Node, pnpm, flyctl) is pinned in `mise.toml`; mise puts it on your
+PATH automatically when you `cd` into the repo. The project uses pnpm workspaces.
 
 ```bash
-devbox run pnpm quality    # Build + typecheck + test (also runs as pre-commit hook)
-devbox run pnpm test       # Run tests across all packages
-devbox run pnpm build      # Build all packages
-devbox run pnpm typecheck  # Type check all packages
+pnpm quality    # Build + typecheck + test (also runs as pre-commit hook)
+pnpm test       # Run tests across all packages
+pnpm build      # Build all packages
+pnpm typecheck  # Type check all packages
 ```
 
 ## Conventions

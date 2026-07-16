@@ -1,7 +1,7 @@
 # ESLint Boundaries Baseline (2026-02-20)
 
 Command
-`devbox run pnpm lint`
+`pnpm lint`
 
 Results
 - 524 warnings total.

@@ -12,7 +12,7 @@ NC='\033[0m'
 # Check for jq
 if ! command -v jq &> /dev/null; then
   echo -e "${RED}Error: jq is required but not installed.${NC}"
-  echo "Run 'devbox shell' to enter the dev environment with jq installed."
+  echo "Install jq (e.g. 'sudo pacman -S jq' on Omarchy/Arch) or add it to your mise config."
   exit 1
 fi
 

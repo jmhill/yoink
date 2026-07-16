@@ -37,11 +37,26 @@ This document describes the testing architecture for Yoink, covering acceptance 
 # Unit tests + type checking + builds
 pnpm quality
 
+# Run all tests across packages
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:coverage
+
 # Acceptance tests against Docker container
 pnpm e2e:test
 
 # Run specific unit test file
 pnpm --filter @yoink/api test src/captures/domain/service.test.ts
+
+# Run tests matching a name pattern (the -- is required so the flag
+# reaches vitest instead of being consumed by pnpm; note that
+# `pnpm test -t "pattern"` at the root silently runs ALL tests because
+# turbo drops the flag)
+pnpm --filter @yoink/api test -- -t "pattern"
 
 # Run acceptance tests with verbose output
 pnpm --filter @yoink/acceptance-tests test

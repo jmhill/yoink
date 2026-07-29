@@ -4,19 +4,15 @@ import boundaries from 'eslint-plugin-boundaries';
 import baseConfig from '../../eslint.config.base.js';
 
 const elements = [
-  { type: 'admin', pattern: 'src/admin/**' },
-  { type: 'auth', pattern: 'src/auth/**' },
+  { type: 'access', pattern: 'src/access/**' },
   { type: 'captures', pattern: 'src/captures/**' },
   { type: 'config', pattern: 'src/config/**' },
   { type: 'database', pattern: 'src/database/**' },
   { type: 'health', pattern: 'src/health/**' },
-  { type: 'invitations', pattern: 'src/invitations/**' },
   { type: 'logging', pattern: 'src/logging/**' },
-  { type: 'organizations', pattern: 'src/organizations/**' },
   { type: 'processing', pattern: 'src/processing/**' },
   { type: 'shared', pattern: 'src/shared/**' },
   { type: 'tasks', pattern: 'src/tasks/**' },
-  { type: 'users', pattern: 'src/users/**' },
   { type: 'app', pattern: 'src/app.ts' },
   { type: 'composition', pattern: 'src/composition-root.ts' },
   { type: 'entrypoint', pattern: 'src/index.ts' },
@@ -39,6 +35,11 @@ export default [
       'boundaries/root-path': rootPath,
       'boundaries/include': ['src/**/*.{ts,tsx}'],
       'boundaries/elements': elements,
+      // Resolve ESM `.js` import specifiers back to their `.ts` sources so the
+      // boundaries plugin can match imported files against element patterns
+      'import/resolver': {
+        typescript: { project: path.join(rootPath, 'tsconfig.json') },
+      },
     },
     rules: {
       'boundaries/element-types': [
@@ -51,15 +52,11 @@ export default [
             { from: 'composition', allow: ['*'] },
             { from: 'entrypoint', allow: ['*'] },
             { from: 'tests', allow: ['*'] },
-            { from: 'admin', allow: ['admin'] },
-            { from: 'auth', allow: ['auth'] },
+            { from: 'access', allow: ['access'] },
             { from: 'captures', allow: ['captures'] },
             { from: 'health', allow: ['health'] },
-            { from: 'invitations', allow: ['invitations'] },
-            { from: 'organizations', allow: ['organizations'] },
             { from: 'processing', allow: ['processing'] },
             { from: 'tasks', allow: ['tasks'] },
-            { from: 'users', allow: ['users'] },
           ],
         },
       ],

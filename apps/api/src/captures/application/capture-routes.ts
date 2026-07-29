@@ -3,7 +3,7 @@ import { initServer } from '@ts-rest/fastify';
 import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
 import type { CaptureService } from '../domain/capture-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
-import type { AuthMiddleware } from '../../auth/application/auth-middleware.js';
+import type { AuthMiddleware } from '../../access/application/auth-middleware.js';
 
 export type CaptureRoutesDependencies = {
   captureService: CaptureService;

@@ -7,32 +7,32 @@ import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-captu
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
-import { createTokenService } from './auth/domain/token-service.js';
-import { createAuthMiddleware } from './auth/application/auth-middleware.js';
-import { createCombinedAuthMiddleware } from './auth/application/combined-auth-middleware.js';
+import { createTokenService } from './access/domain/token-service.js';
+import { createAuthMiddleware } from './access/application/auth-middleware.js';
+import { createCombinedAuthMiddleware } from './access/application/combined-auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
   createSqliteTokenStore,
   createSqlitePasskeyCredentialStore,
   createSqliteUserSessionStore,
   seedAuthData,
-} from './auth/infrastructure/index.js';
-import { createPasskeyService } from './auth/domain/passkey-service.js';
-import { createSessionService } from './auth/domain/session-service.js';
-import { createSignupService } from './auth/domain/signup-service.js';
-import { createUserTokenService } from './auth/domain/user-token-service.js';
-import { createSqliteOrganizationStore } from './organizations/infrastructure/sqlite-organization-store.js';
-import { createSqliteOrganizationMembershipStore } from './organizations/infrastructure/sqlite-organization-membership-store.js';
-import { createSqliteInvitationStore } from './organizations/infrastructure/sqlite-invitation-store.js';
-import { createInvitationService } from './organizations/domain/invitation-service.js';
-import { createOrganizationService } from './organizations/domain/organization-service.js';
-import { createSqliteUserStore } from './users/infrastructure/sqlite-user-store.js';
-import { createUserService } from './users/domain/user-service.js';
-import { createMembershipService } from './organizations/domain/membership-service.js';
+} from './access/infrastructure/index.js';
+import { createPasskeyService } from './access/domain/passkey-service.js';
+import { createSessionService } from './access/domain/session-service.js';
+import { createSignupService } from './access/domain/signup-service.js';
+import { createUserTokenService } from './access/domain/user-token-service.js';
+import { createSqliteOrganizationStore } from './access/infrastructure/sqlite-organization-store.js';
+import { createSqliteOrganizationMembershipStore } from './access/infrastructure/sqlite-organization-membership-store.js';
+import { createSqliteInvitationStore } from './access/infrastructure/sqlite-invitation-store.js';
+import { createInvitationService } from './access/domain/invitation-service.js';
+import { createOrganizationService } from './access/domain/organization-service.js';
+import { createSqliteUserStore } from './access/infrastructure/sqlite-user-store.js';
+import { createUserService } from './access/domain/user-service.js';
+import { createMembershipService } from './access/domain/membership-service.js';
 import {
   createAdminSessionService,
   createAdminService,
-} from './admin/domain/index.js';
+} from './access/domain/index.js';
 import {
   createSystemClock,
   createFakeClock,

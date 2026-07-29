@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createFakeTokenStore } from '../../auth/infrastructure/fake-token-store.js';
+import { createFakeTokenStore } from '../../access/infrastructure/fake-token-store.js';
 import { createSqliteHealthChecker } from './sqlite-health-checker.js';
 
 describe('SqliteHealthChecker', () => {

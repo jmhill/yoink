@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { TokenStore } from '../../auth/domain/token-store.js';
+import type { TokenStore } from '../../access/domain/token-store.js';
 import type { HealthChecker, HealthStatus } from '../domain/health-checker.js';
 import { healthCheckError, type HealthCheckError } from '../domain/health-errors.js';
 

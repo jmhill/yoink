@@ -17,7 +17,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8.5: Architecture Cleanup** - In Progress
 
 Recent updates:
-- Composition testing plan tightened (`COMPOSITION-TESTING-PLAN.md`)
+- Composition testing revived: `createTestApp()` helpers expanded (`testConfigWithWebAuthn`, `createTestAppWithWebAuthn`, `createTestAppFull`, seeded token ID fixed to `...0002`) and `apps/api/src/tests/composition/` added with auth-wiring, conditional-routes, and error-handling tests (17 tests). All passed on first run, confirming the wiring; they now guard DI/middleware/config-gating regressions.
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
 

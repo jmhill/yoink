@@ -7,29 +7,31 @@ import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-captu
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
-import { createTokenService } from './access/domain/token-service.js';
-import { createAuthMiddleware } from './access/application/auth-middleware.js';
-import { createCombinedAuthMiddleware } from './access/application/combined-auth-middleware.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
+import {
+  createAuthMiddleware,
+  createCombinedAuthMiddleware,
+} from './access/application/index.js';
 import {
   createSqliteTokenStore,
   createSqlitePasskeyCredentialStore,
   createSqliteUserSessionStore,
+  createSqliteOrganizationStore,
+  createSqliteOrganizationMembershipStore,
+  createSqliteInvitationStore,
+  createSqliteUserStore,
   seedAuthData,
 } from './access/infrastructure/index.js';
-import { createPasskeyService } from './access/domain/passkey-service.js';
-import { createSessionService } from './access/domain/session-service.js';
-import { createSignupService } from './access/domain/signup-service.js';
-import { createUserTokenService } from './access/domain/user-token-service.js';
-import { createSqliteOrganizationStore } from './access/infrastructure/sqlite-organization-store.js';
-import { createSqliteOrganizationMembershipStore } from './access/infrastructure/sqlite-organization-membership-store.js';
-import { createSqliteInvitationStore } from './access/infrastructure/sqlite-invitation-store.js';
-import { createInvitationService } from './access/domain/invitation-service.js';
-import { createOrganizationService } from './access/domain/organization-service.js';
-import { createSqliteUserStore } from './access/infrastructure/sqlite-user-store.js';
-import { createUserService } from './access/domain/user-service.js';
-import { createMembershipService } from './access/domain/membership-service.js';
 import {
+  createTokenService,
+  createPasskeyService,
+  createSessionService,
+  createSignupService,
+  createUserTokenService,
+  createInvitationService,
+  createOrganizationService,
+  createUserService,
+  createMembershipService,
   createAdminSessionService,
   createAdminService,
 } from './access/domain/index.js';

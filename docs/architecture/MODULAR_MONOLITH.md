@@ -4,9 +4,27 @@ This document proposes architectural changes to improve module boundaries, aggre
 
 ## Status
 
-**Status:** Draft
+**Status:** Draft — **partially superseded, see addendum below**
 **Created:** 2026-01-06
-**Last Updated:** 2026-01-06
+**Last Updated:** 2026-07-29
+
+---
+
+## ADDENDUM (2026-07-29): Target structure revised to bounded contexts
+
+The consolidation was implemented, but **not** with the `identity/` + `organizations/` split proposed in §2.2. Before implementation, the diagnosis was cross-referenced against Nygard's [Entity Service Antipattern](https://www.michaelnygard.com/blog/2017/12/the-entity-service-antipattern/) and [Services by Lifecycle](https://www.michaelnygard.com/blog/2018/01/services-by-lifecycle/), which surfaced a problem with the proposal: the identity/organizations seam still cut through real cohesion (invitation → membership → organization → user is one lifecycle), and patching that seam with cross-module "services call services" rules would have reproduced, in-process, exactly the web of coupled services Nygard identifies as a modeling error.
+
+**What was actually built:** top-level modules are **DDD bounded contexts**. Auth, users, organizations, memberships, invitations, and the super-admin tooling (former `admin/`) form the **"Administration and Access"** context at `apps/api/src/access/`, with the standard hexagonal layers (`domain/`, `infrastructure/`, `application/`) and one curated `index.ts` per layer as the public API. Within the context, services share domain freely — that is legitimate cohesion, not a violation. Filenames and symbols were kept as-is (no `membership.ts`/`identity-errors.ts` renames).
+
+**Effect on the phases in this document:**
+- Phase 2 (consolidation) and Phase 3 (re-exports): done, in the revised shape. The dead re-export barrels (including `auth/domain/index.ts`) were deleted outright — nothing imported them.
+- Phase 4 (service boundaries): largely dissolved — most listed violations were intra-context store access, now legitimate. Remaining cross-context debt: `health` → `access/domain/token-store.js` (tagged `TODO(8.5.4)`), and duplicated error factories inside `access/domain/admin-errors.ts` worth merging.
+- Phase 5 (enforcement): the boundaries now guard `access` as a single element. Note the resolver fix (`eslint-import-resolver-typescript`) — the original 524-warning baseline was resolver noise; see `ESLINT_BASELINE.md`.
+- Phase 6 (aggregate persistence / atomic signup): still stands, unchanged.
+
+**Guidance for future modules:** shape them as bounded contexts around behavior/lifecycle, not entities. The `processing ↔ captures/tasks` lint warnings are evidence that captures + tasks + processing plausibly form one "Capture" context — decide during Phase 9 design rather than stamping out `folders/` and `notes/` as CRUD entity modules.
+
+The target trees in §2.2 below are retained for historical context but should not be treated as current.
 
 ---
 

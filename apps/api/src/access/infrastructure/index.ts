@@ -1,4 +1,23 @@
-// Token stores (auth-specific)
+// Public API of the Administration & Access context (infrastructure layer).
+// Store factories for composition; fakes for tests.
+
+// User stores
+export { createSqliteUserStore } from './sqlite-user-store.js';
+export { createFakeUserStore } from './fake-user-store.js';
+
+// Organization stores
+export { createSqliteOrganizationStore } from './sqlite-organization-store.js';
+export { createFakeOrganizationStore } from './fake-organization-store.js';
+
+// Membership stores
+export { createSqliteOrganizationMembershipStore } from './sqlite-organization-membership-store.js';
+export { createFakeOrganizationMembershipStore } from './fake-organization-membership-store.js';
+
+// Invitation stores
+export { createSqliteInvitationStore } from './sqlite-invitation-store.js';
+export { createFakeInvitationStore } from './fake-invitation-store.js';
+
+// Token stores
 export { createSqliteTokenStore } from './sqlite-token-store.js';
 export { createFakeTokenStore } from './fake-token-store.js';
 

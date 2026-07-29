@@ -14,7 +14,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 7: Authentication Overhaul** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓
 **Invitation Flow Improvements** - Complete ✓
-**Phase 8.5: Architecture Cleanup** - In Progress
+**Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 
 Recent updates:
 - Composition testing revived: `createTestApp()` helpers expanded (`testConfigWithWebAuthn`, `createTestAppWithWebAuthn`, `createTestAppFull`, seeded token ID fixed to `...0002`) and `apps/api/src/tests/composition/` added with auth-wiring, conditional-routes, and error-handling tests (17 tests). All passed on first run, confirming the wiring; they now guard DI/middleware/config-gating regressions.
@@ -370,40 +370,45 @@ Baseline documented in `docs/architecture/ESLINT_BASELINE.md`.
 
 **Deliverable:** ESLint configured, baseline violations documented
 
-### 8.5.2 Module Consolidation - Not Started
-- [ ] Create `identity/` directory structure
-- [ ] Move `users/` files into `identity/`
-- [ ] Move `auth/` files into `identity/`
-- [ ] Move `OrganizationMembership` from `organizations/` to `identity/`
-- [ ] Move `invitations/application/` into `organizations/application/`
-- [ ] Delete empty directories
-- [ ] Create clean `index.ts` files for each layer
-- [ ] Update all import paths
-- [ ] Run `pnpm quality` and fix any breaks
+### 8.5.2 Module Consolidation - Complete ✓ (revised: bounded contexts)
 
-**Deliverable:** Consolidated module structure
+**Design revision**: Before implementation, the planned `identity/` + `organizations/` split was cross-referenced against Nygard's entity-service antipattern and services-by-lifecycle essays. Conclusion: the split still cut through real cohesion (invitation → membership → organization → user is one lifecycle), so top-level modules are now **DDD bounded contexts**. See the 2026-07-29 addendum in `docs/architecture/MODULAR_MONOLITH.md`.
 
-### 8.5.3 Clean Up Re-exports - Not Started
-- [ ] Identify all external consumers of re-exported types
-- [ ] Update imports to use canonical sources
-- [ ] Remove re-exports from identity/domain/index.ts
-- [ ] Ensure index.ts only exports public API
+- [x] Composition tests first as safety net: `apps/api/src/tests/composition/` (17 tests)
+- [x] Create `access/` ("Administration and Access" context) with domain/infrastructure/application layers
+- [x] Move `auth/`, `users/`, `organizations/`, `invitations/`, **and `admin/`** into `access/` (git mv, history preserved)
+- [x] Delete dead re-export barrels (`auth/domain/index.ts` et al. — verified imported by nothing)
+- [x] Dedupe `userNotFoundError` (was defined in both user-errors and organization-errors)
+- [x] Update all import paths (~70 files); filenames and symbols unchanged
+- [x] ESLint: single `access` element replaces auth/users/organizations/invitations/admin
+- [x] Fix boundaries resolver (`eslint-import-resolver-typescript`): old 524-warning baseline was resolver noise; real picture is 15 cross-context warnings (see `ESLINT_BASELINE.md`)
+- [x] `pnpm quality` + `pnpm e2e:test` green (199 acceptance tests unchanged)
 
-**Deliverable:** Clean entry points with no re-exports
+**Deliverable:** Consolidated bounded-context structure ✓
 
-### 8.5.4 Fix Service Boundary Violations - Not Started
-- [ ] Add missing service methods (UserService.getUsersByIds, OrganizationService.listOrganizations, etc.)
-- [ ] Refactor `TokenService` to use `UserService` (internal to identity)
-- [ ] Refactor `SignupService` to use services
-- [ ] Refactor `AdminService` to be a facade
-- [ ] Remove direct store imports in services
-- [ ] Update composition-root.ts with new dependency wiring
+### 8.5.3 Clean Up Re-exports - Complete ✓
+- [x] Curated `index.ts` per layer in `access/` (explicit named exports, no `export *`): domain (service factories/types, domain types, error unions), infrastructure (store factories, fakes, seed), application (middleware, route registration)
+- [x] `app.ts` and `composition-root.ts` import via the three barrels
+- [x] `captures`/`tasks` route files import `AuthMiddleware` from `access/application/index.js`
+- [x] Store interfaces and error factories deliberately NOT exported from indexes
+- [x] Known cross-context debt tagged `TODO(8.5.4)`: `health` → `access/domain/token-store.js`; `app.ts` → `access/domain/organization-store.js`
+- [x] Deleted dead `processing/domain/index.ts`
 
-**Deliverable:** No service imports stores from another module
+**Deliverable:** Clean entry points with no re-exports ✓
+
+### 8.5.4 Fix Service Boundary Violations - Scope Reduced
+Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context consolidation (intra-context store access is legitimate). Remaining:
+- [ ] `health` → `access` TokenStore deep import: depend on an access service or narrower port
+- [ ] `app.ts` → OrganizationStore deep import: auth-routes should take a service dependency
+- [ ] Merge duplicated error factories in `access/domain/admin-errors.ts` (userNotFoundError, organizationNotFoundError, tokenNotFoundError duplicate user/org/auth errors)
+- [ ] Review the invitation↔membership seam inside `access/` (one lifecycle; consider a signup/joining workflow module per MODULAR_MONOLITH §2.2's `workflows/` sketch)
+
+**Deliverable:** No cross-context store imports
 
 ### 8.5.5 Enforce Boundaries - Not Started
+- [ ] Decide type-only allowances for cross-context imports (captures/tasks/health → access)
 - [ ] Change ESLint rules from warn to error
-- [ ] Enable entry-point restrictions
+- [ ] Enable entry-point restrictions (index.ts-only for cross-context imports)
 - [ ] Fix any remaining violations
 - [ ] Add ESLint to CI pipeline
 - [ ] Document module contracts
@@ -775,30 +780,25 @@ When resuming work on this project:
 - Full acceptance test coverage (199+ acceptance tests, 500+ unit tests)
 
 **Why Architecture Cleanup Before Phase 9?**
-Adding new entities (folders, notes) on top of current architecture would compound existing boundary violations. Phase 8.5 establishes:
-- ESLint-enforced module boundaries
-- Clean `index.ts` entry points
-- Services call services (not foreign stores)
-- AdminService as facade pattern
-- Atomic aggregate persistence with `db.batch()`
+Adding new entities (folders, notes) on top of the old entity-shaped modules would have compounded boundary violations. Phase 8.5 established:
+- Top-level modules as **DDD bounded contexts** (`access/` = Administration and Access: auth, users, orgs, memberships, invitations, admin) — see the 2026-07-29 addendum in `docs/architecture/MODULAR_MONOLITH.md` for the Nygard-based rationale
+- Clean `index.ts` entry points per layer (cross-context imports go through them; intra-context deep imports are fine)
+- A working ESLint boundaries setup (resolver fixed; 15 real cross-context warnings, down from a 524-warning noise baseline)
+- Composition tests (`apps/api/src/tests/composition/`) guarding DI wiring, conditional routes, and error shapes
 
-**Implementation Order for Phase 8.5:**
-1. **8.5.1 ESLint Setup** - Install and configure `eslint-plugin-boundaries`
-2. **8.5.2 Module Consolidation** - Merge `auth/` + `users/` → `identity/`
-3. **8.5.3 Clean Up Re-exports** - Remove the 60+ re-exports in `auth/domain/index.ts`
-4. **8.5.4 Fix Service Boundaries** - Services call services, not foreign stores
-5. **8.5.5 Enforce Boundaries** - ESLint errors in CI
-6. **8.5.6 Aggregate Persistence** - `db.batch()` for atomic signup
+**Remaining Phase 8.5 work:**
+1. **8.5.4 Service Boundaries (reduced scope)** - Fix the tagged `TODO(8.5.4)` cross-context deep imports (health, app.ts), merge duplicated admin error factories, review the invitation↔membership lifecycle seam
+2. **8.5.5 Enforce Boundaries** - ESLint rules to error, entry-point restrictions, CI
+3. **8.5.6 Aggregate Persistence** - `db.batch()` for atomic signup
 
 **Key Reference Files:**
-- `docs/architecture/MODULAR_MONOLITH.md` - Architecture design document
-- `apps/api/src/auth/domain/index.ts` - Current re-export anti-pattern (to be fixed)
-- `apps/api/src/admin/domain/admin-service.ts` - To become facade pattern
-- `apps/api/src/auth/domain/signup-service.ts` - Multi-aggregate operation to fix
+- `docs/architecture/MODULAR_MONOLITH.md` - Architecture design document (read the addendum first)
+- `docs/architecture/ESLINT_BASELINE.md` - Current lint/boundary baseline
+- `apps/api/src/access/domain/index.ts` - Public API of the access context
+- `apps/api/src/access/domain/signup-service.ts` - Multi-aggregate operation for 8.5.6
 
 **After Phase 8.5:**
-- Phase 9 design decisions are already resolved (see `docs/design/FOLDERS_AND_NOTES_DESIGN.md`)
+- Phase 9 design decisions are already resolved (see `docs/design/FOLDERS_AND_NOTES_DESIGN.md`), but shape the implementation as bounded contexts: the `processing ↔ captures/tasks` lint warnings suggest captures + tasks + processing (+ folders/notes) form one "Capture" context — decide during Phase 9 design rather than adding entity-CRUD modules
 - Follow TDD: Write acceptance tests first, then implement
-- New entities will follow the clean patterns established in Phase 8.5
 
 The [PROJECT_BRIEF.md](./design/PROJECT_BRIEF.md) contains the original design specification. The [PRODUCT_VISION.md](./design/PRODUCT_VISION.md) has the evolved vision including folders and notes. This PLAN.md tracks what's actually built.

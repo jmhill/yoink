@@ -3,7 +3,7 @@ import { initServer } from '@ts-rest/fastify';
 import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
-import type { AuthMiddleware } from '../../access/application/auth-middleware.js';
+import type { AuthMiddleware } from '../../access/application/index.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;

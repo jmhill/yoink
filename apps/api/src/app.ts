@@ -10,32 +10,38 @@ import { fileURLToPath } from 'node:url';
 import { registerHealthRoutes } from './health/application/index.js';
 import { registerCaptureRoutes } from './captures/application/index.js';
 import { registerTaskRoutes } from './tasks/application/index.js';
-import { registerAdminRoutes } from './access/application/index.js';
+import {
+  registerAdminRoutes,
+  registerInvitationRoutes,
+  registerSignupRoutes,
+  registerPasskeyRoutes,
+  registerAuthRoutes,
+  registerOrganizationRoutes,
+  registerTokenRoutes,
+  type AuthMiddleware,
+} from './access/application/index.js';
 import type { CaptureService } from './captures/domain/capture-service.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
-import type { AuthMiddleware } from './access/application/auth-middleware.js';
-import type { AdminService } from './access/domain/admin-service.js';
-import type { AdminSessionService } from './access/domain/admin-session-service.js';
+import type {
+  AdminService,
+  AdminSessionService,
+  InvitationService,
+  MembershipService,
+  OrganizationService,
+  SignupService,
+  PasskeyService,
+  SessionService,
+  TokenService,
+  UserService,
+  UserTokenService,
+} from './access/domain/index.js';
+// TODO(8.5.4): store interfaces are not part of the access public API;
+// auth-routes should stop needing an OrganizationStore dependency
+import type { OrganizationStore } from './access/domain/organization-store.js';
 import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
 import { createLoggerOptions } from './logging/index.js';
-import type { InvitationService } from './access/domain/invitation-service.js';
-import type { MembershipService } from './access/domain/membership-service.js';
-import type { OrganizationService } from './access/domain/organization-service.js';
-import type { OrganizationStore } from './access/domain/organization-store.js';
-import type { SignupService } from './access/domain/signup-service.js';
-import type { PasskeyService } from './access/domain/passkey-service.js';
-import type { SessionService } from './access/domain/session-service.js';
-import type { TokenService } from './access/domain/token-service.js';
-import { registerInvitationRoutes } from './access/application/invitation-routes.js';
-import { registerSignupRoutes } from './access/application/signup-routes.js';
-import { registerPasskeyRoutes } from './access/application/passkey-routes.js';
-import { registerAuthRoutes } from './access/application/auth-routes.js';
-import { registerOrganizationRoutes } from './access/application/organization-routes.js';
-import { registerTokenRoutes } from './access/application/token-routes.js';
-import type { UserService } from './access/domain/user-service.js';
-import type { UserTokenService } from './access/domain/user-token-service.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {

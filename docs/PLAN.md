@@ -17,7 +17,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
-**CI: pnpm 9 → 11** - In progress (PR, #46)
+**CI: pnpm 9 → 11** - Complete ✓ (#48)
 
 Recent updates:
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.

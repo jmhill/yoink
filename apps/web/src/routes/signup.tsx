@@ -41,25 +41,6 @@ function SignupPage() {
   const [deviceName, setDeviceName] = useState('');
   const [invitation, setInvitation] = useState<InvitationInfo | null>(null);
 
-  // Check for invitation code in URL
-  useEffect(() => {
-    if (urlCode) {
-      setCode(urlCode);
-      // Auto-validate if code is provided
-      handleValidateCode(urlCode);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlCode]);
-
-  // Set suggested device name when reaching details step (only once)
-  useEffect(() => {
-    if (step === 'details') {
-      setDeviceName(suggestDeviceName());
-    }
-    // Only run when step changes, not when deviceName changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
   const handleValidateCode = async (codeToValidate?: string) => {
     const inviteCode = codeToValidate || code;
     if (!inviteCode.trim()) return;
@@ -73,7 +54,6 @@ function SignupPage() {
 
     if (result.ok) {
       setInvitation(result.data);
-      // If invitation has a restricted email, pre-fill it
       if (result.data.email) {
         setEmail(result.data.email);
       }
@@ -82,6 +62,19 @@ function SignupPage() {
       setError(result.error);
     }
   };
+
+  useEffect(() => {
+    if (urlCode) {
+      setCode(urlCode);
+      handleValidateCode(urlCode);
+    }
+  }, [urlCode]);
+
+  useEffect(() => {
+    if (step === 'details') {
+      setDeviceName(suggestDeviceName());
+    }
+  }, [step]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();

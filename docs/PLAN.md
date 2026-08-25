@@ -16,6 +16,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
+**CI: Node 20 action deprecation** - In progress (PR)
 
 Recent updates:
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
@@ -760,6 +761,34 @@ See [TESTING.md](./testing/TESTING.md) for comprehensive testing documentation.
 
 ---
 
+## CI: clear Node 20 action deprecation warnings
+
+GitHub is already forcing these actions onto Node 24. Node 20 leaves runners on 2026-09-16. Last trunk run (`32808210813`) warned on four pins only.
+
+**In scope** (the four that warn). Keep SHA + version-comment pins.
+
+| Action | Now | Bump to | Files |
+|---|---|---|---|
+| `docker/setup-buildx-action` | v3 `8d2750c` | v4.3.0 `37fe631` | `trunk.yml`, `pr.yml` |
+| `docker/build-push-action` | v6 `10e90e3` | v7.3.0 `53b7df9` | `trunk.yml`, `pr.yml` |
+| `dorny/paths-filter` | v3 `de90cc6` | v4.0.3 `ceb8a2b` | `trunk.yml`, `pr.yml` |
+| `superfly/flyctl-actions/setup-flyctl` | master `63da3ec` (node20) | `ed8efb3` (node24, 2026-04-08) | `trunk.yml` only |
+
+v7 build-push / v4 paths-filter are Node 24 bumps. Our inputs (`context`, `file`, `push`/`load`, `tags`, `cache-*`, `build-args`, filter paths) should be unchanged. build-push v7 dropped unused `DOCKER_BUILD_NO_SUMMARY` / `DOCKER_BUILD_EXPORT_RETENTION_DAYS` — we do not set them.
+
+**Out of scope for this change**
+
+- `actions/checkout` v4, `actions/cache` v4, artifact v4, `action-gh-release` v2 — not in the warning; majors have a bigger blast radius
+- `pnpm audit` exit 1 annotation — known, `continue-on-error`, blocked on pnpm 11 (#46)
+
+**Verify**
+
+1. PR (not straight to main): PR workflow covers buildx + build-push + paths-filter
+2. Merge: trunk covers flyctl + deploy + smoke
+3. Done when the Node 20 annotation is gone from both workflows
+
+---
+
 ## Session Continuity Notes
 
 When resuming work on this project:
@@ -770,7 +799,7 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
+### Current Focus: Clear Node 20 GHA warnings, then judge captures pilot
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 

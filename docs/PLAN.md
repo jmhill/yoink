@@ -17,6 +17,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
+**CI: pnpm 9 → 11** - In progress (PR, #46)
 
 Recent updates:
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
@@ -779,7 +780,7 @@ v7 build-push / v4 paths-filter are Node 24 bumps. Our inputs (`context`, `file`
 **Out of scope for this change**
 
 - `actions/checkout` v4, `actions/cache` v4, artifact v4, `action-gh-release` v2 — not in the warning; majors have a bigger blast radius
-- `pnpm audit` exit 1 annotation — known, `continue-on-error`, blocked on pnpm 11 (#46)
+- `pnpm audit` is blocking again on pnpm 11 (#46)
 
 **Verify**
 

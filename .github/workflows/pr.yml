@@ -48,6 +48,9 @@ jobs:
       - name: Run quality checks
         run: pnpm quality
 
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+
   build-and-test:
     name: Build & E2E Tests
     runs-on: ubuntu-latest

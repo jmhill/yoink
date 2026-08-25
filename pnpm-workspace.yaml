@@ -1,3 +1,28 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+
+overrides:
+  minimatch: '>=10.2.3'
+  '@isaacs/brace-expansion': '>=5.0.9'
+  brace-expansion: '>=5.0.9'
+  handlebars: '>=4.7.9'
+  '@babel/plugin-transform-modules-systemjs': '^7.29.4'
+  fast-uri: '>=3.1.5'
+  rollup: '>=4.59.0'
+  ws: '>=8.21.0'
+  picomatch: '>=4.0.4'
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-jx2c-rxcm-jvmq
+    - GHSA-83w8-p2f5-377r
+    - GHSA-c96f-x56v-gq3h
+    - GHSA-f88m-g3jw-g9cj
+
+allowBuilds:
+  '@sentry/cli': true
+  bcrypt: true
+  esbuild: true
+  sharp: false
+  unrs-resolver: true

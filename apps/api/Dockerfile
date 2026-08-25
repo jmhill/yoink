@@ -7,7 +7,7 @@ ARG VITE_SENTRY_DSN
 ARG VITE_COMMIT_SHA
 
 # Enable corepack for pnpm
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.24.0 --activate
 
 WORKDIR /app
 
@@ -42,7 +42,7 @@ RUN --mount=type=cache,id=turbo,target=/app/.turbo \
 # Production stage
 FROM node:24-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.24.0 --activate
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

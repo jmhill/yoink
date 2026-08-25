@@ -9,5 +9,5 @@
 
 [tools]
 node = "24"
-pnpm = "9.15.0"  # keep in sync with packageManager in package.json
+pnpm = "11.24.0"  # keep in sync with packageManager in package.json
 flyctl = "latest"

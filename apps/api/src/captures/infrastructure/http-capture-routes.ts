@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
-import type { CaptureService } from '../domain/capture-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
+import type { CaptureHandlers } from '../application/create-capture-handlers.js';
 
 export type CaptureRoutesDependencies = {
-  captureService: CaptureService;
+  captureHandlers: CaptureHandlers;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
@@ -15,16 +15,15 @@ export const registerCaptureRoutes = async (
   app: FastifyInstance,
   deps: CaptureRoutesDependencies
 ) => {
-  const { captureService, captureProcessingService, authMiddleware } = deps;
+  const { captureHandlers, captureProcessingService, authMiddleware } = deps;
   const s = initServer();
 
-  // Authenticated routes - scoped plugin with auth hook
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', authMiddleware);
 
     const captureRouter = s.router(captureContract, {
       create: async ({ body, request }) => {
-        const result = await captureService.create({
+        const result = await captureHandlers.create({
           content: body.content,
           title: body.title,
           sourceUrl: body.sourceUrl,
@@ -34,9 +33,9 @@ export const registerCaptureRoutes = async (
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 201 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -52,7 +51,7 @@ export const registerCaptureRoutes = async (
       },
 
       list: async ({ query, request }) => {
-        const result = await captureService.list({
+        const result = await captureHandlers.list({
           organizationId: request.authContext.organizationId,
           status: query.status,
           snoozed: query.snoozed,
@@ -79,7 +78,7 @@ export const registerCaptureRoutes = async (
       },
 
       get: async ({ params, request }) => {
-        const result = await captureService.findById({
+        const result = await captureHandlers.find({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
@@ -108,7 +107,7 @@ export const registerCaptureRoutes = async (
       },
 
       update: async ({ params, body, request }) => {
-        const result = await captureService.update({
+        const result = await captureHandlers.update({
           id: params.id,
           organizationId: request.authContext.organizationId,
           title: body.title,
@@ -116,9 +115,9 @@ export const registerCaptureRoutes = async (
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -139,15 +138,15 @@ export const registerCaptureRoutes = async (
       },
 
       trash: async ({ params, request }) => {
-        const result = await captureService.trash({
+        const result = await captureHandlers.trash({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -168,15 +167,15 @@ export const registerCaptureRoutes = async (
       },
 
       restore: async ({ params, request }) => {
-        const result = await captureService.restore({
+        const result = await captureHandlers.restore({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -197,16 +196,16 @@ export const registerCaptureRoutes = async (
       },
 
       snooze: async ({ params, body, request }) => {
-        const result = await captureService.snooze({
+        const result = await captureHandlers.snooze({
           id: params.id,
           organizationId: request.authContext.organizationId,
           until: body.until,
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -237,15 +236,15 @@ export const registerCaptureRoutes = async (
       },
 
       unsnooze: async ({ params, request }) => {
-        const result = await captureService.unsnooze({
+        const result = await captureHandlers.unsnooze({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (capture) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: capture,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -266,7 +265,7 @@ export const registerCaptureRoutes = async (
       },
 
       delete: async ({ params, request }) => {
-        const result = await captureService.delete({
+        const result = await captureHandlers.delete({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
@@ -300,14 +299,14 @@ export const registerCaptureRoutes = async (
       },
 
       emptyTrash: async ({ request }) => {
-        const result = await captureService.emptyTrash({
+        const result = await captureHandlers.emptyTrash({
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (data) => ({
+          (result) => ({
             status: 200 as const,
-            body: data,
+            body: { deletedCount: result.deletedCount },
           }),
           (error) => {
             switch (error.type) {
@@ -323,7 +322,6 @@ export const registerCaptureRoutes = async (
       },
 
       process: async ({ params, body, request }) => {
-        // Currently only supports 'task' type - use schema enum for type safety
         if (body.type !== ProcessedToTypeSchema.enum.task) {
           return {
             status: 400 as const,

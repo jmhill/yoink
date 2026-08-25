@@ -15,9 +15,11 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8: Capture → Task Flow** - Complete ✓
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
+**Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 
 Recent updates:
-- Composition testing revived: `createTestApp()` helpers expanded (`testConfigWithWebAuthn`, `createTestAppWithWebAuthn`, `createTestAppFull`, seeded token ID fixed to `...0002`) and `apps/api/src/tests/composition/` added with auth-wiring, conditional-routes, and error-handling tests (17 tests). All passed on first run, confirming the wiring; they now guard DI/middleware/config-gating regressions.
+- Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
+- File-database parent-dir creation lives in `createDatabase`, not `index.ts` / `migrate.ts`.
 
 For detailed history of completed phases, see [PLAN_ARCHIVE.md](./completed/PLAN_ARCHIVE.md).
 
@@ -767,6 +769,10 @@ When resuming work on this project:
 3. Read recent git commits for implementation context
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
+
+### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
+
+**Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 
 ### Current Focus: Phase 8.5 (Architecture Cleanup)
 

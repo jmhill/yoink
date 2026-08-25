@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerHealthRoutes } from './health/application/index.js';
-import { registerCaptureRoutes } from './captures/application/index.js';
+import { registerCaptureRoutes } from './captures/infrastructure/http-capture-routes.js';
 import { registerTaskRoutes } from './tasks/application/index.js';
 import {
   registerAdminRoutes,
@@ -20,7 +20,7 @@ import {
   registerTokenRoutes,
   type AuthMiddleware,
 } from './access/application/index.js';
-import type { CaptureService } from './captures/domain/capture-service.js';
+import type { CaptureHandlers } from './captures/application/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
@@ -60,7 +60,7 @@ export type SignupConfig = {
 };
 
 export type AppDependencies = {
-  captureService: CaptureService;
+  captureHandlers: CaptureHandlers;
   taskService: TaskService;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
@@ -115,7 +115,7 @@ export const createApp = async (deps: AppDependencies) => {
   // Register routes
   await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
   await registerCaptureRoutes(app, {
-    captureService: deps.captureService,
+    captureHandlers: deps.captureHandlers,
     captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });

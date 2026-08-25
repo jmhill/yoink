@@ -4,7 +4,7 @@ Fastify API server implementing hexagonal architecture with multi-tenant token-b
 
 ## Hexagonal Architecture
 
-Each domain feature follows this structure:
+Most modules still follow this structure:
 
 ```
 {feature}/
@@ -16,6 +16,15 @@ Each domain feature follows this structure:
     sqlite-*.ts     # SQLite implementations
   application/      # HTTP layer
     routes.ts       # Fastify routes
+```
+
+`captures/` is a pilot of a different split (I/O sandwich). See `docs/architecture/FUNCTIONAL_CORE.md`:
+
+```
+captures/
+  domain/           # Types + pure decide_* + apply
+  application/      # Command/query handlers (the module’s public port)
+  infrastructure/   # Persist + HTTP adapters
 ```
 
 ## Key Patterns

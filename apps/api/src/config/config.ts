@@ -89,7 +89,7 @@ const loadLogConfig = (): LogConfig => {
  * 2. DB_PATH → Local file-based LibSQL
  * 3. Default → ./data/captures.db (file)
  */
-const loadDatabaseConfig = (): DatabaseConfig => {
+export const loadDatabaseConfig = (): DatabaseConfig => {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
 
   if (tursoUrl) {

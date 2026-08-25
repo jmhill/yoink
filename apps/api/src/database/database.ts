@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { createClient, type Client, type InValue } from '@libsql/client';
 import type { DatabaseConfig } from '../config/schema.js';
 import type { Database, QueryResult } from './types.js';
@@ -24,6 +26,7 @@ export const createDatabase = (config: DatabaseConfig): Database => {
       client = createClient({ url: ':memory:' });
       break;
     case 'file':
+      mkdirSync(dirname(config.path), { recursive: true });
       client = createClient({ url: `file:${config.path}` });
       break;
   }

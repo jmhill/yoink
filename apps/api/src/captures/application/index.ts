@@ -1,2 +1,2 @@
-export { registerCaptureRoutes } from './capture-routes.js';
-export type { CaptureRoutesDependencies } from './capture-routes.js';
+export { createCaptureHandlers } from './create-capture-handlers.js';
+export type { CaptureHandlers, CaptureHandlerDeps } from './create-capture-handlers.js';

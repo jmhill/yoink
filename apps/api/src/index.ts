@@ -1,16 +1,8 @@
 import { loadConfig } from './config/config.js';
 import { bootstrapApp } from './composition-root.js';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
 
 const main = async () => {
   const config = await loadConfig();
-
-  // Ensure database directory exists (only for file-based databases)
-  if (config.database.type === 'file') {
-    mkdirSync(dirname(config.database.path), { recursive: true });
-  }
-
   const app = await bootstrapApp({ config });
 
   try {

@@ -50,7 +50,7 @@ pnpm test:coverage
 pnpm e2e:test
 
 # Run specific unit test file
-pnpm --filter @yoink/api test src/captures/domain/service.test.ts
+pnpm --filter @yoink/api test src/captures/domain/decide-create.test.ts
 
 # Run tests matching a name pattern (the -- is required so the flag
 # reaches vitest instead of being consumed by pnpm; note that
@@ -375,50 +375,33 @@ describe('POST /api/captures', () => {
 
 ## Domain & Store Tests
 
-### Domain Service Tests
+### Domain Tests
 
-Test business logic with fake dependencies:
+Captures: test pure `decide_*` functions with values only (no fakes). See [FUNCTIONAL_CORE.md](../architecture/FUNCTIONAL_CORE.md).
 
 ```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createCaptureService } from './service.js';
-import { createFakeClock } from '@yoink/infrastructure/clock';
-import { createFakeIdGenerator } from '@yoink/infrastructure/id-generator';
+import { describe, it, expect } from 'vitest';
+import { decideCreateCapture } from './decide-create.js';
 
-describe('CaptureService', () => {
-  let service: CaptureService;
-  let store: FakeCaptureStore;
-  let clock: FakeClock;
-
-  beforeEach(() => {
-    store = createFakeCaptureStore();
-    clock = createFakeClock({ now: new Date('2024-01-01T00:00:00Z') });
-    const idGenerator = createFakeIdGenerator();
-    
-    service = createCaptureService({ store, clock, idGenerator });
-  });
-
-  it('creates a capture with inbox status', async () => {
-    const capture = await service.createCapture({
-      content: 'Test',
-      userId: 'user-1',
-      organizationId: 'org-1',
+describe('decideCreateCapture', () => {
+  it('decides a CaptureCreated fact', () => {
+    const event = decideCreateCapture({
+      command: {
+        content: 'Test',
+        organizationId: 'org-1',
+        createdById: 'user-1',
+      },
+      id: 'capture-1',
+      now: '2024-01-01T00:00:00.000Z',
     });
 
-    expect(capture.status).toBe('inbox');
-    expect(capture.createdAt).toEqual(clock.now());
-  });
-
-  it('sets archivedAt when archiving', async () => {
-    clock.advance({ minutes: 5 });
-    
-    const capture = await service.archiveCapture('capture-1');
-
-    expect(capture.status).toBe('archived');
-    expect(capture.archivedAt).toEqual(clock.now());
+    expect(event.type).toBe('CaptureCreated');
+    expect(event.content).toBe('Test');
   });
 });
 ```
+
+Other modules still test service objects with fake stores and clocks.
 
 ### Store Contract Tests
 

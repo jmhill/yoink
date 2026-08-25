@@ -2,8 +2,9 @@ import type { Database } from './database/types.js';
 import { createApp, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
-import { createCaptureService } from './captures/domain/capture-service.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
+import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
+import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
@@ -244,10 +245,12 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
   // Create capture store and service (async initialization)
   const captureStore = await createSqliteCaptureStore(database, clock);
-  const captureService = createCaptureService({
-    store: captureStore,
-    clock,
-    idGenerator,
+  const captureHandlers = createCaptureHandlers({
+    persist: createStoreBackedPersist(captureStore),
+    load: (id) => captureStore.findById(id),
+    list: (options) => captureStore.findByOrganization(options),
+    nextId: () => idGenerator.generate(),
+    now: () => clock.now().toISOString(),
   });
 
   // Create task store and service (async initialization)
@@ -290,7 +293,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   }
 
   return createApp({
-    captureService,
+    captureHandlers,
     taskService,
     captureProcessingService,
     authMiddleware,

@@ -362,6 +362,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotBeAbleToAddCaptures', 'http');
     },
 
+    async shouldSeeAssigneeOnTask(_taskId: string, _assigneeLabel: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeAssigneeOnTask', 'http');
+    },
+
+    async shouldNotSeeAssigneeOnTask(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAssigneeOnTask', 'http');
+    },
+
     // Passkey operations
     async registerPasskey(_name?: string): Promise<PasskeyCredentialInfo> {
       // WebAuthn registration requires browser-level interaction or server-side mocking.

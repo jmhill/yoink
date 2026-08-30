@@ -663,3 +663,74 @@ export class SnoozedPage {
     return await emptyMessage.isVisible();
   }
 }
+
+/**
+ * Page object for the tasks board (/tasks).
+ */
+export class TasksPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(filter: 'today' | 'upcoming' | 'all' | 'completed' = 'all'): Promise<void> {
+    await this.page.goto(`/tasks?filter=${filter}`);
+  }
+
+  async waitForTasksOrEmpty(): Promise<void> {
+    await Promise.race([
+      this.page.locator('[data-task-id]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
+      this.page.getByText('No tasks for today').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, let the test continue (it will fail if data is missing)
+    });
+  }
+
+  taskCard(taskId: string) {
+    return this.page.locator(`[data-task-id="${taskId}"]`);
+  }
+
+  async waitForTask(taskId: string): Promise<void> {
+    await this.taskCard(taskId).waitFor({ state: 'visible' });
+  }
+
+  async openEdit(taskId: string): Promise<void> {
+    const card = this.taskCard(taskId);
+    await card.locator('p').first().click();
+    await this.page.getByRole('dialog').waitFor({ state: 'visible' });
+  }
+
+  async selectAssignee(userId: string): Promise<void> {
+    const select = this.page.locator('#edit-task-assignee');
+    await this.page.locator(`#edit-task-assignee option[value="${userId}"]`).waitFor({
+      state: 'attached',
+    });
+    await select.selectOption(userId);
+  }
+
+  async clearAssignee(): Promise<void> {
+    await this.page.locator('#edit-task-assignee').selectOption('');
+  }
+
+  async setTitle(title: string): Promise<void> {
+    await this.page.locator('#edit-task-title').fill(title);
+  }
+
+  async setDueDate(dueDate: string): Promise<void> {
+    await this.page.locator('#edit-task-due-date').fill(dueDate);
+  }
+
+  async clearDueDate(): Promise<void> {
+    const clearButton = this.page.getByRole('button', { name: 'Clear due date' });
+    if (await clearButton.isVisible()) {
+      await clearButton.click();
+    }
+  }
+
+  async saveEdit(): Promise<void> {
+    await this.page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+  }
+
+  assigneeOnTask(taskId: string) {
+    return this.taskCard(taskId).locator('[data-assignee]');
+  }
+}

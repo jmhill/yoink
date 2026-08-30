@@ -19,6 +19,7 @@ export type SwipeableCardProps = {
   disabled?: boolean;
   className?: string;
   'data-capture-id'?: string;
+  'data-task-id'?: string;
 };
 
 export function SwipeableCard({
@@ -28,6 +29,7 @@ export function SwipeableCard({
   disabled = false,
   className,
   'data-capture-id': captureId,
+  'data-task-id': taskId,
 }: SwipeableCardProps) {
   const [swipeState, setSwipeState] = useState<SwipeState>({
     direction: null,
@@ -122,6 +124,7 @@ export function SwipeableCard({
       {/* Card that slides */}
       <Card
         data-capture-id={captureId}
+        data-task-id={taskId}
         className={cn(
           'relative',
           !isActive && 'transition-transform duration-200',

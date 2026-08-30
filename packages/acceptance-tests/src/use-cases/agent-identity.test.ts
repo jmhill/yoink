@@ -104,5 +104,23 @@ usingDrivers(['http'] as const, (ctx) => {
       const aliceTokens = await alice.listTokens();
       expect(aliceTokens).toHaveLength(2);
     });
+
+    it('member cannot mint an agent', async () => {
+      await ctx.admin.login();
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await ctx.admin.createOrganization(`member-mint-org-${suffix}`);
+      const user = await ctx.admin.createUser(org.id, `member-mint+${suffix}@example.com`);
+      const { rawToken } = await ctx.admin.createToken(org.id, user.id, 'test-token');
+      await ctx.admin.logout();
+
+      const member = ctx.createActorWithCredentials({
+        email: user.email,
+        userId: user.id,
+        organizationId: org.id,
+        token: rawToken,
+      });
+
+      await expect(member.mintAgent('Nope')).rejects.toThrow(ForbiddenError);
+    });
   });
 });

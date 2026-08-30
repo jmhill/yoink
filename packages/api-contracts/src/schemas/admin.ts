@@ -58,6 +58,7 @@ export type CreateTokenResponse = z.infer<typeof CreateTokenResponseSchema>;
 // Legacy export for backwards compatibility (to be removed)
 export const CreateUserSchema = z.object({
   email: z.string().email(),
+  role: z.enum(['admin', 'member']).default('member'),
 });
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 

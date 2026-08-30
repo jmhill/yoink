@@ -462,7 +462,7 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 - [x] Task `assigneeId` on create/update/list; shown on the task row
 - [x] Agent tokens rejected on capture create
 - [x] Agents cannot register passkeys
-- [x] Acceptance tests: `agent-identity.test.ts` (HTTP)
+- [x] Acceptance tests: `agent-identity.test.ts` (HTTP; isolated HTTP actors are admins so they can mint)
 - [x] Mint-agent UI on members settings; assignee field on task edit
 
 **Deliverable:** Bot team members can be minted, hold their own token, and appear as task assignees. Human passkey signup/login is unchanged.

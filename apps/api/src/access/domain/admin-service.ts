@@ -28,6 +28,8 @@ export type AdminServiceDependencies = {
 export type CreateUserCommand = {
   organizationId: string;
   email: string;
+  /** Defaults to member. Owner is reserved for personal orgs. */
+  role?: 'admin' | 'member';
 };
 
 export type CreateTokenCommand = {
@@ -134,7 +136,7 @@ export const createAdminService = (
     },
 
     createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {
-      const { organizationId, email } = command;
+      const { organizationId, email, role = 'member' } = command;
       const now = clock.now().toISOString();
       const userId = idGenerator.generate();
 
@@ -157,7 +159,7 @@ export const createAdminService = (
           id: idGenerator.generate(),
           userId,
           organizationId,
-          role: 'member',
+          role,
           isPersonalOrg: false,
           joinedAt: now,
         };

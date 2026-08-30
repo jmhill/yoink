@@ -22,6 +22,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
 
 Recent updates:
+- Task edit assignee picker uses the shadcn New York Select from `@yoink/ui-base` (Radix), same kit as other form controls and menus. Assign to an agent, assign to yourself, or clear — behavior unchanged.
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
 - File-database parent-dir creation lives in `createDatabase`, not `index.ts` / `migrate.ts`.
 
@@ -466,6 +467,7 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 - [x] Acceptance tests: `agent-identity.test.ts` (HTTP; isolated HTTP actors are admins so they can mint)
 - [x] Mint-agent UI on members settings; assignee field on task edit
 - [x] Playwright board coverage: assigned row shows the assignee name; edit picker can set an agent, set the current human, and clear — row updates each time
+- [x] Assignee picker on task edit uses kit Select (Unassigned + members), aligned with other form controls and menus — not a native `<select>`
 
 **Deliverable:** Bot team members can be minted, hold their own token, and appear as task assignees. Human passkey signup/login is unchanged.
 
@@ -864,7 +866,7 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
 
-**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
+**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. The edit-modal assignee control is the kit Select (same look as other form controls and menus). Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 

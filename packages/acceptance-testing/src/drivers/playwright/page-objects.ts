@@ -699,15 +699,18 @@ export class TasksPage {
   }
 
   async selectAssignee(userId: string): Promise<void> {
-    const select = this.page.locator('#edit-task-assignee');
-    await this.page.locator(`#edit-task-assignee option[value="${userId}"]`).waitFor({
-      state: 'attached',
-    });
-    await select.selectOption(userId);
+    await this.chooseAssigneeOption(userId);
   }
 
   async clearAssignee(): Promise<void> {
-    await this.page.locator('#edit-task-assignee').selectOption('');
+    await this.chooseAssigneeOption('unassigned');
+  }
+
+  private async chooseAssigneeOption(value: string): Promise<void> {
+    await this.page.locator('#edit-task-assignee').click();
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
   }
 
   async setTitle(title: string): Promise<void> {

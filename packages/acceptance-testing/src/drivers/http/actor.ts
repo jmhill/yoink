@@ -2,6 +2,7 @@ import type {
   Actor,
   AnonymousActor,
   Capture,
+  NamedList,
   Task,
   Token,
   CreateTokenResult,
@@ -211,6 +212,44 @@ export const createHttpActor = (
         throw new Error(`Failed to process capture: ${response.body}`);
       }
       return response.json<Task>();
+    },
+
+    async listNamedLists(): Promise<NamedList[]> {
+      const response = await client.get('/api/lists', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list named lists: ${response.body}`);
+      }
+      return response.json<{ lists: NamedList[] }>().lists;
+    },
+
+    async seedNamedList(name: string): Promise<NamedList> {
+      const response = await client.post('/api/test/named-lists', { name }, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to seed named list: ${response.body}`);
+      }
+      return response.json<NamedList>();
+    },
+
+    async goToLists(): Promise<void> {
+      throw new UnsupportedOperationError('goToLists', 'http');
+    },
+
+    async shouldSeeEmptyNamedLists(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeEmptyNamedLists', 'http');
+    },
+
+    async shouldSeeNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedList', 'http');
     },
 
     // Task operations
@@ -583,5 +622,13 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new NotFoundError('Capture', id);
     }
     return response.json<Capture>();
+  },
+
+  async listNamedLists(): Promise<NamedList[]> {
+    const response = await client.get('/api/lists');
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    return response.json<{ lists: NamedList[] }>().lists;
   },
 });

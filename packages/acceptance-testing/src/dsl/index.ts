@@ -1,6 +1,7 @@
 // Types
 export type {
   Capture,
+  NamedList,
   Task,
   Organization,
   User,

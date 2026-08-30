@@ -6,6 +6,8 @@ import { createDatabase } from './database/database.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
+import { createListHandlers } from './lists/application/create-list-handlers.js';
+import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
@@ -264,6 +266,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
+  const listStore = await createSqliteListStore(database);
+  const listHandlers = createListHandlers({
+    list: (organizationId) => listStore.findByOrganization(organizationId),
+  });
+
   // Create task store and service (async initialization)
   const taskStore = await createSqliteTaskStore(database, clock);
   const taskService = createTaskService({
@@ -312,6 +319,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
   return createApp({
     captureHandlers,
+    listHandlers,
+    listFixture: config.testFixtures
+      ? {
+          save: (list) => listStore.save(list),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }
+      : undefined,
     taskService,
     captureProcessingService,
     authMiddleware,

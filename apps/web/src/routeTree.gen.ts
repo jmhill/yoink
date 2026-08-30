@@ -19,6 +19,7 @@ import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedListsRouteImport } from './routes/_authenticated/lists'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -69,12 +70,18 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedListsRoute = AuthenticatedListsRouteImport.update({
+  id: '/lists',
+  path: '/lists',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
+  '/lists': typeof AuthenticatedListsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
+  '/lists': typeof AuthenticatedListsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/lists': typeof AuthenticatedListsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/share'
     | '/signup'
+    | '/lists'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/share'
     | '/signup'
+    | '/lists'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/share'
     | '/signup'
+    | '/_authenticated/lists'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
     | '/_authenticated/tasks'
@@ -222,10 +234,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/lists': {
+      id: '/_authenticated/lists'
+      path: '/lists'
+      fullPath: '/lists'
+      preLoaderRoute: typeof AuthenticatedListsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedListsRoute: typeof AuthenticatedListsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
@@ -234,6 +254,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedListsRoute: AuthenticatedListsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,

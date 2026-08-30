@@ -750,3 +750,44 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-assignee]');
   }
 }
+
+/**
+ * Page object for the named lists view (/lists).
+ */
+export class ListsPage {
+  constructor(private readonly page: Page) {}
+
+  async goto(): Promise<void> {
+    await this.page.goto('/lists');
+  }
+
+  async waitForListsOrEmpty(): Promise<void> {
+    await Promise.race([
+      this.page.locator('[data-list-id]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('No named lists yet').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, let the test continue (it will fail if data is missing)
+    });
+  }
+
+  async getLists(): Promise<Array<{ id: string; name: string }>> {
+    const cards = this.page.locator('[data-list-id]');
+    const count = await cards.count();
+    const lists: Array<{ id: string; name: string }> = [];
+
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const id = await card.getAttribute('data-list-id');
+      const name = await card.getAttribute('data-list-name');
+      if (id && name) {
+        lists.push({ id, name });
+      }
+    }
+
+    return lists;
+  }
+
+  async isEmpty(): Promise<boolean> {
+    return await this.page.getByText('No named lists yet').isVisible();
+  }
+}

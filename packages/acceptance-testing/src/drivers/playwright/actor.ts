@@ -3,6 +3,7 @@ import type {
   Actor,
   AnonymousActor,
   Capture,
+  NamedList,
   Task,
   Token,
   CreateTokenResult,
@@ -32,7 +33,7 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
-import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
+import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage, ListsPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -106,6 +107,7 @@ export const createPlaywrightActor = (
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
+  const listsPage = new ListsPage(page);
 
   /**
    * Build a minimal Capture object from ID and content.
@@ -317,6 +319,50 @@ export const createPlaywrightActor = (
     // session API (quick-add has no assignee), update goes through the edit UI.
     async processCaptureToTask(_captureId: string, _input?: ProcessCaptureToTaskInput): Promise<Task> {
       throw new UnsupportedOperationError('processCaptureToTask', 'playwright');
+    },
+
+    async listNamedLists(): Promise<NamedList[]> {
+      await listsPage.goto();
+      await listsPage.waitForListsOrEmpty();
+
+      const lists = await listsPage.getLists();
+      return lists.map(({ id, name }) => ({
+        id,
+        name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      }));
+    },
+
+    async seedNamedList(name: string): Promise<NamedList> {
+      const response = await page.request.post('/api/test/named-lists', { data: { name } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to seed named list: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async goToLists(): Promise<void> {
+      await listsPage.goto();
+      await listsPage.waitForListsOrEmpty();
+    },
+
+    async shouldSeeEmptyNamedLists(): Promise<void> {
+      await listsPage.goto();
+      await expect(page.getByText('No named lists yet')).toBeVisible();
+    },
+
+    async shouldSeeNamedList(name: string): Promise<void> {
+      await listsPage.goto();
+      await expect(page.locator(`[data-list-name="${name}"]`)).toBeVisible();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
@@ -991,6 +1037,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async listCaptures(): Promise<Capture[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listNamedLists(): Promise<NamedList[]> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

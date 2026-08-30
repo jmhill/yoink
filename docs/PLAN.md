@@ -21,8 +21,11 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
+**Named lists: View my named lists** - Complete ✓ (org-scoped read model; empty view + seeded names; no Create)
 
 Recent updates:
+- Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No create/rename/delete UI or public write API. Tasks are untouched.
+
 - Task edit assignee picker uses the shadcn New York Select from `@yoink/ui-base` (Radix), same kit as other form controls and menus. Assign to an agent, assign to yourself, or clear — behavior unchanged.
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
 - File-database parent-dir creation lives in `createDatabase`, not `index.ts` / `migrate.ts`.
@@ -517,6 +520,35 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Named lists: View my named lists - Complete ✓
+
+**Goal**: A member can open the board and see this organization’s named lists — or the empty lists view if there are none.
+
+**Product rules (locked):**
+- A list is an optional single bucket on a task (one list or none). This story does not put tasks on lists.
+- “My named lists” = every named list in the current organization, including empty ones. Not creator-private.
+- View comes before Create. No create/rename/delete UI or public write API.
+- Tests seed lists through the store / test fixture so a non-empty view is proven without shipping Create.
+- Who may create a list is story 2. Do not invent create permissions.
+- Tasks stay untouched (no `listId` on tasks).
+
+**Out of scope:**
+- Add task to list, new task on a list, take off a list
+- Delete / rename / order lists
+- Notes canvas, folder archive, filter-the-board-by-list
+
+**Implementation:**
+- Migration 023: `lists` table (`id`, `organization_id`, `created_by_id`, `name`, `created_at`)
+- `NamedListSchema` + `GET /api/lists` (read-only contract)
+- `lists/` I/O sandwich: query handler loads and returns (no `decide_*`, no fake events)
+- Test fixture `POST /api/test/named-lists` only when `ENABLE_TEST_FIXTURES=true`
+- Lists view on the authenticated board (`/lists`) with empty state
+- HTTP + Playwright acceptance: empty org shows the view; seeded names appear; agents can view; orgs are isolated
+
+**Deliverable:** A member can open the board and see named lists (or the empty view).
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -793,6 +825,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 | `/api/health` | Health check | None |
 | `/api/captures` | Capture CRUD | Token or session |
 | `/api/tasks` | Task CRUD | Token or session |
+| `/api/lists` | View named lists | Token or session |
 | `/api/auth/signup/*` | New user signup | None (public) |
 | `/api/auth/login/*` | Passkey login | None (public) |
 | `/api/auth/logout` | Logout | Session |
@@ -888,7 +921,7 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
+### Current Focus: Judge captures pilot, then 8.5.4 / list Create (story 2)
 
 **Identity slice is in.** Agents are token-only org members; tasks have an assignee field. The edit-modal assignee control is the kit Select (same look as other form controls and menus). Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 

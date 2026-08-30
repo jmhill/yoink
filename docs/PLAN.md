@@ -16,6 +16,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 **Identity slice: Agent principals** - Complete ✓ (token-only org members; task assignee field; agents cannot capture or passkey; Playwright proves the assigned row and edit picker)
+**Identity slice: Mine / assigned-to-me list** - Complete ✓ (`GET /api/tasks?filter=mine`; Tasks page Mine tab; unassigned excluded)
 **Identity slice: Agent member roster** - Complete ✓ (agent tokens can GET org members to pick an assignee; still cannot mint, remove, or capture)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
@@ -490,6 +491,29 @@ Agents sit on the task board but could not list org members, so they could not p
 - [x] Route tests: agent token lists members; 403 when not a member; cannot mint or remove
 
 **Deliverable:** An agent member can list the org roster and still cannot administer membership or capture.
+
+### Mine / assigned-to-me list (follow-up) - Complete ✓
+
+UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is already a field; this slice is only a list view for the current principal.
+
+**Product rules (locked):**
+- `GET /api/tasks?filter=mine` lists incomplete tasks assigned to the authenticated caller (human or agent token)
+- A task assigned to someone else does not appear
+- An unassigned task does not appear
+- Existing `today` / `upcoming` / `all` / `completed` filters are unchanged
+- PWA Tasks page has a Mine tab (existing Tabs kit); assignee still shows on the row
+- Quick-add on Mine assigns the new task to the current user so it stays on the view
+- Folders, notes, bulk-mint, capture, and design-system work stay parked
+
+**Design:** Dedicated `mine` value on the existing `filter` query (not a second query param, not combined with date views). Caller id comes from auth context. No new module.
+
+- [x] `TaskFilterSchema` includes `mine`
+- [x] Store + service filter by `assignee_id = caller` and incomplete
+- [x] HTTP acceptance: assigned-to-me appears; assigned-to-other and unassigned do not; date/completed filters still work
+- [x] HTTP acceptance: agent token lists only tasks assigned to the agent
+- [x] PWA Mine tab; Playwright: Mine shows assigned-to-me and hides the rest
+
+**Deliverable:** The caller can list their assigned tasks without scrolling the org grocery list.
 
 ---
 

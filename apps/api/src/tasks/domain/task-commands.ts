@@ -11,9 +11,11 @@ export type CreateTaskCommand = {
 
 export type ListTasksQuery = {
   organizationId: string;
-  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed'
+  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
   limit?: number;
   cursor?: string;
+  /** Authenticated principal; used when filter is 'mine' */
+  callerId?: string;
 };
 
 export type FindTaskQuery = {

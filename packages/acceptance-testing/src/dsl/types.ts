@@ -119,6 +119,8 @@ export type UpdateCaptureInput = {
   title?: string;
 };
 
+export type TaskFilter = 'today' | 'upcoming' | 'all' | 'completed' | 'mine';
+
 export type CreateTaskInput = {
   title: string;
   dueDate?: string; // YYYY-MM-DD format

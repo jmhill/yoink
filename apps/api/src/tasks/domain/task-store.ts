@@ -4,10 +4,12 @@ import type { StorageError } from './task-errors.js';
 
 export type FindByOrganizationOptions = {
   organizationId: string;
-  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed'
+  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
   today?: string; // Current date in YYYY-MM-DD format for date comparisons
   limit?: number;
   cursor?: string;
+  /** Caller principal id; used when filter is 'mine' */
+  assigneeId?: string;
 };
 
 export type FindByOrganizationResult = {

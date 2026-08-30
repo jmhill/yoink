@@ -74,6 +74,14 @@ export const createFakeTaskStore = (
         case 'completed':
           filtered = filtered.filter((t) => t.completedAt);
           break;
+        case 'mine':
+          filtered = filtered.filter(
+            (t) =>
+              Boolean(opts.assigneeId) &&
+              t.assigneeId === opts.assigneeId &&
+              !t.completedAt
+          );
+          break;
         case 'all':
         default:
           filtered = filtered.filter((t) => !t.completedAt);

@@ -125,7 +125,7 @@ export const createSqliteTaskStore = async (
     findByOrganization: (
       options: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {
-      const { organizationId, filter, today, limit = 50 } = options;
+      const { organizationId, filter, today, limit = 50, assigneeId } = options;
 
       let sql = `
         SELECT * FROM tasks
@@ -149,6 +149,11 @@ export const createSqliteTaskStore = async (
         case 'completed':
           // Only completed tasks
           sql += ` AND completed_at IS NOT NULL`;
+          break;
+        case 'mine':
+          // Incomplete tasks assigned to the caller (unassigned excluded)
+          sql += ` AND assignee_id = ? AND completed_at IS NULL`;
+          params.push(assigneeId ?? '');
           break;
         case 'all':
         default:

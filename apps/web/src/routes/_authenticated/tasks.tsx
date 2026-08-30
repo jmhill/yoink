@@ -16,14 +16,14 @@ import {
 import { tsrTasks, tsr } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
-import type { TaskFilter, Task } from '@yoink/api-contracts';
+import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -50,7 +50,7 @@ const splitTodayTasks = (tasks: Task[]): { overdue: Task[]; dueToday: Task[] } =
 };
 
 const searchSchema = z.object({
-  filter: z.enum(['today', 'upcoming', 'all', 'completed']).default('today'),
+  filter: TaskFilterSchema.default('today'),
 });
 
 export const Route = createFileRoute('/_authenticated/tasks')({
@@ -163,6 +163,7 @@ function TasksPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
 
@@ -177,6 +178,7 @@ function TasksPage() {
     const loadMembers = async () => {
       const session = await getSession();
       if (!session.ok) return;
+      setCurrentUserId(session.data.user.id);
       const result = await listMembers(session.data.organizationId);
       if (result.ok) {
         setMembers(result.data.members);
@@ -211,6 +213,7 @@ function TasksPage() {
         title: body.title,
         dueDate: body.dueDate,
         createdAt: new Date().toISOString(),
+        ...(body.assigneeId ? { assigneeId: body.assigneeId } : {}),
       };
 
       if (previousTasks?.status === 200) {
@@ -506,9 +509,10 @@ function TasksPage() {
 
     // Get today's date for "today" filter tasks
     const dueDate = filter === 'today' ? new Date().toISOString().split('T')[0] : undefined;
+    const assigneeId = filter === 'mine' ? currentUserId : undefined;
 
     createMutation.mutate({
-      body: { title: newTaskTitle.trim(), dueDate },
+      body: { title: newTaskTitle.trim(), dueDate, ...(assigneeId ? { assigneeId } : {}) },
     });
   };
 
@@ -537,7 +541,7 @@ function TasksPage() {
   const handleFilterChange = (newFilter: string) => {
     navigate({
       to: '/tasks',
-      search: { filter: newFilter as 'today' | 'upcoming' | 'all' | 'completed' },
+      search: { filter: newFilter as TaskFilter },
     });
   };
 
@@ -566,7 +570,7 @@ function TasksPage() {
       <Header viewName="Tasks" />
 
       <Tabs value={filter} onValueChange={handleFilterChange} className="mb-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="today" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <Calendar className="h-4 w-4 shrink-0" />
             <span className="truncate">Today</span>
@@ -579,6 +583,10 @@ function TasksPage() {
           <TabsTrigger value="all" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <List className="h-4 w-4 shrink-0" />
             <span className="truncate">All</span>
+          </TabsTrigger>
+          <TabsTrigger value="mine" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
+            <User className="h-4 w-4 shrink-0" />
+            <span className="truncate">Mine</span>
           </TabsTrigger>
           <TabsTrigger value="completed" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <CheckCheck className="h-4 w-4 shrink-0" />
@@ -621,12 +629,14 @@ function TasksPage() {
               {filter === 'today' && 'No tasks for today'}
               {filter === 'upcoming' && 'No upcoming tasks'}
               {filter === 'all' && 'No tasks yet'}
+              {filter === 'mine' && 'No tasks assigned to you'}
               {filter === 'completed' && 'No completed tasks'}
             </p>
             <p className="text-sm">
               {filter === 'today' && 'Add a task above or process a capture'}
               {filter === 'upcoming' && 'Tasks with future due dates will appear here'}
               {filter === 'all' && 'Create your first task above'}
+              {filter === 'mine' && 'Add a task above or assign one to yourself'}
               {filter === 'completed' && 'Complete a task to see it here'}
             </p>
           </CardContent>

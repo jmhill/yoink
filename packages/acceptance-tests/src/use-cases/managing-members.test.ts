@@ -9,8 +9,8 @@ import {
 /**
  * Tests for managing organization members.
  *
- * Member management requires session-based authentication (not token auth),
- * so these tests only run on the Playwright driver which uses passkey auth.
+ * Viewing the roster works with token or session auth (HTTP + Playwright).
+ * Removing members requires session-based auth, so those cases run on Playwright.
  *
  * Permission model:
  * - All members can view the members list
@@ -172,11 +172,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
 });
 
 /**
- * Tests that HTTP driver doesn't support member management operations.
- * This is expected because these operations require session-based auth.
+ * Token auth can list members (agents need the roster to pick an assignee).
+ * Removing members still requires session-based auth.
  */
 usingDrivers(['http'] as const, (ctx) => {
-  describe(`Managing members - HTTP limitations [${ctx.driverName}]`, () => {
+  describe(`Managing members - HTTP [${ctx.driverName}]`, () => {
     beforeAll(async () => {
       await ctx.admin.login();
     });
@@ -185,17 +185,12 @@ usingDrivers(['http'] as const, (ctx) => {
       await ctx.admin.logout();
     });
 
-    it('listMembers is not supported in HTTP driver', async () => {
+    it('token-authenticated member can list members', async () => {
       const actor = await ctx.createActor('http-listmembers@example.com');
 
-      const actorWithAllMethods = ctx.createActorWithCredentials({
-        email: actor.email,
-        userId: actor.userId,
-        organizationId: actor.organizationId,
-        token: 'any-token',
-      }) as BrowserActor;
+      const members = await actor.listMembers();
 
-      await expect(actorWithAllMethods.listMembers()).rejects.toThrow(UnsupportedOperationError);
+      expect(members.some((m) => m.userId === actor.userId && m.kind === 'human')).toBe(true);
     });
 
     it('removeMember is not supported in HTTP driver', async () => {

@@ -118,18 +118,12 @@ export const registerOrganizationRoutes = async (
 
       listMembers: async ({ params, request }) => {
         const { organizationId } = params;
-        const session = request.userSession;
+        const { userId } = request.authContext;
 
-        if (!session) {
-          return {
-            status: 401 as const,
-            body: { message: 'Authentication required' },
-          };
-        }
-
-        // Check if user is a member of this organization
+        // Any authenticated org member (human or agent, token or session)
+        // can view the roster — enough to pick a task assignee.
         const membershipResult = await membershipService.getMembership({
-          userId: session.userId,
+          userId,
           organizationId,
         });
 

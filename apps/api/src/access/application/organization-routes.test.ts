@@ -14,14 +14,16 @@ import { createFakeOrganizationStore } from '../infrastructure/fake-organization
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
 import { createCombinedAuthMiddleware } from './combined-auth-middleware.js';
+import { createTokenService } from '../domain/token-service.js';
 import type { User } from '../domain/user.js';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
-import type { TokenService } from '../domain/token-service.js';
+import type { ApiToken } from '../domain/api-token.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
+  createFakePasswordHasher,
 } from '@yoink/infrastructure';
 
 const USER_SESSION_COOKIE = 'user_session';
@@ -54,6 +56,25 @@ describe('organization routes', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const agentUser: User = {
+    id: '550e8400-e29b-41d4-a716-446655440011',
+    email: 'agent-550e8400-e29b-41d4-a716-446655440011@yoink.invalid',
+    name: 'Roster bot',
+    kind: 'agent',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const agentToken: ApiToken = {
+    id: '550e8400-e29b-41d4-a716-446655440040',
+    userId: agentUser.id,
+    organizationId: teamOrg.id,
+    tokenHash: 'fake-hash:agent-secret',
+    name: 'Roster bot',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const agentRawToken = `${agentToken.id}:agent-secret`;
+
   const personalMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440020',
     userId: testUser.id,
@@ -66,6 +87,15 @@ describe('organization routes', () => {
   const teamMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440021',
     userId: testUser.id,
+    organizationId: teamOrg.id,
+    role: 'member',
+    isPersonalOrg: false,
+    joinedAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const agentMembership: OrganizationMembership = {
+    id: '550e8400-e29b-41d4-a716-446655440022',
+    userId: agentUser.id,
     organizationId: teamOrg.id,
     role: 'member',
     isPersonalOrg: false,
@@ -89,10 +119,13 @@ describe('organization routes', () => {
       initialOrganizations: [personalOrg, teamOrg, otherOrg],
     });
     const userStore = createFakeUserStore({
-      initialUsers: [testUser],
+      initialUsers: [testUser, agentUser],
     });
     const membershipStore = createFakeOrganizationMembershipStore({
-      initialMemberships: [personalMembership, teamMembership],
+      initialMemberships: [personalMembership, teamMembership, agentMembership],
+    });
+    const tokenStore = createFakeTokenStore({
+      initialTokens: [agentToken],
     });
     sessionStore = createFakeUserSessionStore({
       initialSessions: [testSession],
@@ -121,13 +154,10 @@ describe('organization routes', () => {
       userService,
       membershipService,
       userTokenService: createUserTokenService({
-        tokenStore: createFakeTokenStore(),
+        tokenStore,
         clock,
         idGenerator,
-        passwordHasher: {
-          hash: async (password: string) => `hashed:${password}`,
-          compare: async (password: string, hash: string) => hash === `hashed:${password}`,
-        },
+        passwordHasher: createFakePasswordHasher(),
         maxTokensPerUserPerOrg: 2,
       }),
       clock,
@@ -137,17 +167,14 @@ describe('organization routes', () => {
     app = Fastify();
     await app.register(cookie);
 
-    // Create a combined auth middleware that only uses session cookies
-    // (no token support needed for unit tests)
     const authMiddleware = createCombinedAuthMiddleware({
-      tokenService: {
-        validateToken: () =>
-          Promise.resolve({
-            isOk: () => false,
-            isErr: () => true,
-            error: { type: 'INVALID_TOKEN_FORMAT' as const },
-          }),
-      } as unknown as TokenService,
+      tokenService: createTokenService({
+        organizationStore,
+        userStore,
+        tokenStore,
+        passwordHasher: createFakePasswordHasher(),
+        clock,
+      }),
       sessionService,
       sessionCookieName: USER_SESSION_COOKIE,
     });
@@ -269,6 +296,82 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /api/organizations/:organizationId/members', () => {
+    it('lists members for a session-authenticated member', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { members } = response.json() as {
+        members: Array<{ userId: string; kind: 'human' | 'agent' }>;
+      };
+      expect(members.some((m) => m.userId === testUser.id && m.kind === 'human')).toBe(true);
+      expect(members.some((m) => m.userId === agentUser.id && m.kind === 'agent')).toBe(true);
+    });
+
+    it('lists members for an agent token, including the agent and minting human', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { members } = response.json() as {
+        members: Array<{ userId: string; kind: 'human' | 'agent'; name?: string }>;
+      };
+      expect(members.some((m) => m.userId === agentUser.id && m.kind === 'agent')).toBe(true);
+      expect(members.some((m) => m.userId === testUser.id && m.kind === 'human')).toBe(true);
+    });
+
+    it('returns 403 when the caller is not a member of the organization', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${personalOrg.id}/members`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Not a member');
+    });
+
+    it('returns 401 without authentication', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('agent token cannot administer membership', () => {
+    it('cannot mint another agent', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/agents`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+        payload: { name: 'Nope' },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Only owners and admins');
+    });
+
+    it('cannot remove a member', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${testUser.id}`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+
+      expect(response.statusCode).toBe(401);
     });
   });
 });

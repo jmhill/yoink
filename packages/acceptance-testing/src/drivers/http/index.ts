@@ -31,7 +31,9 @@ export const createHttpDriver = (config: DriverConfig): Driver => {
       await admin.login();
       try {
         const org = await admin.createOrganization(orgName);
-        const user = await admin.createUser(org.id, uniqueEmail);
+        // Isolated tenant's sole user must be admin (owner is personal-org only).
+        // Playwright createActor invites as admin for the same reason.
+        const user = await admin.createUser(org.id, uniqueEmail, { role: 'admin' });
         const { rawToken } = await admin.createToken(org.id, user.id, 'test-token');
 
         return createHttpActor(client, {

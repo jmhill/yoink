@@ -23,6 +23,7 @@ export const passkeyContract = c.router({
     responses: {
       200: PasskeyRegisterOptionsResponseSchema,
       401: ErrorSchema,
+      403: ErrorSchema,
       500: ErrorSchema,
     },
     summary: 'Get WebAuthn registration options for adding a passkey',

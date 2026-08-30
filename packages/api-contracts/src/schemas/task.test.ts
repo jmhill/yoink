@@ -22,6 +22,7 @@ describe('TaskSchema', () => {
       dueDate: '2025-01-20',
       completedAt: '2025-01-16T10:00:00.000Z',
       pinnedAt: '2025-01-15T11:00:00.000Z',
+      assigneeId: '550e8400-e29b-41d4-a716-446655440004',
     });
     expect(result.success).toBe(true);
   });
@@ -107,6 +108,14 @@ describe('CreateTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates with assigneeId', () => {
+    const result = CreateTaskSchema.safeParse({
+      title: 'Buy groceries',
+      assigneeId: '550e8400-e29b-41d4-a716-446655440004',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects missing title', () => {
     const result = CreateTaskSchema.safeParse({});
     expect(result.success).toBe(false);
@@ -151,6 +160,13 @@ describe('UpdateTaskSchema', () => {
   it('allows null dueDate to clear it', () => {
     const result = UpdateTaskSchema.safeParse({
       dueDate: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows null assigneeId to clear it', () => {
+    const result = UpdateTaskSchema.safeParse({
+      assigneeId: null,
     });
     expect(result.success).toBe(true);
   });

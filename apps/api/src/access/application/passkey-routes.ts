@@ -88,6 +88,12 @@ export const registerPasskeyRoutes = async (
             },
           }),
           (error) => {
+            if (error.type === 'AGENT_CANNOT_USE_PASSKEY') {
+              return {
+                status: 403 as const,
+                body: { message: 'Agents cannot register passkeys' },
+              };
+            }
             request.log.error({ error }, 'Failed to generate registration options');
             return {
               status: 500 as const,

@@ -6,6 +6,7 @@ export type CreateTaskCommand = {
   organizationId: string;
   createdById: string;
   captureId?: string; // Source capture, if created from processing
+  assigneeId?: string;
 };
 
 export type ListTasksQuery = {
@@ -25,6 +26,7 @@ export type UpdateTaskCommand = {
   organizationId: string;
   title?: string;
   dueDate?: string | null; // null to clear
+  assigneeId?: string | null; // null to clear
 };
 
 export type CompleteTaskCommand = {

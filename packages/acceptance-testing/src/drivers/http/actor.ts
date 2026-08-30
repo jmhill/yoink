@@ -11,6 +11,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  MintedAgent,
+  Member,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -69,6 +71,9 @@ export const createHttpActor = (
       const response = await client.post('/api/captures', input, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Agents cannot create captures');
       }
       if (response.statusCode === 400) {
         const error = response.json<{ message?: string }>();
@@ -430,6 +435,28 @@ export const createHttpActor = (
       // 200 is success
     },
 
+    async mintAgent(name: string): Promise<MintedAgent> {
+      const response = await client.post(
+        `/api/organizations/${credentials.organizationId}/agents`,
+        { name },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Only owners and admins can mint agents');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to mint agent: ${response.body}`);
+      }
+      return response.json<MintedAgent>();
+    },
+
     async getSessionInfo(): Promise<{
       user: { id: string; email: string };
       organizationId: string;
@@ -469,7 +496,7 @@ export const createHttpActor = (
     },
 
     // Member management operations require session-based auth
-    async listMembers(): Promise<{ userId: string; email: string; role: 'owner' | 'admin' | 'member'; joinedAt: string }[]> {
+    async listMembers(): Promise<Member[]> {
       throw new UnsupportedOperationError('listMembers', 'http');
     },
 

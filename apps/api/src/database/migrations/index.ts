@@ -32,6 +32,8 @@ import { migration as makeInvitationInvitedByNullable } from './017-make-invitat
 import { migration as backfillOrganizationMemberships } from './018-backfill-organization-memberships.js';
 import { migration as addOrganizationIdToTokens } from './019-add-organization-id-to-tokens.js';
 import { migration as removeOrganizationIdFromUsers } from './020-remove-organization-id-from-users.js';
+import { migration as addUserKindAndName } from './021-add-user-kind-and-name.js';
+import { migration as addTaskAssignee } from './022-add-task-assignee.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -54,6 +56,8 @@ export const migrations: Migration[] = [
   backfillOrganizationMemberships,
   addOrganizationIdToTokens,
   removeOrganizationIdFromUsers,
+  addUserKindAndName,
+  addTaskAssignee,
 ];
 
 export type { Migration };

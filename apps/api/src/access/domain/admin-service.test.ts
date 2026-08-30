@@ -112,6 +112,49 @@ describe('AdminService', () => {
     });
   });
 
+  describe('createUser', () => {
+    it('creates a member by default', async () => {
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+
+      const result = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'user@example.com',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+
+      const membership = await organizationMembershipStore.findByUserAndOrg(
+        result.value.id,
+        orgResult.value.id
+      );
+      expect(membership.isOk() && membership.value?.role).toBe('member');
+    });
+
+    it('creates an admin when role is admin', async () => {
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+
+      const result = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'admin@example.com',
+        role: 'admin',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+
+      const membership = await organizationMembershipStore.findByUserAndOrg(
+        result.value.id,
+        orgResult.value.id
+      );
+      expect(membership.isOk() && membership.value?.role).toBe('admin');
+    });
+  });
+
   describe('users (read-only)', () => {
     let testOrg: Organization;
     let testUser: User;

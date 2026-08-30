@@ -36,6 +36,7 @@ import type {
   TokenService,
   UserService,
   UserTokenService,
+  AgentService,
 } from './access/domain/index.js';
 // TODO(8.5.4): store interfaces are not part of the access public API;
 // auth-routes should stop needing an OrganizationStore dependency
@@ -57,6 +58,7 @@ export type SignupConfig = {
   tokenService: TokenService;
   userService: UserService;
   userTokenService: UserTokenService;
+  agentService: AgentService;
 };
 
 export type AppDependencies = {
@@ -184,6 +186,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       membershipService: deps.membershipService,
       userService: deps.signup.userService,
+      agentService: deps.signup.agentService,
       authMiddleware: deps.authMiddleware,
     });
 

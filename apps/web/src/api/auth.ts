@@ -370,9 +370,25 @@ export const signupWithPasskey = async (options: {
 export type Member = {
   userId: string;
   email: string;
+  name?: string;
+  kind: 'human' | 'agent';
   role: 'owner' | 'admin' | 'member';
   joinedAt: string;
 };
+
+export type MintedAgent = {
+  agent: {
+    userId: string;
+    name: string;
+    kind: 'agent';
+    role: 'owner' | 'admin' | 'member';
+  };
+  token: { id: string; name: string; createdAt: string };
+  rawToken: string;
+};
+
+export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): string =>
+  member.kind === 'agent' ? (member.name ?? 'Agent') : member.email;
 
 /**
  * List members of the current organization.
@@ -388,6 +404,32 @@ export const listMembers = async (
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     return { ok: false, error: body.message || 'Failed to list members' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
+/**
+ * Mint a token-only agent member. Returns the API token once.
+ */
+export const mintAgent = async (
+  organizationId: string,
+  name: string
+): Promise<ApiResponse<MintedAgent>> => {
+  const response = await fetch(`/api/organizations/${organizationId}/agents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      return { ok: false, error: body.message || 'Only owners and admins can mint agents' };
+    }
+    return { ok: false, error: body.message || 'Failed to mint agent' };
   }
 
   const data = await response.json();

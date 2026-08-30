@@ -181,10 +181,11 @@ export const registerAdminRoutes = async (
         );
       },
 
-      createUser: async ({ params, body }: { params: { organizationId: string }; body: { email: string } }) => {
+      createUser: async ({ params, body }) => {
         const result = await adminService.createUser({
           organizationId: params.organizationId,
           email: body.email,
+          role: body.role,
         });
 
         return result.match(

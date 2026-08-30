@@ -1,7 +1,7 @@
 import { Button } from '@yoink/ui-base/components/button';
 import { CardContent } from '@yoink/ui-base/components/card';
 import { Checkbox } from '@yoink/ui-base/components/checkbox';
-import { Pin, PinOff, Trash2, Calendar } from 'lucide-react';
+import { Pin, PinOff, Trash2, Calendar, User } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
 
@@ -14,6 +14,7 @@ type TaskCardProps = {
   onDelete: (id: string) => void;
   onEdit?: (task: Task) => void;
   isLoading?: boolean;
+  assigneeLabel?: string;
 };
 
 export function TaskCard({
@@ -25,6 +26,7 @@ export function TaskCard({
   onDelete,
   onEdit,
   isLoading = false,
+  assigneeLabel,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const isPinned = Boolean(task.pinnedAt);
@@ -118,14 +120,27 @@ export function TaskCard({
             {task.title}
           </p>
           
-          {task.dueDate && (
-            <div className={`mt-1 flex items-center gap-1 text-xs ${
-              isCompleted
-                ? 'text-muted-foreground'
-                : getDueDateColorClass(task.dueDate)
-            }`}>
-              <Calendar className="h-3 w-3" />
-              <span>{formatDueDate(task.dueDate)}</span>
+          {(task.dueDate || assigneeLabel) && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {task.dueDate && (
+                <div className={`flex items-center gap-1 ${
+                  isCompleted
+                    ? 'text-muted-foreground'
+                    : getDueDateColorClass(task.dueDate)
+                }`}>
+                  <Calendar className="h-3 w-3" />
+                  <span>{formatDueDate(task.dueDate)}</span>
+                </div>
+              )}
+              {assigneeLabel && (
+                <div
+                  className="flex items-center gap-1 text-muted-foreground"
+                  data-assignee={assigneeLabel}
+                >
+                  <User className="h-3 w-3" />
+                  <span>{assigneeLabel}</span>
+                </div>
+              )}
             </div>
           )}
         </button>

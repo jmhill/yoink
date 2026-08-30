@@ -155,6 +155,7 @@ describe('UserSessionMiddleware', () => {
       expect(request.authContext).toEqual({
         userId: testUser.id,
         organizationId: 'org-1',
+        principalKind: 'human',
       });
       expect(reply.status).not.toHaveBeenCalled();
     });

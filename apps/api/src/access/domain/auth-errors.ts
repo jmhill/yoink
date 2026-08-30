@@ -152,6 +152,12 @@ export type CredentialOwnershipError = {
   readonly userId: string;
 };
 
+/** Agents are token-only and cannot register or use passkeys */
+export type AgentCannotUsePasskeyError = {
+  readonly type: 'AGENT_CANNOT_USE_PASSKEY';
+  readonly userId: string;
+};
+
 export type PasskeyServiceError =
   | UserNotFoundError
   | CredentialNotFoundError
@@ -163,6 +169,7 @@ export type PasskeyServiceError =
   | RpIdMismatchError
   | CannotDeleteLastPasskeyError
   | CredentialOwnershipError
+  | AgentCannotUsePasskeyError
   | PasskeyCredentialStorageError
   | UserStorageError;
 
@@ -226,6 +233,11 @@ export const credentialOwnershipError = (
 ): CredentialOwnershipError => ({
   type: 'CREDENTIAL_OWNERSHIP_ERROR',
   credentialId,
+  userId,
+});
+
+export const agentCannotUsePasskeyError = (userId: string): AgentCannotUsePasskeyError => ({
+  type: 'AGENT_CANNOT_USE_PASSKEY',
   userId,
 });
 

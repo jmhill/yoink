@@ -3,6 +3,7 @@ import type { AuthContext } from '../../shared/auth-context.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { SessionService } from '../domain/session-service.js';
+import { principalKindOf } from '../domain/user.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -52,6 +53,8 @@ export const createCombinedAuthMiddleware = (
           request.authContext = {
             organizationId: session.currentOrganizationId,
             userId: session.userId,
+            // Sessions are passkey-issued; agents cannot passkey.
+            principalKind: 'human',
           };
           request.userSession = session;
 
@@ -87,6 +90,7 @@ export const createCombinedAuthMiddleware = (
         request.authContext = {
           organizationId: tokenResult.value.organization.id,
           userId: tokenResult.value.user.id,
+          principalKind: principalKindOf(tokenResult.value.user),
         };
 
         // Bind auth context to request logger

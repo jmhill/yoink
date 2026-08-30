@@ -19,9 +19,10 @@ type TaskEditModalProps = {
   onOpenChange: (open: boolean) => void;
   task: Task | null;
   sourceCapture: Capture | null;
-  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null }) => void;
+  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null }) => void;
   isLoading?: boolean;
   isFetchingCapture?: boolean;
+  members?: Array<{ userId: string; label: string }>;
 };
 
 export function TaskEditModal({
@@ -32,15 +33,18 @@ export function TaskEditModal({
   onSave,
   isLoading = false,
   isFetchingCapture = false,
+  members = [],
 }: TaskEditModalProps) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
 
   // Reset form when task changes
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setDueDate(task.dueDate ?? '');
+      setAssigneeId(task.assigneeId ?? '');
     }
   }, [task]);
 
@@ -48,7 +52,7 @@ export function TaskEditModal({
     e.preventDefault();
     if (!task || !title.trim()) return;
 
-    const updates: { title?: string; dueDate?: string | null } = {};
+    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null } = {};
 
     // Only include changed fields
     if (title.trim() !== task.title) {
@@ -59,6 +63,12 @@ export function TaskEditModal({
     const oldDueDate = task.dueDate ?? null;
     if (newDueDate !== oldDueDate) {
       updates.dueDate = newDueDate;
+    }
+
+    const newAssigneeId = assigneeId || null;
+    const oldAssigneeId = task.assigneeId ?? null;
+    if (newAssigneeId !== oldAssigneeId) {
+      updates.assigneeId = newAssigneeId;
     }
 
     // Only save if something changed
@@ -123,6 +133,24 @@ export function TaskEditModal({
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-assignee">Assignee</Label>
+            <select
+              id="edit-task-assignee"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              disabled={isLoading}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Unassigned</option>
+              {members.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Source capture section */}

@@ -16,6 +16,7 @@ export type {
   CreateTokenResult,
   CreateInvitationInput,
   AcceptInvitationResult,
+  MintedAgent,
   HealthStatus,
 } from './types.js';
 

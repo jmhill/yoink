@@ -23,9 +23,11 @@ import {
   verificationFailedError,
   cannotDeleteLastPasskeyError,
   credentialOwnershipError,
+  agentCannotUsePasskeyError,
   type PasskeyServiceError,
 } from './auth-errors.js';
 import { userNotFoundError } from './user-errors.js';
+import { isAgent } from './user.js';
 
 // ============================================================================
 // Types
@@ -143,6 +145,7 @@ export type PasskeyService = {
    * Delete a passkey credential with ownership validation and last-passkey guard.
    * - Verifies the credential belongs to the specified user
    * - Prevents deletion if this is the user's only passkey
+   * Humans must always have ≥1 passkey. Agents are token-only and cannot register passkeys.
    */
   deleteCredentialForUser(
     params: DeleteCredentialForUserParams
@@ -224,6 +227,10 @@ export const createPasskeyService = (
       return userService.getUser(userId).andThen((user) => {
         if (!user) {
           return errAsync(userNotFoundError(userId));
+        }
+
+        if (isAgent(user)) {
+          return errAsync(agentCannotUsePasskeyError(userId));
         }
 
         return credentialStore.findByUserId(userId).andThen((existingCredentials) => {

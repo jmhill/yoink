@@ -7,6 +7,8 @@ import { userStorageError, type UserStorageError } from '../domain/user-errors.j
 type UserRow = {
   id: string;
   email: string;
+  name: string | null;
+  kind: string | null;
   created_at: string;
 };
 
@@ -14,6 +16,8 @@ const rowToUser = (row: UserRow): User => ({
   id: row.id,
   email: row.email,
   createdAt: row.created_at,
+  ...(row.kind && row.kind !== 'human' ? { kind: 'agent' as const } : {}),
+  ...(row.name ? { name: row.name } : {}),
 });
 
 /**
@@ -40,10 +44,10 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            INSERT INTO users (id, email, created_at)
-            VALUES (?, ?, ?)
+            INSERT INTO users (id, email, name, kind, created_at)
+            VALUES (?, ?, ?, ?, ?)
           `,
-          args: [user.id, user.email, user.createdAt],
+          args: [user.id, user.email, user.name ?? null, user.kind ?? 'human', user.createdAt],
         }),
         (error) => userStorageError('Failed to save user', error)
       ).map(() => undefined);

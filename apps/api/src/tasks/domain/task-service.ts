@@ -24,12 +24,14 @@ import type {
   UnpinTaskError,
   DeleteTaskError,
 } from './task-errors.js';
-import { taskNotFoundError } from './task-errors.js';
+import { assigneeNotInOrganizationError, taskNotFoundError } from './task-errors.js';
+import type { OrgPrincipalLookup } from './org-principal-lookup.js';
 
 export type TaskServiceDependencies = {
   store: TaskStore;
   clock: Clock;
   idGenerator: IdGenerator;
+  principalLookup?: OrgPrincipalLookup;
 };
 
 export type ListTasksResult = FindByOrganizationResult;
@@ -56,7 +58,25 @@ const getToday = (clock: Clock): string => {
 export const createTaskService = (
   deps: TaskServiceDependencies
 ): TaskService => {
-  const { store, clock, idGenerator } = deps;
+  const { store, clock, idGenerator, principalLookup } = deps;
+
+  const resolveAssignee = (
+    assigneeId: string | undefined,
+    organizationId: string
+  ): ResultAsync<string | undefined, CreateTaskError> => {
+    if (!assigneeId) {
+      return okAsync(undefined);
+    }
+    if (!principalLookup) {
+      return errAsync(assigneeNotInOrganizationError(assigneeId, organizationId));
+    }
+    return principalLookup.existsInOrganization(assigneeId, organizationId).andThen((exists) => {
+      if (!exists) {
+        return errAsync(assigneeNotInOrganizationError(assigneeId, organizationId));
+      }
+      return okAsync(assigneeId);
+    });
+  };
 
   const findAndValidateOwnership = (
     id: string,
@@ -72,17 +92,20 @@ export const createTaskService = (
 
   return {
     create: (command: CreateTaskCommand): ResultAsync<Task, CreateTaskError> => {
-      const task: Task = {
-        id: idGenerator.generate(),
-        organizationId: command.organizationId,
-        createdById: command.createdById,
-        title: command.title,
-        captureId: command.captureId,
-        dueDate: command.dueDate,
-        createdAt: clock.now().toISOString(),
-      };
+      return resolveAssignee(command.assigneeId, command.organizationId).andThen((assigneeId) => {
+        const task: Task = {
+          id: idGenerator.generate(),
+          organizationId: command.organizationId,
+          createdById: command.createdById,
+          title: command.title,
+          captureId: command.captureId,
+          dueDate: command.dueDate,
+          createdAt: clock.now().toISOString(),
+          ...(assigneeId ? { assigneeId } : {}),
+        };
 
-      return store.save(task).map(() => task);
+        return store.save(task).map(() => task);
+      });
     },
 
     list: (query: ListTasksQuery): ResultAsync<ListTasksResult, ListTasksError> => {
@@ -101,18 +124,32 @@ export const createTaskService = (
 
     update: (command: UpdateTaskCommand): ResultAsync<Task, UpdateTaskError> => {
       return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        const updatedTask: Task = {
-          ...existing,
-          title: command.title ?? existing.title,
-          // Handle dueDate: undefined means "don't change", null means "clear", string means "set"
-          dueDate: command.dueDate === undefined
-            ? existing.dueDate
-            : command.dueDate === null
-              ? undefined
-              : command.dueDate,
+        const applyUpdate = (assigneeId: string | undefined): ResultAsync<Task, UpdateTaskError> => {
+          const updatedTask: Task = {
+            ...existing,
+            title: command.title ?? existing.title,
+            // Handle dueDate: undefined means "don't change", null means "clear", string means "set"
+            dueDate: command.dueDate === undefined
+              ? existing.dueDate
+              : command.dueDate === null
+                ? undefined
+                : command.dueDate,
+            assigneeId,
+          };
+          if (!updatedTask.assigneeId) {
+            delete updatedTask.assigneeId;
+          }
+
+          return store.update(updatedTask).map(() => updatedTask);
         };
 
-        return store.update(updatedTask).map(() => updatedTask);
+        if (command.assigneeId === undefined) {
+          return applyUpdate(existing.assigneeId);
+        }
+        if (command.assigneeId === null) {
+          return applyUpdate(undefined);
+        }
+        return resolveAssignee(command.assigneeId, command.organizationId).andThen(applyUpdate);
       });
     },
 

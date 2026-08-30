@@ -124,3 +124,38 @@ usingDrivers(['http'] as const, (ctx) => {
     });
   });
 });
+
+/**
+ * Board coverage: the task row shows who is assigned, and a human can
+ * change that from the edit picker. HTTP already covers the assignee field.
+ */
+usingDrivers(['playwright'] as const, (ctx) => {
+  describe(`Agent identity on the task board [${ctx.driverName}]`, () => {
+    it('shows the assignee name on the task row', async () => {
+      const alice = await ctx.createActor('alice-board@example.com');
+      const minted = await alice.mintAgent('Board bot');
+
+      const task = await alice.createTask({
+        title: 'For the bot',
+        assigneeId: minted.agent.userId,
+      });
+
+      await alice.shouldSeeAssigneeOnTask(task.id, 'Board bot');
+    });
+
+    it('can assign a task to an agent, to themselves, and clear it from the edit picker', async () => {
+      const alice = await ctx.createActor('alice-picker@example.com');
+      const minted = await alice.mintAgent('Picker bot');
+      const task = await alice.createTask({ title: 'Reassign me' });
+
+      await alice.updateTask(task.id, { assigneeId: minted.agent.userId });
+      await alice.shouldSeeAssigneeOnTask(task.id, 'Picker bot');
+
+      await alice.updateTask(task.id, { assigneeId: alice.userId });
+      await alice.shouldSeeAssigneeOnTask(task.id, alice.email);
+
+      await alice.updateTask(task.id, { assigneeId: null });
+      await alice.shouldNotSeeAssigneeOnTask(task.id);
+    });
+  });
+});

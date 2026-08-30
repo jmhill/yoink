@@ -31,7 +31,7 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
-import { InboxPage, TrashPage, SettingsPage, SnoozedPage } from './page-objects.js';
+import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -104,6 +104,7 @@ export const createPlaywrightActor = (
   const trashPage = new TrashPage(page);
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
+  const tasksPage = new TasksPage(page);
 
   /**
    * Build a minimal Capture object from ID and content.
@@ -311,14 +312,27 @@ export const createPlaywrightActor = (
       return { deletedCount: count };
     },
 
-    // Task operations - not yet implemented in UI (Phase 8.7)
-    // These will be implemented when the Tasks view UI is built
+    // Task operations. Board create/list/complete still throw; create uses the
+    // session API (quick-add has no assignee), update goes through the edit UI.
     async processCaptureToTask(_captureId: string, _input?: ProcessCaptureToTaskInput): Promise<Task> {
       throw new UnsupportedOperationError('processCaptureToTask', 'playwright');
     },
 
-    async createTask(_input: CreateTaskInput): Promise<Task> {
-      throw new UnsupportedOperationError('createTask', 'playwright');
+    async createTask(input: CreateTaskInput): Promise<Task> {
+      // Session API for create (the quick-add form has no assignee picker).
+      // Board visibility and the edit picker are covered by updateTask / shouldSee*.
+      const response = await page.request.post('/api/tasks', { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create task: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async listTasks(_filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]> {
@@ -329,8 +343,36 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('getTask', 'playwright');
     },
 
-    async updateTask(_id: string, _input: UpdateTaskInput): Promise<Task> {
-      throw new UnsupportedOperationError('updateTask', 'playwright');
+    async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForTask(id);
+      await tasksPage.openEdit(id);
+
+      if (input.title !== undefined) {
+        await tasksPage.setTitle(input.title);
+      }
+      if (input.dueDate !== undefined) {
+        if (input.dueDate === null) {
+          await tasksPage.clearDueDate();
+        } else {
+          await tasksPage.setDueDate(input.dueDate);
+        }
+      }
+      if (input.assigneeId !== undefined) {
+        if (input.assigneeId === null) {
+          await tasksPage.clearAssignee();
+        } else {
+          await tasksPage.selectAssignee(input.assigneeId);
+        }
+      }
+
+      await tasksPage.saveEdit();
+
+      const response = await page.request.get(`/api/tasks/${id}`);
+      if (!response.ok()) {
+        throw new Error(`Failed to read task after edit: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async completeTask(_id: string): Promise<Task> {
@@ -471,6 +513,21 @@ export const createPlaywrightActor = (
       // Use Playwright's expect with auto-retry to wait for the offline input state
       const offlineInput = page.getByPlaceholder('Offline - cannot add captures');
       await expect(offlineInput).toBeVisible();
+    },
+
+    async shouldSeeAssigneeOnTask(taskId: string, assigneeLabel: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.assigneeOnTask(taskId)).toHaveAttribute(
+        'data-assignee',
+        assigneeLabel
+      );
+    },
+
+    async shouldNotSeeAssigneeOnTask(taskId: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.assigneeOnTask(taskId)).toHaveCount(0);
     },
 
     // Passkey operations - will be implemented in Phase 7.7b with CDP virtual authenticator

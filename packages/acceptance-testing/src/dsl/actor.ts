@@ -198,6 +198,17 @@ export type BrowserActorOperations = {
    */
   shouldNotBeAbleToAddCaptures(): Promise<void>;
 
+  /**
+   * Assert the task row shows this assignee name (member label: email or agent name).
+   * Uses Playwright's auto-retry so the members list can resolve before the label appears.
+   */
+  shouldSeeAssigneeOnTask(taskId: string, assigneeLabel: string): Promise<void>;
+
+  /**
+   * Assert the task row has no assignee name.
+   */
+  shouldNotSeeAssigneeOnTask(taskId: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

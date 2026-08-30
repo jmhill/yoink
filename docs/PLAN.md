@@ -15,7 +15,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8: Capture → Task Flow** - Complete ✓
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
-**Identity slice: Agent principals** - Complete ✓ (token-only org members; task assignee field; agents cannot capture or passkey)
+**Identity slice: Agent principals** - Complete ✓ (token-only org members; task assignee field; agents cannot capture or passkey; Playwright proves the assigned row and edit picker)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
@@ -464,6 +464,7 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 - [x] Agents cannot register passkeys
 - [x] Acceptance tests: `agent-identity.test.ts` (HTTP; isolated HTTP actors are admins so they can mint)
 - [x] Mint-agent UI on members settings; assignee field on task edit
+- [x] Playwright board coverage: assigned row shows the assignee name; edit picker can set an agent, set the current human, and clear — row updates each time
 
 **Deliverable:** Bot team members can be minted, hold their own token, and appear as task assignees. Human passkey signup/login is unchanged.
 
@@ -842,7 +843,7 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
 
-**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Do not start Phase 9 from this slice.
+**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Do not start Phase 9 from this slice.
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 

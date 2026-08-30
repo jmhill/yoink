@@ -16,6 +16,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
 **Identity slice: Agent principals** - Complete ✓ (token-only org members; task assignee field; agents cannot capture or passkey; Playwright proves the assigned row and edit picker)
+**Identity slice: Agent member roster** - Complete ✓ (agent tokens can GET org members to pick an assignee; still cannot mint, remove, or capture)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
@@ -468,6 +469,26 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Deliverable:** Bot team members can be minted, hold their own token, and appear as task assignees. Human passkey signup/login is unchanged.
 
+### Agent member roster (follow-up) - Complete ✓
+
+Agents sit on the task board but could not list org members, so they could not pick an assignee. The contract already said any member can view the roster (token or session); the handler only read the session cookie and blocked token auth.
+
+**Product rules (locked):**
+- Agent tokens can `GET /api/organizations/:organizationId/members` for orgs they belong to
+- The list includes humans and agents — enough to pick an assignee
+- Agents still cannot mint other agents, remove members, or bulk-mint
+- Agents still cannot create captures
+- Folders, captures (beyond the existing reject), and token deletion are untouched
+
+- [x] `listMembers` uses `request.authContext` (token or session), not session-only
+- [x] HTTP driver implements `listMembers`; it is a core actor operation
+- [x] HTTP acceptance: minted agent lists itself and the minting human
+- [x] HTTP acceptance: agent still cannot mint an agent
+- [x] HTTP acceptance: agent still cannot create captures
+- [x] Route tests: agent token lists members; 403 when not a member; cannot mint or remove
+
+**Deliverable:** An agent member can list the org roster and still cannot administer membership or capture.
+
 ---
 
 ## Phase 9: Folders + Notes (Post-Launch)
@@ -843,7 +864,7 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
 
-**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Do not start Phase 9 from this slice.
+**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 

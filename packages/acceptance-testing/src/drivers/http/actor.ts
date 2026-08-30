@@ -503,9 +503,21 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('leaveOrganization', 'http');
     },
 
-    // Member management operations require session-based auth
     async listMembers(): Promise<Member[]> {
-      throw new UnsupportedOperationError('listMembers', 'http');
+      const response = await client.get(
+        `/api/organizations/${credentials.organizationId}/members`,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Not a member of this organization');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list members: ${response.body}`);
+      }
+      return response.json<{ members: Member[] }>().members;
     },
 
     async removeMember(_userId: string): Promise<void> {

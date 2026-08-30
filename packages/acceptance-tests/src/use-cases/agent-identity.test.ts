@@ -9,7 +9,8 @@ import { ForbiddenError, TokenLimitReachedError } from '@yoink/acceptance-testin
  * - Agents are org members but cannot passkey
  * - Owner/admin mints an agent and receives its token once (not from the human 2-token bucket)
  * - Agents can CRUD/complete/pin/delete tasks, including assignee
- * - Agents cannot create captures
+ * - Agent tokens can list org members (humans and agents) so they can pick an assignee
+ * - Agents cannot create captures, mint other agents, or remove members
  * - Any principal may assign a task to any other principal in the org
  */
 usingDrivers(['http'] as const, (ctx) => {
@@ -75,6 +76,35 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(bot.createCapture({ content: 'should not land' })).rejects.toThrow(
         ForbiddenError
       );
+    });
+
+    it('agent token can list members including itself and the minting human', async () => {
+      const minted = await alice.mintAgent('Roster bot');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+
+      const members = await bot.listMembers();
+
+      expect(members.some((m) => m.userId === minted.agent.userId && m.kind === 'agent')).toBe(
+        true
+      );
+      expect(members.some((m) => m.userId === alice.userId && m.kind === 'human')).toBe(true);
+    });
+
+    it('agent token cannot mint an agent', async () => {
+      const minted = await alice.mintAgent('No-mint bot');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+
+      await expect(bot.mintAgent('Nope')).rejects.toThrow(ForbiddenError);
     });
 
     it('can assign a task to an agent and to a human', async () => {

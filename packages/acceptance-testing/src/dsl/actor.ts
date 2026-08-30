@@ -117,6 +117,13 @@ export type CoreActor = {
       role: 'owner' | 'admin' | 'member';
     }>;
   }>;
+
+  /**
+   * List all members of the current organization.
+   * Any org member (human or agent, token or session) can view the roster
+   * so they have enough to pick a task assignee.
+   */
+  listMembers(): Promise<Member[]>;
 };
 
 /**
@@ -212,12 +219,6 @@ export type BrowserActorOperations = {
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================
-
-  /**
-   * List all members of the current organization.
-   * All members can view the member list.
-   */
-  listMembers(): Promise<Member[]>;
 
   /**
    * Remove a member from the current organization.

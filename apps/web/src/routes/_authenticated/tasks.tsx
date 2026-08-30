@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { tsrTasks, tsr } from '@/api/client';
+import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/header';
@@ -67,6 +68,7 @@ type TodayTaskListProps = {
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
   isLoading: boolean;
+  assigneeLabel: (task: Task) => string | undefined;
 };
 
 /**
@@ -82,6 +84,7 @@ function TodayTaskList({
   onDelete,
   onEdit,
   isLoading,
+  assigneeLabel,
 }: TodayTaskListProps) {
   const { overdue, dueToday } = splitTodayTasks(tasks);
 
@@ -109,6 +112,7 @@ function TodayTaskList({
                   onDelete={onDelete}
                   onEdit={onEdit}
                   isLoading={isLoading}
+                  assigneeLabel={assigneeLabel(task)}
                 />
               </AnimatedListItem>
             ))}
@@ -140,6 +144,7 @@ function TodayTaskList({
                   onDelete={onDelete}
                   onEdit={onEdit}
                   isLoading={isLoading}
+                  assigneeLabel={assigneeLabel(task)}
                 />
               </AnimatedListItem>
             ))}
@@ -157,6 +162,7 @@ function TasksPage() {
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
 
@@ -166,6 +172,24 @@ function TasksPage() {
     enabled: !!editingTask?.captureId,
   });
   const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
+
+  useEffect(() => {
+    const loadMembers = async () => {
+      const session = await getSession();
+      if (!session.ok) return;
+      const result = await listMembers(session.data.organizationId);
+      if (result.ok) {
+        setMembers(result.data.members);
+      }
+    };
+    loadMembers();
+  }, []);
+
+  const assigneeLabelFor = (task: Task): string | undefined => {
+    if (!task.assigneeId) return undefined;
+    const member = members.find((m) => m.userId === task.assigneeId);
+    return member ? memberLabel(member) : task.assigneeId;
+  };
 
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', filter],
@@ -444,6 +468,7 @@ function TasksPage() {
                     ...t,
                     title: body.title ?? t.title,
                     dueDate: body.dueDate === null ? undefined : body.dueDate ?? t.dueDate,
+                    assigneeId: body.assigneeId === null ? undefined : body.assigneeId ?? t.assigneeId,
                   }
                 : t
             ),
@@ -520,7 +545,7 @@ function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null }) => {
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null }) => {
     updateMutation.mutate({
       params: { id: taskId },
       body: updates,
@@ -617,6 +642,7 @@ function TasksPage() {
           onDelete={(id) => setDeleteConfirmId(id)}
           onEdit={handleEdit}
           isLoading={isLoading}
+          assigneeLabel={assigneeLabelFor}
         />
       ) : (
         <AnimatedList>
@@ -635,6 +661,7 @@ function TasksPage() {
                 onDelete={(id) => setDeleteConfirmId(id)}
                 onEdit={handleEdit}
                 isLoading={isLoading}
+                assigneeLabel={assigneeLabelFor(task)}
               />
             </AnimatedListItem>
           ))}
@@ -677,6 +704,7 @@ function TasksPage() {
         onSave={handleSaveEdit}
         isLoading={updateMutation.isPending}
         isFetchingCapture={isFetchingCapture}
+        members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
       />
     </div>
   );

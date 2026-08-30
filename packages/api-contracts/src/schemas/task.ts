@@ -10,6 +10,7 @@ export const TaskSchema = z.object({
   completedAt: z.string().datetime().optional(),
   pinnedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
+  assigneeId: z.string().uuid().optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -17,6 +18,7 @@ export type Task = z.infer<typeof TaskSchema>;
 export const CreateTaskSchema = z.object({
   title: z.string().min(1).max(500),
   dueDate: z.string().date().optional(),
+  assigneeId: z.string().uuid().optional(),
 });
 
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
@@ -24,6 +26,7 @@ export type CreateTask = z.infer<typeof CreateTaskSchema>;
 export const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   dueDate: z.string().date().nullable().optional(), // null to clear
+  assigneeId: z.string().uuid().nullable().optional(), // null to clear
 });
 
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;

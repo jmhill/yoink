@@ -13,6 +13,7 @@ import type {
   ProcessCaptureToTaskInput,
   CreateInvitationInput,
   AcceptInvitationResult,
+  MintedAgent,
 } from './types.js';
 
 /**
@@ -95,6 +96,12 @@ export type CoreActor = {
    * @throws ForbiddenError if user does not own the token
    */
   revokeToken(tokenId: string): Promise<void>;
+
+  /**
+   * Mint a token-only agent member in the current organization.
+   * Owner/admin only. Returns the agent's API token once.
+   */
+  mintAgent(name: string): Promise<MintedAgent>;
 
   /**
    * Get current session info.

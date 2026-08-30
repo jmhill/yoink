@@ -27,6 +27,7 @@ export const registerTaskRoutes = async (
         const result = await taskService.create({
           title: body.title,
           dueDate: body.dueDate,
+          assigneeId: body.assigneeId,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
         });
@@ -38,6 +39,11 @@ export const registerTaskRoutes = async (
           }),
           (error) => {
             switch (error.type) {
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Assignee is not a member of this organization' },
+                };
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,
@@ -107,6 +113,7 @@ export const registerTaskRoutes = async (
           organizationId: request.authContext.organizationId,
           title: body.title,
           dueDate: body.dueDate,
+          assigneeId: body.assigneeId,
         });
 
         return result.match(
@@ -120,6 +127,11 @@ export const registerTaskRoutes = async (
                 return {
                   status: 404 as const,
                   body: { message: 'Task not found' },
+                };
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Assignee is not a member of this organization' },
                 };
               case 'STORAGE_ERROR':
                 return {

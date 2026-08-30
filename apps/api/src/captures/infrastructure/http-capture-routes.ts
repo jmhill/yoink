@@ -23,6 +23,13 @@ export const registerCaptureRoutes = async (
 
     const captureRouter = s.router(captureContract, {
       create: async ({ body, request }) => {
+        if (request.authContext.principalKind === 'agent') {
+          return {
+            status: 403 as const,
+            body: { message: 'Agents cannot create captures' },
+          };
+        }
+
         const result = await captureHandlers.create({
           content: body.content,
           title: body.title,

@@ -10,6 +10,8 @@ import type { UserServiceError } from './user-errors.js';
 export type CreateUserCommand = {
   id: string;
   email: string;
+  name?: string;
+  kind?: 'human' | 'agent';
   createdAt: string;
 };
 
@@ -74,6 +76,8 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
         id: command.id,
         email: command.email,
         createdAt: command.createdAt,
+        ...(command.name ? { name: command.name } : {}),
+        ...(command.kind ? { kind: command.kind } : {}),
       };
 
       return userStore.save(user).map(() => user);

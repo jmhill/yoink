@@ -81,6 +81,7 @@ describe('authMiddleware', () => {
     expect(response.json().authContext).toEqual({
       organizationId: testOrg.id,
       userId: testUser.id,
+      principalKind: 'human',
     });
   });
 

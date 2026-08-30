@@ -33,6 +33,7 @@ export const captureContract = c.router({
       201: CaptureSchema,
       400: ErrorSchema,
       401: ErrorSchema,
+      403: ErrorSchema,
       500: ErrorSchema,
     },
     summary: 'Create a new capture',

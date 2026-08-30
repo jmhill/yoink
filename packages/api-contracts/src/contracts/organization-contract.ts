@@ -5,6 +5,8 @@ import {
   SwitchOrganizationResponseSchema,
   LeaveOrganizationResponseSchema,
   ListMembersResponseSchema,
+  CreateAgentRequestSchema,
+  CreateAgentResponseSchema,
 } from '../schemas/organization.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -97,6 +99,29 @@ export const organizationContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Remove a member from an organization',
+  },
+
+  /**
+   * Mint a token-only agent member.
+   * Owner/admin only. Returns the agent's API token once.
+   * Requires auth (token or session).
+   */
+  createAgent: {
+    method: 'POST',
+    path: '/api/organizations/:organizationId/agents',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+    }),
+    body: CreateAgentRequestSchema,
+    responses: {
+      201: CreateAgentResponseSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      403: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Mint an agent member and return its API token once',
   },
 }, {
   strictStatusCodes: true,

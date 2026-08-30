@@ -5,6 +5,8 @@
 
 // Identity & membership services
 export { createUserService, type UserService } from './user-service.js';
+export { createAgentService, type AgentService } from './agent-service.js';
+export { principalKindOf, isAgent, type PrincipalKind } from './user.js';
 export {
   createMembershipService,
   type MembershipService,

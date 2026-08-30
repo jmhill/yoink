@@ -1,3 +1,4 @@
+import { okAsync } from 'neverthrow';
 import type { Database } from './database/types.js';
 import { createApp, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
@@ -33,6 +34,7 @@ import {
   createOrganizationService,
   createUserService,
   createMembershipService,
+  createAgentService,
   createAdminSessionService,
   createAdminService,
 } from './access/domain/index.js';
@@ -220,6 +222,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       maxTokensPerUserPerOrg: 2,
     });
 
+    const agentService = createAgentService({
+      userService,
+      membershipService,
+      userTokenService,
+      clock,
+      idGenerator,
+    });
+
     signupConfig = {
       signupService,
       passkeyService,
@@ -227,6 +237,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       tokenService,
       userService,
       userTokenService,
+      agentService,
     };
   }
 
@@ -259,6 +270,13 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     store: taskStore,
     clock,
     idGenerator,
+    principalLookup: {
+      existsInOrganization: (principalId, organizationId) =>
+        membershipService
+          .getMembership({ userId: principalId, organizationId })
+          .map((membership) => membership !== null)
+          .orElse(() => okAsync(false)),
+    },
   });
 
   // Create capture processing service (cross-entity operations)

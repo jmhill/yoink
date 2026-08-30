@@ -140,6 +140,23 @@ describe('createSqliteUserStore', () => {
       }
     });
 
+    it('persists agent kind and name', async () => {
+      const agent = createTestUser({
+        id: '550e8400-e29b-41d4-a716-446655440099',
+        email: 'agent-550e8400-e29b-41d4-a716-446655440099@yoink.invalid',
+        name: 'Vault bot',
+        kind: 'agent',
+      });
+
+      await store.save(agent);
+      const result = await store.findById(agent.id);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(agent);
+      }
+    });
+
     it('returns null when user not found by email', async () => {
       const result = await store.findByEmail('nonexistent@example.com');
 

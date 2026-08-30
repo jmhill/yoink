@@ -79,6 +79,24 @@ describe('createPasskeyService', () => {
       }
     });
 
+    it('rejects passkey registration for agent principals', async () => {
+      const agent: User = {
+        id: '550e8400-e29b-41d4-a716-446655440099',
+        email: 'agent-550e8400-e29b-41d4-a716-446655440099@yoink.invalid',
+        name: 'Vault bot',
+        kind: 'agent',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await userStore.save(agent);
+
+      const result = await service.generateRegistrationOptions(agent.id);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('AGENT_CANNOT_USE_PASSKEY');
+      }
+    });
+
     it('returns error for non-existent user', async () => {
       const result = await service.generateRegistrationOptions('non-existent-user');
 

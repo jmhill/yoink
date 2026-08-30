@@ -15,6 +15,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Phase 8: Capture → Task Flow** - Complete ✓
 **Invitation Flow Improvements** - Complete ✓
 **Phase 8.5: Architecture Cleanup** - In Progress (8.5.1–8.5.3 complete; modules are now DDD bounded contexts — `access/` holds auth, users, orgs, memberships, invitations, admin)
+**Identity slice: Agent principals** - Complete ✓ (token-only org members; task assignee field; agents cannot capture or passkey)
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
@@ -123,7 +124,7 @@ Playwright driver updated to support new auth flow while maintaining backward co
 
 ### 7.6 Auth API Endpoints
 
-**System Invariant**: Users must always have at least 1 passkey. This is enforced by preventing deletion of the last passkey.
+**System Invariant**: Humans must always have at least 1 passkey. This is enforced by preventing deletion of the last passkey. Agents are token-only principals and cannot register passkeys.
 
 #### 7.6a Passkey Registration for Existing Users (Migration Path) - Complete ✓
 **Goal**: Allow token-authenticated users to add passkeys and transition to session auth.
@@ -426,6 +427,45 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 - [ ] Document `db.batch()` patterns
 
 **Deliverable:** Atomic aggregate persistence for signup
+
+---
+
+## Identity slice: Agent principals - Complete ✓
+
+**Goal**: Let the bot team sit on the task board as first-class org members, without punching the human passkey invariant.
+
+**Product rules (locked):**
+- Agents are token-only principals: org members that cannot passkey. Humans always have ≥1 passkey.
+- An org owner/admin can mint an agent member and receives its API token once. That token is the agent's — it does not consume a human's 2-token-per-user-per-org bucket.
+- Tasks have an `assigneeId` field (a principal id: human or agent). Set/clear on create/update. Shown on the task row. This is a field, not an assignment product (no notifications, no assignment inbox, no extra UX workflow).
+- Captures stay human: agent tokens cannot create captures. Agents are task-side only (create/list/get/update/complete/pin/delete, including assignee).
+- Any principal may assign to any other principal in the org.
+
+**Out of scope (intentionally not done):**
+- Deleting the existing vault-assistant token (ops, not this slice)
+- Notes, folders, desktop canvas, Tadori
+- Changing capture triage, share target, or extension capture besides rejecting agent capture
+- Removing web token fallback (7.7c)
+- Phase 9
+
+**Design:**
+- `users.kind` is `'human' | 'agent'` (default human). Agents have a display `name` and a reserved unique email (`agent-{id}@yoink.invalid`) so the existing uniqueness constraint stays.
+- Agents get an org membership (`member`, not a personal org) and one API token minted onto the agent user — not the caller's token list.
+- Passkey registration rejects `kind === 'agent'`. Last-passkey deletion remains a human invariant.
+- Auth context carries `principalKind`. Capture create returns 403 for agents.
+- Tasks validate `assigneeId` against org membership via a narrow `OrgPrincipalLookup` port (no access-store import from tasks).
+
+- [x] Migration 021: `users.kind`, `users.name`
+- [x] Migration 022: `tasks.assignee_id`
+- [x] `AgentService.mintAgent` (owner/admin only)
+- [x] `POST /api/organizations/:organizationId/agents` (token or session)
+- [x] Task `assigneeId` on create/update/list; shown on the task row
+- [x] Agent tokens rejected on capture create
+- [x] Agents cannot register passkeys
+- [x] Acceptance tests: `agent-identity.test.ts` (HTTP)
+- [x] Mint-agent UI on members settings; assignee field on task edit
+
+**Deliverable:** Bot team members can be minted, hold their own token, and appear as task assignees. Human passkey signup/login is unchanged.
 
 ---
 
@@ -801,6 +841,8 @@ When resuming work on this project:
 5. Continue with TDD: write failing test → implement → refactor
 
 ### Current Focus: Judge captures pilot, then 8.5.4 / Phase 9
+
+**Identity slice is in.** Agents are token-only org members; tasks have an assignee field. Do not start Phase 9 from this slice.
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
 

@@ -35,6 +35,7 @@ export type Task = {
   completedAt?: string;
   pinnedAt?: string;
   createdAt: string;
+  assigneeId?: string;
 };
 
 export type Organization = {
@@ -84,8 +85,21 @@ export type CreateInvitationInput = {
 export type Member = {
   userId: string;
   email: string;
+  name?: string;
+  kind: 'human' | 'agent';
   role: 'owner' | 'admin' | 'member';
   joinedAt: string;
+};
+
+export type MintedAgent = {
+  agent: {
+    userId: string;
+    name: string;
+    kind: 'agent';
+    role: 'owner' | 'admin' | 'member';
+  };
+  token: Token;
+  rawToken: string;
 };
 
 // =============================================================================
@@ -108,11 +122,13 @@ export type UpdateCaptureInput = {
 export type CreateTaskInput = {
   title: string;
   dueDate?: string; // YYYY-MM-DD format
+  assigneeId?: string;
 };
 
 export type UpdateTaskInput = {
   title?: string;
   dueDate?: string | null; // null to clear, undefined to keep unchanged
+  assigneeId?: string | null;
 };
 
 export type ProcessCaptureToTaskInput = {

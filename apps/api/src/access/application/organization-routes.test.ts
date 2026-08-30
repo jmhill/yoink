@@ -6,6 +6,9 @@ import { registerOrganizationRoutes } from './organization-routes.js';
 import { createSessionService } from '../domain/session-service.js';
 import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
+import { createAgentService } from '../domain/agent-service.js';
+import { createUserTokenService } from '../domain/user-token-service.js';
+import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
@@ -114,6 +117,23 @@ describe('organization routes', () => {
       refreshThresholdMs: 24 * 60 * 60 * 1000,
     });
 
+    const agentService = createAgentService({
+      userService,
+      membershipService,
+      userTokenService: createUserTokenService({
+        tokenStore: createFakeTokenStore(),
+        clock,
+        idGenerator,
+        passwordHasher: {
+          hash: async (password: string) => `hashed:${password}`,
+          compare: async (password: string, hash: string) => hash === `hashed:${password}`,
+        },
+        maxTokensPerUserPerOrg: 2,
+      }),
+      clock,
+      idGenerator,
+    });
+
     app = Fastify();
     await app.register(cookie);
 
@@ -136,6 +156,7 @@ describe('organization routes', () => {
       sessionService,
       membershipService,
       userService,
+      agentService,
       authMiddleware,
     });
 

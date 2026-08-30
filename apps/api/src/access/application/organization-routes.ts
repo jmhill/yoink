@@ -4,12 +4,15 @@ import { organizationContract } from '@yoink/api-contracts';
 import type { SessionService } from '../domain/session-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { UserService } from '../domain/user-service.js';
+import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
+import { principalKindOf } from '../domain/user.js';
 
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
   membershipService: MembershipService;
   userService: UserService;
+  agentService: AgentService;
   authMiddleware: AuthMiddleware;
 };
 
@@ -17,7 +20,7 @@ export const registerOrganizationRoutes = async (
   app: FastifyInstance,
   deps: OrganizationRoutesDependencies
 ) => {
-  const { sessionService, membershipService, userService, authMiddleware } = deps;
+  const { sessionService, membershipService, userService, agentService, authMiddleware } = deps;
   const s = initServer();
 
   await app.register(async (orgApp) => {
@@ -177,6 +180,8 @@ export const registerOrganizationRoutes = async (
           return {
             userId: m.userId,
             email: user?.email ?? 'unknown',
+            name: user?.name,
+            kind: user ? principalKindOf(user) : 'human' as const,
             role: m.role,
             joinedAt: m.joinedAt,
           };
@@ -297,6 +302,58 @@ export const registerOrganizationRoutes = async (
             return {
               status: 500 as const,
               body: { message: 'Failed to remove member' },
+            };
+          }
+        );
+      },
+
+      createAgent: async ({ params, body, request }) => {
+        const { organizationId } = params;
+        const actorUserId = request.authContext.userId;
+
+        const result = await agentService.mintAgent({
+          actorUserId,
+          organizationId,
+          name: body.name,
+        });
+
+        return result.match(
+          ({ user, membership, token, rawToken }) => ({
+            status: 201 as const,
+            body: {
+              agent: {
+                userId: user.id,
+                name: user.name ?? body.name,
+                kind: 'agent' as const,
+                role: membership.role,
+              },
+              token,
+              rawToken,
+            },
+          }),
+          (error) => {
+            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
+              return {
+                status: 403 as const,
+                body: { message: 'Not a member of this organization' },
+              };
+            }
+            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
+              return {
+                status: 403 as const,
+                body: { message: 'Only owners and admins can mint agents' },
+              };
+            }
+            if (error.type === 'ORGANIZATION_NOT_FOUND') {
+              return {
+                status: 404 as const,
+                body: { message: 'Organization not found' },
+              };
+            }
+            request.log.error({ error }, 'Failed to mint agent');
+            return {
+              status: 500 as const,
+              body: { message: 'Failed to mint agent' },
             };
           }
         );

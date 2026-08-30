@@ -16,6 +16,7 @@ import type {
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
   CreateInvitationInput,
+  MintedAgent,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -537,6 +538,34 @@ export const createPlaywrightActor = (
         throw new ForbiddenError('You do not own this token');
       }
       // 200 is success
+    },
+
+    async mintAgent(name: string): Promise<MintedAgent> {
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.post(`/api/organizations/${orgId}/agents`, {
+        data: { name },
+      });
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Only owners and admins can mint agents');
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to mint agent: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async getSessionInfo(): Promise<{

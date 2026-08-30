@@ -50,6 +50,7 @@ export const createUserSessionMiddleware = (
     request.authContext = {
       organizationId: session.currentOrganizationId,
       userId: session.userId,
+      principalKind: 'human',
     };
 
     // Also expose the full session for handlers that need it

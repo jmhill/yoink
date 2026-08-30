@@ -150,6 +150,7 @@ describe('combinedAuthMiddleware', () => {
       expect(response.json().authContext).toEqual({
         organizationId: testOrg.id,
         userId: testUser.id,
+        principalKind: 'human',
       });
       expect(response.json().hasSession).toBe(true);
     });
@@ -197,6 +198,7 @@ describe('combinedAuthMiddleware', () => {
       expect(response.json().authContext).toEqual({
         organizationId: testOrg.id,
         userId: testUser.id,
+        principalKind: 'human',
       });
       expect(response.json().hasSession).toBe(false);
     });

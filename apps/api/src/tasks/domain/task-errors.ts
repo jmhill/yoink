@@ -9,11 +9,17 @@ export type TaskNotFoundError = {
   readonly taskId: string;
 };
 
+export type AssigneeNotInOrganizationError = {
+  readonly type: 'ASSIGNEE_NOT_IN_ORGANIZATION';
+  readonly assigneeId: string;
+  readonly organizationId: string;
+};
+
 // Composite error types for each operation
-export type CreateTaskError = StorageError;
+export type CreateTaskError = StorageError | AssigneeNotInOrganizationError;
 export type ListTasksError = StorageError;
 export type FindTaskError = StorageError | TaskNotFoundError;
-export type UpdateTaskError = StorageError | TaskNotFoundError;
+export type UpdateTaskError = StorageError | TaskNotFoundError | AssigneeNotInOrganizationError;
 export type CompleteTaskError = StorageError | TaskNotFoundError;
 export type UncompleteTaskError = StorageError | TaskNotFoundError;
 export type PinTaskError = StorageError | TaskNotFoundError;
@@ -30,4 +36,13 @@ export const storageError = (message: string, cause?: unknown): StorageError => 
 export const taskNotFoundError = (taskId: string): TaskNotFoundError => ({
   type: 'TASK_NOT_FOUND',
   taskId,
+});
+
+export const assigneeNotInOrganizationError = (
+  assigneeId: string,
+  organizationId: string
+): AssigneeNotInOrganizationError => ({
+  type: 'ASSIGNEE_NOT_IN_ORGANIZATION',
+  assigneeId,
+  organizationId,
 });

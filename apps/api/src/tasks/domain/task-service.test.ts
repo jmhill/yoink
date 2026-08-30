@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { okAsync } from 'neverthrow';
 import { createTaskService } from './task-service.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
+import type { OrgPrincipalLookup } from './org-principal-lookup.js';
 
 describe('createTaskService', () => {
   describe('create', () => {
@@ -738,6 +740,77 @@ describe('createTaskService', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.type).toBe('TASK_NOT_FOUND');
+      }
+    });
+  });
+
+  describe('assignee', () => {
+    const members = new Set(['user-456', 'agent-789']);
+    const principalLookup: OrgPrincipalLookup = {
+      existsInOrganization: (principalId, organizationId) =>
+        okAsync(organizationId === 'org-123' && members.has(principalId)),
+    };
+
+    it('creates a task assigned to an org principal', async () => {
+      const store = createFakeTaskStore();
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator(['task-id-1']);
+      const service = createTaskService({ store, clock, idGenerator, principalLookup });
+
+      const result = await service.create({
+        title: 'Bot work',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        assigneeId: 'agent-789',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.assigneeId).toBe('agent-789');
+      }
+    });
+
+    it('rejects assignee who is not in the organization', async () => {
+      const store = createFakeTaskStore();
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createTaskService({ store, clock, idGenerator, principalLookup });
+
+      const result = await service.create({
+        title: 'Bot work',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        assigneeId: 'outsider',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('ASSIGNEE_NOT_IN_ORGANIZATION');
+      }
+    });
+
+    it('clears assignee on update', async () => {
+      const store = createFakeTaskStore();
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator(['task-id-1']);
+      const service = createTaskService({ store, clock, idGenerator, principalLookup });
+
+      await service.create({
+        title: 'Bot work',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        assigneeId: 'agent-789',
+      });
+
+      const result = await service.update({
+        id: 'task-id-1',
+        organizationId: 'org-123',
+        assigneeId: null,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.assigneeId).toBeUndefined();
       }
     });
   });

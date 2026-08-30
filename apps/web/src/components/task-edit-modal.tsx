@@ -11,8 +11,18 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@yoink/ui-base/components/select';
 import { Pencil, MessageSquare, X } from 'lucide-react';
 import type { Task, Capture } from '@yoink/api-contracts';
+
+/** Radix Select forbids an empty item value; map to/from the unassigned state. */
+const UNASSIGNED_VALUE = 'unassigned';
 
 type TaskEditModalProps = {
   open: boolean;
@@ -137,20 +147,25 @@ export function TaskEditModal({
 
           <div className="space-y-2">
             <Label htmlFor="edit-task-assignee">Assignee</Label>
-            <select
-              id="edit-task-assignee"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
+            <Select
+              value={assigneeId || UNASSIGNED_VALUE}
+              onValueChange={(value) =>
+                setAssigneeId(value === UNASSIGNED_VALUE ? '' : value)
+              }
               disabled={isLoading}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="">Unassigned</option>
-              {members.map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {member.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="edit-task-assignee" className="w-full">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.userId} value={member.userId}>
+                    {member.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Source capture section */}

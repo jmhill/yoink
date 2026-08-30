@@ -12,6 +12,7 @@ import type {
   AcceptInvitationResult,
   CreateCaptureInput,
   UpdateCaptureInput,
+  TaskFilter,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
@@ -335,7 +336,7 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async listTasks(_filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]> {
+    async listTasks(_filter?: TaskFilter): Promise<Task[]> {
       throw new UnsupportedOperationError('listTasks', 'playwright');
     },
 
@@ -528,6 +529,19 @@ export const createPlaywrightActor = (
       await tasksPage.goto('all');
       await tasksPage.waitForTask(taskId);
       await expect(tasksPage.assigneeOnTask(taskId)).toHaveCount(0);
+    },
+
+    async shouldSeeTaskOnMine(taskId: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.openFilter('mine');
+      await tasksPage.waitForTask(taskId);
+    },
+
+    async shouldNotSeeTaskOnMine(taskId: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.openFilter('mine');
+      await tasksPage.waitForTasksOrEmpty();
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
     // Passkey operations - will be implemented in Phase 7.7b with CDP virtual authenticator

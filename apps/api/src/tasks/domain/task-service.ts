@@ -115,6 +115,7 @@ export const createTaskService = (
         today: getToday(clock),
         limit: query.limit,
         cursor: query.cursor,
+        assigneeId: query.callerId,
       });
     },
 

@@ -8,6 +8,7 @@ import type {
   CreateTokenResult,
   CreateCaptureInput,
   UpdateCaptureInput,
+  TaskFilter,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
@@ -45,7 +46,7 @@ export type CoreActor = {
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
-  listTasks(filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]>;
+  listTasks(filter?: TaskFilter): Promise<Task[]>;
   getTask(id: string): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   completeTask(id: string): Promise<Task>;
@@ -215,6 +216,16 @@ export type BrowserActorOperations = {
    * Assert the task row has no assignee name.
    */
   shouldNotSeeAssigneeOnTask(taskId: string): Promise<void>;
+
+  /**
+   * Assert the Mine tab shows this task (assigned to the current principal).
+   */
+  shouldSeeTaskOnMine(taskId: string): Promise<void>;
+
+  /**
+   * Assert the Mine tab does not show this task.
+   */
+  shouldNotSeeTaskOnMine(taskId: string): Promise<void>;
 
   // ==========================================================================
   // Organization Member Management

@@ -97,6 +97,38 @@ usingDrivers(['http'] as const, (ctx) => {
         expect(upcomingTasks.some((t) => t.title === 'Due today')).toBe(false);
         expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);
       });
+
+      it('lists only incomplete tasks assigned to the caller', async () => {
+        const minted = await alice.mintAgent('Grocery bot');
+        const mine = await alice.createTask({
+          title: 'UAT checkout',
+          assigneeId: alice.userId,
+        });
+        const theirs = await alice.createTask({
+          title: 'Buy milk',
+          assigneeId: minted.agent.userId,
+        });
+        const unassigned = await alice.createTask({ title: 'Unowned chore' });
+        const completedMine = await alice.createTask({
+          title: 'Done UAT',
+          assigneeId: alice.userId,
+        });
+        await alice.completeTask(completedMine.id);
+
+        const mineTasks = await alice.listTasks('mine');
+        expect(mineTasks.some((t) => t.id === mine.id)).toBe(true);
+        expect(mineTasks.some((t) => t.id === theirs.id)).toBe(false);
+        expect(mineTasks.some((t) => t.id === unassigned.id)).toBe(false);
+        expect(mineTasks.some((t) => t.id === completedMine.id)).toBe(false);
+
+        const allTasks = await alice.listTasks('all');
+        expect(allTasks.some((t) => t.id === mine.id)).toBe(true);
+        expect(allTasks.some((t) => t.id === theirs.id)).toBe(true);
+        expect(allTasks.some((t) => t.id === unassigned.id)).toBe(true);
+
+        const completed = await alice.listTasks('completed');
+        expect(completed.some((t) => t.id === completedMine.id)).toBe(true);
+      });
     });
 
     describe('completing tasks', () => {

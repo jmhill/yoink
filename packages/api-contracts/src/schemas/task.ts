@@ -32,5 +32,5 @@ export const UpdateTaskSchema = z.object({
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;
 
 // Filter options for listing tasks
-export const TaskFilterSchema = z.enum(['today', 'upcoming', 'all', 'completed']);
+export const TaskFilterSchema = z.enum(['today', 'upcoming', 'all', 'completed', 'mine']);
 export type TaskFilter = z.infer<typeof TaskFilterSchema>;

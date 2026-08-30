@@ -107,6 +107,31 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(bot.mintAgent('Nope')).rejects.toThrow(ForbiddenError);
     });
 
+    it('agent token lists only tasks assigned to the agent', async () => {
+      const minted = await alice.mintAgent('Mine bot');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+
+      const forBot = await alice.createTask({
+        title: 'Bot UAT',
+        assigneeId: minted.agent.userId,
+      });
+      const forAlice = await alice.createTask({
+        title: 'Human UAT',
+        assigneeId: alice.userId,
+      });
+      const unassigned = await alice.createTask({ title: 'Groceries' });
+
+      const botMine = await bot.listTasks('mine');
+      expect(botMine.some((t) => t.id === forBot.id)).toBe(true);
+      expect(botMine.some((t) => t.id === forAlice.id)).toBe(false);
+      expect(botMine.some((t) => t.id === unassigned.id)).toBe(false);
+    });
+
     it('can assign a task to an agent and to a human', async () => {
       const minted = await alice.mintAgent('Assignee bot');
 
@@ -186,6 +211,25 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.updateTask(task.id, { assigneeId: null });
       await alice.shouldNotSeeAssigneeOnTask(task.id);
+    });
+
+    it('shows only tasks assigned to me on the Mine tab', async () => {
+      const alice = await ctx.createActor('alice-mine@example.com');
+      const minted = await alice.mintAgent('Mine board bot');
+      const mine = await alice.createTask({
+        title: 'My UAT',
+        assigneeId: alice.userId,
+      });
+      const theirs = await alice.createTask({
+        title: 'Bot groceries',
+        assigneeId: minted.agent.userId,
+      });
+      const unassigned = await alice.createTask({ title: 'Milk' });
+
+      await alice.shouldSeeTaskOnMine(mine.id);
+      await alice.shouldSeeAssigneeOnTask(mine.id, alice.email);
+      await alice.shouldNotSeeTaskOnMine(theirs.id);
+      await alice.shouldNotSeeTaskOnMine(unassigned.id);
     });
   });
 });

@@ -24,7 +24,7 @@ export const taskContract = c.router({
     method: 'GET',
     path: '/api/tasks',
     query: z.object({
-      filter: TaskFilterSchema.optional(), // today, upcoming, all, completed
+      filter: TaskFilterSchema.optional(), // today, upcoming, all, completed, mine
       limit: z.coerce.number().min(1).max(100).default(50),
       cursor: z.string().uuid().optional(),
     }),

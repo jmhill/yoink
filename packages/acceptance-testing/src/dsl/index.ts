@@ -10,6 +10,7 @@ export type {
   PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
+  TaskFilter,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,

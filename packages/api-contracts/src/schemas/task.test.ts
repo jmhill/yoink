@@ -200,6 +200,11 @@ describe('TaskFilterSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates mine filter', () => {
+    const result = TaskFilterSchema.safeParse('mine');
+    expect(result.success).toBe(true);
+  });
+
   it('rejects invalid filter', () => {
     const result = TaskFilterSchema.safeParse('invalid');
     expect(result.success).toBe(false);

@@ -8,6 +8,7 @@ import type {
   PasskeyCredentialInfo,
   CreateCaptureInput,
   UpdateCaptureInput,
+  TaskFilter,
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
@@ -228,7 +229,7 @@ export const createHttpActor = (
       return response.json<Task>();
     },
 
-    async listTasks(filter?: 'today' | 'upcoming' | 'all' | 'completed'): Promise<Task[]> {
+    async listTasks(filter?: TaskFilter): Promise<Task[]> {
       const query = filter ? `?filter=${filter}` : '';
       const response = await client.get(`/api/tasks${query}`, authHeaders());
       if (response.statusCode === 401) {
@@ -368,6 +369,14 @@ export const createHttpActor = (
 
     async shouldNotSeeAssigneeOnTask(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeAssigneeOnTask', 'http');
+    },
+
+    async shouldSeeTaskOnMine(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskOnMine', 'http');
+    },
+
+    async shouldNotSeeTaskOnMine(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeTaskOnMine', 'http');
     },
 
     // Passkey operations

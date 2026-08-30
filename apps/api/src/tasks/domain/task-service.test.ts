@@ -293,6 +293,59 @@ describe('createTaskService', () => {
       }
     });
 
+    it('filters by mine — only incomplete tasks assigned to the caller', async () => {
+      const mineTask = {
+        id: 'mine-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'UAT checkout',
+        createdAt: '2025-01-15T10:00:00.000Z',
+        assigneeId: 'user-456',
+      };
+      const theirsTask = {
+        id: 'theirs-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Buy milk',
+        createdAt: '2025-01-15T10:00:00.000Z',
+        assigneeId: 'agent-789',
+      };
+      const unassignedTask = {
+        id: 'unassigned-task',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Unowned chore',
+        createdAt: '2025-01-15T10:00:00.000Z',
+      };
+      const completedMine = {
+        id: 'completed-mine',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Done UAT',
+        createdAt: '2025-01-15T10:00:00.000Z',
+        completedAt: '2025-01-15T11:00:00.000Z',
+        assigneeId: 'user-456',
+      };
+      const store = createFakeTaskStore({
+        initialTasks: [mineTask, theirsTask, unassignedTask, completedMine],
+      });
+      const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const service = createTaskService({ store, clock, idGenerator });
+
+      const result = await service.list({
+        organizationId: 'org-123',
+        filter: 'mine',
+        callerId: 'user-456',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.tasks).toHaveLength(1);
+        expect(result.value.tasks[0].title).toBe('UAT checkout');
+      }
+    });
+
     it('returns error when store fails', async () => {
       const store = createFakeTaskStore({ shouldFailOnFind: true });
       const clock = createFakeClock(new Date('2025-01-15T10:00:00.000Z'));

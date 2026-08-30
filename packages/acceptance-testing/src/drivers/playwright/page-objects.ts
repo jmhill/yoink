@@ -1,4 +1,5 @@
 import type { Page, CDPSession } from '@playwright/test';
+import type { TaskFilter } from '../../dsl/types.js';
 
 /**
  * Page object for the login page (/login).
@@ -670,8 +671,19 @@ export class SnoozedPage {
 export class TasksPage {
   constructor(private readonly page: Page) {}
 
-  async goto(filter: 'today' | 'upcoming' | 'all' | 'completed' = 'all'): Promise<void> {
+  async goto(filter: TaskFilter = 'all'): Promise<void> {
     await this.page.goto(`/tasks?filter=${filter}`);
+  }
+
+  async openFilter(filter: TaskFilter): Promise<void> {
+    const name = {
+      today: 'Today',
+      upcoming: /Upcoming|Soon/,
+      all: 'All',
+      completed: 'Done',
+      mine: 'Mine',
+    }[filter];
+    await this.page.getByRole('tab', { name }).click();
   }
 
   async waitForTasksOrEmpty(): Promise<void> {
@@ -679,6 +691,7 @@ export class TasksPage {
       this.page.locator('[data-task-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
       this.page.getByText('No tasks for today').waitFor({ state: 'attached' }),
+      this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });

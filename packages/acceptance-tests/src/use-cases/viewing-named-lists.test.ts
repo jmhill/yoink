@@ -6,7 +6,8 @@ import { UnauthorizedError } from '@yoink/acceptance-testing';
  * Story 1: View my named lists.
  *
  * A list is an optional bucket on a task — this story only shows the org's
- * named lists (including empty ones). Create/rename/delete stay out.
+ * named lists (including empty ones). Create is a separate story; these tests
+ * use the product create path so a non-empty view is proven.
  */
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Viewing named lists [${ctx.driverName}]`, () => {
@@ -22,9 +23,9 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       expect(lists).toEqual([]);
     });
 
-    it('shows seeded list names', async () => {
-      await alice.seedNamedList('Groceries');
-      await alice.seedNamedList('Weekend');
+    it('shows created list names', async () => {
+      await alice.createNamedList('Groceries');
+      await alice.createNamedList('Weekend');
 
       const lists = await alice.listNamedLists();
 
@@ -45,7 +46,7 @@ usingDrivers(['http'] as const, (ctx) => {
 
     it('lets an agent token view the same organization lists', async () => {
       const alice = await ctx.createActor('alice-lists-agent@example.com');
-      await alice.seedNamedList('Shared board');
+      await alice.createNamedList('Shared board');
 
       const minted = await alice.mintAgent('List reader');
       const bot = ctx.createActorWithCredentials({
@@ -64,7 +65,7 @@ usingDrivers(['http'] as const, (ctx) => {
       const alice = await ctx.createActor('alice-lists-iso@example.com');
       const bob = await ctx.createActor('bob-lists-iso@example.com');
 
-      await alice.seedNamedList('Alice only');
+      await alice.createNamedList('Alice only');
 
       const bobLists = await bob.listNamedLists();
 
@@ -85,9 +86,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeEmptyNamedLists();
     });
 
-    it('shows seeded names on the lists view', async () => {
-      await alice.seedNamedList('Groceries');
-      await alice.seedNamedList('Weekend');
+    it('shows created names on the lists view', async () => {
+      await alice.createNamedList('Groceries');
+      await alice.createNamedList('Weekend');
 
       await alice.shouldSeeNamedList('Groceries');
       await alice.shouldSeeNamedList('Weekend');

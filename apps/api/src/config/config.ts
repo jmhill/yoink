@@ -205,7 +205,6 @@ export const loadConfig = async (): Promise<AppConfig> => {
     log: loadLogConfig(),
     webauthn: loadWebAuthnConfig(),
     cookie: loadCookieConfig(),
-    testFixtures: process.env.ENABLE_TEST_FIXTURES === 'true',
   };
 };
 

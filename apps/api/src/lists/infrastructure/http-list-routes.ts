@@ -42,6 +42,36 @@ export const registerListRoutes = async (
           }
         );
       },
+
+      create: async ({ body, request }) => {
+        const result = await listHandlers.create({
+          name: body.name,
+          organizationId: request.authContext.organizationId,
+          createdById: request.authContext.userId,
+        });
+
+        return result.match(
+          ({ view }) => ({
+            status: 201 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_LIST_NAME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(listContract, listRouter, authedApp, {

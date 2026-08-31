@@ -335,19 +335,18 @@ export const createPlaywrightActor = (
       }));
     },
 
-    async seedNamedList(name: string): Promise<NamedList> {
-      const response = await page.request.post('/api/test/named-lists', { data: { name } });
-      if (response.status() === 401) {
-        throw new UnauthorizedError();
+    async createNamedList(name: string): Promise<NamedList> {
+      const created = await listsPage.createNamedList(name);
+      if (!created) {
+        throw new ValidationError('Name is required');
       }
-      if (response.status() === 400) {
-        const body = await response.json();
-        throw new ValidationError(body.message ?? 'Invalid request');
-      }
-      if (response.status() !== 201) {
-        throw new Error(`Failed to seed named list: ${response.status()}`);
-      }
-      return response.json();
+      return {
+        id: created.id,
+        name: created.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      };
     },
 
     async goToLists(): Promise<void> {
@@ -1042,6 +1041,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async listNamedLists(): Promise<NamedList[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async createNamedList(_name: string): Promise<NamedList> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

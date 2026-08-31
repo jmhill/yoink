@@ -225,8 +225,8 @@ export const createHttpActor = (
       return response.json<{ lists: NamedList[] }>().lists;
     },
 
-    async seedNamedList(name: string): Promise<NamedList> {
-      const response = await client.post('/api/test/named-lists', { name }, authHeaders());
+    async createNamedList(name: string): Promise<NamedList> {
+      const response = await client.post('/api/lists', { name }, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -235,7 +235,7 @@ export const createHttpActor = (
         throw new ValidationError(error.message ?? 'Invalid request');
       }
       if (response.statusCode !== 201) {
-        throw new Error(`Failed to seed named list: ${response.body}`);
+        throw new Error(`Failed to create named list: ${response.body}`);
       }
       return response.json<NamedList>();
     },
@@ -630,5 +630,17 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new UnauthorizedError();
     }
     return response.json<{ lists: NamedList[] }>().lists;
+  },
+
+  async createNamedList(name: string): Promise<NamedList> {
+    const response = await client.post('/api/lists', { name });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 400) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    return response.json<NamedList>();
   },
 });

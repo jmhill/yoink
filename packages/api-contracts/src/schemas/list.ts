@@ -9,3 +9,9 @@ export const NamedListSchema = z.object({
 });
 
 export type NamedList = z.infer<typeof NamedListSchema>;
+
+export const CreateNamedListSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+});
+
+export type CreateNamedList = z.infer<typeof CreateNamedListSchema>;

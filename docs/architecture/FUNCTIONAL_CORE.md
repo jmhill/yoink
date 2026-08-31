@@ -1,9 +1,9 @@
 # Functional Core (Captures Pilot)
 
-**Status:** Pilot — `captures/` only  
+**Status:** Pilot — `captures/` plus `lists/` create/list  
 **Created:** 2026-08-19
 
-The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. Other modules still use service objects in `domain/` and HTTP in `application/`. Do not copy this shape elsewhere until the pilot is judged a success.
+The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create (decide → persist → apply). Other modules still use service objects in `domain/` and HTTP in `application/`. Do not copy this shape into access until the pilot is judged a success.
 
 ## Layers
 

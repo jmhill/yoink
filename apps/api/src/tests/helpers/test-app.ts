@@ -38,7 +38,6 @@ export const testConfig: AppConfig = {
   seedToken: TEST_TOKEN_SECRET,
   log: { level: 'error', pretty: false }, // Quiet logs during tests
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
-  testFixtures: true,
 };
 
 export const testConfigWithAdmin: AppConfig = {

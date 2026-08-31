@@ -1,7 +1,21 @@
+import { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { Button } from '@yoink/ui-base/components/button';
+import { Input } from '@yoink/ui-base/components/input';
+import { Label } from '@yoink/ui-base/components/label';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@yoink/ui-base/components/dialog';
 import { tsrLists } from '@/api/client';
-import { List } from 'lucide-react';
+import { isFetchError } from '@ts-rest/react-query/v5';
+import { List, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 
@@ -10,12 +24,48 @@ export const Route = createFileRoute('/_authenticated/lists')({
 });
 
 function ListsPage() {
+  const queryClient = tsrLists.useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [name, setName] = useState('');
+
   const { data, isPending, error, refetch } = tsrLists.list.useQuery({
     queryKey: ['lists'],
     queryData: {},
   });
 
+  const createMutation = tsrLists.create.useMutation({
+    onSuccess: () => {
+      toast.success('List created');
+      setDialogOpen(false);
+      setName('');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to create list');
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['lists'] });
+    },
+  });
+
   const lists = data?.status === 200 ? data.body.lists : [];
+  const trimmedName = name.trim();
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setName('');
+    }
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!trimmedName || createMutation.isPending) return;
+    createMutation.mutate({ body: { name: trimmedName } });
+  };
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
@@ -25,27 +75,81 @@ function ListsPage() {
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>
-      ) : lists.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <List className="mx-auto mb-2 h-8 w-8" />
-            <p>No named lists yet</p>
-            <p className="text-sm">This organization has no named lists.</p>
-          </CardContent>
-        </Card>
       ) : (
-        <ul className="space-y-3">
-          {lists.map((list) => (
-            <li key={list.id}>
-              <Card data-list-id={list.id} data-list-name={list.name}>
-                <CardContent className="py-4">
-                  <p className="font-medium">{list.name}</p>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mb-4">
+            <Button type="button" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New list
+            </Button>
+          </div>
+
+          {lists.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <List className="mx-auto mb-2 h-8 w-8" />
+                <p>No named lists yet</p>
+                <p className="text-sm">This organization has no named lists.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="space-y-3">
+              {lists.map((list) => (
+                <li key={list.id}>
+                  <Card data-list-id={list.id} data-list-name={list.name}>
+                    <CardContent className="py-4">
+                      <p className="font-medium">{list.name}</p>
+                    </CardContent>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
+
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New list</DialogTitle>
+            <DialogDescription>
+              Give this list a name. You can put tasks on it later.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="list-name">Name</Label>
+              <Input
+                id="list-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Groceries"
+                maxLength={200}
+                disabled={createMutation.isPending}
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleDialogOpenChange(false)}
+                disabled={createMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || !trimmedName}
+              >
+                {createMutation.isPending ? 'Creating...' : 'Create list'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -45,9 +45,9 @@ export type CoreActor = {
   // Process capture to task
   processCaptureToTask(captureId: string, input?: ProcessCaptureToTaskInput): Promise<Task>;
 
-  // Named lists (view). seedNamedList is a test fixture, not Create.
+  // Named lists. createNamedList is the product write path (any org member).
   listNamedLists(): Promise<NamedList[]>;
-  seedNamedList(name: string): Promise<NamedList>;
+  createNamedList(name: string): Promise<NamedList>;
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
@@ -325,4 +325,5 @@ export type AnonymousActor = {
   listCaptures(): Promise<Capture[]>;
   getCapture(id: string): Promise<Capture>;
   listNamedLists(): Promise<NamedList[]>;
+  createNamedList(name: string): Promise<NamedList>;
 };

@@ -787,6 +787,31 @@ export class ListsPage {
     return lists;
   }
 
+  async createNamedList(name: string): Promise<{ id: string; name: string } | null> {
+    await this.goto();
+    await this.waitForListsOrEmpty();
+
+    await this.page.getByRole('button', { name: 'New list' }).click();
+    const nameInput = this.page.getByLabel('Name');
+    await nameInput.waitFor({ state: 'visible' });
+    await nameInput.fill(name);
+
+    const createButton = this.page.getByRole('button', { name: 'Create list' });
+    if (await createButton.isDisabled()) {
+      return null;
+    }
+
+    await createButton.click();
+
+    const card = this.page.locator(`[data-list-name="${name}"]`);
+    await card.waitFor({ state: 'visible' });
+    const id = await card.getAttribute('data-list-id');
+    if (!id) {
+      throw new Error(`Created list "${name}" has no id`);
+    }
+    return { id, name };
+  }
+
   async isEmpty(): Promise<boolean> {
     return await this.page.getByText('No named lists yet').isVisible();
   }

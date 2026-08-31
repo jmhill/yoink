@@ -113,5 +113,17 @@ describe('Conditional Route Registration', () => {
 
       expect(response.statusCode).toBe(401);
     });
+
+    it('registers POST /api/lists with 401 (not 404) when unauthenticated', async () => {
+      const app = await createTestApp();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/lists',
+        payload: { name: 'Groceries' },
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
   });
 });

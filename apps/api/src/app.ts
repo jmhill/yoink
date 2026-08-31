@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 import { registerHealthRoutes } from './health/application/index.js';
 import { registerCaptureRoutes } from './captures/infrastructure/http-capture-routes.js';
 import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
-import { registerListFixtureRoutes } from './lists/infrastructure/http-list-fixture-routes.js';
 import { registerTaskRoutes } from './tasks/application/index.js';
 import {
   registerAdminRoutes,
@@ -24,7 +23,6 @@ import {
 } from './access/application/index.js';
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
-import type { ListFixtureDependencies } from './lists/infrastructure/http-list-fixture-routes.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
@@ -68,7 +66,6 @@ export type SignupConfig = {
 export type AppDependencies = {
   captureHandlers: CaptureHandlers;
   listHandlers: ListHandlers;
-  listFixture?: Omit<ListFixtureDependencies, 'authMiddleware'>;
   taskService: TaskService;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
@@ -131,12 +128,6 @@ export const createApp = async (deps: AppDependencies) => {
     listHandlers: deps.listHandlers,
     authMiddleware: deps.authMiddleware,
   });
-  if (deps.listFixture) {
-    await registerListFixtureRoutes(app, {
-      ...deps.listFixture,
-      authMiddleware: deps.authMiddleware,
-    });
-  }
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     captureProcessingService: deps.captureProcessingService,

@@ -237,7 +237,7 @@ describe('DELETE /api/lists/:id', () => {
     expect(listed.json<{ lists: NamedList[] }>().lists).toHaveLength(1);
   });
 
-  it('deletes when only completed tasks are on the list and keeps their stored listId', async () => {
+  it('deletes when only completed tasks are on the list and clears their listId', async () => {
     const list = await createList('Groceries');
     const created = await app.inject({
       method: 'POST',
@@ -269,7 +269,27 @@ describe('DELETE /api/lists/:id', () => {
       headers: { authorization: `Bearer ${TEST_TOKEN}` },
     });
     expect(done.statusCode).toBe(200);
-    expect(done.json<{ listId?: string }>().listId).toBe(list.id);
+    const body = done.json<{ listId?: string; completedAt?: string }>();
+    expect(body.listId).toBeUndefined();
+    expect(body.completedAt).toBeDefined();
+
+    const restored = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/uncomplete`,
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+      payload: {},
+    });
+    expect(restored.statusCode).toBe(200);
+    expect(restored.json<{ listId?: string }>().listId).toBeUndefined();
+
+    const again = await createList('Groceries');
+    const afterReuse = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${task.id}`,
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+    });
+    expect(afterReuse.json<{ listId?: string }>().listId).toBeUndefined();
+    expect(again.id).not.toBe(list.id);
   });
 
   it('frees the name so it can be created again', async () => {

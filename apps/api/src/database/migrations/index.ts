@@ -37,7 +37,6 @@ import { migration as addTaskAssignee } from './022-add-task-assignee.js';
 import { migration as createLists } from './023-create-lists.js';
 import { migration as uniqueListNamePerOrg } from './024-unique-list-name-per-org.js';
 import { migration as addTaskListId } from './025-add-task-list-id.js';
-import { migration as allowDanglingTaskListId } from './026-allow-dangling-task-list-id.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -65,7 +64,6 @@ export const migrations: Migration[] = [
   createLists,
   uniqueListNamePerOrg,
   addTaskListId,
-  allowDanglingTaskListId,
 ];
 
 export type { Migration };

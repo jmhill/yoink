@@ -229,5 +229,20 @@ export const createSqliteTaskStore = async (
         (error) => storageError('Failed to count open tasks on list', error)
       ).map((result) => Number(result.rows[0]?.count ?? 0));
     },
+
+    clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            UPDATE tasks
+            SET list_id = NULL
+            WHERE list_id = ?
+              AND (completed_at IS NOT NULL OR deleted_at IS NOT NULL)
+          `,
+          args: [listId],
+        }),
+        (error) => storageError('Failed to clear list on completed tasks', error)
+      ).map(() => undefined);
+    },
   };
 };

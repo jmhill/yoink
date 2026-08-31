@@ -2,9 +2,20 @@ import { errAsync } from 'neverthrow';
 import type { ListStore } from '../domain/list-store.js';
 import { applyNamedListEvent } from '../domain/apply-named-list-event.js';
 import { storageError } from '../domain/list-errors.js';
-import type { PersistNamedListEvent } from '../application/ports.js';
+import type {
+  ClearCompletedListIds,
+  PersistNamedListEvent,
+} from '../application/ports.js';
 
-export const createStoreBackedPersist = (store: ListStore): PersistNamedListEvent => {
+export type StoreBackedPersistDeps = {
+  store: ListStore;
+  clearCompletedListIds: ClearCompletedListIds;
+};
+
+export const createStoreBackedPersist = ({
+  store,
+  clearCompletedListIds,
+}: StoreBackedPersistDeps): PersistNamedListEvent => {
   return ({ event }) => {
     switch (event.type) {
       case 'NamedListCreated': {
@@ -15,7 +26,7 @@ export const createStoreBackedPersist = (store: ListStore): PersistNamedListEven
         return store.save(view);
       }
       case 'NamedListDeleted':
-        return store.remove(event.id);
+        return clearCompletedListIds(event.id).andThen(() => store.remove(event.id));
     }
   };
 };

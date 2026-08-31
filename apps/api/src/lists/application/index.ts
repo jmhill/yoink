@@ -4,6 +4,7 @@ export type {
   ListNamedLists,
   LoadNamedList,
   CountOpenTasksOnList,
+  ClearCompletedListIds,
   PersistNamedListEvent,
 } from './ports.js';
 

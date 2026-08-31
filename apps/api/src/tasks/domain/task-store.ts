@@ -27,4 +27,6 @@ export type TaskStore = {
   findByCaptureId(captureId: string): ResultAsync<Task | null, StorageError>;
   softDelete(id: string): ResultAsync<void, StorageError>;
   countOpenOnList(listId: string): ResultAsync<number, StorageError>;
+  /** Unlist completed (and already-deleted) tasks still pointing at this list. */
+  clearListIdOnCompleted(listId: string): ResultAsync<void, StorageError>;
 };

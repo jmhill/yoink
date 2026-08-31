@@ -6,8 +6,9 @@ import { UnauthorizedError, ConflictError } from '@yoink/acceptance-testing';
  * Story 6: Delete an empty named list.
  *
  * A member can delete a named list that has no open tasks. Completed tasks
- * on that list keep their stored listId. After delete, the name is free
- * again. Humans (session) and agent tokens can both delete.
+ * on that list are unlisted in the same command and stay in Done. After
+ * delete, the name is free again. Humans (session) and agent tokens can
+ * both delete.
  */
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Deleting named lists [${ctx.driverName}]`, () => {
@@ -87,8 +88,8 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(lists.map((item) => item.name)).not.toContain('Bot board');
     });
 
-    it('keeps the stored listId on a completed task after the list is deleted', async () => {
-      const alice = await ctx.createActor('alice-delete-list-keep-id@example.com');
+    it('unlists completed tasks on the list and does not attach them to a recreated name', async () => {
+      const alice = await ctx.createActor('alice-delete-list-unlist-done@example.com');
       const list = await alice.createNamedList('Groceries');
       const task = await alice.createTask({ title: 'Buy milk', listId: list.id });
       await alice.completeTask(task.id);
@@ -96,11 +97,16 @@ usingDrivers(['http'] as const, (ctx) => {
       await alice.deleteNamedList(list.id);
 
       const done = await alice.getTask(task.id);
-      expect(done.listId).toBe(list.id);
+      expect(done.listId).toBeUndefined();
       expect(done.completedAt).toBeDefined();
 
       const restored = await alice.uncompleteTask(task.id);
-      expect(restored.listId).toBe(list.id);
+      expect(restored.listId).toBeUndefined();
+
+      const again = await alice.createNamedList('Groceries');
+      const afterReuse = await alice.getTask(task.id);
+      expect(afterReuse.listId).toBeUndefined();
+      expect(again.id).not.toBe(list.id);
     });
   });
 });

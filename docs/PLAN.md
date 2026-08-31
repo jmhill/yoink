@@ -26,10 +26,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Add an existing task to a list** - Complete ✓ (`listId` on tasks; PATCH sandwich; kit picker on task edit)
 **Named lists: Add a new task to a list directly** - Complete ✓ (optional `listId` on create; create sandwich; kit picker on quick-add)
 **Named lists: Take a task off a list** - Complete ✓ (`listId: null` on PATCH; open tasks only; kit picker can clear)
-**Named lists: Delete an empty named list** - Complete ✓ (`DELETE /api/lists/:id`; refuse if any open task; completed keep `listId`)
+**Named lists: Delete an empty named list** - Complete ✓ (`DELETE /api/lists/:id`; refuse if any open task; completed unlisted in the same command)
 
 Recent updates:
-- Story 6 “Delete an empty named list”: a member can delete a named list that has no **open** tasks. Completed-on-list do not block. Completed tasks keep their stored `listId` (the name is gone; the id remains — uncomplete still restores that association to a deleted list). Names stay unique in the org; after delete the name is free. Humans (session) and agent tokens both can. Delete is a write sandwich (`decideDeleteNamedList` → persist → apply). Kit dialog on the Lists page (not `window.confirm`). Order, notes canvas, take-off stay out.
+- Story 6 “Delete an empty named list”: a member can delete a named list that has no **open** tasks. Completed-on-list do not block. On success, those completed tasks are unlisted in the same command (they stay in Done; recreating the name is a new bucket). Hard-delete the list row. Names stay unique in the org; after delete the name is free. Humans (session) and agent tokens both can. Delete is a write sandwich (`decideDeleteNamedList` → persist → apply). Persist of `NamedListDeleted` nulls completed tasks’ `listId` then removes the list. Kit dialog on the Lists page (not `window.confirm`). Order, notes canvas, take-off stay out.
 - Story 5 “Take a task off a list”: take an existing **open** task off a named list (one bucket → unlisted). Already-unlisted is a no-op. Completed stays put so uncomplete still restores the same list. PATCH `/api/tasks/:id` with `listId: null` extends the existing update sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Kit Select on task edit can clear to “No list”; disabled when completed (same as add). Delete list, order, notes canvas stay out.
 - Story 4 “Add a new task to a list directly”: create a new task already on a named list (one bucket). You do not have to create unlisted then add. Same-org lists only; unknown or other-org lists are rejected. New tasks are open. Humans (session) and agent tokens both can. `POST /api/tasks` with optional `listId` is a write sandwich (`decideCreateTask` → persist → apply), same shape as PATCH — not a big-bang of complete/pin/delete. Quick-add reuses the kit Select from story 3. Take-off, delete list, order, and notes canvas stay out. Completing still keeps `listId`.
 - Story 3 “Add an existing task to a list”: put an existing **open** task onto a named list (one bucket). A→B is a move; same list again is a no-op; completed tasks cannot be added or moved (Done must not change which list uncomplete would restore). PATCH `/api/tasks/:id` with `listId` is a write sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Unknown or other-org lists are rejected. Take-off and create-already-on-a-list stay out. Task edit uses the kit Select, same bar as assignee — no native `<select>`, no dedicated remove control; picker is disabled when the task is completed.
@@ -678,8 +678,8 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Refuse delete if any **open** task is still on the list.
 - Completed-on-list do **not** block delete.
 - An empty list (no open tasks) goes away.
-- Completed tasks that were on that list **keep** their stored `listId`. Do not cascade-delete completed tasks. Do not auto-unlist completed tasks.
-- After delete, the list name is gone and the stored id remains. Uncomplete still restores that association; the picker/row cannot resolve a name, so it looks unlisted.
+- On successful delete, **clear** `listId` on those completed tasks in the same command. They stay in Done, unlisted. Recreating the name later is a new bucket; old completed tasks do not jump onto it.
+- Soft-delete / keep history is a later story. Hard-delete the list row.
 - Unique-in-org names stay. After delete, the name is free again.
 - Humans (session) and agent tokens can both delete (same as create: any member).
 - Kit UI on the Lists page. No native confirm — kit Dialog.
@@ -687,13 +687,14 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 **Out of scope:**
 - Order (stories 7–8), notes canvas, take-off (already shipped)
 - Rename
+- Soft-delete / list history
 
 **Implementation:**
 - `DELETE /api/lists/:id` — 204 on success; 409 if open tasks remain; 404 if missing/other-org; 401 unauthenticated
 - `lists/` write sandwich: HTTP maps params+auth → `DeleteNamedListCommand`; handler loads the list and open-task count (narrow `CountOpenTasksOnList` port — tasks do not import the lists store); `decideDeleteNamedList` emits `NamedListDeleted`, `LIST_NOT_FOUND`, or `LIST_HAS_OPEN_TASKS`; persist; `applyNamedListEvent` projects away
-- Migration 026: drop `tasks.list_id` FK so a completed task can keep a dangling `listId` after the list row is gone
+- Persist of `NamedListDeleted`: narrow `ClearCompletedListIds` port unlists remaining completed (and already-deleted) tasks, then the list row is removed
 - Lists page: kit Dialog confirm (shadcn New York from `@yoink/ui-base`)
-- HTTP + Playwright acceptance: delete a list with no open tasks; refuse when an open task is on it; completed-only does not block; name can be reused after delete; unauthenticated cannot; agents can; completed task keeps `listId`
+- HTTP + Playwright acceptance: delete a list with no open tasks; refuse when an open task is on it; completed-only does not block; completed tasks are unlisted and stay in Done; name can be reused after delete and old completed do not join the new list; unauthenticated cannot; agents can
 
 **Deliverable:** A member can delete a named list that has no open tasks in the PWA and via API.
 
@@ -1073,7 +1074,7 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
 
-**Named lists story 6 is in.** A member can delete a named list that has no open tasks. Completed-on-list do not block; those tasks keep their stored `listId`. Sandwich `decideDeleteNamedList`; kit Dialog on the Lists page. Order and notes canvas stay out.
+**Named lists story 6 is in.** A member can delete a named list that has no open tasks. Completed-on-list do not block; persist unlists those completed tasks then hard-deletes the list row. Sandwich `decideDeleteNamedList`; kit Dialog on the Lists page. Order and notes canvas stay out.
 
 **Named lists story 5 is in.** An existing open task can be taken off a named list (`listId: null`, one bucket → unlisted). Already-unlisted is a no-op. Completed stays put. PATCH sandwich extended; kit Select can clear.
 

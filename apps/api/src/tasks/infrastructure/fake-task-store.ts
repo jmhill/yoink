@@ -140,5 +140,18 @@ export const createFakeTaskStore = (
       ).length;
       return okAsync(count);
     },
+
+    clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Update failed'));
+      }
+      for (const task of tasks) {
+        const notOpen = Boolean(task.completedAt) || deletedIds.has(task.id);
+        if (task.listId === listId && notOpen) {
+          delete task.listId;
+        }
+      }
+      return okAsync(undefined);
+    },
   };
 };

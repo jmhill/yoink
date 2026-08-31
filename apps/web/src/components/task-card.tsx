@@ -1,7 +1,7 @@
 import { Button } from '@yoink/ui-base/components/button';
 import { CardContent } from '@yoink/ui-base/components/card';
 import { Checkbox } from '@yoink/ui-base/components/checkbox';
-import { Pin, PinOff, Trash2, Calendar, User } from 'lucide-react';
+import { Pin, PinOff, Trash2, Calendar, User, List } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
 
@@ -15,6 +15,7 @@ type TaskCardProps = {
   onEdit?: (task: Task) => void;
   isLoading?: boolean;
   assigneeLabel?: string;
+  listLabel?: string;
 };
 
 export function TaskCard({
@@ -27,6 +28,7 @@ export function TaskCard({
   onEdit,
   isLoading = false,
   assigneeLabel,
+  listLabel,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const isPinned = Boolean(task.pinnedAt);
@@ -120,7 +122,7 @@ export function TaskCard({
             {task.title}
           </p>
           
-          {(task.dueDate || assigneeLabel) && (
+          {(task.dueDate || assigneeLabel || listLabel) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               {task.dueDate && (
                 <div className={`flex items-center gap-1 ${
@@ -139,6 +141,15 @@ export function TaskCard({
                 >
                   <User className="h-3 w-3" />
                   <span>{assigneeLabel}</span>
+                </div>
+              )}
+              {listLabel && (
+                <div
+                  className="flex items-center gap-1 text-muted-foreground"
+                  data-list={listLabel}
+                >
+                  <List className="h-3 w-3" />
+                  <span>{listLabel}</span>
                 </div>
               )}
             </div>

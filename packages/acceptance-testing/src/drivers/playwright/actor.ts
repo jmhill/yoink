@@ -415,6 +415,9 @@ export const createPlaywrightActor = (
           await tasksPage.selectAssignee(input.assigneeId);
         }
       }
+      if (input.listId !== undefined) {
+        await tasksPage.selectList(input.listId);
+      }
 
       await tasksPage.saveEdit();
 
@@ -578,6 +581,12 @@ export const createPlaywrightActor = (
       await tasksPage.goto('all');
       await tasksPage.waitForTask(taskId);
       await expect(tasksPage.assigneeOnTask(taskId)).toHaveCount(0);
+    },
+
+    async shouldSeeListOnTask(taskId: string, listName: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.listOnTask(taskId)).toHaveAttribute('data-list', listName);
     },
 
     async shouldSeeTaskOnMine(taskId: string): Promise<void> {
@@ -1050,6 +1059,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async createNamedList(_name: string): Promise<NamedList> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async updateTask(_id: string, _input: UpdateTaskInput): Promise<Task> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

@@ -24,6 +24,7 @@ import {
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
+import type { TaskHandlers } from './tasks/application/index.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
 import type {
@@ -67,6 +68,7 @@ export type AppDependencies = {
   captureHandlers: CaptureHandlers;
   listHandlers: ListHandlers;
   taskService: TaskService;
+  taskHandlers: TaskHandlers;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
@@ -130,6 +132,7 @@ export const createApp = async (deps: AppDependencies) => {
   });
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
+    taskHandlers: deps.taskHandlers,
     captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });

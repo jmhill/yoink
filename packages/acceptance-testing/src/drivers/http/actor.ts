@@ -414,6 +414,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeAssigneeOnTask', 'http');
     },
 
+    async shouldSeeListOnTask(_taskId: string, _listName: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeListOnTask', 'http');
+    },
+
     async shouldSeeTaskOnMine(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeTaskOnMine', 'http');
     },
@@ -646,5 +650,20 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new ValidationError(error.message ?? 'Invalid request');
     }
     return response.json<NamedList>();
+  },
+
+  async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+    const response = await client.patch(`/api/tasks/${id}`, input);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Task', id);
+    }
+    if (response.statusCode === 400) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    return response.json<Task>();
   },
 });

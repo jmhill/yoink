@@ -23,6 +23,15 @@ describe('TaskSchema', () => {
       completedAt: '2025-01-16T10:00:00.000Z',
       pinnedAt: '2025-01-15T11:00:00.000Z',
       assigneeId: '550e8400-e29b-41d4-a716-446655440004',
+      listId: '550e8400-e29b-41d4-a716-446655440005',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('validates with listId', () => {
+    const result = TaskSchema.safeParse({
+      ...validTask,
+      listId: '550e8400-e29b-41d4-a716-446655440005',
     });
     expect(result.success).toBe(true);
   });
@@ -169,6 +178,20 @@ describe('UpdateTaskSchema', () => {
       assigneeId: null,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('validates update with listId', () => {
+    const result = UpdateTaskSchema.safeParse({
+      listId: '550e8400-e29b-41d4-a716-446655440005',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects null listId — take-off is a later story', () => {
+    const result = UpdateTaskSchema.safeParse({
+      listId: null,
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects empty title', () => {

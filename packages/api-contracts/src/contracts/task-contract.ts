@@ -68,7 +68,7 @@ export const taskContract = c.router({
       404: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'Update a task (title, dueDate, assigneeId)',
+    summary: 'Update a task (title, dueDate, assigneeId, listId)',
   },
 
   // Completion operations

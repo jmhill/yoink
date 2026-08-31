@@ -11,6 +11,8 @@ import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.
 import { createStoreBackedPersist as createListStoreBackedPersist } from './lists/infrastructure/store-backed-persist.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
+import { createStoreBackedPersist as createTaskStoreBackedPersist } from './tasks/infrastructure/store-backed-persist.js';
+import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
@@ -277,17 +279,24 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
   // Create task store and service (async initialization)
   const taskStore = await createSqliteTaskStore(database, clock);
+  const principalLookup = {
+    existsInOrganization: (principalId: string, organizationId: string) =>
+      membershipService
+        .getMembership({ userId: principalId, organizationId })
+        .map((membership) => membership !== null)
+        .orElse(() => okAsync(false)),
+  };
   const taskService = createTaskService({
     store: taskStore,
     clock,
     idGenerator,
-    principalLookup: {
-      existsInOrganization: (principalId, organizationId) =>
-        membershipService
-          .getMembership({ userId: principalId, organizationId })
-          .map((membership) => membership !== null)
-          .orElse(() => okAsync(false)),
-    },
+    principalLookup,
+  });
+  const taskHandlers = createTaskHandlers({
+    persist: createTaskStoreBackedPersist(taskStore),
+    load: (id) => taskStore.findById(id),
+    loadList: (id) => listStore.findById(id),
+    principalLookup,
   });
 
   // Create capture processing service (cross-entity operations)
@@ -325,6 +334,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     captureHandlers,
     listHandlers,
     taskService,
+    taskHandlers,
     captureProcessingService,
     authMiddleware,
     healthChecker,

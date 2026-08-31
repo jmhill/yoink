@@ -726,6 +726,13 @@ export class TasksPage {
     await option.click();
   }
 
+  async selectList(listId: string): Promise<void> {
+    await this.page.locator('#edit-task-list').click();
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${listId}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
   async setTitle(title: string): Promise<void> {
     await this.page.locator('#edit-task-title').fill(title);
   }
@@ -748,6 +755,10 @@ export class TasksPage {
 
   assigneeOnTask(taskId: string) {
     return this.taskCard(taskId).locator('[data-assignee]');
+  }
+
+  listOnTask(taskId: string) {
+    return this.taskCard(taskId).locator('[data-list]');
   }
 }
 

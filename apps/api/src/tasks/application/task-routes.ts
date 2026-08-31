@@ -4,9 +4,11 @@ import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
+import type { TaskHandlers } from './create-task-handlers.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;
+  taskHandlers: TaskHandlers;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
@@ -15,7 +17,7 @@ export const registerTaskRoutes = async (
   app: FastifyInstance,
   deps: TaskRoutesDependencies
 ) => {
-  const { taskService, captureProcessingService, authMiddleware } = deps;
+  const { taskService, taskHandlers, captureProcessingService, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
@@ -109,18 +111,19 @@ export const registerTaskRoutes = async (
       },
 
       update: async ({ params, body, request }) => {
-        const result = await taskService.update({
+        const result = await taskHandlers.update({
           id: params.id,
           organizationId: request.authContext.organizationId,
           title: body.title,
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
+          listId: body.listId,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -133,6 +136,16 @@ export const registerTaskRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'Assignee is not a member of this organization' },
+                };
+              case 'LIST_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'List is not in this organization' },
+                };
+              case 'TASK_NOT_OPEN':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Only open tasks can be added to a list' },
                 };
               case 'STORAGE_ERROR':
                 return {

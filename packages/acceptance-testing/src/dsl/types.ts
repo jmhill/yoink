@@ -25,6 +25,14 @@ export type Capture = {
   processedToId?: string;
 };
 
+export type NamedList = {
+  id: string;
+  name: string;
+  organizationId: string;
+  createdById: string;
+  createdAt: string;
+};
+
 export type Task = {
   id: string;
   title: string;

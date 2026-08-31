@@ -153,6 +153,8 @@ export const AppConfigSchema = z.object({
   log: LogConfigSchema,
   webauthn: WebAuthnConfigSchema.optional(),
   cookie: CookieConfigSchema,
+  /** Test-only named-list seed route. Never enable in production. */
+  testFixtures: z.boolean().optional(),
 });
 
 // Export inferred types

@@ -1,5 +1,6 @@
 import type {
   Capture,
+  NamedList,
   Task,
   PasskeyCredentialInfo,
   Member,
@@ -43,6 +44,10 @@ export type CoreActor = {
 
   // Process capture to task
   processCaptureToTask(captureId: string, input?: ProcessCaptureToTaskInput): Promise<Task>;
+
+  // Named lists (view). seedNamedList is a test fixture, not Create.
+  listNamedLists(): Promise<NamedList[]>;
+  seedNamedList(name: string): Promise<NamedList>;
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
@@ -227,6 +232,21 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeTaskOnMine(taskId: string): Promise<void>;
 
+  /**
+   * Open the named lists view.
+   */
+  goToLists(): Promise<void>;
+
+  /**
+   * Assert the lists view is visible and has no named lists.
+   */
+  shouldSeeEmptyNamedLists(): Promise<void>;
+
+  /**
+   * Assert a named list is visible on the lists view.
+   */
+  shouldSeeNamedList(name: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================
@@ -304,4 +324,5 @@ export type AnonymousActor = {
   createCapture(input: CreateCaptureInput): Promise<Capture>;
   listCaptures(): Promise<Capture[]>;
   getCapture(id: string): Promise<Capture>;
+  listNamedLists(): Promise<NamedList[]>;
 };

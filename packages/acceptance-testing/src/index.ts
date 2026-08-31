@@ -1,6 +1,7 @@
 // DSL - Domain types and errors
 export type {
   Capture,
+  NamedList,
   Organization,
   User,
   Token,

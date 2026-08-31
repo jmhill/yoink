@@ -34,6 +34,7 @@ import { migration as addOrganizationIdToTokens } from './019-add-organization-i
 import { migration as removeOrganizationIdFromUsers } from './020-remove-organization-id-from-users.js';
 import { migration as addUserKindAndName } from './021-add-user-kind-and-name.js';
 import { migration as addTaskAssignee } from './022-add-task-assignee.js';
+import { migration as createLists } from './023-create-lists.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -58,6 +59,7 @@ export const migrations: Migration[] = [
   removeOrganizationIdFromUsers,
   addUserKindAndName,
   addTaskAssignee,
+  createLists,
 ];
 
 export type { Migration };

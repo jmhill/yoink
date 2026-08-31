@@ -337,6 +337,10 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).getCapture(id);
         },
+        async listNamedLists() {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listNamedLists();
+        },
       };
     },
 

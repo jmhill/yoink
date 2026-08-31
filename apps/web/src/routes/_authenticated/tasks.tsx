@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { tsrTasks, tsr } from '@/api/client';
+import { tsrTasks, tsr, tsrLists } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
@@ -69,6 +69,7 @@ type TodayTaskListProps = {
   onEdit: (task: Task) => void;
   isLoading: boolean;
   assigneeLabel: (task: Task) => string | undefined;
+  listLabel: (task: Task) => string | undefined;
 };
 
 /**
@@ -85,6 +86,7 @@ function TodayTaskList({
   onEdit,
   isLoading,
   assigneeLabel,
+  listLabel,
 }: TodayTaskListProps) {
   const { overdue, dueToday } = splitTodayTasks(tasks);
 
@@ -113,6 +115,7 @@ function TodayTaskList({
                   onEdit={onEdit}
                   isLoading={isLoading}
                   assigneeLabel={assigneeLabel(task)}
+                  listLabel={listLabel(task)}
                 />
               </AnimatedListItem>
             ))}
@@ -145,6 +148,7 @@ function TodayTaskList({
                   onEdit={onEdit}
                   isLoading={isLoading}
                   assigneeLabel={assigneeLabel(task)}
+                  listLabel={listLabel(task)}
                 />
               </AnimatedListItem>
             ))}
@@ -191,6 +195,18 @@ function TasksPage() {
     if (!task.assigneeId) return undefined;
     const member = members.find((m) => m.userId === task.assigneeId);
     return member ? memberLabel(member) : task.assigneeId;
+  };
+
+  const { data: listsData } = tsrLists.list.useQuery({
+    queryKey: ['lists'],
+    queryData: {},
+  });
+  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+
+  const listLabelFor = (task: Task): string | undefined => {
+    if (!task.listId) return undefined;
+    const list = namedLists.find((item) => item.id === task.listId);
+    return list ? list.name : undefined;
   };
 
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
@@ -472,6 +488,7 @@ function TasksPage() {
                     title: body.title ?? t.title,
                     dueDate: body.dueDate === null ? undefined : body.dueDate ?? t.dueDate,
                     assigneeId: body.assigneeId === null ? undefined : body.assigneeId ?? t.assigneeId,
+                    listId: body.listId ?? t.listId,
                   }
                 : t
             ),
@@ -549,7 +566,7 @@ function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null }) => {
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string }) => {
     updateMutation.mutate({
       params: { id: taskId },
       body: updates,
@@ -653,6 +670,7 @@ function TasksPage() {
           onEdit={handleEdit}
           isLoading={isLoading}
           assigneeLabel={assigneeLabelFor}
+          listLabel={listLabelFor}
         />
       ) : (
         <AnimatedList>
@@ -672,6 +690,7 @@ function TasksPage() {
                 onEdit={handleEdit}
                 isLoading={isLoading}
                 assigneeLabel={assigneeLabelFor(task)}
+                listLabel={listLabelFor(task)}
               />
             </AnimatedListItem>
           ))}
@@ -715,6 +734,7 @@ function TasksPage() {
         isLoading={updateMutation.isPending}
         isFetchingCapture={isFetchingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
+        lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
       />
     </div>
   );

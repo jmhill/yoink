@@ -159,5 +159,31 @@ export const runListStoreContractTests = (options: ListStoreContractOptions) => 
         }
       });
     });
+
+    describe('findById', () => {
+      it('returns a saved list', async () => {
+        const list = createTestList({
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          name: 'Groceries',
+        });
+        await store.save(list);
+
+        const result = await store.findById(list.id);
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value).toEqual(list);
+        }
+      });
+
+      it('returns null when the list does not exist', async () => {
+        const result = await store.findById('550e8400-e29b-41d4-a716-446655440099');
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value).toBeNull();
+        }
+      });
+    });
   });
 };

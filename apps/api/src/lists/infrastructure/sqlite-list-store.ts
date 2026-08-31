@@ -58,6 +58,25 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
       );
     },
 
+    findById: (id: string): ResultAsync<NamedList | null, StorageError> => {
+      return ResultAsync.fromPromise(
+        db
+          .execute({
+            sql: `
+              SELECT id, organization_id, created_by_id, name, created_at
+              FROM lists
+              WHERE id = ?
+            `,
+            args: [id],
+          })
+          .then((result) => {
+            const row = result.rows[0] as ListRow | undefined;
+            return row ? rowToNamedList(row) : null;
+          }),
+        (cause) => storageError('Failed to find named list', cause)
+      );
+    },
+
     findByOrganization: (
       organizationId: string
     ): ResultAsync<NamedList[], StorageError> => {

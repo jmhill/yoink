@@ -29,6 +29,7 @@ export type UpdateTaskCommand = {
   title?: string;
   dueDate?: string | null; // null to clear
   assigneeId?: string | null; // null to clear
+  listId?: string; // set or replace; clearing is a later story
 };
 
 export type CompleteTaskCommand = {

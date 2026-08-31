@@ -44,6 +44,7 @@ export type Task = {
   pinnedAt?: string;
   createdAt: string;
   assigneeId?: string;
+  listId?: string;
 };
 
 export type Organization = {
@@ -139,6 +140,7 @@ export type UpdateTaskInput = {
   title?: string;
   dueDate?: string | null; // null to clear, undefined to keep unchanged
   assigneeId?: string | null;
+  listId?: string; // set or replace; clearing is a later story
 };
 
 export type ProcessCaptureToTaskInput = {

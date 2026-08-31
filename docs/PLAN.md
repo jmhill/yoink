@@ -23,8 +23,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
 **Named lists: View my named lists** - Complete ✓ (org-scoped read model; empty view + names)
 **Named lists: Create a new named list** - Complete ✓ (any member including agents; product `POST /api/lists`; Lists page create)
+**Named lists: Add an existing task to a list** - Complete ✓ (`listId` on tasks; PATCH sandwich; kit picker on task edit)
 
 Recent updates:
+- Story 3 “Add an existing task to a list”: put an existing open task onto a named list (one bucket, replace OK). PATCH `/api/tasks/:id` with `listId` is a write sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Unknown or other-org lists are rejected. Take-off (clear) and create-already-on-a-list stay out. Task edit uses the kit Select, same bar as assignee — no native `<select>`, no dedicated remove control.
 - Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. Names are unique in the org after trim, case-insensitive. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
 - Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No rename/delete UI. Tasks are untouched.
 
@@ -577,6 +579,35 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Named lists: Add an existing task to a list - Complete ✓
+
+**Goal**: A member can put an existing open task onto a named list. Afterward it shows as on that list.
+
+**Product rules (locked):**
+- A list is an optional single bucket: a task has one list or none, not tags.
+- This story: put an existing task onto a named list. Completing keeps the association (automatic on the field) but that UX is later; this story is open tasks getting a list.
+- Take-off (clear to unlisted) is story 5. This PR sets `listId` from none to a list. If a task is already on a list, putting it on another list replaces (still one bucket). No dedicated remove control.
+- Kit picker (shadcn New York Select from `@yoink/ui-base`), same bar as the assignee Select — no native `<select>`.
+- Humans (session) and agent tokens can both set the list, same as other task updates.
+- Org-scoped: only lists in the same org. Invalid/unknown list rejected.
+
+**Out of scope:**
+- Create a new task already on a list (story 4)
+- Take a task off a list (story 5)
+- Delete list, order, notes canvas, create list (already shipped)
+
+**Implementation:**
+- Migration 025: nullable `tasks.list_id` (+ index)
+- `TaskSchema.listId` optional; `UpdateTaskSchema.listId` uuid (not nullable — clearing is story 5). Create stays without `listId`.
+- Task PATCH is a write sandwich: HTTP maps body+auth → `UpdateTaskCommand`; handler loads the task and (if `listId`) the list; `decideUpdateTask` emits `TaskUpdated` or `LIST_NOT_IN_ORGANIZATION` / `ASSIGNEE_NOT_IN_ORGANIZATION`; persist; `applyTaskEvent` projects. Create/complete/pin/delete stay on `TaskService`.
+- Narrow `LoadNamedList` port so tasks do not import the lists store.
+- Task edit modal: kit Select of org lists (placeholder “No list”, no Unlisted item). Task row shows the list name.
+- HTTP + Playwright acceptance: pick a list for an existing unlisted task; it then belongs to that list; kit picker; unauthenticated cannot; cannot put a task on another org’s list; agents can; unknown list rejected; replace stays one bucket.
+
+**Deliverable:** A member can put an existing task on a named list in the PWA and via API.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -949,11 +980,13 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Judge captures/lists sandwich, then 8.5.4
+### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
+
+**Named lists story 3 is in.** An existing open task can be put on a named list (`listId`, one bucket). PATCH is a write sandwich. Kit Select on task edit, same bar as assignee. Take-off and create-already-on-a-list stay out.
 
 **Identity slice is in.** Agents are token-only org members; tasks have an assignee field. The edit-modal assignee control is the kit Select (same look as other form controls and menus). Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 
-**Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Next: keep, adjust, or abandon before touching access or folders/notes.
+**Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Lists create/list and task PATCH follow it. Next: keep, adjust, or abandon before touching access or folders/notes.
 
 ### Current Focus: Phase 8.5 (Architecture Cleanup)
 

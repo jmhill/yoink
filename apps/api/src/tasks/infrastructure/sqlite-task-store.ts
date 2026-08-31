@@ -20,6 +20,7 @@ type TaskRow = {
   pinned_at: string | null;
   created_at: string;
   assignee_id: string | null;
+  list_id: string | null;
 };
 
 const rowToTask = (row: TaskRow): Task => ({
@@ -33,6 +34,7 @@ const rowToTask = (row: TaskRow): Task => ({
   pinnedAt: row.pinned_at ?? undefined,
   createdAt: row.created_at,
   ...(row.assignee_id ? { assigneeId: row.assignee_id } : {}),
+  ...(row.list_id ? { listId: row.list_id } : {}),
 });
 
 /**
@@ -64,8 +66,8 @@ export const createSqliteTaskStore = async (
           sql: `
             INSERT INTO tasks (
               id, organization_id, created_by_id, title, capture_id,
-              due_date, completed_at, pinned_at, created_at, assignee_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              due_date, completed_at, pinned_at, created_at, assignee_id, list_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
             task.id,
@@ -78,6 +80,7 @@ export const createSqliteTaskStore = async (
             task.pinnedAt ?? null,
             task.createdAt,
             task.assigneeId ?? null,
+            task.listId ?? null,
           ],
         }),
         (error) => storageError('Failed to save task', error)
@@ -106,7 +109,8 @@ export const createSqliteTaskStore = async (
               due_date = ?,
               completed_at = ?,
               pinned_at = ?,
-              assignee_id = ?
+              assignee_id = ?,
+              list_id = ?
             WHERE id = ?
           `,
           args: [
@@ -115,6 +119,7 @@ export const createSqliteTaskStore = async (
             task.completedAt ?? null,
             task.pinnedAt ?? null,
             task.assigneeId ?? null,
+            task.listId ?? null,
             task.id,
           ],
         }),

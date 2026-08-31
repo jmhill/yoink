@@ -1,9 +1,9 @@
 # Functional Core (Captures Pilot)
 
-**Status:** Pilot — `captures/` plus `lists/` create/list  
+**Status:** Pilot — `captures/` plus `lists/` create/list plus task PATCH update  
 **Created:** 2026-08-19
 
-The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create (decide → persist → apply). Other modules still use service objects in `domain/` and HTTP in `application/`. Do not copy this shape into access until the pilot is judged a success.
+The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create (decide → persist → apply). Task PATCH (the write this story touches: set `listId` on an existing task) uses the same sandwich; create/complete/pin/delete still live on `TaskService`. Do not copy this shape into access until the pilot is judged a success.
 
 ## Layers
 

@@ -29,10 +29,11 @@ type TaskEditModalProps = {
   onOpenChange: (open: boolean) => void;
   task: Task | null;
   sourceCapture: Capture | null;
-  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null }) => void;
+  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string }) => void;
   isLoading?: boolean;
   isFetchingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
+  lists?: Array<{ id: string; name: string }>;
 };
 
 export function TaskEditModal({
@@ -44,10 +45,12 @@ export function TaskEditModal({
   isLoading = false,
   isFetchingCapture = false,
   members = [],
+  lists = [],
 }: TaskEditModalProps) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [listId, setListId] = useState('');
 
   // Reset form when task changes
   useEffect(() => {
@@ -55,6 +58,7 @@ export function TaskEditModal({
       setTitle(task.title);
       setDueDate(task.dueDate ?? '');
       setAssigneeId(task.assigneeId ?? '');
+      setListId(task.listId ?? '');
     }
   }, [task]);
 
@@ -62,7 +66,7 @@ export function TaskEditModal({
     e.preventDefault();
     if (!task || !title.trim()) return;
 
-    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null } = {};
+    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string } = {};
 
     // Only include changed fields
     if (title.trim() !== task.title) {
@@ -79,6 +83,10 @@ export function TaskEditModal({
     const oldAssigneeId = task.assigneeId ?? null;
     if (newAssigneeId !== oldAssigneeId) {
       updates.assigneeId = newAssigneeId;
+    }
+
+    if (listId && listId !== (task.listId ?? '')) {
+      updates.listId = listId;
     }
 
     // Only save if something changed
@@ -162,6 +170,26 @@ export function TaskEditModal({
                 {members.map((member) => (
                   <SelectItem key={member.userId} value={member.userId}>
                     {member.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-list">List</Label>
+            <Select
+              value={listId || undefined}
+              onValueChange={setListId}
+              disabled={isLoading}
+            >
+              <SelectTrigger id="edit-task-list" className="w-full">
+                <SelectValue placeholder="No list" />
+              </SelectTrigger>
+              <SelectContent>
+                {lists.map((list) => (
+                  <SelectItem key={list.id} value={list.id}>
+                    {list.name}
                   </SelectItem>
                 ))}
               </SelectContent>

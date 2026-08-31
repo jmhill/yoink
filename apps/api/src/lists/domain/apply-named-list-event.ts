@@ -4,7 +4,7 @@ import type { NamedListEvent } from './events.js';
 export const applyNamedListEvent = (
   _current: NamedList | null,
   event: NamedListEvent
-): NamedList => {
+): NamedList | null => {
   switch (event.type) {
     case 'NamedListCreated':
       return {
@@ -14,5 +14,7 @@ export const applyNamedListEvent = (
         name: event.name,
         createdAt: event.createdAt,
       };
+    case 'NamedListDeleted':
+      return null;
   }
 };

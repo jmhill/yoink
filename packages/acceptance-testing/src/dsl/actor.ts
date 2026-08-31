@@ -48,6 +48,7 @@ export type CoreActor = {
   // Named lists. createNamedList is the product write path (any org member).
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
+  deleteNamedList(id: string): Promise<void>;
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
@@ -257,6 +258,11 @@ export type BrowserActorOperations = {
    */
   shouldSeeNamedList(name: string): Promise<void>;
 
+  /**
+   * Assert a named list is not visible on the lists view.
+   */
+  shouldNotSeeNamedList(name: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================
@@ -336,6 +342,7 @@ export type AnonymousActor = {
   getCapture(id: string): Promise<Capture>;
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
+  deleteNamedList(id: string): Promise<void>;
   createTask(input: CreateTaskInput): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
 };

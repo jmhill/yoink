@@ -863,6 +863,34 @@ export class ListsPage {
     return { status: 'created', id: created.id, name: created.name };
   }
 
+  async deleteNamedList(
+    id: string
+  ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    await this.goto();
+    await this.waitForListsOrEmpty();
+
+    const card = this.page.locator(`[data-list-id="${id}"]`);
+    await card.waitFor({ state: 'attached' });
+    await card.getByRole('button', { name: /^Delete / }).click();
+
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+
+    const deleteError = this.page.locator('[data-list-delete-error]');
+    await Promise.race([
+      deleteError.waitFor({ state: 'visible' }),
+      card.waitFor({ state: 'detached' }),
+      this.page.getByText('No named lists yet').waitFor({ state: 'attached' }),
+    ]);
+
+    if (await deleteError.isVisible()) {
+      return { status: 'has-open-tasks' };
+    }
+
+    return { status: 'deleted' };
+  }
+
   async isEmpty(): Promise<boolean> {
     return await this.page.getByText('No named lists yet').isVisible();
   }

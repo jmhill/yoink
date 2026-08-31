@@ -14,7 +14,7 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsrLists } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { List, Plus } from 'lucide-react';
+import { List, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
@@ -28,6 +28,10 @@ function ListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(
+    null
+  );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data, isPending, error, refetch } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -58,6 +62,35 @@ function ListsPage() {
         return;
       }
       toast.error('Failed to create list');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['lists'] });
+    },
+  });
+
+  const deleteMutation = tsrLists.delete.useMutation({
+    onSuccess: () => {
+      toast.success('List deleted');
+      setDeletingList(null);
+      setDeleteError(null);
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'status' in err &&
+        err.status === 409 &&
+        'body' in err
+      ) {
+        const body = err.body as { message?: string };
+        setDeleteError(body?.message ?? 'This list still has open tasks');
+        return;
+      }
+      toast.error('Failed to delete list');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
@@ -111,8 +144,20 @@ function ListsPage() {
               {lists.map((list) => (
                 <li key={list.id}>
                   <Card data-list-id={list.id} data-list-name={list.name}>
-                    <CardContent className="py-4">
+                    <CardContent className="flex items-center justify-between gap-3 py-4">
                       <p className="font-medium">{list.name}</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${list.name}`}
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeletingList({ id: list.id, name: list.name });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
                     </CardContent>
                   </Card>
                 </li>
@@ -170,6 +215,57 @@ function ListsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletingList !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingList(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete list?</DialogTitle>
+            <DialogDescription>
+              {deletingList
+                ? `Delete ${deletingList.name}? You can only delete a list that has no open tasks.`
+                : 'You can only delete a list that has no open tasks.'}
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? (
+            <p role="alert" data-list-delete-error className="text-sm text-destructive">
+              {deleteError}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeletingList(null);
+                setDeleteError(null);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteMutation.isPending || !deletingList}
+              onClick={() => {
+                if (!deletingList || deleteMutation.isPending) return;
+                setDeleteError(null);
+                deleteMutation.mutate({ params: { id: deletingList.id } });
+              }}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

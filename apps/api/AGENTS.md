@@ -18,7 +18,7 @@ Most modules still follow this structure:
     routes.ts       # Fastify routes
 ```
 
-`captures/` is a pilot of a different split (I/O sandwich). `lists/` follows the same shape for view + create. Task create and PATCH are sandwiched the same way; complete/pin/delete still use `TaskService`. See `docs/architecture/FUNCTIONAL_CORE.md`:
+`captures/` is a pilot of a different split (I/O sandwich). `lists/` follows the same shape for view + create + delete. Task create and PATCH are sandwiched the same way; complete/pin/delete still use `TaskService`. See `docs/architecture/FUNCTIONAL_CORE.md`:
 
 ```
 captures/  and  lists/  and  tasks/ create + PATCH

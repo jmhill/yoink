@@ -37,5 +37,16 @@ describe('FakeListStore', () => {
         expect(result.error.type).toBe('STORAGE_ERROR');
       }
     });
+
+    it('returns Err on remove when configured to fail', async () => {
+      const store = createFakeListStore({ shouldFailOnRemove: true });
+
+      const result = await store.remove('550e8400-e29b-41d4-a716-446655440010');
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('STORAGE_ERROR');
+      }
+    });
   });
 });

@@ -33,6 +33,23 @@ export const listContract = c.router(
       },
       summary: 'Create a named list in this organization',
     },
+
+    delete: {
+      method: 'DELETE',
+      path: '/api/lists/:id',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: null,
+      responses: {
+        204: z.undefined(),
+        401: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Delete a named list that has no open tasks',
+    },
   },
   {
     strictStatusCodes: true,

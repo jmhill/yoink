@@ -127,5 +127,31 @@ export const createFakeTaskStore = (
       deletedIds.add(id);
       return okAsync(undefined);
     },
+
+    countOpenOnList: (listId: string): ResultAsync<number, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const count = tasks.filter(
+        (task) =>
+          task.listId === listId &&
+          !task.completedAt &&
+          !deletedIds.has(task.id)
+      ).length;
+      return okAsync(count);
+    },
+
+    clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Update failed'));
+      }
+      for (const task of tasks) {
+        const notOpen = Boolean(task.completedAt) || deletedIds.has(task.id);
+        if (task.listId === listId && notOpen) {
+          delete task.listId;
+        }
+      }
+      return okAsync(undefined);
+    },
   };
 };

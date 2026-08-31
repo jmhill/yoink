@@ -7,6 +7,18 @@ export type ListNamedLists = (
   organizationId: string
 ) => ResultAsync<NamedList[], StorageError>;
 
+export type LoadNamedList = (
+  id: string
+) => ResultAsync<NamedList | null, StorageError>;
+
+export type CountOpenTasksOnList = (
+  listId: string
+) => ResultAsync<number, StorageError>;
+
+export type ClearCompletedListIds = (
+  listId: string
+) => ResultAsync<void, StorageError>;
+
 export type PersistNamedListEvent = (input: {
   event: NamedListEvent;
 }) => ResultAsync<void, StorageError>;

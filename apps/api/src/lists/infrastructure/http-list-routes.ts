@@ -77,6 +77,40 @@ export const registerListRoutes = async (
           }
         );
       },
+
+      delete: async ({ params, request }) => {
+        const result = await listHandlers.delete({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          () => ({
+            status: 204 as const,
+            body: undefined,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'LIST_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: error.message },
+                };
+              case 'LIST_HAS_OPEN_TASKS':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(listContract, listRouter, authedApp, {

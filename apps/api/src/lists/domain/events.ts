@@ -7,4 +7,10 @@ export type NamedListCreated = {
   createdAt: string;
 };
 
-export type NamedListEvent = NamedListCreated;
+export type NamedListDeleted = {
+  type: 'NamedListDeleted';
+  id: string;
+  organizationId: string;
+};
+
+export type NamedListEvent = NamedListCreated | NamedListDeleted;

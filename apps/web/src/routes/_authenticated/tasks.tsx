@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@yoink/ui-base/components/select';
 import { tsrTasks, tsr, tsrLists } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -159,10 +166,14 @@ function TodayTaskList({
   );
 }
 
+/** Radix Select forbids an empty item value; map to/from the unlisted create state. */
+const UNLISTED_VALUE = 'unlisted';
+
 function TasksPage() {
   const { filter } = useSearch({ from: '/_authenticated/tasks' });
   const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskListId, setNewTaskListId] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -230,6 +241,7 @@ function TasksPage() {
         dueDate: body.dueDate,
         createdAt: new Date().toISOString(),
         ...(body.assigneeId ? { assigneeId: body.assigneeId } : {}),
+        ...(body.listId ? { listId: body.listId } : {}),
       };
 
       if (previousTasks?.status === 200) {
@@ -529,7 +541,12 @@ function TasksPage() {
     const assigneeId = filter === 'mine' ? currentUserId : undefined;
 
     createMutation.mutate({
-      body: { title: newTaskTitle.trim(), dueDate, ...(assigneeId ? { assigneeId } : {}) },
+      body: {
+        title: newTaskTitle.trim(),
+        dueDate,
+        ...(assigneeId ? { assigneeId } : {}),
+        ...(newTaskListId ? { listId: newTaskListId } : {}),
+      },
     });
   };
 
@@ -616,6 +633,7 @@ function TasksPage() {
         <form onSubmit={handleQuickAdd} className="mb-6">
           <div className="flex gap-2">
             <Input
+              id="create-task-title"
               ref={inputRef}
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
@@ -623,6 +641,25 @@ function TasksPage() {
               disabled={createMutation.isPending}
               className="flex-1"
             />
+            <Select
+              value={newTaskListId || UNLISTED_VALUE}
+              onValueChange={(value) =>
+                setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+              }
+              disabled={createMutation.isPending}
+            >
+              <SelectTrigger id="create-task-list" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
+                <SelectValue placeholder="No list" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
+                {namedLists.map((list) => (
+                  <SelectItem key={list.id} value={list.id}>
+                    {list.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
               {createMutation.isPending ? '...' : 'Add'}
             </Button>

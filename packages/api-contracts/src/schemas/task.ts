@@ -20,6 +20,8 @@ export const CreateTaskSchema = z.object({
   title: z.string().min(1).max(500),
   dueDate: z.string().date().optional(),
   assigneeId: z.string().uuid().optional(),
+  // Optional single list bucket. New tasks are open; unknown/other-org lists are rejected in the write.
+  listId: z.string().uuid().optional(),
 });
 
 export type CreateTask = z.infer<typeof CreateTaskSchema>;

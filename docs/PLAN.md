@@ -24,8 +24,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: View my named lists** - Complete ✓ (org-scoped read model; empty view + names)
 **Named lists: Create a new named list** - Complete ✓ (any member including agents; product `POST /api/lists`; Lists page create)
 **Named lists: Add an existing task to a list** - Complete ✓ (`listId` on tasks; PATCH sandwich; kit picker on task edit)
+**Named lists: Add a new task to a list directly** - Complete ✓ (optional `listId` on create; create sandwich; kit picker on quick-add)
 
 Recent updates:
+- Story 4 “Add a new task to a list directly”: create a new task already on a named list (one bucket). You do not have to create unlisted then add. Same-org lists only; unknown or other-org lists are rejected. New tasks are open. Humans (session) and agent tokens both can. `POST /api/tasks` with optional `listId` is a write sandwich (`decideCreateTask` → persist → apply), same shape as PATCH — not a big-bang of complete/pin/delete. Quick-add reuses the kit Select from story 3. Take-off, delete list, order, and notes canvas stay out. Completing still keeps `listId`.
 - Story 3 “Add an existing task to a list”: put an existing **open** task onto a named list (one bucket). A→B is a move; same list again is a no-op; completed tasks cannot be added or moved (Done must not change which list uncomplete would restore). PATCH `/api/tasks/:id` with `listId` is a write sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Unknown or other-org lists are rejected. Take-off and create-already-on-a-list stay out. Task edit uses the kit Select, same bar as assignee — no native `<select>`, no dedicated remove control; picker is disabled when the task is completed.
 - Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. Names are unique in the org after trim, case-insensitive. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
 - Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No rename/delete UI. Tasks are untouched.
@@ -607,6 +609,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - HTTP + Playwright acceptance: pick a list for an existing unlisted task; it then belongs to that list; kit picker; unauthenticated cannot; cannot put a task on another org’s list; agents can; unknown list rejected; A→B is a move; same list is a no-op; completed cannot be added or moved.
 
 **Deliverable:** A member can put an existing task on a named list in the PWA and via API.
+
+---
+
+## Named lists: Add a new task to a list directly - Complete ✓
+
+**Goal**: A member can create a new task already on a named list. After create it shows on that list.
+
+**Product rules (locked):**
+- A list is an optional single bucket: a task has one list or none, not tags.
+- This story creates a new task already on a named list. You do not have to create unlisted then add.
+- Same-org lists only. Unknown or other-org lists are rejected (`LIST_NOT_IN_ORGANIZATION`, same as update).
+- New tasks are open by definition (they are not completed).
+- Humans (session) and agent tokens can both do this.
+- Kit UI (shadcn New York Select from `@yoink/ui-base`). Quick-add reuses the list Select from story 3 — no native `<select>`.
+- Completing still keeps `listId`. Complete behavior is unchanged except as needed to keep the association.
+
+**Out of scope:**
+- Take-off / unlisted (story 5). Delete list is blocked until take-off is real.
+- Delete list, order, notes canvas.
+
+**Implementation:**
+- `CreateTaskSchema.listId` optional uuid (not nullable — clearing is story 5)
+- Task create is a write sandwich: HTTP maps body+auth → `CreateTaskCommand`; handler loads the list when `listId` is set; `decideCreateTask` emits `TaskCreated` or `LIST_NOT_IN_ORGANIZATION` / `ASSIGNEE_NOT_IN_ORGANIZATION`; persist; `applyTaskEvent` projects. Complete/pin/delete stay on `TaskService`.
+- Tasks page quick-add: kit Select of org lists (including “No list”). Optimistic create includes `listId`.
+- HTTP + Playwright acceptance: create a task with a list and see it on that list; create without a list still works (unlisted); agent can; unauthenticated cannot; other-org list rejected; unknown list rejected.
+
+**Deliverable:** A member can create a new task already on a named list in the PWA and via API.
 
 ---
 

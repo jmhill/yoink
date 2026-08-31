@@ -1,7 +1,36 @@
 import type { Task } from '@yoink/api-contracts';
 import type { TaskEvent } from './events.js';
 
-export const applyTaskEvent = (current: Task, event: TaskEvent): Task => {
+export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => {
+  if (event.type === 'TaskCreated') {
+    const created: Task = {
+      id: event.id,
+      organizationId: event.organizationId,
+      createdById: event.createdById,
+      title: event.title,
+      createdAt: event.createdAt,
+    };
+
+    if (event.dueDate !== undefined) {
+      created.dueDate = event.dueDate;
+    }
+    if (event.captureId !== undefined) {
+      created.captureId = event.captureId;
+    }
+    if (event.assigneeId !== undefined) {
+      created.assigneeId = event.assigneeId;
+    }
+    if (event.listId !== undefined) {
+      created.listId = event.listId;
+    }
+
+    return created;
+  }
+
+  if (!current) {
+    throw new Error(`Cannot apply ${event.type} without current state`);
+  }
+
   switch (event.type) {
     case 'TaskUpdated': {
       const updated: Task = {

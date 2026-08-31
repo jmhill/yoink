@@ -369,8 +369,35 @@ export const createPlaywrightActor = (
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
-      // Session API for create (the quick-add form has no assignee picker).
-      // Board visibility and the edit picker are covered by updateTask / shouldSee*.
+      if (input.listId !== undefined) {
+        await tasksPage.goto('all');
+        await tasksPage.waitForTasksOrEmpty();
+        await tasksPage.selectCreateList(input.listId);
+
+        const responsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/tasks') &&
+            !response.url().includes('/api/tasks/') &&
+            response.request().method() === 'POST'
+        );
+        await tasksPage.quickAdd(input.title);
+        const response = await responsePromise;
+
+        if (response.status() === 401) {
+          throw new UnauthorizedError();
+        }
+        if (response.status() === 400) {
+          const body = await response.json();
+          throw new ValidationError(body.message ?? 'Invalid request');
+        }
+        if (response.status() !== 201) {
+          throw new Error(`Failed to create task: ${response.status()}`);
+        }
+        return response.json();
+      }
+
+      // Session API for create when the board picker is not involved
+      // (quick-add has no assignee/due-date controls).
       const response = await page.request.post('/api/tasks', { data: input });
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -587,6 +614,12 @@ export const createPlaywrightActor = (
       await tasksPage.goto('all');
       await tasksPage.waitForTask(taskId);
       await expect(tasksPage.listOnTask(taskId)).toHaveAttribute('data-list', listName);
+    },
+
+    async shouldNotSeeListOnTask(taskId: string): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.listOnTask(taskId)).toHaveCount(0);
     },
 
     async shouldSeeTaskOnMine(taskId: string): Promise<void> {
@@ -1059,6 +1092,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async createNamedList(_name: string): Promise<NamedList> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async createTask(_input: CreateTaskInput): Promise<Task> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

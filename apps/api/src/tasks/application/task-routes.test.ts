@@ -6,6 +6,85 @@ import {
 import type { FastifyInstance } from 'fastify';
 import type { NamedList, Task } from '@yoink/api-contracts';
 
+describe('POST /api/tasks listId', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const auth = { authorization: `Bearer ${TEST_TOKEN}` };
+
+  const createList = async (name: string): Promise<NamedList> => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: auth,
+      payload: { name },
+    });
+    expect(response.statusCode).toBe(201);
+    return response.json<NamedList>();
+  };
+
+  it('creates a new task already on a named list', async () => {
+    const list = await createList('Groceries');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Buy milk', listId: list.id },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const task = response.json<Task>();
+    expect(task.listId).toBe(list.id);
+    expect(task.completedAt).toBeUndefined();
+  });
+
+  it('creates a task without a list as unlisted', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Loose end' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json<Task>().listId).toBeUndefined();
+  });
+
+  it('rejects an unknown list', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: {
+        title: 'No such list',
+        listId: '550e8400-e29b-41d4-a716-446655440099',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ message: string }>().message).toBe(
+      'List is not in this organization'
+    );
+  });
+
+  it('returns 401 without authentication', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      payload: {
+        title: 'Nope',
+        listId: '550e8400-e29b-41d4-a716-446655440001',
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+});
+
 describe('PATCH /api/tasks/:id listId', () => {
   let app: FastifyInstance;
 

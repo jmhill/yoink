@@ -5,7 +5,7 @@ import type { StorageError } from '../domain/task-errors.js';
 
 export type PersistTaskEvent = (input: {
   event: TaskEvent;
-  current: Task;
+  current: Task | null;
 }) => ResultAsync<void, StorageError>;
 
 export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;

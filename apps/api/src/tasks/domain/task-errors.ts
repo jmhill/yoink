@@ -27,7 +27,10 @@ export type TaskNotOpenError = {
 };
 
 // Composite error types for each operation
-export type CreateTaskError = StorageError | AssigneeNotInOrganizationError;
+export type CreateTaskError =
+  | StorageError
+  | AssigneeNotInOrganizationError
+  | ListNotInOrganizationError;
 export type ListTasksError = StorageError;
 export type FindTaskError = StorageError | TaskNotFoundError;
 export type UpdateTaskError =

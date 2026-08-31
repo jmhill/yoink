@@ -21,10 +21,12 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Captures functional-core pilot** - Complete ✓ (see [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md))
 **CI: Node 20 action deprecation** - Complete ✓ (#47)
 **CI: pnpm 9 → 11** - Complete ✓ (#48)
-**Named lists: View my named lists** - Complete ✓ (org-scoped read model; empty view + seeded names; no Create)
+**Named lists: View my named lists** - Complete ✓ (org-scoped read model; empty view + names)
+**Named lists: Create a new named list** - Complete ✓ (any member including agents; product `POST /api/lists`; Lists page create)
 
 Recent updates:
-- Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No create/rename/delete UI or public write API. Tasks are untouched.
+- Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. Names are unique in the org after trim, case-insensitive. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
+- Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No rename/delete UI. Tasks are untouched.
 
 - Task edit assignee picker uses the shadcn New York Select from `@yoink/ui-base` (Radix), same kit as other form controls and menus. Assign to an agent, assign to yourself, or clear — behavior unchanged.
 - Captures module reshaped as an I/O sandwich: `domain/` is types + pure `decide_*` + `apply`; `application/` is command/query handlers; HTTP and persist live in `infrastructure/`. `CaptureService` removed. Processing still uses `CaptureStore`. Judge the pilot before copying this shape to access or Phase 9.
@@ -527,9 +529,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 **Product rules (locked):**
 - A list is an optional single bucket on a task (one list or none). This story does not put tasks on lists.
 - “My named lists” = every named list in the current organization, including empty ones. Not creator-private.
-- View comes before Create. No create/rename/delete UI or public write API.
-- Tests seed lists through the store / test fixture so a non-empty view is proven without shipping Create.
-- Who may create a list is story 2. Do not invent create permissions.
+- View shipped before Create (story 2). Rename/delete stay out.
 - Tasks stay untouched (no `listId` on tasks).
 
 **Out of scope:**
@@ -539,13 +539,41 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 **Implementation:**
 - Migration 023: `lists` table (`id`, `organization_id`, `created_by_id`, `name`, `created_at`)
-- `NamedListSchema` + `GET /api/lists` (read-only contract)
-- `lists/` I/O sandwich: query handler loads and returns (no `decide_*`, no fake events)
-- Test fixture `POST /api/test/named-lists` only when `ENABLE_TEST_FIXTURES=true`
+- `NamedListSchema` + `GET /api/lists`
+- `lists/` I/O sandwich: query handler loads and returns (no fake events)
 - Lists view on the authenticated board (`/lists`) with empty state
-- HTTP + Playwright acceptance: empty org shows the view; seeded names appear; agents can view; orgs are isolated
+- HTTP + Playwright acceptance: empty org shows the view; names appear; agents can view; orgs are isolated
 
 **Deliverable:** A member can open the board and see named lists (or the empty view).
+
+---
+
+## Named lists: Create a new named list - Complete ✓
+
+**Goal**: A member (including an agent) can create a named list. After create, it appears in the existing Lists view.
+
+**Product rules (locked):**
+- Any org member may create a list, agents included. Humans (session) and agent tokens (Bearer) both create. Do not restrict to owner.
+- After create, the new list appears in the existing Lists view (org-wide, including empty).
+- Name is required, 1–200 characters (matches `NamedListSchema`). Names are unique in the organization after trim, case-insensitive (`Groceries` and `groceries` are the same name). A duplicate is rejected; an empty name after trim is still rejected.
+- This is not tags. A list is an optional single bucket on a task — this story does not put tasks on lists.
+- Who may create is locked: any member including agents.
+
+**Out of scope:**
+- Add existing task to a list, add a new task to a list, take a task off a list
+- Delete a list, order, notes canvas, rename
+- Tasks stay untouched (no `listId`, no task sandwich)
+
+**Implementation:**
+- `POST /api/lists` with `CreateNamedListSchema` (`name` 1–200, trimmed)
+- `lists/` write sandwich: HTTP maps body+auth → `CreateNamedListCommand`; handler loads current org names; `decideCreateNamedList` emits `NamedListCreated`, `INVALID_LIST_NAME`, or `DUPLICATE_LIST_NAME`; persist; `applyNamedListEvent` projects
+- Unique index `idx_lists_org_name_ci` on `(organization_id, lower(name))` (expand; existing org+name index stays)
+- Queries still list; no fake events on the read path
+- Product write path replaces `POST /api/test/named-lists`. `ENABLE_TEST_FIXTURES` removed (nothing else needed the seed)
+- Lists page: shadcn New York “New list” dialog (`@yoink/ui-base`)
+- HTTP + Playwright acceptance: human creates, agent token creates, empty name rejected, duplicate name (any casing) rejected, different names still work, new list shows in the view, unauthenticated cannot create
+
+**Deliverable:** A member (including an agent) can create a named list in the PWA and via API.
 
 ---
 
@@ -825,7 +853,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 | `/api/health` | Health check | None |
 | `/api/captures` | Capture CRUD | Token or session |
 | `/api/tasks` | Task CRUD | Token or session |
-| `/api/lists` | View named lists | Token or session |
+| `/api/lists` | View and create named lists | Token or session |
 | `/api/auth/signup/*` | New user signup | None (public) |
 | `/api/auth/login/*` | Passkey login | None (public) |
 | `/api/auth/logout` | Logout | Session |
@@ -921,7 +949,7 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Judge captures pilot, then 8.5.4 / list Create (story 2)
+### Current Focus: Judge captures/lists sandwich, then 8.5.4
 
 **Identity slice is in.** Agents are token-only org members; tasks have an assignee field. The edit-modal assignee control is the kit Select (same look as other form controls and menus). Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NamedListSchema } from './list.js';
+import { CreateNamedListSchema, NamedListSchema } from './list.js';
 
 describe('NamedListSchema', () => {
   const validList = {
@@ -39,11 +39,44 @@ describe('NamedListSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects invalid UUID for id', () => {
+    it('rejects invalid UUID for id', () => {
     const result = NamedListSchema.safeParse({
       ...validList,
       id: 'not-a-uuid',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('CreateNamedListSchema', () => {
+  it('accepts a name', () => {
+    const result = CreateNamedListSchema.safeParse({ name: 'Groceries' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Groceries');
+    }
+  });
+
+  it('trims surrounding whitespace', () => {
+    const result = CreateNamedListSchema.safeParse({ name: '  Weekend  ' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Weekend');
+    }
+  });
+
+  it('rejects an empty name', () => {
+    const result = CreateNamedListSchema.safeParse({ name: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a whitespace-only name', () => {
+    const result = CreateNamedListSchema.safeParse({ name: '   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a name over 200 characters', () => {
+    const result = CreateNamedListSchema.safeParse({ name: 'a'.repeat(201) });
     expect(result.success).toBe(false);
   });
 });

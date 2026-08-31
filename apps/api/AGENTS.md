@@ -18,10 +18,10 @@ Most modules still follow this structure:
     routes.ts       # Fastify routes
 ```
 
-`captures/` is a pilot of a different split (I/O sandwich). See `docs/architecture/FUNCTIONAL_CORE.md`:
+`captures/` is a pilot of a different split (I/O sandwich). `lists/` follows the same shape for view + create. See `docs/architecture/FUNCTIONAL_CORE.md`:
 
 ```
-captures/
+captures/  and  lists/
   domain/           # Types + pure decide_* + apply
   application/      # Command/query handlers (the module’s public port)
   infrastructure/   # Persist + HTTP adapters

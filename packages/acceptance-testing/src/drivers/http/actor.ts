@@ -244,6 +244,23 @@ export const createHttpActor = (
       return response.json<NamedList>();
     },
 
+    async deleteNamedList(id: string): Promise<void> {
+      const response = await client.delete(`/api/lists/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('List', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'This list still has open tasks');
+      }
+      if (response.statusCode !== 204) {
+        throw new Error(`Failed to delete named list: ${response.body}`);
+      }
+    },
+
     async goToLists(): Promise<void> {
       throw new UnsupportedOperationError('goToLists', 'http');
     },
@@ -254,6 +271,10 @@ export const createHttpActor = (
 
     async shouldSeeNamedList(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNamedList', 'http');
+    },
+
+    async shouldNotSeeNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeNamedList', 'http');
     },
 
     // Task operations
@@ -654,6 +675,13 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new ValidationError(error.message ?? 'Invalid request');
     }
     return response.json<NamedList>();
+  },
+
+  async deleteNamedList(id: string): Promise<void> {
+    const response = await client.delete(`/api/lists/${id}`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
   },
 
   async createTask(input: CreateTaskInput): Promise<Task> {

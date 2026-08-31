@@ -36,4 +36,35 @@ describe('createStoreBackedPersist', () => {
       ]);
     }
   });
+
+  it('removes the list on NamedListDeleted', async () => {
+    const store = createFakeListStore({
+      initialLists: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          organizationId: '550e8400-e29b-41d4-a716-446655440001',
+          createdById: '550e8400-e29b-41d4-a716-446655440002',
+          name: 'Groceries',
+          createdAt: '2025-01-15T10:00:00.000Z',
+        },
+      ],
+    });
+    const persist = createStoreBackedPersist(store);
+
+    const result = await persist({
+      event: {
+        type: 'NamedListDeleted',
+        id: '550e8400-e29b-41d4-a716-446655440010',
+        organizationId: '550e8400-e29b-41d4-a716-446655440001',
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const loaded = await store.findById('550e8400-e29b-41d4-a716-446655440010');
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isOk()) {
+      expect(loaded.value).toBeNull();
+    }
+  });
 });

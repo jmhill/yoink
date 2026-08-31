@@ -353,6 +353,13 @@ export const createPlaywrightActor = (
       };
     },
 
+    async deleteNamedList(id: string): Promise<void> {
+      const result = await listsPage.deleteNamedList(id);
+      if (result.status === 'has-open-tasks') {
+        throw new ConflictError('This list still has open tasks');
+      }
+    },
+
     async goToLists(): Promise<void> {
       await listsPage.goto();
       await listsPage.waitForListsOrEmpty();
@@ -366,6 +373,12 @@ export const createPlaywrightActor = (
     async shouldSeeNamedList(name: string): Promise<void> {
       await listsPage.goto();
       await expect(page.locator(`[data-list-name="${name}"]`)).toBeVisible();
+    },
+
+    async shouldNotSeeNamedList(name: string): Promise<void> {
+      await listsPage.goto();
+      await listsPage.waitForListsOrEmpty();
+      await expect(page.locator(`[data-list-name="${name}"]`)).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
@@ -459,8 +472,20 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async completeTask(_id: string): Promise<Task> {
-      throw new UnsupportedOperationError('completeTask', 'playwright');
+    async completeTask(id: string): Promise<Task> {
+      const response = await page.request.post(`/api/tasks/${id}/complete`, {
+        data: {},
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to complete task: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async uncompleteTask(_id: string): Promise<Task> {
@@ -1096,6 +1121,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async createNamedList(_name: string): Promise<NamedList> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async deleteNamedList(_id: string): Promise<void> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

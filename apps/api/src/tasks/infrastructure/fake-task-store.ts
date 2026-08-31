@@ -127,5 +127,18 @@ export const createFakeTaskStore = (
       deletedIds.add(id);
       return okAsync(undefined);
     },
+
+    countOpenOnList: (listId: string): ResultAsync<number, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const count = tasks.filter(
+        (task) =>
+          task.listId === listId &&
+          !task.completedAt &&
+          !deletedIds.has(task.id)
+      ).length;
+      return okAsync(count);
+    },
   };
 };

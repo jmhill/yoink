@@ -95,5 +95,17 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
         (cause) => storageError('Failed to list named lists', cause)
       );
     },
+
+    remove: (id: string): ResultAsync<void, StorageError> => {
+      return ResultAsync.fromPromise(
+        db
+          .execute({
+            sql: `DELETE FROM lists WHERE id = ?`,
+            args: [id],
+          })
+          .then(() => undefined),
+        (cause) => storageError('Failed to delete named list', cause)
+      );
+    },
   };
 };

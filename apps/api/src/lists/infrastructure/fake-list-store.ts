@@ -7,6 +7,7 @@ import { normalizeListName } from '../domain/list-name.js';
 export type FakeListStoreOptions = {
   shouldFailOnSave?: boolean;
   shouldFailOnFind?: boolean;
+  shouldFailOnRemove?: boolean;
   initialLists?: NamedList[];
 };
 
@@ -57,6 +58,17 @@ export const createFakeListStore = (
         });
 
       return okAsync(filtered);
+    },
+
+    remove: (id: string): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnRemove) {
+        return errAsync(storageError('Delete failed'));
+      }
+      const index = lists.findIndex((list) => list.id === id);
+      if (index !== -1) {
+        lists.splice(index, 1);
+      }
+      return okAsync(undefined);
     },
   };
 };

@@ -213,5 +213,21 @@ export const createSqliteTaskStore = async (
         (error) => storageError('Failed to delete task', error)
       ).map(() => undefined);
     },
+
+    countOpenOnList: (listId: string): ResultAsync<number, StorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE list_id = ?
+              AND completed_at IS NULL
+              AND deleted_at IS NULL
+          `,
+          args: [listId],
+        }),
+        (error) => storageError('Failed to count open tasks on list', error)
+      ).map((result) => Number(result.rows[0]?.count ?? 0));
+    },
   };
 };

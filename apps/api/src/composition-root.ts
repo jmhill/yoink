@@ -270,15 +270,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   const listStore = await createSqliteListStore(database);
+  const taskStore = await createSqliteTaskStore(database, clock);
   const listHandlers = createListHandlers({
     persist: createListStoreBackedPersist(listStore),
     list: (organizationId) => listStore.findByOrganization(organizationId),
+    load: (id) => listStore.findById(id),
+    countOpenOnList: (listId) => taskStore.countOpenOnList(listId),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
   });
 
   // Create task store and service (async initialization)
-  const taskStore = await createSqliteTaskStore(database, clock);
   const principalLookup = {
     existsInOrganization: (principalId: string, organizationId: string) =>
       membershipService

@@ -26,4 +26,5 @@ export type TaskStore = {
   ): ResultAsync<FindByOrganizationResult, StorageError>;
   findByCaptureId(captureId: string): ResultAsync<Task | null, StorageError>;
   softDelete(id: string): ResultAsync<void, StorageError>;
+  countOpenOnList(listId: string): ResultAsync<number, StorageError>;
 };

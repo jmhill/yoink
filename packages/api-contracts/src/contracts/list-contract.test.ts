@@ -24,8 +24,19 @@ describe('listContract', () => {
     expect(listContract.create.responses).toHaveProperty('409');
   });
 
-  it('does not expose update or delete', () => {
+  it('defines a delete endpoint', () => {
+    expect(listContract.delete.method).toBe('DELETE');
+    expect(listContract.delete.path).toBe('/api/lists/:id');
+  });
+
+  it('has 204, 401, 404, and 409 responses on delete', () => {
+    expect(listContract.delete.responses).toHaveProperty('204');
+    expect(listContract.delete.responses).toHaveProperty('401');
+    expect(listContract.delete.responses).toHaveProperty('404');
+    expect(listContract.delete.responses).toHaveProperty('409');
+  });
+
+  it('does not expose update', () => {
     expect(listContract).not.toHaveProperty('update');
-    expect(listContract).not.toHaveProperty('delete');
   });
 });

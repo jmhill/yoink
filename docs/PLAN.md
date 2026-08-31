@@ -25,8 +25,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Create a new named list** - Complete ✓ (any member including agents; product `POST /api/lists`; Lists page create)
 **Named lists: Add an existing task to a list** - Complete ✓ (`listId` on tasks; PATCH sandwich; kit picker on task edit)
 **Named lists: Add a new task to a list directly** - Complete ✓ (optional `listId` on create; create sandwich; kit picker on quick-add)
+**Named lists: Take a task off a list** - Complete ✓ (`listId: null` on PATCH; open tasks only; kit picker can clear)
 
 Recent updates:
+- Story 5 “Take a task off a list”: take an existing **open** task off a named list (one bucket → unlisted). Already-unlisted is a no-op. Completed stays put so uncomplete still restores the same list. PATCH `/api/tasks/:id` with `listId: null` extends the existing update sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Kit Select on task edit can clear to “No list”; disabled when completed (same as add). Delete list, order, notes canvas stay out.
 - Story 4 “Add a new task to a list directly”: create a new task already on a named list (one bucket). You do not have to create unlisted then add. Same-org lists only; unknown or other-org lists are rejected. New tasks are open. Humans (session) and agent tokens both can. `POST /api/tasks` with optional `listId` is a write sandwich (`decideCreateTask` → persist → apply), same shape as PATCH — not a big-bang of complete/pin/delete. Quick-add reuses the kit Select from story 3. Take-off, delete list, order, and notes canvas stay out. Completing still keeps `listId`.
 - Story 3 “Add an existing task to a list”: put an existing **open** task onto a named list (one bucket). A→B is a move; same list again is a no-op; completed tasks cannot be added or moved (Done must not change which list uncomplete would restore). PATCH `/api/tasks/:id` with `listId` is a write sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Unknown or other-org lists are rejected. Take-off and create-already-on-a-list stay out. Task edit uses the kit Select, same bar as assignee — no native `<select>`, no dedicated remove control; picker is disabled when the task is completed.
 - Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. Names are unique in the org after trim, case-insensitive. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
@@ -639,6 +641,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Named lists: Take a task off a list - Complete ✓
+
+**Goal**: A member can take an open task off a named list. Afterward it is unlisted.
+
+**Product rules (locked):**
+- Same shape as add-existing: only **open** tasks may be taken off a list.
+- Already-unlisted is a no-op (no error required).
+- Completed stays put: you cannot take a completed task off a list, so uncomplete still restores the same list.
+- One bucket: take-off means `listId` becomes none (unlisted). Not tags.
+- Kit UI (shadcn New York Select from `@yoink/ui-base`): the existing list picker can clear to unlisted for open tasks; disabled when completed (same as add).
+- Humans (session) and agent tokens can both take off.
+- Delete list stays blocked until this is real. Do not implement delete list, order, notes canvas, create list.
+
+**Out of scope:**
+- Delete list, order, notes canvas, create list (already shipped)
+- Complete/pin/delete sandwich (stay on `TaskService`)
+
+**Implementation:**
+- `UpdateTaskSchema.listId` uuid **nullable** (`null` clears). Create still omits `listId` for unlisted (null on create stays rejected).
+- Task PATCH sandwich already exists: HTTP maps body+auth → `UpdateTaskCommand`; handler loads the task and (if `listId` is a uuid change) the list; `decideUpdateTask` emits `TaskUpdated` (`listId: null`), `Noop` (already unlisted), or `TASK_NOT_OPEN` (completed); persist; `applyTaskEvent` projects (delete `listId`).
+- Task edit modal: kit Select includes “No list” so an open task can be cleared; still disabled when completed.
+- HTTP + Playwright acceptance: open task on a list can be taken off and is then unlisted; already-unlisted is a no-op; completed on a list cannot be taken off (stored list stays); kit picker can clear; unauthenticated cannot; agents can.
+
+**Deliverable:** A member can take an open task off a named list in the PWA and via API.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1013,7 +1042,9 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
 
-**Named lists story 3 is in.** An existing open task can be put on a named list (`listId`, one bucket). PATCH is a write sandwich. Kit Select on task edit, same bar as assignee. Take-off and create-already-on-a-list stay out.
+**Named lists story 5 is in.** An existing open task can be taken off a named list (`listId: null`, one bucket → unlisted). Already-unlisted is a no-op. Completed stays put. PATCH sandwich extended; kit Select can clear. Delete list stays out.
+
+**Named lists story 3 is in.** An existing open task can be put on a named list (`listId`, one bucket). PATCH is a write sandwich. Kit Select on task edit, same bar as assignee.
 
 **Identity slice is in.** Agents are token-only org members; tasks have an assignee field. The edit-modal assignee control is the kit Select (same look as other form controls and menus). Playwright acceptance tests prove the task row shows the assignee name and the edit picker can set an agent, set the current human, and clear. Agent tokens can list org members (humans and agents) so they can pick an assignee; they still cannot mint agents, remove members, or create captures. Do not start Phase 9 from this slice.
 

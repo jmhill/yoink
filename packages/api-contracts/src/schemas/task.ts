@@ -30,8 +30,8 @@ export const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   dueDate: z.string().date().nullable().optional(), // null to clear
   assigneeId: z.string().uuid().nullable().optional(), // null to clear
-  // Set or replace the single list bucket. Clearing (null) is a later story.
-  listId: z.string().uuid().optional(),
+  // Set, replace, or clear (null) the single list bucket. Omit to leave unchanged.
+  listId: z.string().uuid().nullable().optional(),
 });
 
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;

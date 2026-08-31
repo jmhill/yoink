@@ -151,7 +151,7 @@ export const registerTaskRoutes = async (
               case 'TASK_NOT_OPEN':
                 return {
                   status: 400 as const,
-                  body: { message: 'Only open tasks can be added to a list' },
+                  body: { message: 'Only open tasks can be added to or taken off a list' },
                 };
               case 'STORAGE_ERROR':
                 return {

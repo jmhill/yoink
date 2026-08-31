@@ -25,10 +25,14 @@ export const handleUpdateTask = (
     organizationId: command.organizationId,
     load: deps.load,
   }).andThen((current) => {
-    const changingList =
-      command.listId !== undefined && command.listId !== current.listId;
-    const loadedList = changingList && command.listId
-      ? deps.loadList(command.listId)
+    const listIdToLoad =
+      command.listId !== undefined &&
+      command.listId !== null &&
+      command.listId !== current.listId
+        ? command.listId
+        : null;
+    const loadedList = listIdToLoad
+      ? deps.loadList(listIdToLoad)
       : okAsync(null);
 
     return loadedList.andThen((list) => {

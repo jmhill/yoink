@@ -224,7 +224,84 @@ describe('PATCH /api/tasks/:id listId', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json<{ message: string }>().message).toBe(
-      'Only open tasks can be added to a list'
+      'Only open tasks can be added to or taken off a list'
     );
+  });
+
+  it('takes an open task off a list', async () => {
+    const list = await createList('Groceries');
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Buy milk', listId: list.id },
+    });
+    expect(created.statusCode).toBe(201);
+    const task = created.json<Task>();
+    expect(task.listId).toBe(list.id);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: null },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<Task>().listId).toBeUndefined();
+  });
+
+  it('is a no-op when the task is already unlisted', async () => {
+    const task = await createTask('Loose end');
+    expect(task.listId).toBeUndefined();
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: null },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<Task>().listId).toBeUndefined();
+  });
+
+  it('rejects taking a completed task off a list', async () => {
+    const list = await createList('Groceries');
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Buy milk', listId: list.id },
+    });
+    const task = created.json<Task>();
+
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(completed.statusCode).toBe(200);
+    expect(completed.json<Task>().listId).toBe(list.id);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: null },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ message: string }>().message).toBe(
+      'Only open tasks can be added to or taken off a list'
+    );
+
+    const stillListed = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+    });
+    expect(stillListed.json<Task>().listId).toBe(list.id);
   });
 });

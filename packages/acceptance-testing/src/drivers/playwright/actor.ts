@@ -443,7 +443,11 @@ export const createPlaywrightActor = (
         }
       }
       if (input.listId !== undefined) {
-        await tasksPage.selectList(input.listId);
+        if (input.listId === null) {
+          await tasksPage.clearList();
+        } else {
+          await tasksPage.selectList(input.listId);
+        }
       }
 
       await tasksPage.saveEdit();

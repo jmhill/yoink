@@ -63,4 +63,29 @@ describe('createStoreBackedPersist', () => {
       expect(loaded.value?.title).toBe('Buy milk');
     }
   });
+
+  it('projects TaskUpdated that takes the task off a list', async () => {
+    const onGroceries: Task = { ...current, listId: 'list-groceries' };
+    const store = createFakeTaskStore({ initialTasks: [onGroceries] });
+    const persist = createStoreBackedPersist(store);
+
+    const result = await persist({
+      current: onGroceries,
+      event: {
+        type: 'TaskUpdated',
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const loaded = await store.findById(current.id);
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isOk()) {
+      expect(loaded.value?.listId).toBeUndefined();
+      expect(loaded.value?.title).toBe('Buy milk');
+    }
+  });
 });

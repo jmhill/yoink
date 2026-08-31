@@ -23,13 +23,15 @@ import type { Task, Capture } from '@yoink/api-contracts';
 
 /** Radix Select forbids an empty item value; map to/from the unassigned state. */
 const UNASSIGNED_VALUE = 'unassigned';
+/** Same sentinel as the quick-add list picker. */
+const UNLISTED_VALUE = 'unlisted';
 
 type TaskEditModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: Task | null;
   sourceCapture: Capture | null;
-  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string }) => void;
+  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => void;
   isLoading?: boolean;
   isFetchingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
@@ -66,7 +68,7 @@ export function TaskEditModal({
     e.preventDefault();
     if (!task || !title.trim()) return;
 
-    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string } = {};
+    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null } = {};
 
     // Only include changed fields
     if (title.trim() !== task.title) {
@@ -85,8 +87,10 @@ export function TaskEditModal({
       updates.assigneeId = newAssigneeId;
     }
 
-    if (listId && listId !== (task.listId ?? '')) {
-      updates.listId = listId;
+    const newListId = listId || null;
+    const oldListId = task.listId ?? null;
+    if (newListId !== oldListId) {
+      updates.listId = newListId;
     }
 
     // Only save if something changed
@@ -179,14 +183,17 @@ export function TaskEditModal({
           <div className="space-y-2">
             <Label htmlFor="edit-task-list">List</Label>
             <Select
-              value={listId || undefined}
-              onValueChange={setListId}
+              value={listId || UNLISTED_VALUE}
+              onValueChange={(value) =>
+                setListId(value === UNLISTED_VALUE ? '' : value)
+              }
               disabled={isLoading || Boolean(task?.completedAt)}
             >
               <SelectTrigger id="edit-task-list" className="w-full">
                 <SelectValue placeholder="No list" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
                 {lists.map((list) => (
                   <SelectItem key={list.id} value={list.id}>
                     {list.name}

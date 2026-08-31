@@ -232,6 +232,119 @@ describe('decideUpdateTask', () => {
     }
   });
 
+  it('takes an open task off a list', () => {
+    const onGroceries: Task = { ...current, listId: groceries.id };
+
+    const result = decideUpdateTask({
+      current: onGroceries,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        type: 'TaskUpdated',
+        id: 'task-123',
+        organizationId: 'org-123',
+        title: undefined,
+        dueDate: undefined,
+        assigneeId: undefined,
+        listId: null,
+      });
+    }
+  });
+
+  it('is a noop when taking an already-unlisted task off a list', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'Noop' });
+    }
+  });
+
+  it('still updates other fields when taking off an already-unlisted task', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        title: 'Buy oat milk',
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.title).toBe('Buy oat milk');
+      expect(result.value.listId).toBeUndefined();
+    }
+  });
+
+  it('rejects taking a completed task off a list', () => {
+    const completedOnGroceries: Task = {
+      ...current,
+      listId: groceries.id,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+
+    const result = decideUpdateTask({
+      current: completedOnGroceries,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
+    }
+  });
+
+  it('is a noop when a completed unlisted task is taken off again', () => {
+    const completed: Task = {
+      ...current,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+
+    const result = decideUpdateTask({
+      current: completed,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'Noop' });
+    }
+  });
+
   it('rejects an assignee who is not in the organization', () => {
     const result = decideUpdateTask({
       current,

@@ -53,7 +53,7 @@ describe('PATCH /api/tasks/:id listId', () => {
     expect(response.json<Task>().listId).toBe(list.id);
   });
 
-  it('replaces one list with another', async () => {
+  it('moves a task from one list to another', async () => {
     const groceries = await createList('Groceries');
     const weekend = await createList('Weekend');
     const task = await createTask('Buy milk');
@@ -100,5 +100,52 @@ describe('PATCH /api/tasks/:id listId', () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+
+  it('is a no-op when putting the task on the same list again', async () => {
+    const list = await createList('Groceries');
+    const task = await createTask('Buy milk');
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: list.id },
+    });
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: list.id },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<Task>().listId).toBe(list.id);
+  });
+
+  it('rejects adding a completed task to a list', async () => {
+    const list = await createList('Groceries');
+    const task = await createTask('Buy milk');
+
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(completed.statusCode).toBe(200);
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: list.id },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ message: string }>().message).toBe(
+      'Only open tasks can be added to a list'
+    );
   });
 });

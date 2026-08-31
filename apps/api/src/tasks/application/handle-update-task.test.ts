@@ -64,8 +64,9 @@ describe('handleUpdateTask', () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.event.type).toBe('TaskUpdated');
-      expect(result.value.event.listId).toBe('list-groceries');
+      expect(result.value.event).not.toBeNull();
+      expect(result.value.event?.type).toBe('TaskUpdated');
+      expect(result.value.event?.listId).toBe('list-groceries');
       expect(result.value.view.listId).toBe('list-groceries');
       expect(result.value.view.title).toBe('Buy milk');
     }
@@ -125,6 +126,50 @@ describe('handleUpdateTask', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('TASK_NOT_FOUND');
+    }
+    expect(events).toHaveLength(0);
+  });
+
+  it('does not persist when putting the task on the same list again', async () => {
+    const onGroceries: Task = { ...current, listId: groceries.id };
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleUpdateTask(
+      {
+        id: onGroceries.id,
+        organizationId: onGroceries.organizationId,
+        listId: groceries.id,
+      },
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), persist }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.event).toBeNull();
+      expect(result.value.view.listId).toBe(groceries.id);
+    }
+    expect(events).toHaveLength(0);
+  });
+
+  it('does not persist when adding a completed task to a list', async () => {
+    const completed: Task = {
+      ...current,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleUpdateTask(
+      {
+        id: completed.id,
+        organizationId: completed.organizationId,
+        listId: groceries.id,
+      },
+      { load: () => okAsync(completed), loadList: () => okAsync(groceries), persist }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
     }
     expect(events).toHaveLength(0);
   });

@@ -142,6 +142,11 @@ export const registerTaskRoutes = async (
                   status: 400 as const,
                   body: { message: 'List is not in this organization' },
                 };
+              case 'TASK_NOT_OPEN':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Only open tasks can be added to a list' },
+                };
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,

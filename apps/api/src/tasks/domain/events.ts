@@ -8,4 +8,8 @@ export type TaskUpdated = {
   listId?: string;
 };
 
+export type Noop = {
+  type: 'Noop';
+};
+
 export type TaskEvent = TaskUpdated;

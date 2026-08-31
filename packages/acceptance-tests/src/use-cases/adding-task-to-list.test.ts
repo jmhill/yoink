@@ -6,8 +6,8 @@ import { UnauthorizedError, ValidationError } from '@yoink/acceptance-testing';
  * Story 3: Add an existing task to a list.
  *
  * A list is an optional single bucket. This story puts an existing open task
- * onto a named list. Take-off (clear to unlisted) is a later story; replacing
- * one list with another is still one bucket.
+ * onto a named list. Putting A onto B is a move. Same list again is a no-op.
+ * Completed tasks cannot be added (or moved). Take-off is a later story.
  */
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Adding an existing task to a list [${ctx.driverName}]`, () => {
@@ -27,6 +27,27 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       const updated = await alice.updateTask(task.id, { listId: list.id });
 
       expect(updated.listId).toBe(list.id);
+    });
+
+    it('moves a task from one list to another rather than tagging both', async () => {
+      const groceries = await alice.createNamedList('Groceries');
+      const weekend = await alice.createNamedList('Weekend');
+      const task = await alice.createTask({ title: 'Buy milk' });
+
+      await alice.updateTask(task.id, { listId: groceries.id });
+      const updated = await alice.updateTask(task.id, { listId: weekend.id });
+
+      expect(updated.listId).toBe(weekend.id);
+    });
+
+    it('is a no-op when putting the task on the same list again', async () => {
+      const list = await alice.createNamedList('Groceries');
+      const task = await alice.createTask({ title: 'Buy milk' });
+
+      await alice.updateTask(task.id, { listId: list.id });
+      const again = await alice.updateTask(task.id, { listId: list.id });
+
+      expect(again.listId).toBe(list.id);
     });
 
     it('requires authentication to put a task on a list', async () => {
@@ -83,16 +104,36 @@ usingDrivers(['http'] as const, (ctx) => {
       ).rejects.toThrow(ValidationError);
     });
 
-    it('replaces one list with another rather than tagging both', async () => {
-      const alice = await ctx.createActor('alice-task-list-replace@example.com');
+    it('rejects adding a completed task to a list', async () => {
+      const alice = await ctx.createActor('alice-task-list-done@example.com');
+      const list = await alice.createNamedList('Groceries');
+      const task = await alice.createTask({ title: 'Buy milk' });
+      await alice.completeTask(task.id);
+
+      await expect(alice.updateTask(task.id, { listId: list.id })).rejects.toThrow(
+        ValidationError
+      );
+
+      const done = await alice.getTask(task.id);
+      expect(done.listId).toBeUndefined();
+      expect(done.completedAt).toBeDefined();
+    });
+
+    it('rejects moving a completed task so Done cannot change the restored list', async () => {
+      const alice = await ctx.createActor('alice-task-list-done-move@example.com');
       const groceries = await alice.createNamedList('Groceries');
       const weekend = await alice.createNamedList('Weekend');
       const task = await alice.createTask({ title: 'Buy milk' });
-
       await alice.updateTask(task.id, { listId: groceries.id });
-      const updated = await alice.updateTask(task.id, { listId: weekend.id });
+      await alice.completeTask(task.id);
 
-      expect(updated.listId).toBe(weekend.id);
+      await expect(alice.updateTask(task.id, { listId: weekend.id })).rejects.toThrow(
+        ValidationError
+      );
+
+      const done = await alice.getTask(task.id);
+      expect(done.listId).toBe(groceries.id);
+      expect(done.completedAt).toBeDefined();
     });
   });
 });
@@ -112,6 +153,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.updateTask(task.id, { listId: list.id });
 
       await alice.shouldSeeListOnTask(task.id, 'Groceries');
+    });
+
+    it('shows the new list after moving the task', async () => {
+      const groceries = await alice.createNamedList('Groceries');
+      const weekend = await alice.createNamedList('Weekend');
+      const task = await alice.createTask({ title: 'Buy milk' });
+
+      await alice.updateTask(task.id, { listId: groceries.id });
+      await alice.updateTask(task.id, { listId: weekend.id });
+
+      await alice.shouldSeeListOnTask(task.id, 'Weekend');
     });
   });
 });

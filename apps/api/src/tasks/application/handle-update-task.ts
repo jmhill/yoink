@@ -25,10 +25,11 @@ export const handleUpdateTask = (
     organizationId: command.organizationId,
     load: deps.load,
   }).andThen((current) => {
-    const loadedList =
-      command.listId !== undefined
-        ? deps.loadList(command.listId)
-        : okAsync(null);
+    const changingList =
+      command.listId !== undefined && command.listId !== current.listId;
+    const loadedList = changingList && command.listId
+      ? deps.loadList(command.listId)
+      : okAsync(null);
 
     return loadedList.andThen((list) => {
       const assigneeCheck =
@@ -51,6 +52,10 @@ export const handleUpdateTask = (
 
         if (decision.isErr()) {
           return errAsync(decision.error);
+        }
+
+        if (decision.value.type === 'Noop') {
+          return okAsync({ event: null, view: current });
         }
 
         const event = decision.value;

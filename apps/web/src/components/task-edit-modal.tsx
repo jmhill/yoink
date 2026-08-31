@@ -181,7 +181,7 @@ export function TaskEditModal({
             <Select
               value={listId || undefined}
               onValueChange={setListId}
-              disabled={isLoading}
+              disabled={isLoading || Boolean(task?.completedAt)}
             >
               <SelectTrigger id="edit-task-list" className="w-full">
                 <SelectValue placeholder="No list" />

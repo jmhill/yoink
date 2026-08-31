@@ -23,7 +23,7 @@ describe('applyTaskEvent', () => {
     expect(view.title).toBe('Buy milk');
   });
 
-  it('replaces an existing list', () => {
+  it('moves the task onto another list', () => {
     const onGroceries: Task = { ...current, listId: 'list-groceries' };
 
     const view = applyTaskEvent(onGroceries, {

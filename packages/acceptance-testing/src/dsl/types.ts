@@ -134,6 +134,7 @@ export type CreateTaskInput = {
   title: string;
   dueDate?: string; // YYYY-MM-DD format
   assigneeId?: string;
+  listId?: string; // create already on a named list; omit for unlisted
 };
 
 export type UpdateTaskInput = {

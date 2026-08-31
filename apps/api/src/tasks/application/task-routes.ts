@@ -26,18 +26,19 @@ export const registerTaskRoutes = async (
 
     const taskRouter = s.router(taskContract, {
       create: async ({ body, request }) => {
-        const result = await taskService.create({
+        const result = await taskHandlers.create({
           title: body.title,
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
+          listId: body.listId,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 201 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -45,6 +46,11 @@ export const registerTaskRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'Assignee is not a member of this organization' },
+                };
+              case 'LIST_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'List is not in this organization' },
                 };
               case 'STORAGE_ERROR':
                 return {

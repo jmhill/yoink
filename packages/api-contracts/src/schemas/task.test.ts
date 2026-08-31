@@ -125,6 +125,22 @@ describe('CreateTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates with listId', () => {
+    const result = CreateTaskSchema.safeParse({
+      title: 'Buy groceries',
+      listId: '550e8400-e29b-41d4-a716-446655440005',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects null listId — take-off is a later story', () => {
+    const result = CreateTaskSchema.safeParse({
+      title: 'Buy groceries',
+      listId: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects missing title', () => {
     const result = CreateTaskSchema.safeParse({});
     expect(result.success).toBe(false);

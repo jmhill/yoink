@@ -11,6 +11,42 @@ const current: Task = {
 };
 
 describe('applyTaskEvent', () => {
+  it('projects a newly created task already on a list', () => {
+    const view = applyTaskEvent(null, {
+      type: 'TaskCreated',
+      id: 'task-new',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      title: 'Buy milk',
+      listId: 'list-groceries',
+      createdAt: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(view).toEqual({
+      id: 'task-new',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      title: 'Buy milk',
+      listId: 'list-groceries',
+      createdAt: '2025-01-15T10:00:00.000Z',
+    });
+    expect(view.completedAt).toBeUndefined();
+  });
+
+  it('projects a newly created unlisted task', () => {
+    const view = applyTaskEvent(null, {
+      type: 'TaskCreated',
+      id: 'task-new',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      title: 'Loose end',
+      createdAt: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(view.listId).toBeUndefined();
+    expect(view.title).toBe('Loose end');
+  });
+
   it('projects a list onto an unlisted task', () => {
     const view = applyTaskEvent(current, {
       type: 'TaskUpdated',

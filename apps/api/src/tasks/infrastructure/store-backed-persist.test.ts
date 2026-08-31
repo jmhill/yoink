@@ -12,6 +12,34 @@ const current: Task = {
 };
 
 describe('createStoreBackedPersist', () => {
+  it('projects TaskCreated onto the store including listId', async () => {
+    const store = createFakeTaskStore();
+    const persist = createStoreBackedPersist(store);
+
+    const result = await persist({
+      current: null,
+      event: {
+        type: 'TaskCreated',
+        id: 'task-new',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        title: 'Buy milk',
+        listId: 'list-groceries',
+        createdAt: '2025-01-15T10:00:00.000Z',
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const loaded = await store.findById('task-new');
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isOk()) {
+      expect(loaded.value?.listId).toBe('list-groceries');
+      expect(loaded.value?.title).toBe('Buy milk');
+      expect(loaded.value?.completedAt).toBeUndefined();
+    }
+  });
+
   it('projects TaskUpdated onto the store including listId', async () => {
     const store = createFakeTaskStore({ initialTasks: [current] });
     const persist = createStoreBackedPersist(store);

@@ -228,6 +228,11 @@ export type BrowserActorOperations = {
   shouldSeeListOnTask(taskId: string, listName: string): Promise<void>;
 
   /**
+   * Assert the task row has no named list.
+   */
+  shouldNotSeeListOnTask(taskId: string): Promise<void>;
+
+  /**
    * Assert the Mine tab shows this task (assigned to the current principal).
    */
   shouldSeeTaskOnMine(taskId: string): Promise<void>;
@@ -331,5 +336,6 @@ export type AnonymousActor = {
   getCapture(id: string): Promise<Capture>;
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
+  createTask(input: CreateTaskInput): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
 };

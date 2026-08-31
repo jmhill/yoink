@@ -7,6 +7,7 @@ export type CreateTaskCommand = {
   createdById: string;
   captureId?: string; // Source capture, if created from processing
   assigneeId?: string;
+  listId?: string; // optional single list bucket; new tasks are open
 };
 
 export type ListTasksQuery = {

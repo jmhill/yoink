@@ -1,3 +1,16 @@
+export type TaskCreated = {
+  type: 'TaskCreated';
+  id: string;
+  organizationId: string;
+  createdById: string;
+  title: string;
+  dueDate?: string;
+  captureId?: string;
+  assigneeId?: string;
+  listId?: string;
+  createdAt: string;
+};
+
 export type TaskUpdated = {
   type: 'TaskUpdated';
   id: string;
@@ -12,4 +25,4 @@ export type Noop = {
   type: 'Noop';
 };
 
-export type TaskEvent = TaskUpdated;
+export type TaskEvent = TaskCreated | TaskUpdated;

@@ -297,6 +297,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
     principalLookup,
+    nextId: () => idGenerator.generate(),
+    now: () => clock.now().toISOString(),
   });
 
   // Create capture processing service (cross-entity operations)

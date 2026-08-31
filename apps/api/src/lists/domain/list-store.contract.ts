@@ -42,6 +42,44 @@ export const runListStoreContractTests = (options: ListStoreContractOptions) => 
           expect(findResult.value[0]).toEqual(list);
         }
       });
+
+      it('rejects a second list with the same name ignoring case in the same organization', async () => {
+        await store.save(
+          createTestList({
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            name: 'Groceries',
+          })
+        );
+
+        const result = await store.save(
+          createTestList({
+            id: '550e8400-e29b-41d4-a716-446655440016',
+            name: 'groceries',
+          })
+        );
+
+        expect(result.isErr()).toBe(true);
+      });
+
+      it('allows the same name in a different organization', async () => {
+        await store.save(
+          createTestList({
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            organizationId: '550e8400-e29b-41d4-a716-446655440001',
+            name: 'Groceries',
+          })
+        );
+
+        const result = await store.save(
+          createTestList({
+            id: '550e8400-e29b-41d4-a716-446655440017',
+            organizationId: '550e8400-e29b-41d4-a716-446655440099',
+            name: 'Groceries',
+          })
+        );
+
+        expect(result.isOk()).toBe(true);
+      });
     });
 
     describe('findByOrganization', () => {

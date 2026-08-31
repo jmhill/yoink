@@ -62,6 +62,11 @@ export const registerListRoutes = async (
                   status: 400 as const,
                   body: { message: error.message },
                 };
+              case 'DUPLICATE_LIST_NAME':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
               case 'STORAGE_ERROR':
               default:
                 return {

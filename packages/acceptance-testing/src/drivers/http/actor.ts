@@ -234,6 +234,10 @@ export const createHttpActor = (
         const error = response.json<{ message?: string }>();
         throw new ValidationError(error.message ?? 'Invalid request');
       }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A list with this name already exists');
+      }
       if (response.statusCode !== 201) {
         throw new Error(`Failed to create named list: ${response.body}`);
       }

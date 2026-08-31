@@ -27,6 +27,7 @@ function ListsPage() {
   const queryClient = tsrLists.useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { data, isPending, error, refetch } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -38,13 +39,25 @@ function ListsPage() {
       toast.success('List created');
       setDialogOpen(false);
       setName('');
+      setFormError(null);
     },
     onError: (err) => {
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to create list');
+        return;
       }
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'status' in err &&
+        err.status === 409 &&
+        'body' in err
+      ) {
+        const body = err.body as { message?: string };
+        setFormError(body?.message ?? 'A list with this name already exists');
+        return;
+      }
+      toast.error('Failed to create list');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
@@ -58,6 +71,7 @@ function ListsPage() {
     setDialogOpen(open);
     if (!open) {
       setName('');
+      setFormError(null);
     }
   };
 
@@ -123,12 +137,20 @@ function ListsPage() {
               <Input
                 id="list-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setFormError(null);
+                }}
                 placeholder="Groceries"
                 maxLength={200}
                 disabled={createMutation.isPending}
                 autoFocus
               />
+              {formError ? (
+                <p role="alert" data-list-create-error className="text-sm text-destructive">
+                  {formError}
+                </p>
+              ) : null}
             </div>
 
             <DialogFooter>

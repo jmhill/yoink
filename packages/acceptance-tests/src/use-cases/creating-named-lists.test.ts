@@ -1,6 +1,6 @@
 import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
 import type { CoreActor, BrowserActor, AnonymousActor } from '@yoink/acceptance-testing';
-import { UnauthorizedError, ValidationError } from '@yoink/acceptance-testing';
+import { UnauthorizedError, ValidationError, ConflictError } from '@yoink/acceptance-testing';
 
 /**
  * Story 2: Create a new named list.
@@ -31,6 +31,27 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
 
     it('rejects a list with no name', async () => {
       await expect(alice.createNamedList('')).rejects.toThrow(ValidationError);
+    });
+
+    it('rejects a second list with the same name ignoring case', async () => {
+      await alice.createNamedList('Groceries');
+
+      await expect(alice.createNamedList('Groceries')).rejects.toThrow(ConflictError);
+      await expect(alice.createNamedList('groceries')).rejects.toThrow(ConflictError);
+
+      const lists = await alice.listNamedLists();
+      expect(lists.filter((list) => list.name.toLowerCase() === 'groceries')).toHaveLength(1);
+    });
+
+    it('still creates a list with a different name', async () => {
+      await alice.createNamedList('Groceries');
+      const weekend = await alice.createNamedList('Weekend');
+
+      expect(weekend.name).toBe('Weekend');
+      const lists = await alice.listNamedLists();
+      expect(lists.map((list) => list.name)).toEqual(
+        expect.arrayContaining(['Groceries', 'Weekend'])
+      );
     });
 
     it('requires authentication to create a list', async () => {

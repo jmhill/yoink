@@ -787,9 +787,17 @@ export class ListsPage {
     return lists;
   }
 
-  async createNamedList(name: string): Promise<{ id: string; name: string } | null> {
+  async createNamedList(
+    name: string
+  ): Promise<
+    | { status: 'created'; id: string; name: string }
+    | { status: 'empty' }
+    | { status: 'duplicate' }
+  > {
     await this.goto();
     await this.waitForListsOrEmpty();
+
+    const existingIds = (await this.getLists()).map((list) => list.id);
 
     await this.page.getByRole('button', { name: 'New list' }).click();
     const nameInput = this.page.getByLabel('Name');
@@ -798,18 +806,30 @@ export class ListsPage {
 
     const createButton = this.page.getByRole('button', { name: 'Create list' });
     if (await createButton.isDisabled()) {
-      return null;
+      return { status: 'empty' };
     }
 
     await createButton.click();
 
-    const card = this.page.locator(`[data-list-name="${name}"]`);
-    await card.waitFor({ state: 'visible' });
-    const id = await card.getAttribute('data-list-id');
-    if (!id) {
-      throw new Error(`Created list "${name}" has no id`);
+    const duplicateError = this.page.locator('[data-list-create-error]');
+    await Promise.race([
+      duplicateError.waitFor({ state: 'visible' }),
+      this.page
+        .locator('[data-list-id]')
+        .nth(existingIds.length)
+        .waitFor({ state: 'attached' }),
+    ]);
+
+    if (await duplicateError.isVisible()) {
+      return { status: 'duplicate' };
     }
-    return { id, name };
+
+    const lists = await this.getLists();
+    const created = lists.find((list) => !existingIds.includes(list.id));
+    if (!created) {
+      throw new Error(`Created list "${name}" did not appear`);
+    }
+    return { status: 'created', id: created.id, name: created.name };
   }
 
   async isEmpty(): Promise<boolean> {

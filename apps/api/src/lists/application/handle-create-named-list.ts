@@ -5,9 +5,10 @@ import type { NamedListCreated } from '../domain/events.js';
 import type { CreateNamedListError } from '../domain/list-errors.js';
 import { decideCreateNamedList } from '../domain/decide-create.js';
 import { applyNamedListEvent } from '../domain/apply-named-list-event.js';
-import type { PersistNamedListEvent } from './ports.js';
+import type { ListNamedLists, PersistNamedListEvent } from './ports.js';
 
 export type HandleCreateNamedListDeps = {
+  list: ListNamedLists;
   persist: PersistNamedListEvent;
   nextId: () => string;
   now: () => string;
@@ -22,20 +23,23 @@ export const handleCreateNamedList = (
   command: CreateNamedListCommand,
   deps: HandleCreateNamedListDeps
 ): ResultAsync<CreateNamedListResult, CreateNamedListError> => {
-  const decision = decideCreateNamedList({
-    command,
-    id: deps.nextId(),
-    now: deps.now(),
+  return deps.list(command.organizationId).andThen((existing) => {
+    const decision = decideCreateNamedList({
+      command,
+      existingNames: existing.map((list) => list.name),
+      id: deps.nextId(),
+      now: deps.now(),
+    });
+
+    if (decision.isErr()) {
+      return errAsync(decision.error);
+    }
+
+    const event = decision.value;
+
+    return deps.persist({ event }).map(() => ({
+      event,
+      view: applyNamedListEvent(null, event),
+    }));
   });
-
-  if (decision.isErr()) {
-    return errAsync(decision.error);
-  }
-
-  const event = decision.value;
-
-  return deps.persist({ event }).map(() => ({
-    event,
-    view: applyNamedListEvent(null, event),
-  }));
 };

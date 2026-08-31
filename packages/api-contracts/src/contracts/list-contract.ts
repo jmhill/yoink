@@ -28,6 +28,7 @@ export const listContract = c.router(
         201: NamedListSchema,
         400: ErrorSchema,
         401: ErrorSchema,
+        409: ErrorSchema,
         500: ErrorSchema,
       },
       summary: 'Create a named list in this organization',

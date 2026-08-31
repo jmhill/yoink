@@ -1,9 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateNamedList } from './handle-create-named-list.js';
-import type { PersistNamedListEvent } from './ports.js';
+import type { ListNamedLists, PersistNamedListEvent } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
 import type { NamedListEvent } from '../domain/events.js';
+import type { NamedList } from '@yoink/api-contracts';
+
+const groceries: NamedList = {
+  id: 'list-existing',
+  organizationId: 'org-123',
+  createdById: 'user-456',
+  name: 'Groceries',
+  createdAt: '2025-01-15T09:00:00.000Z',
+};
 
 const createInMemoryPersist = (): {
   persist: PersistNamedListEvent;
@@ -19,6 +28,8 @@ const createInMemoryPersist = (): {
   };
 };
 
+const emptyList: ListNamedLists = () => okAsync([]);
+
 describe('handleCreateNamedList', () => {
   const command = {
     name: 'Groceries',
@@ -30,6 +41,7 @@ describe('handleCreateNamedList', () => {
     const { persist, events } = createInMemoryPersist();
 
     const result = await handleCreateNamedList(command, {
+      list: emptyList,
       persist,
       nextId: () => 'list-id-1',
       now: () => '2025-01-15T10:00:00.000Z',
@@ -63,6 +75,7 @@ describe('handleCreateNamedList', () => {
     const result = await handleCreateNamedList(
       { ...command, name: '' },
       {
+        list: emptyList,
         persist,
         nextId: () => 'list-id-1',
         now: () => '2025-01-15T10:00:00.000Z',
@@ -76,10 +89,48 @@ describe('handleCreateNamedList', () => {
     expect(events).toHaveLength(0);
   });
 
+  it('does not persist when the name is already used ignoring case', async () => {
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleCreateNamedList(
+      { ...command, name: 'groceries' },
+      {
+        list: () => okAsync([groceries]),
+        persist,
+        nextId: () => 'list-id-2',
+        now: () => '2025-01-15T10:00:00.000Z',
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('DUPLICATE_LIST_NAME');
+    }
+    expect(events).toHaveLength(0);
+  });
+
+  it('returns storage error when listing existing names fails', async () => {
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleCreateNamedList(command, {
+      list: () => errAsync(storageError('Find failed')),
+      persist,
+      nextId: () => 'list-id-1',
+      now: () => '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('STORAGE_ERROR');
+    }
+    expect(events).toHaveLength(0);
+  });
+
   it('returns storage error when persist fails', async () => {
     const persist: PersistNamedListEvent = () => errAsync(storageError('Save failed'));
 
     const result = await handleCreateNamedList(command, {
+      list: emptyList,
       persist,
       nextId: () => 'list-id-1',
       now: () => '2025-01-15T10:00:00.000Z',

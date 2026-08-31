@@ -24,6 +24,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ConflictError,
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
   LastAdminError,
@@ -337,8 +338,11 @@ export const createPlaywrightActor = (
 
     async createNamedList(name: string): Promise<NamedList> {
       const created = await listsPage.createNamedList(name);
-      if (!created) {
+      if (created.status === 'empty') {
         throw new ValidationError('Name is required');
+      }
+      if (created.status === 'duplicate') {
+        throw new ConflictError('A list with this name already exists');
       }
       return {
         id: created.id,

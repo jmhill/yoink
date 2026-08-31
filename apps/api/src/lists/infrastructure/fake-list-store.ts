@@ -2,6 +2,7 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
+import { normalizeListName } from '../domain/list-name.js';
 
 export type FakeListStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -18,6 +19,14 @@ export const createFakeListStore = (
     save: (list: NamedList): ResultAsync<void, StorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(storageError('Save failed'));
+      }
+      const taken = lists.some(
+        (existing) =>
+          existing.organizationId === list.organizationId &&
+          normalizeListName(existing.name) === normalizeListName(list.name)
+      );
+      if (taken) {
+        return errAsync(storageError('Failed to save named list'));
       }
       lists.push(list);
       return okAsync(undefined);

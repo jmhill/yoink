@@ -120,4 +120,53 @@ describe('POST /api/lists', () => {
 
     expect(response.statusCode).toBe(404);
   });
+
+  it('rejects a second list with the same name ignoring case', async () => {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+      payload: { name: 'Groceries' },
+    });
+    expect(first.statusCode).toBe(201);
+
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+      payload: { name: 'groceries' },
+    });
+
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json()).toEqual({
+      message: 'A list with this name already exists',
+    });
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/lists',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+    });
+    expect(listed.json<{ lists: NamedList[] }>().lists).toHaveLength(1);
+  });
+
+  it('still creates a list with a different name', async () => {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+      payload: { name: 'Groceries' },
+    });
+    expect(first.statusCode).toBe(201);
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+      payload: { name: 'Weekend' },
+    });
+
+    expect(second.statusCode).toBe(201);
+    expect(second.json<NamedList>().name).toBe('Weekend');
+  });
 });

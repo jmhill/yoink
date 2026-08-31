@@ -25,7 +25,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Create a new named list** - Complete ✓ (any member including agents; product `POST /api/lists`; Lists page create)
 
 Recent updates:
-- Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
+- Story 2 “Create a new named list”: any org member (human session or agent token) can name a new list. Names are unique in the org after trim, case-insensitive. It then shows in the existing org-wide Lists view, including when empty. Create is a write sandwich (`decideCreateNamedList` → persist → apply). The test-only `POST /api/test/named-lists` fixture is gone. Tasks are untouched.
 - Story 1 “View my named lists”: members (session or agent token) can see this org’s named lists, including when there are none. No rename/delete UI. Tasks are untouched.
 
 - Task edit assignee picker uses the shadcn New York Select from `@yoink/ui-base` (Radix), same kit as other form controls and menus. Assign to an agent, assign to yourself, or clear — behavior unchanged.
@@ -555,7 +555,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 **Product rules (locked):**
 - Any org member may create a list, agents included. Humans (session) and agent tokens (Bearer) both create. Do not restrict to owner.
 - After create, the new list appears in the existing Lists view (org-wide, including empty).
-- Name is required, 1–200 characters (matches `NamedListSchema`).
+- Name is required, 1–200 characters (matches `NamedListSchema`). Names are unique in the organization after trim, case-insensitive (`Groceries` and `groceries` are the same name). A duplicate is rejected; an empty name after trim is still rejected.
 - This is not tags. A list is an optional single bucket on a task — this story does not put tasks on lists.
 - Who may create is locked: any member including agents.
 
@@ -566,11 +566,12 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 **Implementation:**
 - `POST /api/lists` with `CreateNamedListSchema` (`name` 1–200, trimmed)
-- `lists/` write sandwich: HTTP maps body+auth → `CreateNamedListCommand`; `decideCreateNamedList` emits `NamedListCreated` or `INVALID_LIST_NAME`; handler persists; `applyNamedListEvent` projects
+- `lists/` write sandwich: HTTP maps body+auth → `CreateNamedListCommand`; handler loads current org names; `decideCreateNamedList` emits `NamedListCreated`, `INVALID_LIST_NAME`, or `DUPLICATE_LIST_NAME`; persist; `applyNamedListEvent` projects
+- Unique index `idx_lists_org_name_ci` on `(organization_id, lower(name))` (expand; existing org+name index stays)
 - Queries still list; no fake events on the read path
 - Product write path replaces `POST /api/test/named-lists`. `ENABLE_TEST_FIXTURES` removed (nothing else needed the seed)
 - Lists page: shadcn New York “New list” dialog (`@yoink/ui-base`)
-- HTTP + Playwright acceptance: human creates, agent token creates, empty name rejected, new list shows in the view, unauthenticated cannot create
+- HTTP + Playwright acceptance: human creates, agent token creates, empty name rejected, duplicate name (any casing) rejected, different names still work, new list shows in the view, unauthenticated cannot create
 
 **Deliverable:** A member (including an agent) can create a named list in the PWA and via API.
 

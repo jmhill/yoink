@@ -17,10 +17,11 @@ describe('listContract', () => {
     expect(listContract.list.responses).toHaveProperty('401');
   });
 
-  it('has 201, 400, and 401 responses on create', () => {
+  it('has 201, 400, 401, and 409 responses on create', () => {
     expect(listContract.create.responses).toHaveProperty('201');
     expect(listContract.create.responses).toHaveProperty('400');
     expect(listContract.create.responses).toHaveProperty('401');
+    expect(listContract.create.responses).toHaveProperty('409');
   });
 
   it('does not expose update or delete', () => {

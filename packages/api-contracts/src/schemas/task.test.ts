@@ -133,7 +133,7 @@ describe('CreateTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects null listId — take-off is a later story', () => {
+  it('rejects null listId on create — omit listId for unlisted', () => {
     const result = CreateTaskSchema.safeParse({
       title: 'Buy groceries',
       listId: null,
@@ -203,11 +203,11 @@ describe('UpdateTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects null listId — take-off is a later story', () => {
+  it('allows null listId to take the task off a list', () => {
     const result = UpdateTaskSchema.safeParse({
       listId: null,
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('rejects empty title', () => {

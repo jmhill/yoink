@@ -18,7 +18,7 @@ export type TaskUpdated = {
   title?: string;
   dueDate?: string | null;
   assigneeId?: string | null;
-  listId?: string;
+  listId?: string | null; // null clears to unlisted; omit leaves unchanged
 };
 
 export type Noop = {

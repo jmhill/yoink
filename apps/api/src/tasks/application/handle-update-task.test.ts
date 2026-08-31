@@ -174,6 +174,78 @@ describe('handleUpdateTask', () => {
     expect(events).toHaveLength(0);
   });
 
+  it('persists a TaskUpdated fact that takes the task off a list', async () => {
+    const onGroceries: Task = { ...current, listId: groceries.id };
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleUpdateTask(
+      {
+        id: onGroceries.id,
+        organizationId: onGroceries.organizationId,
+        listId: null,
+      },
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), persist }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.event).not.toBeNull();
+      expect(result.value.event?.type).toBe('TaskUpdated');
+      expect(result.value.event?.listId).toBeNull();
+      expect(result.value.view.listId).toBeUndefined();
+      expect(result.value.view.title).toBe('Buy milk');
+    }
+    expect(events).toHaveLength(1);
+  });
+
+  it('does not persist when the task is already unlisted', async () => {
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleUpdateTask(
+      {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      { load: loadCurrent, loadList: () => okAsync(null), persist }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.event).toBeNull();
+      expect(result.value.view.listId).toBeUndefined();
+    }
+    expect(events).toHaveLength(0);
+  });
+
+  it('does not persist when taking a completed task off a list', async () => {
+    const completedOnGroceries: Task = {
+      ...current,
+      listId: groceries.id,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+    const { persist, events } = createInMemoryPersist();
+
+    const result = await handleUpdateTask(
+      {
+        id: completedOnGroceries.id,
+        organizationId: completedOnGroceries.organizationId,
+        listId: null,
+      },
+      {
+        load: () => okAsync(completedOnGroceries),
+        loadList: () => okAsync(groceries),
+        persist,
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
+    }
+    expect(events).toHaveLength(0);
+  });
+
   it('returns storage error when persist fails', async () => {
     const persist: PersistTaskEvent = () => errAsync(storageError('Save failed'));
 

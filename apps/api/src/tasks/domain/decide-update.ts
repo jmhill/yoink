@@ -14,7 +14,7 @@ import {
 export type DecideUpdateTaskInput = {
   current: Task;
   command: UpdateTaskCommand;
-  /** Loaded list when command.listId is a change; null if missing or not loaded. */
+  /** Loaded list when command.listId is a uuid change; null if missing, not loaded, or clearing. */
   list: { id: string; organizationId: string } | null;
   /**
    * Whether command.assigneeId (when a principal id) is in the org.
@@ -39,23 +39,27 @@ export const decideUpdateTask = ({
   list,
   assigneeInOrganization,
 }: DecideUpdateTaskInput): Result<TaskUpdated | Noop, DecideUpdateTaskError> => {
-  let listId: string | undefined;
+  let listId: string | null | undefined;
 
   if (command.listId !== undefined) {
-    if (command.listId === current.listId) {
+    const currentListId = current.listId ?? null;
+    if (command.listId === currentListId) {
       listId = undefined;
     } else {
       if (current.completedAt) {
         return err(taskNotOpenError(command.id));
       }
-      if (
+      if (command.listId === null) {
+        listId = null;
+      } else if (
         !list ||
         list.id !== command.listId ||
         list.organizationId !== command.organizationId
       ) {
         return err(listNotInOrganizationError(command.listId, command.organizationId));
+      } else {
+        listId = command.listId;
       }
-      listId = command.listId;
     }
   }
 

@@ -500,7 +500,7 @@ function TasksPage() {
                     title: body.title ?? t.title,
                     dueDate: body.dueDate === null ? undefined : body.dueDate ?? t.dueDate,
                     assigneeId: body.assigneeId === null ? undefined : body.assigneeId ?? t.assigneeId,
-                    listId: body.listId ?? t.listId,
+                    listId: body.listId === null ? undefined : body.listId ?? t.listId,
                   }
                 : t
             ),
@@ -583,7 +583,7 @@ function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string }) => {
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => {
     updateMutation.mutate({
       params: { id: taskId },
       body: updates,

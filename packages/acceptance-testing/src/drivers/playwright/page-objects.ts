@@ -727,8 +727,16 @@ export class TasksPage {
   }
 
   async selectList(listId: string): Promise<void> {
+    await this.chooseListOption(listId);
+  }
+
+  async clearList(): Promise<void> {
+    await this.chooseListOption('unlisted');
+  }
+
+  private async chooseListOption(value: string): Promise<void> {
     await this.page.locator('#edit-task-list').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${listId}"]`);
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
     await option.waitFor({ state: 'visible' });
     await option.click();
   }

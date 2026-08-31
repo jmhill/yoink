@@ -72,6 +72,20 @@ describe('applyTaskEvent', () => {
     expect(view.listId).toBe('list-weekend');
   });
 
+  it('clears the list when the event takes the task off', () => {
+    const onGroceries: Task = { ...current, listId: 'list-groceries' };
+
+    const view = applyTaskEvent(onGroceries, {
+      type: 'TaskUpdated',
+      id: current.id,
+      organizationId: current.organizationId,
+      listId: null,
+    });
+
+    expect(view.listId).toBeUndefined();
+    expect(view.title).toBe('Buy milk');
+  });
+
   it('keeps the current list when the event does not mention listId', () => {
     const onGroceries: Task = { ...current, listId: 'list-groceries' };
 

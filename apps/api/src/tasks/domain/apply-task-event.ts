@@ -55,7 +55,11 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
       }
 
       if (event.listId !== undefined) {
-        updated.listId = event.listId;
+        if (event.listId === null) {
+          delete updated.listId;
+        } else {
+          updated.listId = event.listId;
+        }
       }
 
       return updated;

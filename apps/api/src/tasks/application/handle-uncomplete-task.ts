@@ -1,4 +1,4 @@
-import { okAsync, type ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { UncompleteTaskCommand } from '../domain/task-commands.js';
 import type { UncompleteTaskError } from '../domain/task-errors.js';
 import type { TaskUncompleted } from '../domain/events.js';
@@ -32,6 +32,10 @@ export const handleUncompleteTask = (
           command,
           openSiblings,
         });
+
+        if (decision.isErr()) {
+          return errAsync(decision.error);
+        }
 
         if (decision.value.type === 'Noop') {
           return okAsync({ event: null, view: current });

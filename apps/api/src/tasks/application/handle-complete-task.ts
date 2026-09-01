@@ -1,4 +1,4 @@
-import { okAsync, type ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { CompleteTaskCommand } from '../domain/task-commands.js';
 import type { CompleteTaskError } from '../domain/task-errors.js';
 import type { TaskCompleted } from '../domain/events.js';
@@ -28,6 +28,10 @@ export const handleCompleteTask = (
       command,
       now: deps.now(),
     });
+
+    if (decision.isErr()) {
+      return errAsync(decision.error);
+    }
 
     if (decision.value.type === 'Noop') {
       return okAsync({ event: null, view: current });

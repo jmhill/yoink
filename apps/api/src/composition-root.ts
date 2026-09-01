@@ -1,4 +1,4 @@
-import { okAsync } from 'neverthrow';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Database } from './database/types.js';
 import { createApp, type AdminConfig, type SignupConfig } from './app.js';
@@ -283,12 +283,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     loadOpenTasksOnList: (organizationId, listId) =>
       taskStore.findOpenInPile({ organizationId, listId }),
     loadTasksByIds: (ids) =>
-      ids.reduce(
-        (acc, id) =>
-          acc.andThen((found) =>
-            taskStore.findById(id).map((task) => (task ? [...found, task] : found))
-          ),
-        okAsync([] as Task[])
+      ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
+        tasks.filter((task): task is Task => task !== null)
       ),
     persistOpenTaskOrders: (updates) => taskStore.setOpenOrders(updates),
     nextId: () => idGenerator.generate(),

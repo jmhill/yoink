@@ -525,6 +525,47 @@ export const createPlaywrightActor = (
         .toEqual(titles);
     },
 
+    async openToday(): Promise<void> {
+      await tasksPage.goto('today');
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openUpcoming(): Promise<void> {
+      await tasksPage.goto('upcoming');
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeePileGroups(names: string[]): Promise<void> {
+      await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
+    },
+
+    async shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void> {
+      await expect
+        .poll(async () => tasksPage.getTitlesInPileGroup(groupName))
+        .toEqual(titles);
+    },
+
+    async shouldSeeOverdueAndDueTodayInPileGroup(
+      groupName: string,
+      overdueTitles: string[],
+      dueTodayTitles: string[]
+    ): Promise<void> {
+      await expect
+        .poll(async () => tasksPage.getTitlesInTodaySection(groupName, 'overdue'))
+        .toEqual(overdueTitles);
+      await expect
+        .poll(async () => tasksPage.getTitlesInTodaySection(groupName, 'due-today'))
+        .toEqual(dueTodayTitles);
+    },
+
+    async shouldNotSeeTodayDueSplit(): Promise<void> {
+      await expect(tasksPage.todayDueSections()).toHaveCount(0);
+    },
+
+    async shouldSeeAllPileDropdown(): Promise<void> {
+      await expect(page.locator('#all-pile')).toBeVisible();
+    },
+
     async shouldNotSeeReorderControls(): Promise<void> {
       await expect(tasksPage.reorderButtons()).toHaveCount(0);
     },

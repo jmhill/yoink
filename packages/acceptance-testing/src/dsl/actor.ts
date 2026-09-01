@@ -333,6 +333,45 @@ export type BrowserActorOperations = {
   shouldSeeTaskFilterWithoutAllPile(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
 
   /**
+   * Open the Tasks Today view (grouped by list, overdue vs due today inside each group).
+   */
+  openToday(): Promise<void>;
+
+  /**
+   * Open the Tasks Upcoming view (grouped by list, no overdue split).
+   */
+  openUpcoming(): Promise<void>;
+
+  /**
+   * Assert the current Tasks view shows these pile group headings, in order.
+   */
+  shouldSeePileGroups(names: string[]): Promise<void>;
+
+  /**
+   * Assert tasks in a pile group appear in this title order.
+   */
+  shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void>;
+
+  /**
+   * Assert a Today pile group still splits overdue vs due today (overdue first).
+   */
+  shouldSeeOverdueAndDueTodayInPileGroup(
+    groupName: string,
+    overdueTitles: string[],
+    dueTodayTitles: string[]
+  ): Promise<void>;
+
+  /**
+   * Assert the current view has no overdue / due-today split (Upcoming).
+   */
+  shouldNotSeeTodayDueSplit(): Promise<void>;
+
+  /**
+   * Assert All still has its two-mode pile dropdown.
+   */
+  shouldSeeAllPileDropdown(): Promise<void>;
+
+  /**
    * Assert the Lists nav still opens the Lists view.
    */
   shouldSeeListsNav(): Promise<void>;

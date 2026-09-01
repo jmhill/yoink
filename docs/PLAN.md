@@ -32,8 +32,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **All has two modes** - Complete ✓ (All overview groups by list + unlisted, no reorder; one-pile named/unlisted reuse existing pile APIs with kit up/down)
 **Create a named list from All** - Complete ✓ (New list on the All pile dropdown; same unique-in-org create; lands on that empty one-pile view)
 **Delete a named list from All** - Complete ✓ (kit delete on All’s named-list one-pile only; same refuse-if-open-tasks; lands on overview)
+**Today and Upcoming group by list** - Complete ✓ (Today/Upcoming grouped overviews; list groups outer; Today splits overdue vs due today inside each group; no reorder)
 
 Recent updates:
+- Story 4 of 6 “Today and Upcoming group by list”: Today and Upcoming are grouped overviews. Open tasks are grouped by named list (plus unlisted). You cannot change pile order there. List groups are outer; Today still splits overdue vs due today inside each list group. Upcoming has no overdue split. Pin still sits on the existing filter sort (pinned_at then created_at), not openOrder. Empty groups wait: only piles with tasks in that view. All two-modes, create/delete from All, Mine, Done, and the Lists nav stay. HTTP still only maps; no new domain field. Reuses `groupAllTasksByPile`.
 - Story 3 of 6 “Delete a named list from All”: on Tasks All, when a member is looking at one named list, they can delete that list (kit dialog, same refuse-if-open-tasks already shipped). They cannot delete from the grouped overview or from Unlisted. After a successful delete, All leaves the named-list one-pile view and lands on overview — not Unlisted. The name is gone from the dropdown. Open tasks on that list: delete is refused, list stays, still on that pile. Today, Upcoming, Mine, Done, and the Lists nav stay. Lists page delete stays until story 6. Create from All stays as shipped. HTTP still only maps; no new domain rules.
 - Story 2 of 6 “Create a named list from All”: on Tasks All, a member can create a named list from the pile dropdown (kit New list dialog, same unique-in-org rules as Lists page create). After create, All lands on that list’s one-pile view — empty is the confirmation it exists, because overview hides empty groups. Duplicate and empty names are refused the same as Lists create. No delete on All. Today, Upcoming, Mine, Done, and the Lists nav stay. HTTP still only maps; no new domain rules.
 - Story “All has two modes”: on Tasks All, a member can switch between every pile at once (grouped by named list plus unlisted, no reorder, still pin-then-created within each group) and one pile (a named list, or unlisted) where kit up/down persists through the existing `GET`/`PUT` list and unlisted task APIs. Today, Upcoming, Mine, Done, and the Lists nav are unchanged. No create/delete list UI. No new domain field.
@@ -847,6 +849,32 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Today and Upcoming group by list - Complete ✓
+
+**Goal**: On Today and Upcoming, open tasks are grouped by named list (plus unlisted). You cannot change pile order there.
+
+**Product rules (locked):**
+- Today and Upcoming are the grouped overviews and cannot reorder. Group by list, including unlisted. No up/down.
+- List groups are outer. Today still splits overdue vs due today **inside** each list group. Upcoming has no overdue split — just list groups.
+- Pin still on top of the existing filter sort (`pinned_at` then `created_at`). Do not sort these views by `openOrder`.
+- Empty groups can wait (same as All overview): only show piles that have tasks in that view.
+- HTTP still only maps. No new domain field.
+
+**Out of scope:**
+- All two-modes (stays as shipped)
+- Create/delete from All
+- Mine picker (story 5)
+- Kill Lists nav (story 6)
+
+**Implementation:**
+- Reuse `groupAllTasksByPile` on the today/upcoming result sets
+- Inside each Today group, run the existing overdue/due-today split (`TodayTaskList`)
+- Playwright: Today shows at least two pile groups when tasks exist on a named list and unlisted; overdue vs due today still distinct inside a group; no up/down. Upcoming shows list groups, no up/down. All two-modes still has its dropdown.
+
+**Deliverable:** A member sees Today and Upcoming grouped by list, without reorder, and without changing All / Mine / Done or the Lists nav.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1229,6 +1257,8 @@ When resuming work on this project:
 **Create a named list from All is in.** On All, New list lives on the pile dropdown (kit dialog, same unique-in-org create). After create, All lands on that list’s one-pile view so an empty list is visible. Lists nav stays.
 
 **Delete a named list from All is in.** On All, delete is only on a named-list one-pile (kit dialog, same refuse-if-open-tasks). Overview and Unlisted have no delete-list control. After success, All lands on overview. Lists page delete and Lists nav stay.
+
+**Today and Upcoming group by list is in.** Today and Upcoming group open tasks by named list plus unlisted (reuse `groupAllTasksByPile`). No up/down. Today still splits overdue vs due today inside each list group. Upcoming has no overdue split. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp).
 

@@ -1,4 +1,4 @@
-import type { Page, CDPSession } from '@playwright/test';
+import type { Page, CDPSession, Locator } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
 
 /**
@@ -936,8 +936,26 @@ export class TasksPage {
   }
 
   async getTitlesInPileGroup(groupName: string): Promise<string[]> {
-    const group = this.page.locator(`[data-pile-name="${groupName}"]`);
-    const cards = group.locator('[data-task-id]');
+    return this.titlesIn(this.page.locator(`[data-pile-name="${groupName}"]`).locator('[data-task-id]'));
+  }
+
+  async getTitlesInTodaySection(
+    groupName: string,
+    section: 'overdue' | 'due-today'
+  ): Promise<string[]> {
+    return this.titlesIn(
+      this.page
+        .locator(`[data-pile-name="${groupName}"]`)
+        .locator(`[data-today-section="${section}"]`)
+        .locator('[data-task-id]')
+    );
+  }
+
+  todayDueSections() {
+    return this.page.locator('[data-today-section]');
+  }
+
+  private async titlesIn(cards: Locator): Promise<string[]> {
     const count = await cards.count();
     const titles: string[] = [];
     for (let i = 0; i < count; i++) {

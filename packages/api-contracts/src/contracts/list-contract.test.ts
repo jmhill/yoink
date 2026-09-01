@@ -39,4 +39,12 @@ describe('listContract', () => {
   it('does not expose update', () => {
     expect(listContract).not.toHaveProperty('update');
   });
+
+  it('defines list-open-tasks and reorder endpoints', () => {
+    expect(listContract.listOpenTasks.method).toBe('GET');
+    expect(listContract.listOpenTasks.path).toBe('/api/lists/:id/tasks');
+    expect(listContract.reorderOpenTasks.method).toBe('PUT');
+    expect(listContract.reorderOpenTasks.path).toBe('/api/lists/:id/tasks/order');
+    expect(listContract.reorderOpenTasks.responses).toHaveProperty('409');
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CreateNamedListSchema, NamedListSchema } from './list.js';
+import { CreateNamedListSchema, NamedListSchema, ReorderOpenTasksSchema } from './list.js';
 
 describe('NamedListSchema', () => {
   const validList = {
@@ -77,6 +77,22 @@ describe('CreateNamedListSchema', () => {
 
   it('rejects a name over 200 characters', () => {
     const result = CreateNamedListSchema.safeParse({ name: 'a'.repeat(201) });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('ReorderOpenTasksSchema', () => {
+  it('accepts a list of task ids', () => {
+    const result = ReorderOpenTasksSchema.safeParse({
+      taskIds: ['550e8400-e29b-41d4-a716-446655440000'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a non-uuid task id', () => {
+    const result = ReorderOpenTasksSchema.safeParse({
+      taskIds: ['not-a-uuid'],
+    });
     expect(result.success).toBe(false);
   });
 });

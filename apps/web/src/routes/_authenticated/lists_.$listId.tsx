@@ -51,8 +51,7 @@ function ListDetailPage() {
   const lists = listsData?.status === 200 ? listsData.body.lists : [];
   const namedList = lists.find((item) => item.id === listId);
   const tasks = tasksData?.status === 200 ? tasksData.body.tasks : [];
-  const listMissing =
-    tasksData?.status === 404 || (listsData?.status === 200 && !namedList && !listsPending);
+  const listMissing = listsData?.status === 200 && !namedList && !listsPending;
 
   const moveTask = (taskId: string, direction: 'up' | 'down') => {
     const index = tasks.findIndex((task) => task.id === taskId);

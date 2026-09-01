@@ -379,7 +379,7 @@ export const createPlaywrightActor = (
       await listsPage.goto();
       await listsPage.waitForListsOrEmpty();
       await expect(page.locator(`[data-list-name="${name}"]`)).toHaveCount(0);
-    }
+    },
 
     async listOpenTasksOnList(listId: string): Promise<Task[]> {
       await listsPage.openNamedListById(listId);
@@ -391,7 +391,7 @@ export const createPlaywrightActor = (
         createdById: credentials.userId,
         createdAt: new Date().toISOString(),
       }));
-    }
+    },
 
     async reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]> {
       await listsPage.openNamedListById(listId);
@@ -421,21 +421,21 @@ export const createPlaywrightActor = (
         createdById: credentials.userId,
         createdAt: new Date().toISOString(),
       }));
-    }
+    },
 
     async openNamedList(name: string): Promise<void> {
       await listsPage.openNamedList(name);
-    }
+    },
 
     async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
       await listsPage.waitForOpenTasksOrEmpty();
       await expect.poll(async () => listsPage.getOpenTaskTitles()).toEqual(titles);
-    }
+    },
 
     async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
       await listsPage.moveOpenTask(title, direction);
       await listsPage.waitForOpenTasksOrEmpty();
-    }
+    },
 
     async refreshOpenList(): Promise<void> {
       await page.reload();

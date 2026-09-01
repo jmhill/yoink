@@ -21,6 +21,8 @@ export type DecideUpdateTaskInput = {
    * Null when assignee is omitted or being cleared.
    */
   assigneeInOrganization: boolean | null;
+  /** Next open-order index in the destination pile when listId changes. */
+  nextOpenOrder: number;
 };
 
 export type DecideUpdateTaskError =
@@ -38,8 +40,10 @@ export const decideUpdateTask = ({
   command,
   list,
   assigneeInOrganization,
+  nextOpenOrder,
 }: DecideUpdateTaskInput): Result<TaskUpdated | Noop, DecideUpdateTaskError> => {
   let listId: string | null | undefined;
+  let openOrder: number | undefined;
 
   if (command.listId !== undefined) {
     const currentListId = current.listId ?? null;
@@ -51,6 +55,7 @@ export const decideUpdateTask = ({
       }
       if (command.listId === null) {
         listId = null;
+        openOrder = nextOpenOrder;
       } else if (
         !list ||
         list.id !== command.listId ||
@@ -59,6 +64,7 @@ export const decideUpdateTask = ({
         return err(listNotInOrganizationError(command.listId, command.organizationId));
       } else {
         listId = command.listId;
+        openOrder = nextOpenOrder;
       }
     }
   }
@@ -83,5 +89,6 @@ export const decideUpdateTask = ({
     dueDate: command.dueDate,
     assigneeId: command.assigneeId,
     listId,
+    openOrder,
   });
 };

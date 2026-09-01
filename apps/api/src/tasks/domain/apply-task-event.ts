@@ -9,6 +9,7 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
       createdById: event.createdById,
       title: event.title,
       createdAt: event.createdAt,
+      openOrder: event.openOrder,
     };
 
     if (event.dueDate !== undefined) {
@@ -62,6 +63,24 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
         }
       }
 
+      if (event.openOrder !== undefined) {
+        updated.openOrder = event.openOrder;
+      }
+
+      return updated;
+    }
+    case 'TaskCompleted': {
+      return {
+        ...current,
+        completedAt: event.completedAt,
+      };
+    }
+    case 'TaskUncompleted': {
+      const updated: Task = {
+        ...current,
+        openOrder: event.openOrder,
+      };
+      delete updated.completedAt;
       return updated;
     }
   }

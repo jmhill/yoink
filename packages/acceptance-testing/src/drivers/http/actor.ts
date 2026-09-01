@@ -261,6 +261,42 @@ export const createHttpActor = (
       }
     },
 
+    async listOpenTasksOnList(listId: string): Promise<Task[]> {
+      const response = await client.get(`/api/lists/${listId}/tasks`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('List', listId);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list open tasks on list: ${response.body}`);
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
+    async reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]> {
+      const response = await client.put(
+        `/api/lists/${listId}/tasks/order`,
+        { taskIds },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('List', listId);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'Only open tasks can be reordered');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to reorder open tasks: ${response.body}`);
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
     async goToLists(): Promise<void> {
       throw new UnsupportedOperationError('goToLists', 'http');
     },
@@ -275,6 +311,22 @@ export const createHttpActor = (
 
     async shouldNotSeeNamedList(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedList', 'http');
+    },
+
+    async openNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openNamedList', 'http');
+    },
+
+    async shouldSeeOpenTasksInOrder(_titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOpenTasksInOrder', 'http');
+    },
+
+    async moveOpenTask(_title: string, _direction: 'up' | 'down'): Promise<void> {
+      throw new UnsupportedOperationError('moveOpenTask', 'http');
+    },
+
+    async refreshOpenList(): Promise<void> {
+      throw new UnsupportedOperationError('refreshOpenList', 'http');
     },
 
     // Task operations
@@ -682,6 +734,24 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
+  },
+
+  async listOpenTasksOnList(listId: string): Promise<Task[]> {
+    const response = await client.get(`/api/lists/${listId}/tasks`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list open tasks on list: ${response.body}`);
+  },
+
+  async reorderOpenTasksOnList(listId: string, _taskIds: string[]): Promise<Task[]> {
+    const response = await client.put(`/api/lists/${listId}/tasks/order`, {
+      taskIds: _taskIds,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to reorder open tasks: ${response.body}`);
   },
 
   async createTask(input: CreateTaskInput): Promise<Task> {

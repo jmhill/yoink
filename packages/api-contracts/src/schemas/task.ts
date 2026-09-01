@@ -12,6 +12,9 @@ export const TaskSchema = z.object({
   createdAt: z.string().datetime(),
   assigneeId: z.string().uuid().optional(),
   listId: z.string().uuid().optional(),
+  // Position among open tasks in the current pile (that list, or unlisted).
+  // Completed tasks keep this remembered index; they are not in the open sequence.
+  openOrder: z.number().int().optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;

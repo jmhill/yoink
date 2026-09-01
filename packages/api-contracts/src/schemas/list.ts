@@ -15,3 +15,9 @@ export const CreateNamedListSchema = z.object({
 });
 
 export type CreateNamedList = z.infer<typeof CreateNamedListSchema>;
+
+export const ReorderOpenTasksSchema = z.object({
+  taskIds: z.array(z.string().uuid()),
+});
+
+export type ReorderOpenTasks = z.infer<typeof ReorderOpenTasksSchema>;

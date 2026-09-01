@@ -19,6 +19,7 @@ describe('applyTaskEvent', () => {
       createdById: 'user-456',
       title: 'Buy milk',
       listId: 'list-groceries',
+      openOrder: 0,
       createdAt: '2025-01-15T10:00:00.000Z',
     });
 
@@ -28,6 +29,7 @@ describe('applyTaskEvent', () => {
       createdById: 'user-456',
       title: 'Buy milk',
       listId: 'list-groceries',
+      openOrder: 0,
       createdAt: '2025-01-15T10:00:00.000Z',
     });
     expect(view.completedAt).toBeUndefined();
@@ -40,6 +42,7 @@ describe('applyTaskEvent', () => {
       organizationId: 'org-123',
       createdById: 'user-456',
       title: 'Loose end',
+      openOrder: 0,
       createdAt: '2025-01-15T10:00:00.000Z',
     });
 
@@ -53,9 +56,11 @@ describe('applyTaskEvent', () => {
       id: current.id,
       organizationId: current.organizationId,
       listId: 'list-groceries',
+      openOrder: 2,
     });
 
     expect(view.listId).toBe('list-groceries');
+    expect(view.openOrder).toBe(2);
     expect(view.title).toBe('Buy milk');
   });
 
@@ -67,9 +72,11 @@ describe('applyTaskEvent', () => {
       id: current.id,
       organizationId: current.organizationId,
       listId: 'list-weekend',
+      openOrder: 0,
     });
 
     expect(view.listId).toBe('list-weekend');
+    expect(view.openOrder).toBe(0);
   });
 
   it('clears the list when the event takes the task off', () => {
@@ -80,9 +87,11 @@ describe('applyTaskEvent', () => {
       id: current.id,
       organizationId: current.organizationId,
       listId: null,
+      openOrder: 3,
     });
 
     expect(view.listId).toBeUndefined();
+    expect(view.openOrder).toBe(3);
     expect(view.title).toBe('Buy milk');
   });
 
@@ -98,5 +107,39 @@ describe('applyTaskEvent', () => {
 
     expect(view.listId).toBe('list-groceries');
     expect(view.title).toBe('Buy oat milk');
+  });
+
+  it('marks complete without clearing listId or openOrder', () => {
+    const onList: Task = { ...current, listId: 'list-groceries', openOrder: 1 };
+
+    const view = applyTaskEvent(onList, {
+      type: 'TaskCompleted',
+      id: current.id,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    });
+
+    expect(view.completedAt).toBe('2025-01-16T10:00:00.000Z');
+    expect(view.listId).toBe('list-groceries');
+    expect(view.openOrder).toBe(1);
+  });
+
+  it('restores an uncompleted task at the clamped open order', () => {
+    const done: Task = {
+      ...current,
+      listId: 'list-groceries',
+      openOrder: 4,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+
+    const view = applyTaskEvent(done, {
+      type: 'TaskUncompleted',
+      id: current.id,
+      openOrder: 1,
+      siblingOrders: [{ id: 'task-a', openOrder: 0 }],
+    });
+
+    expect(view.completedAt).toBeUndefined();
+    expect(view.listId).toBe('list-groceries');
+    expect(view.openOrder).toBe(1);
   });
 });

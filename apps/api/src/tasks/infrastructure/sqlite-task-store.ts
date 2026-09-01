@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock } from '@yoink/infrastructure';
 import type {
@@ -21,6 +21,7 @@ type TaskRow = {
   created_at: string;
   assignee_id: string | null;
   list_id: string | null;
+  open_order: number | null;
 };
 
 const rowToTask = (row: TaskRow): Task => ({
@@ -35,6 +36,9 @@ const rowToTask = (row: TaskRow): Task => ({
   createdAt: row.created_at,
   ...(row.assignee_id ? { assigneeId: row.assignee_id } : {}),
   ...(row.list_id ? { listId: row.list_id } : {}),
+  ...(row.open_order !== null && row.open_order !== undefined
+    ? { openOrder: Number(row.open_order) }
+    : {}),
 });
 
 /**
@@ -66,8 +70,9 @@ export const createSqliteTaskStore = async (
           sql: `
             INSERT INTO tasks (
               id, organization_id, created_by_id, title, capture_id,
-              due_date, completed_at, pinned_at, created_at, assignee_id, list_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              due_date, completed_at, pinned_at, created_at, assignee_id, list_id,
+              open_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
             task.id,
@@ -81,6 +86,7 @@ export const createSqliteTaskStore = async (
             task.createdAt,
             task.assigneeId ?? null,
             task.listId ?? null,
+            task.openOrder ?? null,
           ],
         }),
         (error) => storageError('Failed to save task', error)
@@ -110,7 +116,8 @@ export const createSqliteTaskStore = async (
               completed_at = ?,
               pinned_at = ?,
               assignee_id = ?,
-              list_id = ?
+              list_id = ?,
+              open_order = ?
             WHERE id = ?
           `,
           args: [
@@ -120,6 +127,7 @@ export const createSqliteTaskStore = async (
             task.pinnedAt ?? null,
             task.assigneeId ?? null,
             task.listId ?? null,
+            task.openOrder ?? null,
             task.id,
           ],
         }),
@@ -228,6 +236,77 @@ export const createSqliteTaskStore = async (
         }),
         (error) => storageError('Failed to count open tasks on list', error)
       ).map((result) => Number(result.rows[0]?.count ?? 0));
+    },
+
+    findOpenInPile: (options: {
+      organizationId: string;
+      listId: string | null;
+    }): ResultAsync<Task[], StorageError> => {
+      const listClause = options.listId === null ? 'list_id IS NULL' : 'list_id = ?';
+      const args =
+        options.listId === null
+          ? [options.organizationId]
+          : [options.organizationId, options.listId];
+
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT * FROM tasks
+            WHERE organization_id = ?
+              AND ${listClause}
+              AND completed_at IS NULL
+              AND deleted_at IS NULL
+            ORDER BY open_order ASC NULLS LAST, created_at ASC, id ASC
+          `,
+          args,
+        }),
+        (error) => storageError('Failed to list open tasks in pile', error)
+      ).map((result) => (result.rows as TaskRow[]).map(rowToTask));
+    },
+
+    nextOpenOrderInPile: (options: {
+      organizationId: string;
+      listId: string | null;
+    }): ResultAsync<number, StorageError> => {
+      const listClause = options.listId === null ? 'list_id IS NULL' : 'list_id = ?';
+      const args =
+        options.listId === null
+          ? [options.organizationId]
+          : [options.organizationId, options.listId];
+
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT COALESCE(MAX(open_order), -1) + 1 AS next_order
+            FROM tasks
+            WHERE organization_id = ?
+              AND ${listClause}
+              AND completed_at IS NULL
+              AND deleted_at IS NULL
+          `,
+          args,
+        }),
+        (error) => storageError('Failed to load next open order', error)
+      ).map((result) => Number(result.rows[0]?.next_order ?? 0));
+    },
+
+    setOpenOrders: (
+      updates: { id: string; openOrder: number }[]
+    ): ResultAsync<void, StorageError> => {
+      if (updates.length === 0) {
+        return okAsync(undefined);
+      }
+
+      return ResultAsync.fromPromise(
+        db.batch(
+          updates.map((update) => ({
+            sql: `UPDATE tasks SET open_order = ? WHERE id = ?`,
+            args: [update.openOrder, update.id],
+          })),
+          'write'
+        ),
+        (error) => storageError('Failed to set open order', error)
+      ).map(() => undefined);
     },
 
     clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {

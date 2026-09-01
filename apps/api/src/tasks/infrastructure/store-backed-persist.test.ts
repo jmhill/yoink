@@ -25,6 +25,7 @@ describe('createStoreBackedPersist', () => {
         createdById: 'user-456',
         title: 'Buy milk',
         listId: 'list-groceries',
+        openOrder: 0,
         createdAt: '2025-01-15T10:00:00.000Z',
       },
     });
@@ -35,6 +36,7 @@ describe('createStoreBackedPersist', () => {
     expect(loaded.isOk()).toBe(true);
     if (loaded.isOk()) {
       expect(loaded.value?.listId).toBe('list-groceries');
+      expect(loaded.value?.openOrder).toBe(0);
       expect(loaded.value?.title).toBe('Buy milk');
       expect(loaded.value?.completedAt).toBeUndefined();
     }

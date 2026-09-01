@@ -4,12 +4,13 @@ import type { CreateTaskError } from '../domain/task-errors.js';
 import type { TaskCreated } from '../domain/events.js';
 import { decideCreateTask } from '../domain/decide-create.js';
 import { applyTaskEvent } from '../domain/apply-task-event.js';
-import type { LoadNamedList, PersistTaskEvent } from './ports.js';
+import type { LoadNamedList, LoadNextOpenOrder, PersistTaskEvent } from './ports.js';
 import type { WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 
 export type HandleCreateTaskDeps = {
   loadList: LoadNamedList;
+  loadNextOpenOrder: LoadNextOpenOrder;
   persist: PersistTaskEvent;
   principalLookup?: OrgPrincipalLookup;
   nextId: () => string;
@@ -25,6 +26,8 @@ export const handleCreateTask = (
     : okAsync(null);
 
   return loadedList.andThen((list) => {
+    const destListId = command.listId ?? null;
+    return deps.loadNextOpenOrder(command.organizationId, destListId).andThen((nextOpenOrder) => {
     const assigneeCheck =
       command.assigneeId !== undefined
         ? deps.principalLookup
@@ -40,6 +43,7 @@ export const handleCreateTask = (
         command,
         list,
         assigneeInOrganization,
+        nextOpenOrder,
         id: deps.nextId(),
         now: deps.now(),
       });
@@ -53,6 +57,7 @@ export const handleCreateTask = (
         event,
         view: applyTaskEvent(null, event),
       }));
+    });
     });
   });
 };

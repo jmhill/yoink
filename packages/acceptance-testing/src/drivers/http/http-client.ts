@@ -33,6 +33,11 @@ export type HttpClient = {
     payload: unknown,
     headers?: Record<string, string>
   ): Promise<HttpResponse>;
+  put(
+    url: string,
+    payload: unknown,
+    headers?: Record<string, string>
+  ): Promise<HttpResponse>;
   delete(url: string, headers?: Record<string, string>): Promise<HttpResponse>;
 };
 
@@ -128,6 +133,8 @@ export const createHttpClient = (baseUrl: string): HttpClient => {
       request({ method: 'POST', url, headers, payload }),
     patch: (url, payload, headers) =>
       request({ method: 'PATCH', url, headers, payload }),
+    put: (url, payload, headers) =>
+      request({ method: 'PUT', url, headers, payload }),
     delete: (url, headers) => request({ method: 'DELETE', url, headers }),
   };
 };

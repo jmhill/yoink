@@ -53,6 +53,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: groceries.id },
       {
         loadList,
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
         now: () => '2025-01-15T10:00:00.000Z',
@@ -75,6 +76,7 @@ describe('handleCreateTask', () => {
 
     const result = await handleCreateTask(command, {
       loadList: () => okAsync(null),
+      loadNextOpenOrder: () => okAsync(0),
       persist,
       nextId: () => 'task-id-1',
       now: () => '2025-01-15T10:00:00.000Z',
@@ -95,6 +97,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: 'list-missing' },
       {
         loadList: () => okAsync(null),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
         now: () => '2025-01-15T10:00:00.000Z',
@@ -115,6 +118,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: otherOrgList.id },
       {
         loadList: () => okAsync(otherOrgList),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
         now: () => '2025-01-15T10:00:00.000Z',
@@ -135,6 +139,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: groceries.id },
       {
         loadList: () => okAsync(groceries),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
         now: () => '2025-01-15T10:00:00.000Z',
@@ -157,6 +162,7 @@ describe('handleCreateTask', () => {
       { ...command, assigneeId: 'outsider' },
       {
         loadList: () => okAsync(null),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         principalLookup,
         nextId: () => 'task-id-1',

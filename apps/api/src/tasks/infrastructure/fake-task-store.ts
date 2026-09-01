@@ -6,6 +6,7 @@ import type {
   FindByOrganizationResult,
 } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
+import { compareOpenOrder, nextOpenOrder } from '../domain/open-order.js';
 
 export type FakeTaskStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -139,6 +140,52 @@ export const createFakeTaskStore = (
           !deletedIds.has(task.id)
       ).length;
       return okAsync(count);
+    },
+
+    findOpenInPile: (pile: {
+      organizationId: string;
+      listId: string | null;
+    }): ResultAsync<Task[], StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const open = tasks
+        .filter((task) => task.organizationId === pile.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .filter((task) => !task.completedAt)
+        .filter((task) => (task.listId ?? null) === pile.listId)
+        .sort(compareOpenOrder);
+      return okAsync(open);
+    },
+
+    nextOpenOrderInPile: (pile: {
+      organizationId: string;
+      listId: string | null;
+    }): ResultAsync<number, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const open = tasks
+        .filter((task) => task.organizationId === pile.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .filter((task) => !task.completedAt)
+        .filter((task) => (task.listId ?? null) === pile.listId);
+      return okAsync(nextOpenOrder(open));
+    },
+
+    setOpenOrders: (
+      updates: { id: string; openOrder: number }[]
+    ): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(storageError('Update failed'));
+      }
+      for (const update of updates) {
+        const task = tasks.find((item) => item.id === update.id);
+        if (task) {
+          task.openOrder = update.openOrder;
+        }
+      }
+      return okAsync(undefined);
     },
 
     clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {

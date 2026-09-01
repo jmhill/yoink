@@ -8,6 +8,7 @@ export type TaskCreated = {
   captureId?: string;
   assigneeId?: string;
   listId?: string;
+  openOrder: number;
   createdAt: string;
 };
 
@@ -19,10 +20,24 @@ export type TaskUpdated = {
   dueDate?: string | null;
   assigneeId?: string | null;
   listId?: string | null; // null clears to unlisted; omit leaves unchanged
+  openOrder?: number; // set when joining a pile (list or unlisted)
+};
+
+export type TaskCompleted = {
+  type: 'TaskCompleted';
+  id: string;
+  completedAt: string;
+};
+
+export type TaskUncompleted = {
+  type: 'TaskUncompleted';
+  id: string;
+  openOrder: number;
+  siblingOrders: { id: string; openOrder: number }[];
 };
 
 export type Noop = {
   type: 'Noop';
 };
 
-export type TaskEvent = TaskCreated | TaskUpdated;
+export type TaskEvent = TaskCreated | TaskUpdated | TaskCompleted | TaskUncompleted;

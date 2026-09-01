@@ -16,6 +16,7 @@ describe('decideCreateTask', () => {
       command,
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -32,6 +33,7 @@ describe('decideCreateTask', () => {
         captureId: undefined,
         assigneeId: undefined,
         listId: undefined,
+        openOrder: 0,
         createdAt: '2025-01-15T10:00:00.000Z',
       });
     }
@@ -42,6 +44,7 @@ describe('decideCreateTask', () => {
       command: { ...command, listId: groceries.id },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 2,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -49,7 +52,24 @@ describe('decideCreateTask', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.listId).toBe('list-groceries');
+      expect(result.value.openOrder).toBe(2);
       expect(result.value.type).toBe('TaskCreated');
+    }
+  });
+
+  it('appends a new listed task at the end of that list’s open tasks', () => {
+    const result = decideCreateTask({
+      command: { ...command, listId: groceries.id },
+      list: groceries,
+      assigneeInOrganization: null,
+      nextOpenOrder: 3,
+      id: 'task-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.openOrder).toBe(3);
     }
   });
 
@@ -58,6 +78,7 @@ describe('decideCreateTask', () => {
       command: { ...command, listId: groceries.id },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -73,6 +94,7 @@ describe('decideCreateTask', () => {
       command: { ...command, listId: 'list-missing' },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -88,6 +110,7 @@ describe('decideCreateTask', () => {
       command: { ...command, listId: otherOrgList.id },
       list: otherOrgList,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -109,6 +132,7 @@ describe('decideCreateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: true,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });
@@ -127,6 +151,7 @@ describe('decideCreateTask', () => {
       command: { ...command, assigneeId: 'outsider' },
       list: null,
       assigneeInOrganization: false,
+      nextOpenOrder: 0,
       id: 'task-id-1',
       now: '2025-01-15T10:00:00.000Z',
     });

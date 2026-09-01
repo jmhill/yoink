@@ -599,6 +599,25 @@ export const createPlaywrightActor = (
       await tasksPage.closePileSelect();
     },
 
+    async deleteNamedListFromAll(name: string): Promise<void> {
+      const result = await tasksPage.deleteNamedListFromAll(name);
+      if (result.status === 'has-open-tasks') {
+        throw new ConflictError('This list still has open tasks');
+      }
+    },
+
+    async shouldBeOnAllOverview(): Promise<void> {
+      await expect(page).toHaveURL(/[?&]filter=all/);
+      await expect(page).not.toHaveURL(/[?&]pile=/);
+    },
+
+    async shouldNotSeeNamedPileOnAll(name: string): Promise<void> {
+      await tasksPage.waitForPileSelect();
+      await page.locator('#all-pile').click();
+      await expect(tasksPage.namedPileOption(name)).toHaveCount(0);
+      await tasksPage.closePileSelect();
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');

@@ -24,12 +24,13 @@ import {
 import { tsrTasks, tsr, tsrLists } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User, Trash2 } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard, type TaskReorderControls } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
+import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
@@ -192,6 +193,7 @@ function TasksPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [createListOpen, setCreateListOpen] = useState(false);
+  const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -231,10 +233,14 @@ function TasksPage() {
     queryData: {},
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const namedPileList =
+    allPile?.kind === 'named'
+      ? namedLists.find((list) => list.id === allPile.listId)
+      : undefined;
   const namedPileMissing =
     allPile?.kind === 'named' &&
     listsData?.status === 200 &&
-    !namedLists.some((list) => list.id === allPile.listId);
+    !namedPileList;
 
   const listLabelFor = (task: Task): string | undefined => {
     if (!task.listId) return undefined;
@@ -838,9 +844,9 @@ function TasksPage() {
       </Tabs>
 
       {allPile && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-2">
           <Select value={allPileSelectValue(allPile)} onValueChange={handlePileChange}>
-            <SelectTrigger id="all-pile" aria-label="Pile" className="w-full sm:w-[16rem]">
+            <SelectTrigger id="all-pile" aria-label="Pile" className="min-w-0 flex-1 sm:flex-none sm:w-[16rem]">
               <SelectValue placeholder="All lists" />
             </SelectTrigger>
             <SelectContent>
@@ -857,6 +863,17 @@ function TasksPage() {
               </SelectItem>
             </SelectContent>
           </Select>
+          {namedPileList ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Delete ${namedPileList.name}`}
+              onClick={() => setDeletingList(namedPileList)}
+            >
+              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+            </Button>
+          ) : null}
         </div>
       )}
 
@@ -1028,6 +1045,21 @@ function TasksPage() {
           navigate({
             to: '/tasks',
             search: { filter: 'all', pile: list.id },
+          });
+        }}
+      />
+
+      <DeleteNamedListDialog
+        list={deletingList}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingList(null);
+          }
+        }}
+        onDeleted={() => {
+          navigate({
+            to: '/tasks',
+            search: { filter: 'all' },
           });
         }}
       />

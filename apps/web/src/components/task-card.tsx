@@ -1,9 +1,15 @@
 import { Button } from '@yoink/ui-base/components/button';
 import { CardContent } from '@yoink/ui-base/components/card';
 import { Checkbox } from '@yoink/ui-base/components/checkbox';
-import { Pin, PinOff, Trash2, Calendar, User, List } from 'lucide-react';
+import { Pin, PinOff, Trash2, Calendar, User, List, ChevronDown, ChevronUp } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
+
+export type TaskReorderControls = {
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (taskId: string, direction: 'up' | 'down') => void;
+};
 
 type TaskCardProps = {
   task: Task;
@@ -16,6 +22,7 @@ type TaskCardProps = {
   isLoading?: boolean;
   assigneeLabel?: string;
   listLabel?: string;
+  reorder?: TaskReorderControls;
 };
 
 export function TaskCard({
@@ -29,6 +36,7 @@ export function TaskCard({
   isLoading = false,
   assigneeLabel,
   listLabel,
+  reorder,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const isPinned = Boolean(task.pinnedAt);
@@ -93,7 +101,12 @@ export function TaskCard({
   };
 
   return (
-    <SwipeableCard
+    <div
+      {...(reorder
+        ? { 'data-open-task-id': task.id, 'data-open-task-title': task.title }
+        : {})}
+    >
+      <SwipeableCard
       data-task-id={task.id}
       rightAction={{
         icon: <Trash2 className="h-5 w-5" />,
@@ -157,6 +170,30 @@ export function TaskCard({
         </button>
 
         <div className="flex gap-1">
+          {reorder && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Move ${task.title} up`}
+                disabled={isLoading || !reorder.canMoveUp}
+                onClick={() => reorder.onMove(task.id, 'up')}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Move ${task.title} down`}
+                disabled={isLoading || !reorder.canMoveDown}
+                onClick={() => reorder.onMove(task.id, 'down')}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -181,6 +218,7 @@ export function TaskCard({
           </Button>
         </div>
       </CardContent>
-    </SwipeableCard>
+      </SwipeableCard>
+    </div>
   );
 }

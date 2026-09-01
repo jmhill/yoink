@@ -494,6 +494,70 @@ export const createPlaywrightActor = (
       await listsPage.openUnlistedPile();
     },
 
+    async openAllOverview(): Promise<void> {
+      await tasksPage.goto('all');
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openAllNamedPile(name: string): Promise<void> {
+      await tasksPage.goto('all');
+      await expect(page.locator(`[data-pile-name="${name}"]`)).toBeVisible();
+      await tasksPage.selectAllNamedPile(name);
+      await listsPage.waitForOpenTasksOrEmpty();
+    },
+
+    async openAllUnlistedPile(): Promise<void> {
+      await tasksPage.goto('all');
+      await expect(page.locator('[data-pile-name="Unlisted"]')).toBeVisible();
+      await tasksPage.selectAllPile('unlisted');
+      await page.waitForURL(/[?&]pile=unlisted/);
+      await listsPage.waitForOpenTasksOrEmpty();
+    },
+
+    async shouldSeeAllPileGroups(names: string[]): Promise<void> {
+      await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
+    },
+
+    async shouldSeeTasksInAllPileGroup(groupName: string, titles: string[]): Promise<void> {
+      await expect
+        .poll(async () => tasksPage.getTitlesInPileGroup(groupName))
+        .toEqual(titles);
+    },
+
+    async shouldNotSeeReorderControls(): Promise<void> {
+      await expect(tasksPage.reorderButtons()).toHaveCount(0);
+    },
+
+    async shouldSeePinControls(): Promise<void> {
+      await expect(tasksPage.pinButtons().first()).toBeVisible();
+    },
+
+    async shouldSeeTaskFilterWithoutAllPile(
+      filter: 'today' | 'upcoming' | 'mine' | 'completed'
+    ): Promise<void> {
+      await tasksPage.goto(filter);
+      await tasksPage.waitForTasksOrEmpty();
+      const tabName = {
+        today: 'Today',
+        upcoming: /Upcoming|Soon/,
+        mine: 'Mine',
+        completed: 'Done',
+      }[filter];
+      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      await expect(page.locator('#all-pile')).toHaveCount(0);
+    },
+
+    async shouldSeeListsNav(): Promise<void> {
+      await listsPage.goto();
+      await listsPage.waitForListsOrEmpty();
+      await expect(page.getByRole('link', { name: 'Lists' }).first()).toBeVisible();
+      await expect(page.locator('[data-unlisted-pile]')).toBeVisible();
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');

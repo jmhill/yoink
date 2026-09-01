@@ -363,6 +363,44 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('refreshOpenList', 'http');
     },
 
+    async openAllOverview(): Promise<void> {
+      throw new UnsupportedOperationError('openAllOverview', 'http');
+    },
+
+    async openAllNamedPile(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openAllNamedPile', 'http');
+    },
+
+    async openAllUnlistedPile(): Promise<void> {
+      throw new UnsupportedOperationError('openAllUnlistedPile', 'http');
+    },
+
+    async shouldSeeAllPileGroups(_names: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeAllPileGroups', 'http');
+    },
+
+    async shouldSeeTasksInAllPileGroup(_groupName: string, _titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTasksInAllPileGroup', 'http');
+    },
+
+    async shouldNotSeeReorderControls(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeReorderControls', 'http');
+    },
+
+    async shouldSeePinControls(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePinControls', 'http');
+    },
+
+    async shouldSeeTaskFilterWithoutAllPile(
+      _filter: 'today' | 'upcoming' | 'mine' | 'completed'
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskFilterWithoutAllPile', 'http');
+    },
+
+    async shouldSeeListsNav(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeListsNav', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

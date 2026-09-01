@@ -29,8 +29,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Delete an empty named list** - Complete ✓ (`DELETE /api/lists/:id`; refuse if any open task; completed unlisted in the same command)
 **Named lists: Order tasks in a list** - Complete ✓ (integer `openOrder` per pile; list open tasks + reorder; complete/uncomplete sandwich; kit up/down on the list)
 **Named lists: Order unlisted tasks** - Complete ✓ (`GET`/`PUT` `/api/unlisted/tasks`; same `openOrder` pile; kit up/down; All/Today/Mine/Upcoming unchanged)
+**All has two modes** - Complete ✓ (All overview groups by list + unlisted, no reorder; one-pile named/unlisted reuse existing pile APIs with kit up/down)
 
 Recent updates:
+- Story “All has two modes”: on Tasks All, a member can switch between every pile at once (grouped by named list plus unlisted, no reorder, still pin-then-created within each group) and one pile (a named list, or unlisted) where kit up/down persists through the existing `GET`/`PUT` list and unlisted task APIs. Today, Upcoming, Mine, Done, and the Lists nav are unchanged. No create/delete list UI. No new domain field.
 - Story 8 “Order unlisted tasks”: a member can see the open tasks that are not on a named list, in an order, and change that order. Same Polly lock as story 7, on the unlisted pile only — not a global rank across All. Completing drops a task out of that sequence but keeps the remembered index (and no `listId`). Uncomplete restores (clamp to the end if the pile got shorter). New unlisted tasks and take-off append to the end. Pin is unchanged and still sits on top of All/Today/Mine/Upcoming. Agent tokens can reorder; unauthenticated cannot; completed cannot be reordered. Named-list order (story 7) stays. Kit up/down on `/lists/unlisted`. `decideReorderOpenTasks` with `listId: null`.
 - Story 7 “Order tasks in a list”: a member can see the open tasks on a named list in an order and change that order. Open order is among open tasks only. Completing drops a task out of that sequence but keeps `listId` and the remembered index. Uncomplete puts it back at that index (clamp to the end if the list got shorter). New tasks on a list, moves onto a list, and take-off onto unlisted all append to the end of that pile’s open tasks. Pin is unchanged. Story 8 (unlisted-pile reorder UI) stays out. Complete and uncomplete are now write sandwiches (`decideCompleteTask` / `decideUncompleteTask` → persist → apply); pin/delete stay on `TaskService`. Kit up/down buttons on the list’s open tasks (not drag-and-drop, not `window.confirm`). Existing open-on-list rows without an index get a stable `createdAt` order.
 - Story 6 “Delete an empty named list”: a member can delete a named list that has no **open** tasks. Completed-on-list do not block. On success, those completed tasks are unlisted in the same command (they stay in Done; recreating the name is a new bucket). Hard-delete the list row. Names stay unique in the org; after delete the name is free. Humans (session) and agent tokens both can. Delete is a write sandwich (`decideDeleteNamedList` → persist → apply). Persist of `NamedListDeleted` nulls completed tasks’ `listId` then removes the list. Kit dialog on the Lists page (not `window.confirm`). Order, notes canvas, take-off stay out.
@@ -761,6 +763,32 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## All has two modes - Complete ✓
+
+**Goal**: On the Tasks All view, a member can switch between (1) every pile at once, grouped by list, no reorder, and (2) one pile (a named list, or unlisted), where they can change that pile’s open order.
+
+**Product rules (locked):**
+- Lists is a dimension of the task board, not a second app. This story only changes **All**. Do not change Today, Upcoming, Mine, Done. Do not remove the Lists nav. Do not add create/delete list UI.
+- All has two modes. Dropdown on All: **all lists** (grouped overview, including unlisted, no reorder) vs a **named list** vs **unlisted**.
+- Reorder only in the one-pile modes. Overview cannot reorder.
+- `openOrder` is one shared sequence per pile. Pin is its own stamp, not this order. Pin already floats on the All API sort (pinned_at then created_at); do not sort overview by openOrder.
+- One-pile named list: `GET`/`PUT` `/api/lists/:id/tasks` (already shipped). One-pile unlisted: `GET`/`PUT` `/api/unlisted/tasks` (already shipped). Kit up/down already exists on `/lists/$listId` and `/lists/unlisted` — reuse that pattern on All’s one-pile mode. Stay on shadcn New York in `@yoink/ui-base`.
+
+**Out of scope:**
+- Create list, delete list, kill Lists nav, change Mine
+- Group Today/Upcoming, notes, tags
+- New domain field or a new order model
+
+**Implementation:**
+- All search: optional `pile` (`overview` omitted, `unlisted`, or a list id)
+- Overview groups `GET /api/tasks?filter=all` by `listId` (named lists, then unlisted), keeping All API order within each group
+- One-pile modes fetch the existing pile endpoints and persist kit up/down through the existing reorder APIs
+- Playwright: overview groups; named and unlisted one-pile reorder survives refresh; overview has no up/down; Today/Upcoming/Mine and Lists nav unchanged
+
+**Deliverable:** A member can use All as a grouped overview or as one reorderable pile, without changing the other task views.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1137,6 +1165,8 @@ When resuming work on this project:
 ### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
 
 **Named lists story 8 is in.** A member can see and change the open-task order of the unlisted pile (`GET`/`PUT` `/api/unlisted/tasks`, `decideReorderOpenTasks` with `listId: null`). Same complete/uncomplete/land-at-end rules as story 7. All/Today/Mine/Upcoming stay pin-then-created. Kit up/down on `/lists/unlisted`. Named-list order stays as story 7.
+
+**All has two modes is in.** Tasks All is a grouped overview of every pile (named lists plus unlisted, no reorder, not ranked by openOrder) or one pile with kit up/down via the existing list/unlisted APIs. Today, Upcoming, Mine, Done, and the Lists nav are unchanged.
 
 **Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp).
 

@@ -26,11 +26,19 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
-import { TaskCard } from '@/components/task-card';
+import { TaskCard, type TaskReorderControls } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
+import {
+  ALL_PILE_OVERVIEW,
+  ALL_PILE_UNLISTED,
+  allPileSelectValue,
+  groupAllTasksByPile,
+  parseAllPile,
+  type AllPile,
+} from '@/lib/all-tasks-piles';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -58,7 +66,10 @@ const splitTodayTasks = (tasks: Task[]): { overdue: Task[]; dueToday: Task[] } =
 
 const searchSchema = z.object({
   filter: TaskFilterSchema.default('today'),
+  pile: z.union([z.literal(ALL_PILE_OVERVIEW), z.literal(ALL_PILE_UNLISTED), z.string().uuid()]).optional(),
 });
+
+const UNKNOWN_LIST_ID = '00000000-0000-0000-0000-000000000000';
 
 export const Route = createFileRoute('/_authenticated/tasks')({
   validateSearch: searchSchema,
@@ -170,7 +181,7 @@ function TodayTaskList({
 const UNLISTED_VALUE = 'unlisted';
 
 function TasksPage() {
-  const { filter } = useSearch({ from: '/_authenticated/tasks' });
+  const { filter, pile } = useSearch({ from: '/_authenticated/tasks' });
   const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskListId, setNewTaskListId] = useState('');
@@ -181,6 +192,9 @@ function TasksPage() {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
+  const tsrListsQueryClient = tsrLists.useQueryClient();
+  const allPile: AllPile | null = filter === 'all' ? parseAllPile(pile) : null;
+  const namedPileId = allPile?.kind === 'named' ? allPile.listId : undefined;
 
   const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
@@ -208,11 +222,15 @@ function TasksPage() {
     return member ? memberLabel(member) : task.assigneeId;
   };
 
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData, isPending: listsPending } = tsrLists.list.useQuery({
     queryKey: ['lists'],
     queryData: {},
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const namedPileMissing =
+    allPile?.kind === 'named' &&
+    listsData?.status === 200 &&
+    !namedLists.some((list) => list.id === allPile.listId);
 
   const listLabelFor = (task: Task): string | undefined => {
     if (!task.listId) return undefined;
@@ -220,9 +238,79 @@ function TasksPage() {
     return list ? list.name : undefined;
   };
 
+  const boardQueryEnabled = allPile === null || allPile.kind === 'overview';
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', filter],
     queryData: { query: { filter: filter as TaskFilter } },
+    enabled: boardQueryEnabled,
+  });
+
+  const {
+    data: namedPileData,
+    isPending: namedPilePending,
+    error: namedPileError,
+    refetch: refetchNamedPile,
+  } = tsrLists.listOpenTasks.useQuery({
+    queryKey: ['lists', namedPileId ?? 'none', 'tasks'],
+    queryData: { params: { id: namedPileId ?? UNKNOWN_LIST_ID } },
+    enabled: Boolean(namedPileId) && !namedPileMissing,
+  });
+
+  const {
+    data: unlistedPileData,
+    isPending: unlistedPilePending,
+    error: unlistedPileError,
+    refetch: refetchUnlistedPile,
+  } = tsrLists.listUnlistedOpenTasks.useQuery({
+    queryKey: ['unlisted', 'tasks'],
+    queryData: {},
+    enabled: allPile?.kind === 'unlisted',
+  });
+
+  const invalidateTaskViews = () => {
+    tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+    tsrListsQueryClient.invalidateQueries({ queryKey: ['lists'] });
+    tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted'] });
+  };
+
+  const reorderNamedMutation = tsrLists.reorderOpenTasks.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 200 && namedPileId) {
+        tsrListsQueryClient.setQueryData(['lists', namedPileId, 'tasks'], result);
+      }
+      toast.success('Order updated');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      toast.error('Failed to change order');
+    },
+    onSettled: () => {
+      if (namedPileId) {
+        tsrListsQueryClient.invalidateQueries({ queryKey: ['lists', namedPileId, 'tasks'] });
+      }
+    },
+  });
+
+  const reorderUnlistedMutation = tsrLists.reorderUnlistedOpenTasks.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 200) {
+        tsrListsQueryClient.setQueryData(['unlisted', 'tasks'], result);
+      }
+      toast.success('Order updated');
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      toast.error('Failed to change order');
+    },
+    onSettled: () => {
+      tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted', 'tasks'] });
+    },
   });
 
   // Create task mutation
@@ -278,7 +366,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -322,7 +410,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
     },
   });
 
@@ -359,7 +447,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
     },
   });
 
@@ -400,7 +488,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
     },
   });
 
@@ -437,7 +525,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
     },
   });
 
@@ -476,7 +564,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
       // Also invalidate captures since deleting a task may delete its source capture
       tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
     },
@@ -528,7 +616,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateTaskViews();
     },
   });
 
@@ -579,6 +667,16 @@ function TasksPage() {
     });
   };
 
+  const handlePileChange = (value: string) => {
+    navigate({
+      to: '/tasks',
+      search: {
+        filter: 'all',
+        ...(value === ALL_PILE_OVERVIEW ? {} : { pile: value }),
+      },
+    });
+  };
+
   const handleEdit = (task: Task) => {
     setEditingTask(task);
   };
@@ -590,14 +688,116 @@ function TasksPage() {
     });
   };
 
-  const tasks = data?.status === 200 ? data.body.tasks : [];
+  const boardTasks = data?.status === 200 ? data.body.tasks : [];
+  const namedPileTasks = namedPileData?.status === 200 ? namedPileData.body.tasks : [];
+  const unlistedPileTasks = unlistedPileData?.status === 200 ? unlistedPileData.body.tasks : [];
+  const canReorder = allPile?.kind === 'named' || allPile?.kind === 'unlisted';
+  const tasks =
+    allPile?.kind === 'named'
+      ? namedPileTasks
+      : allPile?.kind === 'unlisted'
+        ? unlistedPileTasks
+        : boardTasks;
+  const overviewGroups =
+    allPile?.kind === 'overview' ? groupAllTasksByPile(boardTasks, namedLists) : [];
+
+  const activeError =
+    allPile?.kind === 'named'
+      ? namedPileMissing
+        ? null
+        : namedPileError
+      : allPile?.kind === 'unlisted'
+        ? unlistedPileError
+        : error;
+  const activePending =
+    allPile?.kind === 'named'
+      ? listsPending || (!namedPileMissing && namedPilePending)
+      : allPile?.kind === 'unlisted'
+        ? unlistedPilePending
+        : allPile?.kind === 'overview'
+          ? isPending || listsPending
+          : isPending;
+  const refetchActive = () => {
+    if (allPile?.kind === 'named') {
+      void refetchNamedPile();
+      return;
+    }
+    if (allPile?.kind === 'unlisted') {
+      void refetchUnlistedPile();
+      return;
+    }
+    void refetch();
+  };
+
+  const reorderPending = reorderNamedMutation.isPending || reorderUnlistedMutation.isPending;
   const isLoading =
     createMutation.isPending ||
     completeMutation.isPending ||
     uncompleteMutation.isPending ||
     pinMutation.isPending ||
     unpinMutation.isPending ||
-    deleteMutation.isPending;
+    deleteMutation.isPending ||
+    reorderPending;
+
+  const movePileTask = (taskId: string, direction: 'up' | 'down') => {
+    const index = tasks.findIndex((item) => item.id === taskId);
+    if (index < 0) return;
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= tasks.length) return;
+    const next = [...tasks];
+    const [removed] = next.splice(index, 1);
+    next.splice(target, 0, removed);
+    const taskIds = next.map((item) => item.id);
+    if (allPile?.kind === 'named') {
+      reorderNamedMutation.mutate({
+        params: { id: allPile.listId },
+        body: { taskIds },
+      });
+      return;
+    }
+    if (allPile?.kind === 'unlisted') {
+      reorderUnlistedMutation.mutate({
+        body: { taskIds },
+      });
+    }
+  };
+
+  const reorderFor = (index: number): TaskReorderControls | undefined => {
+    if (!canReorder) return undefined;
+    return {
+      canMoveUp: index > 0,
+      canMoveDown: index < tasks.length - 1,
+      onMove: movePileTask,
+    };
+  };
+
+  const emptyTitle =
+    filter === 'today'
+      ? 'No tasks for today'
+      : filter === 'upcoming'
+        ? 'No upcoming tasks'
+        : filter === 'mine'
+          ? 'No tasks assigned to you'
+          : filter === 'completed'
+            ? 'No completed tasks'
+            : allPile?.kind === 'named'
+              ? 'No open tasks on this list'
+              : allPile?.kind === 'unlisted'
+                ? 'No open unlisted tasks'
+                : 'No tasks yet';
+
+  const emptyHint =
+    filter === 'today'
+      ? 'Add a task above or process a capture'
+      : filter === 'upcoming'
+        ? 'Tasks with future due dates will appear here'
+        : filter === 'mine'
+          ? 'Add a task above or assign one to yourself'
+          : filter === 'completed'
+            ? 'Complete a task to see it here'
+            : allPile?.kind === 'named' || allPile?.kind === 'unlisted'
+              ? 'Open tasks in this pile will appear here'
+              : 'Create your first task above';
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
@@ -628,6 +828,25 @@ function TasksPage() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {allPile && (
+        <div className="mb-4">
+          <Select value={allPileSelectValue(allPile)} onValueChange={handlePileChange}>
+            <SelectTrigger id="all-pile" aria-label="Pile" className="w-full sm:w-[16rem]">
+              <SelectValue placeholder="All lists" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PILE_OVERVIEW}>All lists</SelectItem>
+              <SelectItem value={ALL_PILE_UNLISTED}>Unlisted</SelectItem>
+              {namedLists.map((list) => (
+                <SelectItem key={list.id} value={list.id}>
+                  {list.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {filter !== 'completed' && (
         <form onSubmit={handleQuickAdd} className="mb-6">
@@ -667,10 +886,17 @@ function TasksPage() {
         </form>
       )}
 
-      {error ? (
-        <ErrorState error={error} onRetry={() => refetch()} />
-      ) : isPending ? (
+      {activeError ? (
+        <ErrorState error={activeError} onRetry={() => refetchActive()} />
+      ) : activePending ? (
         <p className="text-center text-muted-foreground">Loading...</p>
+      ) : namedPileMissing ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <List className="mx-auto mb-2 h-8 w-8" />
+            <p>List not found</p>
+          </CardContent>
+        </Card>
       ) : tasks.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
@@ -679,20 +905,8 @@ function TasksPage() {
             ) : (
               <CheckSquare className="mx-auto mb-2 h-8 w-8" />
             )}
-            <p>
-              {filter === 'today' && 'No tasks for today'}
-              {filter === 'upcoming' && 'No upcoming tasks'}
-              {filter === 'all' && 'No tasks yet'}
-              {filter === 'mine' && 'No tasks assigned to you'}
-              {filter === 'completed' && 'No completed tasks'}
-            </p>
-            <p className="text-sm">
-              {filter === 'today' && 'Add a task above or process a capture'}
-              {filter === 'upcoming' && 'Tasks with future due dates will appear here'}
-              {filter === 'all' && 'Create your first task above'}
-              {filter === 'mine' && 'Add a task above or assign one to yourself'}
-              {filter === 'completed' && 'Complete a task to see it here'}
-            </p>
+            <p>{emptyTitle}</p>
+            <p className="text-sm">{emptyHint}</p>
           </CardContent>
         </Card>
       ) : filter === 'today' ? (
@@ -709,9 +923,46 @@ function TasksPage() {
           assigneeLabel={assigneeLabelFor}
           listLabel={listLabelFor}
         />
+      ) : allPile?.kind === 'overview' ? (
+        <div className="space-y-6">
+          {overviewGroups.map((group) => (
+            <div
+              key={group.key}
+              data-pile-group={group.kind}
+              data-pile-name={group.name}
+            >
+              <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                <List className="h-4 w-4" />
+                <span className="text-sm font-medium">{group.name}</span>
+              </div>
+              <AnimatedList>
+                {group.tasks.map((task) => (
+                  <AnimatedListItem
+                    key={task.id}
+                    id={task.id}
+                    exitDirection={exitDirections[task.id] ?? 'right'}
+                  >
+                    <TaskCard
+                      task={task}
+                      onComplete={handleComplete}
+                      onUncomplete={handleUncomplete}
+                      onPin={handlePin}
+                      onUnpin={handleUnpin}
+                      onDelete={(id) => setDeleteConfirmId(id)}
+                      onEdit={handleEdit}
+                      isLoading={isLoading}
+                      assigneeLabel={assigneeLabelFor(task)}
+                      listLabel={listLabelFor(task)}
+                    />
+                  </AnimatedListItem>
+                ))}
+              </AnimatedList>
+            </div>
+          ))}
+        </div>
       ) : (
         <AnimatedList>
-          {tasks.map((task) => (
+          {tasks.map((task, index) => (
             <AnimatedListItem
               key={task.id}
               id={task.id}
@@ -728,6 +979,7 @@ function TasksPage() {
                 isLoading={isLoading}
                 assigneeLabel={assigneeLabelFor(task)}
                 listLabel={listLabelFor(task)}
+                reorder={reorderFor(index)}
               />
             </AnimatedListItem>
           ))}

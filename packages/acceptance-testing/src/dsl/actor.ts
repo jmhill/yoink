@@ -385,6 +385,51 @@ export type BrowserActorOperations = {
   shouldSeeAllPileDropdown(): Promise<void>;
 
   /**
+   * Open the Tasks Mine overview (my tasks grouped by list, no reorder).
+   */
+  openMineOverview(): Promise<void>;
+
+  /**
+   * Choose a named list on the Mine pile dropdown.
+   */
+  openMineNamedPile(name: string): Promise<void>;
+
+  /**
+   * Choose unlisted on the Mine pile dropdown.
+   */
+  openMineUnlistedPile(): Promise<void>;
+
+  /**
+   * Assert Mine has its two-mode pile dropdown (not All’s).
+   */
+  shouldSeeMinePileDropdown(): Promise<void>;
+
+  /**
+   * Assert the current Tasks view has kit up/down reorder controls.
+   */
+  shouldSeeReorderControls(): Promise<void>;
+
+  /**
+   * Assert board task titles appear in this order (current Tasks view).
+   */
+  shouldSeeTaskTitles(titles: string[]): Promise<void>;
+
+  /**
+   * Assert this task is not shown on the current Tasks view.
+   */
+  shouldNotSeeTask(taskId: string): Promise<void>;
+
+  /**
+   * Assert Mine has no control to create a named list.
+   */
+  shouldNotSeeCreateListOnMine(): Promise<void>;
+
+  /**
+   * Assert Mine has no control to delete this named list.
+   */
+  shouldNotSeeDeleteListOnMine(name: string): Promise<void>;
+
+  /**
    * Assert the Lists nav still opens the Lists view.
    */
   shouldSeeListsNav(): Promise<void>;

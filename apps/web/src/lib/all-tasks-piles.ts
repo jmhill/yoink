@@ -45,8 +45,8 @@ export function allPileSelectValue(pile: AllPile): string {
 /**
  * Group filter-result tasks by named list, then unlisted.
  * Keeps each group's relative order from the API (pin then createdAt).
- * Does not sort by openOrder. Used by All overview, Upcoming, and inside
- * each Today deadline section.
+ * Does not sort by openOrder. Used by All overview, Mine overview,
+ * Upcoming, and inside each Today deadline section.
  */
 export function groupAllTasksByPile(
   tasks: Task[],
@@ -104,4 +104,19 @@ export function groupAllTasksByPile(
   }
 
   return groups;
+}
+
+/**
+ * Slice a board-filter result to one pile. Preserves API order.
+ * Does not sort by openOrder. Mine one-pile uses this instead of the
+ * list/unlisted pile APIs (those return everyone’s open tasks).
+ */
+export function tasksInPile(tasks: Task[], pile: AllPile): Task[] {
+  if (pile.kind === 'overview') {
+    return tasks;
+  }
+  if (pile.kind === 'unlisted') {
+    return tasks.filter((task) => !task.listId);
+  }
+  return tasks.filter((task) => task.listId === pile.listId);
 }

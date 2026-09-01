@@ -297,6 +297,36 @@ export const createHttpActor = (
       return response.json<{ tasks: Task[] }>().tasks;
     },
 
+    async listUnlistedOpenTasks(): Promise<Task[]> {
+      const response = await client.get('/api/unlisted/tasks', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list unlisted open tasks: ${response.body}`);
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
+    async reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]> {
+      const response = await client.put(
+        '/api/unlisted/tasks/order',
+        { taskIds },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'Only open tasks can be reordered');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to reorder unlisted open tasks: ${response.body}`);
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
     async goToLists(): Promise<void> {
       throw new UnsupportedOperationError('goToLists', 'http');
     },
@@ -315,6 +345,10 @@ export const createHttpActor = (
 
     async openNamedList(_name: string): Promise<void> {
       throw new UnsupportedOperationError('openNamedList', 'http');
+    },
+
+    async openUnlistedPile(): Promise<void> {
+      throw new UnsupportedOperationError('openUnlistedPile', 'http');
     },
 
     async shouldSeeOpenTasksInOrder(_titles: string[]): Promise<void> {
@@ -752,6 +786,24 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new UnauthorizedError();
     }
     throw new Error(`Failed to reorder open tasks: ${response.body}`);
+  },
+
+  async listUnlistedOpenTasks(): Promise<Task[]> {
+    const response = await client.get('/api/unlisted/tasks');
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list unlisted open tasks: ${response.body}`);
+  },
+
+  async reorderUnlistedOpenTasks(_taskIds: string[]): Promise<Task[]> {
+    const response = await client.put('/api/unlisted/tasks/order', {
+      taskIds: _taskIds,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to reorder unlisted open tasks: ${response.body}`);
   },
 
   async createTask(input: CreateTaskInput): Promise<Task> {

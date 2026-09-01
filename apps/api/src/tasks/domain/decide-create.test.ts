@@ -57,6 +57,23 @@ describe('decideCreateTask', () => {
     }
   });
 
+  it('appends a new unlisted task at the end of the unlisted open pile', () => {
+    const result = decideCreateTask({
+      command,
+      list: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 4,
+      id: 'task-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.listId).toBeUndefined();
+      expect(result.value.openOrder).toBe(4);
+    }
+  });
+
   it('appends a new listed task at the end of that list’s open tasks', () => {
     const result = decideCreateTask({
       command: { ...command, listId: groceries.id },

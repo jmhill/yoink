@@ -445,6 +445,55 @@ export const createPlaywrightActor = (
       await listsPage.waitForOpenTasksOrEmpty();
     },
 
+    async listUnlistedOpenTasks(): Promise<Task[]> {
+      await listsPage.openUnlistedPile();
+      const tasks = await listsPage.getOpenTasks();
+      return tasks.map(({ id, title }) => ({
+        id,
+        title,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      }));
+    },
+
+    async reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]> {
+      await listsPage.openUnlistedPile();
+      for (let i = 0; i < taskIds.length; i++) {
+        const current = await listsPage.getOpenTasks();
+        const currentIndex = current.findIndex((task) => task.id === taskIds[i]);
+        if (currentIndex < 0) {
+          throw new Error(`Open task ${taskIds[i]} not found on the unlisted pile`);
+        }
+        const title = current[currentIndex]?.title ?? '';
+        if (currentIndex > i) {
+          for (let step = 0; step < currentIndex - i; step++) {
+            await listsPage.moveOpenTask(title, 'up');
+          }
+        }
+        if (currentIndex < i) {
+          for (let step = 0; step < i - currentIndex; step++) {
+            await listsPage.moveOpenTask(title, 'down');
+          }
+        }
+      }
+      await expect
+        .poll(async () => (await listsPage.getOpenTasks()).map((task) => task.id))
+        .toEqual(taskIds);
+      const ordered = await listsPage.getOpenTasks();
+      return ordered.map(({ id, title }) => ({
+        id,
+        title,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      }));
+    },
+
+    async openUnlistedPile(): Promise<void> {
+      await listsPage.openUnlistedPile();
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');
@@ -1200,6 +1249,16 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async reorderOpenTasksOnList(_listId: string, _taskIds: string[]): Promise<Task[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listUnlistedOpenTasks(): Promise<Task[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async reorderUnlistedOpenTasks(_taskIds: string[]): Promise<Task[]> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

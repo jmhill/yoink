@@ -6,3 +6,7 @@ export type ListOpenTasksOnListQuery = {
   listId: string;
   organizationId: string;
 };
+
+export type ListUnlistedOpenTasksQuery = {
+  organizationId: string;
+};

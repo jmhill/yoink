@@ -131,6 +131,14 @@ function ListsPage() {
             </Button>
           </div>
 
+          <Card data-unlisted-pile className="mb-3">
+            <CardContent className="flex items-center justify-between gap-3 py-4">
+              <Link to="/lists/unlisted" className="font-medium hover:underline">
+                Unlisted
+              </Link>
+            </CardContent>
+          </Card>
+
           {lists.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">

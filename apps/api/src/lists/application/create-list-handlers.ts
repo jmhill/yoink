@@ -2,6 +2,7 @@ import { handleListNamedLists } from './handle-list-named-lists.js';
 import { handleCreateNamedList } from './handle-create-named-list.js';
 import { handleDeleteNamedList } from './handle-delete-named-list.js';
 import { handleListOpenTasksOnList } from './handle-list-open-tasks.js';
+import { handleListUnlistedOpenTasks } from './handle-list-unlisted-open-tasks.js';
 import { handleReorderOpenTasks } from './handle-reorder-open-tasks.js';
 import type {
   CountOpenTasksOnList,
@@ -34,8 +35,13 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
     handleDeleteNamedList(command, deps),
   listOpenTasks: (query: Parameters<typeof handleListOpenTasksOnList>[0]) =>
     handleListOpenTasksOnList(query, deps),
+  listUnlistedOpenTasks: (query: Parameters<typeof handleListUnlistedOpenTasks>[0]) =>
+    handleListUnlistedOpenTasks(query, deps),
   reorderOpenTasks: (command: Parameters<typeof handleReorderOpenTasks>[0]) =>
     handleReorderOpenTasks(command, deps),
+  reorderUnlistedOpenTasks: (
+    command: Omit<Parameters<typeof handleReorderOpenTasks>[0], 'listId'>
+  ) => handleReorderOpenTasks({ ...command, listId: null }, deps),
 });
 
 export type ListHandlers = ReturnType<typeof createListHandlers>;

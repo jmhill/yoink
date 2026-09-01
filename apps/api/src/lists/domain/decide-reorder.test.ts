@@ -95,3 +95,98 @@ describe('decideReorderOpenTasks', () => {
     }
   });
 });
+
+describe('decideReorderOpenTasks — unlisted pile', () => {
+  const notes = task({ id: 'task-notes', title: 'Notes', listId: undefined, openOrder: 0 });
+  const errand = task({ id: 'task-errand', title: 'Errand', listId: undefined, openOrder: 1 });
+  const call = task({ id: 'task-call', title: 'Call', listId: undefined, openOrder: 2 });
+
+  it('reorders open-unlisted tasks only', () => {
+    const result = decideReorderOpenTasks({
+      command: {
+        listId: null,
+        organizationId: 'org-123',
+        taskIds: [errand.id, notes.id, call.id],
+      },
+      list: null,
+      openTasks: [notes, errand, call],
+      extraTasks: [],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.listId).toBeNull();
+      expect(result.value.orders).toEqual([
+        { id: 'task-errand', openOrder: 0 },
+        { id: 'task-notes', openOrder: 1 },
+        { id: 'task-call', openOrder: 2 },
+      ]);
+    }
+  });
+
+  it('refuses to reorder a completed unlisted task', () => {
+    const done = { ...errand, completedAt: '2025-01-16T10:00:00.000Z' };
+
+    const result = decideReorderOpenTasks({
+      command: {
+        listId: null,
+        organizationId: 'org-123',
+        taskIds: [notes.id, done.id, call.id],
+      },
+      list: null,
+      openTasks: [notes, call],
+      extraTasks: [done],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
+    }
+  });
+
+  it('does not change pin — the event is only new open-order indexes', () => {
+    const pinned = { ...notes, pinnedAt: '2025-01-16T09:00:00.000Z' };
+
+    const result = decideReorderOpenTasks({
+      command: {
+        listId: null,
+        organizationId: 'org-123',
+        taskIds: [errand.id, pinned.id],
+      },
+      list: null,
+      openTasks: [pinned, errand],
+      extraTasks: [],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        type: 'OpenTasksReordered',
+        listId: null,
+        organizationId: 'org-123',
+        orders: [
+          { id: 'task-errand', openOrder: 0 },
+          { id: 'task-notes', openOrder: 1 },
+        ],
+      });
+    }
+  });
+
+  it('refuses a listed task mixed into the unlisted pile', () => {
+    const result = decideReorderOpenTasks({
+      command: {
+        listId: null,
+        organizationId: 'org-123',
+        taskIds: [notes.id, milk.id],
+      },
+      list: null,
+      openTasks: [notes, errand],
+      extraTasks: [],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_OPEN_ORDER');
+    }
+  });
+});

@@ -15,6 +15,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedListsRouteImport } from './routes/_authenticated/lists'
+import { Route as AuthenticatedListsUnlistedRouteImport } from './routes/_authenticated/lists_.unlisted'
 import { Route as AuthenticatedListsListIdRouteImport } from './routes/_authenticated/lists_.$listId'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
@@ -49,6 +50,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedListsRoute = AuthenticatedListsRouteImport.update({
   id: '/lists',
   path: '/lists',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedListsUnlistedRoute = AuthenticatedListsUnlistedRouteImport.update({
+  id: '/lists_/unlisted',
+  path: '/lists/unlisted',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedListsListIdRoute = AuthenticatedListsListIdRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/lists/unlisted': typeof AuthenticatedListsUnlistedRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/lists/unlisted': typeof AuthenticatedListsUnlistedRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/_authenticated/lists': typeof AuthenticatedListsRoute
+  '/_authenticated/lists_/unlisted': typeof AuthenticatedListsUnlistedRoute
   '/_authenticated/lists_/$listId': typeof AuthenticatedListsListIdRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/lists'
+    | '/lists/unlisted'
     | '/lists/$listId'
     | '/settings'
     | '/snoozed'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/lists'
+    | '/lists/unlisted'
     | '/lists/$listId'
     | '/settings'
     | '/snoozed'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/_authenticated/lists'
+    | '/_authenticated/lists_/unlisted'
     | '/_authenticated/lists_/$listId'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
@@ -218,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/lists_/unlisted': {
+      id: '/_authenticated/lists_/unlisted'
+      path: '/lists/unlisted'
+      fullPath: '/lists/unlisted'
+      preLoaderRoute: typeof AuthenticatedListsUnlistedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/lists_/$listId': {
       id: '/_authenticated/lists_/$listId'
       path: '/lists/$listId'
@@ -265,6 +284,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedListsRoute: typeof AuthenticatedListsRoute
+  AuthenticatedListsUnlistedRoute: typeof AuthenticatedListsUnlistedRoute
   AuthenticatedListsListIdRoute: typeof AuthenticatedListsListIdRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
@@ -275,6 +295,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedListsRoute: AuthenticatedListsRoute,
+  AuthenticatedListsUnlistedRoute: AuthenticatedListsUnlistedRoute,
   AuthenticatedListsListIdRoute: AuthenticatedListsListIdRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,

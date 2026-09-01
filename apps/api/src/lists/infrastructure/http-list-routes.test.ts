@@ -575,3 +575,280 @@ describe('GET /api/lists/:id/tasks and PUT /api/lists/:id/tasks/order', () => {
     expect(response.json()).toEqual({ message: 'Only open tasks can be reordered' });
   });
 });
+
+describe('GET /api/unlisted/tasks and PUT /api/unlisted/tasks/order', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const auth = { authorization: `Bearer ${TEST_TOKEN}` };
+
+  const createList = async (name: string): Promise<NamedList> => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: auth,
+      payload: { name },
+    });
+    expect(response.statusCode).toBe(201);
+    return response.json<NamedList>();
+  };
+
+  const createTask = async (title: string, listId?: string): Promise<Task> => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title, ...(listId ? { listId } : {}) },
+    });
+    expect(response.statusCode).toBe(201);
+    return response.json<Task>();
+  };
+
+  const listUnlisted = async (): Promise<Task[]> => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/unlisted/tasks',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    return response.json<{ tasks: Task[] }>().tasks;
+  };
+
+  it('lists open unlisted tasks in open order', async () => {
+    await createTask('Notes');
+    await createTask('Errand');
+    await createTask('Call');
+    const list = await createList('Groceries');
+    await createTask('Milk', list.id);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual([
+      'Notes',
+      'Errand',
+      'Call',
+    ]);
+  });
+
+  it('changes the unlisted open-task order', async () => {
+    const notes = await createTask('Notes');
+    const errand = await createTask('Errand');
+    const call = await createTask('Call');
+
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: '/api/unlisted/tasks/order',
+      headers: auth,
+      payload: { taskIds: [errand.id, notes.id, call.id] },
+    });
+
+    expect(reordered.statusCode).toBe(200);
+    expect(reordered.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Errand',
+      'Notes',
+      'Call',
+    ]);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual([
+      'Errand',
+      'Notes',
+      'Call',
+    ]);
+  });
+
+  it('does not let pin change the unlisted open order', async () => {
+    const notes = await createTask('Notes');
+    await createTask('Errand');
+
+    const pinned = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${notes.id}/pin`,
+      headers: auth,
+      payload: {},
+    });
+    expect(pinned.statusCode).toBe(200);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes', 'Errand']);
+  });
+
+  it('does not apply unlisted open order to the All filter', async () => {
+    const notes = await createTask('Notes');
+    const errand = await createTask('Errand');
+
+    const allBefore = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=all',
+      headers: auth,
+    });
+    expect(allBefore.statusCode).toBe(200);
+    expect(allBefore.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Errand',
+      'Notes',
+    ]);
+
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: '/api/unlisted/tasks/order',
+      headers: auth,
+      payload: { taskIds: [notes.id, errand.id] },
+    });
+    expect(reordered.statusCode).toBe(200);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes', 'Errand']);
+
+    const allAfter = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=all',
+      headers: auth,
+    });
+    expect(allAfter.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Errand',
+      'Notes',
+    ]);
+  });
+
+  it('lands a new unlisted task at the end of the unlisted open pile', async () => {
+    await createTask('Notes');
+    await createTask('Errand');
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes', 'Errand']);
+  });
+
+  it('drops a completed unlisted task from the open sequence and restores it at the remembered index', async () => {
+    await createTask('Notes');
+    const errand = await createTask('Errand');
+    await createTask('Call');
+
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${errand.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(completed.statusCode).toBe(200);
+    expect(completed.json<Task>().listId).toBeUndefined();
+    expect(completed.json<Task>().openOrder).toBe(1);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes', 'Call']);
+
+    const restored = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${errand.id}/uncomplete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(restored.statusCode).toBe(200);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual([
+      'Notes',
+      'Errand',
+      'Call',
+    ]);
+  });
+
+  it('clamps uncomplete to the end when the unlisted open pile is now shorter', async () => {
+    await createTask('Notes');
+    const errand = await createTask('Errand');
+    const call = await createTask('Call');
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${call.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${errand.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${call.id}/uncomplete`,
+      headers: auth,
+      payload: {},
+    });
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes', 'Call']);
+  });
+
+  it('appends take-off to the end of the unlisted open pile', async () => {
+    await createTask('Loose end');
+    const list = await createList('Groceries');
+    const fromList = await createTask('Taken off', list.id);
+
+    const takenOff = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${fromList.id}`,
+      headers: auth,
+      payload: { listId: null },
+    });
+    expect(takenOff.statusCode).toBe(200);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual([
+      'Loose end',
+      'Taken off',
+    ]);
+  });
+
+  it('returns 401 without authentication', async () => {
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/unlisted/tasks',
+    });
+    expect(listed.statusCode).toBe(401);
+
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: '/api/unlisted/tasks/order',
+      payload: { taskIds: [] },
+    });
+    expect(reordered.statusCode).toBe(401);
+  });
+
+  it('refuses to reorder a completed unlisted task', async () => {
+    const notes = await createTask('Notes');
+    const errand = await createTask('Errand');
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${errand.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/unlisted/tasks/order',
+      headers: auth,
+      payload: { taskIds: [notes.id, errand.id] },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ message: 'Only open tasks can be reordered' });
+  });
+
+  it('keeps named-list reorder working', async () => {
+    const list = await createList('Groceries');
+    const milk = await createTask('Milk', list.id);
+    const eggs = await createTask('Eggs', list.id);
+    await createTask('Notes');
+
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: `/api/lists/${list.id}/tasks/order`,
+      headers: auth,
+      payload: { taskIds: [eggs.id, milk.id] },
+    });
+    expect(reordered.statusCode).toBe(200);
+    expect(reordered.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Eggs',
+      'Milk',
+    ]);
+
+    expect((await listUnlisted()).map((task) => task.title)).toEqual(['Notes']);
+  });
+});

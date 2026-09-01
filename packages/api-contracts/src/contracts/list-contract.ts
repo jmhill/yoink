@@ -87,6 +87,34 @@ export const listContract = c.router(
       },
       summary: 'Change the open-task order on a named list',
     },
+
+    listUnlistedOpenTasks: {
+      method: 'GET',
+      path: '/api/unlisted/tasks',
+      responses: {
+        200: z.object({
+          tasks: z.array(TaskSchema),
+        }),
+        401: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'List open unlisted tasks in open order',
+    },
+
+    reorderUnlistedOpenTasks: {
+      method: 'PUT',
+      path: '/api/unlisted/tasks/order',
+      body: ReorderOpenTasksSchema,
+      responses: {
+        200: z.object({
+          tasks: z.array(TaskSchema),
+        }),
+        401: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Change the open-task order of the unlisted pile',
+    },
   },
   {
     strictStatusCodes: true,

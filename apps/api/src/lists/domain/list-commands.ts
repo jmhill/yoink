@@ -10,7 +10,8 @@ export type DeleteNamedListCommand = {
 };
 
 export type ReorderOpenTasksCommand = {
-  listId: string;
+  /** Named list id, or null for the unlisted open pile. */
+  listId: string | null;
   organizationId: string;
   taskIds: string[];
 };

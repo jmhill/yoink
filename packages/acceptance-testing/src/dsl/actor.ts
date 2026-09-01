@@ -51,6 +51,8 @@ export type CoreActor = {
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
+  listUnlistedOpenTasks(): Promise<Task[]>;
+  reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]>;
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
@@ -285,6 +287,11 @@ export type BrowserActorOperations = {
    */
   refreshOpenList(): Promise<void>;
 
+  /**
+   * Open the unlisted open-task pile.
+   */
+  openUnlistedPile(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================
@@ -367,6 +374,8 @@ export type AnonymousActor = {
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
+  listUnlistedOpenTasks(): Promise<Task[]>;
+  reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]>;
   createTask(input: CreateTaskInput): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
 };

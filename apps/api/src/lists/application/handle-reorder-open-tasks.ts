@@ -25,11 +25,15 @@ export const handleReorderOpenTasks = (
   command: ReorderOpenTasksCommand,
   deps: HandleReorderOpenTasksDeps
 ): ResultAsync<ReorderOpenTasksResult, ReorderOpenTasksError> => {
-  return deps.load(command.listId).andThen((loaded) => {
-    const list =
-      loaded && loaded.organizationId === command.organizationId ? loaded : null;
+  const loadedList =
+    command.listId === null
+      ? okAsync(null)
+      : deps.load(command.listId).map((loaded) =>
+          loaded && loaded.organizationId === command.organizationId ? loaded : null
+        );
 
-    if (!list) {
+  return loadedList.andThen((list) => {
+    if (command.listId !== null && !list) {
       const decision = decideReorderOpenTasks({
         command,
         list: null,

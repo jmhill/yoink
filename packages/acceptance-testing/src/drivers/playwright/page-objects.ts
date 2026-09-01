@@ -912,10 +912,19 @@ export class ListsPage {
     await Promise.race([
       this.page.locator('[data-open-task-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
+      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
       this.page.getByText('List not found').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue
     });
+  }
+
+  async openUnlistedPile(): Promise<void> {
+    await this.goto();
+    await this.waitForListsOrEmpty();
+    await this.page.locator('[data-unlisted-pile]').getByRole('link', { name: 'Unlisted' }).click();
+    await this.page.waitForURL('**/lists/unlisted');
+    await this.waitForOpenTasksOrEmpty();
   }
 
   async getOpenTaskTitles(): Promise<string[]> {

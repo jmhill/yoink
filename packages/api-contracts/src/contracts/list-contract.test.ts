@@ -47,4 +47,13 @@ describe('listContract', () => {
     expect(listContract.reorderOpenTasks.path).toBe('/api/lists/:id/tasks/order');
     expect(listContract.reorderOpenTasks.responses).toHaveProperty('409');
   });
+
+  it('defines unlisted-pile list and reorder endpoints (not a fake list id)', () => {
+    expect(listContract.listUnlistedOpenTasks.method).toBe('GET');
+    expect(listContract.listUnlistedOpenTasks.path).toBe('/api/unlisted/tasks');
+    expect(listContract.reorderUnlistedOpenTasks.method).toBe('PUT');
+    expect(listContract.reorderUnlistedOpenTasks.path).toBe('/api/unlisted/tasks/order');
+    expect(listContract.reorderUnlistedOpenTasks.responses).toHaveProperty('409');
+    expect(listContract.reorderUnlistedOpenTasks.responses).not.toHaveProperty('404');
+  });
 });

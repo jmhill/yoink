@@ -96,5 +96,5 @@ export const taskNotOpenError = (taskId: string): TaskNotOpenError => ({
 
 export const invalidOpenOrderError = (): InvalidOpenOrderError => ({
   type: 'INVALID_OPEN_ORDER',
-  message: 'Open order must include each open task on this list once',
+  message: 'Open order must include each open task in this pile once',
 });

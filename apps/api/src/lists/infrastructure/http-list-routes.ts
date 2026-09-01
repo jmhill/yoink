@@ -147,6 +147,60 @@ export const registerListRoutes = async (
         );
       },
 
+      listUnlistedOpenTasks: async ({ request }) => {
+        const result = await listHandlers.listUnlistedOpenTasks({
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (tasks) => ({
+            status: 200 as const,
+            body: { tasks },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      reorderUnlistedOpenTasks: async ({ body, request }) => {
+        const result = await listHandlers.reorderUnlistedOpenTasks({
+          organizationId: request.authContext.organizationId,
+          taskIds: body.taskIds,
+        });
+
+        return result.match(
+          ({ tasks }) => ({
+            status: 200 as const,
+            body: { tasks },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'TASK_NOT_OPEN':
+              case 'INVALID_OPEN_ORDER':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              case 'LIST_NOT_FOUND':
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
       delete: async ({ params, request }) => {
         const result = await listHandlers.delete({
           id: params.id,

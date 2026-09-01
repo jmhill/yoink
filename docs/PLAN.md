@@ -28,8 +28,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Take a task off a list** - Complete ✓ (`listId: null` on PATCH; open tasks only; kit picker can clear)
 **Named lists: Delete an empty named list** - Complete ✓ (`DELETE /api/lists/:id`; refuse if any open task; completed unlisted in the same command)
 **Named lists: Order tasks in a list** - Complete ✓ (integer `openOrder` per pile; list open tasks + reorder; complete/uncomplete sandwich; kit up/down on the list)
+**Named lists: Order unlisted tasks** - Complete ✓ (`GET`/`PUT` `/api/unlisted/tasks`; same `openOrder` pile; kit up/down; All/Today/Mine/Upcoming unchanged)
 
 Recent updates:
+- Story 8 “Order unlisted tasks”: a member can see the open tasks that are not on a named list, in an order, and change that order. Same Polly lock as story 7, on the unlisted pile only — not a global rank across All. Completing drops a task out of that sequence but keeps the remembered index (and no `listId`). Uncomplete restores (clamp to the end if the pile got shorter). New unlisted tasks and take-off append to the end. Pin is unchanged and still sits on top of All/Today/Mine/Upcoming. Agent tokens can reorder; unauthenticated cannot; completed cannot be reordered. Named-list order (story 7) stays. Kit up/down on `/lists/unlisted`. `decideReorderOpenTasks` with `listId: null`.
 - Story 7 “Order tasks in a list”: a member can see the open tasks on a named list in an order and change that order. Open order is among open tasks only. Completing drops a task out of that sequence but keeps `listId` and the remembered index. Uncomplete puts it back at that index (clamp to the end if the list got shorter). New tasks on a list, moves onto a list, and take-off onto unlisted all append to the end of that pile’s open tasks. Pin is unchanged. Story 8 (unlisted-pile reorder UI) stays out. Complete and uncomplete are now write sandwiches (`decideCompleteTask` / `decideUncompleteTask` → persist → apply); pin/delete stay on `TaskService`. Kit up/down buttons on the list’s open tasks (not drag-and-drop, not `window.confirm`). Existing open-on-list rows without an index get a stable `createdAt` order.
 - Story 6 “Delete an empty named list”: a member can delete a named list that has no **open** tasks. Completed-on-list do not block. On success, those completed tasks are unlisted in the same command (they stay in Done; recreating the name is a new bucket). Hard-delete the list row. Names stay unique in the org; after delete the name is free. Humans (session) and agent tokens both can. Delete is a write sandwich (`decideDeleteNamedList` → persist → apply). Persist of `NamedListDeleted` nulls completed tasks’ `listId` then removes the list. Kit dialog on the Lists page (not `window.confirm`). Order, notes canvas, take-off stay out.
 - Story 5 “Take a task off a list”: take an existing **open** task off a named list (one bucket → unlisted). Already-unlisted is a no-op. Completed stays put so uncomplete still restores the same list. PATCH `/api/tasks/:id` with `listId: null` extends the existing update sandwich (`decideUpdateTask` → persist → apply). Humans and agent tokens both can. Kit Select on task edit can clear to “No list”; disabled when completed (same as add). Delete list, order, notes canvas stay out.
@@ -711,12 +713,12 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Land at the end: new task on a list, move onto a list, take-off onto unlisted — all append to the end of that pile’s open tasks.
 - Uncomplete: put it back at its remembered open-order index (clamp to end if the list got shorter). Keep that index through complete; don’t clear it.
 - Pin stays its own thing, not this order.
-- Story 7 is order **within a list**. Story 8 is the same rules on the unlisted pile (do not build story 8 UI or unlisted reorder).
+- Story 7 is order **within a list**. Story 8 applies the same rules to the unlisted pile.
 - A list is still an optional single bucket, not tags. Anyone in the org (human or agent token) can reorder.
 
 **Out of scope:**
 - Notes canvas, tags, rename list, order the lists themselves, change pin
-- Story 8 UI / unlisted-pile reorder
+- Reordering All/Today/Mine/Upcoming by `openOrder` (those filters stay pin-then-created)
 - Big-bang TaskService rewrite (pin/delete stay on TaskService)
 
 **Implementation:**
@@ -727,6 +729,35 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Lists page: open a named list; kit up/down on its open tasks
 
 **Deliverable:** A member can see and change the open-task order on a named list in the PWA and via API.
+
+---
+
+## Named lists: Order unlisted tasks - Complete ✓
+
+**Goal**: A member can see the open tasks that are not on a named list, in an order, and change that order.
+
+**Product rules (locked):**
+- Same rules as story 7, on the unlisted pile (`listId` none).
+- Open order is among **open** unlisted tasks only. Completed drop out of that sequence but keep the remembered index (and stay unlisted).
+- Land at the end: new task with no list, and take-off onto unlisted, append to the end of the unlisted pile’s open tasks.
+- Uncomplete: put it back at its remembered open-order index (clamp to end if the unlisted open pile got shorter). Keep that index through complete; don’t clear it.
+- Unlisted is its own open pile, not a global rank across All. The All view can keep showing everything; this order is only for tasks with no list.
+- Do not reorder the All/Today/Mine/Upcoming filters by unlisted `openOrder`. Pin still sits on top of those filters (unchanged, not this order).
+- A list is still an optional single bucket, not tags. Anyone in the org (human or agent token) can reorder.
+
+**Out of scope:**
+- Notes canvas, tags, rename, order the lists themselves, change pin
+- Rebuild list-order UI (named-list kit up/down stays as shipped)
+- Reordering All/Today/Mine/Upcoming
+
+**Implementation:**
+- Reuse `openOrder` and `decideReorderOpenTasks` with `listId: null` (not a fake list id)
+- `GET /api/unlisted/tasks` — open unlisted tasks in open order
+- `PUT /api/unlisted/tasks/order` — `{ taskIds }` permutation of current open-unlisted
+- Lists page: Unlisted entry; kit up/down on `/lists/unlisted`
+- Existing unlisted open rows without an index keep a stable `createdAt` order (`compareOpenOrder` / `NULLS LAST`)
+
+**Deliverable:** A member can see and change the open-task order of the unlisted pile in the PWA and via API.
 
 ---
 
@@ -1007,6 +1038,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 | `/api/captures` | Capture CRUD | Token or session |
 | `/api/tasks` | Task CRUD | Token or session |
 | `/api/lists` | View, create, delete named lists; list and reorder open tasks on a list | Token or session |
+| `/api/unlisted/tasks` | List and reorder open unlisted tasks | Token or session |
 | `/api/auth/signup/*` | New user signup | None (public) |
 | `/api/auth/login/*` | Passkey login | None (public) |
 | `/api/auth/logout` | Logout | Session |
@@ -1104,7 +1136,9 @@ When resuming work on this project:
 
 ### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
 
-**Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp). Story 8 unlisted reorder UI stays out.
+**Named lists story 8 is in.** A member can see and change the open-task order of the unlisted pile (`GET`/`PUT` `/api/unlisted/tasks`, `decideReorderOpenTasks` with `listId: null`). Same complete/uncomplete/land-at-end rules as story 7. All/Today/Mine/Upcoming stay pin-then-created. Kit up/down on `/lists/unlisted`. Named-list order stays as story 7.
+
+**Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp).
 
 **Named lists story 6 is in.** A member can delete a named list that has no open tasks. Completed-on-list do not block; persist unlists those completed tasks then hard-deletes the list row. Sandwich `decideDeleteNamedList`; kit Dialog on the Lists page. Order and notes canvas stay out.
 

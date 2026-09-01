@@ -25,7 +25,7 @@ export type PersistNamedListEvent = (input: {
 
 export type LoadOpenTasksOnList = (
   organizationId: string,
-  listId: string
+  listId: string | null
 ) => ResultAsync<Task[], StorageError>;
 
 export type LoadTasksByIds = (ids: string[]) => ResultAsync<Task[], StorageError>;

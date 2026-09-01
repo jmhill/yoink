@@ -12,7 +12,7 @@ import {
 
 export type OpenTasksReordered = {
   type: 'OpenTasksReordered';
-  listId: string;
+  listId: string | null;
   organizationId: string;
   orders: { id: string; openOrder: number }[];
 };
@@ -29,6 +29,9 @@ export type DecideReorderOpenTasksError =
   | TaskNotOpenError
   | InvalidOpenOrderError;
 
+const inPile = (task: Task, listId: string | null): boolean =>
+  (task.listId ?? null) === listId;
+
 export const decideReorderOpenTasks = ({
   command,
   list,
@@ -38,18 +41,20 @@ export const decideReorderOpenTasks = ({
   OpenTasksReordered,
   DecideReorderOpenTasksError
 > => {
-  if (!list || list.id !== command.listId || list.organizationId !== command.organizationId) {
-    return err(listNotFoundError(command.listId));
+  if (command.listId !== null) {
+    if (!list || list.id !== command.listId || list.organizationId !== command.organizationId) {
+      return err(listNotFoundError(command.listId));
+    }
   }
 
-  const completedOnList = extraTasks.find(
+  const completedInPile = extraTasks.find(
     (task) =>
       Boolean(task.completedAt) &&
-      task.listId === command.listId &&
+      inPile(task, command.listId) &&
       task.organizationId === command.organizationId
   );
-  if (completedOnList) {
-    return err(taskNotOpenError(completedOnList.id));
+  if (completedInPile) {
+    return err(taskNotOpenError(completedInPile.id));
   }
 
   const openIds = new Set(openTasks.map((task) => task.id));

@@ -17,6 +17,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@yoink/ui-base/components/select';
@@ -28,10 +29,12 @@ import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard, type TaskReorderControls } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
+import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
 import {
+  ALL_PILE_NEW_LIST,
   ALL_PILE_OVERVIEW,
   ALL_PILE_UNLISTED,
   allPileSelectValue,
@@ -188,6 +191,7 @@ function TasksPage() {
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [createListOpen, setCreateListOpen] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -668,6 +672,10 @@ function TasksPage() {
   };
 
   const handlePileChange = (value: string) => {
+    if (value === ALL_PILE_NEW_LIST) {
+      requestAnimationFrame(() => setCreateListOpen(true));
+      return;
+    }
     navigate({
       to: '/tasks',
       search: {
@@ -843,6 +851,10 @@ function TasksPage() {
                   {list.name}
                 </SelectItem>
               ))}
+              <SelectSeparator />
+              <SelectItem value={ALL_PILE_NEW_LIST} data-all-pile-new-list="">
+                New list
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1008,6 +1020,17 @@ function TasksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CreateNamedListDialog
+        open={createListOpen}
+        onOpenChange={setCreateListOpen}
+        onCreated={(list) => {
+          navigate({
+            to: '/tasks',
+            search: { filter: 'all', pile: list.id },
+          });
+        }}
+      />
 
       {/* Task edit modal */}
       <TaskEditModal

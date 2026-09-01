@@ -333,6 +333,58 @@ export type BrowserActorOperations = {
   shouldSeeTaskFilterWithoutAllPile(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
 
   /**
+   * Open the Tasks Today view (overdue vs due today outer, list groups inside).
+   */
+  openToday(): Promise<void>;
+
+  /**
+   * Open the Tasks Upcoming view (grouped by list, no overdue split).
+   */
+  openUpcoming(): Promise<void>;
+
+  /**
+   * Assert the current Tasks view shows these pile group headings, in order.
+   */
+  shouldSeePileGroups(names: string[]): Promise<void>;
+
+  /**
+   * Assert tasks in a pile group appear in this title order.
+   */
+  shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void>;
+
+  /**
+   * Assert Today’s outer headings are overdue then due today, in this order.
+   */
+  shouldSeeTodayOuterSections(sections: Array<'overdue' | 'due-today'>): Promise<void>;
+
+  /**
+   * Assert a Today deadline section shows these pile groups, in order.
+   */
+  shouldSeePileGroupsInTodaySection(
+    section: 'overdue' | 'due-today',
+    names: string[]
+  ): Promise<void>;
+
+  /**
+   * Assert tasks in a pile group inside a Today deadline section appear in this title order.
+   */
+  shouldSeeTasksInTodaySectionPileGroup(
+    section: 'overdue' | 'due-today',
+    groupName: string,
+    titles: string[]
+  ): Promise<void>;
+
+  /**
+   * Assert the current view has no overdue / due-today split (Upcoming).
+   */
+  shouldNotSeeTodayDueSplit(): Promise<void>;
+
+  /**
+   * Assert All still has its two-mode pile dropdown.
+   */
+  shouldSeeAllPileDropdown(): Promise<void>;
+
+  /**
    * Assert the Lists nav still opens the Lists view.
    */
   shouldSeeListsNav(): Promise<void>;

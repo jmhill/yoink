@@ -397,6 +397,51 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeTaskFilterWithoutAllPile', 'http');
     },
 
+    async openToday(): Promise<void> {
+      throw new UnsupportedOperationError('openToday', 'http');
+    },
+
+    async openUpcoming(): Promise<void> {
+      throw new UnsupportedOperationError('openUpcoming', 'http');
+    },
+
+    async shouldSeePileGroups(_names: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePileGroups', 'http');
+    },
+
+    async shouldSeeTasksInPileGroup(_groupName: string, _titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTasksInPileGroup', 'http');
+    },
+
+    async shouldSeeTodayOuterSections(
+      _sections: Array<'overdue' | 'due-today'>
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTodayOuterSections', 'http');
+    },
+
+    async shouldSeePileGroupsInTodaySection(
+      _section: 'overdue' | 'due-today',
+      _names: string[]
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePileGroupsInTodaySection', 'http');
+    },
+
+    async shouldSeeTasksInTodaySectionPileGroup(
+      _section: 'overdue' | 'due-today',
+      _groupName: string,
+      _titles: string[]
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTasksInTodaySectionPileGroup', 'http');
+    },
+
+    async shouldNotSeeTodayDueSplit(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeTodayDueSplit', 'http');
+    },
+
+    async shouldSeeAllPileDropdown(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeAllPileDropdown', 'http');
+    },
+
     async shouldSeeListsNav(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeListsNav', 'http');
     },

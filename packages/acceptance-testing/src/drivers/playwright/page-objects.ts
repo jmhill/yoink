@@ -1,4 +1,4 @@
-import type { Page, CDPSession } from '@playwright/test';
+import type { Page, CDPSession, Locator } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
 
 /**
@@ -914,6 +914,8 @@ export class TasksPage {
       throw new Error(`Failed to delete named list: ${response.status()}`);
     }
 
+    // Kit dialog leaves the rest of the page aria-hidden until it closes.
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
     await this.page.waitForURL((url) => {
       const parsed = new URL(url);
       return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
@@ -936,8 +938,56 @@ export class TasksPage {
   }
 
   async getTitlesInPileGroup(groupName: string): Promise<string[]> {
-    const group = this.page.locator(`[data-pile-name="${groupName}"]`);
-    const cards = group.locator('[data-task-id]');
+    return this.titlesIn(this.page.locator(`[data-pile-name="${groupName}"]`).locator('[data-task-id]'));
+  }
+
+  async getTodayOuterSections(): Promise<Array<'overdue' | 'due-today'>> {
+    const sections = this.todayDueSections();
+    const count = await sections.count();
+    const names: Array<'overdue' | 'due-today'> = [];
+    for (let i = 0; i < count; i++) {
+      const section = await sections.nth(i).getAttribute('data-today-section');
+      if (section === 'overdue' || section === 'due-today') {
+        names.push(section);
+      }
+    }
+    return names;
+  }
+
+  async getPileGroupNamesInTodaySection(
+    section: 'overdue' | 'due-today'
+  ): Promise<string[]> {
+    const groups = this.page
+      .locator(`[data-today-section="${section}"]`)
+      .locator('[data-pile-group]');
+    const count = await groups.count();
+    const names: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const name = await groups.nth(i).getAttribute('data-pile-name');
+      if (name) {
+        names.push(name);
+      }
+    }
+    return names;
+  }
+
+  async getTitlesInTodaySectionPileGroup(
+    section: 'overdue' | 'due-today',
+    groupName: string
+  ): Promise<string[]> {
+    return this.titlesIn(
+      this.page
+        .locator(`[data-today-section="${section}"]`)
+        .locator(`[data-pile-name="${groupName}"]`)
+        .locator('[data-task-id]')
+    );
+  }
+
+  todayDueSections() {
+    return this.page.locator('[data-today-section]');
+  }
+
+  private async titlesIn(cards: Locator): Promise<string[]> {
     const count = await cards.count();
     const titles: string[] = [];
     for (let i = 0; i < count; i++) {

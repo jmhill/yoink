@@ -914,6 +914,8 @@ export class TasksPage {
       throw new Error(`Failed to delete named list: ${response.status()}`);
     }
 
+    // Kit dialog leaves the rest of the page aria-hidden until it closes.
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
     await this.page.waitForURL((url) => {
       const parsed = new URL(url);
       return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');

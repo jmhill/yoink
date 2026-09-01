@@ -7,7 +7,8 @@ import { UnauthorizedError } from '@yoink/acceptance-testing';
  *
  * A list is an optional bucket on a task — this story only shows the org's
  * named lists (including empty ones). Create is a separate story; these tests
- * use the product create path so a non-empty view is proven.
+ * use the product create path so a non-empty view is proven. Empty named
+ * lists appear in All’s pile dropdown (overview hides empty groups).
  */
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Viewing named lists [${ctx.driverName}]`, () => {
@@ -82,11 +83,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-lists-board@example.com');
     });
 
-    it('opens the lists view and shows the empty state', async () => {
+    it('shows no named lists in All’s pile dropdown when the organization has none', async () => {
       await alice.shouldSeeEmptyNamedLists();
     });
 
-    it('shows created names on the lists view', async () => {
+    it('shows created names in All’s pile dropdown, including empty lists', async () => {
       await alice.createNamedList('Groceries');
       await alice.createNamedList('Weekend');
 

@@ -119,7 +119,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-delete-list-board@example.com');
     });
 
-    it('removes the list from the lists view after deleting from the kit dialog', async () => {
+    it('removes the list from All’s pile dropdown after deleting from the kit dialog', async () => {
       const list = await alice.createNamedList('Weekend');
 
       await alice.deleteNamedList(list.id);

@@ -1,5 +1,5 @@
 import { Link, useMatchRoute } from '@tanstack/react-router';
-import { Inbox, CheckSquare, List } from 'lucide-react';
+import { Inbox, CheckSquare } from 'lucide-react';
 import { cn } from '@yoink/ui-base/lib/utils';
 
 type NavItem = {
@@ -21,13 +21,7 @@ const navItems: NavItem[] = [
     to: '/tasks',
     label: 'Tasks',
     icon: CheckSquare,
-    matchPaths: ['/tasks'],
-  },
-  {
-    to: '/lists',
-    label: 'Lists',
-    icon: List,
-    matchPaths: ['/lists', '/lists/$listId'],
+    matchPaths: ['/tasks', '/lists', '/lists/$listId'],
   },
 ];
 

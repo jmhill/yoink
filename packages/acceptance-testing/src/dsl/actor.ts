@@ -248,22 +248,38 @@ export type BrowserActorOperations = {
   shouldNotSeeTaskOnMine(taskId: string): Promise<void>;
 
   /**
-   * Open the named lists view.
+   * Open a Lists bookmark (`/lists`). Lands on Tasks All overview.
    */
   goToLists(): Promise<void>;
 
   /**
-   * Assert the lists view is visible and has no named lists.
+   * Open `/lists`. Lands on Tasks All overview.
+   */
+  openListsUrl(): Promise<void>;
+
+  /**
+   * Open `/lists/:listId`. Lands on All’s named-list one-pile.
+   */
+  openNamedListUrl(listId: string): Promise<void>;
+
+  /**
+   * Open `/lists/unlisted`. Lands on All Unlisted.
+   */
+  openUnlistedListUrl(): Promise<void>;
+
+  /**
+   * Assert All’s pile dropdown has no named lists (empty lists still appear
+   * there when they exist — this is how you find an empty list).
    */
   shouldSeeEmptyNamedLists(): Promise<void>;
 
   /**
-   * Assert a named list is visible on the lists view.
+   * Assert a named list is visible in All’s pile dropdown.
    */
   shouldSeeNamedList(name: string): Promise<void>;
 
   /**
-   * Assert a named list is not visible on the lists view.
+   * Assert a named list is not visible in All’s pile dropdown.
    */
   shouldNotSeeNamedList(name: string): Promise<void>;
 
@@ -430,9 +446,9 @@ export type BrowserActorOperations = {
   shouldNotSeeDeleteListOnMine(name: string): Promise<void>;
 
   /**
-   * Assert the Lists nav still opens the Lists view.
+   * Assert there is no Lists item in the nav.
    */
-  shouldSeeListsNav(): Promise<void>;
+  shouldNotSeeListsNav(): Promise<void>;
 
   /**
    * Create a named list from the All pile dropdown (kit dialog).
@@ -471,6 +487,11 @@ export type BrowserActorOperations = {
    * Assert All is showing the grouped overview (no `pile` in the URL).
    */
   shouldBeOnAllOverview(): Promise<void>;
+
+  /**
+   * Assert All is showing the unlisted one-pile (`pile=unlisted`).
+   */
+  shouldBeOnAllUnlistedPile(): Promise<void>;
 
   /**
    * Assert this named list does not appear in the All pile dropdown.

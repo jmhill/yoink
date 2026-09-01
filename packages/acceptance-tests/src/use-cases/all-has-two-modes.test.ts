@@ -9,9 +9,9 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * unlisted), where they can change that pile’s open order.
  *
  * Product lock: Lists is a dimension of the task board, not a second app.
- * This story only changes All. Today, Upcoming, Mine, Done, and the Lists
- * nav stay as they are. Pin still displays; overview is not ranked by
- * openOrder.
+ * This story only changed All. Today, Upcoming, Mine, and Done stay as
+ * they are. The Lists nav is gone (story 6). Pin still displays;
+ * overview is not ranked by openOrder.
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`All has two modes [${ctx.driverName}]`, () => {
@@ -80,14 +80,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReorderControls();
     });
 
-    it('leaves Today, Upcoming, Mine, and the Lists nav as they are', async () => {
+    it('leaves Today, Upcoming, and Mine as they are, with no Lists nav', async () => {
       await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Notes' });
 
       await alice.shouldSeeTaskFilterWithoutAllPile('today');
       await alice.shouldSeeTaskFilterWithoutAllPile('upcoming');
       await alice.shouldSeeTaskFilterWithoutAllPile('mine');
-      await alice.shouldSeeListsNav();
+      await alice.shouldNotSeeListsNav();
       await alice.shouldSeeNamedList('Groceries');
     });
   });

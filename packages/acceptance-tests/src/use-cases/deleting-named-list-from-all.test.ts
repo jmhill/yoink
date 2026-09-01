@@ -10,8 +10,8 @@ import { ConflictError } from '@yoink/acceptance-testing';
  * from Unlisted. Same refuse-if-open-tasks already shipped. After a
  * successful delete, All lands back on overview.
  *
- * This is not grouping Today/Upcoming, Mine picker, or removing the
- * Lists nav. Lists page delete stays until story 6.
+ * This is not grouping Today/Upcoming or Mine picker. Lists page delete
+ * is gone with the Lists nav (story 6).
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Deleting a named list from All [${ctx.driverName}]`, () => {
@@ -56,14 +56,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeDeleteListOnAll('Weekend');
     });
 
-    it('leaves Today, Upcoming, Mine, Done, and the Lists nav as they are', async () => {
+    it('leaves Today, Upcoming, Mine, and Done as they are, with no Lists nav', async () => {
       await alice.createNamedList('Weekend');
 
       await alice.shouldSeeTaskFilterWithoutAllPile('today');
       await alice.shouldSeeTaskFilterWithoutAllPile('upcoming');
       await alice.shouldSeeTaskFilterWithoutAllPile('mine');
       await alice.shouldSeeTaskFilterWithoutAllPile('completed');
-      await alice.shouldSeeListsNav();
+      await alice.shouldNotSeeListsNav();
       await alice.shouldSeeNamedList('Weekend');
     });
   });

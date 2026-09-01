@@ -13,8 +13,8 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * overdue, then due today. Inside each, named list plus unlisted.
  * Upcoming has no overdue split — just list groups.
  *
- * This is not All two-modes, create/delete from All, Mine picker, or
- * removing the Lists nav.
+ * This is not All two-modes, create/delete from All, or Mine picker.
+ * The Lists nav is gone (story 6).
  */
 
 const isoDateOffset = (days: number): string =>

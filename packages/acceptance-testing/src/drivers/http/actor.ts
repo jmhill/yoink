@@ -331,6 +331,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('goToLists', 'http');
     },
 
+    async openListsUrl(): Promise<void> {
+      throw new UnsupportedOperationError('openListsUrl', 'http');
+    },
+
+    async openNamedListUrl(_listId: string): Promise<void> {
+      throw new UnsupportedOperationError('openNamedListUrl', 'http');
+    },
+
+    async openUnlistedListUrl(): Promise<void> {
+      throw new UnsupportedOperationError('openUnlistedListUrl', 'http');
+    },
+
     async shouldSeeEmptyNamedLists(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeEmptyNamedLists', 'http');
     },
@@ -478,8 +490,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeDeleteListOnMine', 'http');
     },
 
-    async shouldSeeListsNav(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeListsNav', 'http');
+    async shouldNotSeeListsNav(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeListsNav', 'http');
     },
 
     async createNamedListFromAll(_name: string): Promise<NamedList> {
@@ -508,6 +520,10 @@ export const createHttpActor = (
 
     async shouldBeOnAllOverview(): Promise<void> {
       throw new UnsupportedOperationError('shouldBeOnAllOverview', 'http');
+    },
+
+    async shouldBeOnAllUnlistedPile(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnAllUnlistedPile', 'http');
     },
 
     async shouldNotSeeNamedPileOnAll(_name: string): Promise<void> {

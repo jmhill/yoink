@@ -14,7 +14,7 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * sort (pinned_at then created_at). HTTP still only maps.
  *
  * Create/delete a named list stay on All. Today/Upcoming stay as just
- * shipped. All two-modes stays. Done and Lists nav stay (story 6).
+ * shipped. All two-modes stays. Done stays. The Lists nav is gone (story 6).
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Mine uses All’s two-mode picker [${ctx.driverName}]`, () => {
@@ -157,14 +157,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk']);
     });
 
-    it('leaves Today, Upcoming, Done, and the Lists nav as they are, with no create or delete list on Mine', async () => {
+    it('leaves Today, Upcoming, and Done as they are, with no Lists nav and no create or delete list on Mine', async () => {
       await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Notes' });
 
       await alice.shouldSeeTaskFilterWithoutAllPile('today');
       await alice.shouldSeeTaskFilterWithoutAllPile('upcoming');
       await alice.shouldSeeTaskFilterWithoutAllPile('completed');
-      await alice.shouldSeeListsNav();
+      await alice.shouldNotSeeListsNav();
       await alice.shouldSeeNamedList('Groceries');
 
       await alice.openMineOverview();

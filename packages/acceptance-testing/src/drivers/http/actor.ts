@@ -442,6 +442,42 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeAllPileDropdown', 'http');
     },
 
+    async openMineOverview(): Promise<void> {
+      throw new UnsupportedOperationError('openMineOverview', 'http');
+    },
+
+    async openMineNamedPile(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openMineNamedPile', 'http');
+    },
+
+    async openMineUnlistedPile(): Promise<void> {
+      throw new UnsupportedOperationError('openMineUnlistedPile', 'http');
+    },
+
+    async shouldSeeMinePileDropdown(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeMinePileDropdown', 'http');
+    },
+
+    async shouldSeeReorderControls(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReorderControls', 'http');
+    },
+
+    async shouldSeeTaskTitles(_titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskTitles', 'http');
+    },
+
+    async shouldNotSeeTask(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeTask', 'http');
+    },
+
+    async shouldNotSeeCreateListOnMine(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeCreateListOnMine', 'http');
+    },
+
+    async shouldNotSeeDeleteListOnMine(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeDeleteListOnMine', 'http');
+    },
+
     async shouldSeeListsNav(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeListsNav', 'http');
     },

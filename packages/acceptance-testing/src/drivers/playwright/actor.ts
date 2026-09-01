@@ -578,6 +578,60 @@ export const createPlaywrightActor = (
       await expect(page.locator('#all-pile')).toBeVisible();
     },
 
+    async openMineOverview(): Promise<void> {
+      await tasksPage.goto('mine');
+      await tasksPage.waitForMinePileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openMineNamedPile(name: string): Promise<void> {
+      await tasksPage.goto('mine');
+      await tasksPage.waitForMinePileSelect();
+      await tasksPage.selectMineNamedPile(name);
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openMineUnlistedPile(): Promise<void> {
+      await tasksPage.goto('mine');
+      await tasksPage.waitForMinePileSelect();
+      await tasksPage.selectMinePile('unlisted');
+      await page.waitForURL(/[?&]pile=unlisted/);
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeeMinePileDropdown(): Promise<void> {
+      await expect(page.locator('#mine-pile')).toBeVisible();
+      await expect(page.locator('#all-pile')).toHaveCount(0);
+    },
+
+    async shouldSeeReorderControls(): Promise<void> {
+      await expect(tasksPage.reorderButtons().first()).toBeVisible();
+    },
+
+    async shouldSeeTaskTitles(titles: string[]): Promise<void> {
+      await expect.poll(async () => tasksPage.getBoardTaskTitles()).toEqual(titles);
+    },
+
+    async shouldNotSeeTask(taskId: string): Promise<void> {
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+    },
+
+    async shouldNotSeeCreateListOnMine(): Promise<void> {
+      await tasksPage.waitForMinePileSelect();
+      await page.locator('#mine-pile').click();
+      await expect(page.locator('[data-all-pile-new-list]')).toHaveCount(0);
+      await expect(page.getByRole('option', { name: 'New list' })).toHaveCount(0);
+      await tasksPage.closePileSelect();
+    },
+
+    async shouldNotSeeDeleteListOnMine(name: string): Promise<void> {
+      await tasksPage.waitForMinePileSelect();
+      await expect(page.getByRole('button', { name: `Delete ${name}` })).toHaveCount(0);
+      await page.locator('#mine-pile').click();
+      await expect(page.getByRole('option', { name: `Delete ${name}` })).toHaveCount(0);
+      await tasksPage.closePileSelect();
+    },
+
     async shouldNotSeeReorderControls(): Promise<void> {
       await expect(tasksPage.reorderButtons()).toHaveCount(0);
     },

@@ -696,6 +696,8 @@ export class TasksPage {
       this.page.getByText('No completed tasks').waitFor({ state: 'attached' }),
       this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
       this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
+      this.page.getByText('No tasks assigned to you on this list').waitFor({ state: 'attached' }),
+      this.page.getByText('No unlisted tasks assigned to you').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
@@ -789,6 +791,32 @@ export class TasksPage {
 
   async waitForPileSelect(): Promise<void> {
     await this.page.locator('#all-pile').waitFor({ state: 'visible' });
+  }
+
+  async waitForMinePileSelect(): Promise<void> {
+    await this.page.locator('#mine-pile').waitFor({ state: 'visible' });
+  }
+
+  async selectMinePile(value: string): Promise<void> {
+    await this.waitForMinePileSelect();
+    await this.page.locator('#mine-pile').click();
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
+  async selectMineNamedPile(name: string): Promise<void> {
+    await this.closePileSelect();
+    await this.waitForMinePileSelect();
+    await this.page.locator('#mine-pile').click();
+    const option = this.namedPileOption(name);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+    await this.page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+  }
+
+  async getBoardTaskTitles(): Promise<string[]> {
+    return this.titlesIn(this.page.locator('[data-task-id]'));
   }
 
   async selectAllPile(value: string): Promise<void> {

@@ -6,6 +6,7 @@ import {
   allPileSelectValue,
   groupAllTasksByPile,
   parseAllPile,
+  tasksInPile,
 } from './all-tasks-piles';
 
 const orgId = '00000000-0000-0000-0000-000000000001';
@@ -105,5 +106,42 @@ describe('groupAllTasksByPile', () => {
     const groups = groupAllTasksByPile(tasks, namedLists);
 
     expect(groups.map((group) => group.name)).toEqual(['Unlisted']);
+  });
+});
+
+describe('tasksInPile', () => {
+  const groceriesTasks = [
+    task({
+      id: '00000000-0000-0000-0000-000000000051',
+      title: 'Eggs',
+      listId: groceriesId,
+      openOrder: 1,
+    }),
+    task({
+      id: '00000000-0000-0000-0000-000000000052',
+      title: 'Milk',
+      listId: groceriesId,
+      openOrder: 0,
+    }),
+  ];
+  const unlistedTasks = [
+    task({ id: '00000000-0000-0000-0000-000000000053', title: 'Notes', openOrder: 0 }),
+  ];
+  const tasks = [...groceriesTasks, ...unlistedTasks];
+
+  it('returns the full result for overview', () => {
+    expect(tasksInPile(tasks, { kind: 'overview' })).toEqual(tasks);
+  });
+
+  it('keeps API order for a named list and does not sort by openOrder', () => {
+    expect(
+      tasksInPile(tasks, { kind: 'named', listId: groceriesId }).map((item) => item.title)
+    ).toEqual(['Eggs', 'Milk']);
+  });
+
+  it('returns only unlisted tasks', () => {
+    expect(tasksInPile(tasks, { kind: 'unlisted' }).map((item) => item.title)).toEqual([
+      'Notes',
+    ]);
   });
 });

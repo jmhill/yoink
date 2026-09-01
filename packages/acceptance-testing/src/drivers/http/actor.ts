@@ -413,12 +413,25 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeTasksInPileGroup', 'http');
     },
 
-    async shouldSeeOverdueAndDueTodayInPileGroup(
-      _groupName: string,
-      _overdueTitles: string[],
-      _dueTodayTitles: string[]
+    async shouldSeeTodayOuterSections(
+      _sections: Array<'overdue' | 'due-today'>
     ): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeOverdueAndDueTodayInPileGroup', 'http');
+      throw new UnsupportedOperationError('shouldSeeTodayOuterSections', 'http');
+    },
+
+    async shouldSeePileGroupsInTodaySection(
+      _section: 'overdue' | 'due-today',
+      _names: string[]
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePileGroupsInTodaySection', 'http');
+    },
+
+    async shouldSeeTasksInTodaySectionPileGroup(
+      _section: 'overdue' | 'due-today',
+      _groupName: string,
+      _titles: string[]
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTasksInTodaySectionPileGroup', 'http');
     },
 
     async shouldNotSeeTodayDueSplit(): Promise<void> {

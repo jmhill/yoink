@@ -333,7 +333,7 @@ export type BrowserActorOperations = {
   shouldSeeTaskFilterWithoutAllPile(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
 
   /**
-   * Open the Tasks Today view (grouped by list, overdue vs due today inside each group).
+   * Open the Tasks Today view (overdue vs due today outer, list groups inside).
    */
   openToday(): Promise<void>;
 
@@ -353,12 +353,25 @@ export type BrowserActorOperations = {
   shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void>;
 
   /**
-   * Assert a Today pile group still splits overdue vs due today (overdue first).
+   * Assert Today’s outer headings are overdue then due today, in this order.
    */
-  shouldSeeOverdueAndDueTodayInPileGroup(
+  shouldSeeTodayOuterSections(sections: Array<'overdue' | 'due-today'>): Promise<void>;
+
+  /**
+   * Assert a Today deadline section shows these pile groups, in order.
+   */
+  shouldSeePileGroupsInTodaySection(
+    section: 'overdue' | 'due-today',
+    names: string[]
+  ): Promise<void>;
+
+  /**
+   * Assert tasks in a pile group inside a Today deadline section appear in this title order.
+   */
+  shouldSeeTasksInTodaySectionPileGroup(
+    section: 'overdue' | 'due-today',
     groupName: string,
-    overdueTitles: string[],
-    dueTodayTitles: string[]
+    titles: string[]
   ): Promise<void>;
 
   /**

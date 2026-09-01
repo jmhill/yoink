@@ -545,17 +545,29 @@ export const createPlaywrightActor = (
         .toEqual(titles);
     },
 
-    async shouldSeeOverdueAndDueTodayInPileGroup(
-      groupName: string,
-      overdueTitles: string[],
-      dueTodayTitles: string[]
+    async shouldSeeTodayOuterSections(
+      sections: Array<'overdue' | 'due-today'>
+    ): Promise<void> {
+      await expect.poll(async () => tasksPage.getTodayOuterSections()).toEqual(sections);
+    },
+
+    async shouldSeePileGroupsInTodaySection(
+      section: 'overdue' | 'due-today',
+      names: string[]
     ): Promise<void> {
       await expect
-        .poll(async () => tasksPage.getTitlesInTodaySection(groupName, 'overdue'))
-        .toEqual(overdueTitles);
+        .poll(async () => tasksPage.getPileGroupNamesInTodaySection(section))
+        .toEqual(names);
+    },
+
+    async shouldSeeTasksInTodaySectionPileGroup(
+      section: 'overdue' | 'due-today',
+      groupName: string,
+      titles: string[]
+    ): Promise<void> {
       await expect
-        .poll(async () => tasksPage.getTitlesInTodaySection(groupName, 'due-today'))
-        .toEqual(dueTodayTitles);
+        .poll(async () => tasksPage.getTitlesInTodaySectionPileGroup(section, groupName))
+        .toEqual(titles);
     },
 
     async shouldNotSeeTodayDueSplit(): Promise<void> {

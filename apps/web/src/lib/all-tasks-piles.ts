@@ -45,7 +45,8 @@ export function allPileSelectValue(pile: AllPile): string {
 /**
  * Group filter-result tasks by named list, then unlisted.
  * Keeps each group's relative order from the API (pin then createdAt).
- * Does not sort by openOrder. Used by All overview, Today, and Upcoming.
+ * Does not sort by openOrder. Used by All overview, Upcoming, and inside
+ * each Today deadline section.
  */
 export function groupAllTasksByPile(
   tasks: Task[],

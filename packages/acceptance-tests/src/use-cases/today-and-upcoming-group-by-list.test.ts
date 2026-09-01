@@ -4,14 +4,14 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 /**
  * Story 4 of 6: Today and Upcoming group by list and cannot reorder.
  *
- * Today and Upcoming are grouped overviews. Open tasks are grouped by
- * named list (plus unlisted). You cannot change pile order there.
+ * Today and Upcoming are grouped overviews. You cannot change pile order
+ * there. Pin still sits on the existing filter sort (pinned_at then
+ * created_at), not openOrder. Empty groups wait: only piles with tasks
+ * in that view. HTTP still only maps.
  *
- * Product lock (Polly): list groups are outer. Today still splits overdue
- * vs due today inside each list group. Upcoming has no overdue split —
- * just list groups. Pin still sits on the existing filter sort (pinned_at
- * then created_at), not openOrder. Empty groups wait: only piles with
- * tasks in that view. HTTP still only maps.
+ * Product lock (Polly): Today is a deadline view. Outer groups are
+ * overdue, then due today. Inside each, named list plus unlisted.
+ * Upcoming has no overdue split — just list groups.
  *
  * This is not All two-modes, create/delete from All, Mine picker, or
  * removing the Lists nav.
@@ -28,24 +28,25 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-today-upcoming-groups@example.com');
     });
 
-    it('groups Today by named list and unlisted, splits overdue vs due today inside a group, and has no reorder', async () => {
+    it('groups Today as overdue then due today on the outside, list groups inside, with no reorder', async () => {
       const yesterday = isoDateOffset(-1);
       const today = isoDateOffset(0);
       const list = await alice.createNamedList('Groceries');
-      const overdue = await alice.createTask({ title: 'Late milk', dueDate: yesterday });
-      await alice.updateTask(overdue.id, { listId: list.id });
-      const dueToday = await alice.createTask({ title: 'Today milk', dueDate: today });
-      await alice.updateTask(dueToday.id, { listId: list.id });
+      const overdueListed = await alice.createTask({ title: 'Late milk', dueDate: yesterday });
+      await alice.updateTask(overdueListed.id, { listId: list.id });
+      await alice.createTask({ title: 'Late notes', dueDate: yesterday });
+      const dueTodayListed = await alice.createTask({ title: 'Today milk', dueDate: today });
+      await alice.updateTask(dueTodayListed.id, { listId: list.id });
       await alice.createTask({ title: 'Unlisted today', dueDate: today });
 
       await alice.openToday();
-      await alice.shouldSeePileGroups(['Groceries', 'Unlisted']);
-      await alice.shouldSeeOverdueAndDueTodayInPileGroup(
-        'Groceries',
-        ['Late milk'],
-        ['Today milk']
-      );
-      await alice.shouldSeeTasksInPileGroup('Unlisted', ['Unlisted today']);
+      await alice.shouldSeeTodayOuterSections(['overdue', 'due-today']);
+      await alice.shouldSeePileGroupsInTodaySection('overdue', ['Groceries', 'Unlisted']);
+      await alice.shouldSeeTasksInTodaySectionPileGroup('overdue', 'Groceries', ['Late milk']);
+      await alice.shouldSeeTasksInTodaySectionPileGroup('overdue', 'Unlisted', ['Late notes']);
+      await alice.shouldSeePileGroupsInTodaySection('due-today', ['Groceries', 'Unlisted']);
+      await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Groceries', ['Today milk']);
+      await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Unlisted', ['Unlisted today']);
       await alice.shouldNotSeeReorderControls();
       await alice.shouldSeePinControls();
     });

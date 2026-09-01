@@ -43,6 +43,7 @@ import {
   parseAllPile,
   type AllPile,
   type AllPileGroup,
+  type NamedListRef,
 } from '@/lib/all-tasks-piles';
 
 /**
@@ -83,6 +84,7 @@ export const Route = createFileRoute('/_authenticated/tasks')({
 
 type TodayTaskListProps = {
   tasks: Task[];
+  namedLists: NamedListRef[];
   exitDirections: Record<string, ExitDirection>;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
@@ -96,10 +98,12 @@ type TodayTaskListProps = {
 };
 
 /**
- * Renders overdue vs due today inside a Today list group.
+ * Today is a deadline view: overdue vs due today on the outside, then
+ * named list plus unlisted inside each. No reorder.
  */
 function TodayTaskList({
   tasks,
+  namedLists,
   exitDirections,
   onComplete,
   onUncomplete,
@@ -112,70 +116,53 @@ function TodayTaskList({
   listLabel,
 }: TodayTaskListProps) {
   const { overdue, dueToday } = splitTodayTasks(tasks);
+  const overdueGroups = groupAllTasksByPile(overdue, namedLists);
+  const dueTodayGroups = groupAllTasksByPile(dueToday, namedLists);
+
+  const renderPileTasks = (group: AllPileGroup) => (
+    <AnimatedList>
+      {group.tasks.map((task) => (
+        <AnimatedListItem
+          key={task.id}
+          id={task.id}
+          exitDirection={exitDirections[task.id] ?? 'right'}
+        >
+          <TaskCard
+            task={task}
+            onComplete={onComplete}
+            onUncomplete={onUncomplete}
+            onPin={onPin}
+            onUnpin={onUnpin}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            isLoading={isLoading}
+            assigneeLabel={assigneeLabel(task)}
+            listLabel={listLabel(task)}
+          />
+        </AnimatedListItem>
+      ))}
+    </AnimatedList>
+  );
 
   return (
     <div className="space-y-6">
-      {overdue.length > 0 && (
+      {overdueGroups.length > 0 && (
         <div data-today-section="overdue">
           <div className="mb-2 flex items-center gap-2 text-destructive">
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm font-medium">Overdue</span>
           </div>
-          <AnimatedList>
-            {overdue.map((task) => (
-              <AnimatedListItem
-                key={task.id}
-                id={task.id}
-                exitDirection={exitDirections[task.id] ?? 'right'}
-              >
-                <TaskCard
-                  task={task}
-                  onComplete={onComplete}
-                  onUncomplete={onUncomplete}
-                  onPin={onPin}
-                  onUnpin={onUnpin}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  isLoading={isLoading}
-                  assigneeLabel={assigneeLabel(task)}
-                  listLabel={listLabel(task)}
-                />
-              </AnimatedListItem>
-            ))}
-          </AnimatedList>
+          <PileGroupList groups={overdueGroups}>{renderPileTasks}</PileGroupList>
         </div>
       )}
 
-      {dueToday.length > 0 && (
+      {dueTodayGroups.length > 0 && (
         <div data-today-section="due-today">
-          {overdue.length > 0 && (
-            <div className="mb-2 flex items-center gap-2 text-orange-600 dark:text-orange-400">
-              <Calendar className="h-4 w-4" />
-              <span className="text-sm font-medium">Due Today</span>
-            </div>
-          )}
-          <AnimatedList>
-            {dueToday.map((task) => (
-              <AnimatedListItem
-                key={task.id}
-                id={task.id}
-                exitDirection={exitDirections[task.id] ?? 'right'}
-              >
-                <TaskCard
-                  task={task}
-                  onComplete={onComplete}
-                  onUncomplete={onUncomplete}
-                  onPin={onPin}
-                  onUnpin={onUnpin}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  isLoading={isLoading}
-                  assigneeLabel={assigneeLabel(task)}
-                  listLabel={listLabel(task)}
-                />
-              </AnimatedListItem>
-            ))}
-          </AnimatedList>
+          <div className="mb-2 flex items-center gap-2 text-orange-600 dark:text-orange-400">
+            <Calendar className="h-4 w-4" />
+            <span className="text-sm font-medium">Due Today</span>
+          </div>
+          <PileGroupList groups={dueTodayGroups}>{renderPileTasks}</PileGroupList>
         </div>
       )}
     </div>
@@ -744,9 +731,10 @@ function TasksPage() {
       : allPile?.kind === 'unlisted'
         ? unlistedPileTasks
         : boardTasks;
-  const pileGroups = showsPileGroups
-    ? groupAllTasksByPile(boardTasks, namedLists)
-    : [];
+  const pileGroups =
+    filter === 'upcoming' || allPile?.kind === 'overview'
+      ? groupAllTasksByPile(boardTasks, namedLists)
+      : [];
 
   const activeError =
     allPile?.kind === 'named'
@@ -972,23 +960,20 @@ function TasksPage() {
           </CardContent>
         </Card>
       ) : filter === 'today' ? (
-        <PileGroupList groups={pileGroups}>
-          {(group) => (
-            <TodayTaskList
-              tasks={group.tasks}
-              exitDirections={exitDirections}
-              onComplete={handleComplete}
-              onUncomplete={handleUncomplete}
-              onPin={handlePin}
-              onUnpin={handleUnpin}
-              onDelete={(id) => setDeleteConfirmId(id)}
-              onEdit={handleEdit}
-              isLoading={isLoading}
-              assigneeLabel={assigneeLabelFor}
-              listLabel={listLabelFor}
-            />
-          )}
-        </PileGroupList>
+        <TodayTaskList
+          tasks={tasks}
+          namedLists={namedLists}
+          exitDirections={exitDirections}
+          onComplete={handleComplete}
+          onUncomplete={handleUncomplete}
+          onPin={handlePin}
+          onUnpin={handleUnpin}
+          onDelete={(id) => setDeleteConfirmId(id)}
+          onEdit={handleEdit}
+          isLoading={isLoading}
+          assigneeLabel={assigneeLabelFor}
+          listLabel={listLabelFor}
+        />
       ) : filter === 'upcoming' || allPile?.kind === 'overview' ? (
         <PileGroupList groups={pileGroups}>
           {(group) => (

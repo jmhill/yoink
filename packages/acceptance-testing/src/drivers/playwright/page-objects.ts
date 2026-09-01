@@ -941,14 +941,44 @@ export class TasksPage {
     return this.titlesIn(this.page.locator(`[data-pile-name="${groupName}"]`).locator('[data-task-id]'));
   }
 
-  async getTitlesInTodaySection(
-    groupName: string,
+  async getTodayOuterSections(): Promise<Array<'overdue' | 'due-today'>> {
+    const sections = this.todayDueSections();
+    const count = await sections.count();
+    const names: Array<'overdue' | 'due-today'> = [];
+    for (let i = 0; i < count; i++) {
+      const section = await sections.nth(i).getAttribute('data-today-section');
+      if (section === 'overdue' || section === 'due-today') {
+        names.push(section);
+      }
+    }
+    return names;
+  }
+
+  async getPileGroupNamesInTodaySection(
     section: 'overdue' | 'due-today'
+  ): Promise<string[]> {
+    const groups = this.page
+      .locator(`[data-today-section="${section}"]`)
+      .locator('[data-pile-group]');
+    const count = await groups.count();
+    const names: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const name = await groups.nth(i).getAttribute('data-pile-name');
+      if (name) {
+        names.push(name);
+      }
+    }
+    return names;
+  }
+
+  async getTitlesInTodaySectionPileGroup(
+    section: 'overdue' | 'due-today',
+    groupName: string
   ): Promise<string[]> {
     return this.titlesIn(
       this.page
-        .locator(`[data-pile-name="${groupName}"]`)
         .locator(`[data-today-section="${section}"]`)
+        .locator(`[data-pile-name="${groupName}"]`)
         .locator('[data-task-id]')
     );
   }

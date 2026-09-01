@@ -12,6 +12,7 @@ overrides:
   rollup: '>=4.59.0'
   ws: '>=8.21.0'
   picomatch: '>=4.0.4'
+  browserslist: '>=4.28.7'
 
 auditConfig:
   ignoreGhsas:

@@ -692,6 +692,9 @@ export class TasksPage {
       this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
       this.page.getByText('No tasks for today').waitFor({ state: 'attached' }),
       this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached' }),
+      this.page.getByText('No upcoming tasks').waitFor({ state: 'attached' }),
+      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
+      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
@@ -779,6 +782,64 @@ export class TasksPage {
 
   listOnTask(taskId: string) {
     return this.taskCard(taskId).locator('[data-list]');
+  }
+
+  async waitForPileSelect(): Promise<void> {
+    await this.page.locator('#all-pile').waitFor({ state: 'visible' });
+  }
+
+  async selectAllPile(value: string): Promise<void> {
+    await this.waitForPileSelect();
+    await this.page.locator('#all-pile').click();
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
+  async selectAllNamedPile(name: string): Promise<void> {
+    await this.waitForPileSelect();
+    await this.page.locator('#all-pile').click();
+    const option = this.page
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: new RegExp(`^${name}$`) });
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+    await this.page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+  }
+
+  async getAllPileGroupNames(): Promise<string[]> {
+    const groups = this.page.locator('[data-pile-group]');
+    const count = await groups.count();
+    const names: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const name = await groups.nth(i).getAttribute('data-pile-name');
+      if (name) {
+        names.push(name);
+      }
+    }
+    return names;
+  }
+
+  async getTitlesInPileGroup(groupName: string): Promise<string[]> {
+    const group = this.page.locator(`[data-pile-name="${groupName}"]`);
+    const cards = group.locator('[data-task-id]');
+    const count = await cards.count();
+    const titles: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const title = await cards.nth(i).locator('p').first().textContent();
+      if (title) {
+        titles.push(title.trim());
+      }
+    }
+    return titles;
+  }
+
+  reorderButtons() {
+    return this.page.getByRole('button', { name: /^Move / });
+  }
+
+  pinButtons() {
+    return this.page.getByRole('button', { name: /^(Pin|Unpin) task/ });
   }
 }
 

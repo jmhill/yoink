@@ -292,6 +292,51 @@ export type BrowserActorOperations = {
    */
   openUnlistedPile(): Promise<void>;
 
+  /**
+   * Open the Tasks All overview (every pile grouped, no reorder).
+   */
+  openAllOverview(): Promise<void>;
+
+  /**
+   * Choose a named list on the All pile dropdown.
+   */
+  openAllNamedPile(name: string): Promise<void>;
+
+  /**
+   * Choose unlisted on the All pile dropdown.
+   */
+  openAllUnlistedPile(): Promise<void>;
+
+  /**
+   * Assert All overview shows these pile group headings, in order.
+   */
+  shouldSeeAllPileGroups(names: string[]): Promise<void>;
+
+  /**
+   * Assert tasks in an All overview group appear in this title order.
+   */
+  shouldSeeTasksInAllPileGroup(groupName: string, titles: string[]): Promise<void>;
+
+  /**
+   * Assert the current Tasks view has no kit up/down reorder controls.
+   */
+  shouldNotSeeReorderControls(): Promise<void>;
+
+  /**
+   * Assert pin still appears on the All view.
+   */
+  shouldSeePinControls(): Promise<void>;
+
+  /**
+   * Open a Tasks filter tab (Today, Upcoming, Mine, Done) and assert the All pile dropdown is not shown.
+   */
+  shouldSeeTaskFilterWithoutAllPile(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
+
+  /**
+   * Assert the Lists nav still opens the Lists view.
+   */
+  shouldSeeListsNav(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

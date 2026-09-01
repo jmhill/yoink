@@ -363,6 +363,23 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeDeleteListOnAll(name: string): Promise<void>;
 
+  /**
+   * Delete the named list currently shown as All’s one-pile view (kit dialog).
+   * On success, All is back on overview.
+   * @throws ConflictError if the list still has open tasks
+   */
+  deleteNamedListFromAll(name: string): Promise<void>;
+
+  /**
+   * Assert All is showing the grouped overview (no `pile` in the URL).
+   */
+  shouldBeOnAllOverview(): Promise<void>;
+
+  /**
+   * Assert this named list does not appear in the All pile dropdown.
+   */
+  shouldNotSeeNamedPileOnAll(name: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

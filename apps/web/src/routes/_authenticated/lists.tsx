@@ -18,6 +18,7 @@ import { List, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
+import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 
 export const Route = createFileRoute('/_authenticated/lists')({
   component: ListsPage,
@@ -31,7 +32,6 @@ function ListsPage() {
   const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(
     null
   );
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data, isPending, error, refetch } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -62,35 +62,6 @@ function ListsPage() {
         return;
       }
       toast.error('Failed to create list');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists'] });
-    },
-  });
-
-  const deleteMutation = tsrLists.delete.useMutation({
-    onSuccess: () => {
-      toast.success('List deleted');
-      setDeletingList(null);
-      setDeleteError(null);
-    },
-    onError: (err) => {
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-        return;
-      }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        err.status === 409 &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
-        setDeleteError(body?.message ?? 'This list still has open tasks');
-        return;
-      }
-      toast.error('Failed to delete list');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
@@ -166,7 +137,6 @@ function ListsPage() {
                         size="icon"
                         aria-label={`Delete ${list.name}`}
                         onClick={() => {
-                          setDeleteError(null);
                           setDeletingList({ id: list.id, name: list.name });
                         }}
                       >
@@ -232,56 +202,14 @@ function ListsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={deletingList !== null}
+      <DeleteNamedListDialog
+        list={deletingList}
         onOpenChange={(open) => {
           if (!open) {
             setDeletingList(null);
-            setDeleteError(null);
           }
         }}
-      >
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Delete list?</DialogTitle>
-            <DialogDescription>
-              {deletingList
-                ? `Delete ${deletingList.name}? You can only delete a list that has no open tasks.`
-                : 'You can only delete a list that has no open tasks.'}
-            </DialogDescription>
-          </DialogHeader>
-          {deleteError ? (
-            <p role="alert" data-list-delete-error className="text-sm text-destructive">
-              {deleteError}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setDeletingList(null);
-                setDeleteError(null);
-              }}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleteMutation.isPending || !deletingList}
-              onClick={() => {
-                if (!deletingList || deleteMutation.isPending) return;
-                setDeleteError(null);
-                deleteMutation.mutate({ params: { id: deletingList.id } });
-              }}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </div>
   );
 }

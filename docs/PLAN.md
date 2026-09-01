@@ -31,8 +31,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Named lists: Order unlisted tasks** - Complete ✓ (`GET`/`PUT` `/api/unlisted/tasks`; same `openOrder` pile; kit up/down; All/Today/Mine/Upcoming unchanged)
 **All has two modes** - Complete ✓ (All overview groups by list + unlisted, no reorder; one-pile named/unlisted reuse existing pile APIs with kit up/down)
 **Create a named list from All** - Complete ✓ (New list on the All pile dropdown; same unique-in-org create; lands on that empty one-pile view)
+**Delete a named list from All** - Complete ✓ (kit delete on All’s named-list one-pile only; same refuse-if-open-tasks; lands on overview)
 
 Recent updates:
+- Story 3 of 6 “Delete a named list from All”: on Tasks All, when a member is looking at one named list, they can delete that list (kit dialog, same refuse-if-open-tasks already shipped). They cannot delete from the grouped overview or from Unlisted. After a successful delete, All leaves the named-list one-pile view and lands on overview — not Unlisted. The name is gone from the dropdown. Open tasks on that list: delete is refused, list stays, still on that pile. Today, Upcoming, Mine, Done, and the Lists nav stay. Lists page delete stays until story 6. Create from All stays as shipped. HTTP still only maps; no new domain rules.
 - Story 2 of 6 “Create a named list from All”: on Tasks All, a member can create a named list from the pile dropdown (kit New list dialog, same unique-in-org rules as Lists page create). After create, All lands on that list’s one-pile view — empty is the confirmation it exists, because overview hides empty groups. Duplicate and empty names are refused the same as Lists create. No delete on All. Today, Upcoming, Mine, Done, and the Lists nav stay. HTTP still only maps; no new domain rules.
 - Story “All has two modes”: on Tasks All, a member can switch between every pile at once (grouped by named list plus unlisted, no reorder, still pin-then-created within each group) and one pile (a named list, or unlisted) where kit up/down persists through the existing `GET`/`PUT` list and unlisted task APIs. Today, Upcoming, Mine, Done, and the Lists nav are unchanged. No create/delete list UI. No new domain field.
 - Story 8 “Order unlisted tasks”: a member can see the open tasks that are not on a named list, in an order, and change that order. Same Polly lock as story 7, on the unlisted pile only — not a global rank across All. Completing drops a task out of that sequence but keeps the remembered index (and no `listId`). Uncomplete restores (clamp to the end if the pile got shorter). New unlisted tasks and take-off append to the end. Pin is unchanged and still sits on top of All/Today/Mine/Upcoming. Agent tokens can reorder; unauthenticated cannot; completed cannot be reordered. Named-list order (story 7) stays. Kit up/down on `/lists/unlisted`. `decideReorderOpenTasks` with `listId: null`.
@@ -819,6 +821,32 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Delete a named list from All - Complete ✓
+
+**Goal**: On Tasks All, when a member is looking at one named list, they can delete that list. They cannot delete from the grouped overview or from Unlisted.
+
+**Product rules (locked):**
+- Delete only when All is on a named list, not from overview, not from Unlisted.
+- Same refuse-if-open-tasks already shipped: refuse if any **open** task is on the list (409). Completed-on-list do not block; on success, clear their listId in the same command (they stay in Done, unlisted). Name is free after. Anyone in the org can delete. Kit dialog, not `window.confirm`.
+- After a successful delete, leave the named-list one-pile view (that list is gone). Land back on All overview (not Unlisted).
+- HTTP still only maps. No new domain rules. `DELETE /api/lists/:id` is unchanged.
+
+**Out of scope:**
+- Group Today/Upcoming (story 4)
+- Mine picker (story 5)
+- Kill Lists nav (story 6). Lists page delete can stay until then.
+- Create from All stays as shipped (lands on the new pile).
+
+**Implementation:**
+- Delete control next to the All pile Select, visible only when `pile` is a named list id
+- Reuses the kit Delete list dialog (`DeleteNamedListDialog`) already used on the Lists page
+- After success, navigate to All overview (`filter=all`, no `pile`)
+- Playwright: All named-list pile, delete empty list, lands on overview, name gone from dropdown; open task on list: refuse, still on that pile; overview and Unlisted: no delete-list control; Today/Upcoming/Mine/Done and Lists nav unchanged
+
+**Deliverable:** A member can delete a named list from All’s named-list one-pile view, without new domain rules.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1198,7 +1226,9 @@ When resuming work on this project:
 
 **All has two modes is in.** Tasks All is a grouped overview of every pile (named lists plus unlisted, no reorder, not ranked by openOrder) or one pile with kit up/down via the existing list/unlisted APIs. Today, Upcoming, Mine, Done, and the Lists nav are unchanged.
 
-**Create a named list from All is in.** On All, New list lives on the pile dropdown (kit dialog, same unique-in-org create). After create, All lands on that list’s one-pile view so an empty list is visible. No delete on All. Lists nav stays.
+**Create a named list from All is in.** On All, New list lives on the pile dropdown (kit dialog, same unique-in-org create). After create, All lands on that list’s one-pile view so an empty list is visible. Lists nav stays.
+
+**Delete a named list from All is in.** On All, delete is only on a named-list one-pile (kit dialog, same refuse-if-open-tasks). Overview and Unlisted have no delete-list control. After success, All lands on overview. Lists page delete and Lists nav stay.
 
 **Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp).
 

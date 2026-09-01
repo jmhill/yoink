@@ -421,6 +421,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeDeleteListOnAll', 'http');
     },
 
+    async deleteNamedListFromAll(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('deleteNamedListFromAll', 'http');
+    },
+
+    async shouldBeOnAllOverview(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnAllOverview', 'http');
+    },
+
+    async shouldNotSeeNamedPileOnAll(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeNamedPileOnAll', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

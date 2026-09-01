@@ -876,6 +876,35 @@ export class TasksPage {
     return { status: 'created', id: pile, name };
   }
 
+  async deleteNamedListFromAll(
+    name: string
+  ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    await this.waitForPileSelect();
+    const deleteButton = this.page.getByRole('button', { name: `Delete ${name}` });
+    await deleteButton.waitFor({ state: 'visible' });
+    await deleteButton.click();
+
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+
+    const deleteError = this.page.locator('[data-list-delete-error]');
+    await Promise.race([
+      deleteError.waitFor({ state: 'visible' }),
+      this.page.waitForURL((url) => {
+        const parsed = new URL(url);
+        return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
+      }),
+    ]);
+
+    if (await deleteError.isVisible()) {
+      return { status: 'has-open-tasks' };
+    }
+
+    await this.waitForTasksOrEmpty();
+    return { status: 'deleted' };
+  }
+
   async getAllPileGroupNames(): Promise<string[]> {
     const groups = this.page.locator('[data-pile-group]');
     const count = await groups.count();

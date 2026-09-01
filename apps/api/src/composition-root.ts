@@ -1,4 +1,5 @@
 import { okAsync } from 'neverthrow';
+import type { Task } from '@yoink/api-contracts';
 import type { Database } from './database/types.js';
 import { createApp, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
@@ -279,6 +280,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     list: (organizationId) => listStore.findByOrganization(organizationId),
     load: (id) => listStore.findById(id),
     countOpenOnList: (listId) => taskStore.countOpenOnList(listId),
+    loadOpenTasksOnList: (organizationId, listId) =>
+      taskStore.findOpenInPile({ organizationId, listId }),
+    loadTasksByIds: (ids) =>
+      ids.reduce(
+        (acc, id) =>
+          acc.andThen((found) =>
+            taskStore.findById(id).map((task) => (task ? [...found, task] : found))
+          ),
+        okAsync([] as Task[])
+      ),
+    persistOpenTaskOrders: (updates) => taskStore.setOpenOrders(updates),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
   });
@@ -301,6 +313,10 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     persist: createTaskStoreBackedPersist(taskStore),
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
+    loadNextOpenOrder: (organizationId, listId) =>
+      taskStore.nextOpenOrderInPile({ organizationId, listId }),
+    loadOpenInPile: (organizationId, listId) =>
+      taskStore.findOpenInPile({ organizationId, listId }),
     principalLookup,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),

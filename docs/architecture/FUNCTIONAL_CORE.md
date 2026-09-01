@@ -1,9 +1,9 @@
 # Functional Core (Captures Pilot)
 
-**Status:** Pilot — `captures/` plus `lists/` view/create/delete plus task create/PATCH  
+**Status:** Pilot — `captures/` plus `lists/` view/create/delete/list-open-tasks/reorder plus task create/PATCH/complete/uncomplete  
 **Created:** 2026-08-19
 
-The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create/delete (decide → persist → apply). Task create and PATCH (set or clear `listId`) use the same sandwich; complete/pin/delete still live on `TaskService`. Do not copy this shape into access until the pilot is judged a success.
+The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create/delete/reorder (decide → persist → apply). Task create, PATCH (set or clear `listId`), complete, and uncomplete use the same sandwich; pin/delete still live on `TaskService`. Do not copy this shape into access until the pilot is judged a success.
 
 ## Layers
 

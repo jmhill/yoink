@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -145,7 +145,13 @@ function ListsPage() {
                 <li key={list.id}>
                   <Card data-list-id={list.id} data-list-name={list.name}>
                     <CardContent className="flex items-center justify-between gap-3 py-4">
-                      <p className="font-medium">{list.name}</p>
+                      <Link
+                        to="/lists/$listId"
+                        params={{ listId: list.id }}
+                        className="font-medium hover:underline"
+                      >
+                        {list.name}
+                      </Link>
                       <Button
                         type="button"
                         variant="ghost"

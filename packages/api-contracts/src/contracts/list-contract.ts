@@ -1,6 +1,7 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { CreateNamedListSchema, NamedListSchema } from '../schemas/list.js';
+import { CreateNamedListSchema, NamedListSchema, ReorderOpenTasksSchema } from '../schemas/list.js';
+import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -49,6 +50,42 @@ export const listContract = c.router(
         500: ErrorSchema,
       },
       summary: 'Delete a named list that has no open tasks',
+    },
+
+    listOpenTasks: {
+      method: 'GET',
+      path: '/api/lists/:id/tasks',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      responses: {
+        200: z.object({
+          tasks: z.array(TaskSchema),
+        }),
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'List open tasks on a named list in open order',
+    },
+
+    reorderOpenTasks: {
+      method: 'PUT',
+      path: '/api/lists/:id/tasks/order',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: ReorderOpenTasksSchema,
+      responses: {
+        200: z.object({
+          tasks: z.array(TaskSchema),
+        }),
+        401: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Change the open-task order on a named list',
     },
   },
   {

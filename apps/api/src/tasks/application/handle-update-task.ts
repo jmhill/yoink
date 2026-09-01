@@ -5,13 +5,14 @@ import type { TaskUpdated } from '../domain/events.js';
 import { decideUpdateTask } from '../domain/decide-update.js';
 import { applyTaskEvent } from '../domain/apply-task-event.js';
 import { loadOwnedTask } from './load-owned-task.js';
-import type { LoadNamedList, LoadTask, PersistTaskEvent } from './ports.js';
+import type { LoadNamedList, LoadNextOpenOrder, LoadTask, PersistTaskEvent } from './ports.js';
 import type { WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 
 export type HandleUpdateTaskDeps = {
   load: LoadTask;
   loadList: LoadNamedList;
+  loadNextOpenOrder: LoadNextOpenOrder;
   persist: PersistTaskEvent;
   principalLookup?: OrgPrincipalLookup;
 };
@@ -35,7 +36,17 @@ export const handleUpdateTask = (
       ? deps.loadList(listIdToLoad)
       : okAsync(null);
 
-    return loadedList.andThen((list) => {
+    const destListId =
+      command.listId !== undefined && command.listId !== current.listId
+        ? command.listId
+        : undefined;
+    const loadedNextOpenOrder =
+      destListId !== undefined
+        ? deps.loadNextOpenOrder(command.organizationId, destListId)
+        : okAsync(0);
+
+    return loadedList.andThen((list) =>
+      loadedNextOpenOrder.andThen((nextOpenOrder) => {
       const assigneeCheck =
         command.assigneeId !== undefined && command.assigneeId !== null
           ? deps.principalLookup
@@ -52,6 +63,7 @@ export const handleUpdateTask = (
           command,
           list,
           assigneeInOrganization,
+          nextOpenOrder,
         });
 
         if (decision.isErr()) {
@@ -68,6 +80,7 @@ export const handleUpdateTask = (
           view: applyTaskEvent(current, event),
         }));
       });
-    });
+    })
+    );
   });
 };

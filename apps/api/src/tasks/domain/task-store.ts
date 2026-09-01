@@ -29,4 +29,15 @@ export type TaskStore = {
   countOpenOnList(listId: string): ResultAsync<number, StorageError>;
   /** Unlist completed (and already-deleted) tasks still pointing at this list. */
   clearListIdOnCompleted(listId: string): ResultAsync<void, StorageError>;
+  findOpenInPile(options: {
+    organizationId: string;
+    listId: string | null;
+  }): ResultAsync<Task[], StorageError>;
+  nextOpenOrderInPile(options: {
+    organizationId: string;
+    listId: string | null;
+  }): ResultAsync<number, StorageError>;
+  setOpenOrders(
+    updates: { id: string; openOrder: number }[]
+  ): ResultAsync<void, StorageError>;
 };

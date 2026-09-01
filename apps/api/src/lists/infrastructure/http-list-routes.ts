@@ -78,6 +78,75 @@ export const registerListRoutes = async (
         );
       },
 
+      listOpenTasks: async ({ params, request }) => {
+        const result = await listHandlers.listOpenTasks({
+          listId: params.id,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (tasks) => ({
+            status: 200 as const,
+            body: { tasks },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'LIST_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      reorderOpenTasks: async ({ params, body, request }) => {
+        const result = await listHandlers.reorderOpenTasks({
+          listId: params.id,
+          organizationId: request.authContext.organizationId,
+          taskIds: body.taskIds,
+        });
+
+        return result.match(
+          ({ tasks }) => ({
+            status: 200 as const,
+            body: { tasks },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'LIST_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: error.message },
+                };
+              case 'TASK_NOT_OPEN':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              case 'INVALID_OPEN_ORDER':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
       delete: async ({ params, request }) => {
         const result = await listHandlers.delete({
           id: params.id,

@@ -24,6 +24,7 @@ describe('TaskSchema', () => {
       pinnedAt: '2025-01-15T11:00:00.000Z',
       assigneeId: '550e8400-e29b-41d4-a716-446655440004',
       listId: '550e8400-e29b-41d4-a716-446655440005',
+      openOrder: 2,
     });
     expect(result.success).toBe(true);
   });
@@ -32,6 +33,14 @@ describe('TaskSchema', () => {
     const result = TaskSchema.safeParse({
       ...validTask,
       listId: '550e8400-e29b-41d4-a716-446655440005',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('validates with openOrder', () => {
+    const result = TaskSchema.safeParse({
+      ...validTask,
+      openOrder: 0,
     });
     expect(result.success).toBe(true);
   });

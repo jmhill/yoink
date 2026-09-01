@@ -25,6 +25,7 @@ describe('decideUpdateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -37,7 +38,28 @@ describe('decideUpdateTask', () => {
         dueDate: undefined,
         assigneeId: undefined,
         listId: 'list-groceries',
+        openOrder: 0,
       });
+    }
+  });
+
+  it('appends an existing open task at the end when moving onto a list', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: groceries.id,
+      },
+      list: groceries,
+      assigneeInOrganization: null,
+      nextOpenOrder: 4,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.listId).toBe('list-groceries');
+      expect(result.value.openOrder).toBe(4);
     }
   });
 
@@ -53,6 +75,7 @@ describe('decideUpdateTask', () => {
       },
       list: weekend,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -60,6 +83,7 @@ describe('decideUpdateTask', () => {
       expect(result.value.type).toBe('TaskUpdated');
       if (result.value.type === 'TaskUpdated') {
         expect(result.value.listId).toBe('list-weekend');
+        expect(result.value.openOrder).toBe(0);
       }
     }
   });
@@ -76,6 +100,7 @@ describe('decideUpdateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -97,6 +122,7 @@ describe('decideUpdateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -121,6 +147,7 @@ describe('decideUpdateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);
@@ -145,6 +172,7 @@ describe('decideUpdateTask', () => {
       },
       list: weekend,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);
@@ -169,6 +197,7 @@ describe('decideUpdateTask', () => {
       },
       list: groceries,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -187,6 +216,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);
@@ -205,6 +235,7 @@ describe('decideUpdateTask', () => {
       },
       list: otherOrgList,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);
@@ -223,6 +254,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -244,6 +276,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -256,7 +289,30 @@ describe('decideUpdateTask', () => {
         dueDate: undefined,
         assigneeId: undefined,
         listId: null,
+        openOrder: 0,
       });
+    }
+  });
+
+  it('appends take-off to the end of the unlisted open pile', () => {
+    const onGroceries: Task = { ...current, listId: groceries.id, openOrder: 1 };
+
+    const result = decideUpdateTask({
+      current: onGroceries,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: null,
+      },
+      list: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 5,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.listId).toBeNull();
+      expect(result.value.openOrder).toBe(5);
     }
   });
 
@@ -270,6 +326,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -289,6 +346,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -314,6 +372,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);
@@ -337,6 +396,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: null,
+      nextOpenOrder: 0,
     });
 
     expect(result.isOk()).toBe(true);
@@ -355,6 +415,7 @@ describe('decideUpdateTask', () => {
       },
       list: null,
       assigneeInOrganization: false,
+      nextOpenOrder: 0,
     });
 
     expect(result.isErr()).toBe(true);

@@ -379,6 +379,67 @@ export const createPlaywrightActor = (
       await listsPage.goto();
       await listsPage.waitForListsOrEmpty();
       await expect(page.locator(`[data-list-name="${name}"]`)).toHaveCount(0);
+    }
+
+    async listOpenTasksOnList(listId: string): Promise<Task[]> {
+      await listsPage.openNamedListById(listId);
+      const tasks = await listsPage.getOpenTasks();
+      return tasks.map(({ id, title }) => ({
+        id,
+        title,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+
+    async reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]> {
+      await listsPage.openNamedListById(listId);
+      for (let i = 0; i < taskIds.length; i++) {
+        const current = await listsPage.getOpenTasks();
+        const currentIndex = current.findIndex((task) => task.id === taskIds[i]);
+        if (currentIndex < 0) {
+          throw new Error(`Open task ${taskIds[i]} not found on list`);
+        }
+        const title = current[currentIndex]?.title ?? '';
+        if (currentIndex > i) {
+          for (let step = 0; step < currentIndex - i; step++) {
+            await listsPage.moveOpenTask(title, 'up');
+          }
+        }
+        if (currentIndex < i) {
+          for (let step = 0; step < i - currentIndex; step++) {
+            await listsPage.moveOpenTask(title, 'down');
+          }
+        }
+      }
+      const ordered = await listsPage.getOpenTasks();
+      return ordered.map(({ id, title }) => ({
+        id,
+        title,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+
+    async openNamedList(name: string): Promise<void> {
+      await listsPage.openNamedList(name);
+    }
+
+    async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
+      await listsPage.waitForOpenTasksOrEmpty();
+      await expect.poll(async () => listsPage.getOpenTaskTitles()).toEqual(titles);
+    }
+
+    async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
+      await listsPage.moveOpenTask(title, direction);
+      await listsPage.waitForOpenTasksOrEmpty();
+    }
+
+    async refreshOpenList(): Promise<void> {
+      await page.reload();
+      await listsPage.waitForOpenTasksOrEmpty();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
@@ -1126,6 +1187,16 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async deleteNamedList(_id: string): Promise<void> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listOpenTasksOnList(_listId: string): Promise<Task[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async reorderOpenTasksOnList(_listId: string, _taskIds: string[]): Promise<Task[]> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

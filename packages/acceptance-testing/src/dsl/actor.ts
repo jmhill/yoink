@@ -49,6 +49,8 @@ export type CoreActor = {
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
+  listOpenTasksOnList(listId: string): Promise<Task[]>;
+  reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
@@ -263,6 +265,26 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeNamedList(name: string): Promise<void>;
 
+  /**
+   * Open a named list and see its open tasks.
+   */
+  openNamedList(name: string): Promise<void>;
+
+  /**
+   * Assert open tasks on the open list appear in this title order.
+   */
+  shouldSeeOpenTasksInOrder(titles: string[]): Promise<void>;
+
+  /**
+   * Change the open-task order with the kit control (move up or down).
+   */
+  moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void>;
+
+  /**
+   * Reload the open list view.
+   */
+  refreshOpenList(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================
@@ -343,6 +365,8 @@ export type AnonymousActor = {
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
+  listOpenTasksOnList(listId: string): Promise<Task[]>;
+  reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   createTask(input: CreateTaskInput): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
 };

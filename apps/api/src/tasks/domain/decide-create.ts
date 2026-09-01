@@ -17,6 +17,8 @@ export type DecideCreateTaskInput = {
    * Null when assignee is omitted.
    */
   assigneeInOrganization: boolean | null;
+  /** Next open-order index in the destination pile (that list, or unlisted). */
+  nextOpenOrder: number;
   id: string;
   now: string;
 };
@@ -29,6 +31,7 @@ export const decideCreateTask = ({
   command,
   list,
   assigneeInOrganization,
+  nextOpenOrder,
   id,
   now,
 }: DecideCreateTaskInput): Result<TaskCreated, DecideCreateTaskError> => {
@@ -60,6 +63,7 @@ export const decideCreateTask = ({
     captureId: command.captureId,
     assigneeId: command.assigneeId,
     listId: command.listId,
+    openOrder: nextOpenOrder,
     createdAt: now,
   });
 };

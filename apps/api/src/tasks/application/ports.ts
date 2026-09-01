@@ -13,3 +13,13 @@ export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
 export type LoadNamedList = (
   id: string
 ) => ResultAsync<NamedList | null, StorageError>;
+
+export type LoadNextOpenOrder = (
+  organizationId: string,
+  listId: string | null
+) => ResultAsync<number, StorageError>;
+
+export type LoadOpenTasksInPile = (
+  organizationId: string,
+  listId: string | null
+) => ResultAsync<Task[], StorageError>;

@@ -894,4 +894,66 @@ export class ListsPage {
   async isEmpty(): Promise<boolean> {
     return await this.page.getByText('No named lists yet').isVisible();
   }
+
+  async openNamedList(name: string): Promise<void> {
+    await this.goto();
+    await this.waitForListsOrEmpty();
+    await this.page.locator(`[data-list-name="${name}"]`).getByRole('link', { name }).click();
+    await this.page.waitForURL('**/lists/**');
+    await this.waitForOpenTasksOrEmpty();
+  }
+
+  async openNamedListById(listId: string): Promise<void> {
+    await this.page.goto(`/lists/${listId}`);
+    await this.waitForOpenTasksOrEmpty();
+  }
+
+  async waitForOpenTasksOrEmpty(): Promise<void> {
+    await Promise.race([
+      this.page.locator('[data-open-task-id]').first().waitFor({ state: 'attached' }),
+      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
+      this.page.getByText('List not found').waitFor({ state: 'attached' }),
+    ]).catch(() => {
+      // If neither appears, let the test continue
+    });
+  }
+
+  async getOpenTaskTitles(): Promise<string[]> {
+    const cards = this.page.locator('[data-open-task-title]');
+    const count = await cards.count();
+    const titles: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const title = await cards.nth(i).getAttribute('data-open-task-title');
+      if (title) {
+        titles.push(title);
+      }
+    }
+    return titles;
+  }
+
+  async getOpenTasks(): Promise<Array<{ id: string; title: string }>> {
+    const cards = this.page.locator('[data-open-task-id]');
+    const count = await cards.count();
+    const tasks: Array<{ id: string; title: string }> = [];
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const id = await card.getAttribute('data-open-task-id');
+      const title = await card.getAttribute('data-open-task-title');
+      if (id && title) {
+        tasks.push({ id, title });
+      }
+    }
+    return tasks;
+  }
+
+  async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
+    const card = this.page.locator(`[data-open-task-title="${title}"]`);
+    await card.waitFor({ state: 'attached' });
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/tasks/order') && response.request().method() === 'PUT'
+    );
+    await card.getByRole('button', { name: `Move ${title} ${direction}` }).click();
+    await responsePromise;
+  }
 }

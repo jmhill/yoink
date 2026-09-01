@@ -14,6 +14,18 @@ export const createStoreBackedPersist = (store: TaskStore): PersistTaskEvent => 
           return errAsync(storageError(`Cannot persist ${event.type} without current state`));
         }
         return store.update(applyTaskEvent(current, event));
+      case 'TaskCompleted':
+        if (!current) {
+          return errAsync(storageError(`Cannot persist ${event.type} without current state`));
+        }
+        return store.update(applyTaskEvent(current, event));
+      case 'TaskUncompleted':
+        if (!current) {
+          return errAsync(storageError(`Cannot persist ${event.type} without current state`));
+        }
+        return store
+          .update(applyTaskEvent(current, event))
+          .andThen(() => store.setOpenOrders(event.siblingOrders));
     }
   };
 };

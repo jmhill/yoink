@@ -33,10 +33,27 @@ export type CreateNamedListError =
   | StorageError
   | InvalidListNameError
   | DuplicateListNameError;
+export type TaskNotOpenError = {
+  readonly type: 'TASK_NOT_OPEN';
+  readonly taskId: string;
+  readonly message: string;
+};
+
+export type InvalidOpenOrderError = {
+  readonly type: 'INVALID_OPEN_ORDER';
+  readonly message: string;
+};
+
 export type DeleteNamedListError =
   | StorageError
   | ListNotFoundError
   | ListHasOpenTasksError;
+export type ListOpenTasksOnListError = StorageError | ListNotFoundError;
+export type ReorderOpenTasksError =
+  | StorageError
+  | ListNotFoundError
+  | TaskNotOpenError
+  | InvalidOpenOrderError;
 
 export const storageError = (message: string, cause?: unknown): StorageError => ({
   type: 'STORAGE_ERROR',
@@ -69,4 +86,15 @@ export const listHasOpenTasksError = (
   id,
   openTaskCount,
   message: 'This list still has open tasks',
+});
+
+export const taskNotOpenError = (taskId: string): TaskNotOpenError => ({
+  type: 'TASK_NOT_OPEN',
+  taskId,
+  message: 'Only open tasks can be reordered',
+});
+
+export const invalidOpenOrderError = (): InvalidOpenOrderError => ({
+  type: 'INVALID_OPEN_ORDER',
+  message: 'Open order must include each open task on this list once',
 });

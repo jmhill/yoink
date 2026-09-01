@@ -349,6 +349,14 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).deleteNamedList(id);
         },
+        async listOpenTasksOnList(listId) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listOpenTasksOnList(listId);
+        },
+        async reorderOpenTasksOnList(listId, taskIds) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).reorderOpenTasksOnList(listId, taskIds);
+        },
         async createTask(input) {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).createTask(input);

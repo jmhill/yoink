@@ -59,7 +59,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: groceries.id,
       },
-      { load: loadCurrent, loadList, persist }
+      { load: loadCurrent, loadList, loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isOk()).toBe(true);
@@ -82,7 +82,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: 'list-missing',
       },
-      { load: loadCurrent, loadList: () => okAsync(null), persist }
+      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isErr()).toBe(true);
@@ -101,7 +101,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: otherOrgList.id,
       },
-      { load: loadCurrent, loadList: () => okAsync(otherOrgList), persist }
+      { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isErr()).toBe(true);
@@ -120,7 +120,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: groceries.id,
       },
-      { load: () => okAsync(null), loadList: () => okAsync(groceries), persist }
+      { load: () => okAsync(null), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isErr()).toBe(true);
@@ -140,7 +140,7 @@ describe('handleUpdateTask', () => {
         organizationId: onGroceries.organizationId,
         listId: groceries.id,
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), persist }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isOk()).toBe(true);
@@ -164,7 +164,7 @@ describe('handleUpdateTask', () => {
         organizationId: completed.organizationId,
         listId: groceries.id,
       },
-      { load: () => okAsync(completed), loadList: () => okAsync(groceries), persist }
+      { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isErr()).toBe(true);
@@ -184,7 +184,7 @@ describe('handleUpdateTask', () => {
         organizationId: onGroceries.organizationId,
         listId: null,
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), persist }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isOk()).toBe(true);
@@ -207,7 +207,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: null,
       },
-      { load: loadCurrent, loadList: () => okAsync(null), persist }
+      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isOk()).toBe(true);
@@ -235,6 +235,7 @@ describe('handleUpdateTask', () => {
       {
         load: () => okAsync(completedOnGroceries),
         loadList: () => okAsync(groceries),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
       }
     );
@@ -255,7 +256,7 @@ describe('handleUpdateTask', () => {
         organizationId: current.organizationId,
         listId: groceries.id,
       },
-      { load: loadCurrent, loadList: () => okAsync(groceries), persist }
+      { load: loadCurrent, loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist }
     );
 
     expect(result.isErr()).toBe(true);
@@ -279,6 +280,7 @@ describe('handleUpdateTask', () => {
       {
         load: loadCurrent,
         loadList: () => okAsync(null),
+        loadNextOpenOrder: () => okAsync(0),
         persist,
         principalLookup,
       }

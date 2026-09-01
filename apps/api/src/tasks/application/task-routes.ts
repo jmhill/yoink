@@ -164,15 +164,15 @@ export const registerTaskRoutes = async (
       },
 
       complete: async ({ params, request }) => {
-        const result = await taskService.complete({
+        const result = await taskHandlers.complete({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -192,15 +192,15 @@ export const registerTaskRoutes = async (
       },
 
       uncomplete: async ({ params, request }) => {
-        const result = await taskService.uncomplete({
+        const result = await taskHandlers.uncomplete({
           id: params.id,
           organizationId: request.authContext.organizationId,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {

@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
     to: '/lists',
     label: 'Lists',
     icon: List,
-    matchPaths: ['/lists'],
+    matchPaths: ['/lists', '/lists/$listId'],
   },
 ];
 

@@ -538,6 +538,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-pile-name="Unlisted"]')).toBeVisible();
       await tasksPage.selectAllPile('unlisted');
       await page.waitForURL(/[?&]pile=unlisted/);
+      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -620,8 +621,11 @@ export const createPlaywrightActor = (
     async openMineUnlistedPile(): Promise<void> {
       await tasksPage.goto('mine');
       await tasksPage.waitForMinePileSelect();
+      await tasksPage.waitForTasksOrEmpty();
       await tasksPage.selectMinePile('unlisted');
+      await page.waitForURL(/[?&]filter=mine/);
       await page.waitForURL(/[?&]pile=unlisted/);
+      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -635,7 +639,9 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeTaskTitles(titles: string[]): Promise<void> {
-      await expect.poll(async () => tasksPage.getBoardTaskTitles()).toEqual(titles);
+      await expect
+        .poll(async () => tasksPage.getBoardTaskTitles(), { timeout: 10_000 })
+        .toEqual(titles);
     },
 
     async shouldNotSeeTask(taskId: string): Promise<void> {

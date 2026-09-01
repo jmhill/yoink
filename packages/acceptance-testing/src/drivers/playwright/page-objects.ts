@@ -687,6 +687,12 @@ export class TasksPage {
   }
 
   async waitForTasksOrEmpty(): Promise<void> {
+    await this.page
+      .getByText('Loading...', { exact: true })
+      .waitFor({ state: 'hidden', timeout: 15000 })
+      .catch(() => {
+        // Loading copy is absent on views that never show it.
+      });
     await Promise.race([
       this.page.locator('[data-task-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
@@ -798,11 +804,10 @@ export class TasksPage {
   }
 
   async selectMinePile(value: string): Promise<void> {
+    await this.closePileSelect();
     await this.waitForMinePileSelect();
     await this.page.locator('#mine-pile').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
-    await option.waitFor({ state: 'visible' });
-    await option.click();
+    await this.chooseOpenPileOption(value);
   }
 
   async selectMineNamedPile(name: string): Promise<void> {
@@ -820,11 +825,18 @@ export class TasksPage {
   }
 
   async selectAllPile(value: string): Promise<void> {
+    await this.closePileSelect();
     await this.waitForPileSelect();
     await this.page.locator('#all-pile').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await this.chooseOpenPileOption(value);
+  }
+
+  private async chooseOpenPileOption(value: string): Promise<void> {
+    const listbox = this.page.getByRole('listbox');
+    const option = listbox.locator(`[data-slot="select-item"][data-value="${value}"]`);
     await option.waitFor({ state: 'visible' });
     await option.click();
+    await listbox.waitFor({ state: 'hidden' });
   }
 
   async selectAllNamedPile(name: string): Promise<void> {

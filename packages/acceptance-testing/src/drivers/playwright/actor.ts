@@ -413,6 +413,9 @@ export const createPlaywrightActor = (
           }
         }
       }
+      await expect
+        .poll(async () => (await listsPage.getOpenTasks()).map((task) => task.id))
+        .toEqual(taskIds);
       const ordered = await listsPage.getOpenTasks();
       return ordered.map(({ id, title }) => ({
         id,

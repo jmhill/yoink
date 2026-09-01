@@ -33,7 +33,10 @@ function ListDetailPage() {
   });
 
   const reorderMutation = tsrLists.reorderOpenTasks.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status === 200) {
+        queryClient.setQueryData(['lists', listId, 'tasks'], result);
+      }
       toast.success('Order updated');
     },
     onError: (err) => {

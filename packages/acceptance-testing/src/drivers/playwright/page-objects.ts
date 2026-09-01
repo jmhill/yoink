@@ -949,11 +949,22 @@ export class ListsPage {
   async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
     const card = this.page.locator(`[data-open-task-title="${title}"]`);
     await card.waitFor({ state: 'attached' });
+    const button = card.getByRole('button', { name: `Move ${title} ${direction}` });
+    await button.waitFor({ state: 'visible' });
+    const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/tasks/order') && response.request().method() === 'PUT'
     );
-    await card.getByRole('button', { name: `Move ${title} ${direction}` }).click();
+    await button.click();
     await responsePromise;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const after = await this.getOpenTaskTitles();
+      if (after.join('\0') !== before.join('\0')) {
+        return;
+      }
+      await this.page.waitForTimeout(50);
+    }
   }
 }

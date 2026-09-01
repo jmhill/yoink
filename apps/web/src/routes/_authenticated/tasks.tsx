@@ -846,7 +846,7 @@ function TasksPage() {
       {allPile && (
         <div className="mb-4 flex items-center gap-2">
           <Select value={allPileSelectValue(allPile)} onValueChange={handlePileChange}>
-            <SelectTrigger id="all-pile" aria-label="Pile" className="w-full sm:w-[16rem]">
+            <SelectTrigger id="all-pile" aria-label="Pile" className="min-w-0 flex-1 sm:flex-none sm:w-[16rem]">
               <SelectValue placeholder="All lists" />
             </SelectTrigger>
             <SelectContent>

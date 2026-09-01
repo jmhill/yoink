@@ -693,6 +693,7 @@ export class TasksPage {
       this.page.getByText('No tasks for today').waitFor({ state: 'attached' }),
       this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached' }),
       this.page.getByText('No upcoming tasks').waitFor({ state: 'attached' }),
+      this.page.getByText('No completed tasks').waitFor({ state: 'attached' }),
       this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
       this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
     ]).catch(() => {
@@ -746,7 +747,9 @@ export class TasksPage {
 
   async selectCreateList(listId: string): Promise<void> {
     await this.page.locator('#create-task-list').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${listId}"]`);
+    const option = this.page
+      .getByRole('listbox')
+      .locator(`[data-slot="select-item"][data-value="${listId}"]`);
     await option.waitFor({ state: 'visible' });
     await option.click();
   }
@@ -797,6 +800,7 @@ export class TasksPage {
   }
 
   async selectAllNamedPile(name: string): Promise<void> {
+    await this.closePileSelect();
     await this.waitForPileSelect();
     await this.page.locator('#all-pile').click();
     const option = this.namedPileOption(name);
@@ -807,6 +811,7 @@ export class TasksPage {
 
   namedPileOption(name: string) {
     return this.page
+      .getByRole('listbox')
       .locator('[data-slot="select-item"]:not([data-all-pile-new-list])')
       .filter({ hasText: new RegExp(`^${name}$`) });
   }
@@ -879,28 +884,40 @@ export class TasksPage {
   async deleteNamedListFromAll(
     name: string
   ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    await this.closePileSelect();
     await this.waitForPileSelect();
-    const deleteButton = this.page.getByRole('button', { name: `Delete ${name}` });
+    const deleteButton = this.page.getByRole('button', {
+      name: `Delete ${name}`,
+      exact: true,
+    });
     await deleteButton.waitFor({ state: 'visible' });
+
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lists/') &&
+        response.request().method() === 'DELETE'
+    );
     await deleteButton.click();
 
     const dialog = this.page.getByRole('dialog');
     await dialog.waitFor({ state: 'visible' });
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    const response = await responsePromise;
 
-    const deleteError = this.page.locator('[data-list-delete-error]');
-    await Promise.race([
-      deleteError.waitFor({ state: 'visible' }),
-      this.page.waitForURL((url) => {
-        const parsed = new URL(url);
-        return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
-      }),
-    ]);
-
-    if (await deleteError.isVisible()) {
+    if (response.status() === 409) {
+      await this.page.locator('[data-list-delete-error]').waitFor({ state: 'visible' });
+      await this.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+      await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
       return { status: 'has-open-tasks' };
     }
+    if (response.status() !== 204) {
+      throw new Error(`Failed to delete named list: ${response.status()}`);
+    }
 
+    await this.page.waitForURL((url) => {
+      const parsed = new URL(url);
+      return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
+    });
     await this.waitForTasksOrEmpty();
     return { status: 'deleted' };
   }

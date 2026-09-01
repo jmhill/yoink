@@ -34,7 +34,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('refuses delete when an open task is on the list and stays on that pile', async () => {
       const list = await alice.createNamedList('Groceries');
-      await alice.createTask({ title: 'Milk', listId: list.id });
+      const task = await alice.createTask({ title: 'Milk' });
+      await alice.updateTask(task.id, { listId: list.id });
 
       await alice.openAllNamedPile('Groceries');
       await expect(alice.deleteNamedListFromAll('Groceries')).rejects.toThrow(ConflictError);

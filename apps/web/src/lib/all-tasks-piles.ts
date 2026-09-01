@@ -2,6 +2,8 @@ import type { Task } from '@yoink/api-contracts';
 
 export const ALL_PILE_OVERVIEW = 'overview';
 export const ALL_PILE_UNLISTED = 'unlisted';
+/** Select action only — never a URL `pile` value. Opens the New list dialog. */
+export const ALL_PILE_NEW_LIST = 'new-list';
 
 export type AllPile =
   | { kind: 'overview' }

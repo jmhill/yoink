@@ -401,6 +401,26 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeListsNav', 'http');
     },
 
+    async createNamedListFromAll(_name: string): Promise<NamedList> {
+      throw new UnsupportedOperationError('createNamedListFromAll', 'http');
+    },
+
+    async shouldBeOnAllNamedPile(_listId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnAllNamedPile', 'http');
+    },
+
+    async shouldSeeNamedPileOnAll(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedPileOnAll', 'http');
+    },
+
+    async shouldSeeEmptyNamedPile(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeEmptyNamedPile', 'http');
+    },
+
+    async shouldNotSeeDeleteListOnAll(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeDeleteListOnAll', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

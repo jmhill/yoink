@@ -502,9 +502,9 @@ export const createPlaywrightActor = (
 
     async openAllNamedPile(name: string): Promise<void> {
       await tasksPage.goto('all');
-      await expect(page.locator(`[data-pile-name="${name}"]`)).toBeVisible();
+      await tasksPage.waitForPileSelect();
       await tasksPage.selectAllNamedPile(name);
-      await listsPage.waitForOpenTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async openAllUnlistedPile(): Promise<void> {
@@ -556,6 +556,47 @@ export const createPlaywrightActor = (
       await listsPage.waitForListsOrEmpty();
       await expect(page.getByRole('link', { name: 'Lists' }).first()).toBeVisible();
       await expect(page.locator('[data-unlisted-pile]')).toBeVisible();
+    },
+
+    async createNamedListFromAll(name: string): Promise<NamedList> {
+      const created = await tasksPage.createNamedListFromAll(name);
+      if (created.status === 'empty') {
+        throw new ValidationError('Name is required');
+      }
+      if (created.status === 'duplicate') {
+        throw new ConflictError('A list with this name already exists');
+      }
+      return {
+        id: created.id,
+        name: created.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      };
+    },
+
+    async shouldBeOnAllNamedPile(listId: string): Promise<void> {
+      await expect(page).toHaveURL(/[?&]filter=all/);
+      await expect(page).toHaveURL(new RegExp(`[?&]pile=${listId}`));
+    },
+
+    async shouldSeeNamedPileOnAll(name: string): Promise<void> {
+      await tasksPage.waitForPileSelect();
+      await page.locator('#all-pile').click();
+      await expect(tasksPage.namedPileOption(name)).toBeVisible();
+      await tasksPage.closePileSelect();
+    },
+
+    async shouldSeeEmptyNamedPile(): Promise<void> {
+      await expect(page.getByText('No open tasks on this list')).toBeVisible();
+    },
+
+    async shouldNotSeeDeleteListOnAll(name: string): Promise<void> {
+      await tasksPage.waitForPileSelect();
+      await expect(page.getByRole('button', { name: `Delete ${name}` })).toHaveCount(0);
+      await page.locator('#all-pile').click();
+      await expect(page.getByRole('option', { name: `Delete ${name}` })).toHaveCount(0);
+      await tasksPage.closePileSelect();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

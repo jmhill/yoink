@@ -799,12 +799,81 @@ export class TasksPage {
   async selectAllNamedPile(name: string): Promise<void> {
     await this.waitForPileSelect();
     await this.page.locator('#all-pile').click();
-    const option = this.page
-      .locator('[data-slot="select-item"]')
-      .filter({ hasText: new RegExp(`^${name}$`) });
+    const option = this.namedPileOption(name);
     await option.waitFor({ state: 'visible' });
     await option.click();
     await this.page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+  }
+
+  namedPileOption(name: string) {
+    return this.page
+      .locator('[data-slot="select-item"]:not([data-all-pile-new-list])')
+      .filter({ hasText: new RegExp(`^${name}$`) });
+  }
+
+  async openNewListFromPileSelect(): Promise<void> {
+    await this.waitForPileSelect();
+    await this.page.locator('#all-pile').click();
+    const option = this.page.locator('[data-all-pile-new-list]');
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
+  async closePileSelect(): Promise<void> {
+    const listbox = this.page.getByRole('listbox');
+    if (await listbox.isVisible()) {
+      await this.page.keyboard.press('Escape');
+      await listbox.waitFor({ state: 'hidden' });
+    }
+  }
+
+  async createNamedListFromAll(
+    name: string
+  ): Promise<
+    | { status: 'created'; id: string; name: string }
+    | { status: 'empty' }
+    | { status: 'duplicate' }
+  > {
+    await this.goto('all');
+    await this.waitForPileSelect();
+    const previousPile = new URL(this.page.url()).searchParams.get('pile');
+
+    await this.openNewListFromPileSelect();
+
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
+    const nameInput = dialog.getByLabel('Name');
+    await nameInput.waitFor({ state: 'visible' });
+    await nameInput.fill(name);
+
+    const createButton = dialog.getByRole('button', { name: 'Create list' });
+    if (await createButton.isDisabled()) {
+      return { status: 'empty' };
+    }
+
+    await createButton.click();
+
+    const duplicateError = dialog.locator('[data-list-create-error]');
+    await Promise.race([
+      duplicateError.waitFor({ state: 'visible' }),
+      this.page.waitForURL((url) => {
+        const pile = new URL(url).searchParams.get('pile');
+        return Boolean(
+          pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile)
+        );
+      }),
+    ]);
+
+    if (await duplicateError.isVisible()) {
+      return { status: 'duplicate' };
+    }
+
+    const pile = new URL(this.page.url()).searchParams.get('pile');
+    if (!pile) {
+      throw new Error(`Created list "${name}" did not land on one-pile All`);
+    }
+    await this.waitForTasksOrEmpty();
+    return { status: 'created', id: pile, name };
   }
 
   async getAllPileGroupNames(): Promise<string[]> {

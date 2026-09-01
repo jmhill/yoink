@@ -337,6 +337,32 @@ export type BrowserActorOperations = {
    */
   shouldSeeListsNav(): Promise<void>;
 
+  /**
+   * Create a named list from the All pile dropdown (kit dialog).
+   * On success, All is on that list’s one-pile view.
+   */
+  createNamedListFromAll(name: string): Promise<NamedList>;
+
+  /**
+   * Assert All is showing this named list’s one-pile view (`pile` = list id).
+   */
+  shouldBeOnAllNamedPile(listId: string): Promise<void>;
+
+  /**
+   * Assert this named list appears in the All pile dropdown.
+   */
+  shouldSeeNamedPileOnAll(name: string): Promise<void>;
+
+  /**
+   * Assert the current All one-pile view has no open tasks.
+   */
+  shouldSeeEmptyNamedPile(): Promise<void>;
+
+  /**
+   * Assert All has no control to delete this named list.
+   */
+  shouldNotSeeDeleteListOnAll(name: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

@@ -1122,10 +1122,11 @@ export class TasksPage {
     id: string
   ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
     await this.gotoNamedPile(id);
-    const deleteButton = this.page.getByRole('button', { name: /^Delete / });
-    await deleteButton.waitFor({ state: 'visible' });
-    const label = await deleteButton.getAttribute('aria-label');
-    const name = label?.replace(/^Delete /, '') ?? '';
-    return this.deleteNamedListFromAll(name);
+    const lists = await this.getNamedPiles();
+    const list = lists.find((item) => item.id === id);
+    if (!list) {
+      throw new Error(`Named list ${id} not found in All pile dropdown`);
+    }
+    return this.deleteNamedListFromAll(list.name);
   }
 }

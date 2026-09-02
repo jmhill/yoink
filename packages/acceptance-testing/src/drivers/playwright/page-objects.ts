@@ -687,6 +687,12 @@ export class TasksPage {
   }
 
   async waitForTasksOrEmpty(): Promise<void> {
+    await this.page
+      .getByText('Loading...', { exact: true })
+      .waitFor({ state: 'hidden', timeout: 15000 })
+      .catch(() => {
+        // Loading copy is absent on views that never show it.
+      });
     await Promise.race([
       this.page.locator('[data-task-id]').first().waitFor({ state: 'attached' }),
       this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
@@ -798,11 +804,10 @@ export class TasksPage {
   }
 
   async selectMinePile(value: string): Promise<void> {
+    await this.closePileSelect();
     await this.waitForMinePileSelect();
     await this.page.locator('#mine-pile').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
-    await option.waitFor({ state: 'visible' });
-    await option.click();
+    await this.chooseOpenPileOption(value);
   }
 
   async selectMineNamedPile(name: string): Promise<void> {
@@ -820,11 +825,18 @@ export class TasksPage {
   }
 
   async selectAllPile(value: string): Promise<void> {
+    await this.closePileSelect();
     await this.waitForPileSelect();
     await this.page.locator('#all-pile').click();
-    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await this.chooseOpenPileOption(value);
+  }
+
+  private async chooseOpenPileOption(value: string): Promise<void> {
+    const listbox = this.page.getByRole('listbox');
+    const option = listbox.locator(`[data-slot="select-item"][data-value="${value}"]`);
     await option.waitFor({ state: 'visible' });
     await option.click();
+    await listbox.waitFor({ state: 'hidden' });
   }
 
   async selectAllNamedPile(name: string): Promise<void> {
@@ -1034,151 +1046,38 @@ export class TasksPage {
   pinButtons() {
     return this.page.getByRole('button', { name: /^(Pin|Unpin) task/ });
   }
-}
 
-/**
- * Page object for the named lists view (/lists).
- */
-export class ListsPage {
-  constructor(private readonly page: Page) {}
-
-  async goto(): Promise<void> {
-    await this.page.goto('/lists');
-  }
-
-  async waitForListsOrEmpty(): Promise<void> {
-    await Promise.race([
-      this.page.locator('[data-list-id]').first().waitFor({ state: 'attached' }),
-      this.page.getByText('No named lists yet').waitFor({ state: 'attached' }),
-    ]).catch(() => {
-      // If neither appears, let the test continue (it will fail if data is missing)
-    });
-  }
-
-  async getLists(): Promise<Array<{ id: string; name: string }>> {
-    const cards = this.page.locator('[data-list-id]');
-    const count = await cards.count();
+  async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {
+    await this.waitForPileSelect();
+    await this.closePileSelect();
+    await this.page.locator('#all-pile').click();
+    const listbox = this.page.getByRole('listbox');
+    await listbox.waitFor({ state: 'visible' });
+    const items = listbox.locator('[data-slot="select-item"]:not([data-all-pile-new-list])');
+    const count = await items.count();
     const lists: Array<{ id: string; name: string }> = [];
-
     for (let i = 0; i < count; i++) {
-      const card = cards.nth(i);
-      const id = await card.getAttribute('data-list-id');
-      const name = await card.getAttribute('data-list-name');
-      if (id && name) {
+      const item = items.nth(i);
+      const id = await item.getAttribute('data-value');
+      const name = (await item.innerText()).trim();
+      if (id && /^[0-9a-f-]{36}$/i.test(id) && name) {
         lists.push({ id, name });
       }
     }
-
+    await this.closePileSelect();
     return lists;
   }
 
-  async createNamedList(
-    name: string
-  ): Promise<
-    | { status: 'created'; id: string; name: string }
-    | { status: 'empty' }
-    | { status: 'duplicate' }
-  > {
-    await this.goto();
-    await this.waitForListsOrEmpty();
-
-    const existingIds = (await this.getLists()).map((list) => list.id);
-
-    await this.page.getByRole('button', { name: 'New list' }).click();
-    const nameInput = this.page.getByLabel('Name');
-    await nameInput.waitFor({ state: 'visible' });
-    await nameInput.fill(name);
-
-    const createButton = this.page.getByRole('button', { name: 'Create list' });
-    if (await createButton.isDisabled()) {
-      return { status: 'empty' };
-    }
-
-    await createButton.click();
-
-    const duplicateError = this.page.locator('[data-list-create-error]');
-    await Promise.race([
-      duplicateError.waitFor({ state: 'visible' }),
-      this.page
-        .locator('[data-list-id]')
-        .nth(existingIds.length)
-        .waitFor({ state: 'attached' }),
-    ]);
-
-    if (await duplicateError.isVisible()) {
-      return { status: 'duplicate' };
-    }
-
-    const lists = await this.getLists();
-    const created = lists.find((list) => !existingIds.includes(list.id));
-    if (!created) {
-      throw new Error(`Created list "${name}" did not appear`);
-    }
-    return { status: 'created', id: created.id, name: created.name };
+  async gotoNamedPile(listId: string): Promise<void> {
+    await this.page.goto(`/tasks?filter=all&pile=${listId}`);
+    await this.waitForPileSelect();
+    await this.waitForTasksOrEmpty();
   }
 
-  async deleteNamedList(
-    id: string
-  ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
-    await this.goto();
-    await this.waitForListsOrEmpty();
-
-    const card = this.page.locator(`[data-list-id="${id}"]`);
-    await card.waitFor({ state: 'attached' });
-    await card.getByRole('button', { name: /^Delete / }).click();
-
-    const dialog = this.page.getByRole('dialog');
-    await dialog.waitFor({ state: 'visible' });
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
-
-    const deleteError = this.page.locator('[data-list-delete-error]');
-    await Promise.race([
-      deleteError.waitFor({ state: 'visible' }),
-      card.waitFor({ state: 'detached' }),
-      this.page.getByText('No named lists yet').waitFor({ state: 'attached' }),
-    ]);
-
-    if (await deleteError.isVisible()) {
-      return { status: 'has-open-tasks' };
-    }
-
-    return { status: 'deleted' };
-  }
-
-  async isEmpty(): Promise<boolean> {
-    return await this.page.getByText('No named lists yet').isVisible();
-  }
-
-  async openNamedList(name: string): Promise<void> {
-    await this.goto();
-    await this.waitForListsOrEmpty();
-    await this.page.locator(`[data-list-name="${name}"]`).getByRole('link', { name }).click();
-    await this.page.waitForURL('**/lists/**');
-    await this.waitForOpenTasksOrEmpty();
-  }
-
-  async openNamedListById(listId: string): Promise<void> {
-    await this.page.goto(`/lists/${listId}`);
-    await this.waitForOpenTasksOrEmpty();
-  }
-
-  async waitForOpenTasksOrEmpty(): Promise<void> {
-    await Promise.race([
-      this.page.locator('[data-open-task-id]').first().waitFor({ state: 'attached' }),
-      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
-      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
-      this.page.getByText('List not found').waitFor({ state: 'attached' }),
-    ]).catch(() => {
-      // If neither appears, let the test continue
-    });
-  }
-
-  async openUnlistedPile(): Promise<void> {
-    await this.goto();
-    await this.waitForListsOrEmpty();
-    await this.page.locator('[data-unlisted-pile]').getByRole('link', { name: 'Unlisted' }).click();
-    await this.page.waitForURL('**/lists/unlisted');
-    await this.waitForOpenTasksOrEmpty();
+  async gotoUnlistedPile(): Promise<void> {
+    await this.page.goto('/tasks?filter=all&pile=unlisted');
+    await this.waitForPileSelect();
+    await this.waitForTasksOrEmpty();
   }
 
   async getOpenTaskTitles(): Promise<string[]> {
@@ -1229,5 +1128,17 @@ export class ListsPage {
       }
       await this.page.waitForTimeout(50);
     }
+  }
+
+  async deleteNamedListById(
+    id: string
+  ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    await this.gotoNamedPile(id);
+    const lists = await this.getNamedPiles();
+    const list = lists.find((item) => item.id === id);
+    if (!list) {
+      throw new Error(`Named list ${id} not found in All pile dropdown`);
+    }
+    return this.deleteNamedListFromAll(list.name);
   }
 }

@@ -34,7 +34,7 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
-import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage, ListsPage } from './page-objects.js';
+import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -108,7 +108,6 @@ export const createPlaywrightActor = (
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
-  const listsPage = new ListsPage(page);
 
   /**
    * Build a minimal Capture object from ID and content.
@@ -323,10 +322,8 @@ export const createPlaywrightActor = (
     },
 
     async listNamedLists(): Promise<NamedList[]> {
-      await listsPage.goto();
-      await listsPage.waitForListsOrEmpty();
-
-      const lists = await listsPage.getLists();
+      await tasksPage.goto('all');
+      const lists = await tasksPage.getNamedPiles();
       return lists.map(({ id, name }) => ({
         id,
         name,
@@ -337,7 +334,7 @@ export const createPlaywrightActor = (
     },
 
     async createNamedList(name: string): Promise<NamedList> {
-      const created = await listsPage.createNamedList(name);
+      const created = await tasksPage.createNamedListFromAll(name);
       if (created.status === 'empty') {
         throw new ValidationError('Name is required');
       }
@@ -354,36 +351,62 @@ export const createPlaywrightActor = (
     },
 
     async deleteNamedList(id: string): Promise<void> {
-      const result = await listsPage.deleteNamedList(id);
+      const result = await tasksPage.deleteNamedListById(id);
       if (result.status === 'has-open-tasks') {
         throw new ConflictError('This list still has open tasks');
       }
     },
 
     async goToLists(): Promise<void> {
-      await listsPage.goto();
-      await listsPage.waitForListsOrEmpty();
+      await page.goto('/lists');
+      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
+      await tasksPage.waitForPileSelect();
+    },
+
+    async openListsUrl(): Promise<void> {
+      await page.goto('/lists');
+      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
+      await tasksPage.waitForPileSelect();
+    },
+
+    async openNamedListUrl(listId: string): Promise<void> {
+      await page.goto(`/lists/${listId}`);
+      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openUnlistedListUrl(): Promise<void> {
+      await page.goto('/lists/unlisted');
+      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async shouldSeeEmptyNamedLists(): Promise<void> {
-      await listsPage.goto();
-      await expect(page.getByText('No named lists yet')).toBeVisible();
+      await tasksPage.goto('all');
+      await expect.poll(async () => tasksPage.getNamedPiles()).toEqual([]);
     },
 
     async shouldSeeNamedList(name: string): Promise<void> {
-      await listsPage.goto();
-      await expect(page.locator(`[data-list-name="${name}"]`)).toBeVisible();
+      await tasksPage.goto('all');
+      await tasksPage.waitForPileSelect();
+      await page.locator('#all-pile').click();
+      await expect(tasksPage.namedPileOption(name)).toBeVisible();
+      await tasksPage.closePileSelect();
     },
 
     async shouldNotSeeNamedList(name: string): Promise<void> {
-      await listsPage.goto();
-      await listsPage.waitForListsOrEmpty();
-      await expect(page.locator(`[data-list-name="${name}"]`)).toHaveCount(0);
+      await tasksPage.goto('all');
+      await tasksPage.waitForPileSelect();
+      await page.locator('#all-pile').click();
+      await expect(tasksPage.namedPileOption(name)).toHaveCount(0);
+      await tasksPage.closePileSelect();
     },
 
     async listOpenTasksOnList(listId: string): Promise<Task[]> {
-      await listsPage.openNamedListById(listId);
-      const tasks = await listsPage.getOpenTasks();
+      await tasksPage.gotoNamedPile(listId);
+      const tasks = await tasksPage.getOpenTasks();
       return tasks.map(({ id, title }) => ({
         id,
         title,
@@ -394,9 +417,9 @@ export const createPlaywrightActor = (
     },
 
     async reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]> {
-      await listsPage.openNamedListById(listId);
+      await tasksPage.gotoNamedPile(listId);
       for (let i = 0; i < taskIds.length; i++) {
-        const current = await listsPage.getOpenTasks();
+        const current = await tasksPage.getOpenTasks();
         const currentIndex = current.findIndex((task) => task.id === taskIds[i]);
         if (currentIndex < 0) {
           throw new Error(`Open task ${taskIds[i]} not found on list`);
@@ -404,19 +427,19 @@ export const createPlaywrightActor = (
         const title = current[currentIndex]?.title ?? '';
         if (currentIndex > i) {
           for (let step = 0; step < currentIndex - i; step++) {
-            await listsPage.moveOpenTask(title, 'up');
+            await tasksPage.moveOpenTask(title, 'up');
           }
         }
         if (currentIndex < i) {
           for (let step = 0; step < i - currentIndex; step++) {
-            await listsPage.moveOpenTask(title, 'down');
+            await tasksPage.moveOpenTask(title, 'down');
           }
         }
       }
       await expect
-        .poll(async () => (await listsPage.getOpenTasks()).map((task) => task.id))
+        .poll(async () => (await tasksPage.getOpenTasks()).map((task) => task.id))
         .toEqual(taskIds);
-      const ordered = await listsPage.getOpenTasks();
+      const ordered = await tasksPage.getOpenTasks();
       return ordered.map(({ id, title }) => ({
         id,
         title,
@@ -427,27 +450,30 @@ export const createPlaywrightActor = (
     },
 
     async openNamedList(name: string): Promise<void> {
-      await listsPage.openNamedList(name);
+      await tasksPage.goto('all');
+      await tasksPage.waitForPileSelect();
+      await tasksPage.selectAllNamedPile(name);
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
-      await listsPage.waitForOpenTasksOrEmpty();
-      await expect.poll(async () => listsPage.getOpenTaskTitles()).toEqual(titles);
+      await tasksPage.waitForTasksOrEmpty();
+      await expect.poll(async () => tasksPage.getOpenTaskTitles()).toEqual(titles);
     },
 
     async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
-      await listsPage.moveOpenTask(title, direction);
-      await listsPage.waitForOpenTasksOrEmpty();
+      await tasksPage.moveOpenTask(title, direction);
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async refreshOpenList(): Promise<void> {
       await page.reload();
-      await listsPage.waitForOpenTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async listUnlistedOpenTasks(): Promise<Task[]> {
-      await listsPage.openUnlistedPile();
-      const tasks = await listsPage.getOpenTasks();
+      await tasksPage.gotoUnlistedPile();
+      const tasks = await tasksPage.getOpenTasks();
       return tasks.map(({ id, title }) => ({
         id,
         title,
@@ -458,9 +484,9 @@ export const createPlaywrightActor = (
     },
 
     async reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]> {
-      await listsPage.openUnlistedPile();
+      await tasksPage.gotoUnlistedPile();
       for (let i = 0; i < taskIds.length; i++) {
-        const current = await listsPage.getOpenTasks();
+        const current = await tasksPage.getOpenTasks();
         const currentIndex = current.findIndex((task) => task.id === taskIds[i]);
         if (currentIndex < 0) {
           throw new Error(`Open task ${taskIds[i]} not found on the unlisted pile`);
@@ -468,19 +494,19 @@ export const createPlaywrightActor = (
         const title = current[currentIndex]?.title ?? '';
         if (currentIndex > i) {
           for (let step = 0; step < currentIndex - i; step++) {
-            await listsPage.moveOpenTask(title, 'up');
+            await tasksPage.moveOpenTask(title, 'up');
           }
         }
         if (currentIndex < i) {
           for (let step = 0; step < i - currentIndex; step++) {
-            await listsPage.moveOpenTask(title, 'down');
+            await tasksPage.moveOpenTask(title, 'down');
           }
         }
       }
       await expect
-        .poll(async () => (await listsPage.getOpenTasks()).map((task) => task.id))
+        .poll(async () => (await tasksPage.getOpenTasks()).map((task) => task.id))
         .toEqual(taskIds);
-      const ordered = await listsPage.getOpenTasks();
+      const ordered = await tasksPage.getOpenTasks();
       return ordered.map(({ id, title }) => ({
         id,
         title,
@@ -491,7 +517,7 @@ export const createPlaywrightActor = (
     },
 
     async openUnlistedPile(): Promise<void> {
-      await listsPage.openUnlistedPile();
+      await tasksPage.gotoUnlistedPile();
     },
 
     async openAllOverview(): Promise<void> {
@@ -512,7 +538,8 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-pile-name="Unlisted"]')).toBeVisible();
       await tasksPage.selectAllPile('unlisted');
       await page.waitForURL(/[?&]pile=unlisted/);
-      await listsPage.waitForOpenTasksOrEmpty();
+      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async shouldSeeAllPileGroups(names: string[]): Promise<void> {
@@ -594,8 +621,11 @@ export const createPlaywrightActor = (
     async openMineUnlistedPile(): Promise<void> {
       await tasksPage.goto('mine');
       await tasksPage.waitForMinePileSelect();
+      await tasksPage.waitForTasksOrEmpty();
       await tasksPage.selectMinePile('unlisted');
+      await page.waitForURL(/[?&]filter=mine/);
       await page.waitForURL(/[?&]pile=unlisted/);
+      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -609,7 +639,9 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeTaskTitles(titles: string[]): Promise<void> {
-      await expect.poll(async () => tasksPage.getBoardTaskTitles()).toEqual(titles);
+      await expect
+        .poll(async () => tasksPage.getBoardTaskTitles(), { timeout: 10_000 })
+        .toEqual(titles);
     },
 
     async shouldNotSeeTask(taskId: string): Promise<void> {
@@ -658,11 +690,8 @@ export const createPlaywrightActor = (
       await expect(page.locator('#all-pile')).toHaveCount(0);
     },
 
-    async shouldSeeListsNav(): Promise<void> {
-      await listsPage.goto();
-      await listsPage.waitForListsOrEmpty();
-      await expect(page.getByRole('link', { name: 'Lists' }).first()).toBeVisible();
-      await expect(page.locator('[data-unlisted-pile]')).toBeVisible();
+    async shouldNotSeeListsNav(): Promise<void> {
+      await expect(page.getByRole('link', { name: 'Lists', exact: true })).toHaveCount(0);
     },
 
     async createNamedListFromAll(name: string): Promise<NamedList> {
@@ -716,6 +745,11 @@ export const createPlaywrightActor = (
     async shouldBeOnAllOverview(): Promise<void> {
       await expect(page).toHaveURL(/[?&]filter=all/);
       await expect(page).not.toHaveURL(/[?&]pile=/);
+    },
+
+    async shouldBeOnAllUnlistedPile(): Promise<void> {
+      await expect(page).toHaveURL(/[?&]filter=all/);
+      await expect(page).toHaveURL(/[?&]pile=unlisted/);
     },
 
     async shouldNotSeeNamedPileOnAll(name: string): Promise<void> {

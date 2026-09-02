@@ -9,8 +9,8 @@ import { ConflictError, ValidationError } from '@yoink/acceptance-testing';
  * Same create rules as Lists page create. After create, All lands on that
  * list’s one-pile view (empty is fine — overview hides empty groups).
  *
- * This is not delete-from-All, grouping Today/Upcoming, Mine picker, or
- * removing the Lists nav.
+ * This is not delete-from-All, grouping Today/Upcoming, or Mine picker.
+ * Lists page create is gone with the Lists nav (story 6).
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Creating a named list from All [${ctx.driverName}]`, () => {
@@ -50,13 +50,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await expect(alice.createNamedListFromAll('   ')).rejects.toThrow(ValidationError);
     });
 
-    it('leaves Today, Upcoming, Mine, and the Lists nav as they are, with no delete on All', async () => {
+    it('leaves Today, Upcoming, and Mine as they are, with no Lists nav and no delete on All overview', async () => {
       await alice.createNamedListFromAll('Weekend');
 
       await alice.shouldSeeTaskFilterWithoutAllPile('today');
       await alice.shouldSeeTaskFilterWithoutAllPile('upcoming');
       await alice.shouldSeeTaskFilterWithoutAllPile('mine');
-      await alice.shouldSeeListsNav();
+      await alice.shouldNotSeeListsNav();
       await alice.shouldSeeNamedList('Weekend');
 
       await alice.openAllOverview();

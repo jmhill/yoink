@@ -6,8 +6,8 @@ import { UnauthorizedError, ValidationError, ConflictError } from '@yoink/accept
  * Story 2: Create a new named list.
  *
  * Any org member (human session or agent token) can name a new list.
- * After create, it appears in the existing org-wide Lists view, including
- * when it has no tasks. This is not tags; tasks are untouched.
+ * After create, it appears in All’s pile dropdown, including when it has
+ * no tasks. This is not tags; tasks are untouched.
  */
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Creating named lists [${ctx.driverName}]`, () => {
@@ -91,7 +91,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-create-list-board@example.com');
     });
 
-    it('shows the new list on the lists view after creating', async () => {
+    it('shows the new list in All’s pile dropdown after creating', async () => {
       await alice.createNamedList('Weekend');
 
       await alice.shouldSeeNamedList('Weekend');

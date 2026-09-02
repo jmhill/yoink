@@ -34,8 +34,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Delete a named list from All** - Complete ✓ (kit delete on All’s named-list one-pile only; same refuse-if-open-tasks; lands on overview)
 **Today and Upcoming group by list** - Complete ✓ (Today/Upcoming grouped overviews; Today outer split is overdue then due today, list groups inside; Upcoming is list groups only; no reorder)
 **Mine uses All’s two-mode picker** - Complete ✓ (Mine overview grouped by list + unlisted; one named list or Unlisted; only my assigned tasks; no reorder even in one-pile; All still reorders)
+**Lists nav dies** - Complete ✓ (no Lists nav or Lists pages; piles live on Tasks All and Mine; old `/lists` URLs redirect onto All)
 
 Recent updates:
+- Story 6 of 6 “Lists nav dies”: Lists is a dimension of the task board, not a second app. There is no Lists nav and no Lists pages. Members find and work piles on Tasks (All two-modes with create/delete/reorder; Mine is the same picker as a filter, no reorder, no create/delete). Today/Upcoming stay grouped; Done stays. Old URLs redirect: `/lists` → All overview (`?filter=all`), `/lists/unlisted` → All Unlisted (`?filter=all&pile=unlisted`), `/lists/:listId` → All named pile (`?filter=all&pile=:listId`). Empty named lists still appear in All’s (and Mine’s) pile dropdown. List APIs stay. HTTP still only maps; no new domain field.
 - Story 5 of 6 “Mine uses All’s two-mode picker”: on Tasks Mine, a member can pick All lists (grouped overview, named list plus unlisted) vs one named list vs Unlisted — the same two modes as All. Mine is still only tasks assigned to the current member. Even in one-pile modes, no up/down; `openOrder` stays the shared pile sequence All already owns. Empty groups wait: only piles with MY tasks. Pin stays on the existing Mine filter sort (`pinned_at` then `created_at`), not `openOrder`. Create/delete list stay on All. Today, Upcoming, Done, and the Lists nav stay (story 6). HTTP still only maps; no new domain field. Reuses `GET /api/tasks?filter=mine` and groups/filters by pile on the client — not the list/unlisted pile APIs (those are everyone’s open tasks).
 - Story 4 of 6 “Today and Upcoming group by list”: Today and Upcoming are grouped overviews and cannot reorder. Today is a deadline view: overdue vs due today on the outside, then named list plus unlisted inside each. Upcoming has no overdue split — just list groups. Pin still sits on the existing filter sort (pinned_at then created_at), not openOrder. Empty groups wait: only piles with tasks in that view. All two-modes, create/delete from All, Mine, Done, and the Lists nav stay. HTTP still only maps; no new domain field. Reuses `groupAllTasksByPile`.
 - Story 3 of 6 “Delete a named list from All”: on Tasks All, when a member is looking at one named list, they can delete that list (kit dialog, same refuse-if-open-tasks already shipped). They cannot delete from the grouped overview or from Unlisted. After a successful delete, All leaves the named-list one-pile view and lands on overview — not Unlisted. The name is gone from the dropdown. Open tasks on that list: delete is refused, list stays, still on that pile. Today, Upcoming, Mine, Done, and the Lists nav stay. Lists page delete stays until story 6. Create from All stays as shipped. HTTP still only maps; no new domain rules.
@@ -907,6 +909,31 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Lists nav dies - Complete ✓
+
+**Goal**: A member cannot open a Lists app. Piles live on Tasks All (and Mine as a filter). Old Lists URLs do not 404.
+
+**Product rules (locked):**
+- Lists is a dimension of the task board, not a second app. After this story there is no Lists nav and no Lists pages.
+- Members find and work piles on Tasks: All two-modes (grouped overview vs one named list vs Unlisted; reorder only in one-pile). Create a named list from All’s dropdown; land on that pile. Delete a named list only from All’s named-list one-pile (not overview, not Unlisted).
+- Today/Upcoming grouped (Today overdue-first then list inside; Upcoming list groups only; no reorder). Mine is a filter, not a workshop: same picker, your tasks only, no reorder. Create/delete stay on All.
+- This story only removes the Lists surface. It does not add new list behavior.
+- Empty named lists still appear in All’s (and Mine’s) pile dropdown even though overview hides empty groups — that dropdown is now how you find an empty list.
+
+**Out of scope:**
+- Do not change All / Mine / Today / Upcoming / Done behavior except that Lists nav is gone.
+- Do not remove list APIs (`GET/POST /api/lists`, `DELETE /api/lists/:id`, list/unlisted open-task GET/PUT).
+- Do not invent a new place to create/delete/order lists. Those already live on All.
+
+**Implementation:**
+- Remove the Lists nav item
+- Lists routes redirect: `/lists` → Tasks All overview (`?filter=all`); `/lists/unlisted` → All unlisted (`?filter=all&pile=unlisted`); `/lists/:listId` → All named pile (`?filter=all&pile=:listId`)
+- Playwright: no Lists nav; old Lists URLs land on All; All still has two-mode picker, create, delete-on-named-pile, and one-pile reorder; Mine still has its picker and cannot reorder / cannot create or delete lists; Today, Upcoming, Done stay as they are
+
+**Deliverable:** A member cannot open a Lists app. Piles live on Tasks All (and Mine as a filter). Old Lists URLs do not 404.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1292,7 +1319,9 @@ When resuming work on this project:
 
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
-**Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, Done, and the Lists nav stay.
+**Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Lists nav dies is in.** There is no Lists nav and no Lists pages. Piles live on Tasks All (create/delete/reorder) and Mine (filter only). Old `/lists`, `/lists/unlisted`, and `/lists/:listId` URLs redirect onto All. List APIs stay. Empty named lists are found in the pile dropdown.
 
 **Named lists story 7 is in.** A member can see and change the open-task order on a named list. Complete/uncomplete are sandwiches so the remembered index can restore (and clamp).
 

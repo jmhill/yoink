@@ -762,6 +762,10 @@ export class TasksPage {
     await option.click();
   }
 
+  createTaskListPicker() {
+    return this.page.locator('#create-task-list');
+  }
+
   async quickAdd(title: string): Promise<void> {
     await this.page.locator('#create-task-title').fill(title);
     await this.page.getByRole('button', { name: 'Add' }).click();
@@ -875,7 +879,9 @@ export class TasksPage {
     } catch {
       const trigger = this.page.locator('#all-pile, #mine-pile').first();
       if (await trigger.isVisible()) {
-        await trigger.click();
+        // Named-list / Unlisted screens have no create-task list picker,
+        // so the open Select overlay can intercept a normal click.
+        await trigger.click({ force: true });
       }
       await listbox.waitFor({ state: 'hidden' });
     }

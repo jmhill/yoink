@@ -43,6 +43,32 @@ export function allPileSelectValue(pile: AllPile): string {
 }
 
 /**
+ * The add-task list picker is only for views that are not already one pile.
+ * Named-list and Unlisted screens *are* the pile — hide it there.
+ * Smart views (Today / Upcoming / Mine) and All overview keep it.
+ */
+export function showsCreateTaskListPicker(allPile: AllPile | null): boolean {
+  return allPile?.kind !== 'named' && allPile?.kind !== 'unlisted';
+}
+
+/**
+ * Create onto the current All one-pile, or use the picker on smart views
+ * and All overview. Unlisted omits listId.
+ */
+export function listIdForCreateTask(options: {
+  allPile: AllPile | null;
+  pickedListId: string;
+}): string | undefined {
+  if (options.allPile?.kind === 'named') {
+    return options.allPile.listId;
+  }
+  if (options.allPile?.kind === 'unlisted') {
+    return undefined;
+  }
+  return options.pickedListId || undefined;
+}
+
+/**
  * Group filter-result tasks by named list, then unlisted.
  * Keeps each group's relative order from the API (pin then createdAt).
  * Does not sort by openOrder. Used by All overview, Mine overview,

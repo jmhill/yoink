@@ -37,8 +37,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Lists nav dies** - Complete ✓ (no Lists nav or Lists pages; piles live on Tasks All and Mine; old `/lists` URLs redirect onto All)
 **Yoink UI story 1: single rail + direct list screens** - Complete ✓ (desktop rail: Inbox with count hidden at 0, Today, Upcoming, Mine, Done, Lists heading, flat named lists, Unlisted, + New list; named list/Unlisted land on existing one-pile screens; All stays as fallback)
 **Yoink UI story 2: delete a named list from the rail** - Complete ✓ (kit overflow with Delete on named-list rail rows only; same refuse-if-open / unlist-completed dialog and API; leave the gone pile for All overview; All fallback delete and + New list stay)
+**Yoink UI story 3: the list is the pile on add-task** - Complete ✓ (named-list and Unlisted screens hide `#create-task-list`; create onto that pile or omit listId; Today / Upcoming / Mine and All overview keep the picker; All’s pile dropdown stays)
 
 Recent updates:
+- Yoink UI story 3 “the list is the pile on add-task”: a miss from story 1, not a new idea. On a named-list or Unlisted screen the list *is* the pile — add-task has no list dropdown. New tasks go on that named list (reuse existing create with `listId`) or stay unlisted (omit `listId`). Today / Upcoming / Mine keep the picker they have today. All overview keeps its pile dropdown and create-task list picker as fallback. Do not retire All. Create-list stays on + New list / All. UI only; HTTP still only maps; no new domain field. Out of scope: Inbox pane, Promote, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, rail delete (already shipped).
 - Yoink UI story 2 “delete a named list from the rail”: on the approved rail, each named-list row has a kit overflow with Delete (not Unlisted, not smart views, not Inbox). Reuses `DeleteNamedListDialog` and `DELETE /api/lists/:id` — same refuse-if-open-tasks; completed-on-list do not block and are unlisted in the same command (stay in Done). Recreating the name is a new bucket. Any org member may delete. If the member was viewing that pile, they leave it (All overview is the fallback until later stories). Other views stay put. The name leaves the rail. All’s existing named-pile delete stays as fallback. + New list still creates. Do not retire All, move create-task, or build Inbox pane / Promote / Mine leftover / All retirement / mobile redesign / drag / empty groups / bulk actions. HTTP still only maps; no new domain field.
 - Yoink UI story 1 “single rail + direct list screens”: one desktop rail. Inbox shows a count, hidden when that count is 0. A small Lists heading sits above the named lists so they are not a fifth smart view; named lists stay flat, Unlisted last, then + New list. Smart views and named lists are peers (no nesting). Named list and Unlisted links land on the existing All one-pile screens (add-task field + kit up/down). Smart views keep current semantics (Today overdue then due today with list groups inside; Upcoming list groups; Mine assignee-only, no reorder; Done completed). All stays: tab, two-mode dropdown, create, delete-on-named-pile. Empty named lists stay findable on the rail and in All’s dropdown. Mobile Inbox | Tasks bottom nav stays. No list/task API or domain change. HTTP still only maps; no new domain field. Later-scope (not this story): move create-list/create-task, Inbox pane/Snoozed/Trash tabs, Promote sheet, mobile bottom-tab redesign, All retirement, visual polish, drag.
 - Story 6 of 6 “Lists nav dies”: Lists is a dimension of the task board, not a second app. There is no Lists nav and no Lists pages. Members find and work piles on Tasks (All two-modes with create/delete/reorder; Mine is the same picker as a filter, no reorder, no create/delete). Today/Upcoming stay grouped; Done stays. Old URLs redirect: `/lists` → All overview (`?filter=all`), `/lists/unlisted` → All Unlisted (`?filter=all&pile=unlisted`), `/lists/:listId` → All named pile (`?filter=all&pile=:listId`). Empty named lists still appear in All’s (and Mine’s) pile dropdown. List APIs stay. HTTP still only maps; no new domain field.
@@ -1003,6 +1005,35 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 3: the list is the pile on add-task - Complete ✓
+
+**Goal**: On a named-list or Unlisted screen, add-task has no list picker. New tasks land on that pile. Smart views and All overview keep the picker.
+
+**Product rules (locked, Justin + Polly 2026-09-03):**
+- One story at a time. This story only. This is a miss from story 1, not a new idea.
+- Named-list screen: no list dropdown on add-task. New tasks go on that named list (reuse existing one-pile create that already sets `listId`).
+- Unlisted screen: no list dropdown on add-task. New tasks stay unlisted (omit `listId`).
+- Smart views (Today / Upcoming / Mine / Done): keep the list picker as they have today.
+- All’s pile dropdown stays until All dies (later story). Do not retire All. All overview still has its pile dropdown and create-task list picker as fallback.
+- Create-list stays on + New list / All as already shipped.
+- Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (later stories — do not implement here):**
+- Inbox pane / Promote sheet / Mine leftover (remove Mine dropdown)
+- All retirement
+- Mobile redesign
+- Drag, empty groups, bulk actions
+- Rail delete (already shipped)
+
+**Implementation:**
+- Hide `#create-task-list` when the current All view is a named pile or Unlisted (`allPile.kind === 'named' | 'unlisted'`). Rail named-list / Unlisted links already land on those one-pile screens.
+- When hiding, create with that pile’s `listId` (or omit for unlisted). Smart views and All overview still use the picker.
+- Playwright: named-list add-task has no picker and the new task lands on that list; Unlisted add-task has no picker and the new task stays unlisted; Today / Upcoming / Mine still show the picker; All overview still has pile dropdown + create-task picker; rail overflow delete and + New list still work. HTTP driver stubs the new browser operations.
+
+**Deliverable:** On a list screen the list is the pile — add-task does not ask which list, and All remains the fallback.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1389,6 +1420,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 3 is in.** Named-list and Unlisted screens hide the add-task list picker; create uses that pile’s `listId` or omits it. Today / Upcoming / Mine and All overview keep the picker. All’s pile dropdown stays. Do not start later UI work (Inbox pane, Promote, Mine leftover, All retirement) from this story.
 
 **Yoink UI story 2 is in.** Named-list rail rows have a kit overflow with Delete. Same `DeleteNamedListDialog` / `DELETE /api/lists/:id` as All (refuse-if-open; completed unlisted, stay in Done). Viewing that pile leaves it for All overview; other views stay. All fallback delete and + New list stay. Do not start later UI work (move create-task, Inbox pane, Promote, All retirement) from this story.
 

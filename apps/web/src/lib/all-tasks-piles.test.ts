@@ -5,7 +5,9 @@ import {
   ALL_PILE_UNLISTED,
   allPileSelectValue,
   groupAllTasksByPile,
+  listIdForCreateTask,
   parseAllPile,
+  showsCreateTaskListPicker,
   tasksInPile,
 } from './all-tasks-piles';
 
@@ -38,6 +40,51 @@ describe('allPileSelectValue', () => {
     expect(allPileSelectValue({ kind: 'overview' })).toBe(ALL_PILE_OVERVIEW);
     expect(allPileSelectValue({ kind: 'unlisted' })).toBe(ALL_PILE_UNLISTED);
     expect(allPileSelectValue({ kind: 'named', listId: groceriesId })).toBe(groceriesId);
+  });
+});
+
+describe('showsCreateTaskListPicker', () => {
+  it('hides the picker on All named-list and Unlisted one-pile screens', () => {
+    expect(showsCreateTaskListPicker({ kind: 'named', listId: groceriesId })).toBe(false);
+    expect(showsCreateTaskListPicker({ kind: 'unlisted' })).toBe(false);
+  });
+
+  it('keeps the picker on smart views and All overview', () => {
+    expect(showsCreateTaskListPicker(null)).toBe(true);
+    expect(showsCreateTaskListPicker({ kind: 'overview' })).toBe(true);
+  });
+});
+
+describe('listIdForCreateTask', () => {
+  it('creates onto the current named pile and ignores the picker', () => {
+    expect(
+      listIdForCreateTask({
+        allPile: { kind: 'named', listId: groceriesId },
+        pickedListId: weekendId,
+      })
+    ).toBe(groceriesId);
+  });
+
+  it('omits listId on Unlisted even if the picker still has a value', () => {
+    expect(
+      listIdForCreateTask({
+        allPile: { kind: 'unlisted' },
+        pickedListId: groceriesId,
+      })
+    ).toBeUndefined();
+  });
+
+  it('uses the picker on smart views and All overview', () => {
+    expect(listIdForCreateTask({ allPile: null, pickedListId: groceriesId })).toBe(
+      groceriesId
+    );
+    expect(
+      listIdForCreateTask({ allPile: { kind: 'overview' }, pickedListId: groceriesId })
+    ).toBe(groceriesId);
+    expect(listIdForCreateTask({ allPile: null, pickedListId: '' })).toBeUndefined();
+    expect(
+      listIdForCreateTask({ allPile: { kind: 'overview' }, pickedListId: '' })
+    ).toBeUndefined();
   });
 });
 

@@ -54,18 +54,28 @@ const railIcon = (item: RailItem) => {
   return CheckCheck;
 };
 
+type TaskFilterSearch = 'all' | 'today' | 'upcoming' | 'mine' | 'completed';
+
+const SMART_VIEW_FILTER: Record<
+  Extract<RailItem, { kind: 'smart' }>['key'],
+  Exclude<TaskFilterSearch, 'all'>
+> = {
+  today: 'today',
+  upcoming: 'upcoming',
+  mine: 'mine',
+  done: 'completed',
+};
+
 const railTaskSearch = (
   item: Extract<RailItem, { kind: 'smart' } | { kind: 'named' } | { kind: 'unlisted' }>
-) => {
+): { filter: TaskFilterSearch; pile?: string } => {
   if (item.kind === 'smart') {
-    const filter =
-      item.key === 'done' ? 'completed' : item.key === 'today' ? 'today' : item.key;
-    return { filter };
+    return { filter: SMART_VIEW_FILTER[item.key] };
   }
   if (item.kind === 'named') {
-    return { filter: 'all' as const, pile: item.listId };
+    return { filter: 'all', pile: item.listId };
   }
-  return { filter: 'all' as const, pile: 'unlisted' as const };
+  return { filter: 'all', pile: 'unlisted' };
 };
 
 export function AppNav() {

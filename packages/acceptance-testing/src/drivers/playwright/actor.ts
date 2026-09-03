@@ -1021,7 +1021,7 @@ export const createPlaywrightActor = (
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole('heading', { name: 'Create Task' })).toBeVisible();
       await expect(page.locator('[data-slot="sheet"]')).toHaveCount(0);
-    },,
+    },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {

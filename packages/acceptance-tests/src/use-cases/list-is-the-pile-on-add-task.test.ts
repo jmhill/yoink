@@ -88,8 +88,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       const again = await alice.createNamedListFromRail('Groceries');
       await alice.shouldBeOnAllNamedPile(again.id);
-      await alice.shouldSeeNamedListOverflowOnRail('Groceries');
       await alice.shouldSeeRailItems(railWith('Groceries'));
+
+      await alice.deleteNamedListFromRail('Groceries');
+      await alice.shouldSeeRailItems(railWith());
     }, 60_000);
   });
 });

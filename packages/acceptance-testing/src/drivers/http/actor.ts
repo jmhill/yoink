@@ -530,6 +530,38 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeNamedPileOnAll', 'http');
     },
 
+    async shouldSeeRailItems(_labels: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailItems', 'http');
+    },
+
+    async shouldSeeInboxCountOnRail(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInboxCountOnRail', 'http');
+    },
+
+    async openRailNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openRailNamedList', 'http');
+    },
+
+    async openRailUnlisted(): Promise<void> {
+      throw new UnsupportedOperationError('openRailUnlisted', 'http');
+    },
+
+    async openRailSmartView(_view: 'today' | 'upcoming' | 'mine' | 'done'): Promise<void> {
+      throw new UnsupportedOperationError('openRailSmartView', 'http');
+    },
+
+    async shouldSeeAddTaskField(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeAddTaskField', 'http');
+    },
+
+    async shouldNotSeeAddTaskField(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAddTaskField', 'http');
+    },
+
+    async createNamedListFromRail(_name: string): Promise<NamedList> {
+      throw new UnsupportedOperationError('createNamedListFromRail', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

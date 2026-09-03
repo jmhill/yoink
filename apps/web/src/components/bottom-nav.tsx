@@ -269,10 +269,15 @@ export function AppNav() {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="start" side="right" sideOffset={4} avoidCollisions={false}>
                           <DropdownMenuItem
                             variant="destructive"
-                            onSelect={() => setDeletingList({ id: item.listId, name: item.label })}
+                            onSelect={() => {
+                              // Let the kit menu close before the same-kit dialog opens.
+                              window.setTimeout(() => {
+                                setDeletingList({ id: item.listId, name: item.label });
+                              }, 0);
+                            }}
                           >
                             Delete
                           </DropdownMenuItem>

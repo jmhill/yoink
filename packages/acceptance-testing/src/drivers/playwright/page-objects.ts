@@ -866,8 +866,17 @@ export class TasksPage {
 
   async closePileSelect(): Promise<void> {
     const listbox = this.page.getByRole('listbox');
-    if (await listbox.isVisible()) {
-      await this.page.keyboard.press('Escape');
+    if (!(await listbox.isVisible())) {
+      return;
+    }
+    await this.page.keyboard.press('Escape');
+    try {
+      await listbox.waitFor({ state: 'hidden', timeout: 1000 });
+    } catch {
+      const trigger = this.page.locator('#all-pile, #mine-pile').first();
+      if (await trigger.isVisible()) {
+        await trigger.click();
+      }
       await listbox.waitFor({ state: 'hidden' });
     }
   }
@@ -1308,16 +1317,17 @@ export class AppRail {
       previous.searchParams.get('pile') === listId;
 
     await this.openOverflow(name);
+    const deleteItem = this.page.getByRole('menuitem', { name: 'Delete', exact: true });
+    await deleteItem.waitFor({ state: 'visible' });
+    await deleteItem.press('Enter');
 
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/lists/') &&
         response.request().method() === 'DELETE'
     );
-    await this.page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
-
-    const dialog = this.page.getByRole('dialog');
-    await dialog.waitFor({ state: 'visible' });
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
     const response = await responsePromise;
 

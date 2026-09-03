@@ -854,9 +854,10 @@ export const createPlaywrightActor = (
       await appRail.waitForVisible();
       await expect(appRail.overflowByLabel(name)).toBeVisible();
       await appRail.openOverflow(name);
-      await expect(page.getByRole('menuitem', { name: 'Delete', exact: true })).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('menu')).toHaveCount(0);
+      const deleteItem = page.getByRole('menuitem', { name: 'Delete', exact: true });
+      await expect(deleteItem).toBeVisible();
+      await page.getByRole('menu').press('Escape');
+      await expect(deleteItem).toBeHidden();
     },
 
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {

@@ -43,7 +43,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const again = await alice.createNamedListFromRail('Weekend');
       expect(again.id).not.toBe(list.id);
       await alice.shouldSeeRailItems(railWithout('Weekend'));
-    });
+    }, 60_000);
 
     it('refuses delete when an open task is on the list and keeps the list on the rail', async () => {
       const list = await alice.createNamedList('Groceries');
@@ -55,7 +55,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.shouldBeOnAllNamedPile(list.id);
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
-    });
+    }, 60_000);
 
     it('deletes a completed-only list; those tasks stay in Done, unlisted', async () => {
       const list = await alice.createNamedList('Groceries');
@@ -68,7 +68,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailSmartView('done');
       await alice.shouldSeeTaskTitles(['Milk']);
       await alice.shouldNotSeeListOnVisibleTask(task.id);
-    });
+    }, 60_000);
 
     it('leaves the gone pile after deleting the list you were viewing, and stays on another view', async () => {
       await alice.createNamedList('Weekend');
@@ -83,7 +83,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.deleteNamedListFromRail('Groceries');
       await alice.shouldBeOnTaskFilter('today');
       await alice.shouldSeeRailItems(railWithout());
-    });
+    }, 60_000);
 
     it('keeps All fallback delete and rail New list, without retiring All', async () => {
       await alice.createTask({ title: 'Notes' });

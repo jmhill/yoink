@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +12,10 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Trash2, Inbox, RotateCcw, Link as LinkIcon, Clock, X } from 'lucide-react';
+import { Trash2, Inbox, RotateCcw, Link as LinkIcon, X } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
+import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
@@ -253,28 +253,7 @@ function TrashPage() {
     <div className="container mx-auto max-w-2xl p-4">
       <Header viewName="Inbox" />
 
-      <Tabs defaultValue="trash" className="mb-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="snoozed" asChild>
-            <Link to="/snoozed" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Snoozed
-            </Link>
-          </TabsTrigger>
-          <TabsTrigger value="inbox" asChild>
-            <Link to="/" className="flex items-center gap-2">
-              <Inbox className="h-4 w-4" />
-              Inbox
-            </Link>
-          </TabsTrigger>
-          <TabsTrigger value="trash" asChild>
-            <Link to="/trash" className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4" />
-              Trash
-            </Link>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <InboxPaneTabs active="trash" />
 
       {error ? (
         <ErrorState error={error} onRetry={() => refetch()} />

@@ -600,6 +600,76 @@ export type BrowserActorOperations = {
    */
   addTaskOnCurrentView(title: string): Promise<Task>;
 
+  /**
+   * Open Inbox from the rail. Lands on the Inbox pane of captures (`/`),
+   * not Tasks.
+   */
+  openRailInbox(): Promise<void>;
+
+  /**
+   * Assert the current screen is the Inbox pane of captures: `/`, Inbox tab
+   * selected, quick-add present, not a task board.
+   */
+  shouldBeOnInboxPane(): Promise<void>;
+
+  /**
+   * Assert the capture-pane tab strip shows these labels in order
+   * (Inbox, Snoozed, Trash).
+   */
+  shouldSeeInboxPaneTabs(labels: string[]): Promise<void>;
+
+  /**
+   * Assert Snoozed and Trash are not rail items.
+   */
+  shouldNotSeeSnoozedOrTrashOnRail(): Promise<void>;
+
+  /**
+   * Open a tab on the capture pane (not a rail item).
+   */
+  openInboxPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void>;
+
+  /**
+   * Assert the capture-pane tab is selected and the matching route is showing.
+   */
+  shouldBeOnInboxPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void>;
+
+  /**
+   * Assert the rail Inbox row is highlighted (including on Snoozed / Trash).
+   */
+  shouldSeeRailInboxHighlighted(): Promise<void>;
+
+  /**
+   * Assert this capture is visible on the current pane (no navigation).
+   */
+  shouldSeeCaptureOnCurrentPane(content: string): Promise<void>;
+
+  /**
+   * Assert an inbox capture row has Promote / Snooze / Trash, and has no
+   * checkbox, drag handle, or due date.
+   */
+  shouldSeeInboxCaptureActions(content: string): Promise<void>;
+
+  /**
+   * Assert the Inbox-tab quick-add capture field is visible.
+   */
+  shouldSeeQuickAddCapture(): Promise<void>;
+
+  /**
+   * Assert the Inbox-tab quick-add capture field is not on this pane.
+   */
+  shouldNotSeeQuickAddCapture(): Promise<void>;
+
+  /**
+   * Open Promote on an inbox capture. The existing Create Task modal opens
+   * (not a new sheet).
+   */
+  openExistingPromoteModal(content: string): Promise<void>;
+
+  /**
+   * Assert the existing Promote modal (Create Task dialog) is visible.
+   */
+  shouldSeeExistingPromoteModal(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

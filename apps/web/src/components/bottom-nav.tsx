@@ -215,6 +215,7 @@ export function AppNav() {
                   to="/"
                   data-rail-item="inbox"
                   data-rail-label={item.label}
+                  data-rail-active={active ? 'true' : undefined}
                   className={railClassName(active)}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
@@ -246,6 +247,7 @@ export function AppNav() {
                       data-rail-item="named"
                       data-rail-label={item.label}
                       data-rail-list-id={item.listId}
+                      data-rail-active={active ? 'true' : undefined}
                       className={cn(
                         'flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm transition-colors',
                         active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -297,6 +299,7 @@ export function AppNav() {
                   search={railTaskSearch(item)}
                   data-rail-item={item.kind === 'smart' ? item.key : item.kind}
                   data-rail-label={item.label}
+                  data-rail-active={active ? 'true' : undefined}
                   className={railClassName(active)}
                 >
                   <Icon className="h-5 w-5 shrink-0" />

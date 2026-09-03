@@ -88,7 +88,7 @@ describe('isRailItemActive', () => {
   const unlisted = items[7]!;
   const newList = items[8]!;
 
-  it('marks Inbox for inbox, snoozed, and trash — not for a later Inbox pane', () => {
+  it('marks Inbox for the capture pane — inbox, snoozed, and trash', () => {
     expect(isRailItemActive(inbox, { pathname: '/' })).toBe(true);
     expect(isRailItemActive(inbox, { pathname: '/snoozed' })).toBe(true);
     expect(isRailItemActive(inbox, { pathname: '/trash' })).toBe(true);

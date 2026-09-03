@@ -604,6 +604,58 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('addTaskOnCurrentView', 'http');
     },
 
+    async openRailInbox(): Promise<void> {
+      throw new UnsupportedOperationError('openRailInbox', 'http');
+    },
+
+    async shouldBeOnInboxPane(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnInboxPane', 'http');
+    },
+
+    async shouldSeeInboxPaneTabs(_labels: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInboxPaneTabs', 'http');
+    },
+
+    async shouldNotSeeSnoozedOrTrashOnRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeSnoozedOrTrashOnRail', 'http');
+    },
+
+    async openInboxPaneTab(_tab: 'inbox' | 'snoozed' | 'trash'): Promise<void> {
+      throw new UnsupportedOperationError('openInboxPaneTab', 'http');
+    },
+
+    async shouldBeOnInboxPaneTab(_tab: 'inbox' | 'snoozed' | 'trash'): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnInboxPaneTab', 'http');
+    },
+
+    async shouldSeeRailInboxHighlighted(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailInboxHighlighted', 'http');
+    },
+
+    async shouldSeeCaptureOnCurrentPane(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCaptureOnCurrentPane', 'http');
+    },
+
+    async shouldSeeInboxCaptureActions(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInboxCaptureActions', 'http');
+    },
+
+    async shouldSeeQuickAddCapture(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeQuickAddCapture', 'http');
+    },
+
+    async shouldNotSeeQuickAddCapture(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
+    },
+
+    async openExistingPromoteModal(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('openExistingPromoteModal', 'http');
+    },
+
+    async shouldSeeExistingPromoteModal(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeExistingPromoteModal', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

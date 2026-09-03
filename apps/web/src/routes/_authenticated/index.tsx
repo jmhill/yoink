@@ -1,16 +1,16 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useRef } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { Tabs, TabsList, TabsTrigger } from '@yoink/ui-base/components/tabs';
 import { tsr, tsrTasks } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Trash2, Inbox, Clock } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
+import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
 import { TaskCreationModal } from '@/components/task-creation-modal';
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
@@ -429,28 +429,7 @@ function InboxPage() {
     <div className="container mx-auto max-w-2xl p-4">
       <Header viewName="Inbox" />
 
-      <Tabs defaultValue="inbox" className="mb-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="snoozed" asChild>
-            <Link to="/snoozed" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Snoozed
-            </Link>
-          </TabsTrigger>
-          <TabsTrigger value="inbox" asChild>
-            <Link to="/" className="flex items-center gap-2">
-              <Inbox className="h-4 w-4" />
-              Inbox
-            </Link>
-          </TabsTrigger>
-          <TabsTrigger value="trash" asChild>
-            <Link to="/trash" className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4" />
-              Trash
-            </Link>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <InboxPaneTabs active="inbox" />
 
       <form onSubmit={handleQuickAdd} className="mb-6">
         <div className="flex gap-2">

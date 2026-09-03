@@ -38,8 +38,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 1: single rail + direct list screens** - Complete ✓ (desktop rail: Inbox with count hidden at 0, Today, Upcoming, Mine, Done, Lists heading, flat named lists, Unlisted, + New list; named list/Unlisted land on existing one-pile screens; All stays as fallback)
 **Yoink UI story 2: delete a named list from the rail** - Complete ✓ (kit overflow with Delete on named-list rail rows only; same refuse-if-open / unlist-completed dialog and API; leave the gone pile for All overview; All fallback delete and + New list stay)
 **Yoink UI story 3: the list is the pile on add-task** - Complete ✓ (named-list and Unlisted screens hide `#create-task-list`; create onto that pile or omit listId; Today / Upcoming / Mine and All overview keep the picker; All’s pile dropdown stays)
+**Yoink UI story 4: Inbox pane with Snoozed and Trash tabs** - Complete ✓ (Inbox is the capture pane, not a list; tab order Inbox | Snoozed | Trash; one rail Inbox row stays highlighted on all three; quick-add on Inbox only; existing Promote modal; count badge unchanged)
 
 Recent updates:
+- Yoink UI story 4 “Inbox pane with Snoozed and Trash tabs”: Inbox is not a list — it holds captures. One rail Inbox row; Snoozed and Trash are tabs on that pane (not rail items), ordered Inbox | Snoozed | Trash. Rail Inbox stays highlighted on all three. Quick-add stays on the Inbox tab. Capture rows keep Promote / Snooze / Trash (no checkbox, drag, or due date). Promote still opens the existing Create Task modal (sheet is the next story). Count badge stays as story 1 (hidden at 0). Existing snooze / unsnooze / trash / restore / empty-trash / permanent delete stay. Keep `/`, `/snoozed`, `/trash`. HTTP still only maps; no new domain field. Out of scope: Promote sheet, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, changing Inbox count rules.
 - Yoink UI story 3 “the list is the pile on add-task”: a miss from story 1, not a new idea. On a named-list or Unlisted screen the list *is* the pile — add-task has no list dropdown. New tasks go on that named list (reuse existing create with `listId`) or stay unlisted (omit `listId`). Today / Upcoming / Mine keep the picker they have today. All overview keeps its pile dropdown and create-task list picker as fallback. Do not retire All. Create-list stays on + New list / All. UI only; HTTP still only maps; no new domain field. Out of scope: Inbox pane, Promote, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, rail delete (already shipped).
 - Yoink UI story 2 “delete a named list from the rail”: on the approved rail, each named-list row has a kit overflow with Delete (not Unlisted, not smart views, not Inbox). Reuses `DeleteNamedListDialog` and `DELETE /api/lists/:id` — same refuse-if-open-tasks; completed-on-list do not block and are unlisted in the same command (stay in Done). Recreating the name is a new bucket. Any org member may delete. If the member was viewing that pile, they leave it (All overview is the fallback until later stories). Other views stay put. The name leaves the rail. All’s existing named-pile delete stays as fallback. + New list still creates. Do not retire All, move create-task, or build Inbox pane / Promote / Mine leftover / All retirement / mobile redesign / drag / empty groups / bulk actions. HTTP still only maps; no new domain field.
 - Yoink UI story 1 “single rail + direct list screens”: one desktop rail. Inbox shows a count, hidden when that count is 0. A small Lists heading sits above the named lists so they are not a fifth smart view; named lists stay flat, Unlisted last, then + New list. Smart views and named lists are peers (no nesting). Named list and Unlisted links land on the existing All one-pile screens (add-task field + kit up/down). Smart views keep current semantics (Today overdue then due today with list groups inside; Upcoming list groups; Mine assignee-only, no reorder; Done completed). All stays: tab, two-mode dropdown, create, delete-on-named-pile. Empty named lists stay findable on the rail and in All’s dropdown. Mobile Inbox | Tasks bottom nav stays. No list/task API or domain change. HTTP still only maps; no new domain field. Later-scope (not this story): move create-list/create-task, Inbox pane/Snoozed/Trash tabs, Promote sheet, mobile bottom-tab redesign, All retirement, visual polish, drag.
@@ -1034,6 +1036,40 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 4: Inbox pane with Snoozed and Trash tabs - Complete ✓
+
+**Goal**: The Inbox rail destination is a capture pane. Inbox is the home tab; Snoozed and Trash sit beside it. Not a list of tasks.
+
+**Product rules (locked, Justin + Polly 2026-09-03):**
+- One story at a time. This story only. Layout, not new domain.
+- Inbox holds captures, not tasks. Snoozed and Trash are tabs on that pane, not rail items.
+- Rail: one Inbox row. It stays highlighted on Inbox, Snoozed, and Trash.
+- Tab order is Inbox | Snoozed | Trash (Inbox first). Keep `/`, `/snoozed`, `/trash` if they already deliver that.
+- Capture rows: Promote / Snooze / Trash stay. No checkbox, no drag, no due date.
+- Quick-add capture stays on the Inbox tab only.
+- Existing capture workflows stay: snooze / unsnooze / trash / restore / empty-trash / permanent delete.
+- Count badge already exists from story 1 (hidden at 0) — do not rebuild it or change count rules.
+- Promote sheet is the next story; keep today’s Promote UI (existing Create Task modal).
+- Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field or API.
+- Mobile stays Inbox | Tasks bottom tabs. Do not redesign mobile.
+
+**Out of scope (later stories — do not implement here):**
+- Promote sheet (title + optional list, default Unlisted)
+- Mine leftover (remove Mine dropdown)
+- Retire All
+- Mobile rail-inside-Tasks
+- Drag, empty groups, bulk actions, suggested-list at promote
+- Changing Inbox count rules
+- Capture/task API or store changes
+
+**Implementation:**
+- Shared `InboxPaneTabs` on `/`, `/snoozed`, `/trash` in order Inbox | Snoozed | Trash. Rail Inbox already links to `/` and already treats those three paths as active.
+- Playwright: rail Inbox lands on the capture Inbox tab; count hidden at 0 and shown for unsnoozed inbox captures; Snoozed/Trash are pane tabs, not rail items; those tabs show snoozed/trashed captures with rail Inbox still highlighted; inbox row has Promote / Snooze / Trash and no checkbox/drag/due date; quick-add on Inbox only; Promote opens the existing modal; named-list / Unlisted / smart-view / + New list / rail-delete still work. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member opens Inbox from the rail and works captures on an Inbox-first pane, with Snoozed and Trash as tabs, without a new capture model.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1421,7 +1457,9 @@ When resuming work on this project:
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
 
-**Yoink UI story 3 is in.** Named-list and Unlisted screens hide the add-task list picker; create uses that pile’s `listId` or omits it. Today / Upcoming / Mine and All overview keep the picker. All’s pile dropdown stays. Do not start later UI work (Inbox pane, Promote, Mine leftover, All retirement) from this story.
+**Yoink UI story 4 is in.** Inbox is the capture pane (not a list). Tabs are Inbox | Snoozed | Trash on `/`, `/snoozed`, `/trash`. One rail Inbox row stays highlighted on all three. Quick-add on Inbox only. Promote is still the existing modal. Do not start later UI work (Promote sheet, Mine leftover, All retirement) from this story.
+
+**Yoink UI story 3 is in.** Named-list and Unlisted screens hide the add-task list picker; create uses that pile’s `listId` or omits it. Today / Upcoming / Mine and All overview keep the picker. All’s pile dropdown stays. Do not start later UI work (Promote sheet, Mine leftover, All retirement) from this story.
 
 **Yoink UI story 2 is in.** Named-list rail rows have a kit overflow with Delete. Same `DeleteNamedListDialog` / `DELETE /api/lists/:id` as All (refuse-if-open; completed unlisted, stay in Done). Viewing that pile leaves it for All overview; other views stay. All fallback delete and + New list stay. Do not start later UI work (move create-task, Inbox pane, Promote, All retirement) from this story.
 

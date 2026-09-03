@@ -1,6 +1,12 @@
 import { Fragment, useState } from 'react';
 import { Link, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@yoink/ui-base/components/dropdown-menu';
 import { cn } from '@yoink/ui-base/lib/utils';
 import {
   Calendar,
@@ -9,14 +15,17 @@ import {
   CheckSquare,
   Inbox,
   List,
+  MoreHorizontal,
   Plus,
   User,
 } from 'lucide-react';
 import { tsr, tsrLists } from '@/api/client';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
+import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import {
   buildAppRailItems,
   isRailItemActive,
+  railItemHasOverflow,
   railItemKey,
   shouldShowInboxCount,
   shouldShowListsHeadingBefore,
@@ -87,6 +96,7 @@ export function AppNav() {
   const search = useRouterState({ select: (state) => state.location.search });
   const searchRecord = search && typeof search === 'object' ? search : {};
   const [createListOpen, setCreateListOpen] = useState(false);
+  const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
 
   const { data: inboxData } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
@@ -218,6 +228,62 @@ export function AppNav() {
               );
             }
 
+            if (item.kind === 'named') {
+              return (
+                <Fragment key={key}>
+                  {listsHeading}
+                  <div
+                    className={cn(
+                      'flex min-w-0 items-center rounded-md',
+                      active
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <Link
+                      to="/tasks"
+                      search={railTaskSearch(item)}
+                      data-rail-item="named"
+                      data-rail-label={item.label}
+                      data-rail-list-id={item.listId}
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm transition-colors',
+                        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 truncate">{item.label}</span>
+                    </Link>
+                    {railItemHasOverflow(item) ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            data-rail-overflow={item.label}
+                            data-rail-overflow-list-id={item.listId}
+                            aria-label={`More for ${item.label}`}
+                            className="mr-1 shrink-0 text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setDeletingList({ id: item.listId, name: item.label })}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </div>
+                </Fragment>
+              );
+            }
+
             return (
               <Fragment key={key}>
                 {listsHeading}
@@ -226,7 +292,6 @@ export function AppNav() {
                   search={railTaskSearch(item)}
                   data-rail-item={item.kind === 'smart' ? item.key : item.kind}
                   data-rail-label={item.label}
-                  {...(item.kind === 'named' ? { 'data-rail-list-id': item.listId } : {})}
                   className={railClassName(active)}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
@@ -246,6 +311,28 @@ export function AppNav() {
             to: '/tasks',
             search: { filter: 'all', pile: list.id },
           });
+        }}
+      />
+
+      <DeleteNamedListDialog
+        list={deletingList}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingList(null);
+          }
+        }}
+        onDeleted={() => {
+          if (
+            deletingList &&
+            location.pathname === '/tasks' &&
+            location.filter === 'all' &&
+            location.pile === deletingList.id
+          ) {
+            void navigate({
+              to: '/tasks',
+              search: { filter: 'all' },
+            });
+          }
         }}
       />
     </>

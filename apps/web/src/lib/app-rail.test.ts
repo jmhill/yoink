@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAppRailItems,
   isRailItemActive,
+  railItemHasOverflow,
   railItemKey,
   railItemLabels,
   shouldShowInboxCount,
@@ -123,5 +124,20 @@ describe('railItemKey', () => {
     expect(railItemKey({ kind: 'named', listId: groceriesId, label: 'Groceries' })).toBe(
       groceriesId
     );
+  });
+});
+
+describe('railItemHasOverflow', () => {
+  it('is only true for named-list rows', () => {
+    const items = buildAppRailItems({ inboxCount: 0, namedLists });
+
+    expect(items.filter(railItemHasOverflow).map((item) => item.label)).toEqual([
+      'Groceries',
+      'Weekend',
+    ]);
+    expect(railItemHasOverflow({ kind: 'inbox', label: 'Inbox', count: 0 })).toBe(false);
+    expect(railItemHasOverflow({ kind: 'unlisted', label: 'Unlisted' })).toBe(false);
+    expect(railItemHasOverflow({ kind: 'new-list', label: 'New list' })).toBe(false);
+    expect(railItemHasOverflow({ kind: 'smart', key: 'today', label: 'Today' })).toBe(false);
   });
 });

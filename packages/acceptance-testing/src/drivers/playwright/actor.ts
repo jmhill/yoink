@@ -850,6 +850,50 @@ export const createPlaywrightActor = (
       };
     },
 
+    async shouldSeeNamedListOverflowOnRail(name: string): Promise<void> {
+      await appRail.waitForVisible();
+      await expect(appRail.overflowByLabel(name)).toBeVisible();
+      await appRail.openOverflow(name);
+      await expect(page.getByRole('menuitem', { name: 'Delete', exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('menu')).toHaveCount(0);
+    },
+
+    async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(label)).toBeVisible();
+      await expect(appRail.overflowByLabel(label)).toHaveCount(0);
+    },
+
+    async deleteNamedListFromRail(name: string): Promise<void> {
+      const result = await appRail.deleteNamedList(name);
+      if (result.status === 'has-open-tasks') {
+        throw new ConflictError('This list still has open tasks');
+      }
+    },
+
+    async shouldBeOnTaskFilter(
+      filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'
+    ): Promise<void> {
+      await expect(page).toHaveURL(new RegExp(`[?&]filter=${filter}`));
+      const tabName = {
+        today: 'Today',
+        upcoming: /Upcoming|Soon/,
+        mine: 'Mine',
+        completed: 'Done',
+        all: 'All',
+      }[filter];
+      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+    },
+
+    async shouldNotSeeListOnVisibleTask(taskId: string): Promise<void> {
+      await expect(tasksPage.taskCard(taskId)).toBeVisible();
+      await expect(tasksPage.listOnTask(taskId)).toHaveCount(0);
+    },,
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');

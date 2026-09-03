@@ -553,6 +553,35 @@ export type BrowserActorOperations = {
    */
   createNamedListFromRail(name: string): Promise<NamedList>;
 
+  /**
+   * Assert this named-list rail row has a kit overflow whose menu includes Delete.
+   * Unlisted and smart views do not have this overflow.
+   */
+  shouldSeeNamedListOverflowOnRail(name: string): Promise<void>;
+
+  /**
+   * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
+   */
+  shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;
+
+  /**
+   * Delete a named list from its rail-row overflow (same kit dialog as All).
+   * On success the name leaves the rail. If the member was viewing that pile,
+   * they leave it (All overview). Other views stay put.
+   * @throws ConflictError if the list still has open tasks
+   */
+  deleteNamedListFromRail(name: string): Promise<void>;
+
+  /**
+   * Assert the current Tasks filter (does not navigate).
+   */
+  shouldBeOnTaskFilter(filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'): Promise<void>;
+
+  /**
+   * Assert the visible task card has no list label (current view, no navigation).
+   */
+  shouldNotSeeListOnVisibleTask(taskId: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

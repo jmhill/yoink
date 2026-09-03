@@ -570,6 +570,28 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('createNamedListFromRail', 'http');
     },
 
+    async shouldSeeNamedListOverflowOnRail(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedListOverflowOnRail', 'http');
+    },
+
+    async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
+    },
+
+    async deleteNamedListFromRail(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('deleteNamedListFromRail', 'http');
+    },
+
+    async shouldBeOnTaskFilter(
+      _filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnTaskFilter', 'http');
+    },
+
+    async shouldNotSeeListOnVisibleTask(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeListOnVisibleTask', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

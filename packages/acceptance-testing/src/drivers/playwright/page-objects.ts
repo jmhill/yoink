@@ -866,8 +866,17 @@ export class TasksPage {
 
   async closePileSelect(): Promise<void> {
     const listbox = this.page.getByRole('listbox');
-    if (await listbox.isVisible()) {
-      await this.page.keyboard.press('Escape');
+    if (!(await listbox.isVisible())) {
+      return;
+    }
+    await this.page.keyboard.press('Escape');
+    try {
+      await listbox.waitFor({ state: 'hidden', timeout: 1000 });
+    } catch {
+      const trigger = this.page.locator('#all-pile, #mine-pile').first();
+      if (await trigger.isVisible()) {
+        await trigger.click();
+      }
       await listbox.waitFor({ state: 'hidden' });
     }
   }
@@ -1282,5 +1291,63 @@ export class AppRail {
       throw new Error(`Created list "${name}" from the rail did not land on one-pile All`);
     }
     return { status: 'created', id: pile, name };
+  }
+
+  overflowByLabel(label: string) {
+    return this.root().locator(`[data-rail-overflow="${label}"]`);
+  }
+
+  async openOverflow(label: string): Promise<void> {
+    await this.waitForVisible();
+    const overflow = this.overflowByLabel(label);
+    await overflow.waitFor({ state: 'visible' });
+    await overflow.click();
+    await this.page.getByRole('menu').waitFor({ state: 'visible' });
+  }
+
+  async deleteNamedList(
+    name: string
+  ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    const previous = new URL(this.page.url());
+    const listId = await this.itemByLabel(name).getAttribute('data-rail-list-id');
+    const viewingDeletedPile =
+      previous.pathname === '/tasks' &&
+      previous.searchParams.get('filter') === 'all' &&
+      Boolean(listId) &&
+      previous.searchParams.get('pile') === listId;
+
+    await this.openOverflow(name);
+    const deleteItem = this.page.getByRole('menuitem', { name: 'Delete', exact: true });
+    await deleteItem.waitFor({ state: 'visible' });
+    await deleteItem.press('Enter');
+
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lists/') &&
+        response.request().method() === 'DELETE'
+    );
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    const response = await responsePromise;
+
+    if (response.status() === 409) {
+      await this.page.locator('[data-list-delete-error]').waitFor({ state: 'visible' });
+      await this.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+      await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+      return { status: 'has-open-tasks' };
+    }
+    if (response.status() !== 204) {
+      throw new Error(`Failed to delete named list from the rail: ${response.status()}`);
+    }
+
+    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+    if (viewingDeletedPile) {
+      await this.page.waitForURL((url) => {
+        const parsed = new URL(url);
+        return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
+      });
+    }
+    return { status: 'deleted' };
   }
 }

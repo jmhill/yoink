@@ -109,3 +109,8 @@ export function railItemKey(item: RailItem): string {
   }
   return item.kind;
 }
+
+/** Only named-list rows get a kit overflow. Unlisted, Inbox, smart views, and New list do not. */
+export function railItemHasOverflow(item: RailItem): boolean {
+  return item.kind === 'named';
+}

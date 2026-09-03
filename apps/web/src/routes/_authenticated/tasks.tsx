@@ -40,7 +40,9 @@ import {
   ALL_PILE_UNLISTED,
   allPileSelectValue,
   groupAllTasksByPile,
+  listIdForCreateTask,
   parseAllPile,
+  showsCreateTaskListPicker,
   tasksInPile,
   type AllPile,
   type AllPileGroup,
@@ -664,12 +666,14 @@ function TasksPage() {
     const dueDate = filter === 'today' ? new Date().toISOString().split('T')[0] : undefined;
     const assigneeId = filter === 'mine' ? currentUserId : undefined;
 
+    const listId = listIdForCreateTask({ allPile, pickedListId: newTaskListId });
+
     createMutation.mutate({
       body: {
         title: newTaskTitle.trim(),
         dueDate,
         ...(assigneeId ? { assigneeId } : {}),
-        ...(newTaskListId ? { listId: newTaskListId } : {}),
+        ...(listId ? { listId } : {}),
       },
     });
   };
@@ -931,25 +935,27 @@ function TasksPage() {
               disabled={createMutation.isPending}
               className="flex-1"
             />
-            <Select
-              value={newTaskListId || UNLISTED_VALUE}
-              onValueChange={(value) =>
-                setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
-              }
-              disabled={createMutation.isPending}
-            >
-              <SelectTrigger id="create-task-list" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
-                <SelectValue placeholder="No list" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
-                {namedLists.map((list) => (
-                  <SelectItem key={list.id} value={list.id}>
-                    {list.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {showsCreateTaskListPicker(allPile) ? (
+              <Select
+                value={newTaskListId || UNLISTED_VALUE}
+                onValueChange={(value) =>
+                  setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+                }
+                disabled={createMutation.isPending}
+              >
+                <SelectTrigger id="create-task-list" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
+                  <SelectValue placeholder="No list" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
+                  {namedLists.map((list) => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
               {createMutation.isPending ? '...' : 'Add'}
             </Button>

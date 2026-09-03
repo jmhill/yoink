@@ -762,6 +762,10 @@ export class TasksPage {
     await option.click();
   }
 
+  createTaskListPicker() {
+    return this.page.locator('#create-task-list');
+  }
+
   async quickAdd(title: string): Promise<void> {
     await this.page.locator('#create-task-title').fill(title);
     await this.page.getByRole('button', { name: 'Add' }).click();

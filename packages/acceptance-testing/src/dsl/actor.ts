@@ -582,6 +582,24 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeListOnVisibleTask(taskId: string): Promise<void>;
 
+  /**
+   * Assert the current add-task form has the list picker (`#create-task-list`).
+   */
+  shouldSeeCreateTaskListPicker(): Promise<void>;
+
+  /**
+   * Assert the current add-task form has no list picker
+   * (named-list and Unlisted screens).
+   */
+  shouldNotSeeCreateTaskListPicker(): Promise<void>;
+
+  /**
+   * Submit add-task on the current Tasks view without touching the list picker.
+   * Named-list / Unlisted screens create onto that pile; other views stay unlisted
+   * unless the picker was already set.
+   */
+  addTaskOnCurrentView(title: string): Promise<Task>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

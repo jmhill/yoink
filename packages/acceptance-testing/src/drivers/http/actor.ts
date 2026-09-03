@@ -592,6 +592,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeListOnVisibleTask', 'http');
     },
 
+    async shouldSeeCreateTaskListPicker(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCreateTaskListPicker', 'http');
+    },
+
+    async shouldNotSeeCreateTaskListPicker(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeCreateTaskListPicker', 'http');
+    },
+
+    async addTaskOnCurrentView(_title: string): Promise<Task> {
+      throw new UnsupportedOperationError('addTaskOnCurrentView', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

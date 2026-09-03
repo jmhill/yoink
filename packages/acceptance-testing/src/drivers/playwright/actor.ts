@@ -895,6 +895,40 @@ export const createPlaywrightActor = (
       await expect(tasksPage.listOnTask(taskId)).toHaveCount(0);
     },
 
+    async shouldSeeCreateTaskListPicker(): Promise<void> {
+      await expect(tasksPage.createTaskListPicker()).toBeVisible();
+    },
+
+    async shouldNotSeeCreateTaskListPicker(): Promise<void> {
+      await expect(tasksPage.createTaskListPicker()).toHaveCount(0);
+    },
+
+    async addTaskOnCurrentView(title: string): Promise<Task> {
+      await expect(page.locator('#create-task-title')).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/tasks') &&
+          !response.url().includes('/api/tasks/') &&
+          response.request().method() === 'POST'
+      );
+      await tasksPage.quickAdd(title);
+      const response = await responsePromise;
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create task: ${response.status()}`);
+      }
+      const task = (await response.json()) as Task;
+      await tasksPage.waitForTasksOrEmpty();
+      return task;
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');

@@ -538,6 +538,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeInboxCountOnRail', 'http');
     },
 
+    async shouldNotSeeInboxCountOnRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeInboxCountOnRail', 'http');
+    },
+
+    async shouldSeeListsHeadingAboveNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeListsHeadingAboveNamedList', 'http');
+    },
+
     async openRailNamedList(_name: string): Promise<void> {
       throw new UnsupportedOperationError('openRailNamedList', 'http');
     },

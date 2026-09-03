@@ -30,7 +30,8 @@ const SMART_VIEW_FILTER: Record<RailSmartView, string> = {
 /**
  * One flat rail: Inbox (with count), smart views, named lists,
  * Unlisted last, then New list. Smart views and lists are peers —
- * no nesting, no Lists heading.
+ * no nesting. A small Lists heading sits above the lists section
+ * in the UI; it is not a rail item.
  */
 export function buildAppRailItems(input: {
   inboxCount: number;
@@ -50,6 +51,25 @@ export function buildAppRailItems(input: {
     { kind: 'unlisted', label: 'Unlisted' },
     { kind: 'new-list', label: 'New list' },
   ];
+}
+
+/** A zero inbox count is noise — hide the badge. */
+export function shouldShowInboxCount(count: number): boolean {
+  return count > 0;
+}
+
+const isListsSectionItem = (item: RailItem): boolean =>
+  item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list';
+
+/**
+ * Insert the Lists heading once, above the first named list (or Unlisted /
+ * New list when there are no named lists). Named lists stay flat.
+ */
+export function shouldShowListsHeadingBefore(
+  item: RailItem,
+  previous: RailItem | undefined
+): boolean {
+  return isListsSectionItem(item) && (previous === undefined || !isListsSectionItem(previous));
 }
 
 export function railItemLabels(items: RailItem[]): string[] {

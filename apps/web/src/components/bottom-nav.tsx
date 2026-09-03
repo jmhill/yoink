@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { cn } from '@yoink/ui-base/lib/utils';
@@ -18,6 +18,8 @@ import {
   buildAppRailItems,
   isRailItemActive,
   railItemKey,
+  shouldShowInboxCount,
+  shouldShowListsHeadingBefore,
   type RailItem,
   type RailLocation,
 } from '@/lib/app-rail';
@@ -164,25 +166,35 @@ export function AppNav() {
           <h1 className="text-lg font-semibold">Yoink</h1>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-          {railItems.map((item) => {
+          {railItems.map((item, index) => {
             const active = isRailItemActive(item, location);
             const Icon = railIcon(item);
             const key = railItemKey(item);
+            const listsHeading = shouldShowListsHeadingBefore(item, railItems[index - 1]) ? (
+              <div
+                data-rail-heading="lists"
+                className="mt-3 px-3 pb-1 text-xs font-medium text-muted-foreground"
+              >
+                Lists
+              </div>
+            ) : null;
 
             if (item.kind === 'new-list') {
               return (
-                <Button
-                  key={key}
-                  type="button"
-                  variant="ghost"
-                  data-rail-item="new-list"
-                  data-rail-label={item.label}
-                  className={cn(railClassName(false), 'h-auto w-full justify-start font-normal')}
-                  onClick={() => setCreateListOpen(true)}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>+ {item.label}</span>
-                </Button>
+                <Fragment key={key}>
+                  {listsHeading}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-rail-item="new-list"
+                    data-rail-label={item.label}
+                    className={cn(railClassName(false), 'h-auto w-full justify-start font-normal')}
+                    onClick={() => setCreateListOpen(true)}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>+ {item.label}</span>
+                  </Button>
+                </Fragment>
               );
             }
 
@@ -197,26 +209,30 @@ export function AppNav() {
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span className="min-w-0 truncate">{item.label}</span>
-                  <span data-inbox-count={item.count} className="ml-auto text-xs tabular-nums">
-                    {item.count}
-                  </span>
+                  {shouldShowInboxCount(item.count) ? (
+                    <span data-inbox-count={item.count} className="ml-auto text-xs tabular-nums">
+                      {item.count}
+                    </span>
+                  ) : null}
                 </Link>
               );
             }
 
             return (
-              <Link
-                key={key}
-                to="/tasks"
-                search={railTaskSearch(item)}
-                data-rail-item={item.kind === 'smart' ? item.key : item.kind}
-                data-rail-label={item.label}
-                {...(item.kind === 'named' ? { 'data-rail-list-id': item.listId } : {})}
-                className={railClassName(active)}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 truncate">{item.label}</span>
-              </Link>
+              <Fragment key={key}>
+                {listsHeading}
+                <Link
+                  to="/tasks"
+                  search={railTaskSearch(item)}
+                  data-rail-item={item.kind === 'smart' ? item.key : item.kind}
+                  data-rail-label={item.label}
+                  {...(item.kind === 'named' ? { 'data-rail-list-id': item.listId } : {})}
+                  className={railClassName(active)}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 truncate">{item.label}</span>
+                </Link>
+              </Fragment>
             );
           })}
         </div>

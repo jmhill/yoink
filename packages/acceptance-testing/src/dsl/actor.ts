@@ -506,8 +506,20 @@ export type BrowserActorOperations = {
 
   /**
    * Assert the rail Inbox item shows this capture count.
+   * Count must be positive — a zero badge is hidden.
    */
   shouldSeeInboxCountOnRail(count: number): Promise<void>;
+
+  /**
+   * Assert the rail Inbox item has no count badge (empty inbox).
+   */
+  shouldNotSeeInboxCountOnRail(): Promise<void>;
+
+  /**
+   * Assert the rail has a Lists heading above this named list
+   * (and after the last smart view).
+   */
+  shouldSeeListsHeadingAboveNamedList(name: string): Promise<void>;
 
   /**
    * Open a named list from the rail. Lands on All’s existing one-pile.

@@ -1180,13 +1180,40 @@ export class AppRail {
     return labels;
   }
 
-  async getInboxCount(): Promise<number> {
+  async getInboxCount(): Promise<number | null> {
     await this.waitForVisible();
-    const count = await this.root().locator('[data-inbox-count]').getAttribute('data-inbox-count');
+    const badge = this.root().locator('[data-inbox-count]');
+    if ((await badge.count()) === 0) {
+      return null;
+    }
+    const count = await badge.getAttribute('data-inbox-count');
     if (count === null) {
       throw new Error('Inbox count is missing from the rail');
     }
     return Number(count);
+  }
+
+  /**
+   * Rail visual order including the Lists heading (not a rail item).
+   */
+  async getVisualOrder(): Promise<string[]> {
+    await this.waitForVisible();
+    const nodes = this.root().locator('[data-rail-label], [data-rail-heading]');
+    const count = await nodes.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const node = nodes.nth(i);
+      const heading = await node.getAttribute('data-rail-heading');
+      if (heading === 'lists') {
+        labels.push('Lists');
+        continue;
+      }
+      const label = await node.getAttribute('data-rail-label');
+      if (label) {
+        labels.push(label);
+      }
+    }
+    return labels;
   }
 
   async openItem(label: string): Promise<void> {

@@ -5,11 +5,12 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * Yoink UI story 1: a single rail plus direct named-list and Unlisted
  * screens. All stays as the working fallback.
  *
- * Approved rail: Inbox with a count, Today, Upcoming, Mine, Done, flat
- * named lists (no nesting), Unlisted last, + New list. Smart views and
- * lists are peers. Named list / Unlisted land on the existing one-pile
- * screens (add-task + kit up/down). Smart views keep current semantics.
- * Do not retire All, remove its dropdown, or move creation.
+ * Approved rail: Inbox with a count (hidden at 0), Today, Upcoming, Mine,
+ * Done, a small Lists heading, flat named lists (no nesting), Unlisted
+ * last, + New list. Smart views and lists are peers. Named list / Unlisted
+ * land on the existing one-pile screens (add-task + kit up/down). Smart
+ * views keep current semantics. Do not retire All, remove its dropdown,
+ * or move creation.
  *
  * Later: move create-list/create-task, Inbox pane/Snoozed/Trash tabs,
  * Promote sheet, mobile bottom-tab redesign, All retirement, visual polish.
@@ -44,6 +45,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
         'New list',
       ]);
       await alice.shouldSeeInboxCountOnRail(2);
+      await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
+    });
+
+    it('hides the Inbox count badge when the inbox is empty', async () => {
+      await alice.shouldSeeRailItems([
+        'Inbox',
+        'Today',
+        'Upcoming',
+        'Mine',
+        'Done',
+        'Unlisted',
+        'New list',
+      ]);
+      await alice.shouldNotSeeInboxCountOnRail();
     });
 
     it('opens a named list from the rail onto the existing one-pile with add-task and reorder', async () => {

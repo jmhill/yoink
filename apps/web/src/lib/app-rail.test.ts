@@ -4,6 +4,8 @@ import {
   isRailItemActive,
   railItemKey,
   railItemLabels,
+  shouldShowInboxCount,
+  shouldShowListsHeadingBefore,
 } from './app-rail';
 
 const groceriesId = '00000000-0000-0000-0000-000000000010';
@@ -42,6 +44,37 @@ describe('buildAppRailItems', () => {
       { kind: 'named', listId: groceriesId, label: 'Groceries' },
     ]);
     expect(items.some((item) => item.label === 'Lists')).toBe(false);
+  });
+});
+
+describe('shouldShowInboxCount', () => {
+  it('hides the badge when the count is 0', () => {
+    expect(shouldShowInboxCount(0)).toBe(false);
+  });
+
+  it('shows the badge when the count is positive', () => {
+    expect(shouldShowInboxCount(1)).toBe(true);
+    expect(shouldShowInboxCount(3)).toBe(true);
+  });
+});
+
+describe('shouldShowListsHeadingBefore', () => {
+  it('places Lists above the first named list, after Done', () => {
+    const items = buildAppRailItems({ inboxCount: 0, namedLists });
+    const flags = items.map((item, index) => shouldShowListsHeadingBefore(item, items[index - 1]));
+
+    expect(railItemLabels(items)).not.toContain('Lists');
+    expect(flags).toEqual([false, false, false, false, false, true, false, false, false]);
+    expect(items[5]).toMatchObject({ kind: 'named', label: 'Groceries' });
+  });
+
+  it('places Lists above Unlisted when there are no named lists', () => {
+    const items = buildAppRailItems({ inboxCount: 0, namedLists: [] });
+    const unlisted = items.find((item) => item.kind === 'unlisted');
+    const done = items.find((item) => item.kind === 'smart' && item.key === 'done');
+
+    expect(shouldShowListsHeadingBefore(unlisted!, done)).toBe(true);
+    expect(shouldShowListsHeadingBefore(items[items.length - 1]!, unlisted)).toBe(false);
   });
 });
 

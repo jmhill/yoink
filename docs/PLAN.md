@@ -35,10 +35,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Today and Upcoming group by list** - Complete ✓ (Today/Upcoming grouped overviews; Today outer split is overdue then due today, list groups inside; Upcoming is list groups only; no reorder)
 **Mine uses All’s two-mode picker** - Complete ✓ (Mine overview grouped by list + unlisted; one named list or Unlisted; only my assigned tasks; no reorder even in one-pile; All still reorders)
 **Lists nav dies** - Complete ✓ (no Lists nav or Lists pages; piles live on Tasks All and Mine; old `/lists` URLs redirect onto All)
-**Yoink UI story 1: single rail + direct list screens** - Complete ✓ (desktop rail: Inbox with count, Today, Upcoming, Mine, Done, flat named lists, Unlisted, + New list; named list/Unlisted land on existing one-pile screens; All stays as fallback)
+**Yoink UI story 1: single rail + direct list screens** - Complete ✓ (desktop rail: Inbox with count hidden at 0, Today, Upcoming, Mine, Done, Lists heading, flat named lists, Unlisted, + New list; named list/Unlisted land on existing one-pile screens; All stays as fallback)
 
 Recent updates:
-- Yoink UI story 1 “single rail + direct list screens”: one desktop rail. Inbox shows a count. Smart views and named lists are peers (no nesting). Named list and Unlisted links land on the existing All one-pile screens (add-task field + kit up/down). Smart views keep current semantics (Today overdue then due today with list groups inside; Upcoming list groups; Mine assignee-only, no reorder; Done completed). All stays: tab, two-mode dropdown, create, delete-on-named-pile. Empty named lists stay findable on the rail and in All’s dropdown. Mobile Inbox | Tasks bottom nav stays. No list/task API or domain change. HTTP still only maps; no new domain field. Later-scope (not this story): move create-list/create-task, Inbox pane/Snoozed/Trash tabs, Promote sheet, mobile bottom-tab redesign, All retirement, visual polish, drag.
+- Yoink UI story 1 “single rail + direct list screens”: one desktop rail. Inbox shows a count, hidden when that count is 0. A small Lists heading sits above the named lists so they are not a fifth smart view; named lists stay flat, Unlisted last, then + New list. Smart views and named lists are peers (no nesting). Named list and Unlisted links land on the existing All one-pile screens (add-task field + kit up/down). Smart views keep current semantics (Today overdue then due today with list groups inside; Upcoming list groups; Mine assignee-only, no reorder; Done completed). All stays: tab, two-mode dropdown, create, delete-on-named-pile. Empty named lists stay findable on the rail and in All’s dropdown. Mobile Inbox | Tasks bottom nav stays. No list/task API or domain change. HTTP still only maps; no new domain field. Later-scope (not this story): move create-list/create-task, Inbox pane/Snoozed/Trash tabs, Promote sheet, mobile bottom-tab redesign, All retirement, visual polish, drag.
 - Story 6 of 6 “Lists nav dies”: Lists is a dimension of the task board, not a second app. There is no Lists nav and no Lists pages. Members find and work piles on Tasks (All two-modes with create/delete/reorder; Mine is the same picker as a filter, no reorder, no create/delete). Today/Upcoming stay grouped; Done stays. Old URLs redirect: `/lists` → All overview (`?filter=all`), `/lists/unlisted` → All Unlisted (`?filter=all&pile=unlisted`), `/lists/:listId` → All named pile (`?filter=all&pile=:listId`). Empty named lists still appear in All’s (and Mine’s) pile dropdown. List APIs stay. HTTP still only maps; no new domain field.
 - Story 5 of 6 “Mine uses All’s two-mode picker”: on Tasks Mine, a member can pick All lists (grouped overview, named list plus unlisted) vs one named list vs Unlisted — the same two modes as All. Mine is still only tasks assigned to the current member. Even in one-pile modes, no up/down; `openOrder` stays the shared pile sequence All already owns. Empty groups wait: only piles with MY tasks. Pin stays on the existing Mine filter sort (`pinned_at` then `created_at`), not `openOrder`. Create/delete list stay on All. Today, Upcoming, Done, and the Lists nav stay (story 6). HTTP still only maps; no new domain field. Reuses `GET /api/tasks?filter=mine` and groups/filters by pile on the client — not the list/unlisted pile APIs (those are everyone’s open tasks).
 - Story 4 of 6 “Today and Upcoming group by list”: Today and Upcoming are grouped overviews and cannot reorder. Today is a deadline view: overdue vs due today on the outside, then named list plus unlisted inside each. Upcoming has no overdue split — just list groups. Pin still sits on the existing filter sort (pinned_at then created_at), not openOrder. Empty groups wait: only piles with tasks in that view. All two-modes, create/delete from All, Mine, Done, and the Lists nav stay. HTTP still only maps; no new domain field. Reuses `groupAllTasksByPile`.
@@ -942,8 +942,8 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 **Product rules (locked, Justin 2026-09-03):**
 - One story at a time. This story only. Tycho writes specs/dispatches/reviews; Polly product-checks before merge.
-- Approved rail order: Inbox with a count, Today, Upcoming, Mine, Done, flat named lists (no nesting), Unlisted last, + New list.
-- Smart views and lists are peers.
+- Approved rail order: Inbox with a count (badge hidden when the count is 0), Today, Upcoming, Mine, Done, a small Lists heading, flat named lists (no nesting), Unlisted last, + New list.
+- Smart views and lists are peers. The Lists heading is not a rail item and does not nest named lists.
 - Named list / Unlisted links land on the existing one-pile screens (add-task field + existing kit up/down). Do not resurrect Lists pages.
 - Smart views keep current semantics: Today overdue then due-today outer with list groups inside; Upcoming list groups; Mine assignee-only with no reorder; Done completed.
 - Drag stays out of scope.
@@ -961,11 +961,11 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Drag-and-drop reorder
 
 **Implementation:**
-- Desktop left nav is the rail (`data-app-rail`). Inbox count is `GET /api/captures?status=inbox&snoozed=false` length. Named lists are `GET /api/lists` (includes empty).
+- Desktop left nav is the rail (`data-app-rail`). Inbox count is `GET /api/captures?status=inbox&snoozed=false` length; the badge is omitted at 0. Named lists are `GET /api/lists` (includes empty). A small Lists heading (`data-rail-heading=lists`) sits above the first named list (or Unlisted when there are none).
 - Rail named list → `/tasks?filter=all&pile=:id`. Rail Unlisted → `/tasks?filter=all&pile=unlisted`. Same one-pile screens All already owns.
 - Rail + New list opens the existing kit dialog and lands on that pile. All’s dropdown New list stays.
 - Mobile bottom nav stays Inbox | Tasks.
-- Playwright: rail contents/order; named-list direct screen with reorder/add-task; Unlisted direct screen with reorder/add-task; smart views unchanged; All fallback unchanged. HTTP driver stubs the new browser operations.
+- Playwright: rail contents/order; empty Inbox has no badge; Lists heading above named lists; named-list direct screen with reorder/add-task; Unlisted direct screen with reorder/add-task; smart views unchanged; All fallback unchanged. HTTP driver stubs the new browser operations.
 
 **Deliverable:** A member can use one rail to open Inbox, smart views, a named list, or Unlisted, without losing All as the create/delete fallback.
 
@@ -1358,7 +1358,7 @@ When resuming work on this project:
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
 
-**Yoink UI story 1 is in.** Desktop rail: Inbox (count), Today, Upcoming, Mine, Done, flat named lists, Unlisted, + New list. Named list/Unlisted land on existing All one-pile screens. All stays as fallback (dropdown/create/delete). Mobile bottom nav unchanged. Do not start story 2 (move create) or later UI work from this story.
+**Yoink UI story 1 is in.** Desktop rail: Inbox (count hidden at 0), Today, Upcoming, Mine, Done, Lists heading, flat named lists, Unlisted, + New list. Named list/Unlisted land on existing All one-pile screens. All stays as fallback (dropdown/create/delete). Mobile bottom nav unchanged. Do not start story 2 (move create) or later UI work from this story.
 
 **Lists nav dies is in.** There is no Lists nav and no Lists pages. Piles live on Tasks All (create/delete/reorder) and Mine (filter only). Old `/lists`, `/lists/unlisted`, and `/lists/:listId` URLs redirect onto All. List APIs stay. Empty named lists are found in the pile dropdown.
 

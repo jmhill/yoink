@@ -768,6 +768,19 @@ export const createPlaywrightActor = (
       await expect.poll(async () => appRail.getInboxCount()).toBe(count);
     },
 
+    async shouldNotSeeInboxCountOnRail(): Promise<void> {
+      await expect.poll(async () => appRail.getInboxCount()).toBeNull();
+    },
+
+    async shouldSeeListsHeadingAboveNamedList(name: string): Promise<void> {
+      await expect.poll(async () => {
+        const order = await appRail.getVisualOrder();
+        const heading = order.indexOf('Lists');
+        const named = order.indexOf(name);
+        return heading > -1 && named > heading && order[heading - 1] === 'Done';
+      }).toBe(true);
+    },
+
     async openRailNamedList(name: string): Promise<void> {
       await appRail.openItem(name);
       await page.waitForURL(/[?&]filter=all/);

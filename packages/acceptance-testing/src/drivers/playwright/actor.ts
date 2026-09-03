@@ -791,9 +791,19 @@ export const createPlaywrightActor = (
         mine: 'Mine',
         done: 'Done',
       }[view];
+      const tabName = {
+        today: 'Today',
+        upcoming: /Upcoming|Soon/,
+        mine: 'Mine',
+        done: 'Done',
+      }[view];
       const filter = view === 'done' ? 'completed' : view;
       await appRail.openItem(label);
       await page.waitForURL(new RegExp(`[?&]filter=${filter}`));
+      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
       if (view === 'mine') {
         await tasksPage.waitForMinePileSelect();
       }

@@ -1224,16 +1224,27 @@ export class AppRail {
       return { status: 'empty' };
     }
 
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lists') &&
+        response.request().method() === 'POST'
+    );
     await createButton.click();
+    const response = await responsePromise;
 
     const duplicateError = dialog.locator('[data-list-create-error]');
-    await Promise.race([
-      duplicateError.waitFor({ state: 'visible' }),
-      this.page.waitForURL((url) => {
-        const pile = new URL(url).searchParams.get('pile');
-        return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
-      }),
-    ]);
+    if (response.status() === 409) {
+      await duplicateError.waitFor({ state: 'visible' });
+      return { status: 'duplicate' };
+    }
+    if (response.status() !== 201) {
+      throw new Error(`Failed to create named list from the rail: ${response.status()}`);
+    }
+
+    await this.page.waitForURL((url) => {
+      const pile = new URL(url).searchParams.get('pile');
+      return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
+    });
 
     if (await duplicateError.isVisible()) {
       return { status: 'duplicate' };

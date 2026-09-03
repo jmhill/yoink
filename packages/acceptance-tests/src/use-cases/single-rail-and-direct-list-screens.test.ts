@@ -11,8 +11,8 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * screens (add-task + kit up/down). Smart views keep current semantics.
  * Do not retire All, remove its dropdown, or move creation.
  *
- * Later: move create-list/create-task, Inbox pane tabs, Promote sheet,
- * mobile bottom-tab redesign, All retirement, visual polish.
+ * Later: move create-list/create-task, Inbox pane/Snoozed/Trash tabs,
+ * Promote sheet, mobile bottom-tab redesign, All retirement, visual polish.
  */
 
 const isoDateOffset = (days: number): string =>
@@ -75,53 +75,64 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Errand', 'Notes']);
     });
 
-    it('keeps Today, Upcoming, Mine, and Done semantics when opened from the rail', async () => {
+    it('keeps Today as overdue then due today with list groups and no reorder', async () => {
       const yesterday = isoDateOffset(-1);
       const today = isoDateOffset(0);
-      const tomorrow = isoDateOffset(1);
       const list = await alice.createNamedList('Groceries');
-
-      const lateMilk = await alice.createTask({ title: 'Late milk', dueDate: yesterday });
-      await alice.updateTask(lateMilk.id, { listId: list.id });
+      const overdueListed = await alice.createTask({ title: 'Late milk', dueDate: yesterday });
+      await alice.updateTask(overdueListed.id, { listId: list.id });
       await alice.createTask({ title: 'Late notes', dueDate: yesterday });
-      const todayMilk = await alice.createTask({ title: 'Today milk', dueDate: today });
-      await alice.updateTask(todayMilk.id, { listId: list.id });
-
-      const futureMilk = await alice.createTask({ title: 'Future milk', dueDate: tomorrow });
-      await alice.updateTask(futureMilk.id, { listId: list.id });
-      await alice.createTask({ title: 'Future notes', dueDate: tomorrow });
-
-      const mineMilk = await alice.createTask({
-        title: 'Mine milk',
-        assigneeId: alice.userId,
-      });
-      await alice.updateTask(mineMilk.id, { listId: list.id });
-      await alice.createTask({ title: 'Someone else', assigneeId: undefined });
-      const done = await alice.createTask({ title: 'Finished' });
-      await alice.completeTask(done.id);
+      const dueTodayListed = await alice.createTask({ title: 'Today milk', dueDate: today });
+      await alice.updateTask(dueTodayListed.id, { listId: list.id });
+      await alice.createTask({ title: 'Unlisted today', dueDate: today });
 
       await alice.openRailSmartView('today');
       await alice.shouldSeeTodayOuterSections(['overdue', 'due-today']);
       await alice.shouldSeePileGroupsInTodaySection('overdue', ['Groceries', 'Unlisted']);
       await alice.shouldSeeTasksInTodaySectionPileGroup('overdue', 'Groceries', ['Late milk']);
       await alice.shouldSeeTasksInTodaySectionPileGroup('overdue', 'Unlisted', ['Late notes']);
-      await alice.shouldSeePileGroupsInTodaySection('due-today', ['Groceries']);
+      await alice.shouldSeePileGroupsInTodaySection('due-today', ['Groceries', 'Unlisted']);
       await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Groceries', ['Today milk']);
+      await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Unlisted', ['Unlisted today']);
       await alice.shouldNotSeeReorderControls();
+    });
+
+    it('keeps Upcoming as list groups only, with no overdue split and no reorder', async () => {
+      const tomorrow = isoDateOffset(1);
+      const list = await alice.createNamedList('Groceries');
+      const listed = await alice.createTask({ title: 'Future milk', dueDate: tomorrow });
+      await alice.updateTask(listed.id, { listId: list.id });
+      await alice.createTask({ title: 'Future notes', dueDate: tomorrow });
 
       await alice.openRailSmartView('upcoming');
+      await alice.shouldNotSeeTodayDueSplit();
       await alice.shouldSeePileGroups(['Groceries', 'Unlisted']);
       await alice.shouldSeeTasksInPileGroup('Groceries', ['Future milk']);
       await alice.shouldSeeTasksInPileGroup('Unlisted', ['Future notes']);
-      await alice.shouldNotSeeTodayDueSplit();
       await alice.shouldNotSeeReorderControls();
+    });
+
+    it('keeps Mine assignee-only with no reorder when opened from the rail', async () => {
+      const list = await alice.createNamedList('Groceries');
+      const mineMilk = await alice.createTask({
+        title: 'Mine milk',
+        assigneeId: alice.userId,
+      });
+      await alice.updateTask(mineMilk.id, { listId: list.id });
+      const other = await alice.createTask({ title: 'Unassigned notes' });
 
       await alice.openRailSmartView('mine');
       await alice.shouldSeeMinePileDropdown();
       await alice.shouldSeePileGroups(['Groceries']);
       await alice.shouldSeeTasksInPileGroup('Groceries', ['Mine milk']);
-      await alice.shouldNotSeeTask(done.id);
+      await alice.shouldNotSeeTask(other.id);
       await alice.shouldNotSeeReorderControls();
+    });
+
+    it('keeps Done as completed tasks with no add-task and no reorder', async () => {
+      const done = await alice.createTask({ title: 'Finished' });
+      await alice.completeTask(done.id);
+      await alice.createTask({ title: 'Still open' });
 
       await alice.openRailSmartView('done');
       await alice.shouldSeeTaskTitles(['Finished']);
@@ -147,9 +158,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldBeOnAllOverview();
       await alice.shouldNotSeeNamedPileOnAll('Weekend');
       await alice.shouldSeeAllPileDropdown();
+    }, 60_000);
 
-      const fromRail = await alice.createNamedListFromRail('Groceries');
-      await alice.shouldBeOnAllNamedPile(fromRail.id);
+    it('creates a named list from the rail New list control and lands on that pile', async () => {
+      const list = await alice.createNamedListFromRail('Groceries');
+      await alice.shouldBeOnAllNamedPile(list.id);
       await alice.shouldSeeEmptyNamedPile();
       await alice.shouldSeeNamedPileOnAll('Groceries');
       await alice.shouldSeeRailItems([

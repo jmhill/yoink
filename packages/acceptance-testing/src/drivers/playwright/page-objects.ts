@@ -1142,3 +1142,145 @@ export class TasksPage {
     return this.deleteNamedListFromAll(list.name);
   }
 }
+
+/**
+ * Desktop app rail (Inbox, smart views, named lists, Unlisted, New list).
+ * Hidden below the md breakpoint; Playwright’s default viewport is desktop.
+ */
+export class AppRail {
+  constructor(private readonly page: Page) {}
+
+  root() {
+    return this.page.locator('[data-app-rail]');
+  }
+
+  async waitForVisible(): Promise<void> {
+    await this.root().waitFor({ state: 'visible' });
+  }
+
+  items() {
+    return this.root().locator('[data-rail-label]');
+  }
+
+  itemByLabel(label: string) {
+    return this.root().locator(`[data-rail-label="${label}"]`);
+  }
+
+  async getItemLabels(): Promise<string[]> {
+    await this.waitForVisible();
+    const items = this.items();
+    const count = await items.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const label = await items.nth(i).getAttribute('data-rail-label');
+      if (label) {
+        labels.push(label);
+      }
+    }
+    return labels;
+  }
+
+  async getInboxCount(): Promise<number | null> {
+    await this.waitForVisible();
+    const badge = this.root().locator('[data-inbox-count]');
+    if ((await badge.count()) === 0) {
+      return null;
+    }
+    const count = await badge.getAttribute('data-inbox-count');
+    if (count === null) {
+      throw new Error('Inbox count is missing from the rail');
+    }
+    return Number(count);
+  }
+
+  /**
+   * Rail visual order including the Lists heading (not a rail item).
+   */
+  async getVisualOrder(): Promise<string[]> {
+    await this.waitForVisible();
+    const nodes = this.root().locator('[data-rail-label], [data-rail-heading]');
+    const count = await nodes.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const node = nodes.nth(i);
+      const heading = await node.getAttribute('data-rail-heading');
+      if (heading === 'lists') {
+        labels.push('Lists');
+        continue;
+      }
+      const label = await node.getAttribute('data-rail-label');
+      if (label) {
+        labels.push(label);
+      }
+    }
+    return labels;
+  }
+
+  async openItem(label: string): Promise<void> {
+    await this.waitForVisible();
+    const item = this.itemByLabel(label);
+    await item.waitFor({ state: 'visible' });
+    await item.click();
+  }
+
+  async openNewList(): Promise<void> {
+    await this.waitForVisible();
+    const button = this.root().locator('[data-rail-item="new-list"]');
+    await button.waitFor({ state: 'visible' });
+    await button.click();
+  }
+
+  async createNamedList(
+    name: string
+  ): Promise<
+    | { status: 'created'; id: string; name: string }
+    | { status: 'empty' }
+    | { status: 'duplicate' }
+  > {
+    const previousPile = new URL(this.page.url()).searchParams.get('pile');
+    await this.openNewList();
+
+    const dialog = this.page.getByRole('dialog');
+    await dialog.waitFor({ state: 'visible' });
+    const nameInput = dialog.getByLabel('Name');
+    await nameInput.waitFor({ state: 'visible' });
+    await nameInput.fill(name);
+
+    const createButton = dialog.getByRole('button', { name: 'Create list' });
+    if (await createButton.isDisabled()) {
+      return { status: 'empty' };
+    }
+
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/lists') &&
+        response.request().method() === 'POST'
+    );
+    await createButton.click();
+    const response = await responsePromise;
+
+    const duplicateError = dialog.locator('[data-list-create-error]');
+    if (response.status() === 409) {
+      await duplicateError.waitFor({ state: 'visible' });
+      return { status: 'duplicate' };
+    }
+    if (response.status() !== 201) {
+      throw new Error(`Failed to create named list from the rail: ${response.status()}`);
+    }
+
+    await this.page.waitForURL((url) => {
+      const pile = new URL(url).searchParams.get('pile');
+      return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
+    });
+
+    if (await duplicateError.isVisible()) {
+      return { status: 'duplicate' };
+    }
+
+    const pile = new URL(this.page.url()).searchParams.get('pile');
+    if (!pile) {
+      throw new Error(`Created list "${name}" from the rail did not land on one-pile All`);
+    }
+    return { status: 'created', id: pile, name };
+  }
+}

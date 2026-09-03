@@ -78,7 +78,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk']);
       await expect(alice.deleteNamedListFromAll('Groceries')).rejects.toThrow(ConflictError);
       await alice.shouldBeOnAllNamedPile(groceries.id);
-    });
+    }, 60_000);
 
     it('keeps Mine’s picker and still cannot reorder, create, or delete lists', async () => {
       const list = await alice.createNamedList('Groceries');

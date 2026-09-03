@@ -498,6 +498,61 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeNamedPileOnAll(name: string): Promise<void>;
 
+  /**
+   * Assert the desktop app rail shows these labels in order
+   * (Inbox, Today, Upcoming, Mine, Done, named lists, Unlisted, New list).
+   */
+  shouldSeeRailItems(labels: string[]): Promise<void>;
+
+  /**
+   * Assert the rail Inbox item shows this capture count.
+   * Count must be positive — a zero badge is hidden.
+   */
+  shouldSeeInboxCountOnRail(count: number): Promise<void>;
+
+  /**
+   * Assert the rail Inbox item has no count badge (empty inbox).
+   */
+  shouldNotSeeInboxCountOnRail(): Promise<void>;
+
+  /**
+   * Assert the rail has a Lists heading above this named list
+   * (and after the last smart view).
+   */
+  shouldSeeListsHeadingAboveNamedList(name: string): Promise<void>;
+
+  /**
+   * Open a named list from the rail. Lands on All’s existing one-pile.
+   */
+  openRailNamedList(name: string): Promise<void>;
+
+  /**
+   * Open Unlisted from the rail. Lands on All’s existing unlisted one-pile.
+   */
+  openRailUnlisted(): Promise<void>;
+
+  /**
+   * Open a smart view from the rail (Today, Upcoming, Mine, Done).
+   */
+  openRailSmartView(view: 'today' | 'upcoming' | 'mine' | 'done'): Promise<void>;
+
+  /**
+   * Assert the current Tasks view has the add-task field.
+   */
+  shouldSeeAddTaskField(): Promise<void>;
+
+  /**
+   * Assert the current Tasks view has no add-task field (Done).
+   */
+  shouldNotSeeAddTaskField(): Promise<void>;
+
+  /**
+   * Create a named list from the rail New list control (kit dialog).
+   * On success, lands on that list’s existing one-pile view.
+   * All’s dropdown create stays as the fallback.
+   */
+  createNamedListFromRail(name: string): Promise<NamedList>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

@@ -34,7 +34,7 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
-import { InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
+import { AppRail, InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -108,6 +108,7 @@ export const createPlaywrightActor = (
   const settingsPage = new SettingsPage(page);
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
+  const appRail = new AppRail(page);
 
   /**
    * Build a minimal Capture object from ID and content.
@@ -757,6 +758,96 @@ export const createPlaywrightActor = (
       await page.locator('#all-pile').click();
       await expect(tasksPage.namedPileOption(name)).toHaveCount(0);
       await tasksPage.closePileSelect();
+    },
+
+    async shouldSeeRailItems(labels: string[]): Promise<void> {
+      await expect.poll(async () => appRail.getItemLabels()).toEqual(labels);
+    },
+
+    async shouldSeeInboxCountOnRail(count: number): Promise<void> {
+      await expect.poll(async () => appRail.getInboxCount()).toBe(count);
+    },
+
+    async shouldNotSeeInboxCountOnRail(): Promise<void> {
+      await expect.poll(async () => appRail.getInboxCount()).toBeNull();
+    },
+
+    async shouldSeeListsHeadingAboveNamedList(name: string): Promise<void> {
+      await expect.poll(async () => {
+        const order = await appRail.getVisualOrder();
+        const heading = order.indexOf('Lists');
+        const named = order.indexOf(name);
+        return heading > -1 && named > heading && order[heading - 1] === 'Done';
+      }).toBe(true);
+    },
+
+    async openRailNamedList(name: string): Promise<void> {
+      await appRail.openItem(name);
+      await page.waitForURL(/[?&]filter=all/);
+      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openRailUnlisted(): Promise<void> {
+      await appRail.openItem('Unlisted');
+      await page.waitForURL(/[?&]filter=all/);
+      await page.waitForURL(/[?&]pile=unlisted/);
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async openRailSmartView(view: 'today' | 'upcoming' | 'mine' | 'done'): Promise<void> {
+      const label = {
+        today: 'Today',
+        upcoming: 'Upcoming',
+        mine: 'Mine',
+        done: 'Done',
+      }[view];
+      const tabName = {
+        today: 'Today',
+        upcoming: /Upcoming|Soon/,
+        mine: 'Mine',
+        done: 'Done',
+      }[view];
+      const filter = view === 'done' ? 'completed' : view;
+      await appRail.openItem(label);
+      await page.waitForURL(new RegExp(`[?&]filter=${filter}`));
+      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      if (view === 'mine') {
+        await tasksPage.waitForMinePileSelect();
+      }
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeeAddTaskField(): Promise<void> {
+      await expect(page.locator('#create-task-title')).toBeVisible();
+    },
+
+    async shouldNotSeeAddTaskField(): Promise<void> {
+      await expect(page.locator('#create-task-title')).toHaveCount(0);
+    },
+
+    async createNamedListFromRail(name: string): Promise<NamedList> {
+      const created = await appRail.createNamedList(name);
+      if (created.status === 'empty') {
+        throw new ValidationError('Name is required');
+      }
+      if (created.status === 'duplicate') {
+        throw new ConflictError('A list with this name already exists');
+      }
+      await tasksPage.waitForPileSelect();
+      await tasksPage.waitForTasksOrEmpty();
+      return {
+        id: created.id,
+        name: created.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      };
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

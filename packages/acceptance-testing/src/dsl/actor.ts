@@ -670,6 +670,11 @@ export type BrowserActorOperations = {
    */
   shouldSeeExistingPromoteModal(): Promise<void>;
 
+  /**
+   * Close the existing Promote modal so the pane tabs can be used again.
+   */
+  closeExistingPromoteModal(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

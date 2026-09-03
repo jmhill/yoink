@@ -656,6 +656,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeExistingPromoteModal', 'http');
     },
 
+    async closeExistingPromoteModal(): Promise<void> {
+      throw new UnsupportedOperationError('closeExistingPromoteModal', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

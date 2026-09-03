@@ -1013,14 +1013,21 @@ export const createPlaywrightActor = (
 
     async openExistingPromoteModal(content: string): Promise<void> {
       await inboxPage.openPromote(content);
-      await expect(page.getByRole('dialog', { name: 'Create Task' })).toBeVisible();
+      await expect(page.getByRole('dialog')).toBeVisible();
     },
 
     async shouldSeeExistingPromoteModal(): Promise<void> {
-      const dialog = page.getByRole('dialog', { name: 'Create Task' });
+      const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole('heading', { name: 'Create Task' })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Create Task' })).toBeVisible();
       await expect(page.locator('[data-slot="sheet"]')).toHaveCount(0);
+    },
+
+    async closeExistingPromoteModal(): Promise<void> {
+      const dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

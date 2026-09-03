@@ -42,27 +42,27 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('shows snoozed and trashed captures on their tabs while rail Inbox stays highlighted', async () => {
-      await alice.createCapture({ content: 'Stay' });
-      const later = await alice.createCapture({ content: 'Later' });
-      const gone = await alice.createCapture({ content: 'Gone' });
+      await alice.createCapture({ content: 'Stay in inbox' });
+      const later = await alice.createCapture({ content: 'Snooze later' });
+      const gone = await alice.createCapture({ content: 'Trash me' });
       await alice.snoozeCapture(later.id, tomorrow());
       await alice.trashCapture(gone.id);
 
       await alice.openRailInbox();
       await alice.shouldBeOnInboxPaneTab('inbox');
-      await alice.shouldSeeCaptureOnCurrentPane('Stay');
+      await alice.shouldSeeCaptureOnCurrentPane('Stay in inbox');
       await alice.shouldSeeRailInboxHighlighted();
       await alice.shouldSeeInboxCountOnRail(1);
 
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldBeOnInboxPaneTab('snoozed');
-      await alice.shouldSeeCaptureOnCurrentPane('Later');
+      await alice.shouldSeeCaptureOnCurrentPane('Snooze later');
       await alice.shouldSeeRailInboxHighlighted();
       await alice.shouldNotSeeSnoozedOrTrashOnRail();
 
       await alice.openInboxPaneTab('trash');
       await alice.shouldBeOnInboxPaneTab('trash');
-      await alice.shouldSeeCaptureOnCurrentPane('Gone');
+      await alice.shouldSeeCaptureOnCurrentPane('Trash me');
       await alice.shouldSeeRailInboxHighlighted();
     });
 
@@ -83,6 +83,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openExistingPromoteModal('Promote me');
       await alice.shouldSeeExistingPromoteModal();
+      await alice.closeExistingPromoteModal();
 
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldNotSeeQuickAddCapture();
@@ -146,6 +147,9 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.shouldSeeExistingPromoteModal()).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.closeExistingPromoteModal()).rejects.toThrow(
         UnsupportedOperationError
       );
     });

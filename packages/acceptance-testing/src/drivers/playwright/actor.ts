@@ -892,7 +892,7 @@ export const createPlaywrightActor = (
     async shouldNotSeeListOnVisibleTask(taskId: string): Promise<void> {
       await expect(tasksPage.taskCard(taskId)).toBeVisible();
       await expect(tasksPage.listOnTask(taskId)).toHaveCount(0);
-    },,
+    },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {

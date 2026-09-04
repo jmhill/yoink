@@ -7,8 +7,9 @@ import { ConflictError } from '@yoink/acceptance-testing';
  *
  * Mine is a smart view: your assigned open tasks only, grouped by
  * named list then Unlisted. No one-pile mode, no reorder, no create
- * or delete on Mine. Old `?filter=mine&pile=…` URLs land on the
- * overview. All keeps its dropdown until story 7.
+ * or delete on Mine. Add-task keeps the list picker. Old
+ * `?filter=mine&pile=…` URLs land on the overview. All keeps its
+ * dropdown until story 7.
  */
 
 const railWith = (...names: string[]): string[] =>
@@ -33,6 +34,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldBeOnMineOverview();
       await alice.shouldNotSeeMinePileDropdown();
       await alice.shouldNotSeeCreateListOnMine();
+    });
+
+    it('keeps the create-task list picker on Mine', async () => {
+      await alice.createNamedList('Groceries');
+
+      await alice.openMineOverview();
+      await alice.shouldBeOnMineOverview();
+      await alice.shouldNotSeeMinePileDropdown();
+      await alice.shouldSeeCreateTaskListPicker();
     });
 
     it('shows only my tasks grouped by list, including Unlisted, with no reorder', async () => {

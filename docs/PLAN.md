@@ -1115,6 +1115,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - No one-pile mode on Mine. No up/down reorder on Mine (already true — keep it).
 - Create and delete stay off Mine (already true — keep it). Create-list stays on + New list / All.
 - Rail Mine highlights Mine (not a named list). Old Mine URLs with `?filter=mine&pile=…` land on plain Mine overview (drop/ignore pile), not 404.
+- Add-task keeps the list picker (`#create-task-list`). Mine is a smart view, not a pile.
 - Today / Upcoming / Done / All unchanged in this story. All still has its dropdown until story 7.
 - Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field.
 
@@ -1130,7 +1131,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - `#mine-pile` is gone. All keeps `#all-pile` plus New list and delete-on-named-pile.
 - Search: drop/ignore `pile` when `filter=mine`. `beforeLoad` redirects leftover `?filter=mine&pile=…` onto `{ filter: 'mine' }` so those URLs do not 404.
 - Rail Mine already highlights by filter; leftover pile on the URL still marks Mine, not a named list.
-- Playwright: Mine has no pile dropdown; only my tasks grouped by list (including Unlisted), no reorder; rail Mine lands on that view and highlights Mine; old `?filter=mine&pile=…` lands on overview with no pile UI; All still has its dropdown and one-pile reorder; Today / Upcoming / named-list screens / + New list / rail-delete still work.
+- Playwright: Mine has no pile dropdown; only my tasks grouped by list (including Unlisted), no reorder; add-task still shows `#create-task-list`; rail Mine lands on that view and highlights Mine; old `?filter=mine&pile=…` lands on overview with no pile UI; All still has its dropdown and one-pile reorder; Today / Upcoming / named-list screens / + New list / rail-delete still work.
 
 **Deliverable:** A member opens Mine and sees only their assigned tasks grouped by list, without a leftover pile picker, and without changing All / Today / Upcoming / Done.
 

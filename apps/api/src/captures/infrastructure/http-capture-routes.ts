@@ -342,6 +342,7 @@ export const registerCaptureRoutes = async (
           createdById: request.authContext.userId,
           title: body.data.title,
           dueDate: body.data.dueDate,
+          listId: body.data.listId,
         });
 
         return result.match(
@@ -360,6 +361,16 @@ export const registerCaptureRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'Capture must be in inbox to be processed' },
+                };
+              case 'LIST_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'List is not in this organization' },
+                };
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Assignee is not a member of this organization' },
                 };
               case 'STORAGE_ERROR':
               default:

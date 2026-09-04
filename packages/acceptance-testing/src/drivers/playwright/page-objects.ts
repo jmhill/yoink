@@ -398,6 +398,36 @@ export class InboxPage {
     await card.getByRole('button', { name: 'Promote' }).click();
   }
 
+  promoteSheet() {
+    return this.page.locator('[data-promote-sheet]');
+  }
+
+  promoteTitle() {
+    return this.page.locator('#promote-title');
+  }
+
+  promoteList() {
+    return this.page.locator('#promote-list');
+  }
+
+  async selectPromoteListByName(name: string): Promise<void> {
+    await this.promoteList().click();
+    const option = this.page
+      .getByRole('listbox')
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: name });
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
+  async confirmPromote(): Promise<void> {
+    await this.promoteSheet().getByRole('button', { name: 'Promote' }).click();
+  }
+
+  async cancelPromote(): Promise<void> {
+    await this.promoteSheet().getByRole('button', { name: 'Cancel' }).click();
+  }
+
   async goToSettings(): Promise<void> {
     await this.page.getByTitle('Settings').click();
     await this.page.waitForURL('/settings');

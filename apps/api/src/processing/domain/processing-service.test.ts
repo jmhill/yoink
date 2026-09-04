@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Capture, Task } from '@yoink/api-contracts';
+import type { Capture, NamedList, Task } from '@yoink/api-contracts';
 import { createCaptureProcessingService, type CaptureProcessingService } from './processing-service.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
+import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
+import { createStoreBackedPersist } from '../../tasks/infrastructure/store-backed-persist.js';
+import { handleCreateTask } from '../../tasks/application/handle-create-task.js';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
 import type { TaskStore } from '../../tasks/domain/task-store.js';
+import type { ListStore } from '../../lists/domain/list-store.js';
 
 describe('CaptureProcessingService', () => {
   const now = new Date('2024-12-24T10:00:00.000Z');
@@ -14,7 +18,24 @@ describe('CaptureProcessingService', () => {
 
   let captureStore: CaptureStore;
   let taskStore: TaskStore;
+  let listStore: ListStore;
   let service: CaptureProcessingService;
+
+  const groceries: NamedList = {
+    id: 'list-groceries',
+    organizationId: 'org-1',
+    createdById: 'user-1',
+    name: 'Groceries',
+    createdAt: '2024-12-24T08:00:00.000Z',
+  };
+
+  const otherOrgList: NamedList = {
+    id: 'list-other',
+    organizationId: 'org-2',
+    createdById: 'user-other',
+    name: 'Other',
+    createdAt: '2024-12-24T08:00:00.000Z',
+  };
 
   const createInboxCapture = (overrides?: Partial<Capture>): Capture => ({
     id: idGenerator.generate(),
@@ -29,11 +50,21 @@ describe('CaptureProcessingService', () => {
   beforeEach(() => {
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
+    listStore = createFakeListStore({ initialLists: [groceries, otherOrgList] });
+    const persist = createStoreBackedPersist(taskStore);
     service = createCaptureProcessingService({
       captureStore,
       taskStore,
+      createTask: (command) =>
+        handleCreateTask(command, {
+          loadList: (id) => listStore.findById(id),
+          loadNextOpenOrder: (organizationId, listId) =>
+            taskStore.nextOpenOrderInPile({ organizationId, listId }),
+          persist,
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }).map((result) => result.view),
       clock,
-      idGenerator,
     });
   });
 
@@ -56,6 +87,7 @@ describe('CaptureProcessingService', () => {
         title: 'This is a captured thought that should become a task',
         captureId: capture.id,
       });
+      expect(task.listId).toBeUndefined();
     });
 
     it('uses custom title when provided', async () => {
@@ -103,6 +135,105 @@ describe('CaptureProcessingService', () => {
       expect(result._unsafeUnwrap().dueDate).toBe('2024-12-31');
     });
 
+    it('puts the new task on a named list and joins that pile open order', async () => {
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      const result = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        listId: groceries.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+      const task = result._unsafeUnwrap();
+      expect(task.listId).toBe(groceries.id);
+      expect(task.openOrder).toBe(0);
+
+      const onList = await taskStore.findOpenInPile({
+        organizationId: 'org-1',
+        listId: groceries.id,
+      });
+      expect(onList.isOk()).toBe(true);
+      expect(onList._unsafeUnwrap().map((item) => item.id)).toEqual([task.id]);
+    });
+
+    it('appends to the end of that list open pile', async () => {
+      const existing: Task = {
+        id: 'already-on-list',
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        title: 'Eggs',
+        listId: groceries.id,
+        openOrder: 0,
+        createdAt: '2024-12-24T08:30:00.000Z',
+      };
+      await taskStore.save(existing);
+
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      const result = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        listId: groceries.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap().openOrder).toBe(1);
+    });
+
+    it('creates an unlisted task when listId is omitted', async () => {
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      const result = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+      });
+
+      expect(result.isOk()).toBe(true);
+      const task = result._unsafeUnwrap();
+      expect(task.listId).toBeUndefined();
+      expect(task.openOrder).toBe(0);
+    });
+
+    it('rejects an unknown list and leaves the capture in inbox', async () => {
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      const result = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        listId: 'list-missing',
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().type).toBe('LIST_NOT_IN_ORGANIZATION');
+
+      const stillInbox = await captureStore.findById(capture.id);
+      expect(stillInbox._unsafeUnwrap()?.status).toBe('inbox');
+    });
+
+    it('rejects a list from another organization', async () => {
+      const capture = createInboxCapture();
+      await captureStore.save(capture);
+
+      const result = await service.processCaptureToTask({
+        id: capture.id,
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        listId: otherOrgList.id,
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().type).toBe('LIST_NOT_IN_ORGANIZATION');
+    });
+
     it('marks the capture as processed', async () => {
       const capture = createInboxCapture();
       await captureStore.save(capture);
@@ -142,7 +273,7 @@ describe('CaptureProcessingService', () => {
 
       const result = await service.processCaptureToTask({
         id: capture.id,
-        organizationId: 'org-1', // Different org
+        organizationId: 'org-1',
         createdById: 'user-1',
       });
 
@@ -151,7 +282,7 @@ describe('CaptureProcessingService', () => {
     });
 
     it('returns error when capture is not in inbox status', async () => {
-      const trashedCapture = createInboxCapture({ 
+      const trashedCapture = createInboxCapture({
         status: 'trashed',
         trashedAt: '2024-12-24T08:00:00.000Z',
       });
@@ -187,13 +318,9 @@ describe('CaptureProcessingService', () => {
     });
 
     it('prevents race condition when two requests try to process the same capture', async () => {
-      // This test verifies that status verification happens atomically within the transaction
-      // If a capture is processed between the initial read and the transaction,
-      // the second request should fail with CAPTURE_NOT_IN_INBOX
       const capture = createInboxCapture();
       await captureStore.save(capture);
 
-      // First request processes successfully
       const firstResult = await service.processCaptureToTask({
         id: capture.id,
         organizationId: 'org-1',
@@ -201,11 +328,9 @@ describe('CaptureProcessingService', () => {
       });
       expect(firstResult.isOk()).toBe(true);
 
-      // Verify the capture is now processed
       const updatedCapture = await captureStore.findById(capture.id);
       expect(updatedCapture._unsafeUnwrap()?.status).toBe('processed');
 
-      // Second request should fail because capture is no longer in inbox
       const secondResult = await service.processCaptureToTask({
         id: capture.id,
         organizationId: 'org-1',
@@ -242,7 +367,6 @@ describe('CaptureProcessingService', () => {
       const capture = createInboxCapture();
       await captureStore.save(capture);
 
-      // Process the capture to create a task
       const processResult = await service.processCaptureToTask({
         id: capture.id,
         organizationId: 'org-1',
@@ -251,7 +375,6 @@ describe('CaptureProcessingService', () => {
       expect(processResult.isOk()).toBe(true);
       const task = processResult._unsafeUnwrap();
 
-      // Now delete the task with cascade
       const deleteResult = await service.deleteTaskWithCascade({
         id: task.id,
         organizationId: 'org-1',
@@ -259,11 +382,9 @@ describe('CaptureProcessingService', () => {
 
       expect(deleteResult.isOk()).toBe(true);
 
-      // Task should be deleted
       const foundTask = await taskStore.findById(task.id);
       expect(foundTask._unsafeUnwrap()).toBeNull();
 
-      // Capture should also be deleted
       const foundCapture = await captureStore.findById(capture.id);
       expect(foundCapture._unsafeUnwrap()).toBeNull();
     });
@@ -290,7 +411,7 @@ describe('CaptureProcessingService', () => {
 
       const result = await service.deleteTaskWithCascade({
         id: task.id,
-        organizationId: 'org-1', // Different org
+        organizationId: 'org-1',
       });
 
       expect(result.isErr()).toBe(true);

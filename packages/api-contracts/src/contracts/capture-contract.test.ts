@@ -64,4 +64,29 @@ describe('captureContract', () => {
   it('has 200 response for emptyTrash', () => {
     expect(captureContract.emptyTrash.responses).toHaveProperty('200');
   });
+
+  it('accepts optional listId on process and omits it for unlisted', () => {
+    const withList = captureContract.process.body.safeParse({
+      type: 'task',
+      data: { title: 'Buy milk', listId: '550e8400-e29b-41d4-a716-446655440001' },
+    });
+    expect(withList.success).toBe(true);
+
+    const unlisted = captureContract.process.body.safeParse({
+      type: 'task',
+      data: { title: 'Loose end' },
+    });
+    expect(unlisted.success).toBe(true);
+    if (unlisted.success) {
+      expect(unlisted.data.data.listId).toBeUndefined();
+    }
+  });
+
+  it('rejects null listId on process — omit listId for unlisted', () => {
+    const result = captureContract.process.body.safeParse({
+      type: 'task',
+      data: { listId: null },
+    });
+    expect(result.success).toBe(false);
+  });
 });

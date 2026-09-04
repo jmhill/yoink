@@ -133,9 +133,30 @@ export function groupAllTasksByPile(
 }
 
 /**
+ * Mine is always the grouped overview. Old `?filter=mine&pile=…`
+ * search is dropped so those URLs land on plain Mine, not a one-pile
+ * view and not a 404.
+ */
+export function tasksSearchWithoutMinePile<T extends { filter: string; pile?: string }>(
+  search: T
+): { filter: T['filter']; pile?: string } {
+  if (search.filter === 'mine') {
+    return { filter: search.filter };
+  }
+  return search;
+}
+
+/** Raw query string from an old Mine one-pile bookmark. */
+export function mineUrlHasLeftoverPile(search: string): boolean {
+  const query = search.startsWith('?') ? search.slice(1) : search;
+  const params = new URLSearchParams(query);
+  return params.get('filter') === 'mine' && params.has('pile');
+}
+
+/**
  * Slice a board-filter result to one pile. Preserves API order.
- * Does not sort by openOrder. Mine one-pile uses this instead of the
- * list/unlisted pile APIs (those return everyone’s open tasks).
+ * Does not sort by openOrder. Used to isolate one pile from a
+ * filter result without calling the list/unlisted pile APIs.
  */
 export function tasksInPile(tasks: Task[], pile: AllPile): Task[] {
   if (pile.kind === 'overview') {

@@ -95,12 +95,15 @@ describe('isRailItemActive', () => {
     expect(isRailItemActive(inbox, { pathname: '/tasks', filter: 'today' })).toBe(false);
   });
 
-  it('marks smart views by filter, including Mine with a pile', () => {
+  it('marks smart views by filter, including leftover Mine pile URLs as Mine', () => {
     expect(isRailItemActive(today, { pathname: '/tasks', filter: 'today' })).toBe(true);
     expect(isRailItemActive(mine, { pathname: '/tasks', filter: 'mine' })).toBe(true);
     expect(
       isRailItemActive(mine, { pathname: '/tasks', filter: 'mine', pile: groceriesId })
     ).toBe(true);
+    expect(
+      isRailItemActive(groceries, { pathname: '/tasks', filter: 'mine', pile: groceriesId })
+    ).toBe(false);
     expect(isRailItemActive(today, { pathname: '/tasks', filter: 'upcoming' })).toBe(false);
   });
 

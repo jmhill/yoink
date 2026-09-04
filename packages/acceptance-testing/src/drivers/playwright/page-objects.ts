@@ -867,27 +867,6 @@ export class TasksPage {
     await this.page.locator('#all-pile').waitFor({ state: 'visible' });
   }
 
-  async waitForMinePileSelect(): Promise<void> {
-    await this.page.locator('#mine-pile').waitFor({ state: 'visible' });
-  }
-
-  async selectMinePile(value: string): Promise<void> {
-    await this.closePileSelect();
-    await this.waitForMinePileSelect();
-    await this.page.locator('#mine-pile').click();
-    await this.chooseOpenPileOption(value);
-  }
-
-  async selectMineNamedPile(name: string): Promise<void> {
-    await this.closePileSelect();
-    await this.waitForMinePileSelect();
-    await this.page.locator('#mine-pile').click();
-    const option = this.namedPileOption(name);
-    await option.waitFor({ state: 'visible' });
-    await option.click();
-    await this.page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
-  }
-
   async getBoardTaskTitles(): Promise<string[]> {
     return this.titlesIn(this.page.locator('[data-task-id]'));
   }
@@ -941,7 +920,7 @@ export class TasksPage {
     try {
       await listbox.waitFor({ state: 'hidden', timeout: 1000 });
     } catch {
-      const trigger = this.page.locator('#all-pile, #mine-pile').first();
+      const trigger = this.page.locator('#all-pile').first();
       if (await trigger.isVisible()) {
         // Named-list / Unlisted screens have no create-task list picker,
         // so the open Select overlay can intercept a normal click.

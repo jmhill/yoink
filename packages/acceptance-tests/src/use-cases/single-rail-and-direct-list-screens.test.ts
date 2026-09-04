@@ -137,7 +137,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const other = await alice.createTask({ title: 'Unassigned notes' });
 
       await alice.openRailSmartView('mine');
-      await alice.shouldSeeMinePileDropdown();
+      await alice.shouldNotSeeMinePileDropdown();
       await alice.shouldSeePileGroups(['Groceries']);
       await alice.shouldSeeTasksInPileGroup('Groceries', ['Mine milk']);
       await alice.shouldNotSeeTask(other.id);

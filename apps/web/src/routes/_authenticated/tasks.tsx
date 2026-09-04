@@ -24,6 +24,7 @@ import { tsrTasks, tsr, tsrLists } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
+import { AppRailPanel } from '@/components/app-rail-panel';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard, type TaskReorderControls } from '@/components/task-card';
@@ -831,7 +832,12 @@ function TasksPage() {
     <div className="container mx-auto max-w-2xl p-4">
       <Header viewName="Tasks" />
 
-      <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6">
+      <AppRailPanel
+        surface="mobile-tasks"
+        className="mb-6 flex flex-col md:hidden"
+      />
+
+      <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6 hidden md:block">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="today" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <Calendar className="h-4 w-4 shrink-0" />

@@ -696,6 +696,34 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeCaptureOnCurrentPane', 'http');
     },
 
+    async useMobileViewport(): Promise<void> {
+      throw new UnsupportedOperationError('useMobileViewport', 'http');
+    },
+
+    async useDesktopViewport(): Promise<void> {
+      throw new UnsupportedOperationError('useDesktopViewport', 'http');
+    },
+
+    async openMobileBottomTab(_tab: 'inbox' | 'tasks'): Promise<void> {
+      throw new UnsupportedOperationError('openMobileBottomTab', 'http');
+    },
+
+    async shouldSeeMobileBottomTabs(_labels: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeMobileBottomTabs', 'http');
+    },
+
+    async shouldNotSeeMobileBottomTab(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeMobileBottomTab', 'http');
+    },
+
+    async shouldSeeDesktopAppRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDesktopAppRail', 'http');
+    },
+
+    async shouldNotSeeMobileBottomNav(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeMobileBottomNav', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

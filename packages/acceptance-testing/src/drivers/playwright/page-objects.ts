@@ -943,7 +943,7 @@ export class TasksPage {
   > {
     // All is gone — create lives on + New list.
     const previousPile = new URL(this.page.url()).searchParams.get('pile');
-    await this.page.locator('[data-rail-item="new-list"]').click();
+    await this.page.locator('[data-app-rail]:visible [data-rail-item="new-list"]').click();
 
     const dialog = this.page.getByRole('dialog');
     await dialog.waitFor({ state: 'visible' });
@@ -1108,7 +1108,7 @@ export class TasksPage {
   }
 
   async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {
-    const items = this.page.locator('[data-app-rail] [data-rail-item="named"]');
+    const items = this.page.locator('[data-app-rail]:visible [data-rail-item="named"]');
     const count = await items.count();
     const lists: Array<{ id: string; name: string }> = [];
     for (let i = 0; i < count; i++) {
@@ -1195,18 +1195,88 @@ export class TasksPage {
   }
 }
 
+export const MOBILE_VIEWPORT = { width: 390, height: 844 } as const;
+export const DESKTOP_VIEWPORT = { width: 1280, height: 720 } as const;
+
 /**
- * Desktop app rail (Inbox, smart views, named lists, Unlisted, New list).
- * Hidden below the md breakpoint; Playwright’s default viewport is desktop.
+ * Mobile Inbox | Tasks bottom tabs. Visible below the md breakpoint.
+ */
+export class MobileNav {
+  constructor(private readonly page: Page) {}
+
+  root() {
+    return this.page.locator('[data-app-mobile-nav]');
+  }
+
+  item(label: string) {
+    return this.root().locator(`[data-mobile-nav-item="${label}"]`);
+  }
+
+  async getItemLabels(): Promise<string[]> {
+    const items = this.root().locator('[data-mobile-nav-item]');
+    const count = await items.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const label = await items.nth(i).getAttribute('data-mobile-nav-item');
+      if (label) {
+        labels.push(label);
+      }
+    }
+    return labels;
+  }
+
+  async open(label: 'Inbox' | 'Tasks'): Promise<void> {
+    await this.root().waitFor({ state: 'visible' });
+    await this.item(label).click();
+    if (label === 'Inbox') {
+      await this.page.waitForURL((url) => {
+        const path = new URL(url).pathname;
+        return path === '/' || path === '/snoozed' || path === '/trash';
+      });
+      return;
+    }
+    await this.page.waitForURL(/\/tasks/);
+  }
+}
+
+/**
+ * App rail (Inbox, smart views, named lists, Unlisted, New list).
+ * Desktop: left sidebar (default Playwright viewport).
+ * Mobile: the same flat rail inside the Tasks tab.
  */
 export class AppRail {
   constructor(private readonly page: Page) {}
 
   root() {
-    return this.page.locator('[data-app-rail]');
+    return this.page.locator('[data-app-rail]:visible');
+  }
+
+  desktop() {
+    return this.page.locator('[data-app-rail-surface="desktop"]');
+  }
+
+  mobileTasks() {
+    return this.page.locator('[data-app-rail-surface="mobile-tasks"]');
+  }
+
+  /**
+   * On desktop the sidebar is always visible. On mobile the rail lives
+   * inside Tasks — open that tab first when the rail is not showing.
+   */
+  async ensureAvailable(): Promise<void> {
+    if (await this.root().isVisible().catch(() => false)) {
+      return;
+    }
+    const tasksTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Tasks"]');
+    if (await tasksTab.isVisible().catch(() => false)) {
+      await tasksTab.click();
+      await this.page.waitForURL(/\/tasks/);
+    }
+    await this.root().waitFor({ state: 'visible' });
   }
 
   async waitForVisible(): Promise<void> {
+    await this.ensureAvailable();
     await this.root().waitFor({ state: 'visible' });
   }
 

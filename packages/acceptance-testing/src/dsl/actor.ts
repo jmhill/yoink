@@ -727,6 +727,41 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeCaptureOnCurrentPane(content: string): Promise<void>;
 
+  /**
+   * Shrink the browser to a phone viewport (below the md rail breakpoint).
+   */
+  useMobileViewport(): Promise<void>;
+
+  /**
+   * Restore a wide desktop viewport (sidebar rail, no bottom tabs).
+   */
+  useDesktopViewport(): Promise<void>;
+
+  /**
+   * Open Inbox or Tasks from the mobile bottom tabs.
+   */
+  openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void>;
+
+  /**
+   * Assert the mobile bottom nav shows exactly these tabs, in order.
+   */
+  shouldSeeMobileBottomTabs(labels: string[]): Promise<void>;
+
+  /**
+   * Assert this label is not a mobile bottom tab (no Lists / All / third tab).
+   */
+  shouldNotSeeMobileBottomTab(label: string): Promise<void>;
+
+  /**
+   * Assert the desktop sidebar rail is showing and the mobile Tasks rail is not.
+   */
+  shouldSeeDesktopAppRail(): Promise<void>;
+
+  /**
+   * Assert the mobile bottom nav is not showing (wide layout).
+   */
+  shouldNotSeeMobileBottomNav(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

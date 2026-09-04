@@ -34,7 +34,17 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
-import { AppRail, InboxPage, TrashPage, SettingsPage, SnoozedPage, TasksPage } from './page-objects.js';
+import {
+  AppRail,
+  DESKTOP_VIEWPORT,
+  InboxPage,
+  MOBILE_VIEWPORT,
+  MobileNav,
+  TrashPage,
+  SettingsPage,
+  SnoozedPage,
+  TasksPage,
+} from './page-objects.js';
 
 /**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
@@ -109,6 +119,23 @@ export const createPlaywrightActor = (
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
   const appRail = new AppRail(page);
+  const mobileNav = new MobileNav(page);
+
+  const expectActiveFilterTabIfVisible = async (
+    filter: 'today' | 'upcoming' | 'mine' | 'completed'
+  ): Promise<void> => {
+    const tabName = {
+      today: 'Today',
+      upcoming: /Upcoming|Soon/,
+      mine: 'Mine',
+      completed: 'Done',
+    }[filter];
+    const tab = page.getByRole('tab', { name: tabName });
+    // Filter tabs stay on desktop. Mobile picks smart views from the Tasks rail.
+    if ((await tab.count()) > 0) {
+      await expect(tab).toHaveAttribute('data-state', 'active');
+    }
+  };
 
   const openTaskOnItsPile = async (taskId: string): Promise<void> => {
     const response = await page.request.get(`/api/tasks/${taskId}`);
@@ -566,10 +593,7 @@ export const createPlaywrightActor = (
       await expect(page).toHaveURL(/[?&]filter=today/);
       await expect(page).not.toHaveURL(/[?&]filter=all/);
       await expect(page).not.toHaveURL(/[?&]pile=/);
-      await expect(page.getByRole('tab', { name: 'Today' })).toHaveAttribute(
-        'data-state',
-        'active'
-      );
+      await expectActiveFilterTabIfVisible('today');
       await expect(page.locator('#all-pile')).toHaveCount(0);
     },
 
@@ -670,10 +694,7 @@ export const createPlaywrightActor = (
     async shouldBeOnMineOverview(): Promise<void> {
       await expect(page).toHaveURL(/[?&]filter=mine/);
       await expect(page).not.toHaveURL(/[?&]pile=/);
-      await expect(page.getByRole('tab', { name: 'Mine' })).toHaveAttribute(
-        'data-state',
-        'active'
-      );
+      await expectActiveFilterTabIfVisible('mine');
       await expect(page.locator('#mine-pile')).toHaveCount(0);
     },
 
@@ -844,19 +865,10 @@ export const createPlaywrightActor = (
         mine: 'Mine',
         done: 'Done',
       }[view];
-      const tabName = {
-        today: 'Today',
-        upcoming: /Upcoming|Soon/,
-        mine: 'Mine',
-        done: 'Done',
-      }[view];
       const filter = view === 'done' ? 'completed' : view;
       await appRail.openItem(label);
       await page.waitForURL(new RegExp(`[?&]filter=${filter}`));
-      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
-        'data-state',
-        'active'
-      );
+      await expectActiveFilterTabIfVisible(filter);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -913,16 +925,7 @@ export const createPlaywrightActor = (
       filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
       await expect(page).toHaveURL(new RegExp(`[?&]filter=${filter}`));
-      const tabName = {
-        today: 'Today',
-        upcoming: /Upcoming|Soon/,
-        mine: 'Mine',
-        completed: 'Done',
-      }[filter];
-      await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
-        'data-state',
-        'active'
-      );
+      await expectActiveFilterTabIfVisible(filter);
     },
 
     async shouldNotSeeListOnVisibleTask(taskId: string): Promise<void> {
@@ -1109,6 +1112,43 @@ export const createPlaywrightActor = (
     async shouldNotSeeCaptureOnCurrentPane(content: string): Promise<void> {
       await expect(inboxPage.captureCard(content)).toHaveCount(0);
     },
+
+    async useMobileViewport(): Promise<void> {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+    },
+
+    async useDesktopViewport(): Promise<void> {
+      await page.setViewportSize(DESKTOP_VIEWPORT);
+    },
+
+    async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {
+      const label = tab === 'inbox' ? 'Inbox' : 'Tasks';
+      await mobileNav.open(label);
+      if (tab === 'inbox') {
+        await inboxPage.waitForCapturesOrEmpty();
+        return;
+      }
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeeMobileBottomTabs(labels: string[]): Promise<void> {
+      await expect(mobileNav.root()).toBeVisible();
+      await expect.poll(async () => mobileNav.getItemLabels()).toEqual(labels);
+    },
+
+    async shouldNotSeeMobileBottomTab(label: string): Promise<void> {
+      await expect(mobileNav.root()).toBeVisible();
+      await expect(mobileNav.item(label)).toHaveCount(0);
+    },
+
+    async shouldSeeDesktopAppRail(): Promise<void> {
+      await expect(appRail.desktop()).toBeVisible();
+      await expect(appRail.mobileTasks()).toBeHidden();
+    },
+
+    async shouldNotSeeMobileBottomNav(): Promise<void> {
+      await expect(mobileNav.root()).toBeHidden();
+    },,
 
     async createTask(input: CreateTaskInput): Promise<Task> {
       // Quick-add can pick a list, but has no assignee or due-date controls.

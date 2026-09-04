@@ -6,9 +6,11 @@ import {
   allPileSelectValue,
   groupAllTasksByPile,
   listIdForCreateTask,
+  mineUrlHasLeftoverPile,
   parseAllPile,
   showsCreateTaskListPicker,
   tasksInPile,
+  tasksSearchWithoutMinePile,
 } from './all-tasks-piles';
 
 const orgId = '00000000-0000-0000-0000-000000000001';
@@ -190,5 +192,30 @@ describe('tasksInPile', () => {
     expect(tasksInPile(tasks, { kind: 'unlisted' }).map((item) => item.title)).toEqual([
       'Notes',
     ]);
+  });
+});
+
+describe('tasksSearchWithoutMinePile', () => {
+  it('drops pile on Mine and leaves All search alone', () => {
+    expect(tasksSearchWithoutMinePile({ filter: 'mine', pile: groceriesId })).toEqual({
+      filter: 'mine',
+    });
+    expect(tasksSearchWithoutMinePile({ filter: 'mine', pile: ALL_PILE_UNLISTED })).toEqual({
+      filter: 'mine',
+    });
+    expect(tasksSearchWithoutMinePile({ filter: 'mine' })).toEqual({ filter: 'mine' });
+    expect(tasksSearchWithoutMinePile({ filter: 'all', pile: groceriesId })).toEqual({
+      filter: 'all',
+      pile: groceriesId,
+    });
+  });
+});
+
+describe('mineUrlHasLeftoverPile', () => {
+  it('is true only for Mine URLs that still carry a pile', () => {
+    expect(mineUrlHasLeftoverPile('?filter=mine&pile=unlisted')).toBe(true);
+    expect(mineUrlHasLeftoverPile(`filter=mine&pile=${groceriesId}`)).toBe(true);
+    expect(mineUrlHasLeftoverPile('?filter=mine')).toBe(false);
+    expect(mineUrlHasLeftoverPile(`?filter=all&pile=${groceriesId}`)).toBe(false);
   });
 });

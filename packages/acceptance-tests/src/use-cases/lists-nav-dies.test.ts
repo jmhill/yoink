@@ -80,19 +80,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldBeOnAllNamedPile(groceries.id);
     }, 60_000);
 
-    it('keeps Mine’s picker and still cannot reorder, create, or delete lists', async () => {
+    it('keeps Mine as a smart view that cannot reorder, create, or delete lists', async () => {
       const list = await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Milk', listId: list.id, assigneeId: alice.userId });
       await alice.createTask({ title: 'Notes', assigneeId: alice.userId });
 
       await alice.openMineOverview();
-      await alice.shouldSeeMinePileDropdown();
+      await alice.shouldNotSeeMinePileDropdown();
       await alice.shouldNotSeeCreateListOnMine();
       await alice.shouldNotSeeReorderControls();
-
-      await alice.openMineNamedPile('Groceries');
       await alice.shouldNotSeeDeleteListOnMine('Groceries');
-      await alice.shouldNotSeeReorderControls();
     });
 
     it('leaves Today, Upcoming, and Done as they are', async () => {

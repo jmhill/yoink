@@ -406,19 +406,26 @@ export type BrowserActorOperations = {
   openMineOverview(): Promise<void>;
 
   /**
-   * Choose a named list on the Mine pile dropdown.
+   * Open an old Mine one-pile URL (`?filter=mine&pile=…`).
+   * Lands on the plain Mine overview.
    */
-  openMineNamedPile(name: string): Promise<void>;
+  openOldMinePileUrl(pile: string): Promise<void>;
 
   /**
-   * Choose unlisted on the Mine pile dropdown.
+   * Assert the current screen is the Mine overview: `filter=mine`,
+   * no pile in the URL, no Mine pile dropdown.
    */
-  openMineUnlistedPile(): Promise<void>;
+  shouldBeOnMineOverview(): Promise<void>;
 
   /**
-   * Assert Mine has its two-mode pile dropdown (not All’s).
+   * Assert Mine has no pile dropdown (All still may).
    */
-  shouldSeeMinePileDropdown(): Promise<void>;
+  shouldNotSeeMinePileDropdown(): Promise<void>;
+
+  /**
+   * Assert the rail Mine row is highlighted (not a named list).
+   */
+  shouldSeeRailMineHighlighted(): Promise<void>;
 
   /**
    * Assert the current Tasks view has kit up/down reorder controls.

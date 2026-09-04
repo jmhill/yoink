@@ -40,8 +40,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 3: the list is the pile on add-task** - Complete ✓ (named-list and Unlisted screens hide `#create-task-list`; create onto that pile or omit listId; Today / Upcoming / Mine and All overview keep the picker; All’s pile dropdown stays)
 **Yoink UI story 4: Inbox pane with Snoozed and Trash tabs** - Complete ✓ (Inbox is the capture pane, not a list; tab order Inbox | Snoozed | Trash; one rail Inbox row stays highlighted on all three; quick-add on Inbox only; Promote is a sheet after story 5; count badge unchanged)
 **Yoink UI story 5: Promote sheet with optional list** - Complete ✓ (Inbox Promote opens a thin kit Sheet: title prefilled, list picker default Unlisted; optional `data.listId` on process reuses create-task list membership / open order; no suggested list)
+**Yoink UI story 6: Mine leftovers** - Complete ✓ (Mine has no pile dropdown; always the assignee-only grouped overview — named lists then Unlisted; no one-pile, no reorder; old `?filter=mine&pile=…` lands on plain Mine; All keeps its dropdown)
 
 Recent updates:
+- Yoink UI story 6 “Mine leftovers”: lose any pile dropdown. Mine is a smart view — your assigned open tasks only, grouped by named list then Unlisted (same grouping as today’s Mine overview). No one-pile mode. No up/down. Create and delete stay off Mine. Create-list stays on + New list / All. Rail Mine highlights Mine. Old `?filter=mine&pile=…` URLs land on plain Mine overview (drop/ignore pile), not 404. Today / Upcoming / Done / All unchanged; All still has its dropdown until story 7. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: retire All, mobile rail-inside-Tasks, drag, empty groups, bulk actions, Done-by-list, changing Today/Upcoming nesting, Promote / Inbox.
 - Yoink UI story 5 “Promote sheet with optional list”: from Inbox, Promote opens a thin Sheet (not the old centered Create Task dialog). Fields are title (prefilled from capture content, editable) and an optional list picker defaulting to Unlisted (omit `listId`). A named list puts the new task on that pile via the existing create-task membership path (`decideCreateTask` + open-order join). Due date stays on the sheet. After confirm the capture leaves Inbox; Cancel leaves it. Suggested list is out. HTTP still only maps; process body gained optional `data.listId`. Out of scope: suggested list, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, Inbox tabs / rail changes.
 - Yoink UI story 4 “Inbox pane with Snoozed and Trash tabs”: Inbox is not a list — it holds captures. One rail Inbox row; Snoozed and Trash are tabs on that pane (not rail items), ordered Inbox | Snoozed | Trash. Rail Inbox stays highlighted on all three. Quick-add stays on the Inbox tab. Capture rows keep Promote / Snooze / Trash (no checkbox, drag, or due date). Promote still opens the existing Create Task modal (sheet is the next story). Count badge stays as story 1 (hidden at 0). Existing snooze / unsnooze / trash / restore / empty-trash / permanent delete stay. Keep `/`, `/snoozed`, `/trash`. HTTP still only maps; no new domain field. Out of scope: Promote sheet, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, changing Inbox count rules.
 - Yoink UI story 3 “the list is the pile on add-task”: a miss from story 1, not a new idea. On a named-list or Unlisted screen the list *is* the pile — add-task has no list dropdown. New tasks go on that named list (reuse existing create with `listId`) or stay unlisted (omit `listId`). Today / Upcoming / Mine keep the picker they have today. All overview keeps its pile dropdown and create-task list picker as fallback. Do not retire All. Create-list stays on + New list / All. UI only; HTTP still only maps; no new domain field. Out of scope: Inbox pane, Promote, Mine leftover, All retirement, mobile redesign, drag, empty groups, bulk actions, rail delete (already shipped).
@@ -1102,6 +1104,38 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 6: Mine leftovers - Complete ✓
+
+**Goal**: Mine is only the smart view of my assigned open tasks, grouped by list. The leftover All two-mode pile picker is gone.
+
+**Product rules (locked, Polly 2026-09-04):**
+- One story at a time. This story only.
+- Remove Mine’s two-mode pile dropdown (`#mine-pile` / All-style picker on Mine).
+- Mine is always the overview of my assigned open tasks, grouped by named list then Unlisted (same grouping as today’s Mine overview / Upcoming list groups).
+- No one-pile mode on Mine. No up/down reorder on Mine (already true — keep it).
+- Create and delete stay off Mine (already true — keep it). Create-list stays on + New list / All.
+- Rail Mine highlights Mine (not a named list). Old Mine URLs with `?filter=mine&pile=…` land on plain Mine overview (drop/ignore pile), not 404.
+- Today / Upcoming / Done / All unchanged in this story. All still has its dropdown until story 7.
+- Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (later stories — do not implement here):**
+- Retire All (story 7)
+- Mobile rail-inside-Tasks (story 8)
+- Drag, empty groups, bulk actions, Done-by-list
+- Changing Today/Upcoming nesting
+- Promote / Inbox changes
+
+**Implementation:**
+- Mine always uses `GET /api/tasks?filter=mine` and `groupAllTasksByPile`. Do not slice with `tasksInPile` or the list/unlisted pile APIs.
+- `#mine-pile` is gone. All keeps `#all-pile` plus New list and delete-on-named-pile.
+- Search: drop/ignore `pile` when `filter=mine`. `beforeLoad` redirects leftover `?filter=mine&pile=…` onto `{ filter: 'mine' }` so those URLs do not 404.
+- Rail Mine already highlights by filter; leftover pile on the URL still marks Mine, not a named list.
+- Playwright: Mine has no pile dropdown; only my tasks grouped by list (including Unlisted), no reorder; rail Mine lands on that view and highlights Mine; old `?filter=mine&pile=…` lands on overview with no pile UI; All still has its dropdown and one-pile reorder; Today / Upcoming / named-list screens / + New list / rail-delete still work.
+
+**Deliverable:** A member opens Mine and sees only their assigned tasks grouped by list, without a leftover pile picker, and without changing All / Today / Upcoming / Done.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1488,6 +1522,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 6 is in.** Mine has no pile dropdown. It is the assignee-only grouped overview (named lists then Unlisted). No one-pile, no reorder. Old `?filter=mine&pile=…` lands on plain Mine. All keeps its dropdown. Do not start later UI work (All retirement, mobile redesign) from this story.
 
 **Yoink UI story 5 is in.** Inbox Promote opens a thin kit Sheet (title + list, Unlisted default). Optional `data.listId` on process reuses create-task list membership / open order. Cancel leaves the capture. No suggested list. Do not start later UI work (Mine leftover, All retirement, mobile redesign) from this story.
 

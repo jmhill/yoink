@@ -608,31 +608,30 @@ export const createPlaywrightActor = (
 
     async openMineOverview(): Promise<void> {
       await tasksPage.goto('mine');
-      await tasksPage.waitForMinePileSelect();
       await tasksPage.waitForTasksOrEmpty();
     },
 
-    async openMineNamedPile(name: string): Promise<void> {
-      await tasksPage.goto('mine');
-      await tasksPage.waitForMinePileSelect();
-      await tasksPage.selectMineNamedPile(name);
+    async openOldMinePileUrl(pile: string): Promise<void> {
+      await page.goto(`/tasks?filter=mine&pile=${pile}`);
       await tasksPage.waitForTasksOrEmpty();
     },
 
-    async openMineUnlistedPile(): Promise<void> {
-      await tasksPage.goto('mine');
-      await tasksPage.waitForMinePileSelect();
-      await tasksPage.waitForTasksOrEmpty();
-      await tasksPage.selectMinePile('unlisted');
-      await page.waitForURL(/[?&]filter=mine/);
-      await page.waitForURL(/[?&]pile=unlisted/);
-      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
-      await tasksPage.waitForTasksOrEmpty();
+    async shouldBeOnMineOverview(): Promise<void> {
+      await expect(page).toHaveURL(/[?&]filter=mine/);
+      await expect(page).not.toHaveURL(/[?&]pile=/);
+      await expect(page.getByRole('tab', { name: 'Mine' })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      await expect(page.locator('#mine-pile')).toHaveCount(0);
     },
 
-    async shouldSeeMinePileDropdown(): Promise<void> {
-      await expect(page.locator('#mine-pile')).toBeVisible();
-      await expect(page.locator('#all-pile')).toHaveCount(0);
+    async shouldNotSeeMinePileDropdown(): Promise<void> {
+      await expect(page.locator('#mine-pile')).toHaveCount(0);
+    },
+
+    async shouldSeeRailMineHighlighted(): Promise<void> {
+      await expect.poll(async () => appRail.isItemActive('Mine')).toBe(true);
     },
 
     async shouldSeeReorderControls(): Promise<void> {
@@ -650,19 +649,14 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeCreateListOnMine(): Promise<void> {
-      await tasksPage.waitForMinePileSelect();
-      await page.locator('#mine-pile').click();
+      await expect(page.locator('#mine-pile')).toHaveCount(0);
+      await expect(page.locator('#all-pile')).toHaveCount(0);
       await expect(page.locator('[data-all-pile-new-list]')).toHaveCount(0);
-      await expect(page.getByRole('option', { name: 'New list' })).toHaveCount(0);
-      await tasksPage.closePileSelect();
     },
 
     async shouldNotSeeDeleteListOnMine(name: string): Promise<void> {
-      await tasksPage.waitForMinePileSelect();
+      await expect(page.locator('#mine-pile')).toHaveCount(0);
       await expect(page.getByRole('button', { name: `Delete ${name}` })).toHaveCount(0);
-      await page.locator('#mine-pile').click();
-      await expect(page.getByRole('option', { name: `Delete ${name}` })).toHaveCount(0);
-      await tasksPage.closePileSelect();
     },
 
     async shouldNotSeeReorderControls(): Promise<void> {
@@ -817,9 +811,6 @@ export const createPlaywrightActor = (
         'data-state',
         'active'
       );
-      if (view === 'mine') {
-        await tasksPage.waitForMinePileSelect();
-      }
       await tasksPage.waitForTasksOrEmpty();
     },
 

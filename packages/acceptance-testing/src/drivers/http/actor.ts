@@ -458,16 +458,20 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openMineOverview', 'http');
     },
 
-    async openMineNamedPile(_name: string): Promise<void> {
-      throw new UnsupportedOperationError('openMineNamedPile', 'http');
+    async openOldMinePileUrl(_pile: string): Promise<void> {
+      throw new UnsupportedOperationError('openOldMinePileUrl', 'http');
     },
 
-    async openMineUnlistedPile(): Promise<void> {
-      throw new UnsupportedOperationError('openMineUnlistedPile', 'http');
+    async shouldBeOnMineOverview(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnMineOverview', 'http');
     },
 
-    async shouldSeeMinePileDropdown(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeMinePileDropdown', 'http');
+    async shouldNotSeeMinePileDropdown(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeMinePileDropdown', 'http');
+    },
+
+    async shouldSeeRailMineHighlighted(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailMineHighlighted', 'http');
     },
 
     async shouldSeeReorderControls(): Promise<void> {

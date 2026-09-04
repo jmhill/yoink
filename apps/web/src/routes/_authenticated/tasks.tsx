@@ -1,4 +1,4 @@
-import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, redirect, useSearch, useNavigate } from '@tanstack/react-router';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
@@ -41,9 +41,10 @@ import {
   allPileSelectValue,
   groupAllTasksByPile,
   listIdForCreateTask,
+  mineUrlHasLeftoverPile,
   parseAllPile,
   showsCreateTaskListPicker,
-  tasksInPile,
+  tasksSearchWithoutMinePile,
   type AllPile,
   type AllPileGroup,
   type NamedListRef,
@@ -81,7 +82,24 @@ const searchSchema = z.object({
 const UNKNOWN_LIST_ID = '00000000-0000-0000-0000-000000000000';
 
 export const Route = createFileRoute('/_authenticated/tasks')({
-  validateSearch: searchSchema,
+  validateSearch: (search) => {
+    const raw = search as { filter?: unknown; pile?: unknown };
+    if (raw.filter === 'mine') {
+      return tasksSearchWithoutMinePile({
+        filter: 'mine',
+        pile: typeof raw.pile === 'string' ? raw.pile : undefined,
+      });
+    }
+    return searchSchema.parse(search);
+  },
+  beforeLoad: ({ location }) => {
+    if (mineUrlHasLeftoverPile(location.searchStr)) {
+      throw redirect({
+        to: '/tasks',
+        search: { filter: 'mine' },
+      });
+    }
+  },
   component: TasksPage,
 });
 
@@ -219,16 +237,13 @@ function TasksPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
   const tsrListsQueryClient = tsrLists.useQueryClient();
-  const boardPile: AllPile | null =
-    filter === 'all' || filter === 'mine' ? parseAllPile(pile) : null;
-  const allPile: AllPile | null = filter === 'all' ? boardPile : null;
-  const minePile: AllPile | null = filter === 'mine' ? boardPile : null;
+  const allPile: AllPile | null = filter === 'all' ? parseAllPile(pile) : null;
   const namedPileId = allPile?.kind === 'named' ? allPile.listId : undefined;
   const showsPileGroups =
     filter === 'today' ||
     filter === 'upcoming' ||
-    allPile?.kind === 'overview' ||
-    minePile?.kind === 'overview';
+    filter === 'mine' ||
+    allPile?.kind === 'overview';
 
   const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
@@ -262,11 +277,11 @@ function TasksPage() {
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const namedPileList =
-    boardPile?.kind === 'named'
-      ? namedLists.find((list) => list.id === boardPile.listId)
+    allPile?.kind === 'named'
+      ? namedLists.find((list) => list.id === allPile.listId)
       : undefined;
   const namedPileMissing =
-    boardPile?.kind === 'named' &&
+    allPile?.kind === 'named' &&
     listsData?.status === 200 &&
     !namedPileList;
 
@@ -715,7 +730,7 @@ function TasksPage() {
     navigate({
       to: '/tasks',
       search: {
-        filter: filter === 'mine' ? 'mine' : 'all',
+        filter: 'all',
         ...(value === ALL_PILE_OVERVIEW ? {} : { pile: value }),
       },
     });
@@ -741,11 +756,9 @@ function TasksPage() {
       ? namedPileTasks
       : allPile?.kind === 'unlisted'
         ? unlistedPileTasks
-        : minePile
-          ? tasksInPile(boardTasks, minePile)
-          : boardTasks;
+        : boardTasks;
   const pileGroups =
-    filter === 'upcoming' || allPile?.kind === 'overview' || minePile?.kind === 'overview'
+    filter === 'upcoming' || filter === 'mine' || allPile?.kind === 'overview'
       ? groupAllTasksByPile(boardTasks, namedLists)
       : [];
 
@@ -762,7 +775,7 @@ function TasksPage() {
       ? listsPending || (!namedPileMissing && namedPilePending)
       : allPile?.kind === 'unlisted'
         ? unlistedPilePending
-        : isPending || ((showsPileGroups || Boolean(minePile)) && listsPending);
+        : isPending || (showsPileGroups && listsPending);
   const refetchActive = () => {
     if (allPile?.kind === 'named') {
       void refetchNamedPile();
@@ -823,11 +836,7 @@ function TasksPage() {
       : filter === 'upcoming'
         ? 'No upcoming tasks'
         : filter === 'mine'
-          ? minePile?.kind === 'named'
-            ? 'No tasks assigned to you on this list'
-            : minePile?.kind === 'unlisted'
-              ? 'No unlisted tasks assigned to you'
-              : 'No tasks assigned to you'
+          ? 'No tasks assigned to you'
           : filter === 'completed'
             ? 'No completed tasks'
             : allPile?.kind === 'named'
@@ -842,9 +851,7 @@ function TasksPage() {
       : filter === 'upcoming'
         ? 'Tasks with future due dates will appear here'
         : filter === 'mine'
-          ? minePile?.kind === 'named' || minePile?.kind === 'unlisted'
-            ? 'Assigned tasks in this pile will appear here'
-            : 'Add a task above or assign one to yourself'
+          ? 'Add a task above or assign one to yourself'
           : filter === 'completed'
             ? 'Complete a task to see it here'
             : allPile?.kind === 'named' || allPile?.kind === 'unlisted'
@@ -881,11 +888,11 @@ function TasksPage() {
         </TabsList>
       </Tabs>
 
-      {boardPile && (
+      {allPile && (
         <div className="mb-4 flex items-center gap-2">
-          <Select value={allPileSelectValue(boardPile)} onValueChange={handlePileChange}>
+          <Select value={allPileSelectValue(allPile)} onValueChange={handlePileChange}>
             <SelectTrigger
-              id={filter === 'all' ? 'all-pile' : 'mine-pile'}
+              id="all-pile"
               aria-label="Pile"
               className="min-w-0 flex-1 sm:flex-none sm:w-[16rem]"
             >
@@ -899,17 +906,13 @@ function TasksPage() {
                   {list.name}
                 </SelectItem>
               ))}
-              {filter === 'all' ? (
-                <>
-                  <SelectSeparator />
-                  <SelectItem value={ALL_PILE_NEW_LIST} data-all-pile-new-list="">
-                    New list
-                  </SelectItem>
-                </>
-              ) : null}
+              <SelectSeparator />
+              <SelectItem value={ALL_PILE_NEW_LIST} data-all-pile-new-list="">
+                New list
+              </SelectItem>
             </SelectContent>
           </Select>
-          {filter === 'all' && namedPileList ? (
+          {namedPileList ? (
             <Button
               type="button"
               variant="ghost"
@@ -1001,7 +1004,7 @@ function TasksPage() {
           assigneeLabel={assigneeLabelFor}
           listLabel={listLabelFor}
         />
-      ) : filter === 'upcoming' || allPile?.kind === 'overview' || minePile?.kind === 'overview' ? (
+      ) : filter === 'upcoming' || filter === 'mine' || allPile?.kind === 'overview' ? (
         <PileGroupList groups={pileGroups}>
           {(group) => (
             <AnimatedList>

@@ -61,8 +61,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailSmartView('mine');
       await alice.shouldSeeCreateTaskListPicker();
-      await alice.openMineNamedPile('Groceries');
-      await alice.shouldSeeCreateTaskListPicker();
     });
 
     it('keeps All overview pile dropdown and create-task list picker as fallback', async () => {

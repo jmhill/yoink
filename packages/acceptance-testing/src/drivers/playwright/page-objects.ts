@@ -355,13 +355,47 @@ export class InboxPage {
   }
 
   async goToSnoozed(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Snoozed' }).click();
+    await this.page.locator('[data-inbox-pane-tabs]').getByRole('tab', { name: 'Snoozed' }).click();
     await this.page.waitForURL('/snoozed');
   }
 
   async goToTrash(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Trash' }).click();
+    await this.page.locator('[data-inbox-pane-tabs]').getByRole('tab', { name: 'Trash' }).click();
     await this.page.waitForURL('/trash');
+  }
+
+  paneTabs() {
+    return this.page.locator('[data-inbox-pane-tabs]');
+  }
+
+  async getPaneTabLabels(): Promise<string[]> {
+    const tabs = this.paneTabs().locator('[data-inbox-pane-tab]');
+    const count = await tabs.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const text = await tabs.nth(i).innerText();
+      if (text.trim()) {
+        labels.push(text.trim());
+      }
+    }
+    return labels;
+  }
+
+  async openPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void> {
+    const label = tab === 'inbox' ? 'Inbox' : tab === 'snoozed' ? 'Snoozed' : 'Trash';
+    await this.paneTabs().getByRole('tab', { name: label }).click();
+    const path = tab === 'inbox' ? '/' : `/${tab}`;
+    await this.page.waitForURL(path);
+  }
+
+  captureCard(content: string) {
+    return this.page.locator('[data-capture-id]').filter({ hasText: content });
+  }
+
+  async openPromote(content: string): Promise<void> {
+    const card = this.captureCard(content);
+    await card.hover();
+    await card.getByRole('button', { name: 'Promote' }).click();
   }
 
   async goToSettings(): Promise<void> {
@@ -572,7 +606,7 @@ export class TrashPage {
   }
 
   async goToInbox(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Inbox' }).click();
+    await this.page.locator('[data-inbox-pane-tabs]').getByRole('tab', { name: 'Inbox' }).click();
     await this.page.waitForURL('/');
   }
 
@@ -655,7 +689,7 @@ export class SnoozedPage {
   }
 
   async goToInbox(): Promise<void> {
-    await this.page.getByRole('link', { name: 'Inbox' }).click();
+    await this.page.locator('[data-inbox-pane-tabs]').getByRole('tab', { name: 'Inbox' }).click();
     await this.page.waitForURL('/');
   }
 
@@ -1236,6 +1270,11 @@ export class AppRail {
     const item = this.itemByLabel(label);
     await item.waitFor({ state: 'visible' });
     await item.click();
+  }
+
+  async isItemActive(label: string): Promise<boolean> {
+    await this.waitForVisible();
+    return (await this.itemByLabel(label).getAttribute('data-rail-active')) === 'true';
   }
 
   async openNewList(): Promise<void> {

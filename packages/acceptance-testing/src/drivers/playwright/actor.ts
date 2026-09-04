@@ -929,6 +929,107 @@ export const createPlaywrightActor = (
       return task;
     },
 
+    async openRailInbox(): Promise<void> {
+      await appRail.openItem('Inbox');
+      await page.waitForURL((url) => new URL(url).pathname === '/');
+      await inboxPage.waitForCapturesOrEmpty();
+    },
+
+    async shouldBeOnInboxPane(): Promise<void> {
+      await expect(page).toHaveURL(/https?:\/\/[^/]+\/(?:\?.*)?$/);
+      await expect(inboxPage.paneTabs().getByRole('tab', { name: 'Inbox' })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      await expect(page.getByPlaceholder('Quick capture...')).toBeVisible();
+      await expect(page.locator('#create-task-title')).toHaveCount(0);
+    },
+
+    async shouldSeeInboxPaneTabs(labels: string[]): Promise<void> {
+      await expect(inboxPage.paneTabs()).toBeVisible();
+      await expect.poll(async () => inboxPage.getPaneTabLabels()).toEqual(labels);
+    },
+
+    async shouldNotSeeSnoozedOrTrashOnRail(): Promise<void> {
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel('Snoozed')).toHaveCount(0);
+      await expect(appRail.itemByLabel('Trash')).toHaveCount(0);
+    },
+
+    async openInboxPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void> {
+      await inboxPage.openPaneTab(tab);
+      if (tab === 'inbox') {
+        await inboxPage.waitForCapturesOrEmpty();
+        return;
+      }
+      if (tab === 'snoozed') {
+        await snoozedPage.waitForCapturesOrEmpty();
+        return;
+      }
+      await trashPage.waitForCapturesOrEmpty();
+    },
+
+    async shouldBeOnInboxPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void> {
+      const path = tab === 'inbox' ? '/' : `/${tab}`;
+      const label = tab === 'inbox' ? 'Inbox' : tab === 'snoozed' ? 'Snoozed' : 'Trash';
+      await expect(page).toHaveURL(
+        tab === 'inbox' ? /https?:\/\/[^/]+\/(?:\?.*)?$/ : new RegExp(`${path}(?:\\?.*)?$`)
+      );
+      await expect(inboxPage.paneTabs().getByRole('tab', { name: label })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+    },
+
+    async shouldSeeRailInboxHighlighted(): Promise<void> {
+      await expect.poll(async () => appRail.isItemActive('Inbox')).toBe(true);
+    },
+
+    async shouldSeeCaptureOnCurrentPane(content: string): Promise<void> {
+      await expect(inboxPage.captureCard(content)).toBeVisible();
+    },
+
+    async shouldSeeInboxCaptureActions(content: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      await card.hover();
+      await expect(card.getByRole('button', { name: 'Promote' })).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Snooze' })).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Trash' })).toBeVisible();
+      await expect(card.getByRole('checkbox')).toHaveCount(0);
+      await expect(card.locator('[draggable="true"]')).toHaveCount(0);
+      await expect(card.locator('input[type="date"]')).toHaveCount(0);
+      await expect(card.getByText(/due/i)).toHaveCount(0);
+    },
+
+    async shouldSeeQuickAddCapture(): Promise<void> {
+      await expect(page.getByPlaceholder('Quick capture...')).toBeVisible();
+    },
+
+    async shouldNotSeeQuickAddCapture(): Promise<void> {
+      await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+    },
+
+    async openExistingPromoteModal(content: string): Promise<void> {
+      await inboxPage.openPromote(content);
+      await expect(page.getByRole('dialog')).toBeVisible();
+    },
+
+    async shouldSeeExistingPromoteModal(): Promise<void> {
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading', { name: 'Create Task' })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Create Task' })).toBeVisible();
+      await expect(page.locator('[data-slot="sheet"]')).toHaveCount(0);
+    },
+
+    async closeExistingPromoteModal(): Promise<void> {
+      const dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       if (input.listId !== undefined) {
         await tasksPage.goto('all');

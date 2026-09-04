@@ -107,7 +107,8 @@ export function CaptureCard({
               size="icon-sm"
               onClick={() => onProcessToTask(capture)}
               disabled={isProcessing}
-              title="Convert to task"
+              title="Promote"
+              aria-label="Promote"
             >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

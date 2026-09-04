@@ -94,10 +94,10 @@ export function isRailItemActive(item: RailItem, location: RailLocation): boolea
   }
 
   if (item.kind === 'unlisted') {
-    return location.filter === 'all' && location.pile === 'unlisted';
+    return location.filter === undefined && location.pile === 'unlisted';
   }
 
-  return location.filter === 'all' && location.pile === item.listId;
+  return location.filter === undefined && location.pile === item.listId;
 }
 
 export function railItemKey(item: RailItem): string {

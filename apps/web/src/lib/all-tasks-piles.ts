@@ -43,17 +43,86 @@ export function allPileSelectValue(pile: AllPile): string {
 }
 
 /**
+ * Named-list and Unlisted screens are pile-only (`?pile=`).
+ * All overview is gone — omitted pile is not a destination.
+ */
+export function parsePileScreen(pile: string | undefined): Exclude<AllPile, { kind: 'overview' }> | null {
+  if (!pile || pile === ALL_PILE_OVERVIEW) {
+    return null;
+  }
+  if (pile === ALL_PILE_UNLISTED) {
+    return { kind: 'unlisted' };
+  }
+  return { kind: 'named', listId: pile };
+}
+
+export type TasksBoardSearch = {
+  filter?: string;
+  pile?: string;
+};
+
+export type TasksBoardLanding =
+  | { filter: 'today' | 'upcoming' | 'mine' | 'completed' }
+  | { pile: string };
+
+/**
+ * All is not a destination. Old All URLs (filter=all, with or without
+ * pile, and pile=overview) land on Today. Smart views drop leftover pile.
+ * Named-list / Unlisted screens are pile-only.
+ */
+export function tasksBoardLanding(search: TasksBoardSearch): TasksBoardLanding {
+  if (search.filter === 'all' || search.pile === ALL_PILE_OVERVIEW) {
+    return { filter: 'today' };
+  }
+  if (
+    search.filter === 'today' ||
+    search.filter === 'upcoming' ||
+    search.filter === 'mine' ||
+    search.filter === 'completed'
+  ) {
+    return { filter: search.filter };
+  }
+  if (search.pile === ALL_PILE_UNLISTED || Boolean(search.pile)) {
+    return { pile: search.pile as string };
+  }
+  return { filter: 'today' };
+}
+
+export function tasksBoardSearchEquals(
+  current: TasksBoardSearch,
+  next: TasksBoardLanding
+): boolean {
+  const currentFilter = current.filter;
+  const nextFilter = 'filter' in next ? next.filter : undefined;
+  const currentPile = current.pile;
+  const nextPile = 'pile' in next ? next.pile : undefined;
+  return currentFilter === nextFilter && currentPile === nextPile;
+}
+
+export function namedPileSearch(listId: string): { pile: string } {
+  return { pile: listId };
+}
+
+export function unlistedPileSearch(): { pile: typeof ALL_PILE_UNLISTED } {
+  return { pile: ALL_PILE_UNLISTED };
+}
+
+export function todaySearch(): { filter: 'today' } {
+  return { filter: 'today' };
+}
+
+/**
  * The add-task list picker is only for views that are not already one pile.
  * Named-list and Unlisted screens *are* the pile — hide it there.
- * Smart views (Today / Upcoming / Mine) and All overview keep it.
+ * Smart views (Today / Upcoming / Mine / Done) keep it.
  */
 export function showsCreateTaskListPicker(allPile: AllPile | null): boolean {
   return allPile?.kind !== 'named' && allPile?.kind !== 'unlisted';
 }
 
 /**
- * Create onto the current All one-pile, or use the picker on smart views
- * and All overview. Unlisted omits listId.
+ * Create onto the current named-list or Unlisted pile, or use the picker
+ * on smart views. Unlisted omits listId.
  */
 export function listIdForCreateTask(options: {
   allPile: AllPile | null;

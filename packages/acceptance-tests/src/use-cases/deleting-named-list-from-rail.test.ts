@@ -76,7 +76,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailNamedList('Weekend');
       await alice.deleteNamedListFromRail('Weekend');
-      await alice.shouldBeOnAllOverview();
+      await alice.shouldBeOnToday();
       await alice.shouldSeeRailItems(railWithout('Groceries'));
 
       await alice.openRailSmartView('today');
@@ -85,21 +85,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailItems(railWithout());
     }, 60_000);
 
-    it('keeps All fallback delete and rail New list, without retiring All', async () => {
+    it('keeps rail New list and does not use All as a create/delete home', async () => {
       await alice.createTask({ title: 'Notes' });
-
-      const fromAll = await alice.createNamedListFromAll('Weekend');
-      await alice.shouldBeOnAllNamedPile(fromAll.id);
-      await alice.deleteNamedListFromAll('Weekend');
-      await alice.shouldBeOnAllOverview();
-      await alice.shouldNotSeeNamedPileOnAll('Weekend');
-      await alice.shouldSeeAllPileDropdown();
 
       const fromRail = await alice.createNamedListFromRail('Groceries');
       await alice.shouldBeOnAllNamedPile(fromRail.id);
       await alice.shouldSeeEmptyNamedPile();
       await alice.shouldSeeRailItems(railWithout('Groceries'));
-      await alice.shouldSeeAllPileDropdown();
+      await alice.shouldNotSeeAllDestination();
+
+      await alice.deleteNamedListFromRail('Groceries');
+      await alice.shouldBeOnToday();
+      await alice.shouldSeeRailItems(railWithout());
     }, 60_000);
   });
 });

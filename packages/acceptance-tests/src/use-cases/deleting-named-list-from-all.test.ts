@@ -5,13 +5,8 @@ import { ConflictError } from '@yoink/acceptance-testing';
 /**
  * Story 3 of 6: Delete a named list from All.
  *
- * On Tasks All, when a member is looking at one named list, they can
- * delete that list. They cannot delete from the grouped overview or
- * from Unlisted. Same refuse-if-open-tasks already shipped. After a
- * successful delete, All lands back on overview.
- *
- * This is not grouping Today/Upcoming or Mine picker. Lists page delete
- * is gone with the Lists nav (story 6).
+ * All is retired (story 7). Delete lives on the rail overflow. After a
+ * successful delete of the list you are looking at, land on Today.
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Deleting a named list from All [${ctx.driverName}]`, () => {
@@ -21,13 +16,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-delete-list-from-all@example.com');
     });
 
-    it('deletes an empty named list from All and lands on overview', async () => {
+    it('deletes an empty named list from the rail and lands on Today', async () => {
       const list = await alice.createNamedList('Weekend');
 
       await alice.openAllNamedPile('Weekend');
-      await alice.deleteNamedListFromAll('Weekend');
+      await alice.deleteNamedListFromRail('Weekend');
 
-      await alice.shouldBeOnAllOverview();
+      await alice.shouldBeOnToday();
       await alice.shouldNotSeeNamedPileOnAll('Weekend');
       expect(list.name).toBe('Weekend');
     });
@@ -38,19 +33,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.updateTask(task.id, { listId: list.id });
 
       await alice.openAllNamedPile('Groceries');
-      await expect(alice.deleteNamedListFromAll('Groceries')).rejects.toThrow(ConflictError);
+      await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
 
       await alice.shouldBeOnAllNamedPile(list.id);
       await alice.shouldSeeNamedPileOnAll('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
     });
 
-    it('has no delete-list control on overview or Unlisted', async () => {
+    it('has no All delete-list control on Today or Unlisted', async () => {
       await alice.createNamedList('Weekend');
       await alice.createTask({ title: 'Notes' });
 
-      await alice.openAllOverview();
+      await alice.openToday();
       await alice.shouldNotSeeDeleteListOnAll('Weekend');
+      await alice.shouldNotSeeAllDestination();
 
       await alice.openAllUnlistedPile();
       await alice.shouldNotSeeDeleteListOnAll('Weekend');

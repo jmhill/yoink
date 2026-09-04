@@ -110,6 +110,22 @@ export const createPlaywrightActor = (
   const tasksPage = new TasksPage(page);
   const appRail = new AppRail(page);
 
+  const openTaskOnItsPile = async (taskId: string): Promise<void> => {
+    const response = await page.request.get(`/api/tasks/${taskId}`);
+    if (!response.ok()) {
+      throw new Error(`Failed to read task ${taskId}: ${response.status()}`);
+    }
+    const task = (await response.json()) as Task;
+    if (task.completedAt) {
+      await tasksPage.goto('completed');
+    } else if (task.listId) {
+      await tasksPage.gotoNamedPile(task.listId);
+    } else {
+      await tasksPage.gotoUnlistedPile();
+    }
+    await tasksPage.waitForTask(taskId);
+  };
+
   /**
    * Build a minimal Capture object from ID and content.
    * We don't have access to all fields through the UI, but tests
@@ -323,7 +339,7 @@ export const createPlaywrightActor = (
     },
 
     async listNamedLists(): Promise<NamedList[]> {
-      await tasksPage.goto('all');
+      await appRail.waitForVisible();
       const lists = await tasksPage.getNamedPiles();
       return lists.map(({ id, name }) => ({
         id,
@@ -335,24 +351,41 @@ export const createPlaywrightActor = (
     },
 
     async createNamedList(name: string): Promise<NamedList> {
-      const created = await tasksPage.createNamedListFromAll(name);
-      if (created.status === 'empty') {
-        throw new ValidationError('Name is required');
+      // Setup path: session API. The rail New list dialog is proven by
+      // createNamedListFromRail — Radix close/reopen is too slow for
+      // the many tests that create two lists as fixtures.
+      const response = await page.request.post('/api/lists', { data: { name } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
       }
-      if (created.status === 'duplicate') {
-        throw new ConflictError('A list with this name already exists');
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Name is required');
       }
-      return {
-        id: created.id,
-        name: created.name,
-        organizationId: credentials.organizationId,
-        createdById: credentials.userId,
-        createdAt: new Date().toISOString(),
-      };
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'A list with this name already exists');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create named list: ${response.status()}`);
+      }
+      const created = (await response.json()) as NamedList;
+      await page.goto(`/tasks?pile=${created.id}`);
+      await expect(page).toHaveURL(new RegExp(`[?&]pile=${created.id}`));
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(created.name)).toBeVisible();
+      await tasksPage.waitForTasksOrEmpty();
+      return created;
     },
 
     async deleteNamedList(id: string): Promise<void> {
-      const result = await tasksPage.deleteNamedListById(id);
+      await appRail.waitForVisible();
+      const lists = await tasksPage.getNamedPiles();
+      const list = lists.find((item) => item.id === id);
+      if (!list) {
+        throw new Error(`Named list ${id} not found on the rail`);
+      }
+      const result = await appRail.deleteNamedList(list.name);
       if (result.status === 'has-open-tasks') {
         throw new ConflictError('This list still has open tasks');
       }
@@ -360,49 +393,43 @@ export const createPlaywrightActor = (
 
     async goToLists(): Promise<void> {
       await page.goto('/lists');
-      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
-      await tasksPage.waitForPileSelect();
+      await expect(page).toHaveURL(/[?&]filter=today/);
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async openListsUrl(): Promise<void> {
       await page.goto('/lists');
-      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
-      await tasksPage.waitForPileSelect();
+      await expect(page).toHaveURL(/[?&]filter=today/);
+      await tasksPage.waitForTasksOrEmpty();
     },
 
     async openNamedListUrl(listId: string): Promise<void> {
       await page.goto(`/lists/${listId}`);
-      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
-      await tasksPage.waitForPileSelect();
+      await expect(page).toHaveURL(new RegExp(`[?&]pile=${listId}`));
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
     async openUnlistedListUrl(): Promise<void> {
       await page.goto('/lists/unlisted');
-      await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
-      await tasksPage.waitForPileSelect();
+      await expect(page).toHaveURL(/[?&]pile=unlisted/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
     async shouldSeeEmptyNamedLists(): Promise<void> {
-      await tasksPage.goto('all');
+      await appRail.waitForVisible();
       await expect.poll(async () => tasksPage.getNamedPiles()).toEqual([]);
     },
 
     async shouldSeeNamedList(name: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForPileSelect();
-      await page.locator('#all-pile').click();
-      await expect(tasksPage.namedPileOption(name)).toBeVisible();
-      await tasksPage.closePileSelect();
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(name)).toBeVisible();
     },
 
     async shouldNotSeeNamedList(name: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForPileSelect();
-      await page.locator('#all-pile').click();
-      await expect(tasksPage.namedPileOption(name)).toHaveCount(0);
-      await tasksPage.closePileSelect();
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(name)).toHaveCount(0);
     },
 
     async listOpenTasksOnList(listId: string): Promise<Task[]> {
@@ -451,9 +478,9 @@ export const createPlaywrightActor = (
     },
 
     async openNamedList(name: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForPileSelect();
-      await tasksPage.selectAllNamedPile(name);
+      await appRail.openItem(name);
+      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -521,24 +548,48 @@ export const createPlaywrightActor = (
       await tasksPage.gotoUnlistedPile();
     },
 
+    async shouldNotSeeAllDestination(): Promise<void> {
+      await expect(page.getByRole('tab', { name: 'All', exact: true })).toHaveCount(0);
+      await expect(page.locator('#all-pile')).toHaveCount(0);
+      await expect(page.locator('[data-app-rail] [data-rail-label="All"]')).toHaveCount(0);
+    },
+
+    async openOldAllUrl(path: string): Promise<void> {
+      await page.goto(path);
+      await expect(page).toHaveURL(/[?&]filter=today/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
+      await expect(page).not.toHaveURL(/[?&]pile=/);
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldBeOnToday(): Promise<void> {
+      await expect(page).toHaveURL(/[?&]filter=today/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
+      await expect(page).not.toHaveURL(/[?&]pile=/);
+      await expect(page.getByRole('tab', { name: 'Today' })).toHaveAttribute(
+        'data-state',
+        'active'
+      );
+      await expect(page.locator('#all-pile')).toHaveCount(0);
+    },
+
     async openAllOverview(): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForPileSelect();
+      await page.goto('/tasks?filter=all');
+      await expect(page).toHaveURL(/[?&]filter=today/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
     async openAllNamedPile(name: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForPileSelect();
-      await tasksPage.selectAllNamedPile(name);
+      await appRail.openItem(name);
+      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
     async openAllUnlistedPile(): Promise<void> {
-      await tasksPage.goto('all');
-      await expect(page.locator('[data-pile-name="Unlisted"]')).toBeVisible();
-      await tasksPage.selectAllPile('unlisted');
+      await appRail.openItem('Unlisted');
       await page.waitForURL(/[?&]pile=unlisted/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await expect(page.locator('[data-pile-group]')).toHaveCount(0);
       await tasksPage.waitForTasksOrEmpty();
     },
@@ -603,7 +654,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeAllPileDropdown(): Promise<void> {
-      await expect(page.locator('#all-pile')).toBeVisible();
+      await expect(page.locator('#all-pile')).toHaveCount(0);
     },
 
     async openMineOverview(): Promise<void> {
@@ -690,13 +741,14 @@ export const createPlaywrightActor = (
     },
 
     async createNamedListFromAll(name: string): Promise<NamedList> {
-      const created = await tasksPage.createNamedListFromAll(name);
+      const created = await appRail.createNamedList(name);
       if (created.status === 'empty') {
         throw new ValidationError('Name is required');
       }
       if (created.status === 'duplicate') {
         throw new ConflictError('A list with this name already exists');
       }
+      await tasksPage.waitForTasksOrEmpty();
       return {
         id: created.id,
         name: created.name,
@@ -707,15 +759,14 @@ export const createPlaywrightActor = (
     },
 
     async shouldBeOnAllNamedPile(listId: string): Promise<void> {
-      await expect(page).toHaveURL(/[?&]filter=all/);
       await expect(page).toHaveURL(new RegExp(`[?&]pile=${listId}`));
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
+      await expect(page.locator('#all-pile')).toHaveCount(0);
     },
 
     async shouldSeeNamedPileOnAll(name: string): Promise<void> {
-      await tasksPage.waitForPileSelect();
-      await page.locator('#all-pile').click();
-      await expect(tasksPage.namedPileOption(name)).toBeVisible();
-      await tasksPage.closePileSelect();
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(name)).toBeVisible();
     },
 
     async shouldSeeEmptyNamedPile(): Promise<void> {
@@ -723,35 +774,32 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeDeleteListOnAll(name: string): Promise<void> {
-      await tasksPage.waitForPileSelect();
+      await expect(page.locator('#all-pile')).toHaveCount(0);
       await expect(page.getByRole('button', { name: `Delete ${name}` })).toHaveCount(0);
-      await page.locator('#all-pile').click();
-      await expect(page.getByRole('option', { name: `Delete ${name}` })).toHaveCount(0);
-      await tasksPage.closePileSelect();
     },
 
     async deleteNamedListFromAll(name: string): Promise<void> {
-      const result = await tasksPage.deleteNamedListFromAll(name);
+      const result = await appRail.deleteNamedList(name);
       if (result.status === 'has-open-tasks') {
         throw new ConflictError('This list still has open tasks');
       }
     },
 
     async shouldBeOnAllOverview(): Promise<void> {
-      await expect(page).toHaveURL(/[?&]filter=all/);
+      await expect(page).toHaveURL(/[?&]filter=today/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await expect(page).not.toHaveURL(/[?&]pile=/);
     },
 
     async shouldBeOnAllUnlistedPile(): Promise<void> {
-      await expect(page).toHaveURL(/[?&]filter=all/);
       await expect(page).toHaveURL(/[?&]pile=unlisted/);
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
+      await expect(page.locator('#all-pile')).toHaveCount(0);
     },
 
     async shouldNotSeeNamedPileOnAll(name: string): Promise<void> {
-      await tasksPage.waitForPileSelect();
-      await page.locator('#all-pile').click();
-      await expect(tasksPage.namedPileOption(name)).toHaveCount(0);
-      await tasksPage.closePileSelect();
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(name)).toHaveCount(0);
     },
 
     async shouldSeeRailItems(labels: string[]): Promise<void> {
@@ -777,17 +825,15 @@ export const createPlaywrightActor = (
 
     async openRailNamedList(name: string): Promise<void> {
       await appRail.openItem(name);
-      await page.waitForURL(/[?&]filter=all/);
       await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
-      await tasksPage.waitForPileSelect();
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
     async openRailUnlisted(): Promise<void> {
       await appRail.openItem('Unlisted');
-      await page.waitForURL(/[?&]filter=all/);
       await page.waitForURL(/[?&]pile=unlisted/);
-      await tasksPage.waitForPileSelect();
+      await expect(page).not.toHaveURL(/[?&]filter=all/);
       await tasksPage.waitForTasksOrEmpty();
     },
 
@@ -830,7 +876,6 @@ export const createPlaywrightActor = (
       if (created.status === 'duplicate') {
         throw new ConflictError('A list with this name already exists');
       }
-      await tasksPage.waitForPileSelect();
       await tasksPage.waitForTasksOrEmpty();
       return {
         id: created.id,
@@ -865,7 +910,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldBeOnTaskFilter(
-      filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'
+      filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
       await expect(page).toHaveURL(new RegExp(`[?&]filter=${filter}`));
       const tabName = {
@@ -873,7 +918,6 @@ export const createPlaywrightActor = (
         upcoming: /Upcoming|Soon/,
         mine: 'Mine',
         completed: 'Done',
-        all: 'All',
       }[filter];
       await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
         'data-state',
@@ -1070,9 +1114,7 @@ export const createPlaywrightActor = (
       // Quick-add can pick a list, but has no assignee or due-date controls.
       // Use the session API when those fields are present so setup is exact.
       if (input.listId !== undefined && input.assigneeId === undefined && input.dueDate === undefined) {
-        await tasksPage.goto('all');
-        await tasksPage.waitForTasksOrEmpty();
-        await tasksPage.selectCreateList(input.listId);
+        await tasksPage.gotoNamedPile(input.listId);
 
         const responsePromise = page.waitForResponse(
           (response) =>
@@ -1121,8 +1163,7 @@ export const createPlaywrightActor = (
     },
 
     async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForTask(id);
+      await openTaskOnItsPile(id);
       await tasksPage.openEdit(id);
 
       if (input.title !== undefined) {
@@ -1312,8 +1353,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeAssigneeOnTask(taskId: string, assigneeLabel: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForTask(taskId);
+      await openTaskOnItsPile(taskId);
       await expect(tasksPage.assigneeOnTask(taskId)).toHaveAttribute(
         'data-assignee',
         assigneeLabel
@@ -1321,32 +1361,27 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeAssigneeOnTask(taskId: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForTask(taskId);
+      await openTaskOnItsPile(taskId);
       await expect(tasksPage.assigneeOnTask(taskId)).toHaveCount(0);
     },
 
     async shouldSeeListOnTask(taskId: string, listName: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForTask(taskId);
+      await openTaskOnItsPile(taskId);
       await expect(tasksPage.listOnTask(taskId)).toHaveAttribute('data-list', listName);
     },
 
     async shouldNotSeeListOnTask(taskId: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.waitForTask(taskId);
+      await openTaskOnItsPile(taskId);
       await expect(tasksPage.listOnTask(taskId)).toHaveCount(0);
     },
 
     async shouldSeeTaskOnMine(taskId: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.openFilter('mine');
+      await tasksPage.goto('mine');
       await tasksPage.waitForTask(taskId);
     },
 
     async shouldNotSeeTaskOnMine(taskId: string): Promise<void> {
-      await tasksPage.goto('all');
-      await tasksPage.openFilter('mine');
+      await tasksPage.goto('mine');
       await tasksPage.waitForTasksOrEmpty();
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },

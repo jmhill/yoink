@@ -155,25 +155,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReorderControls();
     });
 
-    it('keeps All as a working fallback with dropdown, create, and delete', async () => {
+    it('does not keep All as a destination', async () => {
       await alice.createTask({ title: 'Notes' });
 
-      await alice.openAllOverview();
-      await alice.shouldSeeAllPileDropdown();
-      await alice.shouldSeeAllPileGroups(['Unlisted']);
-      await alice.shouldNotSeeReorderControls();
-
-      const fromAll = await alice.createNamedListFromAll('Weekend');
-      await alice.shouldBeOnAllNamedPile(fromAll.id);
-      await alice.shouldSeeEmptyNamedPile();
-      await alice.shouldSeeNamedPileOnAll('Weekend');
-      await alice.shouldSeeAddTaskField();
-
-      await alice.deleteNamedListFromAll('Weekend');
-      await alice.shouldBeOnAllOverview();
-      await alice.shouldNotSeeNamedPileOnAll('Weekend');
-      await alice.shouldSeeAllPileDropdown();
-    }, 60_000);
+      await alice.openToday();
+      await alice.shouldNotSeeAllDestination();
+      await alice.shouldSeeCreateTaskListPicker();
+    });
 
     it('creates a named list from the rail New list control and lands on that pile', async () => {
       const list = await alice.createNamedListFromRail('Groceries');

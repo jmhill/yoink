@@ -735,15 +735,14 @@ export class SnoozedPage {
 export class TasksPage {
   constructor(private readonly page: Page) {}
 
-  async goto(filter: TaskFilter = 'all'): Promise<void> {
+  async goto(filter: Exclude<TaskFilter, 'all'> = 'today'): Promise<void> {
     await this.page.goto(`/tasks?filter=${filter}`);
   }
 
-  async openFilter(filter: TaskFilter): Promise<void> {
+  async openFilter(filter: Exclude<TaskFilter, 'all'>): Promise<void> {
     const name = {
       today: 'Today',
       upcoming: /Upcoming|Soon/,
-      all: 'All',
       completed: 'Done',
       mine: 'Mine',
     }[filter];
@@ -863,8 +862,13 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-list]');
   }
 
+  async waitForPileScreen(): Promise<void> {
+    await this.page.waitForURL(/[?&]pile=/);
+    await this.waitForTasksOrEmpty();
+  }
+
   async waitForPileSelect(): Promise<void> {
-    await this.page.locator('#all-pile').waitFor({ state: 'visible' });
+    throw new Error('All pile dropdown (#all-pile) is retired');
   }
 
   async getBoardTaskTitles(): Promise<string[]> {
@@ -937,11 +941,9 @@ export class TasksPage {
     | { status: 'empty' }
     | { status: 'duplicate' }
   > {
-    await this.goto('all');
-    await this.waitForPileSelect();
+    // All is gone — create lives on + New list.
     const previousPile = new URL(this.page.url()).searchParams.get('pile');
-
-    await this.openNewListFromPileSelect();
+    await this.page.locator('[data-rail-item="new-list"]').click();
 
     const dialog = this.page.getByRole('dialog');
     await dialog.waitFor({ state: 'visible' });
@@ -973,7 +975,7 @@ export class TasksPage {
 
     const pile = new URL(this.page.url()).searchParams.get('pile');
     if (!pile) {
-      throw new Error(`Created list "${name}" did not land on one-pile All`);
+      throw new Error(`Created list "${name}" did not land on that pile`);
     }
     await this.waitForTasksOrEmpty();
     return { status: 'created', id: pile, name };
@@ -1016,7 +1018,7 @@ export class TasksPage {
     await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
     await this.page.waitForURL((url) => {
       const parsed = new URL(url);
-      return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
+      return parsed.searchParams.get('filter') === 'today' && !parsed.searchParams.has('pile');
     });
     await this.waitForTasksOrEmpty();
     return { status: 'deleted' };
@@ -1106,36 +1108,28 @@ export class TasksPage {
   }
 
   async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {
-    await this.waitForPileSelect();
-    await this.closePileSelect();
-    await this.page.locator('#all-pile').click();
-    const listbox = this.page.getByRole('listbox');
-    await listbox.waitFor({ state: 'visible' });
-    const items = listbox.locator('[data-slot="select-item"]:not([data-all-pile-new-list])');
+    const items = this.page.locator('[data-app-rail] [data-rail-item="named"]');
     const count = await items.count();
     const lists: Array<{ id: string; name: string }> = [];
     for (let i = 0; i < count; i++) {
       const item = items.nth(i);
-      const id = await item.getAttribute('data-value');
-      const name = (await item.innerText()).trim();
-      if (id && /^[0-9a-f-]{36}$/i.test(id) && name) {
+      const id = await item.getAttribute('data-rail-list-id');
+      const name = await item.getAttribute('data-rail-label');
+      if (id && name) {
         lists.push({ id, name });
       }
     }
-    await this.closePileSelect();
     return lists;
   }
 
   async gotoNamedPile(listId: string): Promise<void> {
-    await this.page.goto(`/tasks?filter=all&pile=${listId}`);
-    await this.waitForPileSelect();
-    await this.waitForTasksOrEmpty();
+    await this.page.goto(`/tasks?pile=${listId}`);
+    await this.waitForPileScreen();
   }
 
   async gotoUnlistedPile(): Promise<void> {
-    await this.page.goto('/tasks?filter=all&pile=unlisted');
-    await this.waitForPileSelect();
-    await this.waitForTasksOrEmpty();
+    await this.page.goto('/tasks?pile=unlisted');
+    await this.waitForPileScreen();
   }
 
   async getOpenTaskTitles(): Promise<string[]> {
@@ -1195,7 +1189,7 @@ export class TasksPage {
     const lists = await this.getNamedPiles();
     const list = lists.find((item) => item.id === id);
     if (!list) {
-      throw new Error(`Named list ${id} not found in All pile dropdown`);
+      throw new Error(`Named list ${id} not found on the rail`);
     }
     return this.deleteNamedListFromAll(list.name);
   }
@@ -1287,10 +1281,7 @@ export class AppRail {
   }
 
   async openNewList(): Promise<void> {
-    await this.waitForVisible();
-    const button = this.root().locator('[data-rail-item="new-list"]');
-    await button.waitFor({ state: 'visible' });
-    await button.click();
+    await this.openNewListDialog();
   }
 
   async createNamedList(
@@ -1301,16 +1292,14 @@ export class AppRail {
     | { status: 'duplicate' }
   > {
     const previousPile = new URL(this.page.url()).searchParams.get('pile');
-    await this.openNewList();
-
-    const dialog = this.page.getByRole('dialog');
-    await dialog.waitFor({ state: 'visible' });
+    const dialog = await this.openNewListDialog();
     const nameInput = dialog.getByLabel('Name');
     await nameInput.waitFor({ state: 'visible' });
     await nameInput.fill(name);
 
     const createButton = dialog.getByRole('button', { name: 'Create list' });
     if (await createButton.isDisabled()) {
+      await this.dismissOpenDialog();
       return { status: 'empty' };
     }
 
@@ -1325,26 +1314,66 @@ export class AppRail {
     const duplicateError = dialog.locator('[data-list-create-error]');
     if (response.status() === 409) {
       await duplicateError.waitFor({ state: 'visible' });
+      await this.dismissOpenDialog();
       return { status: 'duplicate' };
     }
     if (response.status() !== 201) {
       throw new Error(`Failed to create named list from the rail: ${response.status()}`);
     }
 
+    await dialog.waitFor({ state: 'hidden' });
+    await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
     await this.page.waitForURL((url) => {
       const pile = new URL(url).searchParams.get('pile');
       return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
     });
-
-    if (await duplicateError.isVisible()) {
-      return { status: 'duplicate' };
-    }
+    await this.itemByLabel(name).waitFor({ state: 'visible' });
 
     const pile = new URL(this.page.url()).searchParams.get('pile');
     if (!pile) {
-      throw new Error(`Created list "${name}" from the rail did not land on one-pile All`);
+      throw new Error(`Created list "${name}" from the rail did not land on that pile`);
     }
     return { status: 'created', id: pile, name };
+  }
+
+  private newListDialog() {
+    return this.page.getByRole('dialog', { name: 'New list' });
+  }
+
+  private async openNewListDialog() {
+    await this.waitForVisible();
+    const button = this.root().locator('[data-rail-item="new-list"]');
+    await button.waitFor({ state: 'visible' });
+    const dialog = this.newListDialog();
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.dismissOpenDialog();
+      await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
+      await button.click();
+      try {
+        await dialog.waitFor({ state: 'visible', timeout: 2_500 });
+        return dialog;
+      } catch {
+        // Overlay from the previous create ate the click. Retry.
+      }
+    }
+
+    await dialog.waitFor({ state: 'visible' });
+    return dialog;
+  }
+
+  private async dismissOpenDialog(): Promise<void> {
+    const dialog = this.page.getByRole('dialog');
+    if (!(await dialog.isVisible().catch(() => false))) {
+      return;
+    }
+    const cancel = dialog.getByRole('button', { name: 'Cancel' });
+    if (await cancel.isVisible().catch(() => false)) {
+      await cancel.click();
+    } else {
+      await this.page.keyboard.press('Escape');
+    }
+    await dialog.waitFor({ state: 'hidden' });
   }
 
   overflowByLabel(label: string) {
@@ -1366,7 +1395,7 @@ export class AppRail {
     const listId = await this.itemByLabel(name).getAttribute('data-rail-list-id');
     const viewingDeletedPile =
       previous.pathname === '/tasks' &&
-      previous.searchParams.get('filter') === 'all' &&
+      !previous.searchParams.get('filter') &&
       Boolean(listId) &&
       previous.searchParams.get('pile') === listId;
 
@@ -1399,7 +1428,7 @@ export class AppRail {
     if (viewingDeletedPile) {
       await this.page.waitForURL((url) => {
         const parsed = new URL(url);
-        return parsed.searchParams.get('filter') === 'all' && !parsed.searchParams.has('pile');
+        return parsed.searchParams.get('filter') === 'today' && !parsed.searchParams.has('pile');
       });
     }
     return { status: 'deleted' };

@@ -7,10 +7,16 @@ import {
   groupAllTasksByPile,
   listIdForCreateTask,
   mineUrlHasLeftoverPile,
+  namedPileSearch,
   parseAllPile,
+  parsePileScreen,
   showsCreateTaskListPicker,
+  tasksBoardLanding,
+  tasksBoardSearchEquals,
   tasksInPile,
   tasksSearchWithoutMinePile,
+  todaySearch,
+  unlistedPileSearch,
 } from './all-tasks-piles';
 
 const orgId = '00000000-0000-0000-0000-000000000001';
@@ -45,13 +51,76 @@ describe('allPileSelectValue', () => {
   });
 });
 
+describe('parsePileScreen', () => {
+  it('is null for omitted pile and retired All overview', () => {
+    expect(parsePileScreen(undefined)).toBeNull();
+    expect(parsePileScreen(ALL_PILE_OVERVIEW)).toBeNull();
+  });
+
+  it('parses unlisted and a named list id', () => {
+    expect(parsePileScreen(ALL_PILE_UNLISTED)).toEqual({ kind: 'unlisted' });
+    expect(parsePileScreen(groceriesId)).toEqual({ kind: 'named', listId: groceriesId });
+  });
+});
+
+describe('tasksBoardLanding', () => {
+  it('sends old All URLs to Today, including leftover pile', () => {
+    expect(tasksBoardLanding({ filter: 'all' })).toEqual({ filter: 'today' });
+    expect(tasksBoardLanding({ filter: 'all', pile: groceriesId })).toEqual({
+      filter: 'today',
+    });
+    expect(tasksBoardLanding({ filter: 'all', pile: ALL_PILE_UNLISTED })).toEqual({
+      filter: 'today',
+    });
+    expect(tasksBoardLanding({ pile: ALL_PILE_OVERVIEW })).toEqual({ filter: 'today' });
+    expect(tasksBoardLanding({})).toEqual({ filter: 'today' });
+  });
+
+  it('keeps smart views and drops leftover pile on them', () => {
+    expect(tasksBoardLanding({ filter: 'today' })).toEqual({ filter: 'today' });
+    expect(tasksBoardLanding({ filter: 'mine', pile: groceriesId })).toEqual({
+      filter: 'mine',
+    });
+    expect(tasksBoardLanding({ filter: 'upcoming', pile: ALL_PILE_UNLISTED })).toEqual({
+      filter: 'upcoming',
+    });
+    expect(tasksBoardLanding({ filter: 'completed' })).toEqual({ filter: 'completed' });
+  });
+
+  it('keeps named-list and Unlisted pile screens without a filter', () => {
+    expect(tasksBoardLanding({ pile: groceriesId })).toEqual({ pile: groceriesId });
+    expect(tasksBoardLanding({ pile: ALL_PILE_UNLISTED })).toEqual({
+      pile: ALL_PILE_UNLISTED,
+    });
+  });
+});
+
+describe('tasksBoardSearchEquals', () => {
+  it('is true only when filter and pile both match the landing', () => {
+    expect(tasksBoardSearchEquals({ filter: 'today' }, { filter: 'today' })).toBe(true);
+    expect(tasksBoardSearchEquals({ pile: groceriesId }, { pile: groceriesId })).toBe(true);
+    expect(tasksBoardSearchEquals({ filter: 'all' }, { filter: 'today' })).toBe(false);
+    expect(
+      tasksBoardSearchEquals({ filter: 'all', pile: groceriesId }, { filter: 'today' })
+    ).toBe(false);
+  });
+});
+
+describe('pile screen search helpers', () => {
+  it('builds pile-only and Today search', () => {
+    expect(namedPileSearch(groceriesId)).toEqual({ pile: groceriesId });
+    expect(unlistedPileSearch()).toEqual({ pile: ALL_PILE_UNLISTED });
+    expect(todaySearch()).toEqual({ filter: 'today' });
+  });
+});
+
 describe('showsCreateTaskListPicker', () => {
-  it('hides the picker on All named-list and Unlisted one-pile screens', () => {
+  it('hides the picker on named-list and Unlisted pile screens', () => {
     expect(showsCreateTaskListPicker({ kind: 'named', listId: groceriesId })).toBe(false);
     expect(showsCreateTaskListPicker({ kind: 'unlisted' })).toBe(false);
   });
 
-  it('keeps the picker on smart views and All overview', () => {
+  it('keeps the picker on smart views', () => {
     expect(showsCreateTaskListPicker(null)).toBe(true);
     expect(showsCreateTaskListPicker({ kind: 'overview' })).toBe(true);
   });
@@ -76,7 +145,7 @@ describe('listIdForCreateTask', () => {
     ).toBeUndefined();
   });
 
-  it('uses the picker on smart views and All overview', () => {
+  it('uses the picker on smart views', () => {
     expect(listIdForCreateTask({ allPile: null, pickedListId: groceriesId })).toBe(
       groceriesId
     );

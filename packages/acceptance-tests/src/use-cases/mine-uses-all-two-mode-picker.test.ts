@@ -82,14 +82,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeTask(unassignedOnList.id);
     });
 
-    it('leaves All two-modes with its pile dropdown and one-pile reorder', async () => {
+    it('leaves named-list pile screens with reorder and no All destination', async () => {
       const list = await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Milk', listId: list.id });
       await alice.createTask({ title: 'Eggs', listId: list.id });
 
-      await alice.openAllOverview();
-      await alice.shouldSeeAllPileDropdown();
-      await alice.shouldSeeAllPileGroups(['Groceries']);
+      await alice.openToday();
+      await alice.shouldNotSeeAllDestination();
 
       await alice.openAllNamedPile('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs']);

@@ -4,7 +4,7 @@ export const Route = createFileRoute('/_authenticated/lists_/unlisted')({
   beforeLoad: () => {
     throw redirect({
       to: '/tasks',
-      search: { filter: 'all', pile: 'unlisted' },
+      search: { pile: 'unlisted' },
     });
   },
 });

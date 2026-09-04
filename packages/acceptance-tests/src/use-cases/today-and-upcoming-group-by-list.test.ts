@@ -66,13 +66,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReorderControls();
     });
 
-    it('leaves All two-modes with its pile dropdown', async () => {
+    it('does not keep All as a destination', async () => {
       await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Notes' });
 
-      await alice.openAllOverview();
-      await alice.shouldSeeAllPileDropdown();
-      await alice.shouldSeeAllPileGroups(['Unlisted']);
+      await alice.openToday();
+      await alice.shouldNotSeeAllDestination();
     });
   });
 });

@@ -5,14 +5,11 @@ import { ConflictError } from '@yoink/acceptance-testing';
 /**
  * Story 6 of 6: Lists nav dies.
  *
- * Lists is a dimension of the task board, not a second app. After this
- * story there is no Lists nav and no Lists pages. Members find and work
- * piles on Tasks. Old Lists URLs land on All so bookmarks do not 404.
- *
- * This story only removes the Lists surface. It does not add new list
- * behavior. Create/delete stay on All. Mine is still a filter. HTTP
- * still only maps.
+ * Lists is a dimension of the task board, not a second app. There is no
+ * Lists nav and no Lists pages. Old `/lists` lands on Today (All is
+ * retired). Named-list and Unlisted Lists URLs land on those pile screens.
  */
+
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Lists nav dies [${ctx.driverName}]`, () => {
     let alice: BrowserActor;
@@ -22,18 +19,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('has no Lists item in the nav', async () => {
-      await alice.openAllOverview();
+      await alice.openToday();
       await alice.shouldNotSeeListsNav();
     });
 
-    it('opens /lists on Tasks All overview', async () => {
+    it('opens /lists on Today, not All', async () => {
       await alice.openListsUrl();
-      await alice.shouldBeOnAllOverview();
-      await alice.shouldSeeAllPileDropdown();
+      await alice.shouldBeOnToday();
+      await alice.shouldNotSeeAllDestination();
       await alice.shouldNotSeeListsNav();
     });
 
-    it('opens a named-list Lists URL on that list’s All one-pile', async () => {
+    it('opens a named-list Lists URL on that pile screen', async () => {
       const list = await alice.createNamedList('Groceries');
 
       await alice.openNamedListUrl(list.id);
@@ -42,7 +39,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNamedPileOnAll('Groceries');
     });
 
-    it('opens /lists/unlisted on All Unlisted', async () => {
+    it('opens /lists/unlisted on the Unlisted pile screen', async () => {
       await alice.createTask({ title: 'Notes' });
 
       await alice.openUnlistedListUrl();
@@ -50,25 +47,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Notes']);
     });
 
-    it('keeps All’s two-mode picker, create, delete-on-named-pile, and one-pile reorder', async () => {
+    it('keeps named-list create, delete, and one-pile reorder on the rail', async () => {
       await alice.createTask({ title: 'Notes' });
 
-      await alice.openAllOverview();
-      await alice.shouldSeeAllPileDropdown();
-      await alice.shouldSeeAllPileGroups(['Unlisted']);
-      await alice.shouldNotSeeReorderControls();
-
-      const list = await alice.createNamedListFromAll('Weekend');
+      const list = await alice.createNamedListFromRail('Weekend');
       await alice.shouldBeOnAllNamedPile(list.id);
       await alice.shouldSeeEmptyNamedPile();
       await alice.shouldSeeNamedPileOnAll('Weekend');
 
-      await alice.openAllNamedPile('Weekend');
-      await alice.deleteNamedListFromAll('Weekend');
-      await alice.shouldBeOnAllOverview();
+      await alice.deleteNamedListFromRail('Weekend');
+      await alice.shouldBeOnToday();
       await alice.shouldNotSeeNamedPileOnAll('Weekend');
 
-      const groceries = await alice.createNamedListFromAll('Groceries');
+      const groceries = await alice.createNamedListFromRail('Groceries');
       await alice.createTask({ title: 'Milk', listId: groceries.id });
       await alice.createTask({ title: 'Eggs', listId: groceries.id });
       await alice.openAllNamedPile('Groceries');
@@ -76,7 +67,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeReorderControls();
       await alice.moveOpenTask('Milk', 'down');
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk']);
-      await expect(alice.deleteNamedListFromAll('Groceries')).rejects.toThrow(ConflictError);
+      await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
       await alice.shouldBeOnAllNamedPile(groceries.id);
     }, 60_000);
 

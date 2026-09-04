@@ -1281,10 +1281,7 @@ export class AppRail {
   }
 
   async openNewList(): Promise<void> {
-    await this.waitForVisible();
-    const button = this.root().locator('[data-rail-item="new-list"]');
-    await button.waitFor({ state: 'visible' });
-    await button.click();
+    await this.openNewListDialog();
   }
 
   async createNamedList(
@@ -1295,16 +1292,14 @@ export class AppRail {
     | { status: 'duplicate' }
   > {
     const previousPile = new URL(this.page.url()).searchParams.get('pile');
-    await this.openNewList();
-
-    const dialog = this.page.getByRole('dialog');
-    await dialog.waitFor({ state: 'visible' });
+    const dialog = await this.openNewListDialog();
     const nameInput = dialog.getByLabel('Name');
     await nameInput.waitFor({ state: 'visible' });
     await nameInput.fill(name);
 
     const createButton = dialog.getByRole('button', { name: 'Create list' });
     if (await createButton.isDisabled()) {
+      await this.dismissOpenDialog();
       return { status: 'empty' };
     }
 
@@ -1319,26 +1314,66 @@ export class AppRail {
     const duplicateError = dialog.locator('[data-list-create-error]');
     if (response.status() === 409) {
       await duplicateError.waitFor({ state: 'visible' });
+      await this.dismissOpenDialog();
       return { status: 'duplicate' };
     }
     if (response.status() !== 201) {
       throw new Error(`Failed to create named list from the rail: ${response.status()}`);
     }
 
+    // Wait out the close animation before the next create. A leftover Radix
+    // overlay swallows the next + New list click or leaves Name unfillable.
+    await dialog.waitFor({ state: 'hidden' });
     await this.page.waitForURL((url) => {
       const pile = new URL(url).searchParams.get('pile');
       return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
     });
-
-    if (await duplicateError.isVisible()) {
-      return { status: 'duplicate' };
-    }
+    await this.itemByLabel(name).waitFor({ state: 'visible' });
 
     const pile = new URL(this.page.url()).searchParams.get('pile');
     if (!pile) {
       throw new Error(`Created list "${name}" from the rail did not land on that pile`);
     }
     return { status: 'created', id: pile, name };
+  }
+
+  private newListDialog() {
+    return this.page.getByRole('dialog', { name: 'New list' });
+  }
+
+  private async openNewListDialog() {
+    await this.waitForVisible();
+    const button = this.root().locator('[data-rail-item="new-list"]');
+    await button.waitFor({ state: 'visible' });
+    const dialog = this.newListDialog();
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.dismissOpenDialog();
+      await button.click();
+      try {
+        await dialog.waitFor({ state: 'visible', timeout: 2_500 });
+        return dialog;
+      } catch {
+        // Overlay from the previous create ate the click. Retry.
+      }
+    }
+
+    await dialog.waitFor({ state: 'visible' });
+    return dialog;
+  }
+
+  private async dismissOpenDialog(): Promise<void> {
+    const dialog = this.page.getByRole('dialog');
+    if (!(await dialog.isVisible().catch(() => false))) {
+      return;
+    }
+    const cancel = dialog.getByRole('button', { name: 'Cancel' });
+    if (await cancel.isVisible().catch(() => false)) {
+      await cancel.click();
+    } else {
+      await this.page.keyboard.press('Escape');
+    }
+    await dialog.waitFor({ state: 'hidden' });
   }
 
   overflowByLabel(label: string) {

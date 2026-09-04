@@ -34,7 +34,7 @@ export function AppNav() {
 
   return (
     <>
-      {/* Mobile: Inbox | Tasks only. The flat rail lives inside the Tasks tab. */}
+      {/* Mobile thumb bar stays Inbox | Tasks only — not the twelve rail destinations. */}
       <nav
         data-app-mobile-nav=""
         className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background safe-area-bottom md:hidden"

@@ -5,10 +5,10 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
 /**
  * Yoink UI story 8: mobile layout adaptation of the approved sidebar frame.
  *
- * Mobile keeps Inbox | Tasks bottom tabs. The flat rail (Inbox with count,
- * Today / Upcoming / Mine / Done, named lists, Unlisted last, + New list)
- * lives inside the Tasks tab — not as a third bottom tab. Inbox still opens
- * the capture pane. Desktop / wide layout keeps the existing sidebar rail.
+ * Polly lock (2026-09-04): bottom tabs stay Inbox | Tasks only — do not put
+ * twelve destinations in the thumb bar. Inside Tasks on mobile: the same
+ * flat rail as desktop (smart views, Lists heading, named lists, Unlisted,
+ * + New list). Desktop rail unchanged.
  *
  * Named-list / Unlisted / smart views / + New list / rail-delete / Promote
  * stay as on trunk after story 7. Out of scope: drag, empty groups, bulk
@@ -33,11 +33,23 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
       await alice.shouldNotSeeMobileBottomTab('Lists');
       await alice.shouldNotSeeMobileBottomTab('All');
+      await alice.shouldNotSeeMobileBottomTab('Today');
+      await alice.shouldNotSeeMobileBottomTab('Upcoming');
+      await alice.shouldNotSeeMobileBottomTab('Mine');
+      await alice.shouldNotSeeMobileBottomTab('Done');
+      await alice.shouldNotSeeMobileBottomTab('Unlisted');
+      await alice.shouldNotSeeMobileBottomTab('New list');
 
       await alice.openMobileBottomTab('tasks');
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
       await alice.shouldNotSeeMobileBottomTab('Lists');
       await alice.shouldNotSeeMobileBottomTab('All');
+      await alice.shouldNotSeeMobileBottomTab('Today');
+      await alice.shouldNotSeeMobileBottomTab('Upcoming');
+      await alice.shouldNotSeeMobileBottomTab('Mine');
+      await alice.shouldNotSeeMobileBottomTab('Done');
+      await alice.shouldNotSeeMobileBottomTab('Unlisted');
+      await alice.shouldNotSeeMobileBottomTab('New list');
     });
 
     it('shows the flat rail on mobile Tasks and opens the selected screen', async () => {

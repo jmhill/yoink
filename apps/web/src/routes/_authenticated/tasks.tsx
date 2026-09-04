@@ -834,7 +834,7 @@ function TasksPage() {
 
       <AppRailPanel
         surface="mobile-tasks"
-        className="mb-4 flex max-h-64 flex-col overflow-hidden rounded-md border bg-background p-2 md:hidden"
+        className="mb-6 flex flex-col md:hidden"
       />
 
       <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6 hidden md:block">

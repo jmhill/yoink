@@ -53,29 +53,31 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const milk = await alice.createTask({
         title: 'Milk',
         assigneeId: alice.userId,
+        listId: groceries.id,
       });
-      await alice.updateTask(milk.id, { listId: groceries.id });
       const eggs = await alice.createTask({
         title: 'Eggs',
         assigneeId: alice.userId,
+        listId: groceries.id,
       });
-      await alice.updateTask(eggs.id, { listId: groceries.id });
       await alice.createTask({ title: 'Notes', assigneeId: alice.userId });
 
       const botMilk = await alice.createTask({
         title: 'Bot milk',
         assigneeId: minted.agent.userId,
+        listId: groceries.id,
       });
-      await alice.updateTask(botMilk.id, { listId: groceries.id });
       const weekendOnlyTheirs = await alice.createTask({
         title: 'Bot weekend',
         assigneeId: minted.agent.userId,
+        listId: weekend.id,
       });
-      await alice.updateTask(weekendOnlyTheirs.id, { listId: weekend.id });
       await alice.createTask({
         title: 'Bot notes',
         assigneeId: minted.agent.userId,
       });
+      expect(milk.listId).toBe(groceries.id);
+      expect(eggs.listId).toBe(groceries.id);
 
       await alice.openMineOverview();
       await alice.shouldNotSeeMinePileDropdown();

@@ -1067,7 +1067,9 @@ export const createPlaywrightActor = (
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
-      if (input.listId !== undefined) {
+      // Quick-add can pick a list, but has no assignee or due-date controls.
+      // Use the session API when those fields are present so setup is exact.
+      if (input.listId !== undefined && input.assigneeId === undefined && input.dueDate === undefined) {
         await tasksPage.goto('all');
         await tasksPage.waitForTasksOrEmpty();
         await tasksPage.selectCreateList(input.listId);

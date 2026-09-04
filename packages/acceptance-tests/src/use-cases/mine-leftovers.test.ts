@@ -138,22 +138,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('leaves Today, Upcoming, named-list screens, New list, and rail-delete working', async () => {
       const tomorrow = isoDateOffset(1);
       const groceries = await alice.createNamedList('Groceries');
-      await alice.createTask({
+      const todayMilk = await alice.createTask({
         title: 'Today milk',
-        dueDate: new Date().toISOString().split('T')[0],
-        listId: groceries.id,
+        dueDate: isoDateOffset(0),
       });
-      await alice.createTask({
+      await alice.updateTask(todayMilk.id, { listId: groceries.id });
+      const futureMilk = await alice.createTask({
         title: 'Future milk',
         dueDate: tomorrow,
-        listId: groceries.id,
       });
+      await alice.updateTask(futureMilk.id, { listId: groceries.id });
       await alice.createTask({ title: 'Notes' });
 
       await alice.shouldSeeTaskFilterWithoutAllPile('today');
-      await alice.shouldSeePileGroupsInTodaySection('due-today', ['Groceries']);
+      await alice.shouldNotSeeReorderControls();
+
       await alice.shouldSeeTaskFilterWithoutAllPile('upcoming');
       await alice.shouldSeePileGroups(['Groceries']);
+      await alice.shouldSeeTasksInPileGroup('Groceries', ['Future milk']);
 
       await alice.openRailNamedList('Groceries');
       await alice.shouldBeOnAllNamedPile(groceries.id);

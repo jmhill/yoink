@@ -41,7 +41,6 @@ import {
   allPileSelectValue,
   groupAllTasksByPile,
   listIdForCreateTask,
-  mineUrlHasLeftoverPile,
   parseAllPile,
   showsCreateTaskListPicker,
   tasksSearchWithoutMinePile,
@@ -82,21 +81,13 @@ const searchSchema = z.object({
 const UNKNOWN_LIST_ID = '00000000-0000-0000-0000-000000000000';
 
 export const Route = createFileRoute('/_authenticated/tasks')({
-  validateSearch: (search) => {
-    const raw = search as { filter?: unknown; pile?: unknown };
-    if (raw.filter === 'mine') {
-      return tasksSearchWithoutMinePile({
-        filter: 'mine',
-        pile: typeof raw.pile === 'string' ? raw.pile : undefined,
-      });
-    }
-    return searchSchema.parse(search);
-  },
-  beforeLoad: ({ location }) => {
-    if (mineUrlHasLeftoverPile(location.searchStr)) {
+  validateSearch: searchSchema,
+  beforeLoad: ({ search }) => {
+    const next = tasksSearchWithoutMinePile(search);
+    if (search.filter === 'mine' && search.pile !== undefined) {
       throw redirect({
         to: '/tasks',
-        search: { filter: 'mine' },
+        search: next,
       });
     }
   },

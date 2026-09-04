@@ -722,7 +722,7 @@ export const createHttpActor = (
 
     async shouldNotSeeMobileBottomNav(): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeMobileBottomNav', 'http');
-    },,
+    },
 
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {

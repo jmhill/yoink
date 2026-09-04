@@ -1148,7 +1148,7 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeMobileBottomNav(): Promise<void> {
       await expect(mobileNav.root()).toBeHidden();
-    },,
+    },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
       // Quick-add can pick a list, but has no assignee or due-date controls.

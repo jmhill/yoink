@@ -97,7 +97,13 @@ export function AppNav() {
   const search = useRouterState({ select: (state) => state.location.search });
   const searchRecord = search && typeof search === 'object' ? search : {};
   const [createListOpen, setCreateListOpen] = useState(false);
+  const [createListKey, setCreateListKey] = useState(0);
   const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
+
+  const openCreateList = () => {
+    setCreateListKey((key) => key + 1);
+    setCreateListOpen(true);
+  };
 
   const { data: inboxData } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
@@ -200,7 +206,7 @@ export function AppNav() {
                     data-rail-item="new-list"
                     data-rail-label={item.label}
                     className={cn(railClassName(false), 'h-auto w-full justify-start font-normal')}
-                    onClick={() => setCreateListOpen(true)}
+                    onClick={openCreateList}
                   >
                     <Icon className="h-5 w-5" />
                     <span>+ {item.label}</span>
@@ -313,6 +319,7 @@ export function AppNav() {
       </nav>
 
       <CreateNamedListDialog
+        key={createListKey}
         open={createListOpen}
         onOpenChange={setCreateListOpen}
         onCreated={(list) => {

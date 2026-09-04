@@ -1321,9 +1321,8 @@ export class AppRail {
       throw new Error(`Failed to create named list from the rail: ${response.status()}`);
     }
 
-    // Wait out the close animation before the next create. A leftover Radix
-    // overlay swallows the next + New list click or leaves Name unfillable.
     await dialog.waitFor({ state: 'hidden' });
+    await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
     await this.page.waitForURL((url) => {
       const pile = new URL(url).searchParams.get('pile');
       return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
@@ -1349,6 +1348,7 @@ export class AppRail {
 
     for (let attempt = 0; attempt < 4; attempt++) {
       await this.dismissOpenDialog();
+      await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
       await button.click();
       try {
         await dialog.waitFor({ state: 'visible', timeout: 2_500 });

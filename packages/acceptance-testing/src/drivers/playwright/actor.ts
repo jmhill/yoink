@@ -351,21 +351,31 @@ export const createPlaywrightActor = (
     },
 
     async createNamedList(name: string): Promise<NamedList> {
-      const created = await appRail.createNamedList(name);
-      if (created.status === 'empty') {
-        throw new ValidationError('Name is required');
+      // Setup path: session API. The rail New list dialog is proven by
+      // createNamedListFromRail — Radix close/reopen is too slow for
+      // the many tests that create two lists as fixtures.
+      const response = await page.request.post('/api/lists', { data: { name } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
       }
-      if (created.status === 'duplicate') {
-        throw new ConflictError('A list with this name already exists');
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Name is required');
       }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'A list with this name already exists');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create named list: ${response.status()}`);
+      }
+      const created = (await response.json()) as NamedList;
+      await page.goto(`/tasks?pile=${created.id}`);
+      await expect(page).toHaveURL(new RegExp(`[?&]pile=${created.id}`));
+      await appRail.waitForVisible();
+      await expect(appRail.itemByLabel(created.name)).toBeVisible();
       await tasksPage.waitForTasksOrEmpty();
-      return {
-        id: created.id,
-        name: created.name,
-        organizationId: credentials.organizationId,
-        createdById: credentials.userId,
-        createdAt: new Date().toISOString(),
-      };
+      return created;
     },
 
     async deleteNamedList(id: string): Promise<void> {

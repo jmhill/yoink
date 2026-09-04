@@ -68,4 +68,5 @@ export type ProcessCaptureToTaskCommand = {
   createdById: string;
   title?: string; // Defaults to capture content (first 500 chars)
   dueDate?: string; // YYYY-MM-DD format
+  listId?: string; // optional single list bucket; omit for unlisted
 };

@@ -1011,23 +1011,68 @@ export const createPlaywrightActor = (
       await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
     },
 
-    async openExistingPromoteModal(content: string): Promise<void> {
+    async openPromoteSheet(content: string): Promise<void> {
       await inboxPage.openPromote(content);
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(inboxPage.promoteSheet()).toBeVisible();
     },
 
-    async shouldSeeExistingPromoteModal(): Promise<void> {
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('heading', { name: 'Create Task' })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Create Task' })).toBeVisible();
-      await expect(page.locator('[data-slot="sheet"]')).toHaveCount(0);
+    async shouldSeePromoteSheet(): Promise<void> {
+      const sheet = inboxPage.promoteSheet();
+      await expect(sheet).toBeVisible();
+      await expect(sheet.getByRole('heading', { name: 'Promote' })).toBeVisible();
+      await expect(sheet.getByRole('button', { name: 'Promote' })).toBeVisible();
+      await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0);
+      await expect(page.locator('[data-slot="sheet-content"]')).toBeVisible();
     },
 
-    async closeExistingPromoteModal(): Promise<void> {
-      const dialog = page.getByRole('dialog');
-      await dialog.getByRole('button', { name: 'Cancel' }).click();
-      await expect(dialog).toBeHidden();
+    async shouldSeePromoteTitlePrefill(title: string): Promise<void> {
+      await expect(inboxPage.promoteTitle()).toHaveValue(title);
+    },
+
+    async shouldSeePromoteListUnlisted(): Promise<void> {
+      await expect(inboxPage.promoteList()).toContainText('Unlisted');
+    },
+
+    async confirmPromoteUnlisted(): Promise<Task> {
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/captures/') &&
+          response.url().includes('/process') &&
+          response.request().method() === 'POST'
+      );
+      await inboxPage.confirmPromote();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to promote capture: ${response.status()}`);
+      }
+      await expect(inboxPage.promoteSheet()).toBeHidden();
+      return response.json();
+    },
+
+    async confirmPromoteOnList(listName: string): Promise<Task> {
+      await inboxPage.selectPromoteListByName(listName);
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/captures/') &&
+          response.url().includes('/process') &&
+          response.request().method() === 'POST'
+      );
+      await inboxPage.confirmPromote();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to promote capture: ${response.status()}`);
+      }
+      await expect(inboxPage.promoteSheet()).toBeHidden();
+      return response.json();
+    },
+
+    async cancelPromoteSheet(): Promise<void> {
+      await inboxPage.cancelPromote();
+      await expect(inboxPage.promoteSheet()).toBeHidden();
+    },
+
+    async shouldNotSeeCaptureOnCurrentPane(content: string): Promise<void> {
+      await expect(inboxPage.captureCard(content)).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

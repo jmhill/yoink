@@ -148,6 +148,7 @@ export type UpdateTaskInput = {
 export type ProcessCaptureToTaskInput = {
   title?: string; // Defaults to capture content
   dueDate?: string; // YYYY-MM-DD format
+  listId?: string; // optional single list bucket; omit for unlisted
 };
 
 // =============================================================================

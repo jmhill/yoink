@@ -660,20 +660,46 @@ export type BrowserActorOperations = {
   shouldNotSeeQuickAddCapture(): Promise<void>;
 
   /**
-   * Open Promote on an inbox capture. The existing Create Task modal opens
-   * (not a new sheet).
+   * Open Promote on an inbox capture. Opens the Promote sheet
+   * (not the old centered Create Task dialog).
    */
-  openExistingPromoteModal(content: string): Promise<void>;
+  openPromoteSheet(content: string): Promise<void>;
 
   /**
-   * Assert the existing Promote modal (Create Task dialog) is visible.
+   * Assert the Promote sheet is visible: title + list picker, not a
+   * centered dialog as the destination.
    */
-  shouldSeeExistingPromoteModal(): Promise<void>;
+  shouldSeePromoteSheet(): Promise<void>;
 
   /**
-   * Close the existing Promote modal so the pane tabs can be used again.
+   * Assert the Promote sheet title is prefilled with this text.
    */
-  closeExistingPromoteModal(): Promise<void>;
+  shouldSeePromoteTitlePrefill(title: string): Promise<void>;
+
+  /**
+   * Assert the Promote list picker is showing Unlisted (the default).
+   */
+  shouldSeePromoteListUnlisted(): Promise<void>;
+
+  /**
+   * Confirm Promote with Unlisted (omit listId). Returns the created task.
+   */
+  confirmPromoteUnlisted(): Promise<Task>;
+
+  /**
+   * Confirm Promote onto this named list. Returns the created task.
+   */
+  confirmPromoteOnList(listName: string): Promise<Task>;
+
+  /**
+   * Cancel the Promote sheet. The capture stays in Inbox.
+   */
+  cancelPromoteSheet(): Promise<void>;
+
+  /**
+   * Assert this capture is not visible on the current pane.
+   */
+  shouldNotSeeCaptureOnCurrentPane(content: string): Promise<void>;
 
   // ==========================================================================
   // Organization Member Management

@@ -648,16 +648,36 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
     },
 
-    async openExistingPromoteModal(_content: string): Promise<void> {
-      throw new UnsupportedOperationError('openExistingPromoteModal', 'http');
+    async openPromoteSheet(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('openPromoteSheet', 'http');
     },
 
-    async shouldSeeExistingPromoteModal(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeExistingPromoteModal', 'http');
+    async shouldSeePromoteSheet(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePromoteSheet', 'http');
     },
 
-    async closeExistingPromoteModal(): Promise<void> {
-      throw new UnsupportedOperationError('closeExistingPromoteModal', 'http');
+    async shouldSeePromoteTitlePrefill(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePromoteTitlePrefill', 'http');
+    },
+
+    async shouldSeePromoteListUnlisted(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePromoteListUnlisted', 'http');
+    },
+
+    async confirmPromoteUnlisted(): Promise<Task> {
+      throw new UnsupportedOperationError('confirmPromoteUnlisted', 'http');
+    },
+
+    async confirmPromoteOnList(_listName: string): Promise<Task> {
+      throw new UnsupportedOperationError('confirmPromoteOnList', 'http');
+    },
+
+    async cancelPromoteSheet(): Promise<void> {
+      throw new UnsupportedOperationError('cancelPromoteSheet', 'http');
+    },
+
+    async shouldNotSeeCaptureOnCurrentPane(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeCaptureOnCurrentPane', 'http');
     },
 
     // Task operations

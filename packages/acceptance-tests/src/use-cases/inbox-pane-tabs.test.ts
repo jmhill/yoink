@@ -8,7 +8,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Inbox holds captures, not tasks. Rail has one Inbox row (highlighted on
  * Inbox, Snoozed, and Trash). Snoozed and Trash are tabs on that pane,
  * ordered Inbox | Snoozed | Trash. Quick-add stays on the Inbox tab.
- * Promote still opens the existing modal. No new domain field or API.
+ * Promote opens the sheet from story 5. No new domain field beyond listId on process.
  *
  * Out of scope: Promote sheet, Mine leftover, All retirement, mobile
  * redesign, drag, empty groups, bulk actions, inbox count rules.
@@ -73,7 +73,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeInboxCaptureActions('Triage me');
     });
 
-    it('keeps quick-add on the Inbox tab and Promote as the existing modal', async () => {
+    it('keeps quick-add on the Inbox tab and Promote as a sheet', async () => {
       await alice.openRailInbox();
       await alice.shouldSeeQuickAddCapture();
 
@@ -81,9 +81,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(capture.content).toBe('Promote me');
       await alice.shouldSeeCaptureOnCurrentPane('Promote me');
 
-      await alice.openExistingPromoteModal('Promote me');
-      await alice.shouldSeeExistingPromoteModal();
-      await alice.closeExistingPromoteModal();
+      await alice.openPromoteSheet('Promote me');
+      await alice.shouldSeePromoteSheet();
+      await alice.cancelPromoteSheet();
 
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldNotSeeQuickAddCapture();
@@ -143,15 +143,11 @@ usingDrivers(['http'] as const, (ctx) => {
       );
       await expect(actor.shouldSeeQuickAddCapture()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldNotSeeQuickAddCapture()).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.openExistingPromoteModal('Promote me')).rejects.toThrow(
+      await expect(actor.openPromoteSheet('Promote me')).rejects.toThrow(
         UnsupportedOperationError
       );
-      await expect(actor.shouldSeeExistingPromoteModal()).rejects.toThrow(
-        UnsupportedOperationError
-      );
-      await expect(actor.closeExistingPromoteModal()).rejects.toThrow(
-        UnsupportedOperationError
-      );
+      await expect(actor.shouldSeePromoteSheet()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.cancelPromoteSheet()).rejects.toThrow(UnsupportedOperationError);
     });
   });
 });

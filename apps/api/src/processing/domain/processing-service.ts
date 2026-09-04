@@ -1,11 +1,14 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { Clock, IdGenerator } from '@yoink/infrastructure';
+import type { Clock } from '@yoink/infrastructure';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
 import type { TaskStore } from '../../tasks/domain/task-store.js';
 import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
+import type { CreateTaskCommand } from '../../tasks/domain/task-commands.js';
+import type { CreateTaskError } from '../../tasks/domain/task-errors.js';
 import {
   captureNotFoundError,
+  captureNotInInboxError,
   type CaptureNotFoundError,
   type CaptureNotInInboxError,
   type StorageError,
@@ -15,17 +18,22 @@ import {
   type TaskNotFoundError,
 } from '../../tasks/domain/task-errors.js';
 
+export type CreateTaskFromProcess = (
+  command: CreateTaskCommand
+) => ResultAsync<Task, CreateTaskError>;
+
 export type CaptureProcessingServiceDependencies = {
   captureStore: CaptureStore;
   taskStore: TaskStore;
+  createTask: CreateTaskFromProcess;
   clock: Clock;
-  idGenerator: IdGenerator;
 };
 
 export type ProcessCaptureToTaskError =
   | StorageError
   | CaptureNotFoundError
-  | CaptureNotInInboxError;
+  | CaptureNotInInboxError
+  | CreateTaskError;
 
 export type DeleteTaskWithCascadeCommand = {
   id: string;
@@ -59,41 +67,42 @@ const truncate = (str: string, maxLength: number): string => {
 export const createCaptureProcessingService = (
   deps: CaptureProcessingServiceDependencies
 ): CaptureProcessingService => {
-  const { captureStore, taskStore, clock, idGenerator } = deps;
+  const { captureStore, taskStore, createTask, clock } = deps;
 
   return {
     processCaptureToTask: (
       command: ProcessCaptureToTaskCommand
     ): ResultAsync<Task, ProcessCaptureToTaskError> => {
-      // First, find the capture (outside transaction for read)
       return captureStore.findById(command.id).andThen((capture) => {
-        // Check capture exists and belongs to the organization
         if (!capture || capture.organizationId !== command.organizationId) {
           return errAsync(captureNotFoundError(command.id));
         }
 
-        // Create the task
-        const taskId = idGenerator.generate();
-        const task: Task = {
-          id: taskId,
+        if (capture.status !== 'inbox') {
+          return errAsync(captureNotInInboxError(command.id));
+        }
+
+        const createCommand: CreateTaskCommand = {
+          title: command.title ?? truncate(capture.content, MAX_TASK_TITLE_LENGTH),
           organizationId: command.organizationId,
           createdById: command.createdById,
-          title: command.title ?? truncate(capture.content, MAX_TASK_TITLE_LENGTH),
           captureId: capture.id,
-          dueDate: command.dueDate,
-          createdAt: clock.now().toISOString(),
         };
+        if (command.dueDate !== undefined) {
+          createCommand.dueDate = command.dueDate;
+        }
+        if (command.listId !== undefined) {
+          createCommand.listId = command.listId;
+        }
 
-        // Execute operations sequentially
-        // The requiredStatus check provides atomicity for the status verification
-        return taskStore.save(task).andThen(() => {
+        // Reuse create-task sandwich: decideCreateTask + list open-order join.
+        return createTask(createCommand).andThen((task) => {
           return captureStore
             .markAsProcessed({
               id: capture.id,
               processedAt: clock.now().toISOString(),
               processedToType: 'task',
-              processedToId: taskId,
-              // Atomic status verification: will fail if capture is no longer in 'inbox' status
+              processedToId: task.id,
               requiredStatus: 'inbox',
             })
             .map(() => task);
@@ -104,16 +113,12 @@ export const createCaptureProcessingService = (
     deleteTaskWithCascade: (
       command: DeleteTaskWithCascadeCommand
     ): ResultAsync<void, DeleteTaskWithCascadeError> => {
-      // First, find and validate the task
       return taskStore.findById(command.id).andThen((task) => {
-        // Check task exists and belongs to the organization
         if (!task || task.organizationId !== command.organizationId) {
           return errAsync(taskNotFoundError(command.id));
         }
 
-        // Delete the task first, then its source capture if any
         return taskStore.softDelete(command.id).andThen(() => {
-          // If the task has a source capture, delete it too
           if (task.captureId) {
             return captureStore.softDelete(task.captureId);
           }

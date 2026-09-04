@@ -11,6 +11,8 @@ export const ProcessCaptureToTaskSchema = z.object({
   data: z.object({
     title: z.string().min(1).max(500).optional(), // Defaults to capture content
     dueDate: z.string().date().optional(), // YYYY-MM-DD format, validates actual date
+    // Optional single list bucket. Omit for unlisted — same as create-task.
+    listId: z.string().uuid().optional(),
   }),
 });
 

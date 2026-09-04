@@ -318,12 +318,13 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
-  // Create capture processing service (cross-entity operations)
+  // Create capture processing service (cross-entity operations).
+  // Task create reuses the existing sandwich so listId joins open order.
   const captureProcessingService = createCaptureProcessingService({
     captureStore,
     taskStore,
+    createTask: (command) => taskHandlers.create(command).map((result) => result.view),
     clock,
-    idGenerator,
   });
 
   // Create admin services if admin config is provided

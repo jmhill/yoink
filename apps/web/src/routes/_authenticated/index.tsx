@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { tsr, tsrTasks } from '@/api/client';
+import { tsr, tsrTasks, tsrLists } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
@@ -11,7 +11,7 @@ import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
 import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
-import { TaskCreationModal } from '@/components/task-creation-modal';
+import { PromoteSheet, type PromoteConfirmInput } from '@/components/promote-sheet';
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
 
@@ -29,6 +29,13 @@ function InboxPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
   const tsrTasksQueryClient = tsrTasks.useQueryClient();
+  const tsrListsQueryClient = tsrLists.useQueryClient();
+
+  const { data: listsData } = tsrLists.list.useQuery({
+    queryKey: ['lists'],
+    queryData: {},
+  });
+  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
@@ -333,6 +340,8 @@ function InboxPage() {
     onSettled: () => {
       tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
       tsrTasksQueryClient.invalidateQueries({ queryKey: ['tasks'] });
+      tsrListsQueryClient.invalidateQueries({ queryKey: ['lists'] });
+      tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted'] });
     },
   });
 
@@ -400,11 +409,20 @@ function InboxPage() {
     setTaskModalOpen(true);
   };
 
-  const handleConfirmTask = (captureId: string, title: string, dueDate?: string) => {
+  const handleConfirmPromote = (captureId: string, input: PromoteConfirmInput) => {
     setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
+    const data: { title: string; dueDate?: string; listId?: string } = {
+      title: input.title,
+    };
+    if (input.dueDate) {
+      data.dueDate = input.dueDate;
+    }
+    if (input.listId) {
+      data.listId = input.listId;
+    }
     processMutation.mutate({
       params: { id: captureId },
-      body: { type: 'task', data: { title, dueDate } },
+      body: { type: 'task', data },
     });
   };
 
@@ -482,11 +500,12 @@ function InboxPage() {
         </AnimatedList>
       )}
 
-      <TaskCreationModal
+      <PromoteSheet
         open={taskModalOpen}
         onOpenChange={setTaskModalOpen}
         capture={taskModalCapture}
-        onConfirm={handleConfirmTask}
+        lists={namedLists}
+        onConfirm={handleConfirmPromote}
         isLoading={processMutation.isPending}
       />
     </div>

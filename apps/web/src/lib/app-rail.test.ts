@@ -107,16 +107,17 @@ describe('isRailItemActive', () => {
     expect(isRailItemActive(today, { pathname: '/tasks', filter: 'upcoming' })).toBe(false);
   });
 
-  it('marks named list and Unlisted only on All one-pile, not All overview', () => {
+  it('marks named list and Unlisted on pile screens, not on Today or leftover All URLs', () => {
+    expect(isRailItemActive(groceries, { pathname: '/tasks', pile: groceriesId })).toBe(true);
+    expect(isRailItemActive(unlisted, { pathname: '/tasks', pile: 'unlisted' })).toBe(true);
     expect(
       isRailItemActive(groceries, { pathname: '/tasks', filter: 'all', pile: groceriesId })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isRailItemActive(unlisted, { pathname: '/tasks', filter: 'all', pile: 'unlisted' })
-    ).toBe(true);
-    expect(isRailItemActive(groceries, { pathname: '/tasks', filter: 'all' })).toBe(false);
-    expect(isRailItemActive(unlisted, { pathname: '/tasks', filter: 'all' })).toBe(false);
-    expect(isRailItemActive(newList, { pathname: '/tasks', filter: 'all' })).toBe(false);
+    ).toBe(false);
+    expect(isRailItemActive(groceries, { pathname: '/tasks', filter: 'today' })).toBe(false);
+    expect(isRailItemActive(newList, { pathname: '/tasks', pile: groceriesId })).toBe(false);
   });
 });
 

@@ -309,7 +309,25 @@ export type BrowserActorOperations = {
   openUnlistedPile(): Promise<void>;
 
   /**
+   * Assert All is not a destination: no All filter tab, no All rail row,
+   * no `#all-pile` dropdown.
+   */
+  shouldNotSeeAllDestination(): Promise<void>;
+
+  /**
+   * Open an old All URL (`/tasks`, `/tasks?filter=all`,
+   * `/tasks?filter=all&pile=…`). Lands on Today.
+   */
+  openOldAllUrl(path: string): Promise<void>;
+
+  /**
+   * Assert the current screen is Today (`filter=today`), not All.
+   */
+  shouldBeOnToday(): Promise<void>;
+
+  /**
    * Open the Tasks All overview (every pile grouped, no reorder).
+   * @deprecated All is gone; leftover All URLs land on Today.
    */
   openAllOverview(): Promise<void>;
 
@@ -397,6 +415,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert All still has its two-mode pile dropdown.
+   * @deprecated All is gone — use shouldNotSeeAllDestination.
    */
   shouldSeeAllPileDropdown(): Promise<void>;
 
@@ -459,12 +478,12 @@ export type BrowserActorOperations = {
 
   /**
    * Create a named list from the All pile dropdown (kit dialog).
-   * On success, All is on that list’s one-pile view.
+   * @deprecated All is gone — use createNamedListFromRail.
    */
   createNamedListFromAll(name: string): Promise<NamedList>;
 
   /**
-   * Assert All is showing this named list’s one-pile view (`pile` = list id).
+   * Assert the named-list pile screen (`?pile=` = list id, not filter=all).
    */
   shouldBeOnAllNamedPile(listId: string): Promise<void>;
 
@@ -485,18 +504,19 @@ export type BrowserActorOperations = {
 
   /**
    * Delete the named list currently shown as All’s one-pile view (kit dialog).
-   * On success, All is back on overview.
+   * @deprecated All is gone — use deleteNamedListFromRail. Lands on Today.
    * @throws ConflictError if the list still has open tasks
    */
   deleteNamedListFromAll(name: string): Promise<void>;
 
   /**
    * Assert All is showing the grouped overview (no `pile` in the URL).
+   * @deprecated All overview is gone — leftover All URLs land on Today.
    */
   shouldBeOnAllOverview(): Promise<void>;
 
   /**
-   * Assert All is showing the unlisted one-pile (`pile=unlisted`).
+   * Assert the Unlisted pile screen (`?pile=unlisted`, not filter=all).
    */
   shouldBeOnAllUnlistedPile(): Promise<void>;
 
@@ -529,12 +549,12 @@ export type BrowserActorOperations = {
   shouldSeeListsHeadingAboveNamedList(name: string): Promise<void>;
 
   /**
-   * Open a named list from the rail. Lands on All’s existing one-pile.
+   * Open a named list from the rail. Lands on that pile screen.
    */
   openRailNamedList(name: string): Promise<void>;
 
   /**
-   * Open Unlisted from the rail. Lands on All’s existing unlisted one-pile.
+   * Open Unlisted from the rail. Lands on the Unlisted pile screen.
    */
   openRailUnlisted(): Promise<void>;
 
@@ -555,8 +575,7 @@ export type BrowserActorOperations = {
 
   /**
    * Create a named list from the rail New list control (kit dialog).
-   * On success, lands on that list’s existing one-pile view.
-   * All’s dropdown create stays as the fallback.
+   * On success, lands on that list’s pile screen.
    */
   createNamedListFromRail(name: string): Promise<NamedList>;
 
@@ -572,9 +591,9 @@ export type BrowserActorOperations = {
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;
 
   /**
-   * Delete a named list from its rail-row overflow (same kit dialog as All).
+   * Delete a named list from its rail-row overflow.
    * On success the name leaves the rail. If the member was viewing that pile,
-   * they leave it (All overview). Other views stay put.
+   * they land on Today. Other views stay put.
    * @throws ConflictError if the list still has open tasks
    */
   deleteNamedListFromRail(name: string): Promise<void>;
@@ -582,7 +601,7 @@ export type BrowserActorOperations = {
   /**
    * Assert the current Tasks filter (does not navigate).
    */
-  shouldBeOnTaskFilter(filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'): Promise<void>;
+  shouldBeOnTaskFilter(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
 
   /**
    * Assert the visible task card has no list label (current view, no navigation).

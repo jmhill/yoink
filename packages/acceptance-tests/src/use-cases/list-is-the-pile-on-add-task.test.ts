@@ -63,17 +63,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeCreateTaskListPicker();
     });
 
-    it('keeps All overview pile dropdown and create-task list picker as fallback', async () => {
+    it('keeps the create-task list picker on smart views without All', async () => {
       const list = await alice.createNamedList('Groceries');
 
-      await alice.openAllOverview();
-      await alice.shouldSeeAllPileDropdown();
+      await alice.openToday();
       await alice.shouldSeeCreateTaskListPicker();
+      await alice.shouldNotSeeAllDestination();
 
       const task = await alice.createTask({ title: 'Milk', listId: list.id });
       expect(task.listId).toBe(list.id);
       await alice.shouldSeeListOnTask(task.id, 'Groceries');
-      await alice.shouldSeeAllPileDropdown();
     });
 
     it('keeps rail overflow delete and New list', async () => {

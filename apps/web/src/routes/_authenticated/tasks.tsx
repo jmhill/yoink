@@ -17,34 +17,29 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { tsrTasks, tsr, tsrLists } from '@/api/client';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User, Trash2 } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard, type TaskReorderControls } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
-import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
-import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
 import {
-  ALL_PILE_NEW_LIST,
   ALL_PILE_OVERVIEW,
   ALL_PILE_UNLISTED,
-  allPileSelectValue,
   groupAllTasksByPile,
   listIdForCreateTask,
-  parseAllPile,
+  parsePileScreen,
   showsCreateTaskListPicker,
-  tasksSearchWithoutMinePile,
-  type AllPile,
+  tasksBoardLanding,
+  tasksBoardSearchEquals,
   type AllPileGroup,
   type NamedListRef,
 } from '@/lib/all-tasks-piles';
@@ -74,7 +69,7 @@ const splitTodayTasks = (tasks: Task[]): { overdue: Task[]; dueToday: Task[] } =
 };
 
 const searchSchema = z.object({
-  filter: TaskFilterSchema.default('today'),
+  filter: TaskFilterSchema.optional(),
   pile: z.union([z.literal(ALL_PILE_OVERVIEW), z.literal(ALL_PILE_UNLISTED), z.string().uuid()]).optional(),
 });
 
@@ -83,8 +78,8 @@ const UNKNOWN_LIST_ID = '00000000-0000-0000-0000-000000000000';
 export const Route = createFileRoute('/_authenticated/tasks')({
   validateSearch: searchSchema,
   beforeLoad: ({ search }) => {
-    const next = tasksSearchWithoutMinePile(search);
-    if (search.filter === 'mine' && search.pile !== undefined) {
+    const next = tasksBoardLanding(search);
+    if (!tasksBoardSearchEquals(search, next)) {
       throw redirect({
         to: '/tasks',
         search: next,
@@ -216,25 +211,22 @@ const UNLISTED_VALUE = 'unlisted';
 function TasksPage() {
   const { filter, pile } = useSearch({ from: '/_authenticated/tasks' });
   const navigate = useNavigate();
+  const boardFilter: TaskFilter = filter ?? 'today';
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskListId, setNewTaskListId] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [createListOpen, setCreateListOpen] = useState(false);
-  const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
   const tsrListsQueryClient = tsrLists.useQueryClient();
-  const allPile: AllPile | null = filter === 'all' ? parseAllPile(pile) : null;
+  const allPile = parsePileScreen(pile);
   const namedPileId = allPile?.kind === 'named' ? allPile.listId : undefined;
   const showsPileGroups =
-    filter === 'today' ||
-    filter === 'upcoming' ||
-    filter === 'mine' ||
-    allPile?.kind === 'overview';
+    allPile === null &&
+    (boardFilter === 'today' || boardFilter === 'upcoming' || boardFilter === 'mine');
 
   const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
@@ -282,10 +274,10 @@ function TasksPage() {
     return list ? list.name : undefined;
   };
 
-  const boardQueryEnabled = allPile === null || allPile.kind === 'overview';
+  const boardQueryEnabled = allPile === null;
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
-    queryKey: ['tasks', filter],
-    queryData: { query: { filter: filter as TaskFilter } },
+    queryKey: ['tasks', boardFilter],
+    queryData: { query: { filter: boardFilter } },
     enabled: boardQueryEnabled,
   });
 
@@ -362,7 +354,7 @@ function TasksPage() {
     onMutate: async ({ body }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
 
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       // Create optimistic task with unique ID to avoid collisions
       const optimisticTask: Task = {
@@ -377,7 +369,7 @@ function TasksPage() {
       };
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -392,7 +384,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (context?.previousTitle) {
         setNewTaskTitle(context.previousTitle);
@@ -421,10 +413,10 @@ function TasksPage() {
   const completeMutation = tsrTasks.complete.useMutation({
     onMutate: async ({ params }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -440,7 +432,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -462,10 +454,10 @@ function TasksPage() {
   const uncompleteMutation = tsrTasks.uncomplete.useMutation({
     onMutate: async ({ params }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -481,7 +473,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -499,10 +491,10 @@ function TasksPage() {
   const pinMutation = tsrTasks.pin.useMutation({
     onMutate: async ({ params }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -518,7 +510,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -540,10 +532,10 @@ function TasksPage() {
   const unpinMutation = tsrTasks.unpin.useMutation({
     onMutate: async ({ params }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -559,7 +551,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -577,10 +569,10 @@ function TasksPage() {
   const deleteMutation = tsrTasks.delete.useMutation({
     onMutate: async ({ params }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -594,7 +586,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -618,10 +610,10 @@ function TasksPage() {
   const updateMutation = tsrTasks.update.useMutation({
     onMutate: async ({ params, body }) => {
       await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', filter]);
+      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
 
       if (previousTasks?.status === 200 && body) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], {
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
           ...previousTasks,
           body: {
             ...previousTasks.body,
@@ -645,7 +637,7 @@ function TasksPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', filter], context.previousTasks);
+        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -669,8 +661,8 @@ function TasksPage() {
     if (!newTaskTitle.trim()) return;
 
     // Get today's date for "today" filter tasks
-    const dueDate = filter === 'today' ? new Date().toISOString().split('T')[0] : undefined;
-    const assigneeId = filter === 'mine' ? currentUserId : undefined;
+    const dueDate = boardFilter === 'today' && !allPile ? new Date().toISOString().split('T')[0] : undefined;
+    const assigneeId = boardFilter === 'mine' && !allPile ? currentUserId : undefined;
 
     const listId = listIdForCreateTask({ allPile, pickedListId: newTaskListId });
 
@@ -709,21 +701,7 @@ function TasksPage() {
   const handleFilterChange = (newFilter: string) => {
     navigate({
       to: '/tasks',
-      search: { filter: newFilter as TaskFilter },
-    });
-  };
-
-  const handlePileChange = (value: string) => {
-    if (value === ALL_PILE_NEW_LIST) {
-      requestAnimationFrame(() => setCreateListOpen(true));
-      return;
-    }
-    navigate({
-      to: '/tasks',
-      search: {
-        filter: 'all',
-        ...(value === ALL_PILE_OVERVIEW ? {} : { pile: value }),
-      },
+      search: { filter: newFilter as Exclude<TaskFilter, 'all'> },
     });
   };
 
@@ -749,7 +727,7 @@ function TasksPage() {
         ? unlistedPileTasks
         : boardTasks;
   const pileGroups =
-    filter === 'upcoming' || filter === 'mine' || allPile?.kind === 'overview'
+    allPile === null && (boardFilter === 'upcoming' || boardFilter === 'mine')
       ? groupAllTasksByPile(boardTasks, namedLists)
       : [];
 
@@ -822,39 +800,39 @@ function TasksPage() {
   };
 
   const emptyTitle =
-    filter === 'today'
-      ? 'No tasks for today'
-      : filter === 'upcoming'
-        ? 'No upcoming tasks'
-        : filter === 'mine'
-          ? 'No tasks assigned to you'
-          : filter === 'completed'
-            ? 'No completed tasks'
-            : allPile?.kind === 'named'
-              ? 'No open tasks on this list'
-              : allPile?.kind === 'unlisted'
-                ? 'No open unlisted tasks'
+    allPile?.kind === 'named'
+      ? 'No open tasks on this list'
+      : allPile?.kind === 'unlisted'
+        ? 'No open unlisted tasks'
+        : boardFilter === 'today'
+          ? 'No tasks for today'
+          : boardFilter === 'upcoming'
+            ? 'No upcoming tasks'
+            : boardFilter === 'mine'
+              ? 'No tasks assigned to you'
+              : boardFilter === 'completed'
+                ? 'No completed tasks'
                 : 'No tasks yet';
 
   const emptyHint =
-    filter === 'today'
-      ? 'Add a task above or process a capture'
-      : filter === 'upcoming'
-        ? 'Tasks with future due dates will appear here'
-        : filter === 'mine'
-          ? 'Add a task above or assign one to yourself'
-          : filter === 'completed'
-            ? 'Complete a task to see it here'
-            : allPile?.kind === 'named' || allPile?.kind === 'unlisted'
-              ? 'Open tasks in this pile will appear here'
+    allPile?.kind === 'named' || allPile?.kind === 'unlisted'
+      ? 'Open tasks in this pile will appear here'
+      : boardFilter === 'today'
+        ? 'Add a task above or process a capture'
+        : boardFilter === 'upcoming'
+          ? 'Tasks with future due dates will appear here'
+          : boardFilter === 'mine'
+            ? 'Add a task above or assign one to yourself'
+            : boardFilter === 'completed'
+              ? 'Complete a task to see it here'
               : 'Create your first task above';
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
       <Header viewName="Tasks" />
 
-      <Tabs value={filter} onValueChange={handleFilterChange} className="mb-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="today" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <Calendar className="h-4 w-4 shrink-0" />
             <span className="truncate">Today</span>
@@ -863,10 +841,6 @@ function TasksPage() {
             <CalendarClock className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline truncate">Upcoming</span>
             <span className="sm:hidden truncate">Soon</span>
-          </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
-            <List className="h-4 w-4 shrink-0" />
-            <span className="truncate">All</span>
           </TabsTrigger>
           <TabsTrigger value="mine" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <User className="h-4 w-4 shrink-0" />
@@ -879,45 +853,7 @@ function TasksPage() {
         </TabsList>
       </Tabs>
 
-      {allPile && (
-        <div className="mb-4 flex items-center gap-2">
-          <Select value={allPileSelectValue(allPile)} onValueChange={handlePileChange}>
-            <SelectTrigger
-              id="all-pile"
-              aria-label="Pile"
-              className="min-w-0 flex-1 sm:flex-none sm:w-[16rem]"
-            >
-              <SelectValue placeholder="All lists" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_PILE_OVERVIEW}>All lists</SelectItem>
-              <SelectItem value={ALL_PILE_UNLISTED}>Unlisted</SelectItem>
-              {namedLists.map((list) => (
-                <SelectItem key={list.id} value={list.id}>
-                  {list.name}
-                </SelectItem>
-              ))}
-              <SelectSeparator />
-              <SelectItem value={ALL_PILE_NEW_LIST} data-all-pile-new-list="">
-                New list
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {namedPileList ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${namedPileList.name}`}
-              onClick={() => setDeletingList(namedPileList)}
-            >
-              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-            </Button>
-          ) : null}
-        </div>
-      )}
-
-      {filter !== 'completed' && (
+      {boardFilter !== 'completed' && (
         <form onSubmit={handleQuickAdd} className="mb-6">
           <div className="flex gap-2">
             <Input
@@ -925,7 +861,7 @@ function TasksPage() {
               ref={inputRef}
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder={`Add task${filter === 'today' ? ' for today' : ''}...`}
+              placeholder={`Add task${boardFilter === 'today' && !allPile ? ' for today' : ''}...`}
               disabled={createMutation.isPending}
               className="flex-1"
             />
@@ -971,7 +907,7 @@ function TasksPage() {
       ) : tasks.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            {filter === 'completed' ? (
+            {boardFilter === 'completed' && !allPile ? (
               <CheckCheck className="mx-auto mb-2 h-8 w-8" />
             ) : (
               <CheckSquare className="mx-auto mb-2 h-8 w-8" />
@@ -980,7 +916,7 @@ function TasksPage() {
             <p className="text-sm">{emptyHint}</p>
           </CardContent>
         </Card>
-      ) : filter === 'today' ? (
+      ) : allPile === null && boardFilter === 'today' ? (
         <TodayTaskList
           tasks={tasks}
           namedLists={namedLists}
@@ -995,7 +931,7 @@ function TasksPage() {
           assigneeLabel={assigneeLabelFor}
           listLabel={listLabelFor}
         />
-      ) : filter === 'upcoming' || filter === 'mine' || allPile?.kind === 'overview' ? (
+      ) : allPile === null && (boardFilter === 'upcoming' || boardFilter === 'mine') ? (
         <PileGroupList groups={pileGroups}>
           {(group) => (
             <AnimatedList>
@@ -1070,32 +1006,6 @@ function TasksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <CreateNamedListDialog
-        open={createListOpen}
-        onOpenChange={setCreateListOpen}
-        onCreated={(list) => {
-          navigate({
-            to: '/tasks',
-            search: { filter: 'all', pile: list.id },
-          });
-        }}
-      />
-
-      <DeleteNamedListDialog
-        list={deletingList}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeletingList(null);
-          }
-        }}
-        onDeleted={() => {
-          navigate({
-            to: '/tasks',
-            search: { filter: 'all' },
-          });
-        }}
-      />
 
       {/* Task edit modal */}
       <TaskEditModal

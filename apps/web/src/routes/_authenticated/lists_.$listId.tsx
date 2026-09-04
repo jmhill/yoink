@@ -4,7 +4,7 @@ export const Route = createFileRoute('/_authenticated/lists_/$listId')({
   beforeLoad: ({ params }) => {
     throw redirect({
       to: '/tasks',
-      search: { filter: 'all', pile: params.listId },
+      search: { pile: params.listId },
     });
   },
 });

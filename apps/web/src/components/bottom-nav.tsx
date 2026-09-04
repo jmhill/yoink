@@ -32,6 +32,7 @@ import {
   type RailItem,
   type RailLocation,
 } from '@/lib/app-rail';
+import { namedPileSearch, todaySearch, unlistedPileSearch } from '@/lib/all-tasks-piles';
 
 type MobileNavItem = {
   to: string;
@@ -65,11 +66,11 @@ const railIcon = (item: RailItem) => {
   return CheckCheck;
 };
 
-type TaskFilterSearch = 'all' | 'today' | 'upcoming' | 'mine' | 'completed';
+type TaskFilterSearch = 'today' | 'upcoming' | 'mine' | 'completed';
 
 const SMART_VIEW_FILTER: Record<
   Extract<RailItem, { kind: 'smart' }>['key'],
-  Exclude<TaskFilterSearch, 'all'>
+  TaskFilterSearch
 > = {
   today: 'today',
   upcoming: 'upcoming',
@@ -79,14 +80,14 @@ const SMART_VIEW_FILTER: Record<
 
 const railTaskSearch = (
   item: Extract<RailItem, { kind: 'smart' } | { kind: 'named' } | { kind: 'unlisted' }>
-): { filter: TaskFilterSearch; pile?: string } => {
+): { filter: TaskFilterSearch } | { pile: string } => {
   if (item.kind === 'smart') {
     return { filter: SMART_VIEW_FILTER[item.key] };
   }
   if (item.kind === 'named') {
-    return { filter: 'all', pile: item.listId };
+    return namedPileSearch(item.listId);
   }
-  return { filter: 'all', pile: 'unlisted' };
+  return unlistedPileSearch();
 };
 
 export function AppNav() {
@@ -317,7 +318,7 @@ export function AppNav() {
         onCreated={(list) => {
           void navigate({
             to: '/tasks',
-            search: { filter: 'all', pile: list.id },
+            search: namedPileSearch(list.id),
           });
         }}
       />
@@ -333,12 +334,12 @@ export function AppNav() {
           if (
             deletingList &&
             location.pathname === '/tasks' &&
-            location.filter === 'all' &&
+            location.filter === undefined &&
             location.pile === deletingList.id
           ) {
             void navigate({
               to: '/tasks',
-              search: { filter: 'all' },
+              search: todaySearch(),
             });
           }
         }}

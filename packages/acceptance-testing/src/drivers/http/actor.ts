@@ -375,6 +375,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('refreshOpenList', 'http');
     },
 
+    async shouldNotSeeAllDestination(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAllDestination', 'http');
+    },
+
+    async openOldAllUrl(_path: string): Promise<void> {
+      throw new UnsupportedOperationError('openOldAllUrl', 'http');
+    },
+
+    async shouldBeOnToday(): Promise<void> {
+      throw new UnsupportedOperationError('shouldBeOnToday', 'http');
+    },
+
     async openAllOverview(): Promise<void> {
       throw new UnsupportedOperationError('openAllOverview', 'http');
     },
@@ -587,7 +599,7 @@ export const createHttpActor = (
     },
 
     async shouldBeOnTaskFilter(
-      _filter: 'today' | 'upcoming' | 'mine' | 'completed' | 'all'
+      _filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
       throw new UnsupportedOperationError('shouldBeOnTaskFilter', 'http');
     },

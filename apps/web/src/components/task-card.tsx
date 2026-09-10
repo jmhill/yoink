@@ -207,12 +207,20 @@ export function TaskCard({
                 if (isLoading) {
                   return;
                 }
-                event.stopPropagation();
                 dragHandle.onPointerDown(event);
               }}
+              onPointerMove={dragHandle.onPointerMove}
+              onPointerUp={dragHandle.onPointerUp}
+              onPointerCancel={dragHandle.onPointerUp}
               onTouchStart={(event) => {
-                event.stopPropagation();
+                if (isLoading) {
+                  return;
+                }
+                dragHandle.onTouchStart(event);
               }}
+              onTouchMove={dragHandle.onTouchMove}
+              onTouchEnd={dragHandle.onTouchEnd}
+              onTouchCancel={dragHandle.onTouchEnd}
             >
               <GripVertical className="size-5" />
             </Button>

@@ -16,3 +16,14 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+
+/* Vaul sets a 500ms transform via inline style. Honor reduced motion so
+   the left Tasks rail drawer is immediately at rest (also keeps Playwright
+   from treating rail controls as never-stable). */
+@media (prefers-reduced-motion: reduce) {
+  [data-vaul-drawer],
+  [data-vaul-overlay] {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1242,7 +1242,7 @@ export class MobileNav {
 /**
  * App rail (Inbox, smart views, named lists, Unlisted, New list).
  * Desktop: left sidebar (default Playwright viewport).
- * Mobile: the same flat rail inside the Tasks tab.
+ * Mobile: the same flat rail in a Tasks swipe drawer (closed by default).
  */
 export class AppRail {
   constructor(private readonly page: Page) {}
@@ -1259,20 +1259,74 @@ export class AppRail {
     return this.page.locator('[data-app-rail-surface="mobile-tasks"]');
   }
 
+  mobileTrigger() {
+    return this.page.locator('[data-mobile-tasks-rail-trigger]');
+  }
+
   /**
    * On desktop the sidebar is always visible. On mobile the rail lives
-   * inside Tasks — open that tab first when the rail is not showing.
+   * in a Tasks drawer — open that tab and the drawer when the rail is not showing.
    */
   async ensureAvailable(): Promise<void> {
-    if (await this.root().isVisible().catch(() => false)) {
+    if ((await this.mobileTasks().count()) > 0) {
+      return;
+    }
+    if (await this.desktop().isVisible().catch(() => false)) {
       return;
     }
     const tasksTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Tasks"]');
     if (await tasksTab.isVisible().catch(() => false)) {
-      await tasksTab.click();
-      await this.page.waitForURL(/\/tasks/);
+      if (!/\/tasks(?:\?|$)/.test(new URL(this.page.url()).pathname)) {
+        await tasksTab.click();
+        await this.page.waitForURL(/\/tasks/);
+      }
+      await this.openMobileDrawer();
+      return;
     }
     await this.root().waitFor({ state: 'visible' });
+  }
+
+  async openMobileDrawer(): Promise<void> {
+    if ((await this.mobileTasks().count()) > 0) {
+      return;
+    }
+    const trigger = this.mobileTrigger();
+    await trigger.waitFor({ state: 'visible' });
+    await trigger.click();
+    await this.mobileTasks().waitFor({ state: 'attached' });
+  }
+
+  /**
+   * Mounted rail to click. The mobile drawer may still be transforming, so
+   * do not use Playwright's :visible filter — it misses vaul's panel.
+   */
+  private async railForInteraction(): Promise<Locator> {
+    await this.ensureAvailable();
+    if ((await this.mobileTasks().count()) > 0) {
+      return this.mobileTasks();
+    }
+    return this.root();
+  }
+
+  /**
+   * Fire pointer + click in the page. Playwright's default click waits for a
+   * stable box and scrollIntoViews against vaul's transform / body lock.
+   */
+  private async clickRailControl(locator: Locator): Promise<void> {
+    if ((await this.mobileTasks().count()) === 0) {
+      await locator.click();
+      return;
+    }
+    await locator.evaluate((node) => {
+      const view = node.ownerDocument.defaultView;
+      if (!view) {
+        throw new Error('Rail control is not in a window');
+      }
+      const Ctor = view.PointerEvent;
+      node.dispatchEvent(new Ctor('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+      node.dispatchEvent(new Ctor('pointerup', { bubbles: true, cancelable: true, button: 0 }));
+      (node as { click: () => void }).click();
+    });
   }
 
   async waitForVisible(): Promise<void> {
@@ -1339,10 +1393,9 @@ export class AppRail {
   }
 
   async openItem(label: string): Promise<void> {
-    await this.waitForVisible();
-    const item = this.itemByLabel(label);
-    await item.waitFor({ state: 'visible' });
-    await item.click();
+    const rail = await this.railForInteraction();
+    const item = rail.locator(`[data-rail-label="${label}"]`);
+    await this.clickRailControl(item);
   }
 
   async isItemActive(label: string): Promise<boolean> {
@@ -1369,7 +1422,7 @@ export class AppRail {
 
     const createButton = dialog.getByRole('button', { name: 'Create list' });
     if (await createButton.isDisabled()) {
-      await this.dismissOpenDialog();
+      await this.dismissNewListDialog();
       return { status: 'empty' };
     }
 
@@ -1384,7 +1437,7 @@ export class AppRail {
     const duplicateError = dialog.locator('[data-list-create-error]');
     if (response.status() === 409) {
       await duplicateError.waitFor({ state: 'visible' });
-      await this.dismissOpenDialog();
+      await this.dismissNewListDialog();
       return { status: 'duplicate' };
     }
     if (response.status() !== 201) {
@@ -1397,7 +1450,11 @@ export class AppRail {
       const pile = new URL(url).searchParams.get('pile');
       return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
     });
-    await this.itemByLabel(name).waitFor({ state: 'visible' });
+    // Desktop keeps the rail visible. Mobile closes the drawer after landing
+    // on the new pile so task content owns the screen.
+    if (await this.root().isVisible().catch(() => false)) {
+      await this.itemByLabel(name).waitFor({ state: 'visible' });
+    }
 
     const pile = new URL(this.page.url()).searchParams.get('pile');
     if (!pile) {
@@ -1412,14 +1469,13 @@ export class AppRail {
 
   private async openNewListDialog() {
     await this.waitForVisible();
-    const button = this.root().locator('[data-rail-item="new-list"]');
-    await button.waitFor({ state: 'visible' });
     const dialog = this.newListDialog();
 
     for (let attempt = 0; attempt < 4; attempt++) {
-      await this.dismissOpenDialog();
-      await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
-      await button.click();
+      await this.dismissNewListDialog();
+      const rail = await this.railForInteraction();
+      const button = rail.locator('[data-rail-item="new-list"]');
+      await this.clickRailControl(button);
       try {
         await dialog.waitFor({ state: 'visible', timeout: 2_500 });
         return dialog;
@@ -1432,8 +1488,9 @@ export class AppRail {
     return dialog;
   }
 
-  private async dismissOpenDialog(): Promise<void> {
-    const dialog = this.page.getByRole('dialog');
+  /** Close a leftover New list dialog only — never the mobile rail drawer. */
+  private async dismissNewListDialog(): Promise<void> {
+    const dialog = this.newListDialog();
     if (!(await dialog.isVisible().catch(() => false))) {
       return;
     }
@@ -1451,11 +1508,19 @@ export class AppRail {
   }
 
   async openOverflow(label: string): Promise<void> {
-    await this.waitForVisible();
-    const overflow = this.overflowByLabel(label);
-    await overflow.waitFor({ state: 'visible' });
-    await overflow.click();
-    await this.page.getByRole('menu').waitFor({ state: 'visible' });
+    const menu = this.page.getByRole('menu');
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const rail = await this.railForInteraction();
+      const overflow = rail.locator(`[data-rail-overflow="${label}"]`);
+      await this.clickRailControl(overflow);
+      try {
+        await menu.waitFor({ state: 'visible', timeout: 2_500 });
+        return;
+      } catch {
+        // Drawer motion ate the click. Reopen and retry.
+      }
+    }
+    await menu.waitFor({ state: 'visible' });
   }
 
   async deleteNamedList(
@@ -1474,7 +1539,7 @@ export class AppRail {
     await deleteItem.waitFor({ state: 'visible' });
     await deleteItem.press('Enter');
 
-    const dialog = this.page.getByRole('dialog');
+    const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
     await dialog.waitFor({ state: 'visible' });
     const responsePromise = this.page.waitForResponse(
       (response) =>
@@ -1486,15 +1551,15 @@ export class AppRail {
 
     if (response.status() === 409) {
       await this.page.locator('[data-list-delete-error]').waitFor({ state: 'visible' });
-      await this.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-      await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await dialog.waitFor({ state: 'hidden' });
       return { status: 'has-open-tasks' };
     }
     if (response.status() !== 204) {
       throw new Error(`Failed to delete named list from the rail: ${response.status()}`);
     }
 
-    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await dialog.waitFor({ state: 'hidden' });
     if (viewingDeletedPile) {
       await this.page.waitForURL((url) => {
         const parsed = new URL(url);

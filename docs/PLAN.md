@@ -43,8 +43,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 6: Mine leftovers** - Complete ✓ (Mine has no pile dropdown; always the assignee-only grouped overview — named lists then Unlisted; no one-pile, no reorder; old `?filter=mine&pile=…` lands on plain Mine; All keeps its dropdown)
 **Yoink UI story 7: retire All** - Complete ✓ (All is gone as a destination — no rail row / filter / `#all-pile` dropdown; old All URLs land on Today; delete of the list you are looking at lands on Today; create-list / create-task / delete stay on rail and pile/smart-view screens)
 **Yoink UI story 8: mobile rail inside Tasks** - Complete ✓ (thumb bar stays Inbox | Tasks only — not twelve destinations; mobile Tasks has the same flat rail as desktop; desktop rail unchanged)
+**Yoink UI story 9: mobile Tasks rail is a swipe drawer** - Complete ✓ (#76 — phone Tasks content is full-width; rail opens from a menu / swipe and closes after a destination; desktop sidebar unchanged)
 
 Recent updates:
+- Yoink UI story 9 “mobile Tasks rail is a swipe drawer” (#76): the always-open mobile rail from story 8 was the miss. On `md` and below, Tasks content owns the screen; the approved flat rail lives in a swipe drawer (menu control + vaul swipe-to-close / left-edge swipe-to-open). Choosing a destination closes the drawer. Bottom tabs stay Inbox | Tasks. Desktop sidebar rail unchanged. Inbox mobile (capture pane + tabs) unchanged. Named-list / Unlisted / smart views / + New list / rail-delete still work. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag reorder (#78), checkbox redesign (#77), swipe-to-complete (#79), multi-select, changing the desktop rail.
 - Yoink UI story 8 “mobile rail inside Tasks”: last of the approved sidebar frame. Polly lock: bottom tabs stay Inbox | Tasks only — do not put twelve destinations in the thumb bar. Inside Tasks on mobile, the same flat rail as desktop (smart views, Lists heading, named lists, Unlisted, + New list). Desktop rail unchanged. Inbox bottom tab still opens the Inbox capture pane (Snoozed/Trash as pane tabs). Named-list / Unlisted / smart views / + New list / rail-delete / Promote stay as on trunk after story 7. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag, empty groups, bulk actions, Done-by-list, suggested list at promote, changing Today/Upcoming nesting or Mine grouping, reintroducing All, new bottom tabs.
 - Yoink UI story 7 “retire All”: All is gone as a destination. No All rail row, filter tab, grouped overview, one-pile All modes, or `#all-pile` dropdown. Old All URLs (`/tasks`, `/tasks?filter=all`, `/tasks?filter=all&pile=…`) land on Today — not 404, not a vanished overview. Deleting the named list you are looking at lands on Today. Create-list stays on + New list; create-task stays on the current pile or smart view; delete stays on the rail-row overflow. Named-list / Unlisted screens stay as pile-only (`?pile=`). Today / Upcoming / Mine / Done / Inbox / Promote stay. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: mobile rail-inside-Tasks, drag, empty groups, bulk actions, Done-by-list, changing Today/Upcoming nesting, Inbox / Promote.
 - Yoink UI story 6 “Mine leftovers”: lose any pile dropdown. Mine is a smart view — your assigned open tasks only, grouped by named list then Unlisted (same grouping as today’s Mine overview). No one-pile mode. No up/down. Create and delete stay off Mine. Create-list stays on + New list / All. Rail Mine highlights Mine. Old `?filter=mine&pile=…` URLs land on plain Mine overview (drop/ignore pile), not 404. Today / Upcoming / Done / All unchanged; All still has its dropdown until story 7. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: retire All, mobile rail-inside-Tasks, drag, empty groups, bulk actions, Done-by-list, changing Today/Upcoming nesting, Promote / Inbox.
@@ -1201,6 +1203,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 9: mobile Tasks rail is a swipe drawer - Complete ✓
+
+**Goal**: On a phone, Tasks content owns the screen. The approved flat rail is a swipe drawer, not always-open. Desktop sidebar stays.
+
+**Product rules (locked, issue #76):**
+- One story at a time. This story only. Do not start #77 / #78 / #79.
+- Mobile (`md` and below): Tasks content is full-width. Rail is not always open.
+- Open/close via a clear control (menu) and swipe gesture where the kit supports it (vaul swipe-to-close; left-edge swipe-to-open).
+- Drawer contents stay the approved flat rail: smart views, Lists heading, named lists, Unlisted, + New list, overflow delete.
+- Bottom tabs stay Inbox | Tasks only.
+- Desktop / wide: existing left sidebar rail unchanged.
+- Inbox mobile behavior unchanged (capture pane + tabs).
+- Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Drag reorder (#78), checkbox redesign (#77), swipe-to-complete (#79)
+- Multi-select
+- Changing the desktop rail
+
+**Implementation:**
+- Kit Drawer (vaul, left direction) added to `@yoink/ui-base`. Mobile Tasks renders `MobileTasksRailDrawer` (menu trigger + edge swipe + `AppRailPanel`). Choosing a rail destination closes the drawer. Desktop `AppRailPanel` in `AppNav` stays `hidden md:flex`.
+- Playwright uses a phone viewport. Tasks shows add-task / task content first (rail closed). Opening the drawer shows the flat rail; choosing a destination closes it and shows that screen. Bottom tabs stay Inbox | Tasks. Wide layout still shows the desktop sidebar. Named-list / Unlisted / smart views / + New list / rail-delete / Promote still work on mobile. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member on a phone sees Tasks content first, opens the flat rail from a drawer, and still has the always-visible sidebar on a wide layout.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1587,6 +1616,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 9 is in.** On a phone, Tasks content owns the screen; the approved flat rail is a swipe drawer (menu + swipe), not always-open. Choosing a destination closes the drawer. Bottom tabs stay Inbox | Tasks. Desktop sidebar rail is unchanged. Do not start later UI work (#77 checkbox, #78 drag, #79 swipe-to-complete) from this story.
 
 **Yoink UI story 8 is in.** Mobile keeps Inbox | Tasks bottom tabs. The approved flat rail lives inside the Tasks tab. Inbox bottom tab still opens the capture pane. Desktop sidebar rail is unchanged. Do not start later UI work (drag, empty groups, bulk actions) from this story.
 

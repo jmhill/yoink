@@ -762,6 +762,27 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeMobileBottomNav(): Promise<void>;
 
+  /**
+   * Assert Tasks on a phone shows task content first — the rail drawer is
+   * closed and does not occupy the screen. A control to open it is visible.
+   */
+  shouldSeeTasksContentWithoutMobileRail(): Promise<void>;
+
+  /**
+   * Open the mobile Tasks rail drawer (menu control).
+   */
+  openMobileTasksRail(): Promise<void>;
+
+  /**
+   * Assert the mobile Tasks rail drawer is open (flat rail visible).
+   */
+  shouldSeeMobileTasksRail(): Promise<void>;
+
+  /**
+   * Assert the mobile Tasks rail drawer is closed.
+   */
+  shouldNotSeeMobileTasksRail(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

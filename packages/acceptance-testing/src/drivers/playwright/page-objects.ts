@@ -231,7 +231,9 @@ export class InboxPage {
    */
   async quickAdd(content: string): Promise<string | null> {
     const input = this.page.getByPlaceholder('Quick capture...');
-    const addButton = this.page.getByRole('button', { name: 'Add' });
+    // Unique actor emails become org names (`local+suffix@…'s Workspace`).
+    // Substring `name: 'Add'` matches those when the suffix contains "add".
+    const addButton = this.page.getByRole('button', { name: 'Add', exact: true });
     
     await input.fill(content);
     
@@ -831,7 +833,7 @@ export class TasksPage {
 
   async quickAdd(title: string): Promise<void> {
     await this.page.locator('#create-task-title').fill(title);
-    await this.page.getByRole('button', { name: 'Add' }).click();
+    await this.page.getByRole('button', { name: 'Add', exact: true }).click();
   }
 
   async setTitle(title: string): Promise<void> {
@@ -1105,6 +1107,10 @@ export class TasksPage {
 
   pinButtons() {
     return this.page.getByRole('button', { name: /^(Pin|Unpin) task/ });
+  }
+
+  completeControl(taskId: string) {
+    return this.taskCard(taskId).locator('[data-slot="task-complete"]');
   }
 
   async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {

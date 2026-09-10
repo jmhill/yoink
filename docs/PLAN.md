@@ -44,8 +44,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 7: retire All** - Complete ✓ (All is gone as a destination — no rail row / filter / `#all-pile` dropdown; old All URLs land on Today; delete of the list you are looking at lands on Today; create-list / create-task / delete stay on rail and pile/smart-view screens)
 **Yoink UI story 8: mobile rail inside Tasks** - Complete ✓ (thumb bar stays Inbox | Tasks only — not twelve destinations; mobile Tasks has the same flat rail as desktop; desktop rail unchanged)
 **Yoink UI story 9: mobile Tasks rail is a swipe drawer** - Complete ✓ (#76 — phone Tasks content is full-width; rail opens from a menu / swipe and closes after a destination; desktop sidebar unchanged)
+**Yoink UI story 10: larger complete control** - Complete ✓ (#77 — task rows use a ~44px complete button with a circle icon, not a multi-select checkbox; one tap still completes/uncompletes)
 
 Recent updates:
+- Yoink UI story 10 “larger complete control” (#77): completing a task on mobile was finicky. Task rows replace the small checkbox with a larger complete control (clear circle / circle-check icon, ~44px touch target). One tap still completes and uncompletes. Must not look like a multi-select checkbox; no multi-select in this story. Pin, due date, assignee, and other row chrome stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: swipe-to-complete (#79), multi-select, drag reorder (#78), changing which tasks appear, mobile drawer (#76 already shipped).
 - Yoink UI story 9 “mobile Tasks rail is a swipe drawer” (#76): the always-open mobile rail from story 8 was the miss. On `md` and below, Tasks content owns the screen; the approved flat rail lives in a swipe drawer (menu control + vaul swipe-to-close / left-edge swipe-to-open). Choosing a destination closes the drawer. Bottom tabs stay Inbox | Tasks. Desktop sidebar rail unchanged. Inbox mobile (capture pane + tabs) unchanged. Named-list / Unlisted / smart views / + New list / rail-delete still work. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag reorder (#78), checkbox redesign (#77), swipe-to-complete (#79), multi-select, changing the desktop rail.
 - Yoink UI story 8 “mobile rail inside Tasks”: last of the approved sidebar frame. Polly lock: bottom tabs stay Inbox | Tasks only — do not put twelve destinations in the thumb bar. Inside Tasks on mobile, the same flat rail as desktop (smart views, Lists heading, named lists, Unlisted, + New list). Desktop rail unchanged. Inbox bottom tab still opens the Inbox capture pane (Snoozed/Trash as pane tabs). Named-list / Unlisted / smart views / + New list / rail-delete / Promote stay as on trunk after story 7. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag, empty groups, bulk actions, Done-by-list, suggested list at promote, changing Today/Upcoming nesting or Mine grouping, reintroducing All, new bottom tabs.
 - Yoink UI story 7 “retire All”: All is gone as a destination. No All rail row, filter tab, grouped overview, one-pile All modes, or `#all-pile` dropdown. Old All URLs (`/tasks`, `/tasks?filter=all`, `/tasks?filter=all&pile=…`) land on Today — not 404, not a vanished overview. Deleting the named list you are looking at lands on Today. Create-list stays on + New list; create-task stays on the current pile or smart view; delete stays on the rail-row overflow. Named-list / Unlisted screens stay as pile-only (`?pile=`). Today / Upcoming / Mine / Done / Inbox / Promote stay. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: mobile rail-inside-Tasks, drag, empty groups, bulk actions, Done-by-list, changing Today/Upcoming nesting, Inbox / Promote.
@@ -1230,6 +1232,31 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 10: larger complete control - Complete ✓
+
+**Goal**: Completing a task is an obvious tap on a large “done” control, not a tiny multi-select checkbox.
+
+**Product rules (locked, issue #77):**
+- One story at a time. This story only. Do not start #78 / #79.
+- On task rows (all sizes, or at least mobile-first with desktop matching), replace the small multi-select-looking checkbox with a larger complete control: clear icon, larger touch target (aim ~44px).
+- One tap/click still completes (and uncompletes where that already exists).
+- Must not look like a multi-select checkbox. No multi-select behavior in this story.
+- Pin, due date, assignee, and other row chrome stay as they are unless they block the touch target.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Swipe-to-complete (#79), multi-select, drag reorder (#78)
+- Changing which tasks appear
+- Mobile drawer (#76 already shipped)
+
+**Implementation:**
+- `TaskCard` uses a kit `Button` (ghost, 44px circular hit target) with lucide `Circle` / `CircleCheck` instead of the kit `Checkbox`. Role is button (`aria-pressed`), not checkbox.
+- Playwright: rows show a ≥44px complete button and no checkbox; complete and uncomplete from that control still work; named-list / Unlisted / Today stay usable on desktop and phone. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member completes and uncompletes from a large, obviously-done control on the task row, on phone and desktop.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1616,6 +1643,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 10 is in.** Task rows complete from a ~44px circle button (not a multi-select checkbox). One tap still completes and uncompletes. Pin / due / assignee stay. Do not start later UI work (#78 drag, #79 swipe-to-complete) from this story.
 
 **Yoink UI story 9 is in.** On a phone, Tasks content owns the screen; the approved flat rail is a swipe drawer (menu + swipe), not always-open. Choosing a destination closes the drawer. Bottom tabs stay Inbox | Tasks. Desktop sidebar rail is unchanged. Do not start later UI work (#77 checkbox, #78 drag, #79 swipe-to-complete) from this story.
 

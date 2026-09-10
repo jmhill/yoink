@@ -783,6 +783,24 @@ export type BrowserActorOperations = {
    */
   shouldNotSeeMobileTasksRail(): Promise<void>;
 
+  /**
+   * Assert this task row has a large complete control (aim ~44px), not a
+   * multi-select checkbox. Pin stays on the row.
+   */
+  shouldSeeLargeCompleteControlOnTask(taskId: string): Promise<void>;
+
+  /**
+   * Complete an open task by tapping/clicking the row complete control.
+   * The task leaves the current open-task view.
+   */
+  completeOpenTaskFromRow(taskId: string): Promise<void>;
+
+  /**
+   * Uncomplete a completed task by tapping/clicking the row complete control.
+   * The task leaves the current completed view (Done).
+   */
+  uncompleteTaskFromRow(taskId: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

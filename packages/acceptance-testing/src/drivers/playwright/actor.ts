@@ -1049,7 +1049,7 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
     },
 
     async openPromoteSheet(content: string): Promise<void> {
@@ -1172,6 +1172,34 @@ export const createPlaywrightActor = (
     async shouldNotSeeMobileTasksRail(): Promise<void> {
       await expect(appRail.mobileTrigger()).toBeVisible();
       await expect(appRail.mobileTasks()).toBeHidden();
+    },
+
+    async shouldSeeLargeCompleteControlOnTask(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const card = tasksPage.taskCard(taskId);
+      const control = tasksPage.completeControl(taskId);
+      await expect(control).toBeVisible();
+      await expect(control).toHaveRole('button');
+      await expect(card.getByRole('checkbox')).toHaveCount(0);
+      const box = await control.boundingBox();
+      if (!box) {
+        throw new Error('complete control should have a layout box');
+      }
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      await expect(card.getByRole('button', { name: /^(Pin|Unpin) task/ })).toBeVisible();
+    },
+
+    async completeOpenTaskFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.completeControl(taskId).click();
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+    },
+
+    async uncompleteTaskFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.completeControl(taskId).click();
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

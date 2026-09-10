@@ -1387,7 +1387,7 @@ export class AppRail {
 
     const createButton = dialog.getByRole('button', { name: 'Create list' });
     if (await createButton.isDisabled()) {
-      await this.dismissOpenDialog();
+      await this.dismissNewListDialog();
       return { status: 'empty' };
     }
 
@@ -1402,7 +1402,7 @@ export class AppRail {
     const duplicateError = dialog.locator('[data-list-create-error]');
     if (response.status() === 409) {
       await duplicateError.waitFor({ state: 'visible' });
-      await this.dismissOpenDialog();
+      await this.dismissNewListDialog();
       return { status: 'duplicate' };
     }
     if (response.status() !== 201) {
@@ -1434,13 +1434,13 @@ export class AppRail {
 
   private async openNewListDialog() {
     await this.waitForVisible();
-    const button = this.root().locator('[data-rail-item="new-list"]');
-    await button.waitFor({ state: 'visible' });
     const dialog = this.newListDialog();
 
     for (let attempt = 0; attempt < 4; attempt++) {
-      await this.dismissOpenDialog();
-      await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
+      await this.dismissNewListDialog();
+      await this.waitForVisible();
+      const button = this.root().locator('[data-rail-item="new-list"]');
+      await button.waitFor({ state: 'visible' });
       await button.scrollIntoViewIfNeeded();
       await button.click();
       try {
@@ -1455,8 +1455,9 @@ export class AppRail {
     return dialog;
   }
 
-  private async dismissOpenDialog(): Promise<void> {
-    const dialog = this.page.getByRole('dialog');
+  /** Close a leftover New list dialog only — never the mobile rail drawer. */
+  private async dismissNewListDialog(): Promise<void> {
+    const dialog = this.newListDialog();
     if (!(await dialog.isVisible().catch(() => false))) {
       return;
     }
@@ -1497,7 +1498,7 @@ export class AppRail {
     await deleteItem.waitFor({ state: 'visible' });
     await deleteItem.press('Enter');
 
-    const dialog = this.page.getByRole('dialog');
+    const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
     await dialog.waitFor({ state: 'visible' });
     const responsePromise = this.page.waitForResponse(
       (response) =>
@@ -1509,15 +1510,15 @@ export class AppRail {
 
     if (response.status() === 409) {
       await this.page.locator('[data-list-delete-error]').waitFor({ state: 'visible' });
-      await this.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-      await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await dialog.waitFor({ state: 'hidden' });
       return { status: 'has-open-tasks' };
     }
     if (response.status() !== 204) {
       throw new Error(`Failed to delete named list from the rail: ${response.status()}`);
     }
 
-    await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await dialog.waitFor({ state: 'hidden' });
     if (viewingDeletedPile) {
       await this.page.waitForURL((url) => {
         const parsed = new URL(url);

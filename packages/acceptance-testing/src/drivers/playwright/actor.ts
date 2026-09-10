@@ -524,6 +524,16 @@ export const createPlaywrightActor = (
       await tasksPage.waitForTasksOrEmpty();
     },
 
+    async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
+      await tasksPage.dragOpenTaskOnto(sourceTitle, targetTitle);
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void> {
+      await tasksPage.dragOpenTaskOntoByTouch(sourceTitle, targetTitle);
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
     async refreshOpenList(): Promise<void> {
       await page.reload();
       await tasksPage.waitForTasksOrEmpty();
@@ -710,7 +720,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeReorderControls(): Promise<void> {
-      await expect(tasksPage.reorderButtons().first()).toBeVisible();
+      await expect(tasksPage.dragHandles().first()).toBeVisible();
     },
 
     async shouldSeeTaskTitles(titles: string[]): Promise<void> {
@@ -736,6 +746,7 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeReorderControls(): Promise<void> {
       await expect(tasksPage.reorderButtons()).toHaveCount(0);
+      await expect(tasksPage.dragHandles()).toHaveCount(0);
     },
 
     async shouldSeePinControls(): Promise<void> {
@@ -1227,6 +1238,13 @@ export const createPlaywrightActor = (
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expect(tasksPage.taskCard(taskId)).toBeVisible();
+    },
+
+    async shouldKeepTaskAfterVerticalRowDrag(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const card = tasksPage.taskCard(taskId);
+      await tasksPage.dragTaskRowVerticallyWithTouch(taskId, 140);
+      await expect(card).toBeVisible();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

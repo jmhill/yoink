@@ -27,7 +27,8 @@ import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, Us
 import { Header } from '@/components/header';
 import { MobileTasksRailDrawer } from '@/components/mobile-tasks-rail-drawer';
 import { ErrorState } from '@/components/error-state';
-import { TaskCard, type TaskReorderControls } from '@/components/task-card';
+import { TaskCard } from '@/components/task-card';
+import { SortablePileList } from '@/components/sortable-pile-list';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
@@ -768,15 +769,7 @@ function TasksPage() {
     deleteMutation.isPending ||
     reorderPending;
 
-  const movePileTask = (taskId: string, direction: 'up' | 'down') => {
-    const index = tasks.findIndex((item) => item.id === taskId);
-    if (index < 0) return;
-    const target = direction === 'up' ? index - 1 : index + 1;
-    if (target < 0 || target >= tasks.length) return;
-    const next = [...tasks];
-    const [removed] = next.splice(index, 1);
-    next.splice(target, 0, removed);
-    const taskIds = next.map((item) => item.id);
+  const persistPileOrder = (taskIds: string[]) => {
     if (allPile?.kind === 'named') {
       reorderNamedMutation.mutate({
         params: { id: allPile.listId },
@@ -789,15 +782,6 @@ function TasksPage() {
         body: { taskIds },
       });
     }
-  };
-
-  const reorderFor = (index: number): TaskReorderControls | undefined => {
-    if (!canReorder) return undefined;
-    return {
-      canMoveUp: index > 0,
-      canMoveDown: index < tasks.length - 1,
-      onMove: movePileTask,
-    };
   };
 
   const emptyTitle =
@@ -960,8 +944,30 @@ function TasksPage() {
           )}
         </PileGroupList>
       ) : (
+        canReorder ? (
+          <SortablePileList
+            tasks={tasks}
+            disabled={isLoading}
+            onPersistOrder={persistPileOrder}
+            renderTask={(task, dragHandle) => (
+              <TaskCard
+                task={task}
+                onComplete={handleComplete}
+                onUncomplete={handleUncomplete}
+                onPin={handlePin}
+                onUnpin={handleUnpin}
+                onDelete={(id) => setDeleteConfirmId(id)}
+                onEdit={handleEdit}
+                isLoading={isLoading}
+                assigneeLabel={assigneeLabelFor(task)}
+                listLabel={listLabelFor(task)}
+                dragHandle={dragHandle}
+              />
+            )}
+          />
+        ) : (
         <AnimatedList>
-          {tasks.map((task, index) => (
+          {tasks.map((task) => (
             <AnimatedListItem
               key={task.id}
               id={task.id}
@@ -978,11 +984,11 @@ function TasksPage() {
                 isLoading={isLoading}
                 assigneeLabel={assigneeLabelFor(task)}
                 listLabel={listLabelFor(task)}
-                reorder={reorderFor(index)}
               />
             </AnimatedListItem>
           ))}
         </AnimatedList>
+        )
       )}
 
       {/* Delete confirmation dialog */}

@@ -78,8 +78,8 @@ export function useSwipe(options: UseSwipeOptions = {}): UseSwipeReturn {
     const deltaX = touch.clientX - startXRef.current;
     const deltaY = touch.clientY - startYRef.current;
 
-    // Horizontal-only lock: vertical-dominant movement is scroll (and later
-    // drag-reorder). Swipe and drag keep separate axes.
+    // Horizontal-only lock: vertical-dominant movement is scroll. One-pile
+    // drag-reorder uses a grip handle (vertical axis). Swipe keeps this axis.
     if (!isSwipingRef.current && Math.abs(deltaY) > Math.abs(deltaX)) {
       return;
     }

@@ -9,17 +9,11 @@ import {
   Calendar,
   User,
   List,
-  ChevronDown,
-  ChevronUp,
+  GripVertical,
 } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
-
-export type TaskReorderControls = {
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMove: (taskId: string, direction: 'up' | 'down') => void;
-};
+import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
 
 type TaskCardProps = {
   task: Task;
@@ -32,7 +26,7 @@ type TaskCardProps = {
   isLoading?: boolean;
   assigneeLabel?: string;
   listLabel?: string;
-  reorder?: TaskReorderControls;
+  dragHandle?: SortablePileDragHandle;
 };
 
 export function TaskCard({
@@ -46,7 +40,7 @@ export function TaskCard({
   isLoading = false,
   assigneeLabel,
   listLabel,
-  reorder,
+  dragHandle,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const isPinned = Boolean(task.pinnedAt);
@@ -112,7 +106,7 @@ export function TaskCard({
 
   return (
     <div
-      {...(reorder
+      {...(dragHandle
         ? { 'data-open-task-id': task.id, 'data-open-task-title': task.title }
         : {})}
     >
@@ -200,29 +194,36 @@ export function TaskCard({
         </button>
 
         <div className="flex gap-1">
-          {reorder && (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Move ${task.title} up`}
-                disabled={isLoading || !reorder.canMoveUp}
-                onClick={() => reorder.onMove(task.id, 'up')}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Move ${task.title} down`}
-                disabled={isLoading || !reorder.canMoveDown}
-                onClick={() => reorder.onMove(task.id, 'down')}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </>
+          {dragHandle && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              data-drag-handle=""
+              aria-label={`Drag to reorder ${task.title}`}
+              disabled={isLoading}
+              className="size-11 min-h-11 min-w-11 shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              onPointerDown={(event) => {
+                if (isLoading) {
+                  return;
+                }
+                dragHandle.onPointerDown(event);
+              }}
+              onPointerMove={dragHandle.onPointerMove}
+              onPointerUp={dragHandle.onPointerUp}
+              onPointerCancel={dragHandle.onPointerUp}
+              onTouchStart={(event) => {
+                if (isLoading) {
+                  return;
+                }
+                dragHandle.onTouchStart(event);
+              }}
+              onTouchMove={dragHandle.onTouchMove}
+              onTouchEnd={dragHandle.onTouchEnd}
+              onTouchCancel={dragHandle.onTouchEnd}
+            >
+              <GripVertical className="size-5" />
+            </Button>
           )}
           <Button
             variant="ghost"

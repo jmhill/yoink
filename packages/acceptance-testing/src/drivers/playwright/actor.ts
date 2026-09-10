@@ -1049,7 +1049,7 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
     },
 
     async openPromoteSheet(content: string): Promise<void> {

@@ -52,6 +52,7 @@
     --swipe-trash: #16a34a;
     --swipe-snooze: #d97706;
     --swipe-restore: #2563eb;
+    --swipe-complete: #16a34a;
   }
 
   .dark {
@@ -90,6 +91,7 @@
     --swipe-trash: #22c55e;
     --swipe-snooze: #f59e0b;
     --swipe-restore: #3b82f6;
+    --swipe-complete: #22c55e;
   }
 }
 
@@ -184,6 +186,7 @@
   --swipe-trash: #385f0d;
   --swipe-snooze: #8f5e15;
   --swipe-restore: #2959aa;
+  --swipe-complete: #385f0d;
 }
 
 /* Tokyo Night Dark (Storm variant) */
@@ -223,4 +226,5 @@
   --swipe-trash: #9ece6a;
   --swipe-snooze: #e0af68;
   --swipe-restore: #7aa2f7;
+  --swipe-complete: #9ece6a;
 }

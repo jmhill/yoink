@@ -801,6 +801,24 @@ export type BrowserActorOperations = {
    */
   uncompleteTaskFromRow(taskId: string): Promise<void>;
 
+  /**
+   * Complete an open task by swiping the row right (touch / phone).
+   * Same outcome as the complete control: the task leaves the open view.
+   */
+  completeOpenTaskBySwipe(taskId: string): Promise<void>;
+
+  /**
+   * Scroll the task list vertically, including a vertical-dominant gesture
+   * on this row. The task must still be present — no accidental complete.
+   */
+  scrollTaskListWithoutCompleting(taskId: string): Promise<void>;
+
+  /**
+   * Drag the task row horizontally with a mouse. Desktop stays tap-only:
+   * the task must still be present.
+   */
+  shouldKeepTaskAfterDesktopRowDrag(taskId: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

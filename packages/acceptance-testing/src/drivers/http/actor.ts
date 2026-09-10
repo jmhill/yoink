@@ -752,6 +752,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('uncompleteTaskFromRow', 'http');
     },
 
+    async completeOpenTaskBySwipe(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('completeOpenTaskBySwipe', 'http');
+    },
+
+    async scrollTaskListWithoutCompleting(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('scrollTaskListWithoutCompleting', 'http');
+    },
+
+    async shouldKeepTaskAfterDesktopRowDrag(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepTaskAfterDesktopRowDrag', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

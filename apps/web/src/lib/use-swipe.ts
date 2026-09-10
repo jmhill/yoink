@@ -78,7 +78,8 @@ export function useSwipe(options: UseSwipeOptions = {}): UseSwipeReturn {
     const deltaX = touch.clientX - startXRef.current;
     const deltaY = touch.clientY - startYRef.current;
 
-    // If vertical movement is greater than horizontal, don't swipe (allow scroll)
+    // Horizontal-only lock: vertical-dominant movement is scroll (and later
+    // drag-reorder). Swipe and drag keep separate axes.
     if (!isSwipingRef.current && Math.abs(deltaY) > Math.abs(deltaX)) {
       return;
     }

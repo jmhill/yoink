@@ -1202,6 +1202,33 @@ export const createPlaywrightActor = (
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
+    async completeOpenTaskBySwipe(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.swipeTaskRow(taskId, { x: 140, y: 0 });
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+    },
+
+    async scrollTaskListWithoutCompleting(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const card = tasksPage.taskCard(taskId);
+      await tasksPage.swipeTaskRow(taskId, { x: 12, y: 160 });
+      await expect(card).toBeVisible();
+      const before = (await page.evaluate('window.scrollY')) as number;
+      await page.mouse.wheel(0, 400);
+      await page.evaluate('window.scrollBy(0, 400)');
+      const after = (await page.evaluate('window.scrollY')) as number;
+      expect(after).toBeGreaterThan(before);
+      await expect(card).toBeAttached();
+    },
+
+    async shouldKeepTaskAfterDesktopRowDrag(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.dragTaskRowWithMouse(taskId, 160);
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(tasksPage.taskCard(taskId)).toBeVisible();
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       // Quick-add can pick a list, but has no assignee or due-date controls.
       // Use the session API when those fields are present so setup is exact.

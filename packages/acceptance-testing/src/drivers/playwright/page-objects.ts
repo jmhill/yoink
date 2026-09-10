@@ -1113,6 +1113,69 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-slot="task-complete"]');
   }
 
+  /**
+   * Fire a native touch swipe on the task row (useSwipe is touch-only).
+   * Start away from the left-edge rail strip. Threshold is 80px.
+   */
+  async swipeTaskRow(
+    taskId: string,
+    delta: { x: number; y: number }
+  ): Promise<void> {
+    const card = this.taskCard(taskId);
+    await card.waitFor({ state: 'visible' });
+    await card.evaluate((node, { x, y }) => {
+      const view = node.ownerDocument.defaultView;
+      if (!view) {
+        throw new Error('task row is not in a window');
+      }
+      const rect = node.getBoundingClientRect();
+      const startX = rect.left + Math.min(rect.width * 0.35, 90);
+      const startY = rect.top + rect.height / 2;
+      const fire = (type: string, clientX: number, clientY: number) => {
+        const touch = new view.Touch({
+          identifier: 1,
+          target: node,
+          clientX,
+          clientY,
+          pageX: clientX,
+          pageY: clientY,
+          radiusX: 2.5,
+          radiusY: 2.5,
+          rotationAngle: 0,
+          force: 1,
+        });
+        node.dispatchEvent(
+          new view.TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            touches: type === 'touchend' ? [] : [touch],
+            targetTouches: type === 'touchend' ? [] : [touch],
+            changedTouches: [touch],
+          })
+        );
+      };
+      fire('touchstart', startX, startY);
+      fire('touchmove', startX + x * 0.25, startY + y * 0.25);
+      fire('touchmove', startX + x, startY + y);
+      fire('touchend', startX + x, startY + y);
+    }, delta);
+  }
+
+  async dragTaskRowWithMouse(taskId: string, deltaX: number): Promise<void> {
+    const card = this.taskCard(taskId);
+    const box = await card.boundingBox();
+    if (!box) {
+      throw new Error('task row should have a layout box');
+    }
+    const y = box.y + 6;
+    const startX = box.x + Math.min(box.width * 0.45, 120);
+    await this.page.mouse.move(startX, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(startX + deltaX, y, { steps: 12 });
+    await this.page.mouse.up();
+  }
+
   async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {
     const items = this.page.locator('[data-app-rail]:visible [data-rail-item="named"]');
     const count = await items.count();

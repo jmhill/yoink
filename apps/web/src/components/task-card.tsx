@@ -116,13 +116,19 @@ export function TaskCard({
         ? { 'data-open-task-id': task.id, 'data-open-task-title': task.title }
         : {})}
     >
+      {/* Touch: swipe right completes (same toggle as the complete control).
+          Matches capture swipe-right. Vertical stays scroll; desktop mouse is tap-only. */}
       <SwipeableCard
       data-task-id={task.id}
       rightAction={{
-        icon: <Trash2 className="h-5 w-5" />,
-        label: 'Delete',
-        type: 'trash',
-        onAction: () => onDelete(task.id),
+        icon: isCompleted ? (
+          <Circle className="h-5 w-5" />
+        ) : (
+          <CircleCheck className="h-5 w-5" />
+        ),
+        label: isCompleted ? 'Incomplete' : 'Complete',
+        type: 'complete',
+        onAction: handleCompleteToggle,
       }}
       disabled={isLoading}
     >

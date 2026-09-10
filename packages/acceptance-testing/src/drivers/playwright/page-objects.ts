@@ -1105,6 +1105,14 @@ export class TasksPage {
     return this.page.getByRole('button', { name: /^Move / });
   }
 
+  dragHandles() {
+    return this.page.locator('[data-drag-handle]');
+  }
+
+  dragHandle(title: string) {
+    return this.page.locator(`[data-open-task-title="${title}"] [data-drag-handle]`);
+  }
+
   pinButtons() {
     return this.page.getByRole('button', { name: /^(Pin|Unpin) task/ });
   }
@@ -1230,16 +1238,30 @@ export class TasksPage {
   }
 
   async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
-    const card = this.page.locator(`[data-open-task-title="${title}"]`);
-    await card.waitFor({ state: 'attached' });
-    const button = card.getByRole('button', { name: `Move ${title} ${direction}` });
-    await button.waitFor({ state: 'visible' });
+    const titles = await this.getOpenTaskTitles();
+    const index = titles.indexOf(title);
+    if (index < 0) {
+      throw new Error(`Open task "${title}" not found`);
+    }
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetTitle = titles[targetIndex];
+    if (!targetTitle) {
+      throw new Error(`Cannot move "${title}" ${direction}`);
+    }
+    await this.dragOpenTaskOnto(title, targetTitle);
+  }
+
+  async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
+    const source = this.dragHandle(sourceTitle);
+    const target = this.dragHandle(targetTitle);
+    await source.waitFor({ state: 'visible' });
+    await target.waitFor({ state: 'visible' });
     const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/tasks/order') && response.request().method() === 'PUT'
     );
-    await button.click();
+    await source.dragTo(target, { force: true });
     await responsePromise;
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
@@ -1249,6 +1271,75 @@ export class TasksPage {
       }
       await this.page.waitForTimeout(50);
     }
+  }
+
+  /**
+   * Touch drag on the grip handle (pointerType touch). Same vertical
+   * persist path as pointer drag — not a horizontal swipe.
+   */
+  async dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void> {
+    const source = this.dragHandle(sourceTitle);
+    const target = this.dragHandle(targetTitle);
+    await source.waitFor({ state: 'visible' });
+    await target.waitFor({ state: 'visible' });
+    const from = await source.boundingBox();
+    const to = await target.boundingBox();
+    if (!from || !to) {
+      throw new Error('drag handles should have layout boxes');
+    }
+
+    const startX = from.x + from.width / 2;
+    const startY = from.y + from.height / 2;
+    const endX = to.x + to.width / 2;
+    const endY = to.y + to.height / 2;
+
+    const before = await this.getOpenTaskTitles();
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/tasks/order') && response.request().method() === 'PUT'
+    );
+
+    const session = await this.page.context().newCDPSession(this.page);
+    try {
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: startX, y: startY, id: 1 }],
+      });
+      const steps = 12;
+      for (let step = 1; step <= steps; step++) {
+        const t = step / steps;
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [
+            {
+              x: startX + (endX - startX) * t,
+              y: startY + (endY - startY) * t,
+              id: 1,
+            },
+          ],
+        });
+      }
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+      });
+    } finally {
+      await session.detach();
+    }
+
+    await responsePromise;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const after = await this.getOpenTaskTitles();
+      if (after.join('\0') !== before.join('\0')) {
+        return;
+      }
+      await this.page.waitForTimeout(50);
+    }
+  }
+
+  async dragTaskRowVerticallyWithTouch(taskId: string, deltaY: number): Promise<void> {
+    await this.swipeTaskRow(taskId, { x: 8, y: deltaY });
   }
 
   async deleteNamedListById(

@@ -371,6 +371,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('moveOpenTask', 'http');
     },
 
+    async dragOpenTaskOnto(_sourceTitle: string, _targetTitle: string): Promise<void> {
+      throw new UnsupportedOperationError('dragOpenTaskOnto', 'http');
+    },
+
+    async dragOpenTaskOntoByTouch(_sourceTitle: string, _targetTitle: string): Promise<void> {
+      throw new UnsupportedOperationError('dragOpenTaskOntoByTouch', 'http');
+    },
+
     async refreshOpenList(): Promise<void> {
       throw new UnsupportedOperationError('refreshOpenList', 'http');
     },
@@ -762,6 +770,10 @@ export const createHttpActor = (
 
     async shouldKeepTaskAfterDesktopRowDrag(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldKeepTaskAfterDesktopRowDrag', 'http');
+    },
+
+    async shouldKeepTaskAfterVerticalRowDrag(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepTaskAfterVerticalRowDrag', 'http');
     },
 
     // Task operations

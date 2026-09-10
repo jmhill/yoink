@@ -294,9 +294,20 @@ export type BrowserActorOperations = {
   shouldSeeOpenTasksInOrder(titles: string[]): Promise<void>;
 
   /**
-   * Change the open-task order with the kit control (move up or down).
+   * Change the open-task order by dragging one step up or down.
    */
   moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void>;
+
+  /**
+   * Drag an open task onto another open task on a one-pile screen.
+   * Persists the new open order (pointer / mouse).
+   */
+  dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void>;
+
+  /**
+   * Drag an open task onto another via touch on a one-pile screen.
+   */
+  dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void>;
 
   /**
    * Reload the open list view.
@@ -352,7 +363,8 @@ export type BrowserActorOperations = {
   shouldSeeTasksInAllPileGroup(groupName: string, titles: string[]): Promise<void>;
 
   /**
-   * Assert the current Tasks view has no kit up/down reorder controls.
+   * Assert the current Tasks view has no drag-reorder handle (or leftover
+   * kit up/down).
    */
   shouldNotSeeReorderControls(): Promise<void>;
 
@@ -447,7 +459,7 @@ export type BrowserActorOperations = {
   shouldSeeRailMineHighlighted(): Promise<void>;
 
   /**
-   * Assert the current Tasks view has kit up/down reorder controls.
+   * Assert the current Tasks view has drag-reorder handles.
    */
   shouldSeeReorderControls(): Promise<void>;
 
@@ -818,6 +830,12 @@ export type BrowserActorOperations = {
    * the task must still be present.
    */
   shouldKeepTaskAfterDesktopRowDrag(taskId: string): Promise<void>;
+
+  /**
+   * Drag the task row vertically on the body (not the grip). Must not
+   * complete the task — swipe stays horizontal; drag is the handle.
+   */
+  shouldKeepTaskAfterVerticalRowDrag(taskId: string): Promise<void>;
 
   // ==========================================================================
   // Organization Member Management

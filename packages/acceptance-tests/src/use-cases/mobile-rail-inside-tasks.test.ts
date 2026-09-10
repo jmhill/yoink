@@ -3,28 +3,29 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Yoink UI story 8: mobile layout adaptation of the approved sidebar frame.
+ * Issue #76: mobile Tasks rail is a swipe drawer, not always-open.
  *
- * Polly lock (2026-09-04): bottom tabs stay Inbox | Tasks only — do not put
- * twelve destinations in the thumb bar. Inside Tasks on mobile: the same
- * flat rail as desktop (smart views, Lists heading, named lists, Unlisted,
- * + New list). Desktop rail unchanged.
+ * Story 8 put the flat rail inside mobile Tasks (always visible). That
+ * always-open rail ate the viewport. Content owns the screen; the rail
+ * swipes in like a native drawer. Desktop sidebar stays always-visible.
  *
- * Named-list / Unlisted / smart views / + New list / rail-delete / Promote
- * stay as on trunk after story 7. Out of scope: drag, empty groups, bulk
- * actions, Done-by-list, suggested list at promote, Today/Upcoming nesting,
- * Mine grouping, reintroducing All, new bottom tabs.
+ * Polly lock: bottom tabs stay Inbox | Tasks only. Drawer contents stay
+ * the approved flat rail (smart views, Lists heading, named lists,
+ * Unlisted, + New list, overflow delete). Inbox mobile behavior unchanged.
+ *
+ * Out of scope: drag reorder (#78), checkbox redesign (#77), swipe-to-complete
+ * (#79), multi-select, changing the desktop rail.
  */
 
 const railWith = (...names: string[]): string[] =>
   ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
-  describe(`Mobile rail inside Tasks [${ctx.driverName}]`, () => {
+  describe(`Mobile Tasks rail drawer [${ctx.driverName}]`, () => {
     let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await ctx.createActor('alice-ui-story-8-mobile-rail@example.com');
+      alice = await ctx.createActor('alice-ui-story-9-mobile-rail-drawer@example.com');
       await alice.useMobileViewport();
     });
 
@@ -52,32 +53,50 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileBottomTab('New list');
     });
 
-    it('shows the flat rail on mobile Tasks and opens the selected screen', async () => {
+    it('shows task content first — the rail does not occupy the screen by default', async () => {
+      await alice.createTask({ title: 'Milk' });
+
+      await alice.openMobileBottomTab('tasks');
+      await alice.shouldSeeTasksContentWithoutMobileRail();
+      await alice.shouldSeeOpenTasksInOrder(['Milk']);
+    });
+
+    it('opens the drawer to the flat rail and closes it after choosing a destination', async () => {
       const groceries = await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Milk', listId: groceries.id });
 
       await alice.openMobileBottomTab('tasks');
+      await alice.shouldNotSeeMobileTasksRail();
+
+      await alice.openMobileTasksRail();
+      await alice.shouldSeeMobileTasksRail();
       await alice.shouldSeeRailItems(railWith('Groceries'));
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
 
       await alice.openRailSmartView('today');
       await alice.shouldBeOnToday();
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailSmartView('upcoming');
       await alice.shouldBeOnTaskFilter('upcoming');
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailSmartView('mine');
       await alice.shouldBeOnMineOverview();
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailSmartView('done');
       await alice.shouldBeOnTaskFilter('completed');
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailNamedList('Groceries');
       await alice.shouldBeOnAllNamedPile(groceries.id);
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailUnlisted();
       await alice.shouldBeOnAllUnlistedPile();
+      await alice.shouldNotSeeMobileTasksRail();
     });
 
     it('opens the Inbox capture pane from the mobile Inbox bottom tab', async () => {
@@ -107,6 +126,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeEmptyNamedPile();
       await alice.shouldSeeAddTaskField();
       await alice.shouldNotSeeCreateTaskListPicker();
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.addTaskOnCurrentView('Milk');
       await alice.addTaskOnCurrentView('Eggs');
@@ -118,11 +138,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailUnlisted();
       await alice.shouldBeOnAllUnlistedPile();
       await alice.shouldNotSeeCreateTaskListPicker();
+      await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openRailSmartView('today');
       await alice.shouldBeOnToday();
       await alice.shouldSeeCreateTaskListPicker();
       await alice.shouldNotSeeReorderControls();
+      await alice.shouldNotSeeMobileTasksRail();
 
       const weekend = await alice.createNamedListFromRail('Weekend');
       await alice.shouldBeOnAllNamedPile(weekend.id);
@@ -149,7 +171,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await ctx.createActor('alice-ui-story-8-desktop-rail@example.com');
+      alice = await ctx.createActor('alice-ui-story-9-desktop-rail@example.com');
     });
 
     it('still shows the sidebar rail on a wide layout, without bottom tabs', async () => {
@@ -169,9 +191,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
 });
 
 usingDrivers(['http'] as const, (ctx) => {
-  describe(`Mobile rail inside Tasks — HTTP stubs [${ctx.driverName}]`, () => {
-    it('stubs mobile-rail operations as browser-only', async () => {
-      const alice = await ctx.createActor('alice-ui-story-8-mobile-rail-http@example.com');
+  describe(`Mobile Tasks rail drawer — HTTP stubs [${ctx.driverName}]`, () => {
+    it('stubs mobile-rail drawer operations as browser-only', async () => {
+      const alice = await ctx.createActor('alice-ui-story-9-mobile-rail-drawer-http@example.com');
       const actor = ctx.createActorWithCredentials({
         email: alice.email,
         userId: alice.userId,
@@ -185,6 +207,12 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.shouldSeeDesktopAppRail()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeTasksContentWithoutMobileRail()).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.openMobileTasksRail()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeMobileTasksRail()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldNotSeeMobileTasksRail()).rejects.toThrow(UnsupportedOperationError);
     });
   });
 });

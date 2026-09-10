@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { Settings } from 'lucide-react';
@@ -5,12 +6,14 @@ import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 type HeaderProps = {
   viewName?: string;
+  leading?: ReactNode;
 };
 
-export function Header({ viewName }: HeaderProps) {
+export function Header({ viewName, leading }: HeaderProps) {
   return (
     <div className="mb-6 flex items-center justify-between">
       <div className="flex items-center gap-2">
+        {leading}
         <Link to="/" title="Yoink">
           <img src="/icon-192x192.png" alt="Yoink" className="h-10 w-10 rounded-lg" />
         </Link>

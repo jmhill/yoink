@@ -724,6 +724,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeMobileBottomNav', 'http');
     },
 
+    async shouldSeeTasksContentWithoutMobileRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTasksContentWithoutMobileRail', 'http');
+    },
+
+    async openMobileTasksRail(): Promise<void> {
+      throw new UnsupportedOperationError('openMobileTasksRail', 'http');
+    },
+
+    async shouldSeeMobileTasksRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeMobileTasksRail', 'http');
+    },
+
+    async shouldNotSeeMobileTasksRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeMobileTasksRail', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

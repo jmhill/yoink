@@ -399,9 +399,12 @@ export const createPlaywrightActor = (
       const created = (await response.json()) as NamedList;
       await page.goto(`/tasks?pile=${created.id}`);
       await expect(page).toHaveURL(new RegExp(`[?&]pile=${created.id}`));
-      await appRail.waitForVisible();
-      await expect(appRail.itemByLabel(created.name)).toBeVisible();
       await tasksPage.waitForTasksOrEmpty();
+      // Desktop sidebar stays visible. Mobile drawer stays closed so content
+      // owns the screen; createNamedListFromRail proves the rail row.
+      if (await appRail.desktop().isVisible().catch(() => false)) {
+        await expect(appRail.itemByLabel(created.name)).toBeVisible();
+      }
       return created;
     },
 
@@ -1144,10 +1147,31 @@ export const createPlaywrightActor = (
     async shouldSeeDesktopAppRail(): Promise<void> {
       await expect(appRail.desktop()).toBeVisible();
       await expect(appRail.mobileTasks()).toBeHidden();
+      await expect(appRail.mobileTrigger()).toBeHidden();
     },
 
     async shouldNotSeeMobileBottomNav(): Promise<void> {
       await expect(mobileNav.root()).toBeHidden();
+    },
+
+    async shouldSeeTasksContentWithoutMobileRail(): Promise<void> {
+      await expect(page.locator('#create-task-title')).toBeVisible();
+      await expect(appRail.mobileTrigger()).toBeVisible();
+      await expect(appRail.mobileTasks()).toBeHidden();
+    },
+
+    async openMobileTasksRail(): Promise<void> {
+      await appRail.openMobileDrawer();
+      await expect(appRail.mobileTasks()).toBeVisible();
+    },
+
+    async shouldSeeMobileTasksRail(): Promise<void> {
+      await expect(appRail.mobileTasks()).toBeVisible();
+    },
+
+    async shouldNotSeeMobileTasksRail(): Promise<void> {
+      await expect(appRail.mobileTrigger()).toBeVisible();
+      await expect(appRail.mobileTasks()).toBeHidden();
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

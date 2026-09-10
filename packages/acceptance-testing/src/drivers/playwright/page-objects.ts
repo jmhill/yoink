@@ -1242,7 +1242,7 @@ export class MobileNav {
 /**
  * App rail (Inbox, smart views, named lists, Unlisted, New list).
  * Desktop: left sidebar (default Playwright viewport).
- * Mobile: the same flat rail inside the Tasks tab.
+ * Mobile: the same flat rail in a Tasks swipe drawer (closed by default).
  */
 export class AppRail {
   constructor(private readonly page: Page) {}
@@ -1259,9 +1259,13 @@ export class AppRail {
     return this.page.locator('[data-app-rail-surface="mobile-tasks"]');
   }
 
+  mobileTrigger() {
+    return this.page.locator('[data-mobile-tasks-rail-trigger]');
+  }
+
   /**
    * On desktop the sidebar is always visible. On mobile the rail lives
-   * inside Tasks — open that tab first when the rail is not showing.
+   * in a Tasks drawer — open that tab and the drawer when the rail is not showing.
    */
   async ensureAvailable(): Promise<void> {
     if (await this.root().isVisible().catch(() => false)) {
@@ -1269,10 +1273,23 @@ export class AppRail {
     }
     const tasksTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Tasks"]');
     if (await tasksTab.isVisible().catch(() => false)) {
-      await tasksTab.click();
-      await this.page.waitForURL(/\/tasks/);
+      if (!/\/tasks(?:\?|$)/.test(new URL(this.page.url()).pathname)) {
+        await tasksTab.click();
+        await this.page.waitForURL(/\/tasks/);
+      }
+      await this.openMobileDrawer();
     }
     await this.root().waitFor({ state: 'visible' });
+  }
+
+  async openMobileDrawer(): Promise<void> {
+    if (await this.mobileTasks().isVisible().catch(() => false)) {
+      return;
+    }
+    const trigger = this.mobileTrigger();
+    await trigger.waitFor({ state: 'visible' });
+    await trigger.click();
+    await this.mobileTasks().waitFor({ state: 'visible' });
   }
 
   async waitForVisible(): Promise<void> {
@@ -1397,7 +1414,11 @@ export class AppRail {
       const pile = new URL(url).searchParams.get('pile');
       return Boolean(pile && pile !== previousPile && /^[0-9a-f-]{36}$/i.test(pile));
     });
-    await this.itemByLabel(name).waitFor({ state: 'visible' });
+    // Desktop keeps the rail visible. Mobile closes the drawer after landing
+    // on the new pile so task content owns the screen.
+    if (await this.root().isVisible().catch(() => false)) {
+      await this.itemByLabel(name).waitFor({ state: 'visible' });
+    }
 
     const pile = new URL(this.page.url()).searchParams.get('pile');
     if (!pile) {

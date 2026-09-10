@@ -73,14 +73,20 @@ type AppRailPanelProps = {
   surface: AppRailSurface;
   className?: string;
   showBrand?: boolean;
+  onDestinationChosen?: () => void;
 };
 
 /**
  * Approved flat rail: Inbox (count hidden at 0), Today / Upcoming / Mine / Done,
  * Lists heading, named lists, Unlisted last, + New list.
- * Desktop is the left sidebar. Mobile lives inside the Tasks tab.
+ * Desktop is the left sidebar. Mobile lives in the Tasks swipe drawer.
  */
-export function AppRailPanel({ surface, className, showBrand = false }: AppRailPanelProps) {
+export function AppRailPanel({
+  surface,
+  className,
+  showBrand = false,
+  onDestinationChosen,
+}: AppRailPanelProps) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const search = useRouterState({ select: (state) => state.location.search });
@@ -182,6 +188,7 @@ export function AppRailPanel({ surface, className, showBrand = false }: AppRailP
                   data-rail-label={item.label}
                   data-rail-active={active ? 'true' : undefined}
                   className={railClassName(active)}
+                  onClick={onDestinationChosen}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span className="min-w-0 truncate">{item.label}</span>
@@ -217,6 +224,7 @@ export function AppRailPanel({ surface, className, showBrand = false }: AppRailP
                         'flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm transition-colors',
                         active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                       )}
+                      onClick={onDestinationChosen}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
                       <span className="min-w-0 truncate">{item.label}</span>
@@ -271,6 +279,7 @@ export function AppRailPanel({ surface, className, showBrand = false }: AppRailP
                   data-rail-label={item.label}
                   data-rail-active={active ? 'true' : undefined}
                   className={railClassName(active)}
+                  onClick={onDestinationChosen}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span className="min-w-0 truncate">{item.label}</span>
@@ -286,6 +295,7 @@ export function AppRailPanel({ surface, className, showBrand = false }: AppRailP
         open={createListOpen}
         onOpenChange={setCreateListOpen}
         onCreated={(list) => {
+          onDestinationChosen?.();
           void navigate({
             to: '/tasks',
             search: namedPileSearch(list.id),
@@ -301,6 +311,7 @@ export function AppRailPanel({ surface, className, showBrand = false }: AppRailP
           }
         }}
         onDeleted={() => {
+          onDestinationChosen?.();
           if (
             deletingList &&
             location.pathname === '/tasks' &&

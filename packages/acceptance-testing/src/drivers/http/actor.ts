@@ -740,6 +740,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeMobileTasksRail', 'http');
     },
 
+    async shouldSeeLargeCompleteControlOnTask(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeLargeCompleteControlOnTask', 'http');
+    },
+
+    async completeOpenTaskFromRow(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('completeOpenTaskFromRow', 'http');
+    },
+
+    async uncompleteTaskFromRow(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('uncompleteTaskFromRow', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

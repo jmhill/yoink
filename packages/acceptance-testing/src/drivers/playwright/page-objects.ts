@@ -1107,6 +1107,10 @@ export class TasksPage {
     return this.page.getByRole('button', { name: /^(Pin|Unpin) task/ });
   }
 
+  completeControl(taskId: string) {
+    return this.taskCard(taskId).locator('[data-slot="task-complete"]');
+  }
+
   async getNamedPiles(): Promise<Array<{ id: string; name: string }>> {
     const items = this.page.locator('[data-app-rail]:visible [data-rail-item="named"]');
     const count = await items.count();

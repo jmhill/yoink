@@ -1,7 +1,17 @@
 import { Button } from '@yoink/ui-base/components/button';
 import { CardContent } from '@yoink/ui-base/components/card';
-import { Checkbox } from '@yoink/ui-base/components/checkbox';
-import { Pin, PinOff, Trash2, Calendar, User, List, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Circle,
+  CircleCheck,
+  Pin,
+  PinOff,
+  Trash2,
+  Calendar,
+  User,
+  List,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
 
@@ -41,7 +51,7 @@ export function TaskCard({
   const isCompleted = Boolean(task.completedAt);
   const isPinned = Boolean(task.pinnedAt);
 
-  const handleCheckboxChange = () => {
+  const handleCompleteToggle = () => {
     if (isCompleted) {
       onUncomplete(task.id);
     } else {
@@ -117,13 +127,27 @@ export function TaskCard({
       disabled={isLoading}
     >
       <CardContent className="flex items-start gap-3 py-3">
-        <Checkbox
-          checked={isCompleted}
-          onCheckedChange={handleCheckboxChange}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          data-slot="task-complete"
+          aria-pressed={isCompleted}
+          aria-label={
+            isCompleted
+              ? `Mark task "${task.title}" as incomplete`
+              : `Mark task "${task.title}" as complete`
+          }
           disabled={isLoading}
-          className="mt-0.5"
-          aria-label={isCompleted ? `Mark task "${task.title}" as incomplete` : `Mark task "${task.title}" as complete`}
-        />
+          onClick={handleCompleteToggle}
+          className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+        >
+          {isCompleted ? (
+            <CircleCheck className="size-7 text-primary" />
+          ) : (
+            <Circle className="size-7" />
+          )}
+        </Button>
         
         <button
           type="button"

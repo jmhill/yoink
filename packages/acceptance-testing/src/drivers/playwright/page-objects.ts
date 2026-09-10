@@ -1284,12 +1284,61 @@ export class AppRail {
 
   async openMobileDrawer(): Promise<void> {
     if (await this.mobileTasks().locator('[data-rail-item="today"]').isVisible().catch(() => false)) {
+      await this.waitForDrawerMotionToSettle();
       return;
     }
     const trigger = this.mobileTrigger();
     await trigger.waitFor({ state: 'visible' });
     await trigger.click();
     await this.mobileTasks().locator('[data-rail-item="today"]').waitFor({ state: 'visible' });
+    await this.waitForDrawerMotionToSettle();
+  }
+
+  /**
+   * Vaul slides the left drawer with a 500ms transform. Playwright's default
+   * click waits for a stable box and scrollIntoViews against that motion
+   * (and vaul's body lock), so the control never becomes actionable.
+   */
+  private async waitForDrawerMotionToSettle(): Promise<void> {
+    const drawer = this.page.locator('[data-mobile-tasks-rail-drawer]');
+    if (!(await drawer.isVisible().catch(() => false))) {
+      return;
+    }
+    await drawer.evaluate(async (el) => {
+      const box = () => {
+        const rect = el.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      };
+      let previous = box();
+      for (let i = 0; i < 20; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const next = box();
+        if (
+          previous.x === next.x &&
+          previous.y === next.y &&
+          previous.width === next.width &&
+          previous.height === next.height
+        ) {
+          return;
+        }
+        previous = next;
+      }
+    });
+  }
+
+  /** Click a rail control without scrollIntoView fighting the mobile drawer. */
+  private async clickRailControl(locator: Locator): Promise<void> {
+    await locator.waitFor({ state: 'visible' });
+    if (!(await this.mobileTasks().isVisible().catch(() => false))) {
+      await locator.click();
+      return;
+    }
+    await this.waitForDrawerMotionToSettle();
+    const box = await locator.boundingBox();
+    if (!box) {
+      throw new Error('Rail control is not on screen');
+    }
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   }
 
   async waitForVisible(): Promise<void> {
@@ -1359,8 +1408,7 @@ export class AppRail {
     await this.waitForVisible();
     const item = this.itemByLabel(label);
     await item.waitFor({ state: 'visible' });
-    await item.scrollIntoViewIfNeeded();
-    await item.click();
+    await this.clickRailControl(item);
   }
 
   async isItemActive(label: string): Promise<boolean> {
@@ -1441,8 +1489,7 @@ export class AppRail {
       await this.waitForVisible();
       const button = this.root().locator('[data-rail-item="new-list"]');
       await button.waitFor({ state: 'visible' });
-      await button.scrollIntoViewIfNeeded();
-      await button.click();
+      await this.clickRailControl(button);
       try {
         await dialog.waitFor({ state: 'visible', timeout: 2_500 });
         return dialog;
@@ -1475,11 +1522,20 @@ export class AppRail {
   }
 
   async openOverflow(label: string): Promise<void> {
-    await this.waitForVisible();
-    const overflow = this.overflowByLabel(label);
-    await overflow.waitFor({ state: 'visible' });
-    await overflow.click();
-    await this.page.getByRole('menu').waitFor({ state: 'visible' });
+    const menu = this.page.getByRole('menu');
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.waitForVisible();
+      const overflow = this.overflowByLabel(label);
+      await overflow.waitFor({ state: 'visible' });
+      await this.clickRailControl(overflow);
+      try {
+        await menu.waitFor({ state: 'visible', timeout: 2_500 });
+        return;
+      } catch {
+        // Drawer motion ate the click. Settle and retry.
+      }
+    }
+    await menu.waitFor({ state: 'visible' });
   }
 
   async deleteNamedList(

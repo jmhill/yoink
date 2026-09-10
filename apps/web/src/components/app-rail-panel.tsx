@@ -240,6 +240,7 @@ export function AppRailPanel({
                             data-rail-overflow-list-id={item.listId}
                             aria-label={`More for ${item.label}`}
                             className="mr-1 shrink-0 text-muted-foreground hover:text-foreground"
+                            onPointerDown={(event) => event.stopPropagation()}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>

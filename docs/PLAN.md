@@ -45,10 +45,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 8: mobile rail inside Tasks** - Complete ✓ (thumb bar stays Inbox | Tasks only — not twelve destinations; mobile Tasks has the same flat rail as desktop; desktop rail unchanged)
 **Yoink UI story 9: mobile Tasks rail is a swipe drawer** - Complete ✓ (#76 — phone Tasks content is full-width; rail opens from a menu / swipe and closes after a destination; desktop sidebar unchanged)
 **Yoink UI story 10: larger complete control** - Complete ✓ (#77 — task rows use a ~44px complete button with a circle icon, not a multi-select checkbox; one tap still completes/uncompletes)
-**Yoink UI story 11: swipe to complete** - Complete ✓ (#79 — phone task rows swipe right to complete, same outcome as the circle control; vertical scroll stays; desktop mouse stays tap-only)
+**Yoink UI story 11: swipe to complete** - Complete ✓ (#79 — Polly lock: mobile horizontal swipe completes, same as the circle control; vertical scroll must not accidental-complete; desktop tap-only; no swipe-to-delete, no drag)
 
 Recent updates:
-- Yoink UI story 11 “swipe to complete” (#79): on a phone, a horizontal swipe on a task row completes it. Direction is swipe right — same axis as capture swipe-right (Trash stays on captures). Completing via swipe calls the same toggle as the #77 circle control. Vertical-dominant movement is ignored so the list can scroll; a later drag-reorder (#78) can own the vertical axis. Desktop mouse stays tap-only (useSwipe is touch-only). Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, drag reorder (#78), changing the complete icon from #77, swipe-to-delete.
+- Yoink UI story 11 “swipe to complete” (#79): Polly lock — mobile horizontal swipe completes (same outcome as the circle control). Vertical scroll must not accidental-complete. Desktop stays tap-only. No swipe-to-delete, no drag in this PR. Direction is swipe right (same axis as capture swipe-right; Trash stays on captures). Completing via swipe calls the same toggle as the #77 circle control. Vertical-dominant movement is ignored so the list can scroll; a later drag-reorder (#78) can own the vertical axis. Desktop mouse stays tap-only (`useSwipe` is touch-only). Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, drag reorder (#78), changing the complete icon from #77, swipe-to-delete.
 - Yoink UI story 10 “larger complete control” (#77): completing a task on mobile was finicky. Task rows replace the small checkbox with a larger complete control (clear circle / circle-check icon, ~44px touch target). One tap still completes and uncompletes. Must not look like a multi-select checkbox; no multi-select in this story. Pin, due date, assignee, and other row chrome stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: swipe-to-complete (#79), multi-select, drag reorder (#78), changing which tasks appear, mobile drawer (#76 already shipped).
 - Yoink UI story 9 “mobile Tasks rail is a swipe drawer” (#76): the always-open mobile rail from story 8 was the miss. On `md` and below, Tasks content owns the screen; the approved flat rail lives in a swipe drawer (menu control + vaul swipe-to-close / left-edge swipe-to-open). Choosing a destination closes the drawer. Bottom tabs stay Inbox | Tasks. Desktop sidebar rail unchanged. Inbox mobile (capture pane + tabs) unchanged. Named-list / Unlisted / smart views / + New list / rail-delete still work. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag reorder (#78), checkbox redesign (#77), swipe-to-complete (#79), multi-select, changing the desktop rail.
 - Yoink UI story 8 “mobile rail inside Tasks”: last of the approved sidebar frame. Polly lock: bottom tabs stay Inbox | Tasks only — do not put twelve destinations in the thumb bar. Inside Tasks on mobile, the same flat rail as desktop (smart views, Lists heading, named lists, Unlisted, + New list). Desktop rail unchanged. Inbox bottom tab still opens the Inbox capture pane (Snoozed/Trash as pane tabs). Named-list / Unlisted / smart views / + New list / rail-delete / Promote stay as on trunk after story 7. Stay on shadcn New York in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: drag, empty groups, bulk actions, Done-by-list, suggested list at promote, changing Today/Upcoming nesting or Mine grouping, reintroducing All, new bottom tabs.
@@ -1263,12 +1263,15 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 **Goal**: On a phone, swiping a task row completes it — the same outcome as the large complete control.
 
-**Product rules (locked, issue #79):**
+**Product rules (Polly lock, issue #79):**
 - One story at a time. This story only. Do not start #78.
-- On mobile task rows, a horizontal swipe completes the task.
+- Mobile horizontal swipe completes (same outcome as the circle control).
+- Vertical scroll must not accidental-complete.
+- Desktop stays tap-only.
+- No swipe-to-delete. No drag in this PR.
 - Direction: swipe right. Matches the existing capture swipe-right (primary processed action). Affordance is the existing `SwipeableCard` reveal (Complete / Incomplete + circle icon).
 - Completing via swipe has the same outcome as the complete control (same toggle: complete if open, uncomplete if done).
-- Must not fight with vertical scroll. Horizontal swipe vs vertical scroll are separate axes; if drag-reorder lands later, it can own the vertical axis (or a handle).
+- Horizontal swipe vs vertical scroll are separate axes; if drag-reorder lands later, it can own the vertical axis (or a handle).
 - Desktop mouse stays tap-only. The gesture is touch-only (`useSwipe`); we do not add a mouse-drag complete path.
 - The larger complete control from #77 still works.
 - Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
@@ -1673,7 +1676,7 @@ When resuming work on this project:
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
 
-**Yoink UI story 11 is in.** On a phone, swipe right on a task row completes it (same toggle as the #77 circle control). Vertical scroll does not complete. Desktop mouse stays tap-only. Do not start later UI work (#78 drag) from this story.
+**Yoink UI story 11 is in.** Polly lock: mobile horizontal swipe completes (same as the circle control). Vertical scroll must not accidental-complete. Desktop stays tap-only. No swipe-to-delete, no drag. Do not start #78 from this story.
 
 **Yoink UI story 10 is in.** Task rows complete from a ~44px circle button (not a multi-select checkbox). One tap still completes and uncompletes. Pin / due / assignee stay. Do not start later UI work (#78 drag, #79 swipe-to-complete) from this story.
 

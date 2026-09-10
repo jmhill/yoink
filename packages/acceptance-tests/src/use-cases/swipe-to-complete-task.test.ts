@@ -5,13 +5,12 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 /**
  * Issue #79: mobile swipe to complete a task.
  *
- * After the larger complete control, mobile still benefits from a gesture
- * path. Swipe right on a task row completes it (same outcome as the
- * complete control). Matches the existing capture swipe-right. Vertical
- * stays scroll so a later drag-reorder can own that axis.
+ * Polly lock: mobile horizontal swipe completes (same outcome as the
+ * circle control). Vertical scroll must not accidental-complete. Desktop
+ * stays tap-only. No swipe-to-delete, no drag in this PR.
  *
- * Desktop mouse stays tap-only. Swipe-to-delete stays out (Trash is for
- * captures). Do not start #78.
+ * Swipe right matches capture swipe-right. Vertical stays scroll so a
+ * later drag-reorder can own that axis. Trash stays on captures.
  */
 
 usingDrivers(['playwright'] as const, (ctx) => {

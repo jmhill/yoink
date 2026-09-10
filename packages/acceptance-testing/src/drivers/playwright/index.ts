@@ -64,6 +64,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       // Create an isolated browser context for this actor (cookie isolation)
       const context = await browser.newContext({
         baseURL: config.baseUrl,
+        reducedMotion: 'reduce',
       });
       actorContexts.push(context);
       debug('Created isolated browser context');
@@ -203,6 +204,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       // Create an isolated browser context for this actor (cookie isolation)
       const context = await browser.newContext({
         baseURL: config.baseUrl,
+        reducedMotion: 'reduce',
       });
       actorContexts.push(context);
       debug('Created isolated browser context');
@@ -316,6 +318,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
           if (!context) {
             context = await browser!.newContext({
               baseURL: config.baseUrl,
+              reducedMotion: 'reduce',
             });
             actorContexts.push(context);
           }

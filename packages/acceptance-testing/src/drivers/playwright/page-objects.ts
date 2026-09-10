@@ -1283,13 +1283,13 @@ export class AppRail {
   }
 
   async openMobileDrawer(): Promise<void> {
-    if (await this.mobileTasks().isVisible().catch(() => false)) {
+    if (await this.mobileTasks().locator('[data-rail-item="today"]').isVisible().catch(() => false)) {
       return;
     }
     const trigger = this.mobileTrigger();
     await trigger.waitFor({ state: 'visible' });
     await trigger.click();
-    await this.mobileTasks().waitFor({ state: 'visible' });
+    await this.mobileTasks().locator('[data-rail-item="today"]').waitFor({ state: 'visible' });
   }
 
   async waitForVisible(): Promise<void> {
@@ -1359,6 +1359,7 @@ export class AppRail {
     await this.waitForVisible();
     const item = this.itemByLabel(label);
     await item.waitFor({ state: 'visible' });
+    await item.scrollIntoViewIfNeeded();
     await item.click();
   }
 
@@ -1440,6 +1441,7 @@ export class AppRail {
     for (let attempt = 0; attempt < 4; attempt++) {
       await this.dismissOpenDialog();
       await this.page.locator('[data-slot="dialog-overlay"]').waitFor({ state: 'detached' }).catch(() => undefined);
+      await button.scrollIntoViewIfNeeded();
       await button.click();
       try {
         await dialog.waitFor({ state: 'visible', timeout: 2_500 });

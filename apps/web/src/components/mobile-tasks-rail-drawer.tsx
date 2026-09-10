@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   Drawer,
@@ -6,7 +7,6 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from '@yoink/ui-base/components/drawer';
-import { cn } from '@yoink/ui-base/lib/utils';
 import { Menu } from 'lucide-react';
 import { AppRailPanel } from '@/components/app-rail-panel';
 import { useSwipe } from '@/lib/use-swipe';
@@ -18,11 +18,20 @@ import { useSwipe } from '@/lib/use-swipe';
  */
 export function MobileTasksRailDrawer() {
   const [open, setOpen] = useState(false);
+  const locationHref = useRouterState({ select: (state) => state.location.href });
+  const previousHref = useRef(locationHref);
   const swipe = useSwipe({
     threshold: 48,
     disabled: open,
     onSwipeRight: () => setOpen(true),
   });
+
+  useEffect(() => {
+    if (previousHref.current !== locationHref) {
+      previousHref.current = locationHref;
+      setOpen(false);
+    }
+  }, [locationHref]);
 
   return (
     <div className="md:hidden">
@@ -50,12 +59,7 @@ export function MobileTasksRailDrawer() {
       >
         <DrawerContent
           data-mobile-tasks-rail-drawer=""
-          forceMount
-          aria-hidden={!open}
-          className={cn(
-            'h-full max-h-svh w-72 max-w-[85vw] p-4 pb-24 md:hidden',
-            !open && 'invisible pointer-events-none'
-          )}
+          className="h-full max-h-svh w-72 max-w-[85vw] p-4 pb-24 md:hidden"
         >
           <DrawerTitle className="sr-only">Lists and views</DrawerTitle>
           <DrawerDescription className="sr-only">

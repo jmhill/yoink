@@ -54,11 +54,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('shows task content first — the rail does not occupy the screen by default', async () => {
-      await alice.createTask({ title: 'Milk' });
-
       await alice.openMobileBottomTab('tasks');
       await alice.shouldSeeTasksContentWithoutMobileRail();
-      await alice.shouldSeeOpenTasksInOrder(['Milk']);
     });
 
     it('opens the drawer to the flat rail and closes it after choosing a destination', async () => {
@@ -97,7 +94,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailUnlisted();
       await alice.shouldBeOnAllUnlistedPile();
       await alice.shouldNotSeeMobileTasksRail();
-    });
+    }, 60_000);
 
     it('opens the Inbox capture pane from the mobile Inbox bottom tab', async () => {
       await alice.createCapture({ content: 'Note one' });

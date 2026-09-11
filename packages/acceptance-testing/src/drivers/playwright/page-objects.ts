@@ -1156,7 +1156,7 @@ export class TasksPage {
       const del = node.querySelector('[aria-label^="Delete task"]');
       const meta = node.querySelector('[data-slot="task-meta"]');
 
-      if (!(title instanceof HTMLElement) || !complete || !pin || !del) {
+      if (!title || !complete || !pin || !del) {
         throw new Error('task row is missing title-line controls');
       }
 
@@ -1167,12 +1167,12 @@ export class TasksPage {
       );
       const firstLine = lineRects[0] ?? title.getBoundingClientRect();
 
-      const svgCenterY = (el: Element): number => {
-        const svg = el.querySelector('svg') ?? el;
-        const box = svg.getBoundingClientRect();
+      const svgCenterY = (el: typeof complete): number => {
+        const svg = el.querySelector('svg');
+        const box = (svg ?? el).getBoundingClientRect();
         return box.top + box.height / 2;
       };
-      const hit = (el: Element): { width: number; height: number } => {
+      const hit = (el: typeof complete): { width: number; height: number } => {
         const box = el.getBoundingClientRect();
         return { width: box.width, height: box.height };
       };

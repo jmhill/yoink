@@ -776,6 +776,30 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldKeepTaskAfterVerticalRowDrag', 'http');
     },
 
+    async shouldSeeTaskRowAlignedWithTitle(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskRowAlignedWithTitle', 'http');
+    },
+
+    async shouldSeeTaskRowMetadataBelowTitle(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskRowMetadataBelowTitle', 'http');
+    },
+
+    async shouldSeeWrappedTaskTitle(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWrappedTaskTitle', 'http');
+    },
+
+    async pinOpenTaskFromRow(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('pinOpenTaskFromRow', 'http');
+    },
+
+    async unpinOpenTaskFromRow(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('unpinOpenTaskFromRow', 'http');
+    },
+
+    async deleteOpenTaskFromRow(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('deleteOpenTaskFromRow', 'http');
+    },
+
     // Task operations
     async createTask(input: CreateTaskInput): Promise<Task> {
       const response = await client.post('/api/tasks', input, authHeaders());

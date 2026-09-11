@@ -47,8 +47,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 10: larger complete control** - Complete ✓ (#77 — task rows use a ~44px complete button with a circle icon, not a multi-select checkbox; one tap still completes/uncompletes)
 **Yoink UI story 11: swipe to complete** - Complete ✓ (#79 — Polly lock: mobile horizontal swipe completes, same as the circle control; vertical scroll must not accidental-complete; desktop tap-only; no swipe-to-delete, no drag)
 **Yoink UI story 12: one-pile drag to reorder** - Complete ✓ (#78 — named-list and Unlisted get a vertical grip-handle drag; smart views stay non-reorderable; swipe-to-complete keeps the horizontal axis; kit up/down is gone)
+**Yoink UI story 13: align complete circle and icons with the title** - Complete ✓ (#84 — circle / grip / pin / delete glyphs share the title’s first-line center; ~44px complete hit target stays; metadata stays on a second line)
 
 Recent updates:
+- Yoink UI story 13 “align complete circle and icons with the title” (#84): the complete control stays a ~44px hit target with a smaller circle inside. The circle glyph optically centers with the first line of the title — not the whole card, not the due/assignee/list row. Grip, pin, and delete glyphs share that same vertical center (hit targets can stay large). Metadata stays under the title and does not pull the circle down. Same row on mobile and desktop. No new actions, no multi-select, no swipe/drag behavior change. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: row redesign, new icons, color/theme work beyond alignment, capture rows, drawer chrome.
 - Yoink UI story 12 “one-pile drag to reorder” (#78): Polly lock — drag reorder only on named-list and Unlisted. Smart views stay non-reorderable. Same open-order rules (among open tasks only; new/move-on/take-off append; complete remembers index; uncomplete restores). Horizontal swipe owns complete (#79); drag owns the vertical axis via a lucide grip handle so the axes stay clear. Desktop and mobile both get the same handle — no kit split. Kit up/down is gone once drag works. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, changing order semantics, reorder in smart views, mobile drawer, complete-control redesign, swipe-to-complete (already on trunk).
 - Yoink UI story 11 “swipe to complete” (#79): Polly lock — mobile horizontal swipe completes (same outcome as the circle control). Vertical scroll must not accidental-complete. Desktop stays tap-only. No swipe-to-delete, no drag in this PR. Direction is swipe right (same axis as capture swipe-right; Trash stays on captures). Completing via swipe calls the same toggle as the #77 circle control. Vertical-dominant movement is ignored so the list can scroll; a later drag-reorder (#78) can own the vertical axis. Desktop mouse stays tap-only (`useSwipe` is touch-only). Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, drag reorder (#78), changing the complete icon from #77, swipe-to-delete.
 - Yoink UI story 10 “larger complete control” (#77): completing a task on mobile was finicky. Task rows replace the small checkbox with a larger complete control (clear circle / circle-check icon, ~44px touch target). One tap still completes and uncompletes. Must not look like a multi-select checkbox; no multi-select in this story. Pin, due date, assignee, and other row chrome stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: swipe-to-complete (#79), multi-select, drag reorder (#78), changing which tasks appear, mobile drawer (#76 already shipped).
@@ -1319,6 +1321,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 13: align complete circle and icons with the title - Complete ✓
+
+**Goal**: The complete circle and trailing icons sit on the same visual line as the task title.
+
+**Product rules (locked, issue #84):**
+- One story at a time. This story only.
+- Keep the ~44px complete hit target (don’t shrink it back to a tiny checkbox).
+- The **circle glyph** optically centers with the **first line of the title** (not with the whole card, not with the metadata row).
+- Grip, pin, and delete glyphs share that same vertical center as the title line (hit targets can stay large; the icons line up).
+- Due date / assignee / list stay on a second line under the title and do not pull the circle down.
+- Same row on mobile and desktop. No new actions, no multi-select, no change to swipe or drag behavior.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Row redesign, changing which chrome exists, new icons
+- Color/theme work beyond alignment
+- Capture rows, drawer chrome
+- Behavior changes to complete / swipe / drag
+
+**Implementation:**
+- `TaskCard` keeps `items-start` so metadata cannot pull the circle down. Complete and trailing controls sit in `1lh` (title line-height) wrappers so their glyphs center on the first title line while 44px hit targets overflow.
+- Playwright: one-line title shares a centerline; wrapped title keeps the circle on the first line with metadata underneath; complete / pin / delete / drag / swipe-right still work; named-list, Unlisted, and Today stay aligned on desktop and phone. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member sees the complete circle, title, and trailing icons on one line, on phone and desktop, without losing the large complete target or swipe/drag.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1705,6 +1734,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 13 is in.** The complete circle and trailing icons share the title’s first-line center. The ~44px complete hit target stays. Metadata stays under the title. Swipe and drag behavior are unchanged.
 
 **Yoink UI story 12 is in.** Polly lock: drag reorder only on named-list and Unlisted. Smart views stay non-reorderable. Same open-order rules. Horizontal swipe owns complete; a grip handle owns the vertical axis. Kit up/down is gone. Last of the mobile-friction slice.
 

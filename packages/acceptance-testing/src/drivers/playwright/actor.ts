@@ -1247,6 +1247,74 @@ export const createPlaywrightActor = (
       await expect(card).toBeVisible();
     },
 
+    async shouldSeeTaskRowAlignedWithTitle(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const geometry = await tasksPage.measureTaskRowTitleLine(taskId);
+      const tolerancePx = 4;
+      const aligned = (centerY: number) =>
+        Math.abs(centerY - geometry.titleLineCenterY) <= tolerancePx;
+
+      expect(geometry.completeHit.width).toBeGreaterThanOrEqual(44);
+      expect(geometry.completeHit.height).toBeGreaterThanOrEqual(44);
+      expect(aligned(geometry.completeCircleCenterY)).toBe(true);
+      expect(aligned(geometry.pinCenterY)).toBe(true);
+      expect(aligned(geometry.deleteCenterY)).toBe(true);
+      if (geometry.gripCenterY !== null && geometry.gripHit) {
+        expect(geometry.gripHit.width).toBeGreaterThanOrEqual(44);
+        expect(geometry.gripHit.height).toBeGreaterThanOrEqual(44);
+        expect(aligned(geometry.gripCenterY)).toBe(true);
+      }
+    },
+
+    async shouldSeeTaskRowMetadataBelowTitle(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const geometry = await tasksPage.measureTaskRowTitleLine(taskId);
+      const metaTop = geometry.metaTop;
+      expect(metaTop).not.toBeNull();
+      if (metaTop === null) {
+        throw new Error('task row metadata should be visible');
+      }
+      expect(metaTop).toBeGreaterThan(geometry.titleBottom - 1);
+      expect(geometry.titleLineCount).toBeGreaterThanOrEqual(1);
+      expect(Math.abs(geometry.completeCircleCenterY - geometry.titleLineCenterY)).toBeLessThanOrEqual(
+        4
+      );
+    },
+
+    async shouldSeeWrappedTaskTitle(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const geometry = await tasksPage.measureTaskRowTitleLine(taskId);
+      expect(geometry.titleLineCount).toBeGreaterThan(1);
+      expect(Math.abs(geometry.completeCircleCenterY - geometry.titleLineCenterY)).toBeLessThanOrEqual(
+        4
+      );
+    },
+
+    async pinOpenTaskFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const pin = tasksPage.pinControl(taskId);
+      await expect(pin).toHaveAccessibleName(/^Pin task/);
+      await pin.click();
+      await expect(pin).toHaveAccessibleName(/^Unpin task/);
+    },
+
+    async unpinOpenTaskFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const pin = tasksPage.pinControl(taskId);
+      await expect(pin).toHaveAccessibleName(/^Unpin task/);
+      await pin.click();
+      await expect(pin).toHaveAccessibleName(/^Pin task/);
+    },
+
+    async deleteOpenTaskFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.deleteControl(taskId).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByRole('heading', { name: 'Delete task?' })).toBeVisible();
+      await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+    },
+
     async createTask(input: CreateTaskInput): Promise<Task> {
       // Quick-add can pick a list, but has no assignee or due-date controls.
       // Use the session API when those fields are present so setup is exact.

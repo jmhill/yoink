@@ -837,6 +837,42 @@ export type BrowserActorOperations = {
    */
   shouldKeepTaskAfterVerticalRowDrag(taskId: string): Promise<void>;
 
+  /**
+   * Assert the complete circle, first title line, and trailing icons
+   * (grip if present, pin, delete) share one visual centerline.
+   * Complete (and grip, when shown) stay ~44px hit targets.
+   */
+  shouldSeeTaskRowAlignedWithTitle(taskId: string): Promise<void>;
+
+  /**
+   * Assert due/assignee/list metadata sits under the title and does not
+   * pull the complete circle off the first title line.
+   */
+  shouldSeeTaskRowMetadataBelowTitle(taskId: string): Promise<void>;
+
+  /**
+   * Assert the title wraps to more than one line and the complete circle
+   * still sits on the first line.
+   */
+  shouldSeeWrappedTaskTitle(taskId: string): Promise<void>;
+
+  /**
+   * Pin this open task from the row pin control. The row stays; the
+   * control becomes unpin.
+   */
+  pinOpenTaskFromRow(taskId: string): Promise<void>;
+
+  /**
+   * Unpin this pinned task from the row control.
+   */
+  unpinOpenTaskFromRow(taskId: string): Promise<void>;
+
+  /**
+   * Delete this task from the row delete control (confirm the kit dialog).
+   * The task leaves the current view.
+   */
+  deleteOpenTaskFromRow(taskId: string): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

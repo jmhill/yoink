@@ -1121,6 +1121,77 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-slot="task-complete"]');
   }
 
+  pinControl(taskId: string) {
+    return this.taskCard(taskId).getByRole('button', { name: /^(Pin|Unpin) task/ });
+  }
+
+  deleteControl(taskId: string) {
+    return this.taskCard(taskId).getByRole('button', { name: /^Delete task/ });
+  }
+
+  /**
+   * Glyph and first-line geometry for title-line alignment (#84).
+   */
+  async measureTaskRowTitleLine(taskId: string): Promise<{
+    titleLineCenterY: number;
+    titleBottom: number;
+    titleLineCount: number;
+    completeCircleCenterY: number;
+    completeHit: { width: number; height: number };
+    gripCenterY: number | null;
+    gripHit: { width: number; height: number } | null;
+    pinCenterY: number;
+    deleteCenterY: number;
+    metaTop: number | null;
+  }> {
+    const card = this.taskCard(taskId);
+    await card.waitFor({ state: 'visible' });
+    return card.evaluate((node) => {
+      const title = node.querySelector('[data-slot="task-title"]');
+      const complete = node.querySelector('[data-slot="task-complete"]');
+      const grip = node.querySelector('[data-drag-handle]');
+      const pin = node.querySelector(
+        '[aria-label^="Pin task"], [aria-label^="Unpin task"]'
+      );
+      const del = node.querySelector('[aria-label^="Delete task"]');
+      const meta = node.querySelector('[data-slot="task-meta"]');
+
+      if (!(title instanceof HTMLElement) || !complete || !pin || !del) {
+        throw new Error('task row is missing title-line controls');
+      }
+
+      const range = title.ownerDocument.createRange();
+      range.selectNodeContents(title);
+      const lineRects = [...range.getClientRects()].filter(
+        (rect) => rect.width > 0 && rect.height > 0
+      );
+      const firstLine = lineRects[0] ?? title.getBoundingClientRect();
+
+      const svgCenterY = (el: Element): number => {
+        const svg = el.querySelector('svg') ?? el;
+        const box = svg.getBoundingClientRect();
+        return box.top + box.height / 2;
+      };
+      const hit = (el: Element): { width: number; height: number } => {
+        const box = el.getBoundingClientRect();
+        return { width: box.width, height: box.height };
+      };
+
+      return {
+        titleLineCenterY: firstLine.top + firstLine.height / 2,
+        titleBottom: title.getBoundingClientRect().bottom,
+        titleLineCount: Math.max(lineRects.length, 1),
+        completeCircleCenterY: svgCenterY(complete),
+        completeHit: hit(complete),
+        gripCenterY: grip ? svgCenterY(grip) : null,
+        gripHit: grip ? hit(grip) : null,
+        pinCenterY: svgCenterY(pin),
+        deleteCenterY: svgCenterY(del),
+        metaTop: meta ? meta.getBoundingClientRect().top : null,
+      };
+    });
+  }
+
   /**
    * Fire a native touch swipe on the task row (useSwipe is touch-only).
    * Start away from the left-edge rail strip. Threshold is 80px.

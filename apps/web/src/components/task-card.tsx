@@ -126,41 +126,50 @@ export function TaskCard({
       }}
       disabled={isLoading}
     >
-      <CardContent className="flex items-start gap-3 py-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          data-slot="task-complete"
-          aria-pressed={isCompleted}
-          aria-label={
-            isCompleted
-              ? `Mark task "${task.title}" as incomplete`
-              : `Mark task "${task.title}" as complete`
-          }
-          disabled={isLoading}
-          onClick={handleCompleteToggle}
-          className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-        >
-          {isCompleted ? (
-            <CircleCheck className="size-7 text-primary" />
-          ) : (
-            <Circle className="size-7" />
-          )}
-        </Button>
+      <CardContent className="flex items-start gap-3 py-3 text-base leading-6">
+        {/* 44px hit target; glyph centers on the title's first line (1lh). */}
+        <div className="flex h-[1lh] shrink-0 items-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            data-slot="task-complete"
+            aria-pressed={isCompleted}
+            aria-label={
+              isCompleted
+                ? `Mark task "${task.title}" as incomplete`
+                : `Mark task "${task.title}" as complete`
+            }
+            disabled={isLoading}
+            onClick={handleCompleteToggle}
+            className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          >
+            {isCompleted ? (
+              <CircleCheck className="size-7 text-primary" />
+            ) : (
+              <Circle className="size-7" />
+            )}
+          </Button>
+        </div>
         
         <button
           type="button"
           onClick={() => onEdit?.(task)}
-          className="flex-1 min-w-0 text-left hover:bg-muted/50 -mx-2 px-2 py-1 -my-1 rounded transition-colors cursor-pointer"
+          className="flex-1 min-w-0 text-left hover:bg-muted/50 -mx-2 px-2 rounded transition-colors cursor-pointer"
           disabled={isLoading}
         >
-          <p className={`break-words ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+          <p
+            data-slot="task-title"
+            className={`break-words leading-6 ${isCompleted ? 'line-through text-muted-foreground' : ''}`}
+          >
             {task.title}
           </p>
           
           {(task.dueDate || assigneeLabel || listLabel) && (
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <div
+              data-slot="task-meta"
+              className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+            >
               {task.dueDate && (
                 <div className={`flex items-center gap-1 ${
                   isCompleted
@@ -193,7 +202,7 @@ export function TaskCard({
           )}
         </button>
 
-        <div className="flex gap-1">
+        <div className="flex h-[1lh] shrink-0 items-center gap-1">
           {dragHandle && (
             <Button
               type="button"

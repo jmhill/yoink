@@ -1341,7 +1341,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Behavior changes to complete / swipe / drag
 
 **Implementation:**
-- `TaskCard` keeps `items-start` so metadata cannot pull the circle down. Complete and trailing controls sit in `1lh` (title line-height) wrappers so their glyphs center on the first title line while 44px hit targets overflow.
+- `TaskCard` keeps `items-start` so metadata cannot pull the circle down. Complete / grip stay ~44px in layout (drag geometry unchanged). Glyphs translate to the title’s first-line center (`--task-title-lh`).
 - Playwright: one-line title shares a centerline; wrapped title keeps the circle on the first line with metadata underneath; complete / pin / delete / drag / swipe-right still work; named-list, Unlisted, and Today stay aligned on desktop and phone. HTTP driver stubs the new browser operations.
 
 **Deliverable:** A member sees the complete circle, title, and trailing icons on one line, on phone and desktop, without losing the large complete target or swipe/drag.

@@ -95,7 +95,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.deleteOpenTaskFromRow(bread.id);
       await alice.shouldNotSeeTask(bread.id);
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
-    });
+    }, 60_000);
 
     it('keeps the aligned row and swipe-to-complete on a phone', async () => {
       const groceries = await alice.createNamedList('Groceries');

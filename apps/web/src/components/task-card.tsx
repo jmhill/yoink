@@ -126,31 +126,29 @@ export function TaskCard({
       }}
       disabled={isLoading}
     >
-      <CardContent className="flex items-start gap-3 py-3 text-base leading-6">
-        {/* 44px hit target; glyph centers on the title's first line (1lh). */}
-        <div className="flex h-[1lh] shrink-0 items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            data-slot="task-complete"
-            aria-pressed={isCompleted}
-            aria-label={
-              isCompleted
-                ? `Mark task "${task.title}" as incomplete`
-                : `Mark task "${task.title}" as complete`
-            }
-            disabled={isLoading}
-            onClick={handleCompleteToggle}
-            className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-          >
-            {isCompleted ? (
-              <CircleCheck className="size-7 text-primary" />
-            ) : (
-              <Circle className="size-7" />
-            )}
-          </Button>
-        </div>
+      <CardContent className="flex items-start gap-3 py-3 text-base leading-6 [--task-title-lh:1lh]">
+        {/* 44px hit target stays in flow; glyph shifts to the title's first line. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          data-slot="task-complete"
+          aria-pressed={isCompleted}
+          aria-label={
+            isCompleted
+              ? `Mark task "${task.title}" as incomplete`
+              : `Mark task "${task.title}" as complete`
+          }
+          disabled={isLoading}
+          onClick={handleCompleteToggle}
+          className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
+        >
+          {isCompleted ? (
+            <CircleCheck className="size-7 text-primary" />
+          ) : (
+            <Circle className="size-7" />
+          )}
+        </Button>
         
         <button
           type="button"
@@ -202,7 +200,7 @@ export function TaskCard({
           )}
         </button>
 
-        <div className="flex h-[1lh] shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-start gap-1">
           {dragHandle && (
             <Button
               type="button"
@@ -211,7 +209,7 @@ export function TaskCard({
               data-drag-handle=""
               aria-label={`Drag to reorder ${task.title}`}
               disabled={isLoading}
-              className="size-11 min-h-11 min-w-11 shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              className="size-11 min-h-11 min-w-11 shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
               onPointerDown={(event) => {
                 if (isLoading) {
                   return;
@@ -241,7 +239,9 @@ export function TaskCard({
             disabled={isLoading}
             title={isPinned ? 'Unpin' : 'Pin'}
             aria-label={isPinned ? `Unpin task "${task.title}"` : `Pin task "${task.title}"`}
-            className={isPinned ? 'text-primary' : ''}
+            className={`[&_svg]:translate-y-[calc((var(--task-title-lh)-2rem)/2)]${
+              isPinned ? ' text-primary' : ''
+            }`}
           >
             {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
           </Button>
@@ -252,7 +252,7 @@ export function TaskCard({
             disabled={isLoading}
             title="Delete"
             aria-label={`Delete task "${task.title}"`}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive [&_svg]:translate-y-[calc((var(--task-title-lh)-2rem)/2)]"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

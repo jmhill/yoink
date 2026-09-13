@@ -1852,8 +1852,8 @@ export class AppRail {
       throw new Error(`Delete menu for "${label}" opened off the viewport`);
     }
 
-    const hit = await this.page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y);
+    const hit = await deleteItem.evaluate((node, point) => {
+      const el = node.ownerDocument.elementFromPoint(point.x, point.y);
       if (!el) {
         return null;
       }

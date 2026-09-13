@@ -598,6 +598,18 @@ export type BrowserActorOperations = {
   shouldSeeNamedListOverflowOnRail(name: string): Promise<void>;
 
   /**
+   * Assert the named-list overflow Delete menu is stacked above the open
+   * mobile Tasks drawer (not under the sheet). Delete is reachable.
+   */
+  shouldSeeNamedListOverflowAboveMobileDrawer(name: string): Promise<void>;
+
+  /**
+   * Assert opening this named-list overflow does not navigate. The current
+   * view (URL) stays put; the menu opens.
+   */
+  shouldNotNavigateWhenOpeningNamedListOverflow(name: string): Promise<void>;
+
+  /**
    * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
    */
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;

@@ -59,7 +59,7 @@ export function MobileTasksRailDrawer() {
       >
         <DrawerContent
           data-mobile-tasks-rail-drawer=""
-          className="h-full max-h-svh w-72 max-w-[85vw] p-4 pb-24 md:hidden"
+          className="h-full max-h-svh w-72 max-w-[85vw] overflow-visible p-4 pb-24 md:hidden"
         >
           <DrawerTitle className="sr-only">Lists and views</DrawerTitle>
           <DrawerDescription className="sr-only">

@@ -936,6 +936,14 @@ export const createPlaywrightActor = (
       await expect(deleteItem).toBeHidden();
     },
 
+    async shouldSeeNamedListOverflowAboveMobileDrawer(name: string): Promise<void> {
+      await appRail.expectOverflowMenuAboveDrawer(name);
+    },
+
+    async shouldNotNavigateWhenOpeningNamedListOverflow(name: string): Promise<void> {
+      await appRail.expectOverflowDoesNotNavigate(name);
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.itemByLabel(label)).toBeVisible();

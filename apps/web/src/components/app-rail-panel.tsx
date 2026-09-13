@@ -1,12 +1,6 @@
 import { Fragment, useState } from 'react';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@yoink/ui-base/components/dropdown-menu';
 import { cn } from '@yoink/ui-base/lib/utils';
 import {
   Calendar,
@@ -14,13 +8,13 @@ import {
   CheckCheck,
   Inbox,
   List,
-  MoreHorizontal,
   Plus,
   User,
 } from 'lucide-react';
 import { tsr, tsrLists } from '@/api/client';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
+import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
 import {
   buildAppRailItems,
   isRailItemActive,
@@ -94,7 +88,6 @@ export function AppRailPanel({
   const [createListOpen, setCreateListOpen] = useState(false);
   const [createListKey, setCreateListKey] = useState(0);
   const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
-  const overflowSide = surface === 'desktop' ? 'right' : 'bottom';
 
   const openCreateList = () => {
     setCreateListKey((key) => key + 1);
@@ -230,40 +223,14 @@ export function AppRailPanel({
                       <span className="min-w-0 truncate">{item.label}</span>
                     </Link>
                     {railItemHasOverflow(item) ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            data-rail-overflow={item.label}
-                            data-rail-overflow-list-id={item.listId}
-                            aria-label={`More for ${item.label}`}
-                            className="mr-1 shrink-0 text-muted-foreground hover:text-foreground"
-                            onPointerDown={(event) => event.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          side={overflowSide}
-                          sideOffset={4}
-                          avoidCollisions={surface === 'mobile-tasks'}
-                        >
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={() => {
-                              // Let the kit menu close before the same-kit dialog opens.
-                              window.setTimeout(() => {
-                                setDeletingList({ id: item.listId, name: item.label });
-                              }, 0);
-                            }}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <NamedListRailOverflow
+                        surface={surface}
+                        listId={item.listId}
+                        label={item.label}
+                        onDelete={() => {
+                          setDeletingList({ id: item.listId, name: item.label });
+                        }}
+                      />
                     ) : null}
                   </div>
                 </Fragment>

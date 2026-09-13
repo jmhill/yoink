@@ -49,8 +49,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 12: one-pile drag to reorder** - Complete ✓ (#78 — named-list and Unlisted get a vertical grip-handle drag; smart views stay non-reorderable; swipe-to-complete keeps the horizontal axis; kit up/down is gone)
 **Yoink UI story 13: align complete circle and icons with the title** - Complete ✓ (#84 — circle / grip / pin / delete glyphs share the title’s first-line center; ~44px complete hit target stays; metadata stays on a second line)
 **Yoink UI story 14: linkify http(s) URLs in capture content** - Complete ✓ (#85 — Inbox / Snoozed / Trash content turns `http://` and `https://` URLs into new-tab links, including in prose; scheme required; clicking a link does not Promote / Snooze / Trash)
+**Yoink UI story 15: named-list overflow above the mobile drawer** - Complete ✓ (#87 — mobile Tasks drawer ⋯ opens Delete on top of the sheet; desktop sidebar overflow unchanged; same refuse-if-open / unlist-completed / Today-landing)
 
 Recent updates:
+- Yoink UI story 15 “named-list overflow above the mobile drawer” (#87): in the mobile Tasks drawer, named-list ⋯ must open **above** the Vaul drawer/overlay so Delete is reachable. Observed fail: portaled DropdownMenu shared `z-50` with the drawer + overlay, so the menu stacked under the sheet (reads as “does nothing”). Desktop sidebar has no parent drawer layer and must keep working. Delete rules unchanged: refuse if open tasks; completed unlist; land on Today if you were on that pile. No new overflow actions. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: #84 alignment, #85 URL links, #88 edit control, #90 multi-slot drag, multi-select, new list actions beyond Delete.
 - Yoink UI story 14 “linkify http(s) URLs in capture content” (#85): on Inbox, Snoozed, and Trash capture rows, `http://` and `https://` URLs in capture **content** are clickable (whole-content URL or URL inside surrounding prose). Scheme required — not bare domains, not scheme-less `www.`. Opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`), same as today’s `sourceUrl` link under the body. Clicking a content link must not Promote, Snooze, or Trash. If `sourceUrl` is also set, that source link stays. Captures are not click-to-edit. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: bare domains; changing Promote / swipe / capture chrome; task rows; Promote sheet / task title after promote.
 - Yoink UI story 13 “align complete circle and icons with the title” (#84): the complete control stays a ~44px hit target with a smaller circle inside. The circle glyph optically centers with the first line of the title — not the whole card, not the due/assignee/list row. Grip, pin, and delete glyphs share that same vertical center (hit targets can stay large). Metadata stays under the title and does not pull the circle down. Same row on mobile and desktop. No new actions, no multi-select, no swipe/drag behavior change. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: row redesign, new icons, color/theme work beyond alignment, capture rows, drawer chrome.
 - Yoink UI story 12 “one-pile drag to reorder” (#78): Polly lock — drag reorder only on named-list and Unlisted. Smart views stay non-reorderable. Same open-order rules (among open tasks only; new/move-on/take-off append; complete remembers index; uncomplete restores). Horizontal swipe owns complete (#79); drag owns the vertical axis via a lucide grip handle so the axes stay clear. Desktop and mobile both get the same handle — no kit split. Kit up/down is gone once drag works. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, changing order semantics, reorder in smart views, mobile drawer, complete-control redesign, swipe-to-complete (already on trunk).
@@ -1378,6 +1380,31 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 15: named-list overflow above the mobile drawer - Complete ✓
+
+**Goal**: In the mobile Tasks drawer, named-list ⋯ opens the Delete menu on top of the drawer so Delete is reachable. Desktop sidebar overflow stays working.
+
+**Product rules (locked, issue #87):**
+- One story at a time. This story only.
+- Mobile Tasks drawer: named-list ⋯ opens Delete **above** the drawer/overlay (not under the sheet).
+- Desktop sidebar: ⋯ still opens; Delete still works.
+- Delete rules unchanged: refuse if open tasks; completed unlist; land on Today if you were on that pile.
+- No new overflow actions in this story.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- #84 alignment, #85 URL links
+- #88 edit control, #90 multi-slot drag
+- Multi-select, new list actions beyond Delete
+
+**Implementation:**
+- Vaul’s drawer overlay lives on the HTML top layer, so a body-portaled kit menu cannot stack above it (reads as “does nothing”). Mobile named-list ⋯ portals Delete into the drawer content and positions it from the trigger box. Desktop keeps the kit DropdownMenu. Delete dialog / refuse-if-open / Today-landing are unchanged.
+- Playwright: mobile drawer ⋯ opens Delete on top of the sheet; refuse-if-open / unlist-completed / Today-landing still run from that menu; list name still navigates and ⋯ does not; desktop sidebar overflow + Delete still work. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member can reach Delete from named-list ⋯ in the mobile Tasks drawer, without changing delete rules or the desktop sidebar.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1764,6 +1791,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 15 is in.** Named-list ⋯ in the mobile Tasks drawer opens Delete on top of the sheet. Desktop sidebar overflow is unchanged. Same refuse-if-open / unlist-completed / Today-landing. Do not start #88 or #90 from this story.
 
 **Yoink UI story 13 is in.** The complete circle and trailing icons share the title’s first-line center. The ~44px complete hit target stays. Metadata stays under the title. Swipe and drag behavior are unchanged.
 

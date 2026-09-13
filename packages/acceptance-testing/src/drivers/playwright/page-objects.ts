@@ -1564,6 +1564,16 @@ export class AppRail {
     await trigger.waitFor({ state: 'visible' });
     await trigger.click();
     await this.mobileTasks().waitFor({ state: 'attached' });
+    const overflow = this.mobileTasks().locator('[data-rail-overflow]').first();
+    if ((await overflow.count()) > 0) {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const box = await overflow.boundingBox();
+        if (box && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0) {
+          return;
+        }
+        await this.page.waitForTimeout(50);
+      }
+    }
   }
 
   /**
@@ -1780,12 +1790,20 @@ export class AppRail {
   async openOverflow(label: string): Promise<void> {
     const menu = this.page.getByRole('menu');
     for (let attempt = 0; attempt < 4; attempt++) {
+      if (await menu.isVisible().catch(() => false)) {
+        await this.page.keyboard.press('Escape');
+        await menu.waitFor({ state: 'hidden' }).catch(() => undefined);
+      }
       const rail = await this.railForInteraction();
       const overflow = rail.locator(`[data-rail-overflow="${label}"]`);
       await this.clickRailControl(overflow);
       try {
         await menu.waitFor({ state: 'visible', timeout: 2_500 });
-        return;
+        const box = await menu.boundingBox();
+        if (box && box.y >= 0 && box.x + box.width > 0 && box.y + box.height > 0) {
+          return;
+        }
+        // Drawer motion placed the menu off-screen. Close and retry.
       } catch {
         // Drawer motion ate the click. Reopen and retry.
       }
@@ -1793,9 +1811,57 @@ export class AppRail {
     await menu.waitFor({ state: 'visible' });
   }
 
+  /**
+   * Overflow Delete must be the topmost hit at its center — not the Vaul
+   * drawer or overlay — and a real pointer click must reach it.
+   */
+  async expectOverflowMenuAboveDrawer(label: string): Promise<void> {
+    await this.openMobileDrawer();
+    await this.mobileTasks().waitFor({ state: 'visible' });
+    const overflow = this.mobileTasks().locator(`[data-rail-overflow="${label}"]`);
+    await overflow.waitFor({ state: 'visible' });
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const box = await overflow.boundingBox();
+      if (box && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0) {
+        break;
+      }
+      await this.page.waitForTimeout(50);
+    }
+    await this.openOverflow(label);
+
+    const menu = this.page.locator('[data-rail-overflow-menu]:visible');
+    const deleteItem = menu.getByRole('menuitem', { name: 'Delete', exact: true });
+    await deleteItem.waitFor({ state: 'visible' });
+
+    const box = await deleteItem.boundingBox();
+    if (!box || box.y < 0 || box.x + box.width <= 0 || box.y + box.height <= 0) {
+      throw new Error(`Delete menu for "${label}" opened off the viewport`);
+    }
+
+    // A real pointer click fails if the Vaul overlay/sheet is still on top.
+    await deleteItem.click();
+    const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
+    await dialog.waitFor({ state: 'visible' });
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await this.mobileTasks().waitFor({ state: 'visible' });
+  }
+
+  async expectOverflowDoesNotNavigate(label: string): Promise<void> {
+    const before = this.page.url();
+    await this.openOverflow(label);
+    await this.page.getByRole('menuitem', { name: 'Delete', exact: true }).waitFor({
+      state: 'visible',
+    });
+    if (this.page.url() !== before) {
+      throw new Error(`Opening overflow for "${label}" navigated away from ${before}`);
+    }
+  }
+
   async deleteNamedList(
     name: string
   ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {
+    await this.ensureAvailable();
     const previous = new URL(this.page.url());
     const listId = await this.itemByLabel(name).getAttribute('data-rail-list-id');
     const viewingDeletedPile =

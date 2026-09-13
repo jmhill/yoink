@@ -16,6 +16,7 @@ import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
 import {
+  RAIL_LABEL_WRAP_CLASS,
   buildAppRailItems,
   isRailItemActive,
   railItemHasOverflow,
@@ -120,7 +121,7 @@ export function AppRailPanel({
 
   const railClassName = (active: boolean) =>
     cn(
-      'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+      'flex min-w-0 items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors',
       active
         ? 'bg-primary/10 text-primary'
         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -139,7 +140,7 @@ export function AppRailPanel({
             <h1 className="text-lg font-semibold">Yoink</h1>
           </div>
         ) : null}
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto">
           {railItems.map((item, index) => {
             const active = isRailItemActive(item, location);
             const Icon = railIcon(item);
@@ -162,11 +163,16 @@ export function AppRailPanel({
                     variant="ghost"
                     data-rail-item="new-list"
                     data-rail-label={item.label}
-                    className={cn(railClassName(false), 'h-auto w-full justify-start font-normal')}
+                    className={cn(
+                      railClassName(false),
+                      'h-auto w-full justify-start whitespace-normal font-normal'
+                    )}
                     onClick={openCreateList}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span>+ {item.label}</span>
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      + {item.label}
+                    </span>
                   </Button>
                 </Fragment>
               );
@@ -184,9 +190,14 @@ export function AppRailPanel({
                   onClick={active ? onDestinationChosen : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  <span className="min-w-0 truncate">{item.label}</span>
+                  <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                    {item.label}
+                  </span>
                   {shouldShowInboxCount(item.count) ? (
-                    <span data-inbox-count={item.count} className="ml-auto text-xs tabular-nums">
+                    <span
+                      data-inbox-count={item.count}
+                      className="ml-auto shrink-0 text-xs tabular-nums"
+                    >
                       {item.count}
                     </span>
                   ) : null}
@@ -214,13 +225,15 @@ export function AppRailPanel({
                       data-rail-list-id={item.listId}
                       data-rail-active={active ? 'true' : undefined}
                       className={cn(
-                        'flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm transition-colors',
+                        'flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-sm transition-colors',
                         active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                       )}
                       onClick={active ? onDestinationChosen : undefined}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                        {item.label}
+                      </span>
                     </Link>
                     {railItemHasOverflow(item) ? (
                       <NamedListRailOverflow
@@ -250,7 +263,9 @@ export function AppRailPanel({
                   onClick={active ? onDestinationChosen : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  <span className="min-w-0 truncate">{item.label}</span>
+                  <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                    {item.label}
+                  </span>
                 </Link>
               </Fragment>
             );

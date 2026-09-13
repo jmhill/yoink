@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RAIL_LABEL_WRAP_CLASS,
   buildAppRailItems,
   isRailItemActive,
   railItemHasOverflow,
@@ -128,6 +129,14 @@ describe('railItemKey', () => {
     expect(railItemKey({ kind: 'named', listId: groceriesId, label: 'Groceries' })).toBe(
       groceriesId
     );
+  });
+});
+
+describe('RAIL_LABEL_WRAP_CLASS', () => {
+  it('wraps instead of truncating to one ellipsis line', () => {
+    expect(RAIL_LABEL_WRAP_CLASS).not.toMatch(/\btruncate\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bbreak-words\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bwhitespace-normal\b/);
   });
 });
 

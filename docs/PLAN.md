@@ -53,8 +53,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 16: explicit Edit control on task rows** - Complete ✓ (#88 — title is no longer click-to-edit; a ~44px Edit icon in the trailing chrome opens the existing task edit modal/sheet; complete / pin / delete / drag / swipe-complete unchanged)
 **Yoink UI story 17: desktop sidebar named-list overflow** - Complete ✓ (#93 — always-visible desktop rail ⋯ opens Delete above other chrome and Delete works; mobile drawer ⋯ from #87 does not regress; same refuse-if-open / unlist-completed / Today-landing)
 **Yoink UI story 18: wrap named-list names in the rail** - Complete ✓ (#94 — named-list labels wrap to additional lines instead of one ellipsis; same rule in the mobile Tasks drawer; ⋯ / + New list / Inbox count / navigation stay; no horizontal page scroll from the rail)
+**Yoink UI story 19: one-pile drag across many slots** - Complete ✓ (#90 — one continuous drag on named-list / Unlisted can move an open task across any number of slots; release persists once; smart views stay non-reorderable; swipe-right complete stays)
 
 Recent updates:
+- Yoink UI story 19 “one-pile drag across many slots” (#90): after #78, drag worked but felt limited to one slot at a time — hard to take the bottom task to the top in one gesture. On named-list and Unlisted only, one continuous drag can move a task across any number of open slots before release. Release persists the final open order once (same open-order rules). Smart views stay non-reorderable. Horizontal swipe-to-complete still works (grip handle owns the vertical axis). Desktop and mobile both. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: changing open-order domain rules, multi-select, bringing back kit up/down as the primary path.
 - Yoink UI story 18 “wrap named-list names in the rail” (#94): Justin (after hard-refresh) felt the always-visible desktop sidebar was too narrow — named list names all truncate. He nodded **wrap** (2026-09-12). Named-list labels wrap onto more lines instead of one ellipsis. Smart views / Inbox / Unlisted / + New list wrap if needed or stay one line if they already fit. Same rule in the mobile Tasks drawer. ⋯ overflow, + New list, Inbox count, and navigation stay. No horizontal page scroll from the rail. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: widening the sidebar as the primary fix, #88 Edit, #90 drag, nested lists. Do not start #90 from this story.
 - Yoink UI story 17 “desktop sidebar named-list overflow” (#93): after #87, mobile Tasks drawer ⋯ works; desktop / large-screen always-visible sidebar ⋯ still read as broken (no usable Delete). Desktop named-list ⋯ must open Delete above other chrome and be usable. Same Delete rules as today: refuse if open tasks; completed unlist; land on Today if on that pile. Mobile drawer behavior from #87 must not regress. No new overflow actions. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: #94 sidebar width / list-name wrap, #88 Edit, #90 multi-slot drag.
 - Yoink UI story 16 “explicit Edit control on task rows” (#88): Justin doesn’t like click-title-to-edit, and it blocks a later world where a title could hold a clickable URL. Remove click-title-to-edit. Add an explicit Edit icon button in the trailing chrome with pin/delete (~44px on touch). Title text is just the title. Edit still opens the existing task edit modal/sheet — same fields, no new surface. Complete, pin, delete, drag (one-pile), and swipe-right complete stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: capture rows, linkifying URLs in titles, redesigning the edit modal, multi-select, #90 multi-slot drag.
@@ -1489,6 +1491,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 19: one-pile drag across many slots - Complete ✓
+
+**Goal**: On a named-list or Unlisted screen, one continuous drag can move an open task across any number of open slots (for example last → first) before release.
+
+**Product rules (locked, issue #90):**
+- One story at a time. This story only. Last story in the current stack.
+- Named-list and Unlisted only: **one continuous drag** can move a task across **any number of open slots** before release.
+- Release persists the final open order once (same open-order rules as today).
+- Smart views stay non-reorderable.
+- Horizontal swipe-to-complete must still work (clear axes / grip handle).
+- Desktop and mobile both.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Changing open-order domain rules
+- Multi-select
+- #85 / #87 / #88 / #93 / #94 (already landed)
+- Bringing back kit up/down as the primary path
+
+**Implementation:**
+- `SortablePileList` snapshots open-slot midpoints at drag start and keeps the grab origin for the whole gesture. Pointer samples map onto those frozen slots so last → first (and first → last) land in one move; neighbor one-slot moves stay. Release writes the existing `taskIds` order once. Live neighbor-bubble (reorder + reset `startY` after every midpoint cross) is gone — that pinned the drop to one slot when the dragged row’s midpoint followed the pointer.
+- Playwright: bottom → top and top → bottom in one gesture persist; one-slot and Unlisted multi-slot still work; smart views have no reorder; swipe-right complete still works on a one-pile screen; touch can cross many slots. HTTP driver stubs the browser-only operations.
+
+**Deliverable:** A member can drag an open task from one end of a named-list or Unlisted pile to the other in a single gesture, on phone and desktop, without breaking swipe-to-complete or smart-view non-reorder.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1876,7 +1905,9 @@ When resuming work on this project:
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
 
-**Yoink UI story 18 is in.** Named-list rail labels wrap onto more lines instead of one ellipsis. Same rule in the mobile Tasks drawer. ⋯ / + New list / Inbox count / navigation stay. No horizontal page scroll from the rail. Do not start #90 from this story.
+**Yoink UI story 19 is in.** On named-list and Unlisted, one continuous drag can move an open task across any number of slots. Release persists once. Smart views stay non-reorderable. Swipe-right complete stays. Last of the current stack.
+
+**Yoink UI story 18 is in.** Named-list rail labels wrap onto more lines instead of one ellipsis. Same rule in the mobile Tasks drawer. ⋯ / + New list / Inbox count / navigation stay. No horizontal page scroll from the rail.
 
 **Yoink UI story 17 is in.** Desktop sidebar named-list ⋯ opens Delete above other chrome. Mobile drawer ⋯ from #87 does not regress. Same refuse-if-open / unlist-completed / Today-landing. Do not start #94 or #90 from this story.
 

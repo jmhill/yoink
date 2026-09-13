@@ -44,6 +44,9 @@ export function moveOpenTaskId(params: {
 /**
  * Which open-task index a vertical drop lands on, given item midpoints
  * from top to bottom.
+ *
+ * Snapshot these mids at drag start (untransformed). Live midpoints of
+ * the dragged row follow the pointer and pin the drop to one neighbor.
  */
 export function dropIndexForClientY(params: {
   clientY: number;
@@ -60,4 +63,25 @@ export function dropIndexForClientY(params: {
     }
   }
   return index;
+}
+
+/**
+ * Open order after one pointer sample on a continuous drag. `slotMids`
+ * stay frozen for the gesture; do not reset the grab origin between calls.
+ */
+export function orderOpenTasksAfterDragMove(params: {
+  ids: readonly string[];
+  fromIndex: number;
+  clientY: number;
+  slotMids: readonly number[];
+}): string[] {
+  const toIndex = dropIndexForClientY({
+    clientY: params.clientY,
+    mids: params.slotMids,
+  });
+  return moveOpenTaskId({
+    ids: params.ids,
+    fromIndex: params.fromIndex,
+    toIndex,
+  });
 }

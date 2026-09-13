@@ -300,12 +300,14 @@ export type BrowserActorOperations = {
 
   /**
    * Drag an open task onto another open task on a one-pile screen.
+   * One continuous pointer gesture — can cross any number of open slots.
    * Persists the new open order (pointer / mouse).
    */
   dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void>;
 
   /**
    * Drag an open task onto another via touch on a one-pile screen.
+   * One continuous gesture — can cross any number of open slots.
    */
   dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void>;
 

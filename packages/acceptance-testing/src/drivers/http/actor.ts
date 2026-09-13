@@ -664,6 +664,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeInboxCaptureActions', 'http');
     },
 
+    async shouldSeeCaptureContentLink(_content: string, _href: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCaptureContentLink', 'http');
+    },
+
+    async shouldSeeCaptureContentWithoutLinks(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCaptureContentWithoutLinks', 'http');
+    },
+
+    async shouldSeeCaptureSourceUrl(_content: string, _href: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCaptureSourceUrl', 'http');
+    },
+
+    async openCaptureContentLink(_content: string, _href: string): Promise<void> {
+      throw new UnsupportedOperationError('openCaptureContentLink', 'http');
+    },
+
     async shouldSeeQuickAddCapture(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeQuickAddCapture', 'http');
     },

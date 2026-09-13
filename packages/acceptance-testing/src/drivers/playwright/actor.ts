@@ -192,6 +192,17 @@ export const createPlaywrightActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
+      if (input.sourceUrl) {
+        const response = await page.request.post('/api/captures', { data: input });
+        if (response.status() === 400) {
+          throw new ValidationError('Content is required');
+        }
+        if (!response.ok()) {
+          throw new Error(`Failed to create capture: ${response.status()}`);
+        }
+        return response.json() as Promise<Capture>;
+      }
+
       await inboxPage.goto();
 
       // Attempt to add the capture through the UI
@@ -1052,6 +1063,58 @@ export const createPlaywrightActor = (
       await expect(card.locator('[draggable="true"]')).toHaveCount(0);
       await expect(card.locator('input[type="date"]')).toHaveCount(0);
       await expect(card.getByText(/due/i)).toHaveCount(0);
+    },
+
+    async shouldSeeCaptureContentLink(content: string, href: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      const link = inboxPage.captureContentLink(content, href);
+      await expect(card).toBeVisible();
+      await expect(card.locator('p').first()).toHaveText(content);
+      await expect(link).toBeVisible();
+      await expect(link).toHaveText(href);
+      await expect(link).toHaveAttribute('href', href);
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    },
+
+    async shouldSeeCaptureContentWithoutLinks(content: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      await expect(card.locator('p').first()).toHaveText(content);
+      await expect(inboxPage.captureContentLinks(content)).toHaveCount(0);
+    },
+
+    async shouldSeeCaptureSourceUrl(content: string, href: string): Promise<void> {
+      const source = inboxPage.captureSourceUrl(content);
+      await expect(source).toBeVisible();
+      await expect(source).toHaveAttribute('href', href);
+      await expect(source).toHaveAttribute('target', '_blank');
+      await expect(source).toHaveAttribute('rel', 'noopener noreferrer');
+    },
+
+    async openCaptureContentLink(content: string, href: string): Promise<void> {
+      const link = inboxPage.captureContentLink(content, href);
+      await expect(link).toBeVisible();
+
+      await page.context().route(
+        (url) => url.href === href || url.href.startsWith(`${href}/`) || url.href.startsWith(href),
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'text/html',
+            body: '<html><body>ok</body></html>',
+          });
+        }
+      );
+
+      const popupPromise = page.waitForEvent('popup');
+      await link.click();
+      const popup = await popupPromise;
+      await expect.poll(() => popup.url()).toContain(href);
+      await popup.close();
+
+      await expect(inboxPage.captureCard(content)).toBeVisible();
+      await expect(inboxPage.promoteSheet()).toHaveCount(0);
     },
 
     async shouldSeeQuickAddCapture(): Promise<void> {

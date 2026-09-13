@@ -48,8 +48,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 11: swipe to complete** - Complete ✓ (#79 — Polly lock: mobile horizontal swipe completes, same as the circle control; vertical scroll must not accidental-complete; desktop tap-only; no swipe-to-delete, no drag)
 **Yoink UI story 12: one-pile drag to reorder** - Complete ✓ (#78 — named-list and Unlisted get a vertical grip-handle drag; smart views stay non-reorderable; swipe-to-complete keeps the horizontal axis; kit up/down is gone)
 **Yoink UI story 13: align complete circle and icons with the title** - Complete ✓ (#84 — circle / grip / pin / delete glyphs share the title’s first-line center; ~44px complete hit target stays; metadata stays on a second line)
+**Yoink UI story 14: linkify http(s) URLs in capture content** - Complete ✓ (#85 — Inbox / Snoozed / Trash content turns `http://` and `https://` URLs into new-tab links, including in prose; scheme required; clicking a link does not Promote / Snooze / Trash)
 
 Recent updates:
+- Yoink UI story 14 “linkify http(s) URLs in capture content” (#85): on Inbox, Snoozed, and Trash capture rows, `http://` and `https://` URLs in capture **content** are clickable (whole-content URL or URL inside surrounding prose). Scheme required — not bare domains, not scheme-less `www.`. Opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`), same as today’s `sourceUrl` link under the body. Clicking a content link must not Promote, Snooze, or Trash. If `sourceUrl` is also set, that source link stays. Captures are not click-to-edit. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: bare domains; changing Promote / swipe / capture chrome; task rows; Promote sheet / task title after promote.
 - Yoink UI story 13 “align complete circle and icons with the title” (#84): the complete control stays a ~44px hit target with a smaller circle inside. The circle glyph optically centers with the first line of the title — not the whole card, not the due/assignee/list row. Grip, pin, and delete glyphs share that same vertical center (hit targets can stay large). Metadata stays under the title and does not pull the circle down. Same row on mobile and desktop. No new actions, no multi-select, no swipe/drag behavior change. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: row redesign, new icons, color/theme work beyond alignment, capture rows, drawer chrome.
 - Yoink UI story 12 “one-pile drag to reorder” (#78): Polly lock — drag reorder only on named-list and Unlisted. Smart views stay non-reorderable. Same open-order rules (among open tasks only; new/move-on/take-off append; complete remembers index; uncomplete restores). Horizontal swipe owns complete (#79); drag owns the vertical axis via a lucide grip handle so the axes stay clear. Desktop and mobile both get the same handle — no kit split. Kit up/down is gone once drag works. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, changing order semantics, reorder in smart views, mobile drawer, complete-control redesign, swipe-to-complete (already on trunk).
 - Yoink UI story 11 “swipe to complete” (#79): Polly lock — mobile horizontal swipe completes (same outcome as the circle control). Vertical scroll must not accidental-complete. Desktop stays tap-only. No swipe-to-delete, no drag in this PR. Direction is swipe right (same axis as capture swipe-right; Trash stays on captures). Completing via swipe calls the same toggle as the #77 circle control. Vertical-dominant movement is ignored so the list can scroll; a later drag-reorder (#78) can own the vertical axis. Desktop mouse stays tap-only (`useSwipe` is touch-only). Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: multi-select, drag reorder (#78), changing the complete icon from #77, swipe-to-delete.
@@ -1345,6 +1347,34 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Playwright: one-line title shares a centerline; wrapped title keeps the circle on the first line with metadata underneath; complete / pin / delete / drag / swipe-right still work; named-list, Unlisted, and Today stay aligned on desktop and phone. HTTP driver stubs the new browser operations.
 
 **Deliverable:** A member sees the complete circle, title, and trailing icons on one line, on phone and desktop, without losing the large complete target or swipe/drag.
+
+---
+
+## Yoink UI story 14: linkify http(s) URLs in capture content - Complete ✓
+
+**Goal**: A capture that contains an `http://` or `https://` URL — as the whole body, or inside a note — is clickable on Inbox, Snoozed, and Trash.
+
+**Product rules (locked, issue #85):**
+- One story at a time. This story only.
+- On Inbox, Snoozed, and Trash capture rows: `http://` and `https://` URLs in capture **content** are clickable links (whole-content URL *or* URL inside surrounding prose).
+- Scheme required (`http`/`https`). Not bare domains, not scheme-less `www.`.
+- Opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`) — same as today’s `sourceUrl` link.
+- Clicking a link opens the URL; it must not Promote, Snooze, or Trash.
+- If `sourceUrl` is also set, keep the existing source link under the body.
+- Captures are **not** click-to-edit — linkify does not fight an edit gesture on the capture row.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Bare domains / scheme-less URLs
+- Changing Promote, swipe, or capture chrome
+- Task rows
+- Promote sheet / task title after promote
+
+**Implementation:**
+- Pure `splitContentLinks` helper turns content into text/link segments (unit-tested). `CaptureContent` renders those in `CaptureCard`, Snoozed, and Trash. Content links stop click propagation so swipe/actions do not fire.
+- Playwright: whole-content URL is a new-tab link; prose linkifies only the URL; free text stays plain; opening the link does not Promote / Snooze / Trash; those actions still work; same on Inbox, Snoozed, and Trash; `sourceUrl` under the body stays. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member can open an `http(s)` URL from capture content on Inbox, Snoozed, and Trash, without losing Promote / Snooze / Trash or the existing source link.
 
 ---
 

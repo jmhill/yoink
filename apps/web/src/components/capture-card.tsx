@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
 import { Trash2, Link as LinkIcon, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { CaptureContent } from '@/components/capture-content';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -83,7 +84,7 @@ export function CaptureCard({
     >
       <CardContent className="flex items-start justify-between gap-2 py-3">
         <div className="flex-1 min-w-0">
-          <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+          <CaptureContent content={capture.content} />
           {capture.sourceUrl && (
             <a
               href={capture.sourceUrl}

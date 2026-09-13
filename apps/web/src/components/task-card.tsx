@@ -10,6 +10,7 @@ import {
   User,
   List,
   GripVertical,
+  Pencil,
 } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
@@ -150,12 +151,7 @@ export function TaskCard({
           )}
         </Button>
         
-        <button
-          type="button"
-          onClick={() => onEdit?.(task)}
-          className="flex-1 min-w-0 text-left hover:bg-muted/50 -mx-2 px-2 rounded transition-colors cursor-pointer"
-          disabled={isLoading}
-        >
+        <div className="min-w-0 flex-1">
           <p
             data-slot="task-title"
             className={`break-words leading-6 ${isCompleted ? 'line-through text-muted-foreground' : ''}`}
@@ -198,7 +194,7 @@ export function TaskCard({
               )}
             </div>
           )}
-        </button>
+        </div>
 
         <div className="flex shrink-0 items-start gap-1">
           {dragHandle && (
@@ -230,6 +226,21 @@ export function TaskCard({
               onTouchCancel={dragHandle.onTouchEnd}
             >
               <GripVertical className="size-5" />
+            </Button>
+          )}
+          {onEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              data-slot="task-edit"
+              onClick={() => onEdit(task)}
+              disabled={isLoading}
+              title="Edit"
+              aria-label={`Edit task "${task.title}"`}
+              className="size-11 min-h-11 min-w-11 shrink-0 text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
+            >
+              <Pencil className="size-5" />
             </Button>
           )}
           <Button

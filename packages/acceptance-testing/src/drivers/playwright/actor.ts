@@ -1331,6 +1331,7 @@ export const createPlaywrightActor = (
       expect(geometry.completeHit.width).toBeGreaterThanOrEqual(44);
       expect(geometry.completeHit.height).toBeGreaterThanOrEqual(44);
       expect(aligned(geometry.completeCircleCenterY)).toBe(true);
+      expect(aligned(geometry.editCenterY)).toBe(true);
       expect(aligned(geometry.pinCenterY)).toBe(true);
       expect(aligned(geometry.deleteCenterY)).toBe(true);
       if (geometry.gripCenterY !== null && geometry.gripHit) {
@@ -1387,6 +1388,52 @@ export const createPlaywrightActor = (
       await expect(dialog.getByRole('heading', { name: 'Delete task?' })).toBeVisible();
       await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+    },
+
+    async shouldNotOpenTaskEditFromTitle(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const title = tasksPage.taskTitle(taskId);
+      await expect(title).toBeVisible();
+      await expect(title).not.toHaveRole('button');
+      const card = tasksPage.taskCard(taskId);
+      const titleText = (await title.innerText()).trim();
+      await expect(card.getByRole('button', { name: titleText, exact: true })).toHaveCount(0);
+      await title.click();
+      await expect(page.getByRole('dialog', { name: 'Edit Task' })).toHaveCount(0);
+    },
+
+    async shouldSeeTaskEditControl(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const edit = tasksPage.editControl(taskId);
+      await expect(edit).toBeVisible();
+      await expect(edit).toHaveRole('button');
+      const box = await edit.boundingBox();
+      if (!box) {
+        throw new Error('edit control should have a layout box');
+      }
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    },
+
+    async openTaskEditFromRow(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.openEdit(taskId);
+    },
+
+    async shouldSeeExistingTaskEditUi(): Promise<void> {
+      const dialog = page.getByRole('dialog', { name: 'Edit Task' });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading', { name: 'Edit Task' })).toBeVisible();
+      await expect(page.locator('#edit-task-title')).toBeVisible();
+      await expect(page.locator('#edit-task-due-date')).toBeVisible();
+      await expect(page.locator('#edit-task-assignee')).toBeVisible();
+      await expect(page.locator('#edit-task-list')).toBeVisible();
+    },
+
+    async closeTaskEdit(): Promise<void> {
+      const dialog = page.getByRole('dialog', { name: 'Edit Task' });
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

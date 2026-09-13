@@ -797,9 +797,8 @@ export class TasksPage {
   }
 
   async openEdit(taskId: string): Promise<void> {
-    const card = this.taskCard(taskId);
-    await card.locator('p').first().click();
-    await this.page.getByRole('dialog').waitFor({ state: 'visible' });
+    await this.editControl(taskId).click();
+    await this.page.getByRole('dialog', { name: 'Edit Task' }).waitFor({ state: 'visible' });
   }
 
   async selectAssignee(userId: string): Promise<void> {
@@ -1143,6 +1142,14 @@ export class TasksPage {
     return this.taskCard(taskId).getByRole('button', { name: /^Delete task/ });
   }
 
+  editControl(taskId: string) {
+    return this.taskCard(taskId).getByRole('button', { name: /^Edit task/ });
+  }
+
+  taskTitle(taskId: string) {
+    return this.taskCard(taskId).locator('[data-slot="task-title"]');
+  }
+
   /**
    * Glyph and first-line geometry for title-line alignment (#84).
    */
@@ -1154,6 +1161,7 @@ export class TasksPage {
     completeHit: { width: number; height: number };
     gripCenterY: number | null;
     gripHit: { width: number; height: number } | null;
+    editCenterY: number;
     pinCenterY: number;
     deleteCenterY: number;
     metaTop: number | null;
@@ -1164,13 +1172,14 @@ export class TasksPage {
       const title = node.querySelector('[data-slot="task-title"]');
       const complete = node.querySelector('[data-slot="task-complete"]');
       const grip = node.querySelector('[data-drag-handle]');
+      const edit = node.querySelector('[aria-label^="Edit task"]');
       const pin = node.querySelector(
         '[aria-label^="Pin task"], [aria-label^="Unpin task"]'
       );
       const del = node.querySelector('[aria-label^="Delete task"]');
       const meta = node.querySelector('[data-slot="task-meta"]');
 
-      if (!title || !complete || !pin || !del) {
+      if (!title || !complete || !edit || !pin || !del) {
         throw new Error('task row is missing title-line controls');
       }
 
@@ -1199,6 +1208,7 @@ export class TasksPage {
         completeHit: hit(complete),
         gripCenterY: grip ? svgCenterY(grip) : null,
         gripHit: grip ? hit(grip) : null,
+        editCenterY: svgCenterY(edit),
         pinCenterY: svgCenterY(pin),
         deleteCenterY: svgCenterY(del),
         metaTop: meta ? meta.getBoundingClientRect().top : null,

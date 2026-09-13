@@ -50,8 +50,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 13: align complete circle and icons with the title** - Complete ✓ (#84 — circle / grip / pin / delete glyphs share the title’s first-line center; ~44px complete hit target stays; metadata stays on a second line)
 **Yoink UI story 14: linkify http(s) URLs in capture content** - Complete ✓ (#85 — Inbox / Snoozed / Trash content turns `http://` and `https://` URLs into new-tab links, including in prose; scheme required; clicking a link does not Promote / Snooze / Trash)
 **Yoink UI story 15: named-list overflow above the mobile drawer** - Complete ✓ (#87 — mobile Tasks drawer ⋯ opens Delete on top of the sheet; desktop sidebar overflow unchanged; same refuse-if-open / unlist-completed / Today-landing)
+**Yoink UI story 16: explicit Edit control on task rows** - Complete ✓ (#88 — title is no longer click-to-edit; a ~44px Edit icon in the trailing chrome opens the existing task edit modal/sheet; complete / pin / delete / drag / swipe-complete unchanged)
 
 Recent updates:
+- Yoink UI story 16 “explicit Edit control on task rows” (#88): Justin doesn’t like click-title-to-edit, and it blocks a later world where a title could hold a clickable URL. Remove click-title-to-edit. Add an explicit Edit icon button in the trailing chrome with pin/delete (~44px on touch). Title text is just the title. Edit still opens the existing task edit modal/sheet — same fields, no new surface. Complete, pin, delete, drag (one-pile), and swipe-right complete stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: capture rows, linkifying URLs in titles, redesigning the edit modal, multi-select, #90 multi-slot drag.
 - Yoink UI story 15 “named-list overflow above the mobile drawer” (#87): in the mobile Tasks drawer, named-list ⋯ must open **above** the Vaul drawer/overlay so Delete is reachable. Observed fail: portaled DropdownMenu shared `z-50` with the drawer + overlay, so the menu stacked under the sheet (reads as “does nothing”). Desktop sidebar has no parent drawer layer and must keep working. Delete rules unchanged: refuse if open tasks; completed unlist; land on Today if you were on that pile. No new overflow actions. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: #84 alignment, #85 URL links, #88 edit control, #90 multi-slot drag, multi-select, new list actions beyond Delete.
 - Yoink UI story 14 “linkify http(s) URLs in capture content” (#85): on Inbox, Snoozed, and Trash capture rows, `http://` and `https://` URLs in capture **content** are clickable (whole-content URL or URL inside surrounding prose). Scheme required — not bare domains, not scheme-less `www.`. Opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`), same as today’s `sourceUrl` link under the body. Clicking a content link must not Promote, Snooze, or Trash. If `sourceUrl` is also set, that source link stays. Captures are not click-to-edit. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: bare domains; changing Promote / swipe / capture chrome; task rows; Promote sheet / task title after promote.
 - Yoink UI story 13 “align complete circle and icons with the title” (#84): the complete control stays a ~44px hit target with a smaller circle inside. The circle glyph optically centers with the first line of the title — not the whole card, not the due/assignee/list row. Grip, pin, and delete glyphs share that same vertical center (hit targets can stay large). Metadata stays under the title and does not pull the circle down. Same row on mobile and desktop. No new actions, no multi-select, no swipe/drag behavior change. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: row redesign, new icons, color/theme work beyond alignment, capture rows, drawer chrome.
@@ -1405,6 +1407,33 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 16: explicit Edit control on task rows - Complete ✓
+
+**Goal**: Task rows open edit from an explicit Edit control — not by tapping the title.
+
+**Product rules (locked, issue #88):**
+- One story at a time. This story only. Do not start #90.
+- Remove click-title-to-edit on task rows.
+- Add an explicit **Edit** control on the task row (icon button in the trailing chrome with pin/delete — obvious, ~44px on touch).
+- Title text is no longer a button that opens edit; it’s just the title (and later can host links without fighting edit).
+- Edit still opens the existing task edit modal / sheet — same fields, no new edit surface.
+- Complete, pin, delete, drag (one-pile), swipe-right complete unchanged.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Capture rows
+- Linkifying URLs inside task titles
+- Redesigning the edit modal
+- Multi-select, #90 multi-slot drag
+
+**Implementation:**
+- `TaskCard` title is plain text. Trailing chrome adds a lucide `Pencil` Edit button (~44px) that calls the existing `onEdit` → `TaskEditModal`.
+- Playwright: clicking the title does not open edit; the Edit control does, on named-list / Unlisted / Today, desktop and phone; complete / pin / delete / drag / swipe-complete still work. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member edits a task from an obvious Edit control, not by tapping the title, on phone and desktop.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1587,7 +1616,7 @@ Per [mockups/README.md](./mockups/README.md):
 ### Task UX Polish (Phase 8.11) - Complete ✓
 - [x] Overdue tasks in Today view (`dueDate <= today`)
 - [x] Overdue section grouping in Today view (separate "Overdue" section at top)
-- [x] Task detail/edit modal (click task title to edit)
+- [x] Task detail/edit modal (explicit Edit control on the row; title is not click-to-edit)
 - [x] Source capture content display in edit modal
 - [x] Due date color coding (red=overdue, orange=today, green=future)
 
@@ -1791,6 +1820,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 16 is in.** Task rows no longer open edit from the title. An explicit Edit control in the trailing chrome opens the existing edit modal/sheet. Complete / pin / delete / drag / swipe-complete stay. Do not start #90 from this story.
 
 **Yoink UI story 15 is in.** Named-list ⋯ in the mobile Tasks drawer opens Delete on top of the sheet. Desktop sidebar overflow is unchanged. Same refuse-if-open / unlist-completed / Today-landing. Do not start #88 or #90 from this story.
 

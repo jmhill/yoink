@@ -908,6 +908,33 @@ export type BrowserActorOperations = {
    */
   deleteOpenTaskFromRow(taskId: string): Promise<void>;
 
+  /**
+   * Assert tapping/clicking the task title does not open edit. The title
+   * is text, not a button.
+   */
+  shouldNotOpenTaskEditFromTitle(taskId: string): Promise<void>;
+
+  /**
+   * Assert this task row has an explicit Edit control (~44px), in the
+   * trailing chrome with pin/delete.
+   */
+  shouldSeeTaskEditControl(taskId: string): Promise<void>;
+
+  /**
+   * Open the existing task edit modal/sheet from the row Edit control.
+   */
+  openTaskEditFromRow(taskId: string): Promise<void>;
+
+  /**
+   * Assert the open dialog is the existing task edit UI (same fields).
+   */
+  shouldSeeExistingTaskEditUi(): Promise<void>;
+
+  /**
+   * Close the task edit modal/sheet without saving.
+   */
+  closeTaskEdit(): Promise<void>;
+
   // ==========================================================================
   // Organization Member Management
   // ==========================================================================

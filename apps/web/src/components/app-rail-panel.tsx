@@ -211,7 +211,7 @@ export function AppRailPanel({
                   {listsHeading}
                   <div
                     className={cn(
-                      'flex min-w-0 items-center rounded-md',
+                      'flex min-w-0 items-start rounded-md',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'

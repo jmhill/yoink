@@ -3,7 +3,19 @@ export type ContentSegment =
   | { type: 'link'; href: string; value: string };
 
 const HTTP_URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;
-const TRAILING_PUNCTUATION = /[.,;:!?)]}'"]+$/;
+const TRAILING_PUNCTUATION = new Set([
+  '.',
+  ',',
+  ';',
+  ':',
+  '!',
+  '?',
+  ')',
+  ']',
+  '}',
+  "'",
+  '"',
+]);
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -15,7 +27,11 @@ const isHttpUrl = (value: string): boolean => {
 };
 
 const trimTrailingPunctuation = (raw: string): string => {
-  return raw.replace(TRAILING_PUNCTUATION, '');
+  let end = raw.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(raw[end - 1]!)) {
+    end -= 1;
+  }
+  return raw.slice(0, end);
 };
 
 /**

@@ -1809,7 +1809,7 @@ export class AppRail {
       const rect = el.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
-      const top = document.elementFromPoint(x, y);
+      const top = el.ownerDocument.elementFromPoint(x, y);
       if (!top) {
         return false;
       }

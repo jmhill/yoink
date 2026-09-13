@@ -15,6 +15,7 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, RotateCcw, Link as LinkIcon, X } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
+import { CaptureContent } from '@/components/capture-content';
 import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
@@ -299,7 +300,7 @@ function TrashPage() {
                 >
                   <CardContent className="flex items-start justify-between gap-2 py-3">
                     <div className="flex-1 min-w-0">
-                      <p className="whitespace-pre-wrap break-words">{capture.content}</p>
+                      <CaptureContent content={capture.content} />
                       {capture.sourceUrl && (
                         <a
                           href={capture.sourceUrl}

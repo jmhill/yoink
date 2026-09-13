@@ -688,6 +688,29 @@ export type BrowserActorOperations = {
   shouldSeeInboxCaptureActions(content: string): Promise<void>;
 
   /**
+   * Assert this capture's content includes an http(s) link to href.
+   * Only the URL is the link; surrounding prose stays plain. The link
+   * opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
+   */
+  shouldSeeCaptureContentLink(content: string, href: string): Promise<void>;
+
+  /**
+   * Assert this capture's content is plain text with no content links.
+   */
+  shouldSeeCaptureContentWithoutLinks(content: string): Promise<void>;
+
+  /**
+   * Assert the existing source link under the body is still present.
+   */
+  shouldSeeCaptureSourceUrl(content: string, href: string): Promise<void>;
+
+  /**
+   * Open the http(s) content link. Opens a new tab. Must not Promote,
+   * Snooze, or Trash the capture.
+   */
+  openCaptureContentLink(content: string, href: string): Promise<void>;
+
+  /**
    * Assert the Inbox-tab quick-add capture field is visible.
    */
   shouldSeeQuickAddCapture(): Promise<void>;

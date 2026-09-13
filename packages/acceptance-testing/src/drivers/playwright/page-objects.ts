@@ -394,6 +394,20 @@ export class InboxPage {
     return this.page.locator('[data-capture-id]').filter({ hasText: content });
   }
 
+  captureContentLink(content: string, href: string) {
+    return this.captureCard(content)
+      .locator('[data-testid="capture-content-link"]')
+      .filter({ hasText: href });
+  }
+
+  captureContentLinks(content: string) {
+    return this.captureCard(content).locator('[data-testid="capture-content-link"]');
+  }
+
+  captureSourceUrl(content: string) {
+    return this.captureCard(content).locator('[data-testid="source-url"]');
+  }
+
   async openPromote(content: string): Promise<void> {
     const card = this.captureCard(content);
     await card.hover();

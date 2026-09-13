@@ -1346,6 +1346,10 @@ export class TasksPage {
     await this.dragOpenTaskOnto(title, targetTitle);
   }
 
+  /**
+   * One continuous pointer drag from one open-task grip to another.
+   * Can cross any number of open slots (last → first) before release.
+   */
   async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
     const source = this.dragHandle(sourceTitle);
     const target = this.dragHandle(targetTitle);
@@ -1367,7 +1371,8 @@ export class TasksPage {
     const endY = to.y + to.height / 2;
     await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
-    await this.page.mouse.move(endX, endY, { steps: 16 });
+    // One continuous gesture — enough samples to cross every open slot.
+    await this.page.mouse.move(endX, endY, { steps: 24 });
     await this.page.mouse.up();
     await responsePromise;
     const deadline = Date.now() + 5000;
@@ -1437,7 +1442,7 @@ export class TasksPage {
           );
         };
         fire('touchstart', x0, y0);
-        const steps = 8;
+        const steps = 16;
         for (let step = 1; step <= steps; step++) {
           const t = step / steps;
           fire('touchmove', x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);

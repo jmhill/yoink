@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode, type TouchEvent } from 'react';
 import type { Task } from '@yoink/api-contracts';
 import {
-  dropIndexForClientY,
-  moveOpenTaskId,
   openTaskIds,
   openTaskOrderChanged,
+  orderOpenTasksAfterDragMove,
 } from '@/lib/open-task-order';
 
 export type SortablePileDragHandle = {
@@ -29,10 +28,22 @@ type PileDrag = {
   end: () => void;
 };
 
+function slotMidsForOpenTasks(params: {
+  root: HTMLElement | null;
+  ids: readonly string[];
+}): number[] {
+  return params.ids.map((id) => {
+    const node = params.root?.querySelector(`[data-sortable-item="${id}"]`);
+    const box = node?.getBoundingClientRect();
+    return box ? box.top + box.height / 2 : 0;
+  });
+}
+
 /**
  * One-pile open-task list. Vertical drag on the grip handle reorders.
- * The row body keeps horizontal swipe-to-complete. Smart views do not
- * use this.
+ * One continuous gesture can cross any number of open slots; release
+ * persists once. The row body keeps horizontal swipe-to-complete.
+ * Smart views do not use this.
  */
 export function SortablePileList({
   tasks,
@@ -46,6 +57,9 @@ export function SortablePileList({
   const orderedIdsRef = useRef(orderedIds);
   const draggingIdRef = useRef<string | null>(null);
   const startYRef = useRef(0);
+  const fromIndexRef = useRef(0);
+  const slotMidsRef = useRef<number[]>([]);
+  const pendingIdsRef = useRef<string[] | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,8 +76,15 @@ export function SortablePileList({
       if (disabled) {
         return;
       }
+      const ids = orderedIdsRef.current;
       draggingIdRef.current = taskId;
       startYRef.current = clientY;
+      fromIndexRef.current = ids.indexOf(taskId);
+      slotMidsRef.current = slotMidsForOpenTasks({
+        root: listRef.current,
+        ids,
+      });
+      pendingIdsRef.current = ids;
       setDraggingId(taskId);
       setOffsetY(0);
     },
@@ -72,27 +93,15 @@ export function SortablePileList({
       if (!taskId) {
         return;
       }
+      // Keep the original grab origin for the whole gesture so the card
+      // follows the pointer across every slot — do not reset after a swap.
       setOffsetY(clientY - startYRef.current);
-      const root = listRef.current;
-      const mids = orderedIdsRef.current.map((id) => {
-        const node = root?.querySelector(`[data-sortable-item="${id}"]`);
-        const box = node?.getBoundingClientRect();
-        return box ? box.top + box.height / 2 : 0;
-      });
-      const fromIndex = orderedIdsRef.current.indexOf(taskId);
-      const toIndex = dropIndexForClientY({ clientY, mids });
-      if (fromIndex < 0 || toIndex === fromIndex) {
-        return;
-      }
-      const next = moveOpenTaskId({
+      pendingIdsRef.current = orderOpenTasksAfterDragMove({
         ids: orderedIdsRef.current,
-        fromIndex,
-        toIndex,
+        fromIndex: fromIndexRef.current,
+        clientY,
+        slotMids: slotMidsRef.current,
       });
-      orderedIdsRef.current = next;
-      setOrderedIds(next);
-      startYRef.current = clientY;
-      setOffsetY(0);
     },
     end: () => {
       const taskId = draggingIdRef.current;
@@ -102,7 +111,10 @@ export function SortablePileList({
       draggingIdRef.current = null;
       setDraggingId(null);
       setOffsetY(0);
-      const next = orderedIdsRef.current;
+      const next = pendingIdsRef.current ?? orderedIdsRef.current;
+      pendingIdsRef.current = null;
+      orderedIdsRef.current = next;
+      setOrderedIds(next);
       if (openTaskOrderChanged(openTaskIds(tasks), next)) {
         onPersistOrder(next);
       }
@@ -162,10 +174,14 @@ function SortablePileItem({
           event.currentTarget.setPointerCapture(event.pointerId);
           drag.start(task.id, event.clientY);
         },
-        onPointerMove: (event) => {
-          event.stopPropagation();
-          drag.move(event.clientY);
-        },
+          onPointerMove: (event) => {
+            event.stopPropagation();
+            if (event.buttons === 0) {
+              drag.end();
+              return;
+            }
+            drag.move(event.clientY);
+          },
         onPointerUp: (event) => {
           event.stopPropagation();
           drag.end();

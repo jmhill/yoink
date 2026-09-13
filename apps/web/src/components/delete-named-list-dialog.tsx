@@ -69,11 +69,7 @@ export function DeleteNamedListDialog({
 
   return (
     <Dialog open={list !== null} onOpenChange={handleOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        overlayClassName="z-[100]"
-        className="z-[100]"
-      >
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Delete list?</DialogTitle>
           <DialogDescription>

@@ -1398,7 +1398,7 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 - Multi-select, new list actions beyond Delete
 
 **Implementation:**
-- Rail overflow `DropdownMenuContent` sits at `z-[100]` so the portaled menu is above Vaul’s `z-50` drawer + overlay. `DeleteNamedListDialog` uses the same layer so confirm is reachable from that menu.
+- Vaul’s drawer overlay lives on the HTML top layer, so a body-portaled kit menu cannot stack above it (reads as “does nothing”). Mobile named-list ⋯ portals Delete into the drawer content and positions it from the trigger box. Desktop keeps the kit DropdownMenu. Delete dialog / refuse-if-open / Today-landing are unchanged.
 - Playwright: mobile drawer ⋯ opens Delete on top of the sheet; refuse-if-open / unlist-completed / Today-landing still run from that menu; list name still navigates and ⋯ does not; desktop sidebar overflow + Delete still work. HTTP driver stubs the new browser operations.
 
 **Deliverable:** A member can reach Delete from named-list ⋯ in the mobile Tasks drawer, without changing delete rules or the desktop sidebar.

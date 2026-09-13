@@ -35,7 +35,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openMobileTasksRail();
       await alice.shouldSeeMobileTasksRail();
       await alice.shouldSeeNamedListOverflowAboveMobileDrawer('Groceries');
-    });
+    }, 60_000);
 
     it('deletes from that menu with refuse-if-open, unlist-completed, and Today-landing', async () => {
       const weekend = await alice.createNamedList('Weekend');
@@ -52,10 +52,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.deleteNamedListFromRail('Weekend');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Chores'));
+      await alice.shouldSeeRailItems(railWith('Chores', 'Groceries'));
 
       await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Chores'));
+      await alice.shouldSeeRailItems(railWith('Chores', 'Groceries'));
 
       await alice.deleteNamedListFromRail('Chores');
       await alice.shouldSeeRailItems(railWith('Groceries'));

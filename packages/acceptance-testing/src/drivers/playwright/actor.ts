@@ -200,7 +200,10 @@ export const createPlaywrightActor = (
         if (!response.ok()) {
           throw new Error(`Failed to create capture: ${response.status()}`);
         }
-        return response.json() as Promise<Capture>;
+        const capture = (await response.json()) as Capture;
+        await inboxPage.goto();
+        await inboxPage.waitForCapturesOrEmpty();
+        return capture;
       }
 
       await inboxPage.goto();

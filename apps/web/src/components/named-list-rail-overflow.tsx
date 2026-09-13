@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@yoink/ui-base/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@yoink/ui-base/components/dropdown-menu';
 import { cn } from '@yoink/ui-base/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
+import {
+  NAMED_LIST_OVERFLOW_MENU_WIDTH,
+  namedListOverflowMenuCoords,
+} from '@/lib/named-list-overflow-menu';
+
 type NamedListRailOverflowProps = {
   surface: 'desktop' | 'mobile-tasks';
   listId: string;
@@ -16,13 +15,11 @@ type NamedListRailOverflowProps = {
   onDelete: () => void;
 };
 
-const MENU_WIDTH = 128;
-const MENU_GAP = 4;
-
 /**
- * Named-list ⋯ overflow. Desktop keeps the kit DropdownMenu. Mobile cannot:
- * Vaul's overlay is on the HTML top layer, so a body-portaled menu stacks
- * under the sheet (reads as “does nothing”). Portal Delete into the drawer
+ * Named-list ⋯ overflow. Kit DropdownMenu cannot sit above the chrome
+ * on either surface: Vaul’s overlay is the HTML top layer on phone, and
+ * the always-visible desktop rail is a z-50 overflow clip that hides or
+ * swallows a same-layer portaled menu. Portal Delete above that chrome
  * and place it from the trigger box.
  */
 export function NamedListRailOverflow({
@@ -31,52 +28,6 @@ export function NamedListRailOverflow({
   label,
   onDelete,
 }: NamedListRailOverflowProps) {
-  if (surface === 'desktop') {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            data-rail-overflow={label}
-            data-rail-overflow-list-id={listId}
-            aria-label={`More for ${label}`}
-            className="mr-1 shrink-0 text-muted-foreground hover:text-foreground"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          side="right"
-          sideOffset={4}
-          data-rail-overflow-menu={label}
-        >
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => {
-              window.setTimeout(() => {
-                onDelete();
-              }, 0);
-            }}
-          >
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  return <MobileNamedListOverflow listId={listId} label={label} onDelete={onDelete} />;
-}
-
-function MobileNamedListOverflow({
-  listId,
-  label,
-  onDelete,
-}: Omit<NamedListRailOverflowProps, 'surface'>) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -87,21 +38,47 @@ function MobileNamedListOverflow({
     setCoords(null);
   };
 
+  const portalTarget = (): HTMLElement | null => {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    if (surface === 'mobile-tasks') {
+      return document.querySelector<HTMLElement>('[data-mobile-tasks-rail-drawer]');
+    }
+    return document.body;
+  };
+
   const openMenu = () => {
     const triggerBox = triggerRef.current?.getBoundingClientRect();
-    const drawer = document.querySelector<HTMLElement>('[data-mobile-tasks-rail-drawer]');
-    if (!triggerBox || !drawer) {
+    if (!triggerBox) {
       return;
     }
-    const drawerBox = drawer.getBoundingClientRect();
-    const left = Math.min(
-      triggerBox.right - drawerBox.left + MENU_GAP,
-      Math.max(8, drawerBox.width - MENU_WIDTH - 8)
-    );
-    const below = triggerBox.bottom - drawerBox.top + MENU_GAP;
-    const above = triggerBox.top - drawerBox.top - MENU_GAP - 36;
-    const top = below + 36 <= drawerBox.height - 8 ? below : Math.max(8, above);
-    setCoords({ top, left });
+    if (surface === 'mobile-tasks') {
+      const drawer = document.querySelector<HTMLElement>('[data-mobile-tasks-rail-drawer]');
+      if (!drawer) {
+        return;
+      }
+      setCoords(
+        namedListOverflowMenuCoords({
+          trigger: triggerBox,
+          container: drawer.getBoundingClientRect(),
+        })
+      );
+    } else {
+      setCoords(
+        namedListOverflowMenuCoords({
+          trigger: triggerBox,
+          container: {
+            top: 0,
+            left: 0,
+            right: window.innerWidth,
+            bottom: window.innerHeight,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+        })
+      );
+    }
     setOpen(true);
   };
 
@@ -134,10 +111,7 @@ function MobileNamedListOverflow({
     };
   }, [open]);
 
-  const drawer =
-    typeof document !== 'undefined'
-      ? document.querySelector<HTMLElement>('[data-mobile-tasks-rail-drawer]')
-      : null;
+  const target = portalTarget();
 
   return (
     <>
@@ -148,6 +122,7 @@ function MobileNamedListOverflow({
           size="icon-sm"
           data-rail-overflow={label}
           data-rail-overflow-list-id={listId}
+          data-rail-overflow-surface={surface}
           aria-label={`More for ${label}`}
           aria-haspopup="menu"
           aria-expanded={open}
@@ -165,20 +140,21 @@ function MobileNamedListOverflow({
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </div>
-      {open && coords && drawer
+      {open && coords && target
         ? createPortal(
             <div
               ref={menuRef}
               role="menu"
               data-slot="dropdown-menu-content"
               data-rail-overflow-menu={label}
+              data-rail-overflow-menu-surface={surface}
               className="bg-popover text-popover-foreground min-w-[8rem] rounded-md border p-1 shadow-md"
               style={{
-                position: 'absolute',
+                position: surface === 'desktop' ? 'fixed' : 'absolute',
                 top: coords.top,
                 left: coords.left,
-                zIndex: 50,
-                width: MENU_WIDTH,
+                zIndex: surface === 'desktop' ? 100 : 50,
+                width: NAMED_LIST_OVERFLOW_MENU_WIDTH,
               }}
             >
               <button
@@ -198,7 +174,7 @@ function MobileNamedListOverflow({
                 Delete
               </button>
             </div>,
-            drawer
+            target
           )
         : null}
     </>

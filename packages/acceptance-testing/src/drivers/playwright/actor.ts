@@ -940,6 +940,10 @@ export const createPlaywrightActor = (
       await appRail.expectOverflowMenuAboveDrawer(name);
     },
 
+    async shouldSeeNamedListOverflowOnDesktopSidebar(name: string): Promise<void> {
+      await appRail.expectOverflowMenuOnDesktopSidebar(name);
+    },
+
     async shouldNotNavigateWhenOpeningNamedListOverflow(name: string): Promise<void> {
       await appRail.expectOverflowDoesNotNavigate(name);
     },

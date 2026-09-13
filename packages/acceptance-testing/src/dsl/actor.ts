@@ -604,6 +604,13 @@ export type BrowserActorOperations = {
   shouldSeeNamedListOverflowAboveMobileDrawer(name: string): Promise<void>;
 
   /**
+   * Assert the named-list overflow Delete menu is stacked above other
+   * chrome on the always-visible desktop sidebar. Delete is reachable
+   * with a real pointer click.
+   */
+  shouldSeeNamedListOverflowOnDesktopSidebar(name: string): Promise<void>;
+
+  /**
    * Assert opening this named-list overflow does not navigate. The current
    * view (URL) stays put; the menu opens.
    */

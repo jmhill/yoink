@@ -617,6 +617,23 @@ export type BrowserActorOperations = {
   shouldNotNavigateWhenOpeningNamedListOverflow(name: string): Promise<void>;
 
   /**
+   * Assert this named-list rail label wraps onto two or more lines and is
+   * fully readable — not one truncated ellipsis line that needs hover.
+   */
+  shouldSeeWrappedRailNamedList(name: string): Promise<void>;
+
+  /**
+   * Assert this named-list rail row is the active (highlighted) destination.
+   */
+  shouldSeeRailNamedListHighlighted(name: string): Promise<void>;
+
+  /**
+   * Assert the page (and the rail) does not scroll horizontally because of
+   * a long list name.
+   */
+  shouldSeeNoHorizontalPageScrollFromRail(): Promise<void>;
+
+  /**
    * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
    */
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;

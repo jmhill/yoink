@@ -115,7 +115,7 @@ export function NamedListRailOverflow({
 
   return (
     <>
-      <div ref={triggerRef} className="mr-1 inline-flex shrink-0">
+      <div ref={triggerRef} className="mr-1 mt-1 inline-flex shrink-0">
         <Button
           type="button"
           variant="ghost"

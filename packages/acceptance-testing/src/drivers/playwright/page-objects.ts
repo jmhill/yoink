@@ -1702,6 +1702,75 @@ export class AppRail {
     return (await this.itemByLabel(label).getAttribute('data-rail-active')) === 'true';
   }
 
+  /**
+   * A long named-list name must wrap onto two+ lines and stay fully
+   * readable — not one ellipsis line that only expands on hover.
+   */
+  async expectNamedListLabelWrapped(label: string): Promise<void> {
+    await this.waitForVisible();
+    const item = this.itemByLabel(label);
+    await item.waitFor({ state: 'visible' });
+
+    const geometry = await item.evaluate((node) => {
+      const text =
+        node.querySelector('[data-rail-label-text]') ??
+        node.querySelector('span') ??
+        node;
+      const range = node.ownerDocument.createRange();
+      range.selectNodeContents(text);
+      const lineRects = [...range.getClientRects()].filter(
+        (rect) => rect.width > 0 && rect.height > 0
+      );
+      const styles = node.ownerDocument.defaultView?.getComputedStyle(text);
+      return {
+        visibleText: (text.textContent ?? '').trim(),
+        lineCount: Math.max(lineRects.length, 1),
+        whiteSpace: styles?.whiteSpace ?? '',
+        textOverflow: styles?.textOverflow ?? '',
+        clipped: text.scrollHeight > text.clientHeight + 1,
+      };
+    });
+
+    if (geometry.visibleText !== label) {
+      throw new Error(
+        `Rail label should show the full name "${label}", got "${geometry.visibleText}"`
+      );
+    }
+    if (geometry.lineCount < 2) {
+      throw new Error(
+        `Rail label "${label}" should wrap onto two or more lines (got ${geometry.lineCount})`
+      );
+    }
+    if (geometry.whiteSpace.includes('nowrap') || geometry.textOverflow === 'ellipsis') {
+      throw new Error(
+        `Rail label "${label}" is still truncating (white-space=${geometry.whiteSpace}, text-overflow=${geometry.textOverflow})`
+      );
+    }
+    if (geometry.clipped) {
+      throw new Error(`Rail label "${label}" is clipped; the wrapped name is not fully readable`);
+    }
+  }
+
+  /** Long rail labels must not push the page (or the rail) sideways. */
+  async expectNoHorizontalPageScroll(): Promise<void> {
+    await this.waitForVisible();
+    const overflow = await this.root().evaluate((rail) => {
+      const doc = rail.ownerDocument.documentElement;
+      const body = rail.ownerDocument.body;
+      return {
+        page: Math.max(doc.scrollWidth - doc.clientWidth, body.scrollWidth - body.clientWidth),
+        rail: rail.scrollWidth - rail.clientWidth,
+      };
+    });
+    const slack = 1;
+    if (overflow.page > slack) {
+      throw new Error(`Page scrolls horizontally by ${overflow.page}px from the rail`);
+    }
+    if (overflow.rail > slack) {
+      throw new Error(`Rail scrolls horizontally by ${overflow.rail}px`);
+    }
+  }
+
   async openNewList(): Promise<void> {
     await this.openNewListDialog();
   }

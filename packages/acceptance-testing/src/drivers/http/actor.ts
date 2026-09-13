@@ -610,6 +610,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotNavigateWhenOpeningNamedListOverflow', 'http');
     },
 
+    async shouldSeeWrappedRailNamedList(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWrappedRailNamedList', 'http');
+    },
+
+    async shouldSeeRailNamedListHighlighted(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailNamedListHighlighted', 'http');
+    },
+
+    async shouldSeeNoHorizontalPageScrollFromRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoHorizontalPageScrollFromRail', 'http');
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },

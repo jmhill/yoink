@@ -52,8 +52,10 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 **Yoink UI story 15: named-list overflow above the mobile drawer** - Complete ✓ (#87 — mobile Tasks drawer ⋯ opens Delete on top of the sheet; desktop sidebar overflow unchanged; same refuse-if-open / unlist-completed / Today-landing)
 **Yoink UI story 16: explicit Edit control on task rows** - Complete ✓ (#88 — title is no longer click-to-edit; a ~44px Edit icon in the trailing chrome opens the existing task edit modal/sheet; complete / pin / delete / drag / swipe-complete unchanged)
 **Yoink UI story 17: desktop sidebar named-list overflow** - Complete ✓ (#93 — always-visible desktop rail ⋯ opens Delete above other chrome and Delete works; mobile drawer ⋯ from #87 does not regress; same refuse-if-open / unlist-completed / Today-landing)
+**Yoink UI story 18: wrap named-list names in the rail** - Complete ✓ (#94 — named-list labels wrap to additional lines instead of one ellipsis; same rule in the mobile Tasks drawer; ⋯ / + New list / Inbox count / navigation stay; no horizontal page scroll from the rail)
 
 Recent updates:
+- Yoink UI story 18 “wrap named-list names in the rail” (#94): Justin (after hard-refresh) felt the always-visible desktop sidebar was too narrow — named list names all truncate. He nodded **wrap** (2026-09-12). Named-list labels wrap onto more lines instead of one ellipsis. Smart views / Inbox / Unlisted / + New list wrap if needed or stay one line if they already fit. Same rule in the mobile Tasks drawer. ⋯ overflow, + New list, Inbox count, and navigation stay. No horizontal page scroll from the rail. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: widening the sidebar as the primary fix, #88 Edit, #90 drag, nested lists. Do not start #90 from this story.
 - Yoink UI story 17 “desktop sidebar named-list overflow” (#93): after #87, mobile Tasks drawer ⋯ works; desktop / large-screen always-visible sidebar ⋯ still read as broken (no usable Delete). Desktop named-list ⋯ must open Delete above other chrome and be usable. Same Delete rules as today: refuse if open tasks; completed unlist; land on Today if on that pile. Mobile drawer behavior from #87 must not regress. No new overflow actions. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: #94 sidebar width / list-name wrap, #88 Edit, #90 multi-slot drag.
 - Yoink UI story 16 “explicit Edit control on task rows” (#88): Justin doesn’t like click-title-to-edit, and it blocks a later world where a title could hold a clickable URL. Remove click-title-to-edit. Add an explicit Edit icon button in the trailing chrome with pin/delete (~44px on touch). Title text is just the title. Edit still opens the existing task edit modal/sheet — same fields, no new surface. Complete, pin, delete, drag (one-pile), and swipe-right complete stay. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: capture rows, linkifying URLs in titles, redesigning the edit modal, multi-select, #90 multi-slot drag.
 - Yoink UI story 15 “named-list overflow above the mobile drawer” (#87): in the mobile Tasks drawer, named-list ⋯ must open **above** the Vaul drawer/overlay so Delete is reachable. Observed fail: portaled DropdownMenu shared `z-50` with the drawer + overlay, so the menu stacked under the sheet (reads as “does nothing”). Desktop sidebar has no parent drawer layer and must keep working. Delete rules unchanged: refuse if open tasks; completed unlist; land on Today if you were on that pile. No new overflow actions. Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field. Out of scope: #84 alignment, #85 URL links, #88 edit control, #90 multi-slot drag, multi-select, new list actions beyond Delete.
@@ -1461,6 +1463,32 @@ UAT work assigned to Justin was buried in the org-wide grocery list. Assignee is
 
 ---
 
+## Yoink UI story 18: wrap named-list names in the rail - Complete ✓
+
+**Goal**: Named-list labels in the rail wrap to additional lines instead of truncating to one ellipsis line.
+
+**Product rules (locked, issue #94):**
+- One story at a time. This story only. Do not start #90.
+- Named-list labels in the rail **wrap** to additional lines instead of truncating to one ellipsis line.
+- Smart views / Inbox / Unlisted / + New list: wrap if needed for consistency, or stay single-line if they already fit — named lists are the pain point.
+- Same rule in the mobile Tasks drawer.
+- ⋯ overflow, + New list, Inbox count, and navigation behavior unchanged.
+- No horizontal page scroll from the rail.
+- Stay on shadcn New York / lucide in `@yoink/ui-base`. HTTP still only maps. No new domain field.
+
+**Out of scope (do not implement here):**
+- Widening the sidebar as the primary fix (wrap chosen)
+- Desktop ⋯ (#93 — landed)
+- #88 Edit, #90 drag, nested lists
+
+**Implementation:**
+- `AppRailPanel` drops `truncate` on rail labels. Labels use `whitespace-normal break-words` so a long named-list name wraps inside the existing `w-48` rail (and the mobile drawer). Short smart-view / Inbox / Unlisted / + New list labels stay one line because they already fit. The rail scroll area is `overflow-x-hidden` so wrap cannot push the page sideways.
+- Playwright: a long named-list name is readable on two+ lines on the desktop rail and in the mobile Tasks drawer; active highlight / ⋯ / navigation still work on the wrapped row; no horizontal page scroll from the rail. HTTP driver stubs the new browser operations.
+
+**Deliverable:** A member can read a long named-list name in the rail without hovering, on desktop and in the mobile Tasks drawer, without losing ⋯ or navigation.
+
+---
+
 ## Phase 9: Folders + Notes (Post-Launch)
 
 **Goal**: Vision Phase B - add organizational structure and reference material
@@ -1847,6 +1875,8 @@ When resuming work on this project:
 **Today and Upcoming group by list is in.** Today is overdue vs due today on the outside, then named list plus unlisted inside each (reuse `groupAllTasksByPile`). Upcoming is list groups only. No up/down. Pin stays on the existing filter sort, not openOrder. All two-modes, Mine, Done, and the Lists nav stay.
 
 **Mine uses All’s two-mode picker is in.** Tasks Mine has All’s two-mode picker (overview grouped by list plus unlisted, or one named list / Unlisted). Still assignee-only. No up/down even in one-pile. Client-side group/filter of `GET /api/tasks?filter=mine` — not the pile APIs. Create/delete stay on All. Today, Upcoming, and Done stay.
+
+**Yoink UI story 18 is in.** Named-list rail labels wrap onto more lines instead of one ellipsis. Same rule in the mobile Tasks drawer. ⋯ / + New list / Inbox count / navigation stay. No horizontal page scroll from the rail. Do not start #90 from this story.
 
 **Yoink UI story 17 is in.** Desktop sidebar named-list ⋯ opens Delete above other chrome. Mobile drawer ⋯ from #87 does not regress. Same refuse-if-open / unlist-completed / Today-landing. Do not start #94 or #90 from this story.
 

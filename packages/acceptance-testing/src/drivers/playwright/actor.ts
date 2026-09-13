@@ -948,6 +948,19 @@ export const createPlaywrightActor = (
       await appRail.expectOverflowDoesNotNavigate(name);
     },
 
+    async shouldSeeWrappedRailNamedList(name: string): Promise<void> {
+      await appRail.expectNamedListLabelWrapped(name);
+    },
+
+    async shouldSeeRailNamedListHighlighted(name: string): Promise<void> {
+      await appRail.waitForVisible();
+      await expect.poll(async () => appRail.isItemActive(name)).toBe(true);
+    },
+
+    async shouldSeeNoHorizontalPageScrollFromRail(): Promise<void> {
+      await appRail.expectNoHorizontalPageScroll();
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.itemByLabel(label)).toBeVisible();

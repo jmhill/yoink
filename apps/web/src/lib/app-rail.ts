@@ -114,3 +114,10 @@ export function railItemKey(item: RailItem): string {
 export function railItemHasOverflow(item: RailItem): boolean {
   return item.kind === 'named';
 }
+
+/**
+ * Rail labels wrap onto more lines instead of truncating to one ellipsis.
+ * Named lists are the pain point; short smart-view / Inbox labels stay
+ * one line because they already fit.
+ */
+export const RAIL_LABEL_WRAP_CLASS = 'min-w-0 whitespace-normal break-words';

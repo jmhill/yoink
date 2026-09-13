@@ -822,23 +822,23 @@ export const createHttpActor = (
 
     async deleteOpenTaskFromRow(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('deleteOpenTaskFromRow', 'http');
-    }
+    },
 
     async shouldNotOpenTaskEditFromTitle(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotOpenTaskEditFromTitle', 'http');
-    }
+    },
 
     async shouldSeeTaskEditControl(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeTaskEditControl', 'http');
-    }
+    },
 
     async openTaskEditFromRow(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('openTaskEditFromRow', 'http');
-    }
+    },
 
     async shouldSeeExistingTaskEditUi(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeExistingTaskEditUi', 'http');
-    }
+    },
 
     async closeTaskEdit(): Promise<void> {
       throw new UnsupportedOperationError('closeTaskEdit', 'http');

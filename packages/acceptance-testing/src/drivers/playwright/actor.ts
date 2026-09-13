@@ -1434,7 +1434,7 @@ export const createPlaywrightActor = (
       const dialog = page.getByRole('dialog', { name: 'Edit Task' });
       await dialog.getByRole('button', { name: 'Cancel' }).click();
       await expect(dialog).toHaveCount(0);
-    },,
+    },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
       // Quick-add can pick a list, but has no assignee or due-date controls.

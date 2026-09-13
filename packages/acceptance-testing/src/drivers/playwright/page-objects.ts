@@ -1793,6 +1793,54 @@ export class AppRail {
     await menu.waitFor({ state: 'visible' });
   }
 
+  /**
+   * Overflow Delete must be the topmost hit at its center — not the Vaul
+   * drawer or overlay — and a real pointer click must reach it.
+   */
+  async expectOverflowMenuAboveDrawer(label: string): Promise<void> {
+    await this.openMobileDrawer();
+    await this.mobileTasks().waitFor({ state: 'visible' });
+    await this.openOverflow(label);
+
+    const deleteItem = this.page.getByRole('menuitem', { name: 'Delete', exact: true });
+    await deleteItem.waitFor({ state: 'visible' });
+
+    const topIsMenu = await deleteItem.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const top = document.elementFromPoint(x, y);
+      if (!top) {
+        return false;
+      }
+      const menu = el.closest('[role="menu"]');
+      return Boolean(menu && menu.contains(top));
+    });
+    if (!topIsMenu) {
+      throw new Error(`Delete menu for "${label}" opened under the mobile Tasks drawer`);
+    }
+
+    await deleteItem.click();
+    const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
+    await dialog.waitFor({ state: 'visible' });
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await this.mobileTasks().waitFor({ state: 'visible' });
+  }
+
+  async expectOverflowDoesNotNavigate(label: string): Promise<void> {
+    const before = this.page.url();
+    await this.openOverflow(label);
+    await this.page.getByRole('menuitem', { name: 'Delete', exact: true }).waitFor({
+      state: 'visible',
+    });
+    if (this.page.url() !== before) {
+      throw new Error(`Opening overflow for "${label}" navigated away from ${before}`);
+    }
+    await this.page.getByRole('menu').press('Escape');
+    await this.page.getByRole('menu').waitFor({ state: 'hidden' });
+  }
+
   async deleteNamedList(
     name: string
   ): Promise<{ status: 'deleted' } | { status: 'has-open-tasks' }> {

@@ -250,6 +250,10 @@ export function AppRailPanel({
                           side={overflowSide}
                           sideOffset={4}
                           avoidCollisions={surface === 'mobile-tasks'}
+                          data-rail-overflow-menu={item.label}
+                          // Portaled menu shares the kit z-50 with Vaul's drawer +
+                          // overlay; sit above that layer so Delete is reachable.
+                          className="z-[100]"
                         >
                           <DropdownMenuItem
                             variant="destructive"

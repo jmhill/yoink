@@ -598,6 +598,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeNamedListOverflowOnRail', 'http');
     },
 
+    async shouldSeeNamedListOverflowAboveMobileDrawer(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedListOverflowAboveMobileDrawer', 'http');
+    },
+
+    async shouldNotNavigateWhenOpeningNamedListOverflow(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotNavigateWhenOpeningNamedListOverflow', 'http');
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },

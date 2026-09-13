@@ -1587,11 +1587,16 @@ export class AppRail {
   }
 
   /**
-   * Mounted rail to click. The mobile drawer may still be transforming, so
-   * do not use Playwright's :visible filter — it misses vaul's panel.
+   * Mounted rail to click. Prefer the always-visible desktop sidebar when
+   * it is showing — a closed Vaul drawer can still sit in the DOM. The
+   * mobile drawer may still be transforming, so do not use Playwright's
+   * :visible filter on that panel.
    */
   private async railForInteraction(): Promise<Locator> {
     await this.ensureAvailable();
+    if (await this.desktop().isVisible().catch(() => false)) {
+      return this.desktop();
+    }
     if ((await this.mobileTasks().count()) > 0) {
       return this.mobileTasks();
     }
@@ -1603,6 +1608,10 @@ export class AppRail {
    * stable box and scrollIntoViews against vaul's transform / body lock.
    */
   private async clickRailControl(locator: Locator): Promise<void> {
+    if (await this.desktop().isVisible().catch(() => false)) {
+      await locator.click();
+      return;
+    }
     if ((await this.mobileTasks().count()) === 0) {
       await locator.click();
       return;
@@ -1822,6 +1831,50 @@ export class AppRail {
   }
 
   /**
+   * Overflow Delete on the always-visible desktop sidebar must be the
+   * topmost hit at its center — not the rail clip or leftover drawer
+   * chrome — and a real pointer click must reach it.
+   */
+  async expectOverflowMenuOnDesktopSidebar(label: string): Promise<void> {
+    await this.desktop().waitFor({ state: 'visible' });
+    const overflow = this.desktop().locator(`[data-rail-overflow="${label}"]`);
+    await overflow.waitFor({ state: 'visible' });
+    await overflow.click();
+
+    const menu = this.page.locator(
+      `[data-rail-overflow-menu="${label}"][data-rail-overflow-menu-surface="desktop"]`
+    );
+    const deleteItem = menu.getByRole('menuitem', { name: 'Delete', exact: true });
+    await deleteItem.waitFor({ state: 'visible' });
+
+    const box = await deleteItem.boundingBox();
+    if (!box || box.y < 0 || box.x + box.width <= 0 || box.y + box.height <= 0) {
+      throw new Error(`Delete menu for "${label}" opened off the viewport`);
+    }
+
+    const hit = await deleteItem.evaluate((node, point) => {
+      const el = node.ownerDocument.elementFromPoint(point.x, point.y);
+      if (!el) {
+        return null;
+      }
+      const host = el.closest('[data-rail-overflow-menu]');
+      return host?.getAttribute('data-rail-overflow-menu') ?? el.textContent;
+    }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    if (hit !== label) {
+      throw new Error(
+        `Delete menu for "${label}" is not the topmost hit (found ${String(hit)})`
+      );
+    }
+
+    await deleteItem.click();
+    const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
+    await dialog.waitFor({ state: 'visible' });
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await this.desktop().waitFor({ state: 'visible' });
+  }
+
+  /**
    * Overflow Delete must be the topmost hit at its center — not the Vaul
    * drawer or overlay — and a real pointer click must reach it.
    */
@@ -1883,7 +1936,7 @@ export class AppRail {
     await this.openOverflow(name);
     const deleteItem = this.page.getByRole('menuitem', { name: 'Delete', exact: true });
     await deleteItem.waitFor({ state: 'visible' });
-    await deleteItem.press('Enter');
+    await deleteItem.click();
 
     const dialog = this.page.getByRole('dialog', { name: 'Delete list?' });
     await dialog.waitFor({ state: 'visible' });

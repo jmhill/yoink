@@ -602,6 +602,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeNamedListOverflowAboveMobileDrawer', 'http');
     },
 
+    async shouldSeeNamedListOverflowOnDesktopSidebar(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedListOverflowOnDesktopSidebar', 'http');
+    },
+
     async shouldNotNavigateWhenOpeningNamedListOverflow(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotNavigateWhenOpeningNamedListOverflow', 'http');
     },

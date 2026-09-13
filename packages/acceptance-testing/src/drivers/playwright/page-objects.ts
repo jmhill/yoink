@@ -1754,21 +1754,19 @@ export class AppRail {
   /** Long rail labels must not push the page (or the rail) sideways. */
   async expectNoHorizontalPageScroll(): Promise<void> {
     await this.waitForVisible();
-    const overflow = await this.page.evaluate(() => {
-      const doc = document.documentElement;
-      const body = document.body;
-      const rail = document.querySelector<HTMLElement>('[data-app-rail]:not([hidden])');
-      const slack = 1;
+    const overflow = await this.root().evaluate((rail) => {
+      const doc = rail.ownerDocument.documentElement;
+      const body = rail.ownerDocument.body;
       return {
         page: Math.max(doc.scrollWidth - doc.clientWidth, body.scrollWidth - body.clientWidth),
-        rail: rail ? rail.scrollWidth - rail.clientWidth : 0,
-        slack,
+        rail: rail.scrollWidth - rail.clientWidth,
       };
     });
-    if (overflow.page > overflow.slack) {
+    const slack = 1;
+    if (overflow.page > slack) {
       throw new Error(`Page scrolls horizontally by ${overflow.page}px from the rail`);
     }
-    if (overflow.rail > overflow.slack) {
+    if (overflow.rail > slack) {
       throw new Error(`Rail scrolls horizontally by ${overflow.rail}px`);
     }
   }

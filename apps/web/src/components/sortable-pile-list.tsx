@@ -5,6 +5,7 @@ import {
   openTaskOrderChanged,
   orderOpenTasksAfterDragMove,
 } from '@/lib/open-task-order';
+import { trySetPointerCapture } from '@/lib/safe-pointer-capture';
 
 export type SortablePileDragHandle = {
   onPointerDown: (event: PointerEvent) => void;
@@ -171,7 +172,11 @@ function SortablePileItem({
       {renderTask(task, {
         onPointerDown: (event) => {
           event.stopPropagation();
-          event.currentTarget.setPointerCapture(event.pointerId);
+          trySetPointerCapture({
+            target:
+              event.currentTarget instanceof Element ? event.currentTarget : null,
+            pointerId: event.pointerId,
+          });
           drag.start(task.id, event.clientY);
         },
           onPointerMove: (event) => {

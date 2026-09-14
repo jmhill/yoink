@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { CardContent } from '@yoink/ui-base/components/card';
-import { Button, buttonVariants } from '@yoink/ui-base/components/button';
+import { Button } from '@yoink/ui-base/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yoink/ui-base/components/dropdown-menu';
-import { Trash2, Link as LinkIcon, Clock, ArrowRight, Loader2 } from 'lucide-react';
-import { CaptureContent } from '@/components/capture-content';
+import { Clock, Loader2, Trash2 } from 'lucide-react';
+import { CaptureSnippet, CAPTURE_ACTION_CLASS, CAPTURE_SNIPPET_CARD_CLASS } from '@/components/capture-snippet';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
@@ -19,6 +18,7 @@ export type CaptureCardProps = {
     id: string;
     content: string;
     sourceUrl?: string | null;
+    sourceApp?: string | null;
     capturedAt: string;
   };
   onTrash: (id: string, direction: ExitDirection) => void;
@@ -27,7 +27,6 @@ export type CaptureCardProps = {
   isTrashing?: boolean;
   isSnoozing?: boolean;
   isProcessing?: boolean;
-  formatDate: (date: string) => string;
 };
 
 export function CaptureCard({
@@ -38,7 +37,6 @@ export function CaptureCard({
   isTrashing = false,
   isSnoozing = false,
   isProcessing = false,
-  formatDate,
 }: CaptureCardProps) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
 
@@ -68,6 +66,7 @@ export function CaptureCard({
   return (
     <SwipeableCard
       data-capture-id={capture.id}
+      className={CAPTURE_SNIPPET_CARD_CLASS}
       leftAction={{
         icon: <Clock className="h-5 w-5" />,
         label: 'Snooze',
@@ -82,73 +81,61 @@ export function CaptureCard({
       }}
       disabled={isTrashing || isSnoozing}
     >
-      <CardContent className="flex items-start justify-between gap-2 py-3">
-        <div className="flex-1 min-w-0">
-          <CaptureContent content={capture.content} />
-          {capture.sourceUrl && (
-            <a
-              href={capture.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-              data-testid="source-url"
-            >
-              <LinkIcon className="h-3 w-3" />
-              <span className="truncate">{capture.sourceUrl}</span>
-            </a>
-          )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatDate(capture.capturedAt)}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          {onProcessToTask && (
+      <CaptureSnippet
+        content={capture.content}
+        sourceUrl={capture.sourceUrl}
+        sourceApp={capture.sourceApp}
+        capturedAt={capture.capturedAt}
+        actions={
+          <>
+            {onProcessToTask && (
+              <Button
+                variant="ghost"
+                className={CAPTURE_ACTION_CLASS}
+                onClick={() => onProcessToTask(capture)}
+                disabled={isProcessing}
+                title="Promote"
+                aria-label="Promote"
+              >
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Promote'}
+              </Button>
+            )}
+            <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={CAPTURE_ACTION_CLASS}
+                  aria-label="Snooze"
+                  disabled={isSnoozing}
+                >
+                  Snooze
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => handleSnoozeSelect('later-today')}>
+                  Later today
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleSnoozeSelect('tomorrow')}>
+                  Tomorrow
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleSnoozeSelect('next-week')}>
+                  Next week
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
-              size="icon-sm"
-              onClick={() => onProcessToTask(capture)}
-              disabled={isProcessing}
-              title="Promote"
-              aria-label="Promote"
+              className={CAPTURE_ACTION_CLASS}
+              onClick={() => onTrash(capture.id, 'right')}
+              disabled={isTrashing}
+              title="Trash"
+              aria-label="Trash"
             >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowRight className="h-4 w-4" />
-              )}
+              Trash
             </Button>
-          )}
-          <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
-            <DropdownMenuTrigger
-              disabled={isSnoozing}
-              aria-label="Snooze"
-              className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
-            >
-              <Clock className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('later-today')}>
-                Later today
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('tomorrow')}>
-                Tomorrow
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('next-week')}>
-                Next week
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onTrash(capture.id, 'right')}
-            disabled={isTrashing}
-            title="Trash"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
+          </>
+        }
+      />
     </SwipeableCard>
   );
 }

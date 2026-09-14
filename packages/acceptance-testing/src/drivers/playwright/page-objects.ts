@@ -282,7 +282,7 @@ export class InboxPage {
     
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const text = await contentElement.textContent();
       if (text) {
         contents.push(text);
@@ -303,7 +303,7 @@ export class InboxPage {
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
       const id = await card.getAttribute('data-capture-id');
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const content = await contentElement.textContent();
       if (id && content) {
         captures.push({ id, content });
@@ -406,6 +406,14 @@ export class InboxPage {
     return this.page.locator('[data-capture-id]').filter({ hasText: content });
   }
 
+  captureContent(content: string) {
+    return this.captureCard(content).getByTestId('capture-content');
+  }
+
+  captureSourceLine(content: string) {
+    return this.captureCard(content).getByTestId('capture-source-line');
+  }
+
   captureContentLink(content: string, href: string) {
     return this.captureCard(content)
       .locator('[data-testid="capture-content-link"]')
@@ -418,6 +426,51 @@ export class InboxPage {
 
   captureSourceUrl(content: string) {
     return this.captureCard(content).locator('[data-testid="source-url"]');
+  }
+
+  async swipeCaptureCard(
+    content: string,
+    delta: { x: number; y: number }
+  ): Promise<void> {
+    const card = this.captureCard(content);
+    await card.waitFor({ state: 'visible' });
+    await card.evaluate((node, { x, y }) => {
+      const view = node.ownerDocument.defaultView;
+      if (!view) {
+        throw new Error('capture card is not in a window');
+      }
+      const rect = node.getBoundingClientRect();
+      const startX = rect.left + Math.min(rect.width * 0.35, 90);
+      const startY = rect.top + rect.height / 2;
+      const fire = (type: string, clientX: number, clientY: number) => {
+        const touch = new view.Touch({
+          identifier: 1,
+          target: node,
+          clientX,
+          clientY,
+          pageX: clientX,
+          pageY: clientY,
+          radiusX: 2.5,
+          radiusY: 2.5,
+          rotationAngle: 0,
+          force: 1,
+        });
+        node.dispatchEvent(
+          new view.TouchEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            touches: type === 'touchend' ? [] : [touch],
+            targetTouches: type === 'touchend' ? [] : [touch],
+            changedTouches: [touch],
+          })
+        );
+      };
+      fire('touchstart', startX, startY);
+      fire('touchmove', startX + x * 0.25, startY + y * 0.25);
+      fire('touchmove', startX + x, startY + y);
+      fire('touchend', startX + x, startY + y);
+    }, delta);
   }
 
   async openPromote(content: string): Promise<void> {
@@ -605,7 +658,7 @@ export class TrashPage {
     
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const text = await contentElement.textContent();
       if (text) {
         contents.push(text);
@@ -626,7 +679,7 @@ export class TrashPage {
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
       const id = await card.getAttribute('data-capture-id');
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const content = await contentElement.textContent();
       if (id && content) {
         captures.push({ id, content });
@@ -708,7 +761,7 @@ export class SnoozedPage {
     
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const text = await contentElement.textContent();
       if (text) {
         contents.push(text);
@@ -729,7 +782,7 @@ export class SnoozedPage {
     for (let i = 0; i < count; i++) {
       const card = cards.nth(i);
       const id = await card.getAttribute('data-capture-id');
-      const contentElement = card.locator('p').first();
+      const contentElement = card.getByTestId('capture-content');
       const content = await contentElement.textContent();
       if (id && content) {
         captures.push({ id, content });

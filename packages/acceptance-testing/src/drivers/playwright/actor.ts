@@ -1093,6 +1093,20 @@ export const createPlaywrightActor = (
       await expect(card.getByText(/due/i)).toHaveCount(0);
     },
 
+    async shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void> {
+      await expect(inboxPage.triageSurface()).toBeVisible();
+      await expect(inboxPage.triageHeading()).toBeVisible();
+      await expect(inboxPage.triageSubcopy()).toHaveText(
+        `${toProcessCount} to process · references & triage`
+      );
+      await expect(tasksPage.taskSurface()).toHaveCount(0);
+    },
+
+    async shouldSeeTaskSurface(): Promise<void> {
+      await expect(tasksPage.taskSurface()).toBeVisible();
+      await expect(inboxPage.triageSurface()).toHaveCount(0);
+    },
+
     async shouldSeeCaptureContentLink(content: string, href: string): Promise<void> {
       const card = inboxPage.captureCard(content);
       const link = inboxPage.captureContentLink(content, href);

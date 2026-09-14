@@ -726,6 +726,19 @@ export type BrowserActorOperations = {
   shouldSeeInboxCaptureActions(content: string): Promise<void>;
 
   /**
+   * Assert the current screen is the Inbox capture pane’s warm triage
+   * surface (not the cool task checklist surface): heading Inbox, and
+   * subcopy that this many captures are to process as references & triage.
+   */
+  shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void>;
+
+  /**
+   * Assert the current screen is a task pile/smart view on the existing
+   * cool checklist surface — not the Inbox triage paper.
+   */
+  shouldSeeTaskSurface(): Promise<void>;
+
+  /**
    * Assert this capture's content includes an http(s) link to href.
    * Only the URL is the link; surrounding prose stays plain. The link
    * opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).

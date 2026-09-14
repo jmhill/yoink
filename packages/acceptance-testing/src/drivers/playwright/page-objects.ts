@@ -370,6 +370,18 @@ export class InboxPage {
     return this.page.locator('[data-inbox-pane-tabs]');
   }
 
+  triageSurface() {
+    return this.page.getByTestId('inbox-triage-surface');
+  }
+
+  triageHeading() {
+    return this.page.getByRole('heading', { name: 'Inbox', level: 1 });
+  }
+
+  triageSubcopy() {
+    return this.page.getByTestId('inbox-triage-subcopy');
+  }
+
   async getPaneTabLabels(): Promise<string[]> {
     const tabs = this.paneTabs().locator('[data-inbox-pane-tab]');
     const count = await tabs.count();
@@ -786,6 +798,10 @@ export class TasksPage {
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
+  }
+
+  taskSurface() {
+    return this.page.getByTestId('task-surface');
   }
 
   taskCard(taskId: string) {

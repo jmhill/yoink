@@ -45,6 +45,7 @@ import {
   type AllPileGroup,
   type NamedListRef,
 } from '@/lib/all-tasks-piles';
+import { TASK_SURFACE_TEST_ID } from '@/lib/inbox-pane';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -813,7 +814,11 @@ function TasksPage() {
               : 'Create your first task above';
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
+    <div
+      data-testid={TASK_SURFACE_TEST_ID}
+      data-task-surface=""
+      className="container mx-auto max-w-2xl p-4"
+    >
       <Header viewName="Tasks" leading={<MobileTasksRailDrawer />} />
 
       <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6 hidden md:block">

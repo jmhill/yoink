@@ -111,7 +111,12 @@ export function CaptureCard({
                   Snooze
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                side="top"
+                avoidCollisions={false}
+                className="!max-h-none"
+              >
                 <DropdownMenuItem onSelect={() => handleSnoozeSelect('later-today')}>
                   Later today
                 </DropdownMenuItem>

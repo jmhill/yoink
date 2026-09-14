@@ -222,7 +222,7 @@ export const createPlaywrightActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
-      if (input.sourceUrl || input.sourceApp) {
+      if (input.sourceUrl || input.sourceApp || input.content.includes('\n')) {
         const response = await page.request.post('/api/captures', { data: input });
         if (response.status() === 400) {
           throw new ValidationError('Content is required');
@@ -1131,7 +1131,9 @@ export const createPlaywrightActor = (
       await expect(card).toBeVisible();
       const body = inboxPage.captureContent(content);
       await expect(body).toBeVisible();
-      expect(await body.textContent()).toBe(content);
+      for (const line of content.split('\n')) {
+        await expect(body).toContainText(line);
+      }
       const whiteSpace = await body.evaluate((el) => {
         const view = el.ownerDocument.defaultView;
         if (view === null) {

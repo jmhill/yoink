@@ -33,7 +33,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('shows inbox captures as dense snippets with source, time, and triage actions', async () => {
-      await alice.createCapture({ content: groceryNote });
+      await alice.createCapture({ content: groceryNote, sourceApp: 'web' });
 
       await alice.openRailInbox();
       await alice.shouldSeeDenseCaptureSnippet(groceryNote, typedSource);
@@ -107,7 +107,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('stays readable in light, dark, and tokyo night', async () => {
-      await alice.createCapture({ content: groceryNote });
+      await alice.createCapture({ content: groceryNote, sourceApp: 'web' });
 
       const appearances = [
         { mode: 'light' as const, colorTheme: 'default' as const },

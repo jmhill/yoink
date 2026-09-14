@@ -754,6 +754,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
     },
 
+    async shouldNotSeeQuickCaptureField(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeQuickCaptureField', 'http');
+    },
+
     async pressQuickCaptureShortcut(): Promise<void> {
       throw new UnsupportedOperationError('pressQuickCaptureShortcut', 'http');
     },

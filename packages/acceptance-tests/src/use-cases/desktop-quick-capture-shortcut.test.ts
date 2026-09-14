@@ -35,7 +35,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openToday();
       await alice.shouldSeeTaskSurface();
-      await alice.shouldNotSeeQuickAddCapture();
+      await alice.shouldNotSeeQuickCaptureField();
       await alice.pressQuickCaptureShortcut();
       await alice.shouldHaveQuickCaptureFocused();
       await alice.submitFocusedQuickCapture('From today shortcut');
@@ -82,10 +82,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openMobileBottomTab('tasks');
       await alice.shouldSeeTaskSurface();
-      await alice.shouldNotSeeQuickAddCapture();
+      await alice.shouldNotSeeQuickCaptureField();
       await alice.pressQuickCaptureShortcut();
       await alice.shouldSeeTaskSurface();
-      await alice.shouldNotSeeQuickAddCapture();
+      await alice.shouldNotSeeQuickCaptureField();
     });
 
     it('keeps the shortcut hint readable in light, dark, and tokyo night', async () => {

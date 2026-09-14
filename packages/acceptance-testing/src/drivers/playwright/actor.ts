@@ -1329,6 +1329,11 @@ export const createPlaywrightActor = (
       await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
     },
 
+    async shouldNotSeeQuickCaptureField(): Promise<void> {
+      await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
+      await expect(inboxPage.quickCaptureInput()).toHaveCount(0);
+    },
+
     async pressQuickCaptureShortcut(): Promise<void> {
       await page.keyboard.press('Control+K');
     },

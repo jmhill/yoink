@@ -817,6 +817,12 @@ export type BrowserActorOperations = {
   shouldNotSeeQuickAddCapture(): Promise<void>;
 
   /**
+   * Assert the Inbox quick-capture field is not on this screen
+   * (task piles still have their own Add-task control).
+   */
+  shouldNotSeeQuickCaptureField(): Promise<void>;
+
+  /**
    * Desktop: press the app’s quick-capture shortcut (⌘K / Ctrl+K).
    */
   pressQuickCaptureShortcut(): Promise<void>;

@@ -208,6 +208,14 @@ export class InboxPage {
     await this.page.waitForSelector('[data-slot="card"]');
   }
 
+  quickCaptureInput() {
+    return this.page.getByTestId('quick-capture-input');
+  }
+
+  quickCaptureShortcutHint() {
+    return this.page.getByTestId('quick-capture-shortcut-hint');
+  }
+
   /**
    * Wait for either capture cards to appear or empty state message.
    * This replaces arbitrary timeouts with explicit wait conditions.

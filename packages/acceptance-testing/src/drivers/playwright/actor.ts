@@ -1329,6 +1329,72 @@ export const createPlaywrightActor = (
       await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
     },
 
+    async shouldNotSeeQuickCaptureField(): Promise<void> {
+      await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
+      await expect(inboxPage.quickCaptureInput()).toHaveCount(0);
+    },
+
+    async pressQuickCaptureShortcut(): Promise<void> {
+      await page.keyboard.press('Control+K');
+    },
+
+    async submitFocusedQuickCapture(content: string): Promise<void> {
+      await expect(inboxPage.quickCaptureInput()).toBeFocused();
+      const captureId = await inboxPage.quickAdd(content);
+      if (!captureId) {
+        throw new Error(`Quick capture did not land in Inbox: "${content}"`);
+      }
+    },
+
+    async shouldHaveQuickCaptureFocused(): Promise<void> {
+      await expect(inboxPage.quickCaptureInput()).toBeVisible();
+      await expect(inboxPage.quickCaptureInput()).toBeFocused();
+    },
+
+    async shouldSeeQuickCaptureShortcutHint(): Promise<void> {
+      const hint = inboxPage.quickCaptureShortcutHint();
+      await expect(hint).toBeVisible();
+      await expect(hint).toHaveText(/^(⌘K|Ctrl\+K)$/);
+    },
+
+    async shouldNotSeeQuickCaptureShortcutHint(): Promise<void> {
+      await expect(inboxPage.quickCaptureShortcutHint()).toHaveCount(0);
+    },
+
+    async shouldSeeQuickCaptureShortcutHintReadable(): Promise<void> {
+      const hint = inboxPage.quickCaptureShortcutHint();
+      await expect(hint).toBeVisible();
+      const hintColor = await hint.evaluate(readComputedColor);
+      const hintBg = await hint.evaluate(readComputedBackgroundColor);
+      const fieldBg = await inboxPage.quickCaptureInput().evaluate(readComputedBackgroundColor);
+      expect(hintColor).not.toEqual(hintBg);
+      expect(hintColor).not.toEqual(fieldBg);
+    },
+
+    async focusAddTaskField(): Promise<void> {
+      const field = page.locator('#create-task-title');
+      await expect(field).toBeVisible();
+      await field.click();
+      await expect(field).toBeFocused();
+    },
+
+    async focusTaskEditTitle(): Promise<void> {
+      const field = page.locator('#edit-task-title');
+      await expect(field).toBeVisible();
+      await field.click();
+      await expect(field).toBeFocused();
+    },
+
+    async typeIntoFocusedField(text: string): Promise<void> {
+      const focused = page.locator(':focus');
+      await expect(focused).toBeVisible();
+      await page.keyboard.type(text);
+    },
+
+    async shouldSeeFocusedFieldValue(value: string): Promise<void> {
+      await expect(page.locator(':focus')).toHaveValue(value);
+    },
+
     async openPromoteSheet(content: string): Promise<void> {
       await inboxPage.openPromote(content);
       await expect(inboxPage.promoteSheet()).toBeVisible();

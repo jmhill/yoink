@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
-import { Input } from '@yoink/ui-base/components/input';
+import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
+import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrTasks, tsrLists } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
@@ -27,6 +28,14 @@ function InboxPage() {
   const [taskModalCapture, setTaskModalCapture] = useState<{ id: string; content: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
+
+  useEffect(() => {
+    if (!consumeQuickCaptureFocus()) {
+      return;
+    }
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
   const tsrTasksQueryClient = tsrTasks.useQueryClient();
   const tsrListsQueryClient = tsrLists.useQueryClient();
 
@@ -431,13 +440,12 @@ function InboxPage() {
     <InboxPaneShell active="inbox">
       <form onSubmit={handleQuickAdd} className="mb-6">
         <div className="flex gap-2">
-          <Input
-            ref={inputRef}
+          <QuickCaptureField
+            inputRef={inputRef}
             value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
+            onChange={setNewContent}
             placeholder={isOnline ? 'Quick capture...' : 'Offline - cannot add captures'}
             disabled={createMutation.isPending || !isOnline}
-            className="flex-1"
           />
           <Button type="submit" disabled={createMutation.isPending || !newContent.trim() || !isOnline}>
             {createMutation.isPending ? '...' : 'Add'}

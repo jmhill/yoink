@@ -8,6 +8,10 @@ import {
   railItemLabels,
   shouldShowInboxCount,
   shouldShowListsHeadingBefore,
+  shouldShowTaskFamilyHeadingBefore,
+  INBOX_MODE_CUE,
+  RAIL_LISTS_HEADING,
+  RAIL_TASK_FAMILY_HEADING,
 } from './app-rail';
 
 const groceriesId = '00000000-0000-0000-0000-000000000010';
@@ -57,6 +61,34 @@ describe('shouldShowInboxCount', () => {
   it('shows the badge when the count is positive', () => {
     expect(shouldShowInboxCount(1)).toBe(true);
     expect(shouldShowInboxCount(3)).toBe(true);
+  });
+});
+
+describe('rail chrome copy', () => {
+  it('cues Inbox as capture/triage mode and names the task family, without new destinations', () => {
+    expect(INBOX_MODE_CUE).toBe('Capture & triage mode');
+    expect(RAIL_TASK_FAMILY_HEADING).toBe('Task family');
+    expect(RAIL_LISTS_HEADING).toBe('Lists');
+    expect(railItemLabels(buildAppRailItems({ inboxCount: 0, namedLists }))).not.toContain(
+      INBOX_MODE_CUE
+    );
+    expect(railItemLabels(buildAppRailItems({ inboxCount: 0, namedLists }))).not.toContain(
+      RAIL_TASK_FAMILY_HEADING
+    );
+  });
+});
+
+describe('shouldShowTaskFamilyHeadingBefore', () => {
+  it('places Task family above Today, after Inbox', () => {
+    const items = buildAppRailItems({ inboxCount: 0, namedLists });
+    const flags = items.map((item, index) =>
+      shouldShowTaskFamilyHeadingBefore(item, items[index - 1])
+    );
+
+    expect(railItemLabels(items)).not.toContain('Task family');
+    expect(flags).toEqual([false, true, false, false, false, false, false, false, false]);
+    expect(items[0]).toMatchObject({ kind: 'inbox' });
+    expect(items[1]).toMatchObject({ kind: 'smart', key: 'today' });
   });
 });
 

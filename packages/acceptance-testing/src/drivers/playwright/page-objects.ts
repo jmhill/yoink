@@ -1743,7 +1743,7 @@ export class AppRail {
   }
 
   /**
-   * Rail visual order including the Lists heading (not a rail item).
+   * Rail visual order including section headings (not rail items).
    */
   async getVisualOrder(): Promise<string[]> {
     await this.waitForVisible();
@@ -1757,12 +1757,32 @@ export class AppRail {
         labels.push('Lists');
         continue;
       }
+      if (heading === 'task-family') {
+        labels.push('Task family');
+        continue;
+      }
       const label = await node.getAttribute('data-rail-label');
       if (label) {
         labels.push(label);
       }
     }
     return labels;
+  }
+
+  inboxMode() {
+    return this.root().locator('[data-rail-mode="inbox"]');
+  }
+
+  inboxModeCue() {
+    return this.root().locator('[data-rail-mode-cue]');
+  }
+
+  inboxToTaskFamilySeparator() {
+    return this.root().locator('[data-rail-separator="inbox-to-task-family"]');
+  }
+
+  taskFamilyHeading() {
+    return this.root().locator('[data-rail-heading="task-family"]');
   }
 
   async openItem(label: string): Promise<void> {

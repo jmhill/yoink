@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
+import { Separator } from '@yoink/ui-base/components/separator';
 import { cn } from '@yoink/ui-base/lib/utils';
 import {
   Calendar,
@@ -16,13 +17,17 @@ import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
 import {
+  INBOX_MODE_CUE,
   RAIL_LABEL_WRAP_CLASS,
+  RAIL_LISTS_HEADING,
+  RAIL_TASK_FAMILY_HEADING,
   buildAppRailItems,
   isRailItemActive,
   railItemHasOverflow,
   railItemKey,
   shouldShowInboxCount,
   shouldShowListsHeadingBefore,
+  shouldShowTaskFamilyHeadingBefore,
   type RailItem,
   type RailLocation,
 } from '@/lib/app-rail';
@@ -71,10 +76,14 @@ type AppRailPanelProps = {
   onDestinationChosen?: () => void;
 };
 
+const RAIL_SECTION_HEADING_CLASS =
+  'px-3 pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground';
+
 /**
- * Approved flat rail: Inbox (count hidden at 0), Today / Upcoming / Mine / Done,
- * Lists heading, named lists, Unlisted last, + New list.
- * Desktop is the left sidebar. Mobile lives in the Tasks swipe drawer.
+ * Approved rail costume: Inbox first as capture/triage **mode** (count
+ * hidden at 0), loud split, Task family (Today → Done), Lists heading,
+ * named lists, Unlisted last, + New list. Desktop is the left sidebar.
+ * Mobile lives in the Tasks swipe drawer.
  */
 export function AppRailPanel({
   surface,
@@ -145,18 +154,36 @@ export function AppRailPanel({
             const active = isRailItemActive(item, location);
             const Icon = railIcon(item);
             const key = railItemKey(item);
+            const taskFamilyHeading = shouldShowTaskFamilyHeadingBefore(
+              item,
+              railItems[index - 1]
+            ) ? (
+              <>
+                <Separator
+                  data-rail-separator="inbox-to-task-family"
+                  className="mx-1 my-3 bg-border"
+                />
+                <div data-rail-heading="task-family" className={RAIL_SECTION_HEADING_CLASS}>
+                  {RAIL_TASK_FAMILY_HEADING}
+                </div>
+              </>
+            ) : null;
             const listsHeading = shouldShowListsHeadingBefore(item, railItems[index - 1]) ? (
-              <div
-                data-rail-heading="lists"
-                className="mt-3 px-3 pb-1 text-xs font-medium text-muted-foreground"
-              >
-                Lists
-              </div>
+              <>
+                <Separator
+                  data-rail-separator="task-family-to-lists"
+                  className="mx-1 my-3 bg-border"
+                />
+                <div data-rail-heading="lists" className={RAIL_SECTION_HEADING_CLASS}>
+                  {RAIL_LISTS_HEADING}
+                </div>
+              </>
             ) : null;
 
             if (item.kind === 'new-list') {
               return (
                 <Fragment key={key}>
+                  {taskFamilyHeading}
                   {listsHeading}
                   <Button
                     type="button"
@@ -165,7 +192,7 @@ export function AppRailPanel({
                     data-rail-label={item.label}
                     className={cn(
                       railClassName(false),
-                      'h-auto w-full justify-start whitespace-normal font-normal'
+                      'mt-1 h-auto w-full justify-start whitespace-normal border border-dashed border-border font-normal'
                     )}
                     onClick={openCreateList}
                   >
@@ -184,23 +211,37 @@ export function AppRailPanel({
                   key={key}
                   to="/"
                   data-rail-item="inbox"
+                  data-rail-mode="inbox"
                   data-rail-label={item.label}
                   data-rail-active={active ? 'true' : undefined}
-                  className={railClassName(active)}
+                  className={cn(
+                    'flex min-w-0 flex-col rounded-lg bg-inbox-surface text-sm transition-colors',
+                    active
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
                   onClick={active ? onDestinationChosen : undefined}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
-                    {item.label}
-                  </span>
-                  {shouldShowInboxCount(item.count) ? (
-                    <span
-                      data-inbox-count={item.count}
-                      className="ml-auto shrink-0 text-xs tabular-nums"
-                    >
-                      {item.count}
+                  <span className="flex min-w-0 items-start gap-3 px-3 py-2">
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      {item.label}
                     </span>
-                  ) : null}
+                    {shouldShowInboxCount(item.count) ? (
+                      <span
+                        data-inbox-count={item.count}
+                        className="ml-auto shrink-0 rounded-full bg-background px-2 py-0.5 text-xs tabular-nums text-foreground"
+                      >
+                        {item.count}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    data-rail-mode-cue=""
+                    className="px-3 pb-2 text-xs leading-snug text-muted-foreground"
+                  >
+                    {INBOX_MODE_CUE}
+                  </span>
                 </Link>
               );
             }
@@ -208,6 +249,7 @@ export function AppRailPanel({
             if (item.kind === 'named') {
               return (
                 <Fragment key={key}>
+                  {taskFamilyHeading}
                   {listsHeading}
                   <div
                     className={cn(
@@ -252,6 +294,7 @@ export function AppRailPanel({
 
             return (
               <Fragment key={key}>
+                {taskFamilyHeading}
                 {listsHeading}
                 <Link
                   to="/tasks"

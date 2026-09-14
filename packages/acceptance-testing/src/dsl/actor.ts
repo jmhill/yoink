@@ -563,6 +563,13 @@ export type BrowserActorOperations = {
   shouldSeeListsHeadingAboveNamedList(name: string): Promise<void>;
 
   /**
+   * Assert Inbox reads as a capture/triage mode, loud-separated from
+   * the task family (Today → Done), with Lists still after Done.
+   * Destinations stay the same — no new rail rows.
+   */
+  shouldSeeInboxModeSeparatedFromTaskFamily(): Promise<void>;
+
+  /**
    * Open a named list from the rail. Lands on that pile screen.
    */
   openRailNamedList(name: string): Promise<void>;

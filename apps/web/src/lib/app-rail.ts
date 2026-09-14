@@ -27,11 +27,20 @@ const SMART_VIEW_FILTER: Record<RailSmartView, string> = {
   done: 'completed',
 };
 
+/** Capture/triage cue under the Inbox mode control — not a destination. */
+export const INBOX_MODE_CUE = 'Capture & triage mode';
+
+/** Section label above Today → Done. Not a rail item. */
+export const RAIL_TASK_FAMILY_HEADING = 'Task family';
+
+/** Section label above named lists / Unlisted / New list. Not a rail item. */
+export const RAIL_LISTS_HEADING = 'Lists';
+
 /**
- * One flat rail: Inbox (with count), smart views, named lists,
- * Unlisted last, then New list. Smart views and lists are peers —
- * no nesting. A small Lists heading sits above the lists section
- * in the UI; it is not a rail item.
+ * One rail: Inbox as a capture/triage **mode**, then the task family
+ * (Today → Done), then named lists, Unlisted last, then New list.
+ * Smart views and lists stay the same destinations — no nesting, no
+ * new rows. Headings and the mode cue are chrome, not rail items.
  */
 export function buildAppRailItems(input: {
   inboxCount: number;
@@ -58,8 +67,21 @@ export function shouldShowInboxCount(count: number): boolean {
   return count > 0;
 }
 
+const isTaskFamilyItem = (item: RailItem): boolean => item.kind === 'smart';
+
 const isListsSectionItem = (item: RailItem): boolean =>
   item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list';
+
+/**
+ * Insert the Task family heading once, above Today (the first smart view),
+ * after Inbox mode. Smart views stay the same destinations.
+ */
+export function shouldShowTaskFamilyHeadingBefore(
+  item: RailItem,
+  previous: RailItem | undefined
+): boolean {
+  return isTaskFamilyItem(item) && (previous === undefined || !isTaskFamilyItem(previous));
+}
 
 /**
  * Insert the Lists heading once, above the first named list (or Unlisted /

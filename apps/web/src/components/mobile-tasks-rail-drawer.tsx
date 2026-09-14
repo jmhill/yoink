@@ -71,7 +71,7 @@ export function MobileTasksRailDrawer() {
         >
           <DrawerTitle className="sr-only">Lists and views</DrawerTitle>
           <DrawerDescription className="sr-only">
-            Smart views, named lists, Unlisted, and New list
+            Inbox mode, task family, named lists, Unlisted, and New list
           </DrawerDescription>
           <AppRailPanel
             surface="mobile-tasks"

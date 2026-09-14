@@ -7,11 +7,17 @@ import { WifiOff } from 'lucide-react';
 
 function RootLayout() {
   const isOnline = useNetworkStatus();
-  const { needRefresh, refresh, dismiss } = usePwaUpdate();
+  const { needRefresh, isUpdating, refresh, dismiss } = usePwaUpdate();
 
   return (
     <>
-      {needRefresh && <UpdateBanner onRefresh={refresh} onDismiss={dismiss} />}
+      {needRefresh && (
+        <UpdateBanner
+          onRefresh={refresh}
+          onDismiss={dismiss}
+          isUpdating={isUpdating}
+        />
+      )}
       {!isOnline && (
         <div className="bg-yellow-100 text-yellow-800 text-center py-2 text-sm flex items-center justify-center gap-2">
           <WifiOff className="h-4 w-4" />

@@ -1,5 +1,9 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  activateWaitingServiceWorkerAndReload,
+  swallowRegistrationUpdate,
+} from './pwa-service-worker';
 
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_DEBOUNCE_MS = 30 * 1000; // 30 seconds
@@ -7,16 +11,16 @@ const VISIBILITY_DEBOUNCE_MS = 30 * 1000; // 30 seconds
 export const usePwaUpdate = () => {
   const lastCheckRef = useRef<number>(0);
   const registrationRef = useRef<ServiceWorkerRegistration | undefined>();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const {
     needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
       if (registration) {
         registrationRef.current = registration;
         setInterval(() => {
-          registration.update();
+          swallowRegistrationUpdate(registration);
         }, UPDATE_CHECK_INTERVAL_MS);
       }
     },
@@ -28,7 +32,7 @@ export const usePwaUpdate = () => {
       if (document.visibilityState === 'visible' && registration) {
         const now = Date.now();
         if (now - lastCheckRef.current >= VISIBILITY_DEBOUNCE_MS) {
-          registration.update();
+          swallowRegistrationUpdate(registration);
           lastCheckRef.current = now;
         }
       }
@@ -41,7 +45,19 @@ export const usePwaUpdate = () => {
   }, []);
 
   const refresh = () => {
-    updateServiceWorker(true);
+    // Do not call vite-plugin-pwa's updateServiceWorker(): it only skipWaits
+    // and waits for `controlling`, with no fallback if claim never fires.
+    setIsUpdating(true);
+    activateWaitingServiceWorkerAndReload({
+      registration: registrationRef.current,
+      serviceWorkerContainer:
+        typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+          ? navigator.serviceWorker
+          : undefined,
+      reload: () => {
+        window.location.reload();
+      },
+    });
   };
 
   const dismiss = () => {
@@ -50,6 +66,7 @@ export const usePwaUpdate = () => {
 
   return {
     needRefresh,
+    isUpdating,
     refresh,
     dismiss,
   };

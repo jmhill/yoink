@@ -56,6 +56,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Claim clients as soon as skipWaiting runs so Refresh does not wait
+        // on a navigation. Keep skipWaiting unset so registerType: 'prompt'
+        // still shows the update banner.
+        clientsClaim: true,
       },
     }),
   ],

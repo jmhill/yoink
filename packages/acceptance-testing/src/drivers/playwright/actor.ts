@@ -902,6 +902,49 @@ export const createPlaywrightActor = (
       }).toBe(true);
     },
 
+    async shouldSeeInboxModeSeparatedFromTaskFamily(): Promise<void> {
+      await appRail.waitForVisible();
+      await expect(appRail.inboxMode()).toBeVisible();
+      await expect(appRail.inboxModeCue()).toHaveText('Capture & triage mode');
+      await expect(appRail.inboxToTaskFamilySeparator()).toBeVisible();
+      await expect(appRail.taskFamilyHeading()).toBeVisible();
+
+      await expect.poll(async () => {
+        const order = await appRail.getVisualOrder();
+        return {
+          inbox: order.indexOf('Inbox'),
+          family: order.indexOf('Task family'),
+          today: order.indexOf('Today'),
+          done: order.indexOf('Done'),
+          lists: order.indexOf('Lists'),
+        };
+      }).toEqual({
+        inbox: 0,
+        family: 1,
+        today: 2,
+        done: 5,
+        lists: 6,
+      });
+
+      const modeBg = await appRail.inboxMode().evaluate(readComputedBackgroundColor);
+      const todayBg = await appRail.itemByLabel('Today').evaluate(readComputedBackgroundColor);
+      expect(modeBg).not.toEqual(todayBg);
+
+      const separatorTone = await appRail.inboxToTaskFamilySeparator().evaluate((el) => {
+        const view = el.ownerDocument.defaultView;
+        if (view === null) {
+          throw new Error('expected a window for computed style');
+        }
+        const styles = view.getComputedStyle(el);
+        return {
+          color: styles.backgroundColor,
+          height: styles.height,
+        };
+      });
+      expect(separatorTone.color).not.toMatch(/^(transparent|rgba\(0,\s*0,\s*0,\s*0\))$/);
+      expect(parseFloat(separatorTone.height)).toBeGreaterThan(0);
+    },
+
     async openRailNamedList(name: string): Promise<void> {
       await appRail.openItem(name);
       await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);

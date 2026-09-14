@@ -570,6 +570,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeListsHeadingAboveNamedList', 'http');
     },
 
+    async shouldSeeInboxModeSeparatedFromTaskFamily(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInboxModeSeparatedFromTaskFamily', 'http');
+    },
+
     async openRailNamedList(_name: string): Promise<void> {
       throw new UnsupportedOperationError('openRailNamedList', 'http');
     },

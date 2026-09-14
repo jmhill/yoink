@@ -688,6 +688,25 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeInboxCaptureActions', 'http');
     },
 
+    async shouldSeeDenseCaptureSnippet(
+      _content: string,
+      _sourceLine: string | RegExp
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDenseCaptureSnippet', 'http');
+    },
+
+    async shouldSeeUsableCaptureActionTargets(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeUsableCaptureActionTargets', 'http');
+    },
+
+    async shouldSeeCaptureSnippetReadable(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCaptureSnippetReadable', 'http');
+    },
+
+    async trashCaptureBySwipe(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('trashCaptureBySwipe', 'http');
+    },
+
     async shouldSeeInboxTriageSurface(_toProcessCount: number): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeInboxTriageSurface', 'http');
     },

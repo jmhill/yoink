@@ -12,9 +12,9 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Trash2, Inbox, RotateCcw, Link as LinkIcon, X } from 'lucide-react';
+import { Trash2, Inbox, RotateCcw, X } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
-import { CaptureContent } from '@/components/capture-content';
+import { CaptureSnippet, CAPTURE_ACTION_CLASS, CAPTURE_SNIPPET_CARD_CLASS } from '@/components/capture-snippet';
 import { InboxPaneShell } from '@/components/inbox-pane-shell';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
@@ -232,21 +232,6 @@ function TrashPage() {
     setEmptyTrashConfirmOpen(false);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
@@ -285,6 +270,7 @@ function TrashPage() {
               >
                 <SwipeableCard
                   data-capture-id={capture.id}
+                  className={CAPTURE_SNIPPET_CARD_CLASS}
                   leftAction={{
                     icon: <Inbox className="h-5 w-5" />,
                     label: 'Restore',
@@ -293,47 +279,38 @@ function TrashPage() {
                   }}
                   disabled={restoreMutation.isPending || deleteMutation.isPending}
                 >
-                  <CardContent className="flex items-start justify-between gap-2 py-3">
-                    <div className="flex-1 min-w-0">
-                      <CaptureContent content={capture.content} />
-                      {capture.sourceUrl && (
-                        <a
-                          href={capture.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-                          data-testid="source-url"
+                  <CaptureSnippet
+                    content={capture.content}
+                    sourceUrl={capture.sourceUrl}
+                    sourceApp={capture.sourceApp}
+                    capturedAt={capture.capturedAt}
+                    actions={
+                      <>
+                        <Button
+                          variant="ghost"
+                          className={CAPTURE_ACTION_CLASS}
+                          onClick={() => handleRestore(capture.id, 'left')}
+                          disabled={restoreMutation.isPending || deleteMutation.isPending}
+                          title="Restore"
+                          aria-label="Restore"
                         >
-                          <LinkIcon className="h-3 w-3" />
-                          <span className="truncate">{capture.sourceUrl}</span>
-                        </a>
-                      )}
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(capture.capturedAt)}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleRestore(capture.id, 'left')}
-                        disabled={restoreMutation.isPending || deleteMutation.isPending}
-                        title="Restore"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setDeleteConfirmId(capture.id)}
-                        disabled={restoreMutation.isPending || deleteMutation.isPending}
-                        title="Delete permanently"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
+                          <RotateCcw className="h-4 w-4" />
+                          Restore
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className={`${CAPTURE_ACTION_CLASS} text-destructive hover:text-destructive hover:bg-accent`}
+                          onClick={() => setDeleteConfirmId(capture.id)}
+                          disabled={restoreMutation.isPending || deleteMutation.isPending}
+                          title="Delete permanently"
+                          aria-label="Delete permanently"
+                        >
+                          <X className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </>
+                    }
+                  />
                 </SwipeableCard>
               </AnimatedListItem>
             ))}

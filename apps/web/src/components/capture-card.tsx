@@ -1,24 +1,38 @@
-import { useState } from 'react';
-import { CardContent } from '@yoink/ui-base/components/card';
-import { Button, buttonVariants } from '@yoink/ui-base/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@yoink/ui-base/components/dropdown-menu';
-import { Trash2, Link as LinkIcon, Clock, ArrowRight, Loader2 } from 'lucide-react';
-import { CaptureContent } from '@/components/capture-content';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Button } from '@yoink/ui-base/components/button';
+import { Clock, Loader2, Trash2 } from 'lucide-react';
+import { CaptureSnippet, CAPTURE_ACTION_CLASS, CAPTURE_SNIPPET_CARD_CLASS } from '@/components/capture-snippet';
 import { SwipeableCard } from '@/components/swipeable-card';
+import {
+  CAPTURE_SNOOZE_MENU_WIDTH,
+  captureSnoozeMenuCoords,
+} from '@/lib/capture-snooze-menu';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
 export type ExitDirection = 'left' | 'right';
+
+const SNOOZE_OPTIONS: Array<{ option: SnoozeOption; label: string }> = [
+  { option: 'later-today', label: 'Later today' },
+  { option: 'tomorrow', label: 'Tomorrow' },
+  { option: 'next-week', label: 'Next week' },
+];
+
+const viewportBox = () => ({
+  top: 0,
+  left: 0,
+  right: window.innerWidth,
+  bottom: window.innerHeight,
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
 
 export type CaptureCardProps = {
   capture: {
     id: string;
     content: string;
     sourceUrl?: string | null;
+    sourceApp?: string | null;
     capturedAt: string;
   };
   onTrash: (id: string, direction: ExitDirection) => void;
@@ -27,7 +41,6 @@ export type CaptureCardProps = {
   isTrashing?: boolean;
   isSnoozing?: boolean;
   isProcessing?: boolean;
-  formatDate: (date: string) => string;
 };
 
 export function CaptureCard({
@@ -38,117 +51,173 @@ export function CaptureCard({
   isTrashing = false,
   isSnoozing = false,
   isProcessing = false,
-  formatDate,
 }: CaptureCardProps) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
-
-  // Track if snooze was triggered by swipe (for exit direction)
   const [snoozeSwipeDirection, setSnoozeSwipeDirection] = useState<ExitDirection | null>(null);
+  const [snoozeCoords, setSnoozeCoords] = useState<{ top: number; left: number } | null>(null);
+  const snoozeTriggerRef = useRef<HTMLDivElement>(null);
+  const snoozeMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleSwipeSnooze = () => {
-    // Open the snooze dropdown when swiping left
-    setSnoozeSwipeDirection('left');
+  const closeSnoozeMenu = () => {
+    setSnoozeOpen(false);
+    setSnoozeSwipeDirection(null);
+    setSnoozeCoords(null);
+  };
+
+  const openSnoozeMenu = () => {
+    const trigger = snoozeTriggerRef.current?.getBoundingClientRect();
+    setSnoozeCoords(
+      trigger
+        ? captureSnoozeMenuCoords({ trigger, viewport: viewportBox() })
+        : { top: 8, left: 8 }
+    );
     setSnoozeOpen(true);
   };
 
-  const handleSnoozeSelect = (option: SnoozeOption) => {
-    // Use swipe direction if available, otherwise default to 'left' for button clicks
-    onSnooze(capture.id, option, snoozeSwipeDirection ?? 'left');
-    setSnoozeOpen(false);
-    setSnoozeSwipeDirection(null);
+  const handleSwipeSnooze = () => {
+    setSnoozeSwipeDirection('left');
+    openSnoozeMenu();
   };
 
-  const handleSnoozeOpenChange = (open: boolean) => {
-    setSnoozeOpen(open);
-    if (!open) {
-      setSnoozeSwipeDirection(null);
-    }
+  const handleSnoozeSelect = (option: SnoozeOption) => {
+    onSnooze(capture.id, option, snoozeSwipeDirection ?? 'left');
+    closeSnoozeMenu();
   };
+
+  useEffect(() => {
+    if (!snoozeOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (snoozeTriggerRef.current?.contains(target) || snoozeMenuRef.current?.contains(target)) {
+        return;
+      }
+      closeSnoozeMenu();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSnoozeMenu();
+      }
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [snoozeOpen]);
 
   return (
-    <SwipeableCard
-      data-capture-id={capture.id}
-      leftAction={{
-        icon: <Clock className="h-5 w-5" />,
-        label: 'Snooze',
-        type: 'snooze',
-        onAction: handleSwipeSnooze,
-      }}
-      rightAction={{
-        icon: <Trash2 className="h-5 w-5" />,
-        label: 'Trash',
-        type: 'trash',
-        onAction: () => onTrash(capture.id, 'right'),
-      }}
-      disabled={isTrashing || isSnoozing}
-    >
-      <CardContent className="flex items-start justify-between gap-2 py-3">
-        <div className="flex-1 min-w-0">
-          <CaptureContent content={capture.content} />
-          {capture.sourceUrl && (
-            <a
-              href={capture.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-              data-testid="source-url"
-            >
-              <LinkIcon className="h-3 w-3" />
-              <span className="truncate">{capture.sourceUrl}</span>
-            </a>
-          )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatDate(capture.capturedAt)}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          {onProcessToTask && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onProcessToTask(capture)}
-              disabled={isProcessing}
-              title="Promote"
-              aria-label="Promote"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowRight className="h-4 w-4" />
+    <div className="relative">
+      <SwipeableCard
+        data-capture-id={capture.id}
+        className={CAPTURE_SNIPPET_CARD_CLASS}
+        leftAction={{
+          icon: <Clock className="h-5 w-5" />,
+          label: 'Snooze',
+          type: 'snooze',
+          onAction: handleSwipeSnooze,
+        }}
+        rightAction={{
+          icon: <Trash2 className="h-5 w-5" />,
+          label: 'Trash',
+          type: 'trash',
+          onAction: () => onTrash(capture.id, 'right'),
+        }}
+        disabled={isTrashing || isSnoozing}
+      >
+        <CaptureSnippet
+          content={capture.content}
+          sourceUrl={capture.sourceUrl}
+          sourceApp={capture.sourceApp}
+          capturedAt={capture.capturedAt}
+          actions={
+            <>
+              {onProcessToTask && (
+                <Button
+                  variant="ghost"
+                  className={CAPTURE_ACTION_CLASS}
+                  onClick={() => onProcessToTask(capture)}
+                  disabled={isProcessing}
+                  title="Promote"
+                  aria-label="Promote"
+                >
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Promote'}
+                </Button>
               )}
-            </Button>
-          )}
-          <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
-            <DropdownMenuTrigger
-              disabled={isSnoozing}
-              aria-label="Snooze"
-              className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+              <div ref={snoozeTriggerRef} className="inline-flex">
+                <Button
+                  variant="ghost"
+                  className={CAPTURE_ACTION_CLASS}
+                  aria-label="Snooze"
+                  aria-expanded={snoozeOpen}
+                  aria-haspopup="menu"
+                  disabled={isSnoozing}
+                  onClick={() => {
+                    if (snoozeOpen) {
+                      closeSnoozeMenu();
+                      return;
+                    }
+                    openSnoozeMenu();
+                  }}
+                >
+                  Snooze
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                className={CAPTURE_ACTION_CLASS}
+                onClick={() => onTrash(capture.id, 'right')}
+                disabled={isTrashing}
+                title="Trash"
+                aria-label="Trash"
+              >
+                Trash
+              </Button>
+            </>
+          }
+        />
+      </SwipeableCard>
+      {snoozeOpen && snoozeCoords && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={snoozeMenuRef}
+              data-slot="dropdown-menu-content"
+              role="menu"
+              className="rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+              style={{
+                position: 'fixed',
+                top: snoozeCoords.top,
+                left: snoozeCoords.left,
+                zIndex: 100,
+                width: CAPTURE_SNOOZE_MENU_WIDTH,
+              }}
             >
-              <Clock className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('later-today')}>
-                Later today
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('tomorrow')}>
-                Tomorrow
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => handleSnoozeSelect('next-week')}>
-                Next week
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onTrash(capture.id, 'right')}
-            disabled={isTrashing}
-            title="Trash"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </SwipeableCard>
+              {SNOOZE_OPTIONS.map(({ option, label }) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="menuitem"
+                  data-slot="dropdown-menu-item"
+                  className="focus:bg-accent focus:text-accent-foreground w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-hidden"
+                  onClick={() => handleSnoozeSelect(option)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>,
+            document.body
+          )
+        : null}
+    </div>
   );
 }

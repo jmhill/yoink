@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react';
 import { splitContentLinks } from '@/lib/linkify-content';
+import { CAPTURE_CONTENT_TEST_ID } from '@/lib/capture-snippet';
 
 type CaptureContentProps = {
   content: string;
@@ -13,7 +14,10 @@ export function CaptureContent({ content }: CaptureContentProps) {
   const segments = splitContentLinks(content);
 
   return (
-    <p className="whitespace-pre-wrap break-words">
+    <p
+      data-testid={CAPTURE_CONTENT_TEST_ID}
+      className="text-sm leading-snug whitespace-pre-wrap break-words text-foreground"
+    >
       {segments.map((segment, index) =>
         segment.type === 'link' ? (
           <a
@@ -21,7 +25,7 @@ export function CaptureContent({ content }: CaptureContentProps) {
             href={segment.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="break-all text-blue-500 underline hover:text-blue-600"
+            className="break-all text-primary underline underline-offset-2 hover:text-primary/80"
             data-testid="capture-content-link"
             onClick={stopRowActions}
           >

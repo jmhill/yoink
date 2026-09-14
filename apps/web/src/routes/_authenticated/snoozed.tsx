@@ -4,9 +4,9 @@ import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
+import { Inbox, AlarmClockOff, Clock } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
-import { CaptureContent } from '@/components/capture-content';
+import { CaptureSnippet, CAPTURE_ACTION_CLASS, CAPTURE_SNIPPET_CARD_CLASS } from '@/components/capture-snippet';
 import { InboxPaneShell } from '@/components/inbox-pane-shell';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
@@ -116,21 +116,6 @@ function SnoozedPage() {
     });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   const formatWakeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -172,6 +157,7 @@ function SnoozedPage() {
             >
               <SwipeableCard
                 data-capture-id={capture.id}
+                className={CAPTURE_SNIPPET_CARD_CLASS}
                 rightAction={{
                   icon: <Inbox className="h-5 w-5" />,
                   label: 'Wake up',
@@ -180,42 +166,30 @@ function SnoozedPage() {
                 }}
                 disabled={unsnoozeMutation.isPending}
               >
-                <CardContent className="flex items-start justify-between gap-2 py-3">
-                  <div className="flex-1 min-w-0">
-                    <CaptureContent content={capture.content} />
-                    {capture.sourceUrl && (
-                      <a
-                        href={capture.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
-                        data-testid="source-url"
-                      >
-                        <LinkIcon className="h-3 w-3" />
-                        <span className="truncate">{capture.sourceUrl}</span>
-                      </a>
-                    )}
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatDate(capture.capturedAt)}</span>
-                      {capture.snoozedUntil && (
-                        <span className="flex items-center gap-1 text-amber-600">
-                          <Clock className="h-3 w-3" />
-                          {formatWakeTime(capture.snoozedUntil)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleUnsnooze(capture.id, 'right')}
-                    disabled={unsnoozeMutation.isPending}
-                    title="Wake up now"
-                    aria-label="Unsnooze"
-                  >
-                    <AlarmClockOff className="h-4 w-4" />
-                  </Button>
-                </CardContent>
+                <CaptureSnippet
+                  content={capture.content}
+                  sourceUrl={capture.sourceUrl}
+                  sourceApp={capture.sourceApp}
+                  capturedAt={capture.capturedAt}
+                  meta={
+                    capture.snoozedUntil ? (
+                      <span className="shrink-0"> · {formatWakeTime(capture.snoozedUntil)}</span>
+                    ) : null
+                  }
+                  actions={
+                    <Button
+                      variant="ghost"
+                      className={CAPTURE_ACTION_CLASS}
+                      onClick={() => handleUnsnooze(capture.id, 'right')}
+                      disabled={unsnoozeMutation.isPending}
+                      title="Wake up now"
+                      aria-label="Unsnooze"
+                    >
+                      <AlarmClockOff className="h-4 w-4" />
+                      Unsnooze
+                    </Button>
+                  }
+                />
               </SwipeableCard>
             </AnimatedListItem>
           ))}

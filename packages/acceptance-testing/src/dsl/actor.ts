@@ -726,6 +726,29 @@ export type BrowserActorOperations = {
   shouldSeeInboxCaptureActions(content: string): Promise<void>;
 
   /**
+   * Assert this capture reads as a dense snippet: full content (including
+   * wrapped lines), prominent source + time, no task complete/grip/pin.
+   */
+  shouldSeeDenseCaptureSnippet(content: string, sourceLine: string | RegExp): Promise<void>;
+
+  /**
+   * Assert Promote / Snooze / Trash hit targets are usable (~44px).
+   * Call after useMobileViewport — desktop is allowed to be denser.
+   */
+  shouldSeeUsableCaptureActionTargets(content: string): Promise<void>;
+
+  /**
+   * Assert snippet content and source line stay distinct from the card
+   * background in the current appearance (theme tokens, not light-only).
+   */
+  shouldSeeCaptureSnippetReadable(content: string): Promise<void>;
+
+  /**
+   * Swipe the capture right to Trash. Capture leaves the current pane.
+   */
+  trashCaptureBySwipe(content: string): Promise<void>;
+
+  /**
    * Assert the current screen is the Inbox capture pane’s triage
    * surface (not the task checklist surface): heading Inbox, and
    * subcopy that this many captures are to process as references & triage.

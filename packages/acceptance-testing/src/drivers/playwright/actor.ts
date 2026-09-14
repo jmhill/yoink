@@ -49,7 +49,8 @@ import {
 /**
  * Playwright evaluate callbacks run in the page, but this package's
  * tsconfig has no DOM lib — read computed style from the element's
- * view instead of the `getComputedStyle` global.
+ * view instead of the `getComputedStyle` global. Each helper must be
+ * self-contained so Playwright can serialize it into the page.
  */
 const readComputedBackgroundColor = (el: {
   ownerDocument: {
@@ -61,6 +62,18 @@ const readComputedBackgroundColor = (el: {
     throw new Error('expected a window for computed style');
   }
   return view.getComputedStyle(el).backgroundColor;
+};
+
+const readComputedColor = (el: {
+  ownerDocument: {
+    defaultView: { getComputedStyle(element: unknown): { color: string } } | null;
+  };
+}): string => {
+  const view = el.ownerDocument.defaultView;
+  if (view === null) {
+    throw new Error('expected a window for computed style');
+  }
+  return view.getComputedStyle(el).color;
 };
 
 /**
@@ -199,7 +212,7 @@ export const createPlaywrightActor = (
     if ((await card.count()) === 0) {
       return null;
     }
-    const contentElement = card.locator('p').first();
+    const contentElement = card.getByTestId('capture-content');
     return await contentElement.textContent();
   };
 
@@ -209,7 +222,7 @@ export const createPlaywrightActor = (
     organizationId: credentials.organizationId,
 
     async createCapture(input: CreateCaptureInput): Promise<Capture> {
-      if (input.sourceUrl) {
+      if (input.sourceUrl || input.sourceApp || input.content.includes('\n')) {
         const response = await page.request.post('/api/captures', { data: input });
         if (response.status() === 400) {
           throw new ValidationError('Content is required');
@@ -1110,6 +1123,65 @@ export const createPlaywrightActor = (
       await expect(card.getByText(/due/i)).toHaveCount(0);
     },
 
+    async shouldSeeDenseCaptureSnippet(
+      content: string,
+      sourceLine: string | RegExp
+    ): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      const body = inboxPage.captureContent(content);
+      await expect(body).toBeVisible();
+      for (const line of content.split('\n')) {
+        await expect(body).toContainText(line);
+      }
+      const whiteSpace = await body.evaluate((el) => {
+        const view = el.ownerDocument.defaultView;
+        if (view === null) {
+          throw new Error('expected a window for computed style');
+        }
+        return view.getComputedStyle(el).whiteSpace;
+      });
+      expect(whiteSpace).toBe('pre-wrap');
+      await expect(inboxPage.captureSourceLine(content)).toHaveText(sourceLine);
+      await expect(card.getByRole('checkbox')).toHaveCount(0);
+      await expect(card.locator('[draggable="true"]')).toHaveCount(0);
+      await expect(card.getByRole('button', { name: /complete/i })).toHaveCount(0);
+      await expect(card.getByRole('button', { name: /^(Pin|Unpin) task/ })).toHaveCount(0);
+      await expect(card.locator('input[type="date"]')).toHaveCount(0);
+    },
+
+    async shouldSeeUsableCaptureActionTargets(content: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      for (const name of ['Promote', 'Snooze', 'Trash'] as const) {
+        const control = card.getByRole('button', { name });
+        await expect(control).toBeVisible();
+        const box = await control.boundingBox();
+        if (!box) {
+          throw new Error(`${name} should have a layout box`);
+        }
+        expect(box.width, `${name} width`).toBeGreaterThanOrEqual(44);
+        expect(box.height, `${name} height`).toBeGreaterThanOrEqual(44);
+      }
+    },
+
+    async shouldSeeCaptureSnippetReadable(content: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      const cardBg = await card.evaluate(readComputedBackgroundColor);
+      const contentColor = await inboxPage.captureContent(content).evaluate(readComputedColor);
+      const sourceColor = await inboxPage.captureSourceLine(content).evaluate(readComputedColor);
+      expect(contentColor).not.toEqual(cardBg);
+      expect(sourceColor).not.toEqual(cardBg);
+    },
+
+    async trashCaptureBySwipe(content: string): Promise<void> {
+      const card = inboxPage.captureCard(content);
+      await expect(card).toBeVisible();
+      await inboxPage.swipeCaptureCard(content, { x: 140, y: 0 });
+      await expect(card).toHaveCount(0);
+    },
+
     async shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void> {
       await expect(inboxPage.triageSurface()).toBeVisible();
       await expect(inboxPage.triageHeading()).toBeVisible();
@@ -1157,7 +1229,7 @@ export const createPlaywrightActor = (
       const card = inboxPage.captureCard(content);
       const link = inboxPage.captureContentLink(content, href);
       await expect(card).toBeVisible();
-      await expect(card.locator('p').first()).toHaveText(content);
+      await expect(inboxPage.captureContent(content)).toHaveText(content);
       await expect(link).toBeVisible();
       await expect(link).toHaveText(href);
       await expect(link).toHaveAttribute('href', href);
@@ -1168,7 +1240,7 @@ export const createPlaywrightActor = (
     async shouldSeeCaptureContentWithoutLinks(content: string): Promise<void> {
       const card = inboxPage.captureCard(content);
       await expect(card).toBeVisible();
-      await expect(card.locator('p').first()).toHaveText(content);
+      await expect(inboxPage.captureContent(content)).toHaveText(content);
       await expect(inboxPage.captureContentLinks(content)).toHaveCount(0);
     },
 

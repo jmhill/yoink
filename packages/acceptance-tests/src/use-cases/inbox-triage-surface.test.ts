@@ -70,6 +70,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         { mode: 'light' as const, colorTheme: 'default' as const },
         { mode: 'dark' as const, colorTheme: 'default' as const },
         { mode: 'light' as const, colorTheme: 'tokyo-night' as const },
+        { mode: 'dark' as const, colorTheme: 'tokyo-night' as const },
       ];
 
       for (const appearance of appearances) {
@@ -78,7 +79,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.shouldSeeInboxTriageSurface(1);
         await alice.shouldSeeInboxSurfaceDistinctFromTaskSurface();
       }
-    }, 60_000);
+    }, 90_000);
 
     it('keeps Promote, Snooze, Trash, the count badge, and tabs working', async () => {
       const keep = await alice.createCapture({ content: 'Triage me' });

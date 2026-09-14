@@ -47,6 +47,23 @@ import {
 } from './page-objects.js';
 
 /**
+ * Playwright evaluate callbacks run in the page, but this package's
+ * tsconfig has no DOM lib — read computed style from the element's
+ * view instead of the `getComputedStyle` global.
+ */
+const readComputedBackgroundColor = (el: {
+  ownerDocument: {
+    defaultView: { getComputedStyle(element: unknown): { backgroundColor: string } } | null;
+  };
+}): string => {
+  const view = el.ownerDocument.defaultView;
+  if (view === null) {
+    throw new Error('expected a window for computed style');
+  }
+  return view.getComputedStyle(el).backgroundColor;
+};
+
+/**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
  * from share intent params. This keeps the driver in sync with the app logic.
  */
@@ -1128,11 +1145,11 @@ export const createPlaywrightActor = (
 
     async shouldSeeInboxSurfaceDistinctFromTaskSurface(): Promise<void> {
       await expect(inboxPage.triageSurface()).toBeVisible();
-      const inboxBg = await inboxPage.triageSurface().evaluate((el) => getComputedStyle(el).backgroundColor);
+      const inboxBg = await inboxPage.triageSurface().evaluate(readComputedBackgroundColor);
       await tasksPage.goto('today');
       await tasksPage.waitForTasksOrEmpty();
       await expect(tasksPage.taskSurface()).toBeVisible();
-      const taskBg = await tasksPage.taskSurface().evaluate((el) => getComputedStyle(el).backgroundColor);
+      const taskBg = await tasksPage.taskSurface().evaluate(readComputedBackgroundColor);
       expect(inboxBg).not.toEqual(taskBg);
     },
 

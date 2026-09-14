@@ -5,7 +5,10 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { tsr } from './api/client';
 import { initSentry } from './instrument';
+import { installSafePointerCapture } from './lib/safe-pointer-capture';
 import './index.css';
+
+installSafePointerCapture();
 
 const queryClient = new QueryClient();
 

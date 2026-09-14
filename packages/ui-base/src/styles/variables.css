@@ -48,8 +48,8 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
-    /* Inbox capture pane: warm paper, distinct from cool task white */
-    --inbox-paper: #f8f1e9;
+    /* Inbox pane: subtle warm tint so Inbox ≠ task white — not a tan wash */
+    --inbox-paper: oklch(0.995 0.008 80);
     /* Swipe action colors (default light theme) */
     --swipe-trash: #16a34a;
     --swipe-snooze: #d97706;
@@ -89,8 +89,8 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
-    /* Warm dark paper so Inbox stays distinct without flashing cream */
-    --inbox-paper: oklch(0.22 0.03 75);
+    /* Subtle warm lift over cool dark background */
+    --inbox-paper: oklch(0.165 0.012 75);
     /* Swipe action colors (default dark theme) */
     --swipe-trash: #22c55e;
     --swipe-snooze: #f59e0b;
@@ -187,7 +187,7 @@
   --sidebar-accent-foreground: #343b58;
   --sidebar-border: #b4b5bd;
   --sidebar-ring: #2959aa;
-  --inbox-paper: #f8f1e9;
+  --inbox-paper: oklch(0.88 0.01 80);
   /* Swipe action colors */
   --swipe-trash: #385f0d;
   --swipe-snooze: #8f5e15;
@@ -228,7 +228,7 @@
   --sidebar-accent-foreground: #c0caf5;
   --sidebar-border: #414868;
   --sidebar-ring: #7aa2f7;
-  --inbox-paper: oklch(0.22 0.03 75);
+  --inbox-paper: oklch(0.175 0.012 75);
   /* Swipe action colors */
   --swipe-trash: #9ece6a;
   --swipe-snooze: #e0af68;

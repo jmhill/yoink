@@ -16,9 +16,9 @@ type InboxPaneShellProps = {
 };
 
 /**
- * Shared capture-pane costume: warm paper surface, Inbox heading +
- * triage subcopy, and Inbox | Snoozed | Trash tabs. Task screens stay
- * on the cool checklist surface.
+ * Shared capture-pane costume: a *subtle* warm tint (not a tan wash),
+ * light Inbox heading + triage subcopy, and Inbox | Snoozed | Trash
+ * tabs. Task screens stay on the cool checklist surface.
  */
 export function InboxPaneShell({ active, children }: InboxPaneShellProps) {
   const { data } = tsr.list.useQuery({
@@ -36,7 +36,7 @@ export function InboxPaneShell({ active, children }: InboxPaneShellProps) {
       <div className="container mx-auto max-w-2xl p-4">
         <Header />
         <div className="mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {INBOX_TRIAGE_HEADING}
           </h1>
           <p

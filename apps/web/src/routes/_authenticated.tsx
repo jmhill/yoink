@@ -1,8 +1,6 @@
-import { createFileRoute, Outlet, redirect, useRouterState } from '@tanstack/react-router';
-import { cn } from '@yoink/ui-base/lib/utils';
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppNav } from '@/components/bottom-nav';
 import { getSession } from '@/api/auth';
-import { isInboxPanePath } from '@/lib/inbox-pane';
 import { tokenStorage } from '@/lib/token';
 
 export const Route = createFileRoute('/_authenticated')({
@@ -29,16 +27,8 @@ export const Route = createFileRoute('/_authenticated')({
 });
 
 function AuthenticatedLayout() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const inboxPane = isInboxPanePath(pathname);
-
   return (
-    <div
-      className={cn(
-        'min-h-screen pb-20 md:pb-0 md:pl-48',
-        inboxPane ? 'bg-inbox-paper' : 'bg-background'
-      )}
-    >
+    <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-48">
       <Outlet />
       <AppNav />
     </div>

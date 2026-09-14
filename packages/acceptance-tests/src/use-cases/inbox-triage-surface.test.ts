@@ -3,15 +3,17 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Issue #98: Costume — Inbox pane uses a warm triage surface (not task white).
+ * Issue #98: Costume — Inbox pane uses a subtle warm triage surface
+ * (not task white).
  *
- * Product lock (Justin + Polly approved costume frame 2026-09-14): costume
- * only. Inbox / Snoozed / Trash share a warm paper pane with a large Inbox
- * heading and “N to process · references & triage”. Today and named lists
- * stay on the existing cool checklist surface.
+ * Product lock (Justin + Polly): costume only. Warmth is secondary —
+ * a light cream distinction, not a tan wash. Inbox / Snoozed / Trash
+ * share that tint plus an Inbox heading and “N to process · references
+ * & triage”. Today and named lists stay on the existing cool checklist
+ * surface.
  *
- * Out of scope: #99 capture-card clippings, #100 rail mode chrome, Promote
- * rename / Add task, backlinks, vault sync.
+ * Out of scope: #99 capture-card density, #100 rail mode chrome, #101
+ * ⌘K, Promote rename / Add task, backlinks, vault sync.
  */
 
 const tomorrow = (): string => new Date(Date.now() + 86_400_000).toISOString();

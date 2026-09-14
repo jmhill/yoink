@@ -696,6 +696,17 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeTaskSurface', 'http');
     },
 
+    async useAppearance(_appearance: {
+      mode: 'light' | 'dark';
+      colorTheme: 'default' | 'tokyo-night';
+    }): Promise<void> {
+      throw new UnsupportedOperationError('useAppearance', 'http');
+    },
+
+    async shouldSeeInboxSurfaceDistinctFromTaskSurface(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInboxSurfaceDistinctFromTaskSurface', 'http');
+    },
+
     async shouldSeeCaptureContentLink(_content: string, _href: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeCaptureContentLink', 'http');
     },

@@ -726,17 +726,32 @@ export type BrowserActorOperations = {
   shouldSeeInboxCaptureActions(content: string): Promise<void>;
 
   /**
-   * Assert the current screen is the Inbox capture pane’s warm triage
-   * surface (not the cool task checklist surface): heading Inbox, and
+   * Assert the current screen is the Inbox capture pane’s triage
+   * surface (not the task checklist surface): heading Inbox, and
    * subcopy that this many captures are to process as references & triage.
    */
   shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void>;
 
   /**
    * Assert the current screen is a task pile/smart view on the existing
-   * cool checklist surface — not the Inbox triage paper.
+   * task surface — not the Inbox triage surface.
    */
   shouldSeeTaskSurface(): Promise<void>;
+
+  /**
+   * Apply light/dark mode and default/tokyo-night palette (persisted,
+   * then reload so the boot script paints html classes).
+   */
+  useAppearance(appearance: {
+    mode: 'light' | 'dark';
+    colorTheme: 'default' | 'tokyo-night';
+  }): Promise<void>;
+
+  /**
+   * Assert Inbox triage surface background (current page) differs from
+   * the Today task surface background in this appearance.
+   */
+  shouldSeeInboxSurfaceDistinctFromTaskSurface(): Promise<void>;
 
   /**
    * Assert this capture's content includes an http(s) link to href.

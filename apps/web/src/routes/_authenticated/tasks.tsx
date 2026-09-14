@@ -817,7 +817,7 @@ function TasksPage() {
     <div
       data-testid={TASK_SURFACE_TEST_ID}
       data-task-surface=""
-      className="container mx-auto max-w-2xl p-4"
+      className="container mx-auto max-w-2xl bg-background p-4"
     >
       <Header viewName="Tasks" leading={<MobileTasksRailDrawer />} />
 

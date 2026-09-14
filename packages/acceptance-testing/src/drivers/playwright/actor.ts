@@ -1107,6 +1107,35 @@ export const createPlaywrightActor = (
       await expect(inboxPage.triageSurface()).toHaveCount(0);
     },
 
+    async useAppearance(appearance: {
+      mode: 'light' | 'dark';
+      colorTheme: 'default' | 'tokyo-night';
+    }): Promise<void> {
+      await page.evaluate(({ mode, colorTheme }) => {
+        localStorage.setItem('theme', mode);
+        localStorage.setItem('colorTheme', colorTheme);
+      }, appearance);
+      await page.reload();
+      await expect
+        .poll(async () => page.locator('html').evaluate((el) => el.classList.contains('dark')))
+        .toBe(appearance.mode === 'dark');
+      await expect
+        .poll(async () =>
+          page.locator('html').evaluate((el) => el.classList.contains('theme-tokyo-night'))
+        )
+        .toBe(appearance.colorTheme === 'tokyo-night');
+    },
+
+    async shouldSeeInboxSurfaceDistinctFromTaskSurface(): Promise<void> {
+      await expect(inboxPage.triageSurface()).toBeVisible();
+      const inboxBg = await inboxPage.triageSurface().evaluate((el) => getComputedStyle(el).backgroundColor);
+      await tasksPage.goto('today');
+      await tasksPage.waitForTasksOrEmpty();
+      await expect(tasksPage.taskSurface()).toBeVisible();
+      const taskBg = await tasksPage.taskSurface().evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(inboxBg).not.toEqual(taskBg);
+    },
+
     async shouldSeeCaptureContentLink(content: string, href: string): Promise<void> {
       const card = inboxPage.captureCard(content);
       const link = inboxPage.captureContentLink(content, href);

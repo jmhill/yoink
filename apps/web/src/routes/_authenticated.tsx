@@ -1,7 +1,13 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect, useNavigate } from '@tanstack/react-router';
 import { AppNav } from '@/components/bottom-nav';
 import { getSession } from '@/api/auth';
 import { tokenStorage } from '@/lib/token';
+import { useDesktopLayout } from '@/lib/use-desktop-layout';
+import { useQuickCaptureShortcut } from '@/lib/use-quick-capture-shortcut';
+import {
+  consumeQuickCaptureFocus,
+  requestQuickCaptureFocus,
+} from '@/lib/quick-capture-shortcut';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
@@ -27,6 +33,24 @@ export const Route = createFileRoute('/_authenticated')({
 });
 
 function AuthenticatedLayout() {
+  const isDesktop = useDesktopLayout();
+  const navigate = useNavigate();
+
+  useQuickCaptureShortcut({
+    enabled: isDesktop,
+    onTrigger: () => {
+      requestQuickCaptureFocus();
+      const existing = document.querySelector<HTMLInputElement>('[data-quick-capture-input]');
+      if (existing) {
+        consumeQuickCaptureFocus();
+        existing.focus();
+        existing.select();
+        return;
+      }
+      void navigate({ to: '/' });
+    },
+  });
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-48">
       <Outlet />

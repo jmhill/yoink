@@ -754,6 +754,46 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
     },
 
+    async pressQuickCaptureShortcut(): Promise<void> {
+      throw new UnsupportedOperationError('pressQuickCaptureShortcut', 'http');
+    },
+
+    async submitFocusedQuickCapture(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('submitFocusedQuickCapture', 'http');
+    },
+
+    async shouldHaveQuickCaptureFocused(): Promise<void> {
+      throw new UnsupportedOperationError('shouldHaveQuickCaptureFocused', 'http');
+    },
+
+    async shouldSeeQuickCaptureShortcutHint(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeQuickCaptureShortcutHint', 'http');
+    },
+
+    async shouldNotSeeQuickCaptureShortcutHint(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeQuickCaptureShortcutHint', 'http');
+    },
+
+    async shouldSeeQuickCaptureShortcutHintReadable(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeQuickCaptureShortcutHintReadable', 'http');
+    },
+
+    async focusAddTaskField(): Promise<void> {
+      throw new UnsupportedOperationError('focusAddTaskField', 'http');
+    },
+
+    async focusTaskEditTitle(): Promise<void> {
+      throw new UnsupportedOperationError('focusTaskEditTitle', 'http');
+    },
+
+    async typeIntoFocusedField(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('typeIntoFocusedField', 'http');
+    },
+
+    async shouldSeeFocusedFieldValue(_value: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeFocusedFieldValue', 'http');
+    },
+
     async openPromoteSheet(_content: string): Promise<void> {
       throw new UnsupportedOperationError('openPromoteSheet', 'http');
     },

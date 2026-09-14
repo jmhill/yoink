@@ -817,6 +817,58 @@ export type BrowserActorOperations = {
   shouldNotSeeQuickAddCapture(): Promise<void>;
 
   /**
+   * Desktop: press the app’s quick-capture shortcut (⌘K / Ctrl+K).
+   */
+  pressQuickCaptureShortcut(): Promise<void>;
+
+  /**
+   * Type into the focused Inbox quick-capture field and submit.
+   * The capture lands in Inbox.
+   */
+  submitFocusedQuickCapture(content: string): Promise<void>;
+
+  /**
+   * Assert the Inbox quick-capture field is focused and ready to type.
+   */
+  shouldHaveQuickCaptureFocused(): Promise<void>;
+
+  /**
+   * Assert the desktop ⌘K / Ctrl+K hint is visible on the capture field.
+   */
+  shouldSeeQuickCaptureShortcutHint(): Promise<void>;
+
+  /**
+   * Assert the desktop shortcut hint is not shown.
+   */
+  shouldNotSeeQuickCaptureShortcutHint(): Promise<void>;
+
+  /**
+   * Assert the shortcut hint stays distinct from the field in this
+   * appearance (theme tokens, not a hard-coded color).
+   */
+  shouldSeeQuickCaptureShortcutHintReadable(): Promise<void>;
+
+  /**
+   * Focus the Today / pile add-task field so typing goes there.
+   */
+  focusAddTaskField(): Promise<void>;
+
+  /**
+   * Focus the Edit Task title field (dialog must be open).
+   */
+  focusTaskEditTitle(): Promise<void>;
+
+  /**
+   * Type into whatever text field is focused (add-task, edit title, …).
+   */
+  typeIntoFocusedField(text: string): Promise<void>;
+
+  /**
+   * Assert the focused text field has this value.
+   */
+  shouldSeeFocusedFieldValue(value: string): Promise<void>;
+
+  /**
    * Open Promote on an inbox capture. Opens the Promote sheet
    * (not the old centered Create Task dialog).
    */

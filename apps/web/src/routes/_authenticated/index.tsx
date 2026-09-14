@@ -7,10 +7,9 @@ import { tsr, tsrTasks, tsrLists } from '@/api/client';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
-import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
-import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
+import { InboxPaneShell } from '@/components/inbox-pane-shell';
 import { PromoteSheet, type PromoteConfirmInput } from '@/components/promote-sheet';
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
@@ -444,11 +443,7 @@ function InboxPage() {
   const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
-      <Header viewName="Inbox" />
-
-      <InboxPaneTabs active="inbox" />
-
+    <InboxPaneShell active="inbox">
       <form onSubmit={handleQuickAdd} className="mb-6">
         <div className="flex gap-2">
           <Input
@@ -508,6 +503,6 @@ function InboxPage() {
         onConfirm={handleConfirmPromote}
         isLoading={processMutation.isPending}
       />
-    </div>
+    </InboxPaneShell>
   );
 }

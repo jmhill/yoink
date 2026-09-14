@@ -5,10 +5,9 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox, AlarmClockOff, Link as LinkIcon, Clock } from 'lucide-react';
-import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { CaptureContent } from '@/components/capture-content';
-import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
+import { InboxPaneShell } from '@/components/inbox-pane-shell';
 import { SwipeableCard } from '@/components/swipeable-card';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
@@ -150,11 +149,7 @@ function SnoozedPage() {
   const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
-      <Header viewName="Inbox" />
-
-      <InboxPaneTabs active="snoozed" />
-
+    <InboxPaneShell active="snoozed">
       {error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
@@ -226,6 +221,6 @@ function SnoozedPage() {
           ))}
         </AnimatedList>
       )}
-    </div>
+    </InboxPaneShell>
   );
 }

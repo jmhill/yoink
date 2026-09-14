@@ -47,6 +47,23 @@ import {
 } from './page-objects.js';
 
 /**
+ * Playwright evaluate callbacks run in the page, but this package's
+ * tsconfig has no DOM lib — read computed style from the element's
+ * view instead of the `getComputedStyle` global.
+ */
+const readComputedBackgroundColor = (el: {
+  ownerDocument: {
+    defaultView: { getComputedStyle(element: unknown): { backgroundColor: string } } | null;
+  };
+}): string => {
+  const view = el.ownerDocument.defaultView;
+  if (view === null) {
+    throw new Error('expected a window for computed style');
+  }
+  return view.getComputedStyle(el).backgroundColor;
+};
+
+/**
  * Mirrors the share.ts logic for determining expected content and sourceUrl
  * from share intent params. This keeps the driver in sync with the app logic.
  */
@@ -1091,6 +1108,49 @@ export const createPlaywrightActor = (
       await expect(card.locator('[draggable="true"]')).toHaveCount(0);
       await expect(card.locator('input[type="date"]')).toHaveCount(0);
       await expect(card.getByText(/due/i)).toHaveCount(0);
+    },
+
+    async shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void> {
+      await expect(inboxPage.triageSurface()).toBeVisible();
+      await expect(inboxPage.triageHeading()).toBeVisible();
+      await expect(inboxPage.triageSubcopy()).toHaveText(
+        `${toProcessCount} to process · references & triage`
+      );
+      await expect(tasksPage.taskSurface()).toHaveCount(0);
+    },
+
+    async shouldSeeTaskSurface(): Promise<void> {
+      await expect(tasksPage.taskSurface()).toBeVisible();
+      await expect(inboxPage.triageSurface()).toHaveCount(0);
+    },
+
+    async useAppearance(appearance: {
+      mode: 'light' | 'dark';
+      colorTheme: 'default' | 'tokyo-night';
+    }): Promise<void> {
+      await page.evaluate(({ mode, colorTheme }) => {
+        localStorage.setItem('theme', mode);
+        localStorage.setItem('colorTheme', colorTheme);
+      }, appearance);
+      await page.reload();
+      await expect
+        .poll(async () => page.locator('html').evaluate((el) => el.classList.contains('dark')))
+        .toBe(appearance.mode === 'dark');
+      await expect
+        .poll(async () =>
+          page.locator('html').evaluate((el) => el.classList.contains('theme-tokyo-night'))
+        )
+        .toBe(appearance.colorTheme === 'tokyo-night');
+    },
+
+    async shouldSeeInboxSurfaceDistinctFromTaskSurface(): Promise<void> {
+      await expect(inboxPage.triageSurface()).toBeVisible();
+      const inboxBg = await inboxPage.triageSurface().evaluate(readComputedBackgroundColor);
+      await tasksPage.goto('today');
+      await tasksPage.waitForTasksOrEmpty();
+      await expect(tasksPage.taskSurface()).toBeVisible();
+      const taskBg = await tasksPage.taskSurface().evaluate(readComputedBackgroundColor);
+      expect(inboxBg).not.toEqual(taskBg);
     },
 
     async shouldSeeCaptureContentLink(content: string, href: string): Promise<void> {

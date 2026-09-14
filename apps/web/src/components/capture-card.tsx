@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@yoink/ui-base/components/dropdown-menu';
 import { Clock, Loader2, Trash2 } from 'lucide-react';
 import { CaptureSnippet, CAPTURE_ACTION_CLASS, CAPTURE_SNIPPET_CARD_CLASS } from '@/components/capture-snippet';
 import { SwipeableCard } from '@/components/swipeable-card';
 
 export type SnoozeOption = 'later-today' | 'tomorrow' | 'next-week';
 export type ExitDirection = 'left' | 'right';
+
+const SNOOZE_OPTIONS: Array<{ option: SnoozeOption; label: string }> = [
+  { option: 'later-today', label: 'Later today' },
+  { option: 'tomorrow', label: 'Tomorrow' },
+  { option: 'next-week', label: 'Next week' },
+];
 
 export type CaptureCardProps = {
   capture: {
@@ -39,108 +39,137 @@ export function CaptureCard({
   isProcessing = false,
 }: CaptureCardProps) {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
-
-  // Track if snooze was triggered by swipe (for exit direction)
   const [snoozeSwipeDirection, setSnoozeSwipeDirection] = useState<ExitDirection | null>(null);
+  const snoozeMenuRef = useRef<HTMLDivElement>(null);
 
   const handleSwipeSnooze = () => {
-    // Open the snooze dropdown when swiping left
     setSnoozeSwipeDirection('left');
     setSnoozeOpen(true);
   };
 
-  const handleSnoozeSelect = (option: SnoozeOption) => {
-    // Use swipe direction if available, otherwise default to 'left' for button clicks
-    onSnooze(capture.id, option, snoozeSwipeDirection ?? 'left');
+  const closeSnoozeMenu = () => {
     setSnoozeOpen(false);
     setSnoozeSwipeDirection(null);
   };
 
-  const handleSnoozeOpenChange = (open: boolean) => {
-    setSnoozeOpen(open);
-    if (!open) {
-      setSnoozeSwipeDirection(null);
-    }
+  const handleSnoozeSelect = (option: SnoozeOption) => {
+    onSnooze(capture.id, option, snoozeSwipeDirection ?? 'left');
+    closeSnoozeMenu();
   };
 
+  useEffect(() => {
+    if (!snoozeOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (snoozeMenuRef.current?.contains(target)) {
+        return;
+      }
+      closeSnoozeMenu();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeSnoozeMenu();
+      }
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [snoozeOpen]);
+
   return (
-    <SwipeableCard
-      data-capture-id={capture.id}
-      className={CAPTURE_SNIPPET_CARD_CLASS}
-      leftAction={{
-        icon: <Clock className="h-5 w-5" />,
-        label: 'Snooze',
-        type: 'snooze',
-        onAction: handleSwipeSnooze,
-      }}
-      rightAction={{
-        icon: <Trash2 className="h-5 w-5" />,
-        label: 'Trash',
-        type: 'trash',
-        onAction: () => onTrash(capture.id, 'right'),
-      }}
-      disabled={isTrashing || isSnoozing}
-    >
-      <CaptureSnippet
-        content={capture.content}
-        sourceUrl={capture.sourceUrl}
-        sourceApp={capture.sourceApp}
-        capturedAt={capture.capturedAt}
-        actions={
-          <>
-            {onProcessToTask && (
-              <Button
-                variant="ghost"
-                className={CAPTURE_ACTION_CLASS}
-                onClick={() => onProcessToTask(capture)}
-                disabled={isProcessing}
-                title="Promote"
-                aria-label="Promote"
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Promote'}
-              </Button>
-            )}
-            <DropdownMenu open={snoozeOpen} onOpenChange={handleSnoozeOpenChange}>
-              <DropdownMenuTrigger asChild>
+    <div className="relative" ref={snoozeMenuRef}>
+      <SwipeableCard
+        data-capture-id={capture.id}
+        className={CAPTURE_SNIPPET_CARD_CLASS}
+        leftAction={{
+          icon: <Clock className="h-5 w-5" />,
+          label: 'Snooze',
+          type: 'snooze',
+          onAction: handleSwipeSnooze,
+        }}
+        rightAction={{
+          icon: <Trash2 className="h-5 w-5" />,
+          label: 'Trash',
+          type: 'trash',
+          onAction: () => onTrash(capture.id, 'right'),
+        }}
+        disabled={isTrashing || isSnoozing}
+      >
+        <CaptureSnippet
+          content={capture.content}
+          sourceUrl={capture.sourceUrl}
+          sourceApp={capture.sourceApp}
+          capturedAt={capture.capturedAt}
+          actions={
+            <>
+              {onProcessToTask && (
                 <Button
                   variant="ghost"
                   className={CAPTURE_ACTION_CLASS}
-                  aria-label="Snooze"
-                  disabled={isSnoozing}
+                  onClick={() => onProcessToTask(capture)}
+                  disabled={isProcessing}
+                  title="Promote"
+                  aria-label="Promote"
                 >
-                  Snooze
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Promote'}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                side="top"
-                avoidCollisions={false}
-                className="!max-h-none"
+              )}
+              <Button
+                variant="ghost"
+                className={CAPTURE_ACTION_CLASS}
+                aria-label="Snooze"
+                aria-expanded={snoozeOpen}
+                aria-haspopup="menu"
+                disabled={isSnoozing}
+                onClick={() => setSnoozeOpen((open) => !open)}
               >
-                <DropdownMenuItem onSelect={() => handleSnoozeSelect('later-today')}>
-                  Later today
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleSnoozeSelect('tomorrow')}>
-                  Tomorrow
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleSnoozeSelect('next-week')}>
-                  Next week
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              className={CAPTURE_ACTION_CLASS}
-              onClick={() => onTrash(capture.id, 'right')}
-              disabled={isTrashing}
-              title="Trash"
-              aria-label="Trash"
+                Snooze
+              </Button>
+              <Button
+                variant="ghost"
+                className={CAPTURE_ACTION_CLASS}
+                onClick={() => onTrash(capture.id, 'right')}
+                disabled={isTrashing}
+                title="Trash"
+                aria-label="Trash"
+              >
+                Trash
+              </Button>
+            </>
+          }
+        />
+      </SwipeableCard>
+      {snoozeOpen ? (
+        <div
+          data-slot="dropdown-menu-content"
+          role="menu"
+          className="absolute right-3 top-full z-50 mt-1 min-w-32 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+        >
+          {SNOOZE_OPTIONS.map(({ option, label }) => (
+            <button
+              key={option}
+              type="button"
+              role="menuitem"
+              data-slot="dropdown-menu-item"
+              className="focus:bg-accent focus:text-accent-foreground w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-hidden"
+              onClick={() => handleSnoozeSelect(option)}
             >
-              Trash
-            </Button>
-          </>
-        }
-      />
-    </SwipeableCard>
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

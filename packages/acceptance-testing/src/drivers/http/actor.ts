@@ -1247,6 +1247,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('switchOrganization', 'http');
     },
 
+    async shouldSeeCurrentOrganizationInHeader(_orgName: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCurrentOrganizationInHeader', 'http');
+    },
+
+    async shouldOpenOrgSwitcherPicker(_orgNames: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldOpenOrgSwitcherPicker', 'http');
+    },
+
+    async pickOrganizationFromHeader(_orgName: string): Promise<void> {
+      throw new UnsupportedOperationError('pickOrganizationFromHeader', 'http');
+    },
+
+    async shouldSeeOrgSwitchFailureToast(_orgName: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOrgSwitchFailureToast', 'http');
+    },
+
     async leaveOrganization(_organizationId: string): Promise<void> {
       // Leaving an organization requires session-based auth (not token auth).
       // The HTTP driver uses token auth, so this operation is not supported.

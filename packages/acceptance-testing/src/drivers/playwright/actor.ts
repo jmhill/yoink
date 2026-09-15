@@ -40,6 +40,7 @@ import {
   InboxPage,
   MOBILE_VIEWPORT,
   MobileNav,
+  OrganizationSwitcherChrome,
   TrashPage,
   SettingsPage,
   SnoozedPage,
@@ -150,6 +151,7 @@ export const createPlaywrightActor = (
   const tasksPage = new TasksPage(page);
   const appRail = new AppRail(page);
   const mobileNav = new MobileNav(page);
+  const orgSwitcher = new OrganizationSwitcherChrome(page);
 
   const expectActiveFilterTabIfVisible = async (
     filter: 'today' | 'upcoming' | 'mine' | 'completed'
@@ -2102,6 +2104,22 @@ export const createPlaywrightActor = (
 
       // Reload the page to reflect the new org context
       await page.reload();
+    },
+
+    async shouldSeeCurrentOrganizationInHeader(orgName: string): Promise<void> {
+      await orgSwitcher.waitForCurrent(orgName);
+    },
+
+    async shouldOpenOrgSwitcherPicker(orgNames: string[]): Promise<void> {
+      await orgSwitcher.expectPickerOpen(orgNames);
+    },
+
+    async pickOrganizationFromHeader(orgName: string): Promise<void> {
+      await orgSwitcher.pick(orgName);
+    },
+
+    async shouldSeeOrgSwitchFailureToast(orgName: string): Promise<void> {
+      await orgSwitcher.expectSwitchFailureToast(orgName);
     },
 
     async leaveOrganization(organizationId: string): Promise<void> {

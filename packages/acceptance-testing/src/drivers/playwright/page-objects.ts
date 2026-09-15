@@ -1,4 +1,4 @@
-import type { Page, CDPSession, Locator } from '@playwright/test';
+import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
 
 /**
@@ -1554,6 +1554,124 @@ export class TasksPage {
       throw new Error(`Named list ${id} not found on the rail`);
     }
     return this.deleteNamedListFromAll(list.name);
+  }
+}
+
+/**
+ * Header org switcher. Kit DropdownMenu was clipped/buried by header
+ * chrome (same family as named-list overflow); the picker portals to
+ * document.body. Use the data attributes, not org-name accessible names
+ * — personal orgs are `{email}'s Workspace` and substring-match other
+ * buttons.
+ */
+export class OrganizationSwitcherChrome {
+  constructor(private readonly page: Page) {}
+
+  trigger() {
+    return this.page.locator('[data-org-switcher]');
+  }
+
+  current() {
+    return this.page.locator('[data-org-switcher-current]');
+  }
+
+  menu() {
+    return this.page.locator('[data-org-switcher-menu]');
+  }
+
+  item(orgName: string) {
+    return this.menu().getByRole('menuitem', { name: orgName });
+  }
+
+  async waitForCurrent(orgName: string): Promise<void> {
+    await expect(this.current()).toHaveAttribute('data-org-switcher-current', orgName, {
+      timeout: 15_000,
+    });
+  }
+
+  async open(): Promise<void> {
+    const menu = this.menu();
+    if (await menu.isVisible().catch(() => false)) {
+      return;
+    }
+    await this.trigger().click();
+    await menu.waitFor({ state: 'visible' });
+  }
+
+  async close(): Promise<void> {
+    const menu = this.menu();
+    if (!(await menu.isVisible().catch(() => false))) {
+      return;
+    }
+    await this.page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Picker must be the topmost hit at the first item’s center — not the
+   * desktop rail, a leftover Vaul overlay, or a 0-height clipped menu.
+   */
+  async expectPickerOpen(orgNames: string[]): Promise<void> {
+    await this.open();
+    const menu = this.menu();
+    await menu.waitFor({ state: 'visible' });
+
+    const box = await menu.boundingBox();
+    if (!box || box.y < 0 || box.x + box.width <= 0 || box.y + box.height <= 0) {
+      throw new Error('Org switcher picker opened off the viewport');
+    }
+
+    for (const name of orgNames) {
+      await expect(this.item(name)).toBeVisible();
+    }
+
+    const first = this.item(orgNames[0] ?? '');
+    const itemBox = await first.boundingBox();
+    if (!itemBox || itemBox.width <= 0 || itemBox.height <= 0) {
+      throw new Error('Org switcher picker item has no hit target');
+    }
+
+    const hit = await first.evaluate((node, point) => {
+      const el = node.ownerDocument.elementFromPoint(point.x, point.y);
+      if (!el) {
+        return null;
+      }
+      return Boolean(el.closest('[data-org-switcher-menu]'));
+    }, { x: itemBox.x + itemBox.width / 2, y: itemBox.y + itemBox.height / 2 });
+    if (hit !== true) {
+      throw new Error('Org switcher picker is not the topmost hit');
+    }
+
+    await this.close();
+  }
+
+  async pick(orgName: string): Promise<void> {
+    await this.open();
+    const item = this.item(orgName);
+    await expect(item).toBeVisible();
+    await item.click();
+    await this.waitForCurrent(orgName);
+  }
+
+  async expectSwitchFailureToast(orgName: string): Promise<void> {
+    await this.open();
+    await this.page.route('**/api/organizations/switch', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Failed to switch organization' }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+    await this.item(orgName).click();
+    const toast = this.page.locator('[data-sonner-toast]').filter({
+      hasText: 'Failed to switch organization',
+    });
+    await expect(toast).toBeVisible();
+    await this.page.unroute('**/api/organizations/switch');
   }
 }
 

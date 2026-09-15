@@ -155,6 +155,32 @@ export type BrowserActorOperations = {
   switchOrganization(organizationId: string): Promise<void>;
 
   /**
+   * Assert the header org switcher shows this organization as current.
+   * Multi-org sessions show a chevron; the name is still in the control.
+   */
+  shouldSeeCurrentOrganizationInHeader(orgName: string): Promise<void>;
+
+  /**
+   * Open the header org switcher and assert the picker lists these orgs
+   * and is the topmost hit — not clipped or buried by header / rail /
+   * Vaul chrome. Closes the picker afterwards.
+   */
+  shouldOpenOrgSwitcherPicker(orgNames: string[]): Promise<void>;
+
+  /**
+   * Pick an organization from the header org switcher. Reloads so the
+   * session and header show the new org.
+   */
+  pickOrganizationFromHeader(orgName: string): Promise<void>;
+
+  /**
+   * Intercept POST /api/organizations/switch as a failure, pick this org
+   * from the header, and assert an error toast is shown (not silent).
+   * Session stays on the previous org.
+   */
+  shouldSeeOrgSwitchFailureToast(orgName: string): Promise<void>;
+
+  /**
    * Leave an organization.
    * Only works with session auth (not token auth).
    * If leaving the current org, switches to personal org first.

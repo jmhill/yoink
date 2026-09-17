@@ -98,8 +98,6 @@ type TodayTaskListProps = {
   exitDirections: Record<string, ExitDirection>;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
-  onPin: (id: string) => void;
-  onUnpin: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
   isLoading: boolean;
@@ -117,8 +115,6 @@ function TodayTaskList({
   exitDirections,
   onComplete,
   onUncomplete,
-  onPin,
-  onUnpin,
   onDelete,
   onEdit,
   isLoading,
@@ -141,8 +137,6 @@ function TodayTaskList({
             task={task}
             onComplete={onComplete}
             onUncomplete={onUncomplete}
-            onPin={onPin}
-            onUnpin={onUnpin}
             onDelete={onDelete}
             onEdit={onEdit}
             isLoading={isLoading}
@@ -490,84 +484,6 @@ function TasksPage() {
     },
   });
 
-  // Pin mutation
-  const pinMutation = tsrTasks.pin.useMutation({
-    onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
-
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.map((t) =>
-              t.id === params.id ? { ...t, pinnedAt: new Date().toISOString() } : t
-            ),
-          },
-        });
-      }
-
-      return { previousTasks };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to pin task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task pinned');
-    },
-
-    onSettled: () => {
-      invalidateTaskViews();
-    },
-  });
-
-  // Unpin mutation
-  const unpinMutation = tsrTasks.unpin.useMutation({
-    onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
-
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.map((t) =>
-              t.id === params.id ? { ...t, pinnedAt: undefined } : t
-            ),
-          },
-        });
-      }
-
-      return { previousTasks };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to unpin task');
-      }
-    },
-
-    onSettled: () => {
-      invalidateTaskViews();
-    },
-  });
-
   // Delete mutation
   const deleteMutation = tsrTasks.delete.useMutation({
     onMutate: async ({ params }) => {
@@ -687,14 +603,6 @@ function TasksPage() {
     uncompleteMutation.mutate({ params: { id }, body: {} });
   };
 
-  const handlePin = (id: string) => {
-    pinMutation.mutate({ params: { id }, body: {} });
-  };
-
-  const handleUnpin = (id: string) => {
-    unpinMutation.mutate({ params: { id }, body: {} });
-  };
-
   const handleDelete = (id: string) => {
     setExitDirections((prev) => ({ ...prev, [id]: 'right' }));
     deleteMutation.mutate({ params: { id } });
@@ -765,8 +673,6 @@ function TasksPage() {
     createMutation.isPending ||
     completeMutation.isPending ||
     uncompleteMutation.isPending ||
-    pinMutation.isPending ||
-    unpinMutation.isPending ||
     deleteMutation.isPending ||
     reorderPending;
 
@@ -913,8 +819,6 @@ function TasksPage() {
           exitDirections={exitDirections}
           onComplete={handleComplete}
           onUncomplete={handleUncomplete}
-          onPin={handlePin}
-          onUnpin={handleUnpin}
           onDelete={(id) => setDeleteConfirmId(id)}
           onEdit={handleEdit}
           isLoading={isLoading}
@@ -935,8 +839,6 @@ function TasksPage() {
                     task={task}
                     onComplete={handleComplete}
                     onUncomplete={handleUncomplete}
-                    onPin={handlePin}
-                    onUnpin={handleUnpin}
                     onDelete={(id) => setDeleteConfirmId(id)}
                     onEdit={handleEdit}
                     isLoading={isLoading}
@@ -959,8 +861,6 @@ function TasksPage() {
                 task={task}
                 onComplete={handleComplete}
                 onUncomplete={handleUncomplete}
-                onPin={handlePin}
-                onUnpin={handleUnpin}
                 onDelete={(id) => setDeleteConfirmId(id)}
                 onEdit={handleEdit}
                 isLoading={isLoading}
@@ -982,8 +882,6 @@ function TasksPage() {
                 task={task}
                 onComplete={handleComplete}
                 onUncomplete={handleUncomplete}
-                onPin={handlePin}
-                onUnpin={handleUnpin}
                 onDelete={(id) => setDeleteConfirmId(id)}
                 onEdit={handleEdit}
                 isLoading={isLoading}

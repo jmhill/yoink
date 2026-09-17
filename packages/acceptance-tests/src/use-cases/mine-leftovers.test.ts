@@ -86,7 +86,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeTask(botMilk.id);
       await alice.shouldNotSeeTask(weekendOnlyTheirs.id);
       await alice.shouldNotSeeReorderControls();
-      await alice.shouldSeePinControls();
+      await alice.shouldNotSeePinControls();
     });
 
     it('opens Mine from the rail onto that smart view and highlights Mine', async () => {

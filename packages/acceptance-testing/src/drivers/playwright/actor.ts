@@ -795,8 +795,8 @@ export const createPlaywrightActor = (
       await expect(tasksPage.dragHandles()).toHaveCount(0);
     },
 
-    async shouldSeePinControls(): Promise<void> {
-      await expect(tasksPage.pinButtons().first()).toBeVisible();
+    async shouldNotSeePinControls(): Promise<void> {
+      await expect(tasksPage.pinButtons()).toHaveCount(0);
     },
 
     async shouldSeeTaskFilterWithoutAllPile(
@@ -1532,7 +1532,6 @@ export const createPlaywrightActor = (
       }
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
-      await expect(card.getByRole('button', { name: /^(Pin|Unpin) task/ })).toBeVisible();
     },
 
     async completeOpenTaskFromRow(taskId: string): Promise<void> {
@@ -1592,7 +1591,6 @@ export const createPlaywrightActor = (
       expect(geometry.completeHit.height).toBeGreaterThanOrEqual(44);
       expect(aligned(geometry.completeCircleCenterY)).toBe(true);
       expect(aligned(geometry.editCenterY)).toBe(true);
-      expect(aligned(geometry.pinCenterY)).toBe(true);
       expect(aligned(geometry.deleteCenterY)).toBe(true);
       if (geometry.gripCenterY !== null && geometry.gripHit) {
         expect(geometry.gripHit.width).toBeGreaterThanOrEqual(44);
@@ -1623,22 +1621,6 @@ export const createPlaywrightActor = (
       expect(Math.abs(geometry.completeCircleCenterY - geometry.titleLineCenterY)).toBeLessThanOrEqual(
         4
       );
-    },
-
-    async pinOpenTaskFromRow(taskId: string): Promise<void> {
-      await tasksPage.waitForTask(taskId);
-      const pin = tasksPage.pinControl(taskId);
-      await expect(pin).toHaveAccessibleName(/^Pin task/);
-      await pin.click();
-      await expect(pin).toHaveAccessibleName(/^Unpin task/);
-    },
-
-    async unpinOpenTaskFromRow(taskId: string): Promise<void> {
-      await tasksPage.waitForTask(taskId);
-      const pin = tasksPage.pinControl(taskId);
-      await expect(pin).toHaveAccessibleName(/^Unpin task/);
-      await pin.click();
-      await expect(pin).toHaveAccessibleName(/^Pin task/);
     },
 
     async deleteOpenTaskFromRow(taskId: string): Promise<void> {

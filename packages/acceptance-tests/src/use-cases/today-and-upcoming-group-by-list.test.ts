@@ -5,9 +5,9 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
  * Story 4 of 6: Today and Upcoming group by list and cannot reorder.
  *
  * Today and Upcoming are grouped overviews. You cannot change pile order
- * there. Pin still sits on the existing filter sort (pinned_at then
- * created_at), not openOrder. Empty groups wait: only piles with tasks
- * in that view. HTTP still only maps.
+ * there. Display keeps the filter API order (not openOrder). Pin chrome
+ * is gone from rows (#111); backend pinnedAt / pin API stay. Empty
+ * groups wait: only piles with tasks in that view. HTTP still only maps.
  *
  * Product lock (Polly): Today is a deadline view. Outer groups are
  * overdue, then due today. Inside each, named list plus unlisted.
@@ -48,7 +48,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Groceries', ['Today milk']);
       await alice.shouldSeeTasksInTodaySectionPileGroup('due-today', 'Unlisted', ['Unlisted today']);
       await alice.shouldNotSeeReorderControls();
-      await alice.shouldSeePinControls();
+      await alice.shouldNotSeePinControls();
     });
 
     it('groups Upcoming by named list and unlisted, with no overdue split and no reorder', async () => {

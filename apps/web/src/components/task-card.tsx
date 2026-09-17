@@ -3,8 +3,6 @@ import { CardContent } from '@yoink/ui-base/components/card';
 import {
   Circle,
   CircleCheck,
-  Pin,
-  PinOff,
   Trash2,
   Calendar,
   User,
@@ -20,8 +18,6 @@ type TaskCardProps = {
   task: Task;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
-  onPin: (id: string) => void;
-  onUnpin: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit?: (task: Task) => void;
   isLoading?: boolean;
@@ -34,8 +30,6 @@ export function TaskCard({
   task,
   onComplete,
   onUncomplete,
-  onPin,
-  onUnpin,
   onDelete,
   onEdit,
   isLoading = false,
@@ -44,21 +38,12 @@ export function TaskCard({
   dragHandle,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
-  const isPinned = Boolean(task.pinnedAt);
 
   const handleCompleteToggle = () => {
     if (isCompleted) {
       onUncomplete(task.id);
     } else {
       onComplete(task.id);
-    }
-  };
-
-  const handlePinClick = () => {
-    if (isPinned) {
-      onUnpin(task.id);
-    } else {
-      onPin(task.id);
     }
   };
 
@@ -243,19 +228,6 @@ export function TaskCard({
               <Pencil className="size-5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handlePinClick}
-            disabled={isLoading}
-            title={isPinned ? 'Unpin' : 'Pin'}
-            aria-label={isPinned ? `Unpin task "${task.title}"` : `Pin task "${task.title}"`}
-            className={`[&_svg]:translate-y-[calc((var(--task-title-lh)-2rem)/2)]${
-              isPinned ? ' text-primary' : ''
-            }`}
-          >
-            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

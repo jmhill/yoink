@@ -56,7 +56,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeTask(botMilk.id);
       await alice.shouldNotSeeTask(weekendOnlyTheirs.id);
       await alice.shouldNotSeeReorderControls();
-      await alice.shouldSeePinControls();
+      await alice.shouldNotSeePinControls();
     });
 
     it('does not show a task assigned to someone else, including on a list I also use', async () => {

@@ -1211,10 +1211,6 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-slot="task-complete"]');
   }
 
-  pinControl(taskId: string) {
-    return this.taskCard(taskId).getByRole('button', { name: /^(Pin|Unpin) task/ });
-  }
-
   deleteControl(taskId: string) {
     return this.taskCard(taskId).getByRole('button', { name: /^Delete task/ });
   }
@@ -1239,7 +1235,6 @@ export class TasksPage {
     gripCenterY: number | null;
     gripHit: { width: number; height: number } | null;
     editCenterY: number;
-    pinCenterY: number;
     deleteCenterY: number;
     metaTop: number | null;
   }> {
@@ -1250,13 +1245,10 @@ export class TasksPage {
       const complete = node.querySelector('[data-slot="task-complete"]');
       const grip = node.querySelector('[data-drag-handle]');
       const edit = node.querySelector('[aria-label^="Edit task"]');
-      const pin = node.querySelector(
-        '[aria-label^="Pin task"], [aria-label^="Unpin task"]'
-      );
       const del = node.querySelector('[aria-label^="Delete task"]');
       const meta = node.querySelector('[data-slot="task-meta"]');
 
-      if (!title || !complete || !edit || !pin || !del) {
+      if (!title || !complete || !edit || !del) {
         throw new Error('task row is missing title-line controls');
       }
 
@@ -1286,7 +1278,6 @@ export class TasksPage {
         gripCenterY: grip ? svgCenterY(grip) : null,
         gripHit: grip ? hit(grip) : null,
         editCenterY: svgCenterY(edit),
-        pinCenterY: svgCenterY(pin),
         deleteCenterY: svgCenterY(del),
         metaTop: meta ? meta.getBoundingClientRect().top : null,
       };

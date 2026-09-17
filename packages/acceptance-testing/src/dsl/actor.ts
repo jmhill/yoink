@@ -397,9 +397,9 @@ export type BrowserActorOperations = {
   shouldNotSeeReorderControls(): Promise<void>;
 
   /**
-   * Assert pin still appears on the All view.
+   * Assert pin/unpin chrome is gone from task rows. Backend pin stays.
    */
-  shouldSeePinControls(): Promise<void>;
+  shouldNotSeePinControls(): Promise<void>;
 
   /**
    * Open a Tasks filter tab (Today, Upcoming, Mine, Done) and assert the All pile dropdown is not shown.
@@ -1000,7 +1000,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert this task row has a large complete control (aim ~44px), not a
-   * multi-select checkbox. Pin stays on the row.
+   * multi-select checkbox.
    */
   shouldSeeLargeCompleteControlOnTask(taskId: string): Promise<void>;
 
@@ -1042,7 +1042,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert the complete circle, first title line, and trailing icons
-   * (grip if present, pin, delete) share one visual centerline.
+   * (grip if present, edit, delete) share one visual centerline.
    * Complete (and grip, when shown) stay ~44px hit targets.
    */
   shouldSeeTaskRowAlignedWithTitle(taskId: string): Promise<void>;
@@ -1060,17 +1060,6 @@ export type BrowserActorOperations = {
   shouldSeeWrappedTaskTitle(taskId: string): Promise<void>;
 
   /**
-   * Pin this open task from the row pin control. The row stays; the
-   * control becomes unpin.
-   */
-  pinOpenTaskFromRow(taskId: string): Promise<void>;
-
-  /**
-   * Unpin this pinned task from the row control.
-   */
-  unpinOpenTaskFromRow(taskId: string): Promise<void>;
-
-  /**
    * Delete this task from the row delete control (confirm the kit dialog).
    * The task leaves the current view.
    */
@@ -1084,7 +1073,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert this task row has an explicit Edit control (~44px), in the
-   * trailing chrome with pin/delete.
+   * trailing chrome with delete.
    */
   shouldSeeTaskEditControl(taskId: string): Promise<void>;
 

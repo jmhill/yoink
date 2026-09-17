@@ -30,7 +30,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeLargeCompleteControlOnTask(milk.id);
-      await alice.shouldSeePinControls();
+      await alice.shouldNotSeePinControls();
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
       await alice.completeOpenTaskFromRow(milk.id);
@@ -56,7 +56,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openToday();
       await alice.shouldSeeLargeCompleteControlOnTask(call.id);
-      await alice.shouldSeePinControls();
+      await alice.shouldNotSeePinControls();
       await alice.completeOpenTaskFromRow(call.id);
       await alice.shouldNotSeeTask(call.id);
 

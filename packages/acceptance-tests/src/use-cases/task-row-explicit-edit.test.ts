@@ -6,7 +6,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Issue #88: explicit Edit control on task rows (kill click-title-to-edit).
  *
  * Title text is just the title — tapping it does not open edit. An icon
- * button in the trailing chrome (with pin/delete, ~44px on touch) opens
+ * button in the trailing chrome (with delete, ~44px on touch) opens
  * the existing task edit modal/sheet. Same fields. No new edit surface.
  *
  * Out of scope: capture rows, linkifying URLs in titles, redesigning the
@@ -80,7 +80,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await shouldEditFromControlNotTitle(alice, notes.id);
     });
 
-    it('keeps complete, pin, delete, drag, and swipe-complete working', async () => {
+    it('keeps complete, delete, drag, and swipe-complete working', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
@@ -90,9 +90,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs', 'Bread']);
       await shouldEditFromControlNotTitle(alice, milk.id);
-
-      await alice.pinOpenTaskFromRow(milk.id);
-      await alice.unpinOpenTaskFromRow(milk.id);
+      await alice.shouldNotSeePinControls();
 
       await alice.dragOpenTaskOnto('Milk', 'Eggs');
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk', 'Bread']);

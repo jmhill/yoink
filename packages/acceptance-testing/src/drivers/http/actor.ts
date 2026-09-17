@@ -419,8 +419,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeReorderControls', 'http');
     },
 
-    async shouldSeePinControls(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeePinControls', 'http');
+    async shouldNotSeePinControls(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeePinControls', 'http');
     },
 
     async shouldSeeTaskFilterWithoutAllPile(
@@ -912,14 +912,6 @@ export const createHttpActor = (
 
     async shouldSeeWrappedTaskTitle(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeWrappedTaskTitle', 'http');
-    },
-
-    async pinOpenTaskFromRow(_taskId: string): Promise<void> {
-      throw new UnsupportedOperationError('pinOpenTaskFromRow', 'http');
-    },
-
-    async unpinOpenTaskFromRow(_taskId: string): Promise<void> {
-      throw new UnsupportedOperationError('unpinOpenTaskFromRow', 'http');
     },
 
     async deleteOpenTaskFromRow(_taskId: string): Promise<void> {

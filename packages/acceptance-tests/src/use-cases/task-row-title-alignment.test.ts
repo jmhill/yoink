@@ -7,7 +7,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  *
  * The 44px complete hit target stays. The circle glyph optically centers
  * with the first line of the title — not the whole card, not the metadata
- * row. Grip, pin, and delete glyphs share that same centerline.
+ * row. Grip, edit, and delete glyphs share that same centerline.
  *
  * Out of scope: row redesign, new actions, multi-select, swipe/drag
  * behavior changes, capture rows, drawer chrome.
@@ -71,7 +71,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeTaskRowAlignedWithTitle(notes.id);
     });
 
-    it('keeps complete, pin, delete, and drag working on the aligned row', async () => {
+    it('keeps complete, delete, and drag working on the aligned row', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
@@ -81,9 +81,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs', 'Bread']);
       await alice.shouldSeeTaskRowAlignedWithTitle(milk.id);
-
-      await alice.pinOpenTaskFromRow(milk.id);
-      await alice.unpinOpenTaskFromRow(milk.id);
+      await alice.shouldNotSeePinControls();
 
       await alice.dragOpenTaskOnto('Milk', 'Eggs');
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk', 'Bread']);
@@ -141,8 +139,6 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.shouldSeeWrappedTaskTitle('task-1')).rejects.toThrow(
         UnsupportedOperationError
       );
-      await expect(actor.pinOpenTaskFromRow('task-1')).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.unpinOpenTaskFromRow('task-1')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.deleteOpenTaskFromRow('task-1')).rejects.toThrow(UnsupportedOperationError);
     });
   });

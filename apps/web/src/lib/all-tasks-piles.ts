@@ -139,9 +139,10 @@ export function listIdForCreateTask(options: {
 
 /**
  * Group filter-result tasks by named list, then unlisted.
- * Keeps each group's relative order from the API (pin then createdAt).
- * Does not sort by openOrder. Used by All overview, Mine overview,
- * Upcoming, and inside each Today deadline section.
+ * Keeps each group's relative order from the API (backend may still
+ * pin-then-createdAt). Does not sort by openOrder and does not expose
+ * pin chrome. Used by Mine overview, Upcoming, and inside each Today
+ * deadline section.
  */
 export function groupAllTasksByPile(
   tasks: Task[],

@@ -795,6 +795,19 @@ export type BrowserActorOperations = {
   shouldSeeTaskSurface(): Promise<void>;
 
   /**
+   * Assert Inbox-grade you-are-here chrome on the current task view:
+   * the place name as the primary heading, plus this short count cue.
+   * Visible without opening the rail.
+   */
+  shouldSeeTaskPlace(heading: string, subcopy: string): Promise<void>;
+
+  /**
+   * Assert the task place heading and cue stay distinct from the task
+   * surface in the current appearance (theme tokens, not hard-coded).
+   */
+  shouldSeeTaskPlaceReadable(): Promise<void>;
+
+  /**
    * Apply light/dark mode and default/tokyo-night palette (persisted,
    * then reload so the boot script paints html classes).
    */

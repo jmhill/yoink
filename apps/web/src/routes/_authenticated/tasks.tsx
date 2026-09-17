@@ -26,6 +26,7 @@ import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
 import { MobileTasksRailDrawer } from '@/components/mobile-tasks-rail-drawer';
+import { PlaceHeading } from '@/components/place-heading';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
 import { SortablePileList } from '@/components/sortable-pile-list';
@@ -46,6 +47,12 @@ import {
   type NamedListRef,
 } from '@/lib/all-tasks-piles';
 import { TASK_SURFACE_TEST_ID } from '@/lib/inbox-pane';
+import {
+  TASK_PLACE_SUBCOPY_TEST_ID,
+  taskPlaceFromBoard,
+  taskPlaceHeading,
+  taskPlaceSubcopy,
+} from '@/lib/task-place';
 
 /**
  * Helper to get today's date in YYYY-MM-DD format
@@ -719,13 +726,24 @@ function TasksPage() {
               ? 'Complete a task to see it here'
               : 'Create your first task above';
 
+  const place = taskPlaceFromBoard({
+    pile: allPile,
+    filter: boardFilter,
+    namedListName: namedPileList?.name,
+  });
+
   return (
     <div
       data-testid={TASK_SURFACE_TEST_ID}
       data-task-surface=""
       className="container mx-auto max-w-2xl bg-background p-4"
     >
-      <Header viewName="Tasks" leading={<MobileTasksRailDrawer />} />
+      <Header leading={<MobileTasksRailDrawer />} />
+      <PlaceHeading
+        title={taskPlaceHeading(place)}
+        subcopy={taskPlaceSubcopy(place, tasks.length)}
+        subcopyTestId={TASK_PLACE_SUBCOPY_TEST_ID}
+      />
 
       <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6 hidden md:block">
         <TabsList className="grid w-full grid-cols-4">

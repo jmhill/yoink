@@ -1241,6 +1241,24 @@ export const createPlaywrightActor = (
       await expect(inboxPage.triageSurface()).toHaveCount(0);
     },
 
+    async shouldSeeTaskPlace(heading: string, subcopy: string): Promise<void> {
+      await expect(tasksPage.taskSurface()).toBeVisible();
+      await expect(tasksPage.placeHeading()).toHaveText(heading);
+      await expect(tasksPage.placeSubcopy()).toHaveText(subcopy);
+      await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+      await expect(inboxPage.triageSurface()).toHaveCount(0);
+    },
+
+    async shouldSeeTaskPlaceReadable(): Promise<void> {
+      await expect(tasksPage.placeHeading()).toBeVisible();
+      await expect(tasksPage.placeSubcopy()).toBeVisible();
+      const surfaceBg = await tasksPage.taskSurface().evaluate(readComputedBackgroundColor);
+      const headingColor = await tasksPage.placeHeading().evaluate(readComputedColor);
+      const subcopyColor = await tasksPage.placeSubcopy().evaluate(readComputedColor);
+      expect(headingColor).not.toEqual(surfaceBg);
+      expect(subcopyColor).not.toEqual(surfaceBg);
+    },
+
     async useAppearance(appearance: {
       mode: 'light' | 'dark';
       colorTheme: 'default' | 'tokyo-night';

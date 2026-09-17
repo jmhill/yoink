@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { tsr } from '@/api/client';
 import { Header } from '@/components/header';
 import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
+import { PlaceHeading } from '@/components/place-heading';
 import {
   INBOX_TRIAGE_HEADING,
   INBOX_TRIAGE_SUBCOPY_TEST_ID,
@@ -35,17 +36,11 @@ export function InboxPaneShell({ active, children }: InboxPaneShellProps) {
     >
       <div className="container mx-auto max-w-2xl p-4">
         <Header />
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {INBOX_TRIAGE_HEADING}
-          </h1>
-          <p
-            data-testid={INBOX_TRIAGE_SUBCOPY_TEST_ID}
-            className="mt-1 text-muted-foreground"
-          >
-            {inboxTriageSubcopy(toProcessCount)}
-          </p>
-        </div>
+        <PlaceHeading
+          title={INBOX_TRIAGE_HEADING}
+          subcopy={inboxTriageSubcopy(toProcessCount)}
+          subcopyTestId={INBOX_TRIAGE_SUBCOPY_TEST_ID}
+        />
         <InboxPaneTabs active={active} />
         {children}
       </div>

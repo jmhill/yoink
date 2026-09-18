@@ -17,13 +17,17 @@ export function useDesktopLayout(): boolean {
 
   useEffect(() => {
     const media = window.matchMedia(desktopQuery);
-    const update = (event?: MediaQueryListEvent) => {
-      setIsDesktop(event?.matches ?? media.matches);
+    // Re-read matchMedia.matches — Playwright setViewportSize (and some
+    // device rotations) can miss the MediaQueryList "change" event.
+    const sync = () => {
+      setIsDesktop(media.matches);
     };
-    update();
-    media.addEventListener('change', update);
+    sync();
+    media.addEventListener('change', sync);
+    window.addEventListener('resize', sync);
     return () => {
-      media.removeEventListener('change', update);
+      media.removeEventListener('change', sync);
+      window.removeEventListener('resize', sync);
     };
   }, []);
 

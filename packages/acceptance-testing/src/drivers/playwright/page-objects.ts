@@ -845,17 +845,18 @@ export class TasksPage {
       .catch(() => {
         // Loading copy is absent on views that never show it.
       });
+    const settleMs = 8_000;
     await Promise.race([
-      this.page.locator('[data-task-id]').first().waitFor({ state: 'attached' }),
-      this.page.getByText('No tasks yet').waitFor({ state: 'attached' }),
-      this.page.getByText('No tasks for today').waitFor({ state: 'attached' }),
-      this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached' }),
-      this.page.getByText('No upcoming tasks').waitFor({ state: 'attached' }),
-      this.page.getByText('No completed tasks').waitFor({ state: 'attached' }),
-      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached' }),
-      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached' }),
-      this.page.getByText('No tasks assigned to you on this list').waitFor({ state: 'attached' }),
-      this.page.getByText('No unlisted tasks assigned to you').waitFor({ state: 'attached' }),
+      this.page.locator('[data-task-id]').first().waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No tasks yet').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No tasks for today').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No upcoming tasks').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No completed tasks').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No tasks assigned to you on this list').waitFor({ state: 'attached', timeout: settleMs }),
+      this.page.getByText('No unlisted tasks assigned to you').waitFor({ state: 'attached', timeout: settleMs }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
@@ -1743,11 +1744,71 @@ export class AppRail {
   }
 
   /**
+   * A closed Vaul drawer can stay in the DOM (off-screen or aria-hidden).
+   * Count > 0 is not "open" — only an on-screen rail item is usable.
+   */
+  async mobileDrawerIsInteractable(): Promise<boolean> {
+    const rail = this.mobileTasks();
+    if ((await rail.count()) === 0) {
+      return false;
+    }
+    const item = rail.locator('[data-rail-label]').first();
+    if ((await item.count()) === 0) {
+      return false;
+    }
+    const box = await item.boundingBox();
+    return Boolean(box && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0);
+  }
+
+  private async waitForMobileDrawerInteractable(): Promise<void> {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      if (await this.mobileDrawerIsInteractable()) {
+        return;
+      }
+      await this.page.waitForTimeout(50);
+    }
+    throw new Error('Mobile Tasks rail drawer opened but no rail item was on screen');
+  }
+
+  /**
+   * After a destination, the phone drawer must finish closing so task
+   * rows (complete / edit) are not under a leftover Vaul overlay.
+   */
+  async waitForMobileDrawerClosedIfPhone(): Promise<void> {
+    if (await this.desktop().isVisible().catch(() => false)) {
+      return;
+    }
+    if ((await this.mobileTrigger().count()) === 0) {
+      return;
+    }
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const overlayVisible = await this.page
+        .locator('[data-slot="drawer-overlay"]')
+        .isVisible()
+        .catch(() => false);
+      if (!overlayVisible && !(await this.mobileDrawerIsInteractable())) {
+        return;
+      }
+      await this.page.waitForTimeout(50);
+    }
+  }
+
+  private async waitForItemGeometry(item: Locator): Promise<void> {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const box = await item.boundingBox();
+      if (box && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0) {
+        return;
+      }
+      await this.page.waitForTimeout(50);
+    }
+  }
+
+  /**
    * On desktop the sidebar is always visible. On mobile the rail lives
    * in a Tasks drawer — open that tab and the drawer when the rail is not showing.
    */
   async ensureAvailable(): Promise<void> {
-    if ((await this.mobileTasks().count()) > 0) {
+    if (await this.mobileDrawerIsInteractable()) {
       return;
     }
     if (await this.desktop().isVisible().catch(() => false)) {
@@ -1766,23 +1827,14 @@ export class AppRail {
   }
 
   async openMobileDrawer(): Promise<void> {
-    if ((await this.mobileTasks().count()) > 0) {
+    if (await this.mobileDrawerIsInteractable()) {
       return;
     }
     const trigger = this.mobileTrigger();
     await trigger.waitFor({ state: 'visible' });
     await trigger.click();
     await this.mobileTasks().waitFor({ state: 'attached' });
-    const overflow = this.mobileTasks().locator('[data-rail-overflow]').first();
-    if ((await overflow.count()) > 0) {
-      for (let attempt = 0; attempt < 20; attempt++) {
-        const box = await overflow.boundingBox();
-        if (box && box.x >= 0 && box.y >= 0 && box.width > 0 && box.height > 0) {
-          return;
-        }
-        await this.page.waitForTimeout(50);
-      }
-    }
+    await this.waitForMobileDrawerInteractable();
   }
 
   /**
@@ -1796,7 +1848,7 @@ export class AppRail {
     if (await this.desktop().isVisible().catch(() => false)) {
       return this.desktop();
     }
-    if ((await this.mobileTasks().count()) > 0) {
+    if (await this.mobileDrawerIsInteractable()) {
       return this.mobileTasks();
     }
     return this.root();
@@ -1811,7 +1863,7 @@ export class AppRail {
       await locator.click();
       return;
     }
-    if ((await this.mobileTasks().count()) === 0) {
+    if (!(await this.mobileDrawerIsInteractable())) {
       await locator.click();
       return;
     }
@@ -1913,6 +1965,10 @@ export class AppRail {
   async openItem(label: string): Promise<void> {
     const rail = await this.railForInteraction();
     const item = rail.locator(`[data-rail-label="${label}"]`);
+    await item.waitFor({ state: 'attached', timeout: 10_000 });
+    if (!(await this.desktop().isVisible().catch(() => false))) {
+      await this.waitForItemGeometry(item);
+    }
     await this.clickRailControl(item);
   }
 

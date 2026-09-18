@@ -169,6 +169,52 @@ export const createPlaywrightActor = (
     }
   };
 
+  const announceViewportResize = async (): Promise<void> => {
+    // String form: this package's tsconfig has no DOM lib.
+    await page.evaluate('window.dispatchEvent(new Event("resize"))');
+  };
+
+  /**
+   * Playwright setViewportSize can miss MediaQueryList "change". Wait
+   * for the phone chrome (thumb bar + Tasks drawer trigger) so rail
+   * opens do not hang 30s on a still-desktop layout.
+   */
+  const settleMobileViewportChrome = async (): Promise<void> => {
+    await announceViewportResize();
+    await expect(mobileNav.root()).toBeVisible();
+    await expect(appRail.desktop()).toBeHidden();
+    if (new URL(page.url()).pathname === '/tasks') {
+      await expect(appRail.mobileTrigger()).toBeVisible();
+    }
+  };
+
+  const settleDesktopViewportChrome = async (): Promise<void> => {
+    await announceViewportResize();
+    await expect(appRail.desktop()).toBeVisible();
+    await expect(mobileNav.root()).toBeHidden();
+  };
+
+  const openRailDestination = async (
+    label: string,
+    arrived: () => Promise<void>
+  ): Promise<void> => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await appRail.openItem(label);
+      try {
+        await arrived();
+        await appRail.waitForMobileDrawerClosedIfPhone();
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error(`Rail item "${label}" did not navigate`);
+  };
+
   const openTaskOnItsPile = async (taskId: string): Promise<void> => {
     const response = await page.request.get(`/api/tasks/${taskId}`);
     if (!response.ok()) {
@@ -554,10 +600,11 @@ export const createPlaywrightActor = (
     },
 
     async openNamedList(name: string): Promise<void> {
-      await appRail.openItem(name);
-      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
-      await expect(page).not.toHaveURL(/[?&]filter=all/);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination(name, async () => {
+        await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
+        await expect(page).not.toHaveURL(/[?&]filter=all/);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
@@ -663,18 +710,20 @@ export const createPlaywrightActor = (
     },
 
     async openAllNamedPile(name: string): Promise<void> {
-      await appRail.openItem(name);
-      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
-      await expect(page).not.toHaveURL(/[?&]filter=all/);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination(name, async () => {
+        await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
+        await expect(page).not.toHaveURL(/[?&]filter=all/);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async openAllUnlistedPile(): Promise<void> {
-      await appRail.openItem('Unlisted');
-      await page.waitForURL(/[?&]pile=unlisted/);
-      await expect(page).not.toHaveURL(/[?&]filter=all/);
-      await expect(page.locator('[data-pile-group]')).toHaveCount(0);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination('Unlisted', async () => {
+        await page.waitForURL(/[?&]pile=unlisted/, { timeout: 4_000 });
+        await expect(page).not.toHaveURL(/[?&]filter=all/);
+        await expect(page.locator('[data-pile-group]')).toHaveCount(0);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async shouldSeeAllPileGroups(names: string[]): Promise<void> {
@@ -948,17 +997,19 @@ export const createPlaywrightActor = (
     },
 
     async openRailNamedList(name: string): Promise<void> {
-      await appRail.openItem(name);
-      await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i);
-      await expect(page).not.toHaveURL(/[?&]filter=all/);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination(name, async () => {
+        await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
+        await expect(page).not.toHaveURL(/[?&]filter=all/);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async openRailUnlisted(): Promise<void> {
-      await appRail.openItem('Unlisted');
-      await page.waitForURL(/[?&]pile=unlisted/);
-      await expect(page).not.toHaveURL(/[?&]filter=all/);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination('Unlisted', async () => {
+        await page.waitForURL(/[?&]pile=unlisted/, { timeout: 4_000 });
+        await expect(page).not.toHaveURL(/[?&]filter=all/);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async openRailSmartView(view: 'today' | 'upcoming' | 'mine' | 'done'): Promise<void> {
@@ -969,10 +1020,11 @@ export const createPlaywrightActor = (
         done: 'Done',
       }[view];
       const filter = view === 'done' ? 'completed' : view;
-      await appRail.openItem(label);
-      await page.waitForURL(new RegExp(`[?&]filter=${filter}`));
-      await expectActiveFilterTabIfVisible(filter);
-      await tasksPage.waitForTasksOrEmpty();
+      await openRailDestination(label, async () => {
+        await page.waitForURL(new RegExp(`[?&]filter=${filter}`), { timeout: 4_000 });
+        await expectActiveFilterTabIfVisible(filter);
+        await tasksPage.waitForTasksOrEmpty();
+      });
     },
 
     async shouldSeeAddTaskField(): Promise<void> {
@@ -1096,9 +1148,10 @@ export const createPlaywrightActor = (
     },
 
     async openRailInbox(): Promise<void> {
-      await appRail.openItem('Inbox');
-      await page.waitForURL((url) => new URL(url).pathname === '/');
-      await inboxPage.waitForCapturesOrEmpty();
+      await openRailDestination('Inbox', async () => {
+        await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: 4_000 });
+        await inboxPage.waitForCapturesOrEmpty();
+      });
     },
 
     async shouldBeOnInboxPane(): Promise<void> {
@@ -1481,10 +1534,12 @@ export const createPlaywrightActor = (
 
     async useMobileViewport(): Promise<void> {
       await page.setViewportSize(MOBILE_VIEWPORT);
+      await settleMobileViewportChrome();
     },
 
     async useDesktopViewport(): Promise<void> {
       await page.setViewportSize(DESKTOP_VIEWPORT);
+      await settleDesktopViewportChrome();
     },
 
     async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {
@@ -1495,6 +1550,7 @@ export const createPlaywrightActor = (
         return;
       }
       await tasksPage.waitForTasksOrEmpty();
+      await expect(appRail.mobileTrigger()).toBeVisible();
     },
 
     async shouldSeeMobileBottomTabs(labels: string[]): Promise<void> {

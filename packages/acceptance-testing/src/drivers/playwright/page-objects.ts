@@ -865,6 +865,14 @@ export class TasksPage {
     return this.page.getByTestId('task-surface');
   }
 
+  placeHeading() {
+    return this.taskSurface().locator('[data-place-heading]');
+  }
+
+  placeSubcopy() {
+    return this.taskSurface().getByTestId('task-place-subcopy');
+  }
+
   taskCard(taskId: string) {
     return this.page.locator(`[data-task-id="${taskId}"]`);
   }

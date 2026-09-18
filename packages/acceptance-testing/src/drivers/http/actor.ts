@@ -719,6 +719,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeTaskSurface', 'http');
     },
 
+    async shouldSeeTaskPlace(_heading: string, _subcopy: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskPlace', 'http');
+    },
+
+    async shouldSeeTaskPlaceReadable(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskPlaceReadable', 'http');
+    },
+
     async useAppearance(_appearance: {
       mode: 'light' | 'dark';
       colorTheme: 'default' | 'tokyo-night';

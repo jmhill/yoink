@@ -934,6 +934,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeTaskEditControl', 'http');
     },
 
+    async shouldSeeOnePileTaskRowChrome(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOnePileTaskRowChrome', 'http');
+    },
+
+    async shouldSeeSmartViewTaskRowChrome(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeSmartViewTaskRowChrome', 'http');
+    },
+
+    async shouldSeeTaskRowOverflowActions(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskRowOverflowActions', 'http');
+    },
+
+    async shouldSeeTaskRowChromeReadable(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskRowChromeReadable', 'http');
+    },
+
     async openTaskEditFromRow(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('openTaskEditFromRow', 'http');
     },

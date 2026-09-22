@@ -3,14 +3,13 @@ import { CardContent } from '@yoink/ui-base/components/card';
 import {
   Circle,
   CircleCheck,
-  Trash2,
   Calendar,
   User,
   List,
   GripVertical,
-  Pencil,
 } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
+import { TaskRowOverflow } from '@/components/task-row-overflow';
 import type { Task } from '@yoink/api-contracts';
 import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
 
@@ -213,32 +212,13 @@ export function TaskCard({
               <GripVertical className="size-5" />
             </Button>
           )}
-          {onEdit && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              data-slot="task-edit"
-              onClick={() => onEdit(task)}
-              disabled={isLoading}
-              title="Edit"
-              aria-label={`Edit task "${task.title}"`}
-              className="size-11 min-h-11 min-w-11 shrink-0 text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
-            >
-              <Pencil className="size-5" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onDelete(task.id)}
+          <TaskRowOverflow
+            taskId={task.id}
+            taskTitle={task.title}
+            onEdit={onEdit ? () => onEdit(task) : undefined}
+            onDelete={() => onDelete(task.id)}
             disabled={isLoading}
-            title="Delete"
-            aria-label={`Delete task "${task.title}"`}
-            className="text-muted-foreground hover:text-destructive [&_svg]:translate-y-[calc((var(--task-title-lh)-2rem)/2)]"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          />
         </div>
       </CardContent>
       </SwipeableCard>

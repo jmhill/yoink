@@ -883,7 +883,8 @@ export class TasksPage {
   }
 
   async openEdit(taskId: string): Promise<void> {
-    await this.editControl(taskId).click();
+    await this.openOverflow(taskId);
+    await this.editMenuItem(taskId).click();
     await this.page.getByRole('dialog', { name: 'Edit Task' }).waitFor({ state: 'visible' });
   }
 
@@ -1220,12 +1221,42 @@ export class TasksPage {
     return this.taskCard(taskId).locator('[data-slot="task-complete"]');
   }
 
-  deleteControl(taskId: string) {
+  overflowControl(taskId: string) {
+    return this.taskCard(taskId).locator('[data-slot="task-overflow"]');
+  }
+
+  overflowMenu(taskId: string) {
+    return this.page.locator(`[data-task-overflow-menu="${taskId}"]`);
+  }
+
+  editMenuItem(taskId: string) {
+    return this.overflowMenu(taskId).getByRole('menuitem', { name: 'Edit' });
+  }
+
+  deleteMenuItem(taskId: string) {
+    return this.overflowMenu(taskId).getByRole('menuitem', { name: 'Delete' });
+  }
+
+  rowEditIcon(taskId: string) {
+    return this.taskCard(taskId).getByRole('button', { name: /^Edit task/ });
+  }
+
+  rowDeleteIcon(taskId: string) {
     return this.taskCard(taskId).getByRole('button', { name: /^Delete task/ });
   }
 
-  editControl(taskId: string) {
-    return this.taskCard(taskId).getByRole('button', { name: /^Edit task/ });
+  async openOverflow(taskId: string): Promise<void> {
+    await this.overflowControl(taskId).click();
+    await this.overflowMenu(taskId).waitFor({ state: 'visible' });
+  }
+
+  async closeOverflow(taskId: string): Promise<void> {
+    const menu = this.overflowMenu(taskId);
+    if ((await menu.count()) === 0) {
+      return;
+    }
+    await this.page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
   }
 
   taskTitle(taskId: string) {
@@ -1243,8 +1274,8 @@ export class TasksPage {
     completeHit: { width: number; height: number };
     gripCenterY: number | null;
     gripHit: { width: number; height: number } | null;
-    editCenterY: number;
-    deleteCenterY: number;
+    overflowCenterY: number;
+    overflowHit: { width: number; height: number };
     metaTop: number | null;
   }> {
     const card = this.taskCard(taskId);
@@ -1253,11 +1284,10 @@ export class TasksPage {
       const title = node.querySelector('[data-slot="task-title"]');
       const complete = node.querySelector('[data-slot="task-complete"]');
       const grip = node.querySelector('[data-drag-handle]');
-      const edit = node.querySelector('[aria-label^="Edit task"]');
-      const del = node.querySelector('[aria-label^="Delete task"]');
+      const overflow = node.querySelector('[data-slot="task-overflow"]');
       const meta = node.querySelector('[data-slot="task-meta"]');
 
-      if (!title || !complete || !edit || !del) {
+      if (!title || !complete || !overflow) {
         throw new Error('task row is missing title-line controls');
       }
 
@@ -1286,8 +1316,8 @@ export class TasksPage {
         completeHit: hit(complete),
         gripCenterY: grip ? svgCenterY(grip) : null,
         gripHit: grip ? hit(grip) : null,
-        editCenterY: svgCenterY(edit),
-        deleteCenterY: svgCenterY(del),
+        overflowCenterY: svgCenterY(overflow),
+        overflowHit: hit(overflow),
         metaTop: meta ? meta.getBoundingClientRect().top : null,
       };
     });

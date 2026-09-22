@@ -3,7 +3,7 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Issue #115 / #116: hybrid task-row chrome.
+ * Issue #115: hybrid task-row chrome.
  *
  * Product lock Justin + Polly 2026-09-22:
  * One-pile (named list + Unlisted): complete, title, grip; Edit/Delete

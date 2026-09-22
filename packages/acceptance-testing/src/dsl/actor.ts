@@ -1073,8 +1073,8 @@ export type BrowserActorOperations = {
   shouldSeeWrappedTaskTitle(taskId: string): Promise<void>;
 
   /**
-   * Delete this task from the row delete control (confirm the kit dialog).
-   * The task leaves the current view.
+   * Delete this task from the row ⋯ → Delete control (confirm the kit
+   * dialog). The task leaves the current view.
    */
   deleteOpenTaskFromRow(taskId: string): Promise<void>;
 
@@ -1085,15 +1085,38 @@ export type BrowserActorOperations = {
   shouldNotOpenTaskEditFromTitle(taskId: string): Promise<void>;
 
   /**
-   * Assert this task row has an explicit Edit control (~44px), in the
-   * trailing chrome with delete.
+   * Assert this task row has a ~44px ⋯ overflow whose menu includes Edit.
+   * Pencil/trash icons do not sit on the row.
    */
   shouldSeeTaskEditControl(taskId: string): Promise<void>;
 
   /**
-   * Open the existing task edit modal/sheet from the row Edit control.
+   * Open the existing task edit modal/sheet from the row ⋯ → Edit item.
    */
   openTaskEditFromRow(taskId: string): Promise<void>;
+
+  /**
+   * One-pile row chrome: complete, title, grip, ⋯. No Edit/Trash icons
+   * next to the grip. Pin stays gone.
+   */
+  shouldSeeOnePileTaskRowChrome(taskId: string): Promise<void>;
+
+  /**
+   * Smart-view row chrome: complete, title, ⋯. No grip, no Edit/Trash
+   * icons, no pin.
+   */
+  shouldSeeSmartViewTaskRowChrome(taskId: string): Promise<void>;
+
+  /**
+   * Open this row’s ⋯ and assert the menu offers Edit and Delete.
+   */
+  shouldSeeTaskRowOverflowActions(taskId: string): Promise<void>;
+
+  /**
+   * Assert this row’s title and ⋯ stay readable against the task surface
+   * (theme tokens, not a washed-out same-as-background).
+   */
+  shouldSeeTaskRowChromeReadable(taskId: string): Promise<void>;
 
   /**
    * Assert the open dialog is the existing task edit UI (same fields).

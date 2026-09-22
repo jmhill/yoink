@@ -1664,8 +1664,9 @@ export const createPlaywrightActor = (
       expect(geometry.completeHit.width).toBeGreaterThanOrEqual(44);
       expect(geometry.completeHit.height).toBeGreaterThanOrEqual(44);
       expect(aligned(geometry.completeCircleCenterY)).toBe(true);
-      expect(aligned(geometry.editCenterY)).toBe(true);
-      expect(aligned(geometry.deleteCenterY)).toBe(true);
+      expect(aligned(geometry.overflowCenterY)).toBe(true);
+      expect(geometry.overflowHit.width).toBeGreaterThanOrEqual(44);
+      expect(geometry.overflowHit.height).toBeGreaterThanOrEqual(44);
       if (geometry.gripCenterY !== null && geometry.gripHit) {
         expect(geometry.gripHit.width).toBeGreaterThanOrEqual(44);
         expect(geometry.gripHit.height).toBeGreaterThanOrEqual(44);
@@ -1699,7 +1700,8 @@ export const createPlaywrightActor = (
 
     async deleteOpenTaskFromRow(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
-      await tasksPage.deleteControl(taskId).click();
+      await tasksPage.openOverflow(taskId);
+      await tasksPage.deleteMenuItem(taskId).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Delete task?' })).toBeVisible();
       await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
@@ -1720,15 +1722,60 @@ export const createPlaywrightActor = (
 
     async shouldSeeTaskEditControl(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
-      const edit = tasksPage.editControl(taskId);
-      await expect(edit).toBeVisible();
-      await expect(edit).toHaveRole('button');
-      const box = await edit.boundingBox();
+      const overflow = tasksPage.overflowControl(taskId);
+      await expect(overflow).toBeVisible();
+      await expect(overflow).toHaveRole('button');
+      const box = await overflow.boundingBox();
       if (!box) {
-        throw new Error('edit control should have a layout box');
+        throw new Error('task overflow should have a layout box');
       }
       expect(box.width).toBeGreaterThanOrEqual(44);
       expect(box.height).toBeGreaterThanOrEqual(44);
+      await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
+      await tasksPage.openOverflow(taskId);
+      await expect(tasksPage.editMenuItem(taskId)).toBeVisible();
+      await tasksPage.closeOverflow(taskId);
+    },
+
+    async shouldSeeOnePileTaskRowChrome(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.completeControl(taskId)).toBeVisible();
+      await expect(tasksPage.taskTitle(taskId)).toBeVisible();
+      await expect(tasksPage.taskCard(taskId).locator('[data-drag-handle]')).toBeVisible();
+      await expect(tasksPage.overflowControl(taskId)).toBeVisible();
+      await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
+      await expect(tasksPage.rowDeleteIcon(taskId)).toHaveCount(0);
+      await expect(tasksPage.pinButtons()).toHaveCount(0);
+    },
+
+    async shouldSeeSmartViewTaskRowChrome(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await expect(tasksPage.completeControl(taskId)).toBeVisible();
+      await expect(tasksPage.taskTitle(taskId)).toBeVisible();
+      await expect(tasksPage.overflowControl(taskId)).toBeVisible();
+      await expect(tasksPage.taskCard(taskId).locator('[data-drag-handle]')).toHaveCount(0);
+      await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
+      await expect(tasksPage.rowDeleteIcon(taskId)).toHaveCount(0);
+      await expect(tasksPage.pinButtons()).toHaveCount(0);
+    },
+
+    async shouldSeeTaskRowOverflowActions(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.openOverflow(taskId);
+      await expect(tasksPage.editMenuItem(taskId)).toBeVisible();
+      await expect(tasksPage.deleteMenuItem(taskId)).toBeVisible();
+      await tasksPage.closeOverflow(taskId);
+    },
+
+    async shouldSeeTaskRowChromeReadable(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      const surfaceBg = await tasksPage.taskSurface().evaluate(readComputedBackgroundColor);
+      const titleColor = await tasksPage.taskTitle(taskId).evaluate(readComputedColor);
+      const overflowColor = await tasksPage.overflowControl(taskId).evaluate(readComputedColor);
+      expect(titleColor).not.toEqual(surfaceBg);
+      expect(overflowColor).not.toEqual(surfaceBg);
+      await expect(tasksPage.completeControl(taskId)).toBeVisible();
+      await expect(tasksPage.pinButtons()).toHaveCount(0);
     },
 
     async openTaskEditFromRow(taskId: string): Promise<void> {

@@ -1,3 +1,4 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { CardContent } from '@yoink/ui-base/components/card';
 import {
@@ -9,40 +10,87 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { SwipeableCard } from '@/components/swipeable-card';
-import { TaskRowOverflow } from '@/components/task-row-overflow';
 import type { Task } from '@yoink/api-contracts';
 import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
+import { cn } from '@yoink/ui-base/lib/utils';
+
+const TAP_SLOP_PX = 10;
 
 type TaskCardProps = {
   task: Task;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
-  onDelete: (id: string) => void;
   onEdit?: (task: Task) => void;
   isLoading?: boolean;
   assigneeLabel?: string;
   listLabel?: string;
   dragHandle?: SortablePileDragHandle;
+  reorderMode?: boolean;
 };
 
 export function TaskCard({
   task,
   onComplete,
   onUncomplete,
-  onDelete,
   onEdit,
   isLoading = false,
   assigneeLabel,
   listLabel,
   dragHandle,
+  reorderMode = false,
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
+  const completingEnabled = !isLoading && !reorderMode;
+  const swipeStartedRef = useRef(false);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerMovedRef = useRef(false);
 
   const handleCompleteToggle = () => {
+    if (!completingEnabled) {
+      return;
+    }
     if (isCompleted) {
       onUncomplete(task.id);
     } else {
       onComplete(task.id);
+    }
+  };
+
+  const handleRowClick = () => {
+    if (reorderMode || isLoading || !onEdit) {
+      return;
+    }
+    if (swipeStartedRef.current) {
+      swipeStartedRef.current = false;
+      return;
+    }
+    if (pointerMovedRef.current) {
+      return;
+    }
+    onEdit(task);
+  };
+
+  const handleRowPointerDown = (event: ReactPointerEvent) => {
+    if (event.button !== 0) {
+      return;
+    }
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    pointerMovedRef.current = false;
+    if (reorderMode && dragHandle && !isLoading) {
+      dragHandle.onPointerDown(event);
+    }
+  };
+
+  const handleRowPointerMove = (event: ReactPointerEvent) => {
+    if (pointerStartRef.current) {
+      const dx = event.clientX - pointerStartRef.current.x;
+      const dy = event.clientY - pointerStartRef.current.y;
+      if (Math.hypot(dx, dy) > TAP_SLOP_PX) {
+        pointerMovedRef.current = true;
+      }
+    }
+    if (reorderMode && dragHandle) {
+      dragHandle.onPointerMove(event);
     }
   };
 
@@ -96,22 +144,44 @@ export function TaskCard({
         : {})}
     >
       {/* Touch: swipe right completes (same toggle as the complete control).
-          Matches capture swipe-right. Vertical stays scroll; desktop mouse is tap-only. */}
+          Matches capture swipe-right. Vertical stays scroll; desktop mouse is tap-only.
+          A swipe must not also open Edit. Reorder mode turns swipe and complete off. */}
       <SwipeableCard
       data-task-id={task.id}
-      rightAction={{
-        icon: isCompleted ? (
-          <Circle className="h-5 w-5" />
-        ) : (
-          <CircleCheck className="h-5 w-5" />
-        ),
-        label: isCompleted ? 'Incomplete' : 'Complete',
-        type: 'complete',
-        onAction: handleCompleteToggle,
+      rightAction={
+        completingEnabled
+          ? {
+              icon: isCompleted ? (
+                <Circle className="h-5 w-5" />
+              ) : (
+                <CircleCheck className="h-5 w-5" />
+              ),
+              label: isCompleted ? 'Incomplete' : 'Complete',
+              type: 'complete',
+              onAction: handleCompleteToggle,
+            }
+          : undefined
+      }
+      disabled={isLoading || reorderMode}
+      onSwipeStart={() => {
+        swipeStartedRef.current = true;
       }}
-      disabled={isLoading}
     >
-      <CardContent className="flex items-start gap-3 py-3 text-base leading-6 [--task-title-lh:1lh]">
+      <CardContent
+        className={cn(
+          'flex items-start gap-3 py-3 text-base leading-6 [--task-title-lh:1lh]',
+          reorderMode && 'cursor-grab touch-none active:cursor-grabbing'
+        )}
+        onClick={handleRowClick}
+        onPointerDown={handleRowPointerDown}
+        onPointerMove={handleRowPointerMove}
+        onPointerUp={reorderMode && dragHandle ? dragHandle.onPointerUp : undefined}
+        onPointerCancel={reorderMode && dragHandle ? dragHandle.onPointerUp : undefined}
+        onTouchStart={reorderMode && dragHandle ? dragHandle.onTouchStart : undefined}
+        onTouchMove={reorderMode && dragHandle ? dragHandle.onTouchMove : undefined}
+        onTouchEnd={reorderMode && dragHandle ? dragHandle.onTouchEnd : undefined}
+        onTouchCancel={reorderMode && dragHandle ? dragHandle.onTouchEnd : undefined}
+      >
         {/* 44px hit target stays in flow; glyph shifts to the title's first line. */}
         <Button
           type="button"
@@ -124,8 +194,16 @@ export function TaskCard({
               ? `Mark task "${task.title}" as incomplete`
               : `Mark task "${task.title}" as complete`
           }
-          disabled={isLoading}
-          onClick={handleCompleteToggle}
+          disabled={!completingEnabled}
+          onPointerDown={(event) => {
+            if (!reorderMode) {
+              event.stopPropagation();
+            }
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleCompleteToggle();
+          }}
           className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
         >
           {isCompleted ? (
@@ -180,46 +258,15 @@ export function TaskCard({
           )}
         </div>
 
-        <div className="flex shrink-0 items-start gap-1">
-          {dragHandle && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              data-drag-handle=""
-              aria-label={`Drag to reorder ${task.title}`}
-              disabled={isLoading}
-              className="size-11 min-h-11 min-w-11 shrink-0 cursor-grab touch-none text-muted-foreground active:cursor-grabbing [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
-              onPointerDown={(event) => {
-                if (isLoading) {
-                  return;
-                }
-                dragHandle.onPointerDown(event);
-              }}
-              onPointerMove={dragHandle.onPointerMove}
-              onPointerUp={dragHandle.onPointerUp}
-              onPointerCancel={dragHandle.onPointerUp}
-              onTouchStart={(event) => {
-                if (isLoading) {
-                  return;
-                }
-                dragHandle.onTouchStart(event);
-              }}
-              onTouchMove={dragHandle.onTouchMove}
-              onTouchEnd={dragHandle.onTouchEnd}
-              onTouchCancel={dragHandle.onTouchEnd}
-            >
-              <GripVertical className="size-5" />
-            </Button>
-          )}
-          <TaskRowOverflow
-            taskId={task.id}
-            taskTitle={task.title}
-            onEdit={onEdit ? () => onEdit(task) : undefined}
-            onDelete={() => onDelete(task.id)}
-            disabled={isLoading}
-          />
-        </div>
+        {reorderMode && dragHandle ? (
+          <span
+            data-drag-handle=""
+            aria-hidden="true"
+            className="flex size-11 min-h-11 min-w-11 shrink-0 items-start justify-center text-muted-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
+          >
+            <GripVertical className="size-5" />
+          </span>
+        ) : null}
       </CardContent>
       </SwipeableCard>
     </div>

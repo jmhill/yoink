@@ -3,45 +3,41 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Issue #88: explicit Edit control on task rows (kill click-title-to-edit).
+ * Issue #118: tap the row to edit (reverses #88's explicit Edit button).
  *
- * Title text is just the title — tapping it does not open edit. An icon
- * button in the trailing chrome (with delete, ~44px on touch) opens
- * the existing task edit modal/sheet. Same fields. No new edit surface.
- *
- * Out of scope: capture rows, linkifying URLs in titles, redesigning the
- * edit modal, multi-select, #90 multi-slot drag.
+ * Tapping anywhere except the complete circle opens the existing edit
+ * dialog. The circle still completes (or uncompletes on Done). Swipe
+ * completes and must not also open Edit.
  */
 
 const isoDateOffset = (days: number): string =>
   new Date(Date.now() + days * 86_400_000).toISOString().split('T')[0]!;
 
-async function shouldEditFromControlNotTitle(
+async function shouldEditFromRowNotCircle(
   alice: BrowserActor,
   taskId: string
 ): Promise<void> {
   await alice.shouldSeeTaskEditControl(taskId);
-  await alice.shouldNotOpenTaskEditFromTitle(taskId);
   await alice.openTaskEditFromRow(taskId);
   await alice.shouldSeeExistingTaskEditUi();
   await alice.closeTaskEdit();
 }
 
 usingDrivers(['playwright'] as const, (ctx) => {
-  describe(`Task row explicit edit [${ctx.driverName}]`, () => {
+  describe(`Task row tap-to-edit [${ctx.driverName}]`, () => {
     let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await ctx.createActor('alice-ui-story-16-explicit-edit@example.com');
+      alice = await ctx.createActor('alice-ui-story-118-row-edit@example.com');
     });
 
-    it('does not open edit from the title; Edit opens the existing UI on a named list', async () => {
+    it('opens edit from the row body on a named list, not from the circle', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
 
       await alice.useDesktopViewport();
       await alice.openRailNamedList('Groceries');
-      await shouldEditFromControlNotTitle(alice, milk.id);
+      await shouldEditFromRowNotCircle(alice, milk.id);
     });
 
     it('same on Unlisted and Today', async () => {
@@ -53,10 +49,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.useDesktopViewport();
       await alice.openToday();
-      await shouldEditFromControlNotTitle(alice, call.id);
+      await shouldEditFromRowNotCircle(alice, call.id);
 
       await alice.openRailUnlisted();
-      await shouldEditFromControlNotTitle(alice, notes.id);
+      await shouldEditFromRowNotCircle(alice, notes.id);
     });
 
     it('same on a phone named-list, Unlisted, and Today', async () => {
@@ -71,16 +67,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('tasks');
       await alice.openRailNamedList('Groceries');
-      await shouldEditFromControlNotTitle(alice, milk.id);
+      await shouldEditFromRowNotCircle(alice, milk.id);
 
       await alice.openRailSmartView('today');
-      await shouldEditFromControlNotTitle(alice, call.id);
+      await shouldEditFromRowNotCircle(alice, call.id);
 
       await alice.openRailUnlisted();
-      await shouldEditFromControlNotTitle(alice, notes.id);
+      await shouldEditFromRowNotCircle(alice, notes.id);
     });
 
-    it('keeps complete, delete, drag, and swipe-complete working', async () => {
+    it('keeps complete, delete, drag, and swipe-complete working without opening Edit on swipe', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
@@ -89,7 +85,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport();
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs', 'Bread']);
-      await shouldEditFromControlNotTitle(alice, milk.id);
+      await shouldEditFromRowNotCircle(alice, milk.id);
       await alice.shouldNotSeePinControls();
 
       await alice.dragOpenTaskOnto('Milk', 'Eggs');
@@ -106,7 +102,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('tasks');
       await alice.openRailNamedList('Groceries');
-      await shouldEditFromControlNotTitle(alice, milk.id);
+      await shouldEditFromRowNotCircle(alice, milk.id);
       await alice.completeOpenTaskBySwipe(milk.id);
       await alice.shouldNotSeeTask(milk.id);
     }, 60_000);
@@ -114,9 +110,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
 });
 
 usingDrivers(['http'] as const, (ctx) => {
-  describe(`Task row explicit edit — HTTP stubs [${ctx.driverName}]`, () => {
-    it('stubs explicit-edit operations as browser-only', async () => {
-      const alice = await ctx.createActor('alice-ui-story-16-explicit-edit-http@example.com');
+  describe(`Task row tap-to-edit — HTTP stubs [${ctx.driverName}]`, () => {
+    it('stubs tap-to-edit operations as browser-only', async () => {
+      const alice = await ctx.createActor('alice-ui-story-118-row-edit-http@example.com');
       const actor = ctx.createActorWithCredentials({
         email: alice.email,
         userId: alice.userId,

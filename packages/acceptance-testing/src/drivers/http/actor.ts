@@ -496,6 +496,25 @@ export const createHttpActor = (
 
     async shouldSeeReorderControls(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeReorderControls', 'http');
+    }
+
+    async enterReorderMode(): Promise<void> {
+      throw new UnsupportedOperationError('enterReorderMode', 'http');
+    }
+
+    async exitReorderMode(): Promise<void> {
+      throw new UnsupportedOperationError('exitReorderMode', 'http');
+    }
+
+    async shouldSeeReorderMode(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReorderMode', 'http');
+    }
+
+    async shouldSeeDropSlotWhileDragging(
+      _sourceTitle: string,
+      _targetTitle: string
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDropSlotWhileDragging', 'http');
     },
 
     async shouldSeeTaskTitles(_titles: string[]): Promise<void> {
@@ -928,6 +947,14 @@ export const createHttpActor = (
 
     async shouldNotOpenTaskEditFromTitle(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotOpenTaskEditFromTitle', 'http');
+    }
+
+    async shouldNotOpenTaskEditFromComplete(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotOpenTaskEditFromComplete', 'http');
+    }
+
+    async shouldNotOpenTaskEditInReorderMode(_taskId: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotOpenTaskEditInReorderMode', 'http');
     },
 
     async shouldSeeTaskEditControl(_taskId: string): Promise<void> {

@@ -391,8 +391,8 @@ export type BrowserActorOperations = {
   shouldSeeTasksInAllPileGroup(groupName: string, titles: string[]): Promise<void>;
 
   /**
-   * Assert the current Tasks view has no drag-reorder handle (or leftover
-   * kit up/down).
+   * Assert the current Tasks view has no Reorder button, Done button,
+   * drag grip, or leftover kit up/down.
    */
   shouldNotSeeReorderControls(): Promise<void>;
 
@@ -487,9 +487,31 @@ export type BrowserActorOperations = {
   shouldSeeRailMineHighlighted(): Promise<void>;
 
   /**
-   * Assert the current Tasks view has drag-reorder handles.
+   * Assert the current named-list / Unlisted view can enter reorder
+   * (Reorder or Done is visible).
    */
   shouldSeeReorderControls(): Promise<void>;
+
+  /**
+   * Enter reorder mode from the list header Reorder button.
+   */
+  enterReorderMode(): Promise<void>;
+
+  /**
+   * Leave reorder mode with Done.
+   */
+  exitReorderMode(): Promise<void>;
+
+  /**
+   * Assert the header reads Reorder, Done is visible, and grips show.
+   */
+  shouldSeeReorderMode(): Promise<void>;
+
+  /**
+   * Hold a drag mid-gesture and assert the lifted card, neighbor gap,
+   * and accent insertion line. Avoids animation-timing assertions.
+   */
+  shouldSeeDropSlotWhileDragging(sourceTitle: string, targetTitle: string): Promise<void>;
 
   /**
    * Assert board task titles appear in this order (current Tasks view).
@@ -1054,9 +1076,8 @@ export type BrowserActorOperations = {
   shouldKeepTaskAfterVerticalRowDrag(taskId: string): Promise<void>;
 
   /**
-   * Assert the complete circle, first title line, and trailing icons
-   * (grip if present, edit, delete) share one visual centerline.
-   * Complete (and grip, when shown) stay ~44px hit targets.
+   * Assert the complete circle and first title line share one visual
+   * centerline. Complete (and grip, when shown) stay ~44px hit targets.
    */
   shouldSeeTaskRowAlignedWithTitle(taskId: string): Promise<void>;
 
@@ -1073,48 +1094,57 @@ export type BrowserActorOperations = {
   shouldSeeWrappedTaskTitle(taskId: string): Promise<void>;
 
   /**
-   * Delete this task from the row ⋯ → Delete control (confirm the kit
-   * dialog). The task leaves the current view.
+   * Delete this task from Edit → Delete (confirm the kit dialog). The
+   * task leaves the current view.
    */
   deleteOpenTaskFromRow(taskId: string): Promise<void>;
 
   /**
-   * Assert tapping/clicking the task title does not open edit. The title
-   * is text, not a button.
+   * Assert tapping the title opens the existing edit dialog.
    */
   shouldNotOpenTaskEditFromTitle(taskId: string): Promise<void>;
 
   /**
-   * Assert this task row has a ~44px ⋯ overflow whose menu includes Edit.
-   * Pencil/trash icons do not sit on the row.
+   * Assert tapping the complete circle does not open Edit.
+   */
+  shouldNotOpenTaskEditFromComplete(taskId: string): Promise<void>;
+
+  /**
+   * Assert tapping a row in reorder mode does not open Edit.
+   */
+  shouldNotOpenTaskEditInReorderMode(taskId: string): Promise<void>;
+
+  /**
+   * Assert this task row has no ⋯ / pencil / trash, and tapping the
+   * title opens the existing edit dialog.
    */
   shouldSeeTaskEditControl(taskId: string): Promise<void>;
 
   /**
-   * Open the existing task edit modal/sheet from the row ⋯ → Edit item.
+   * Open the existing task edit modal/sheet by tapping the row body.
    */
   openTaskEditFromRow(taskId: string): Promise<void>;
 
   /**
-   * One-pile row chrome: complete, title, grip, ⋯. No Edit/Trash icons
-   * next to the grip. Pin stays gone.
+   * Normal-mode one-pile row: complete + title only. No grip, ⋯,
+   * pencil, trash, or pin.
    */
   shouldSeeOnePileTaskRowChrome(taskId: string): Promise<void>;
 
   /**
-   * Smart-view row chrome: complete, title, ⋯. No grip, no Edit/Trash
-   * icons, no pin.
+   * Smart-view row: complete + title only. No grip, ⋯, pencil, trash,
+   * or pin.
    */
   shouldSeeSmartViewTaskRowChrome(taskId: string): Promise<void>;
 
   /**
-   * Open this row’s ⋯ and assert the menu offers Edit and Delete.
+   * Open edit from the row and assert Delete is in the dialog.
    */
   shouldSeeTaskRowOverflowActions(taskId: string): Promise<void>;
 
   /**
-   * Assert this row’s title and ⋯ stay readable against the task surface
-   * (theme tokens, not a washed-out same-as-background).
+   * Assert this row’s title and complete control stay readable against
+   * the task surface (theme tokens, not washed-out).
    */
   shouldSeeTaskRowChromeReadable(taskId: string): Promise<void>;
 

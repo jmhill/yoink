@@ -85,3 +85,58 @@ export function orderOpenTasksAfterDragMove(params: {
     toIndex,
   });
 }
+
+/**
+ * How far a non-dragged row slides so a real gap opens at the drop
+ * slot. The dragged row keeps its layout box and follows the pointer;
+ * neighbors close the vacated slot and open the landing gap.
+ */
+export function neighborShiftPx(params: {
+  index: number;
+  fromIndex: number;
+  dropIndex: number;
+  draggedStride: number;
+}): number {
+  const { index, fromIndex, dropIndex, draggedStride } = params;
+  if (index === fromIndex || draggedStride === 0) {
+    return 0;
+  }
+  if (fromIndex < dropIndex && index > fromIndex && index <= dropIndex) {
+    return -draggedStride;
+  }
+  if (fromIndex > dropIndex && index >= dropIndex && index < fromIndex) {
+    return draggedStride;
+  }
+  return 0;
+}
+
+/** List-relative top for the insertion line (untransformed slot tops). */
+export function insertionLineOffsetPx(params: {
+  dropIndex: number;
+  slotTops: readonly number[];
+  listTop: number;
+}): number {
+  const top = params.slotTops[params.dropIndex];
+  if (top === undefined) {
+    return 0;
+  }
+  return top - params.listTop;
+}
+
+/**
+ * Vertical space the dragged row occupies in the pile, including the
+ * gap before the next slot when there is one.
+ */
+export function draggedStridePx(params: {
+  fromIndex: number;
+  slotTops: readonly number[];
+  slotHeights: readonly number[];
+}): number {
+  const { fromIndex, slotTops, slotHeights } = params;
+  const here = slotTops[fromIndex];
+  const next = slotTops[fromIndex + 1];
+  if (here !== undefined && next !== undefined) {
+    return next - here;
+  }
+  return slotHeights[fromIndex] ?? 0;
+}

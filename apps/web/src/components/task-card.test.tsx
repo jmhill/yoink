@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { Task } from '@yoink/api-contracts';
 import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
 import { TaskCard } from './task-card';
@@ -23,76 +23,69 @@ const inertHandle: SortablePileDragHandle = {
 };
 
 describe('TaskCard', () => {
-  it('does not show pin or unpin chrome even when pinnedAt is set', () => {
+  it('shows only the complete circle and title — no ⋯, pencil, trash, or grip', () => {
     render(
       <TaskCard
         task={milk}
         onComplete={vi.fn()}
         onUncomplete={vi.fn()}
-        onDelete={vi.fn()}
         onEdit={vi.fn()}
       />
     );
 
-    expect(screen.queryByRole('button', { name: /^(Pin|Unpin) task/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Mark task "Milk" as complete' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'More actions for task "Milk"' })).toBeTruthy();
-  });
-
-  it('hides Edit and Trash icons on a smart-view row and keeps ⋯', () => {
-    render(
-      <TaskCard
-        task={milk}
-        onComplete={vi.fn()}
-        onUncomplete={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-      />
-    );
-
-    expect(screen.queryByRole('button', { name: 'Drag to reorder Milk' })).toBeNull();
+    expect(screen.getByText('Milk')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^(Pin|Unpin) task/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More actions for task "Milk"' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit task "Milk"' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete task "Milk"' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'More actions for task "Milk"' })).toBeTruthy();
+    expect(screen.queryByLabelText('Drag to reorder Milk')).toBeNull();
+    expect(document.querySelector('[data-drag-handle]')).toBeNull();
   });
 
-  it('shows a grip and ⋯ on a one-pile row, not Edit or Trash icons', () => {
-    render(
-      <TaskCard
-        task={milk}
-        onComplete={vi.fn()}
-        onUncomplete={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        dragHandle={inertHandle}
-      />
-    );
-
-    expect(screen.getByRole('button', { name: 'Drag to reorder Milk' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'More actions for task "Milk"' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Edit task "Milk"' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Delete task "Milk"' })).toBeNull();
-  });
-
-  it('offers Edit and Delete from ⋯', async () => {
+  it('opens edit when tapping the title or empty row space, not the circle', () => {
     const onEdit = vi.fn();
-    const onDelete = vi.fn();
+    const onComplete = vi.fn();
     render(
       <TaskCard
         task={milk}
-        onComplete={vi.fn()}
+        onComplete={onComplete}
         onUncomplete={vi.fn()}
-        onDelete={onDelete}
         onEdit={onEdit}
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'More actions for task "Milk"' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
-    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(milk));
+    fireEvent.click(screen.getByText('Milk'));
+    expect(onEdit).toHaveBeenCalledWith(milk);
+    expect(onComplete).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'More actions for task "Milk"' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
-    await waitFor(() => expect(onDelete).toHaveBeenCalledWith(milk.id));
+    onEdit.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark task "Milk" as complete' }));
+    expect(onComplete).toHaveBeenCalledWith(milk.id);
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it('shows a grip in reorder mode and does not edit, complete, or swipe', () => {
+    const onEdit = vi.fn();
+    const onComplete = vi.fn();
+    render(
+      <TaskCard
+        task={milk}
+        onComplete={onComplete}
+        onUncomplete={vi.fn()}
+        onEdit={onEdit}
+        dragHandle={inertHandle}
+        reorderMode
+      />
+    );
+
+    expect(document.querySelector('[data-drag-handle]')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'More actions for task "Milk"' })).toBeNull();
+
+    fireEvent.click(screen.getByText('Milk'));
+    expect(onEdit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark task "Milk" as complete' }));
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

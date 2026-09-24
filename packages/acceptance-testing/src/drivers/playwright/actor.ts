@@ -815,7 +815,30 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeReorderControls(): Promise<void> {
+      await expect(
+        tasksPage.reorderEnterButton().or(tasksPage.reorderDoneButton()).first()
+      ).toBeVisible();
+    }
+
+    async enterReorderMode(): Promise<void> {
+      await tasksPage.enterReorderMode();
+    }
+
+    async exitReorderMode(): Promise<void> {
+      await tasksPage.exitReorderMode();
+    }
+
+    async shouldSeeReorderMode(): Promise<void> {
+      await expect(tasksPage.placeHeading()).toHaveText('Reorder');
+      await expect(tasksPage.reorderDoneButton()).toBeVisible();
       await expect(tasksPage.dragHandles().first()).toBeVisible();
+    }
+
+    async shouldSeeDropSlotWhileDragging(
+      sourceTitle: string,
+      targetTitle: string
+    ): Promise<void> {
+      await tasksPage.seeDropSlotWhileDragging(sourceTitle, targetTitle);
     },
 
     async shouldSeeTaskTitles(titles: string[]): Promise<void> {
@@ -841,6 +864,8 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeReorderControls(): Promise<void> {
       await expect(tasksPage.reorderButtons()).toHaveCount(0);
+      await expect(tasksPage.reorderEnterButton()).toHaveCount(0);
+      await expect(tasksPage.reorderDoneButton()).toHaveCount(0);
       await expect(tasksPage.dragHandles()).toHaveCount(0);
     },
 
@@ -1623,6 +1648,7 @@ export const createPlaywrightActor = (
     async completeOpenTaskBySwipe(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       await tasksPage.swipeTaskRow(taskId, { x: 140, y: 0 });
+      await expect(page.getByRole('dialog', { name: 'Edit Task' })).toHaveCount(0);
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
@@ -1664,9 +1690,11 @@ export const createPlaywrightActor = (
       expect(geometry.completeHit.width).toBeGreaterThanOrEqual(44);
       expect(geometry.completeHit.height).toBeGreaterThanOrEqual(44);
       expect(aligned(geometry.completeCircleCenterY)).toBe(true);
-      expect(aligned(geometry.overflowCenterY)).toBe(true);
-      expect(geometry.overflowHit.width).toBeGreaterThanOrEqual(44);
-      expect(geometry.overflowHit.height).toBeGreaterThanOrEqual(44);
+      if (geometry.overflowHit.width > 0) {
+        expect(aligned(geometry.overflowCenterY)).toBe(true);
+        expect(geometry.overflowHit.width).toBeGreaterThanOrEqual(44);
+        expect(geometry.overflowHit.height).toBeGreaterThanOrEqual(44);
+      }
       if (geometry.gripCenterY !== null && geometry.gripHit) {
         expect(geometry.gripHit.width).toBeGreaterThanOrEqual(44);
         expect(geometry.gripHit.height).toBeGreaterThanOrEqual(44);
@@ -1700,11 +1728,12 @@ export const createPlaywrightActor = (
 
     async deleteOpenTaskFromRow(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
-      await tasksPage.openOverflow(taskId);
-      await tasksPage.deleteMenuItem(taskId).click();
-      const dialog = page.getByRole('dialog');
-      await expect(dialog.getByRole('heading', { name: 'Delete task?' })).toBeVisible();
-      await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+      await tasksPage.openEdit(taskId);
+      const edit = page.getByRole('dialog', { name: 'Edit Task' });
+      await edit.getByRole('button', { name: 'Delete', exact: true }).click();
+      const confirm = page.getByRole('dialog');
+      await expect(confirm.getByRole('heading', { name: 'Delete task?' })).toBeVisible();
+      await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
@@ -1713,36 +1742,41 @@ export const createPlaywrightActor = (
       const title = tasksPage.taskTitle(taskId);
       await expect(title).toBeVisible();
       await expect(title).not.toHaveRole('button');
-      const card = tasksPage.taskCard(taskId);
-      const titleText = (await title.innerText()).trim();
-      await expect(card.getByRole('button', { name: titleText, exact: true })).toHaveCount(0);
       await title.click();
+      await expect(page.getByRole('dialog', { name: 'Edit Task' })).toBeVisible();
+      await this.closeTaskEdit();
+    }
+
+    async shouldNotOpenTaskEditFromComplete(taskId: string): Promise<void> {
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.completeControl(taskId).click();
       await expect(page.getByRole('dialog', { name: 'Edit Task' })).toHaveCount(0);
+    }
+
+    async shouldNotOpenTaskEditInReorderMode(taskId: string): Promise<void> {
+      await tasksPage.enterReorderMode();
+      await tasksPage.waitForTask(taskId);
+      await tasksPage.taskTitle(taskId).click();
+      await expect(page.getByRole('dialog', { name: 'Edit Task' })).toHaveCount(0);
+      await tasksPage.exitReorderMode();
     },
 
     async shouldSeeTaskEditControl(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
-      const overflow = tasksPage.overflowControl(taskId);
-      await expect(overflow).toBeVisible();
-      await expect(overflow).toHaveRole('button');
-      const box = await overflow.boundingBox();
-      if (!box) {
-        throw new Error('task overflow should have a layout box');
-      }
-      expect(box.width).toBeGreaterThanOrEqual(44);
-      expect(box.height).toBeGreaterThanOrEqual(44);
+      await expect(tasksPage.overflowControl(taskId)).toHaveCount(0);
       await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
-      await tasksPage.openOverflow(taskId);
-      await expect(tasksPage.editMenuItem(taskId)).toBeVisible();
-      await tasksPage.closeOverflow(taskId);
+      await expect(tasksPage.rowDeleteIcon(taskId)).toHaveCount(0);
+      await tasksPage.openEdit(taskId);
+      await expect(page.getByRole('dialog', { name: 'Edit Task' })).toBeVisible();
+      await this.closeTaskEdit();
     },
 
     async shouldSeeOnePileTaskRowChrome(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       await expect(tasksPage.completeControl(taskId)).toBeVisible();
       await expect(tasksPage.taskTitle(taskId)).toBeVisible();
-      await expect(tasksPage.taskCard(taskId).locator('[data-drag-handle]')).toBeVisible();
-      await expect(tasksPage.overflowControl(taskId)).toBeVisible();
+      await expect(tasksPage.taskCard(taskId).locator('[data-drag-handle]')).toHaveCount(0);
+      await expect(tasksPage.overflowControl(taskId)).toHaveCount(0);
       await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
       await expect(tasksPage.rowDeleteIcon(taskId)).toHaveCount(0);
       await expect(tasksPage.pinButtons()).toHaveCount(0);
@@ -1752,7 +1786,7 @@ export const createPlaywrightActor = (
       await tasksPage.waitForTask(taskId);
       await expect(tasksPage.completeControl(taskId)).toBeVisible();
       await expect(tasksPage.taskTitle(taskId)).toBeVisible();
-      await expect(tasksPage.overflowControl(taskId)).toBeVisible();
+      await expect(tasksPage.overflowControl(taskId)).toHaveCount(0);
       await expect(tasksPage.taskCard(taskId).locator('[data-drag-handle]')).toHaveCount(0);
       await expect(tasksPage.rowEditIcon(taskId)).toHaveCount(0);
       await expect(tasksPage.rowDeleteIcon(taskId)).toHaveCount(0);
@@ -1761,19 +1795,19 @@ export const createPlaywrightActor = (
 
     async shouldSeeTaskRowOverflowActions(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
-      await tasksPage.openOverflow(taskId);
-      await expect(tasksPage.editMenuItem(taskId)).toBeVisible();
-      await expect(tasksPage.deleteMenuItem(taskId)).toBeVisible();
-      await tasksPage.closeOverflow(taskId);
+      await tasksPage.openEdit(taskId);
+      const dialog = page.getByRole('dialog', { name: 'Edit Task' });
+      await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+      await this.closeTaskEdit();
     },
 
     async shouldSeeTaskRowChromeReadable(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       const surfaceBg = await tasksPage.taskSurface().evaluate(readComputedBackgroundColor);
       const titleColor = await tasksPage.taskTitle(taskId).evaluate(readComputedColor);
-      const overflowColor = await tasksPage.overflowControl(taskId).evaluate(readComputedColor);
+      const completeColor = await tasksPage.completeControl(taskId).evaluate(readComputedColor);
       expect(titleColor).not.toEqual(surfaceBg);
-      expect(overflowColor).not.toEqual(surfaceBg);
+      expect(completeColor).not.toEqual(surfaceBg);
       await expect(tasksPage.completeControl(taskId)).toBeVisible();
       await expect(tasksPage.pinButtons()).toHaveCount(0);
     },
@@ -1791,6 +1825,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('#edit-task-due-date')).toBeVisible();
       await expect(page.locator('#edit-task-assignee')).toBeVisible();
       await expect(page.locator('#edit-task-list')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
     },
 
     async closeTaskEdit(): Promise<void> {

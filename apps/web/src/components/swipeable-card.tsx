@@ -18,6 +18,7 @@ export type SwipeableCardProps = {
   rightAction?: SwipeAction;
   disabled?: boolean;
   className?: string;
+  onSwipeStart?: () => void;
   'data-capture-id'?: string;
   'data-task-id'?: string;
 };
@@ -28,6 +29,7 @@ export function SwipeableCard({
   rightAction,
   disabled = false,
   className,
+  onSwipeStart,
   'data-capture-id': captureId,
   'data-task-id': taskId,
 }: SwipeableCardProps) {
@@ -68,6 +70,7 @@ export function SwipeableCard({
     onSwipeUpdate: handleSwipeUpdate,
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
+    onSwipeStart,
     onSwipeEnd: handleSwipeEnd,
     disabled: disabled || (!leftAction && !rightAction),
   });

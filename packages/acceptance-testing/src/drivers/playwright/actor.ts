@@ -818,21 +818,21 @@ export const createPlaywrightActor = (
       await expect(
         tasksPage.reorderEnterButton().or(tasksPage.reorderDoneButton()).first()
       ).toBeVisible();
-    }
+    },
 
     async enterReorderMode(): Promise<void> {
       await tasksPage.enterReorderMode();
-    }
+    },
 
     async exitReorderMode(): Promise<void> {
       await tasksPage.exitReorderMode();
-    }
+    },
 
     async shouldSeeReorderMode(): Promise<void> {
       await expect(tasksPage.placeHeading()).toHaveText('Reorder');
       await expect(tasksPage.reorderDoneButton()).toBeVisible();
       await expect(tasksPage.dragHandles().first()).toBeVisible();
-    }
+    },
 
     async shouldSeeDropSlotWhileDragging(
       sourceTitle: string,
@@ -1745,13 +1745,13 @@ export const createPlaywrightActor = (
       await title.click();
       await expect(page.getByRole('dialog', { name: 'Edit Task' })).toBeVisible();
       await this.closeTaskEdit();
-    }
+    },
 
     async shouldNotOpenTaskEditFromComplete(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       await tasksPage.completeControl(taskId).click();
       await expect(page.getByRole('dialog', { name: 'Edit Task' })).toHaveCount(0);
-    }
+    },
 
     async shouldNotOpenTaskEditInReorderMode(taskId: string): Promise<void> {
       await tasksPage.enterReorderMode();

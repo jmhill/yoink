@@ -1242,6 +1242,7 @@ export class TasksPage {
     }
     await this.reorderEnterButton().click();
     await this.reorderDoneButton().waitFor({ state: 'visible' });
+    await this.dragHandles().first().waitFor({ state: 'visible' });
   }
 
   async exitReorderMode(): Promise<void> {
@@ -1498,8 +1499,9 @@ export class TasksPage {
    */
   async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
     await this.enterReorderMode();
-    const source = this.openTaskRow(sourceTitle);
-    const target = this.openTaskRow(targetTitle);
+    await this.dragHandles().first().waitFor({ state: 'visible' });
+    const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
+    const target = this.openTaskRow(targetTitle).locator('[data-slot="task-title"]');
     await source.waitFor({ state: 'visible' });
     await target.waitFor({ state: 'visible' });
     const from = await source.boundingBox();
@@ -1516,6 +1518,7 @@ export class TasksPage {
     const startY = from.y + from.height / 2;
     const endX = to.x + to.width / 2;
     const endY = to.y + to.height / 2;
+    await source.hover();
     await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
     // One continuous gesture — enough samples to cross every open slot.
@@ -1621,8 +1624,9 @@ export class TasksPage {
    */
   async seeDropSlotWhileDragging(sourceTitle: string, targetTitle: string): Promise<void> {
     await this.enterReorderMode();
-    const source = this.openTaskRow(sourceTitle);
-    const target = this.openTaskRow(targetTitle);
+    await this.dragHandles().first().waitFor({ state: 'visible' });
+    const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
+    const target = this.openTaskRow(targetTitle).locator('[data-slot="task-title"]');
     await source.waitFor({ state: 'visible' });
     await target.waitFor({ state: 'visible' });
     const from = await source.boundingBox();
@@ -1634,6 +1638,7 @@ export class TasksPage {
     const startY = from.y + from.height / 2;
     const endX = to.x + to.width / 2;
     const endY = to.y + to.height / 2;
+    await source.hover();
     await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
     await this.page.mouse.move(endX, endY, { steps: 16 });

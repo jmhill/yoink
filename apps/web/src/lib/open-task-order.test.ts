@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  draggedStridePx,
   dropIndexForClientY,
+  insertionLineOffsetPx,
   moveOpenTaskId,
+  neighborShiftPx,
   openTaskIds,
   openTaskOrderChanged,
   orderOpenTasksAfterDragMove,
@@ -118,5 +121,67 @@ describe('orderOpenTasksAfterDragMove', () => {
       });
     }
     expect(next).toEqual(['butter', 'milk', 'eggs', 'bread']);
+  });
+});
+
+describe('neighborShiftPx', () => {
+  it('slides neighbors up when dragging down so a gap opens at the drop', () => {
+    expect(
+      neighborShiftPx({ index: 1, fromIndex: 0, dropIndex: 2, draggedStride: 80 })
+    ).toBe(-80);
+    expect(
+      neighborShiftPx({ index: 2, fromIndex: 0, dropIndex: 2, draggedStride: 80 })
+    ).toBe(-80);
+    expect(
+      neighborShiftPx({ index: 0, fromIndex: 0, dropIndex: 2, draggedStride: 80 })
+    ).toBe(0);
+  });
+
+  it('slides neighbors down when dragging up so a gap opens at the drop', () => {
+    expect(
+      neighborShiftPx({ index: 0, fromIndex: 2, dropIndex: 0, draggedStride: 80 })
+    ).toBe(80);
+    expect(
+      neighborShiftPx({ index: 1, fromIndex: 2, dropIndex: 0, draggedStride: 80 })
+    ).toBe(80);
+    expect(
+      neighborShiftPx({ index: 2, fromIndex: 2, dropIndex: 0, draggedStride: 80 })
+    ).toBe(0);
+  });
+
+  it('does not shift anyone when the pointer stays on the origin slot', () => {
+    expect(
+      neighborShiftPx({ index: 1, fromIndex: 1, dropIndex: 1, draggedStride: 80 })
+    ).toBe(0);
+  });
+});
+
+describe('insertionLineOffsetPx', () => {
+  it('places the line at the drop slot relative to the list', () => {
+    expect(
+      insertionLineOffsetPx({ dropIndex: 2, slotTops: [100, 180, 260], listTop: 100 })
+    ).toBe(160);
+  });
+});
+
+describe('draggedStridePx', () => {
+  it('uses the distance to the next slot when there is one', () => {
+    expect(
+      draggedStridePx({
+        fromIndex: 0,
+        slotTops: [0, 88, 176],
+        slotHeights: [80, 80, 80],
+      })
+    ).toBe(88);
+  });
+
+  it('uses the last row height when dragging the last item', () => {
+    expect(
+      draggedStridePx({
+        fromIndex: 2,
+        slotTops: [0, 88, 176],
+        slotHeights: [80, 80, 80],
+      })
+    ).toBe(80);
   });
 });

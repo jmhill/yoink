@@ -32,6 +32,7 @@ type TaskEditModalProps = {
   task: Task | null;
   sourceCapture: Capture | null;
   onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => void;
+  onDelete: (taskId: string) => void;
   isLoading?: boolean;
   isFetchingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
@@ -44,6 +45,7 @@ export function TaskEditModal({
   task,
   sourceCapture,
   onSave,
+  onDelete,
   isLoading = false,
   isFetchingCapture = false,
   members = [],
@@ -240,18 +242,29 @@ export function TaskEditModal({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
             <Button
               type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+              variant="destructive"
+              data-slot="task-edit-delete"
+              onClick={() => task && onDelete(task.id)}
               disabled={isLoading}
             >
-              Cancel
+              Delete
             </Button>
-            <Button type="submit" disabled={isLoading || !title.trim()}>
-              {isLoading ? 'Saving...' : 'Save'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading || !title.trim()}>
+                {isLoading ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

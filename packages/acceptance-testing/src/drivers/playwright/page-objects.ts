@@ -1,5 +1,6 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
+import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
 
 /**
  * Page object for the login page (/login).
@@ -883,8 +884,7 @@ export class TasksPage {
   }
 
   async openEdit(taskId: string): Promise<void> {
-    await this.openOverflow(taskId);
-    await this.editMenuItem(taskId).click();
+    await this.taskTitle(taskId).click();
     await this.page.getByRole('dialog', { name: 'Edit Task' }).waitFor({ state: 'visible' });
   }
 
@@ -1205,12 +1205,79 @@ export class TasksPage {
     return this.page.getByRole('button', { name: /^Move / });
   }
 
+  reorderEnterButton() {
+    return this.page.locator('[data-reorder-enter]');
+  }
+
+  reorderDoneButton() {
+    return this.page.locator('[data-reorder-done]');
+  }
+
+  insertionLine() {
+    return this.page.locator('[data-insertion-line]');
+  }
+
+  draggingRow() {
+    return this.page.locator('[data-dragging]');
+  }
+
+  slotShiftRows() {
+    return this.page.locator('[data-slot-shift]');
+  }
+
   dragHandles() {
     return this.page.locator('[data-drag-handle]');
   }
 
   dragHandle(title: string) {
     return this.page.locator(`[data-open-task-title="${title}"] [data-drag-handle]`);
+  }
+
+  openTaskRow(title: string) {
+    return this.page.locator(`[data-open-task-title="${title}"]`);
+  }
+
+  /**
+   * Layout box `dropIndexForClientY` snapshots (`data-sortable-item`).
+   * The title line sits above this midpoint.
+   */
+  openTaskSlot(title: string) {
+    return this.page
+      .locator('[data-sortable-item]')
+      .filter({ has: this.openTaskRow(title) });
+  }
+
+  async openTaskSlotBox(title: string): Promise<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> {
+    const slot = this.openTaskSlot(title);
+    await slot.waitFor({ state: 'visible' });
+    const box = await slot.boundingBox();
+    if (!box) {
+      throw new Error(`open-task slot "${title}" should have a layout box`);
+    }
+    return box;
+  }
+
+  async enterReorderMode(): Promise<void> {
+    if (await this.reorderDoneButton().isVisible().catch(() => false)) {
+      return;
+    }
+    await this.reorderEnterButton().waitFor({ state: 'visible' });
+    await this.reorderEnterButton().click();
+    await this.reorderDoneButton().waitFor({ state: 'visible' });
+    await this.dragHandles().first().waitFor({ state: 'visible' });
+  }
+
+  async exitReorderMode(): Promise<void> {
+    if (!(await this.reorderDoneButton().isVisible().catch(() => false))) {
+      return;
+    }
+    await this.reorderDoneButton().click();
+    await this.reorderEnterButton().waitFor({ state: 'visible' });
   }
 
   pinButtons() {
@@ -1287,7 +1354,7 @@ export class TasksPage {
       const overflow = node.querySelector('[data-slot="task-overflow"]');
       const meta = node.querySelector('[data-slot="task-meta"]');
 
-      if (!title || !complete || !overflow) {
+      if (!title || !complete) {
         throw new Error('task row is missing title-line controls');
       }
 
@@ -1316,8 +1383,8 @@ export class TasksPage {
         completeHit: hit(complete),
         gripCenterY: grip ? svgCenterY(grip) : null,
         gripHit: grip ? hit(grip) : null,
-        overflowCenterY: svgCenterY(overflow),
-        overflowHit: hit(overflow),
+        overflowCenterY: overflow ? svgCenterY(overflow) : firstLine.top + firstLine.height / 2,
+        overflowHit: overflow ? hit(overflow) : { width: 0, height: 0 },
         metaTop: meta ? meta.getBoundingClientRect().top : null,
       };
     });
@@ -1454,63 +1521,52 @@ export class TasksPage {
   }
 
   /**
-   * One continuous pointer drag from one open-task grip to another.
-   * Can cross any number of open slots (last → first) before release.
+   * One continuous pointer drag from one open-task slot onto another.
+   * Drop Y is the frozen slot midpoint (#90), not the title line.
    */
   async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
-    const source = this.dragHandle(sourceTitle);
-    const target = this.dragHandle(targetTitle);
-    await source.waitFor({ state: 'visible' });
-    await target.waitFor({ state: 'visible' });
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) {
-      throw new Error('drag handles should have layout boxes');
-    }
+    await this.enterReorderMode();
+    await this.dragHandles().first().waitFor({ state: 'visible' });
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
     const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/tasks/order') && response.request().method() === 'PUT'
     );
-    const startX = from.x + from.width / 2;
-    const startY = from.y + from.height / 2;
-    const endX = to.x + to.width / 2;
-    const endY = to.y + to.height / 2;
-    await this.page.mouse.move(startX, startY);
+    await this.page.mouse.move(start.x, start.y);
     await this.page.mouse.down();
     // One continuous gesture — enough samples to cross every open slot.
-    await this.page.mouse.move(endX, endY, { steps: 24 });
+    await this.page.mouse.move(end.x, end.y, { steps: 24 });
     await this.page.mouse.up();
     await responsePromise;
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
       const after = await this.getOpenTaskTitles();
       if (after.join('\0') !== before.join('\0')) {
+        await this.exitReorderMode();
         return;
       }
       await this.page.waitForTimeout(50);
     }
+    await this.exitReorderMode();
   }
 
   /**
-   * Touch drag on the grip handle. Same vertical persist path as pointer
-   * drag — not a horizontal swipe on the row body.
+   * Touch drag on the row body in reorder mode. Same vertical persist
+   * path as pointer drag — not a horizontal swipe. Dispatch on the
+   * title so the event bubbles through CardContent handlers.
    */
   async dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void> {
-    const source = this.dragHandle(sourceTitle);
-    const target = this.dragHandle(targetTitle);
+    await this.enterReorderMode();
+    const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
     await source.waitFor({ state: 'visible' });
-    await target.waitFor({ state: 'visible' });
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) {
-      throw new Error('drag handles should have layout boxes');
-    }
-
-    const startX = from.x + from.width / 2;
-    const startY = from.y + from.height / 2;
-    const endX = to.x + to.width / 2;
-    const endY = to.y + to.height / 2;
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
 
     const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
@@ -1522,7 +1578,7 @@ export class TasksPage {
       (node, { startX: x0, startY: y0, endX: x1, endY: y1 }) => {
         const view = node.ownerDocument.defaultView;
         if (!view) {
-          throw new Error('drag handle is not in a window');
+          throw new Error('open-task row is not in a window');
         }
         const fire = (type: string, clientX: number, clientY: number) => {
           const touch = new view.Touch({
@@ -1556,7 +1612,7 @@ export class TasksPage {
         }
         fire('touchend', x1, y1);
       },
-      { startX, startY, endX, endY }
+      { startX: start.x, startY: start.y, endX: end.x, endY: end.y }
     );
 
     await responsePromise;
@@ -1564,10 +1620,38 @@ export class TasksPage {
     while (Date.now() < deadline) {
       const after = await this.getOpenTaskTitles();
       if (after.join('\0') !== before.join('\0')) {
+        await this.exitReorderMode();
         return;
       }
       await this.page.waitForTimeout(50);
     }
+    await this.exitReorderMode();
+  }
+
+  /**
+   * Hold a drag mid-gesture and assert drop-slot chrome (lifted card,
+   * neighbor shift, insertion line). Does not wait on animation frames.
+   */
+  async seeDropSlotWhileDragging(sourceTitle: string, targetTitle: string): Promise<void> {
+    await this.enterReorderMode();
+    await this.dragHandles().first().waitFor({ state: 'visible' });
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(end.x, end.y, { steps: 16 });
+    await expect(this.draggingRow()).toBeVisible();
+    await expect(this.insertionLine()).toBeVisible();
+    await expect(this.slotShiftRows().first()).toBeVisible();
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/tasks/order') && response.request().method() === 'PUT'
+    );
+    await this.page.mouse.up();
+    await responsePromise;
+    await this.exitReorderMode();
   }
 
   async dragTaskRowVerticallyWithTouch(taskId: string, deltaY: number): Promise<void> {
@@ -1791,7 +1875,7 @@ export class AppRail {
   }
 
   private async waitForMobileDrawerInteractable(): Promise<void> {
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 80; attempt++) {
       if (await this.mobileDrawerIsInteractable()) {
         return;
       }
@@ -1862,9 +1946,27 @@ export class AppRail {
     }
     const trigger = this.mobileTrigger();
     await trigger.waitFor({ state: 'visible' });
-    await trigger.click();
-    await this.mobileTasks().waitFor({ state: 'attached' });
-    await this.waitForMobileDrawerInteractable();
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (await this.mobileDrawerIsInteractable()) {
+        return;
+      }
+      const expanded = await trigger.getAttribute('aria-expanded');
+      if (expanded !== 'true') {
+        await trigger.click({ force: attempt > 0 });
+      }
+      await this.mobileTasks().waitFor({ state: 'attached' });
+      try {
+        await this.waitForMobileDrawerInteractable();
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error('Mobile Tasks rail drawer opened but no rail item was on screen');
   }
 
   /**

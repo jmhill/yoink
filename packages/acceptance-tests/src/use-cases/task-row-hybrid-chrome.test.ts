@@ -3,29 +3,28 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Issue #115: hybrid task-row chrome.
+ * Issue #118: tap-to-edit rows (normal mode).
  *
- * Product lock Justin + Polly 2026-09-22:
- * One-pile (named list + Unlisted): complete, title, grip; Edit/Delete
- * behind ⋯ — no pencil/trash icons next to the grip.
- * Smart views (Today / Upcoming / Mine / Done): complete, title, ⋯ only.
- * No grip. Pin stays gone (#111). Theme tokens. Mobile + desktop.
+ * Product lock Justin 2026-09-24 (revised 2:40pm CT):
+ * Every task screen shows only the complete circle and the title.
+ * No ⋯, pencil, trash, or grip. Tap the row (not the circle) to edit.
+ * Delete lives in the edit dialog. Swipe-to-complete must not open Edit.
  *
- * Out of scope: Inbox↔Tasks shell, realtime, pin revive, reorder rules.
+ * Supersedes #115 / #117 row chrome and #88's explicit Edit button.
  */
 
 const isoDateOffset = (days: number): string =>
   new Date(Date.now() + days * 86_400_000).toISOString().split('T')[0]!;
 
 usingDrivers(['playwright'] as const, (ctx) => {
-  describe(`Task row hybrid chrome [${ctx.driverName}]`, () => {
+  describe(`Task row tap-to-edit chrome [${ctx.driverName}]`, () => {
     let alice: BrowserActor;
 
     beforeEach(async () => {
-      alice = await ctx.createActor('alice-ui-story-25-hybrid-chrome@example.com');
+      alice = await ctx.createActor('alice-ui-story-118-tap-edit@example.com');
     });
 
-    it('shows complete, title, and grip on named-list and Unlisted — no Edit/Trash icons', async () => {
+    it('shows only the complete circle and title on named-list and Unlisted', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const notes = await alice.createTask({ title: 'Notes' });
@@ -34,13 +33,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOnePileTaskRowChrome(milk.id);
       await alice.shouldSeeLargeCompleteControlOnTask(milk.id);
+      await alice.shouldSeeReorderControls();
 
       await alice.openRailUnlisted();
       await alice.shouldSeeOnePileTaskRowChrome(notes.id);
       await alice.shouldSeeLargeCompleteControlOnTask(notes.id);
+      await alice.shouldSeeReorderControls();
     });
 
-    it('offers Edit and Delete from ⋯ on one-pile rows', async () => {
+    it('opens edit from the row and deletes from the edit dialog', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
@@ -48,7 +49,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.useDesktopViewport();
       await alice.openRailNamedList('Groceries');
-      await alice.shouldSeeTaskRowOverflowActions(milk.id);
       await alice.openTaskEditFromRow(milk.id);
       await alice.shouldSeeExistingTaskEditUi();
       await alice.closeTaskEdit();
@@ -58,10 +58,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
       await alice.openRailUnlisted();
-      await alice.shouldSeeTaskRowOverflowActions(notes.id);
+      await alice.openTaskEditFromRow(notes.id);
+      await alice.shouldSeeExistingTaskEditUi();
+      await alice.closeTaskEdit();
     });
 
-    it('shows ⋯ and no grip on Today, Upcoming, Mine, and Done', async () => {
+    it('shows the same chrome on Today, Upcoming, Mine, and Done — no Reorder', async () => {
       const call = await alice.createTask({
         title: 'Call',
         dueDate: isoDateOffset(0),
@@ -78,8 +80,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailSmartView('today');
       await alice.shouldSeeSmartViewTaskRowChrome(call.id);
-      await alice.shouldSeeTaskRowOverflowActions(call.id);
       await alice.shouldNotSeeReorderControls();
+      await alice.openTaskEditFromRow(call.id);
+      await alice.shouldSeeExistingTaskEditUi();
+      await alice.closeTaskEdit();
 
       await alice.openRailSmartView('upcoming');
       await alice.shouldSeeSmartViewTaskRowChrome(later.id);
@@ -91,11 +95,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailSmartView('done');
       await alice.shouldSeeSmartViewTaskRowChrome(finished.id);
-      await alice.shouldSeeTaskRowOverflowActions(finished.id);
       await alice.shouldNotSeeReorderControls();
+      await alice.openTaskEditFromRow(finished.id);
+      await alice.shouldSeeExistingTaskEditUi();
+      await alice.closeTaskEdit();
     });
 
-    it('uses the same hybrid chrome on a phone', async () => {
+    it('uses the same chrome on a phone', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
       const notes = await alice.createTask({ title: 'Notes' });
@@ -108,7 +114,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openMobileBottomTab('tasks');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOnePileTaskRowChrome(milk.id);
-      await alice.shouldSeeTaskRowOverflowActions(milk.id);
+      await alice.shouldSeeReorderControls();
 
       await alice.openRailUnlisted();
       await alice.shouldSeeOnePileTaskRowChrome(notes.id);
@@ -155,9 +161,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
 });
 
 usingDrivers(['http'] as const, (ctx) => {
-  describe(`Task row hybrid chrome — HTTP stubs [${ctx.driverName}]`, () => {
-    it('stubs hybrid-chrome operations as browser-only', async () => {
-      const alice = await ctx.createActor('alice-ui-story-25-hybrid-chrome-http@example.com');
+  describe(`Task row tap-to-edit chrome — HTTP stubs [${ctx.driverName}]`, () => {
+    it('stubs tap-to-edit operations as browser-only', async () => {
+      const alice = await ctx.createActor('alice-ui-story-118-tap-edit-http@example.com');
       const actor = ctx.createActorWithCredentials({
         email: alice.email,
         userId: alice.userId,

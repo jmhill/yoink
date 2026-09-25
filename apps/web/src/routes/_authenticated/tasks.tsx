@@ -105,7 +105,6 @@ type TodayTaskListProps = {
   exitDirections: Record<string, ExitDirection>;
   onComplete: (id: string) => void;
   onUncomplete: (id: string) => void;
-  onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
   isLoading: boolean;
   assigneeLabel: (task: Task) => string | undefined;
@@ -122,7 +121,6 @@ function TodayTaskList({
   exitDirections,
   onComplete,
   onUncomplete,
-  onDelete,
   onEdit,
   isLoading,
   assigneeLabel,
@@ -144,7 +142,6 @@ function TodayTaskList({
             task={task}
             onComplete={onComplete}
             onUncomplete={onUncomplete}
-            onDelete={onDelete}
             onEdit={onEdit}
             isLoading={isLoading}
             assigneeLabel={assigneeLabel(task)}
@@ -221,6 +218,7 @@ function TasksPage() {
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -251,6 +249,10 @@ function TasksPage() {
     };
     loadMembers();
   }, []);
+
+  useEffect(() => {
+    setIsReordering(false);
+  }, [pile, filter]);
 
   const assigneeLabelFor = (task: Task): string | undefined => {
     if (!task.assigneeId) return undefined;
@@ -740,9 +742,32 @@ function TasksPage() {
     >
       <Header leading={<MobileTasksRailDrawer />} />
       <PlaceHeading
-        title={taskPlaceHeading(place)}
+        title={isReordering ? 'Reorder' : taskPlaceHeading(place)}
         subcopy={taskPlaceSubcopy(place, tasks.length)}
         subcopyTestId={TASK_PLACE_SUBCOPY_TEST_ID}
+        action={
+          canReorder && tasks.length > 0 ? (
+            isReordering ? (
+              <Button
+                type="button"
+                variant="secondary"
+                data-reorder-done=""
+                onClick={() => setIsReordering(false)}
+              >
+                Done
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                data-reorder-enter=""
+                onClick={() => setIsReordering(true)}
+              >
+                Reorder
+              </Button>
+            )
+          ) : null
+        }
       />
 
       <Tabs value={filter ?? 'none'} onValueChange={handleFilterChange} className="mb-6 hidden md:block">
@@ -837,7 +862,6 @@ function TasksPage() {
           exitDirections={exitDirections}
           onComplete={handleComplete}
           onUncomplete={handleUncomplete}
-          onDelete={(id) => setDeleteConfirmId(id)}
           onEdit={handleEdit}
           isLoading={isLoading}
           assigneeLabel={assigneeLabelFor}
@@ -857,7 +881,6 @@ function TasksPage() {
                     task={task}
                     onComplete={handleComplete}
                     onUncomplete={handleUncomplete}
-                    onDelete={(id) => setDeleteConfirmId(id)}
                     onEdit={handleEdit}
                     isLoading={isLoading}
                     assigneeLabel={assigneeLabelFor(task)}
@@ -879,12 +902,12 @@ function TasksPage() {
                 task={task}
                 onComplete={handleComplete}
                 onUncomplete={handleUncomplete}
-                onDelete={(id) => setDeleteConfirmId(id)}
                 onEdit={handleEdit}
                 isLoading={isLoading}
                 assigneeLabel={assigneeLabelFor(task)}
                 listLabel={listLabelFor(task)}
                 dragHandle={dragHandle}
+                reorderMode={isReordering}
               />
             )}
           />
@@ -900,7 +923,6 @@ function TasksPage() {
                 task={task}
                 onComplete={handleComplete}
                 onUncomplete={handleUncomplete}
-                onDelete={(id) => setDeleteConfirmId(id)}
                 onEdit={handleEdit}
                 isLoading={isLoading}
                 assigneeLabel={assigneeLabelFor(task)}
@@ -946,6 +968,10 @@ function TasksPage() {
         task={editingTask}
         sourceCapture={sourceCapture}
         onSave={handleSaveEdit}
+        onDelete={(id) => {
+          setEditingTask(null);
+          setDeleteConfirmId(id);
+        }}
         isLoading={updateMutation.isPending}
         isFetchingCapture={isFetchingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}

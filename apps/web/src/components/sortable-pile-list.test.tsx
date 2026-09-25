@@ -125,4 +125,19 @@ describe('SortablePileList', () => {
       tasks[1]!.id,
     ]);
   });
+
+  it('opens a neighbor gap and an insertion line while the pointer is down', () => {
+    const { root } = renderPile();
+    const handle = dragHandle('Milk');
+
+    firePointer(handle, 'pointerdown', { clientY: 40, buttons: 1 });
+    firePointer(handle, 'pointermove', { clientY: 200, buttons: 1 });
+
+    expect(root.querySelector('[data-dragging]')).toBeTruthy();
+    expect(root.querySelector('[data-insertion-line]')).toBeTruthy();
+    expect(root.querySelector('[data-slot-shift="up"]')).toBeTruthy();
+
+    firePointer(handle, 'pointerup', { clientY: 200, buttons: 0 });
+    expect(root.querySelector('[data-insertion-line]')).toBeNull();
+  });
 });

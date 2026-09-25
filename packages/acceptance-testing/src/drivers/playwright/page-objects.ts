@@ -1,5 +1,6 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
+import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
 
 /**
  * Page object for the login page (/login).
@@ -1236,10 +1237,36 @@ export class TasksPage {
     return this.page.locator(`[data-open-task-title="${title}"]`);
   }
 
+  /**
+   * Layout box `dropIndexForClientY` snapshots (`data-sortable-item`).
+   * The title line sits above this midpoint.
+   */
+  openTaskSlot(title: string) {
+    return this.page
+      .locator('[data-sortable-item]')
+      .filter({ has: this.openTaskRow(title) });
+  }
+
+  async openTaskSlotBox(title: string): Promise<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> {
+    const slot = this.openTaskSlot(title);
+    await slot.waitFor({ state: 'visible' });
+    const box = await slot.boundingBox();
+    if (!box) {
+      throw new Error(`open-task slot "${title}" should have a layout box`);
+    }
+    return box;
+  }
+
   async enterReorderMode(): Promise<void> {
     if (await this.reorderDoneButton().isVisible().catch(() => false)) {
       return;
     }
+    await this.reorderEnterButton().waitFor({ state: 'visible' });
     await this.reorderEnterButton().click();
     await this.reorderDoneButton().waitFor({ state: 'visible' });
     await this.dragHandles().first().waitFor({ state: 'visible' });
@@ -1494,35 +1521,25 @@ export class TasksPage {
   }
 
   /**
-   * One continuous pointer drag from one open-task grip to another.
-   * Can cross any number of open slots (last → first) before release.
+   * One continuous pointer drag from one open-task slot onto another.
+   * Drop Y is the frozen slot midpoint (#90), not the title line.
    */
   async dragOpenTaskOnto(sourceTitle: string, targetTitle: string): Promise<void> {
     await this.enterReorderMode();
     await this.dragHandles().first().waitFor({ state: 'visible' });
-    const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
-    const target = this.openTaskRow(targetTitle).locator('[data-slot="task-title"]');
-    await source.waitFor({ state: 'visible' });
-    await target.waitFor({ state: 'visible' });
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) {
-      throw new Error('open-task rows should have layout boxes');
-    }
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
     const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/tasks/order') && response.request().method() === 'PUT'
     );
-    const startX = from.x + from.width / 2;
-    const startY = from.y + from.height / 2;
-    const endX = to.x + to.width / 2;
-    const endY = to.y + to.height / 2;
-    await source.hover();
-    await this.page.mouse.move(startX, startY);
+    await this.page.mouse.move(start.x, start.y);
     await this.page.mouse.down();
     // One continuous gesture — enough samples to cross every open slot.
-    await this.page.mouse.move(endX, endY, { steps: 24 });
+    await this.page.mouse.move(end.x, end.y, { steps: 24 });
     await this.page.mouse.up();
     await responsePromise;
     const deadline = Date.now() + 5000;
@@ -1539,24 +1556,17 @@ export class TasksPage {
 
   /**
    * Touch drag on the row body in reorder mode. Same vertical persist
-   * path as pointer drag — not a horizontal swipe.
+   * path as pointer drag — not a horizontal swipe. Dispatch on the
+   * title so the event bubbles through CardContent handlers.
    */
   async dragOpenTaskOntoByTouch(sourceTitle: string, targetTitle: string): Promise<void> {
     await this.enterReorderMode();
     const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
-    const target = this.openTaskRow(targetTitle).locator('[data-slot="task-title"]');
     await source.waitFor({ state: 'visible' });
-    await target.waitFor({ state: 'visible' });
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) {
-      throw new Error('open-task rows should have layout boxes');
-    }
-
-    const startX = from.x + from.width / 2;
-    const startY = from.y + from.height / 2;
-    const endX = to.x + to.width / 2;
-    const endY = to.y + to.height / 2;
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
 
     const before = await this.getOpenTaskTitles();
     const responsePromise = this.page.waitForResponse(
@@ -1602,7 +1612,7 @@ export class TasksPage {
         }
         fire('touchend', x1, y1);
       },
-      { startX, startY, endX, endY }
+      { startX: start.x, startY: start.y, endX: end.x, endY: end.y }
     );
 
     await responsePromise;
@@ -1625,23 +1635,13 @@ export class TasksPage {
   async seeDropSlotWhileDragging(sourceTitle: string, targetTitle: string): Promise<void> {
     await this.enterReorderMode();
     await this.dragHandles().first().waitFor({ state: 'visible' });
-    const source = this.openTaskRow(sourceTitle).locator('[data-slot="task-title"]');
-    const target = this.openTaskRow(targetTitle).locator('[data-slot="task-title"]');
-    await source.waitFor({ state: 'visible' });
-    await target.waitFor({ state: 'visible' });
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) {
-      throw new Error('open-task rows should have layout boxes');
-    }
-    const startX = from.x + from.width / 2;
-    const startY = from.y + from.height / 2;
-    const endX = to.x + to.width / 2;
-    const endY = to.y + to.height / 2;
-    await source.hover();
-    await this.page.mouse.move(startX, startY);
+    const from = await this.openTaskSlotBox(sourceTitle);
+    const to = await this.openTaskSlotBox(targetTitle);
+    const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const end = dropPointForOpenTaskSlot(from, to);
+    await this.page.mouse.move(start.x, start.y);
     await this.page.mouse.down();
-    await this.page.mouse.move(endX, endY, { steps: 16 });
+    await this.page.mouse.move(end.x, end.y, { steps: 16 });
     await expect(this.draggingRow()).toBeVisible();
     await expect(this.insertionLine()).toBeVisible();
     await expect(this.slotShiftRows().first()).toBeVisible();

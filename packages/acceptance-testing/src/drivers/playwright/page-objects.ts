@@ -1875,7 +1875,7 @@ export class AppRail {
   }
 
   private async waitForMobileDrawerInteractable(): Promise<void> {
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 80; attempt++) {
       if (await this.mobileDrawerIsInteractable()) {
         return;
       }
@@ -1946,9 +1946,27 @@ export class AppRail {
     }
     const trigger = this.mobileTrigger();
     await trigger.waitFor({ state: 'visible' });
-    await trigger.click();
-    await this.mobileTasks().waitFor({ state: 'attached' });
-    await this.waitForMobileDrawerInteractable();
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (await this.mobileDrawerIsInteractable()) {
+        return;
+      }
+      const expanded = await trigger.getAttribute('aria-expanded');
+      if (expanded !== 'true') {
+        await trigger.click({ force: attempt > 0 });
+      }
+      await this.mobileTasks().waitFor({ state: 'attached' });
+      try {
+        await this.waitForMobileDrawerInteractable();
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error('Mobile Tasks rail drawer opened but no rail item was on screen');
   }
 
   /**

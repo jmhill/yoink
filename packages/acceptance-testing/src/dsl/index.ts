@@ -20,6 +20,7 @@ export type {
   AcceptInvitationResult,
   MintedAgent,
   HealthStatus,
+  PublicFileHeaders,
 } from './types.js';
 
 // Errors

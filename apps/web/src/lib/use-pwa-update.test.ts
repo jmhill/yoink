@@ -6,10 +6,22 @@ import { SKIP_WAITING_MESSAGE } from './pwa-service-worker';
 const mockUpdateServiceWorker = vi.fn();
 const mockSetNeedRefresh = vi.fn();
 const mockRegistrationUpdate = vi.fn();
+const { mockCaptureException } = vi.hoisted(() => ({
+  mockCaptureException: vi.fn(),
+}));
 
 let onRegisteredCallback:
   | ((swUrl: string, registration: ServiceWorkerRegistration | undefined) => void)
   | undefined;
+
+vi.mock('../instrument', () => ({
+  Sentry: {
+    captureException: (
+      error: unknown,
+      context?: { tags?: Record<string, string> }
+    ) => mockCaptureException(error, context),
+  },
+}));
 
 vi.mock('virtual:pwa-register/react', () => ({
   useRegisterSW: (options: {
@@ -46,59 +58,45 @@ describe('usePwaUpdate', () => {
   });
 
   const createMockRegistration = (
-    waiting?: { postMessage: ReturnType<typeof vi.fn> }
+    waiting?: { postMessage: ReturnType<typeof vi.fn> } | null
   ): ServiceWorkerRegistration =>
     ({
       update: mockRegistrationUpdate,
-      waiting: waiting ?? null,
+      waiting: waiting === undefined ? null : waiting,
     }) as unknown as ServiceWorkerRegistration;
 
-  describe('periodic update checks', () => {
-    it('schedules periodic update check every 5 minutes on registration', () => {
+  const register = (registration: ServiceWorkerRegistration) => {
+    act(() => {
+      onRegisteredCallback?.('sw.js', registration);
+    });
+  };
+
+  const flushUpdateCheck = async () => {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  };
+
+  describe('startup update checks', () => {
+    it('checks for a waiting worker and runs an update immediately on registration', async () => {
       renderHook(() => usePwaUpdate());
+      const waiting = { postMessage: vi.fn() };
+      register(createMockRegistration(waiting));
 
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
-
-      expect(mockRegistrationUpdate).not.toHaveBeenCalled();
-
-      // Advance 5 minutes
-      act(() => {
-        vi.advanceTimersByTime(5 * 60 * 1000);
-      });
+      expect(mockSetNeedRefresh).toHaveBeenCalledWith(true);
       expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
 
-      // Advance another 5 minutes
-      act(() => {
-        vi.advanceTimersByTime(5 * 60 * 1000);
-      });
-      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+      await flushUpdateCheck();
+      expect(mockSetNeedRefresh).toHaveBeenCalledWith(true);
     });
 
-    it('swallows periodic update fetch failures', async () => {
-      mockRegistrationUpdate.mockRejectedValue(
-        new TypeError(
-          "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
-        )
-      );
-
+    it('does not show the banner on startup when no worker is waiting', async () => {
       renderHook(() => usePwaUpdate());
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
-
-      act(() => {
-        vi.advanceTimersByTime(5 * 60 * 1000);
-      });
-
-      await act(async () => {
-        await Promise.resolve();
-      });
+      register(createMockRegistration());
 
       expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+      await flushUpdateCheck();
+      expect(mockSetNeedRefresh).not.toHaveBeenCalledWith(true);
     });
 
     it('does not schedule update check if registration is undefined', () => {
@@ -115,16 +113,54 @@ describe('usePwaUpdate', () => {
     });
   });
 
+  describe('periodic update checks', () => {
+    it('keeps the 5-minute periodic update check after the prompt startup check', () => {
+      renderHook(() => usePwaUpdate());
+      register(createMockRegistration());
+
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(3);
+    });
+
+    it('reports periodic update fetch failures to Sentry without a user-facing error', async () => {
+      const error = new TypeError(
+        "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
+      );
+      mockRegistrationUpdate.mockRejectedValue(error);
+
+      renderHook(() => usePwaUpdate());
+      register(createMockRegistration());
+
+      await flushUpdateCheck();
+      expect(mockCaptureException).toHaveBeenCalledWith(error, {
+        tags: { 'pwa.update_check': 'failed' },
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+
+      await flushUpdateCheck();
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('visibility change updates', () => {
-    it('triggers update check when page becomes visible', () => {
+    it('triggers update check when page becomes visible after the debounce window', () => {
       renderHook(() => usePwaUpdate());
+      register(createMockRegistration());
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
 
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
-
-      // Simulate visibility change to visible
       Object.defineProperty(document, 'visibilityState', {
         value: 'visible',
         configurable: true,
@@ -133,77 +169,73 @@ describe('usePwaUpdate', () => {
       act(() => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
-
-      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not trigger update check when page becomes hidden', () => {
-      renderHook(() => usePwaUpdate());
-
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
-
-      // Simulate visibility change to hidden
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'hidden',
-        configurable: true,
-      });
-
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
-
-      expect(mockRegistrationUpdate).not.toHaveBeenCalled();
-    });
-
-    it('debounces visibility checks within 30 seconds', () => {
-      renderHook(() => usePwaUpdate());
-
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
-
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'visible',
-        configurable: true,
-      });
-
-      // First visibility change - should trigger update
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
       expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
 
-      // Advance 15 seconds (less than debounce threshold)
       act(() => {
-        vi.advanceTimersByTime(15 * 1000);
+        vi.advanceTimersByTime(30 * 1000);
       });
-
-      // Second visibility change - should be debounced
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
-      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
-
-      // Advance another 20 seconds (now past debounce threshold)
-      act(() => {
-        vi.advanceTimersByTime(20 * 1000);
-      });
-
-      // Third visibility change - should trigger update
       act(() => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
       expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
     });
 
+    it('does not trigger update check when page becomes hidden', () => {
+      renderHook(() => usePwaUpdate());
+      register(createMockRegistration());
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden',
+        configurable: true,
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(30 * 1000);
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('debounces visibility checks within 30 seconds', () => {
+      renderHook(() => usePwaUpdate());
+      register(createMockRegistration());
+
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(30 * 1000);
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        vi.advanceTimersByTime(15 * 1000);
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        vi.advanceTimersByTime(20 * 1000);
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(3);
+    });
+
     it('does not trigger update check if registration is not available', () => {
       renderHook(() => usePwaUpdate());
-
-      // Don't call onRegisteredCallback, so registration is undefined
 
       Object.defineProperty(document, 'visibilityState', {
         value: 'visible',
@@ -217,18 +249,16 @@ describe('usePwaUpdate', () => {
       expect(mockRegistrationUpdate).not.toHaveBeenCalled();
     });
 
-    it('swallows service worker update fetch failures', async () => {
-      mockRegistrationUpdate.mockRejectedValue(
-        new TypeError(
-          "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
-        )
+    it('reports visibility update fetch failures to Sentry without a user-facing error', async () => {
+      const error = new TypeError(
+        "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
       );
+      mockRegistrationUpdate.mockRejectedValue(error);
 
       renderHook(() => usePwaUpdate());
-      const registration = createMockRegistration();
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
+      register(createMockRegistration());
+      await flushUpdateCheck();
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
 
       Object.defineProperty(document, 'visibilityState', {
         value: 'visible',
@@ -236,14 +266,15 @@ describe('usePwaUpdate', () => {
       });
 
       act(() => {
+        vi.advanceTimersByTime(30 * 1000);
+      });
+      act(() => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
 
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(1);
+      await flushUpdateCheck();
+      expect(mockRegistrationUpdate).toHaveBeenCalledTimes(2);
+      expect(mockCaptureException).toHaveBeenCalledTimes(1);
     });
 
     it('cleans up visibility listener on unmount', () => {
@@ -272,17 +303,13 @@ describe('usePwaUpdate', () => {
       });
 
       const { result } = renderHook(() => usePwaUpdate());
-      const registration = createMockRegistration({ postMessage });
-      act(() => {
-        onRegisteredCallback?.('sw.js', registration);
-      });
+      register(createMockRegistration({ postMessage }));
 
       act(() => {
         result.current.refresh();
       });
 
       expect(postMessage).toHaveBeenCalledWith(SKIP_WAITING_MESSAGE);
-      expect(mockRegistrationUpdate).not.toHaveBeenCalled();
       expect(mockUpdateServiceWorker).not.toHaveBeenCalled();
       expect(result.current.isUpdating).toBe(true);
     });
@@ -311,6 +338,57 @@ describe('usePwaUpdate', () => {
       });
 
       expect(mockSetNeedRefresh).toHaveBeenCalledWith(false);
+    });
+
+    it('does not bring the banner back from later checks in the same session', async () => {
+      const { result } = renderHook(() => usePwaUpdate());
+      const registration = createMockRegistration({ postMessage: vi.fn() });
+      register(registration);
+      await flushUpdateCheck();
+      mockSetNeedRefresh.mockClear();
+
+      act(() => {
+        result.current.dismiss();
+      });
+      expect(mockSetNeedRefresh).toHaveBeenCalledWith(false);
+      mockSetNeedRefresh.mockClear();
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60 * 1000);
+      });
+      await flushUpdateCheck();
+      expect(mockSetNeedRefresh).not.toHaveBeenCalledWith(true);
+
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await flushUpdateCheck();
+      expect(mockSetNeedRefresh).not.toHaveBeenCalledWith(true);
+    });
+
+    it('shows the banner again on the next launch while a worker is still waiting', async () => {
+      const waiting = { postMessage: vi.fn() };
+      const { result, unmount } = renderHook(() => usePwaUpdate());
+      register(createMockRegistration(waiting));
+      await flushUpdateCheck();
+
+      act(() => {
+        result.current.dismiss();
+      });
+      unmount();
+      mockSetNeedRefresh.mockClear();
+      mockRegistrationUpdate.mockClear();
+
+      renderHook(() => usePwaUpdate());
+      register(createMockRegistration(waiting));
+      await flushUpdateCheck();
+
+      expect(mockSetNeedRefresh).toHaveBeenCalledWith(true);
+      expect(mockRegistrationUpdate).toHaveBeenCalled();
     });
   });
 });

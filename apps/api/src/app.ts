@@ -46,6 +46,7 @@ import type {
 import type { OrganizationStore } from './access/domain/organization-store.js';
 import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
 import { createLoggerOptions } from './logging/index.js';
+import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {
@@ -214,17 +215,10 @@ export const createApp = async (deps: AppDependencies) => {
   const adminDistPath = join(publicPath, 'admin');
   const webDistPath = publicPath;
   
-  // Cache control: assets have hashes so can be cached long-term,
-  // but HTML files should not be cached to ensure fresh deploys work
-  const setHeaders = (res: { setHeader: (name: string, value: string) => void }, path: string) => {
-    if (path.endsWith('.html')) {
-      // Don't cache HTML - ensures users get latest app version
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    } else if (path.includes('/assets/')) {
-      // Assets have content hashes - cache for 1 year
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-  };
+  // Cache control: hashed /assets/ can be immutable. HTML and PWA entry
+  // files (sw.js, workbox-*.js, registerSW.js, manifest) must never cache
+  // so a phone can notice a new build.
+  const setHeaders = applyStaticCacheHeaders;
 
   // Serve web app at root (if build exists)
   if (existsSync(join(webDistPath, 'index.html'))) {
@@ -254,7 +248,7 @@ export const createApp = async (deps: AppDependencies) => {
   // SPA fallback - serve index.html for unmatched routes
   app.setNotFoundHandler((request, reply) => {
     // Set no-cache for HTML fallback responses
-    reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    reply.header('Cache-Control', NEVER_CACHE_CONTROL);
     
     // Admin SPA routes
     if (request.url.startsWith('/admin')) {

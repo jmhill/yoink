@@ -1,4 +1,4 @@
-import type { HealthStatus } from './types.js';
+import type { HealthStatus, PublicFileHeaders } from './types.js';
 
 /**
  * Health check operations.
@@ -10,4 +10,10 @@ export type Health = {
    * Does not require authentication.
    */
   check(): Promise<HealthStatus>;
+
+  /**
+   * Inspect status and Cache-Control for a public static file.
+   * Used to assert PWA entry files are never cached.
+   */
+  getPublicFileHeaders(path: string): Promise<PublicFileHeaders>;
 };

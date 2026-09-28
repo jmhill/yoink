@@ -165,6 +165,13 @@ export type HealthStatus = {
   database: 'connected' | 'disconnected';
 };
 
+export type PublicFileHeaders = {
+  statusCode: number;
+  cacheControl: string | undefined;
+  contentType: string | undefined;
+  body: string;
+};
+
 export type AcceptInvitationResult = {
   organizationId: string;
   organizationName: string;

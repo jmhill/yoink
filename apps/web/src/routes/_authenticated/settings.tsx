@@ -11,6 +11,7 @@ import { MembersSection } from '@/components/members-section';
 import { InvitationsSection } from '@/components/invitations-section';
 import { TokensSection } from '@/components/tokens-section';
 import { logout, getSession, type SessionInfo, type SessionOrganization } from '@/api/auth';
+import { formatBuildLabel } from '@/lib/build-label';
 
 export const Route = createFileRoute('/_authenticated/settings')({
   component: SettingsPage,
@@ -150,13 +151,16 @@ function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>About</CardTitle>
-              <CardDescription>App information</CardDescription>
+              <CardDescription>Which build is running on this device</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Version</span>
-                <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
-                  {__COMMIT_SHA__ === 'dev' ? 'dev' : __COMMIT_SHA__.slice(0, 7)}
+                <span className="text-muted-foreground">Build</span>
+                <code
+                  className="rounded bg-muted px-2 py-1 font-mono text-xs"
+                  title={__COMMIT_SHA__}
+                >
+                  {formatBuildLabel(__COMMIT_SHA__)}
                 </code>
               </div>
             </CardContent>

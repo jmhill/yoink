@@ -2,47 +2,107 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   SKIP_WAITING_MESSAGE,
   PWA_RELOAD_FALLBACK_MS,
-  swallowRegistrationUpdate,
+  UPDATE_CHECK_FAILURE_DEDUPE_MS,
+  checkForServiceWorkerUpdate,
+  createRateLimitedUpdateCheckReporter,
   activateWaitingServiceWorkerAndReload,
 } from './pwa-service-worker';
 
-describe('swallowRegistrationUpdate', () => {
-  it('calls registration.update()', () => {
+describe('checkForServiceWorkerUpdate', () => {
+  it('calls registration.update()', async () => {
     const update = vi.fn().mockResolvedValue(undefined);
-    swallowRegistrationUpdate({
-      update,
-    } as unknown as ServiceWorkerRegistration);
+    const reportFailure = vi.fn();
 
-    expect(update).toHaveBeenCalledTimes(1);
-  });
-
-  it('swallows a rejected update() promise', async () => {
-    const update = vi.fn().mockRejectedValue(
-      new TypeError(
-        "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
-      )
+    await checkForServiceWorkerUpdate(
+      { update } as unknown as ServiceWorkerRegistration,
+      reportFailure
     );
 
-    swallowRegistrationUpdate({
-      update,
-    } as unknown as ServiceWorkerRegistration);
-
-    await Promise.resolve();
-    await Promise.resolve();
-
     expect(update).toHaveBeenCalledTimes(1);
+    expect(reportFailure).not.toHaveBeenCalled();
   });
 
-  it('swallows a synchronous throw from update()', () => {
-    const update = vi.fn(() => {
-      throw new TypeError('Failed to update a ServiceWorker');
-    });
+  it('reports a rejected update() without throwing', async () => {
+    const error = new TypeError(
+      "Failed to update a ServiceWorker for scope ('https://example/') with script ('https://example/sw.js'): An unknown error occurred when fetching the script."
+    );
+    const update = vi.fn().mockRejectedValue(error);
+    const reportFailure = vi.fn();
 
-    expect(() =>
-      swallowRegistrationUpdate({
-        update,
-      } as unknown as ServiceWorkerRegistration)
-    ).not.toThrow();
+    await expect(
+      checkForServiceWorkerUpdate(
+        { update } as unknown as ServiceWorkerRegistration,
+        reportFailure
+      )
+    ).resolves.toBeUndefined();
+
+    expect(reportFailure).toHaveBeenCalledWith(error);
+  });
+
+  it('reports a synchronous throw from update() without throwing', async () => {
+    const error = new TypeError('Failed to update a ServiceWorker');
+    const update = vi.fn(() => {
+      throw error;
+    });
+    const reportFailure = vi.fn();
+
+    await expect(
+      checkForServiceWorkerUpdate(
+        { update } as unknown as ServiceWorkerRegistration,
+        reportFailure
+      )
+    ).resolves.toBeUndefined();
+
+    expect(reportFailure).toHaveBeenCalledWith(error);
+  });
+});
+
+describe('createRateLimitedUpdateCheckReporter', () => {
+  it('reports the first failure to Sentry with a clear tag', () => {
+    const captureException = vi.fn();
+    const report = createRateLimitedUpdateCheckReporter({
+      captureException,
+      now: () => 1_000,
+    });
+    const error = new TypeError('Failed to update a ServiceWorker');
+
+    report(error);
+
+    expect(captureException).toHaveBeenCalledWith(error, {
+      tags: { 'pwa.update_check': 'failed' },
+    });
+  });
+
+  it('dedupes the same offline error within the interval', () => {
+    let now = 1_000;
+    const captureException = vi.fn();
+    const report = createRateLimitedUpdateCheckReporter({
+      captureException,
+      now: () => now,
+    });
+    const error = new TypeError('Failed to update a ServiceWorker');
+
+    report(error);
+    now += UPDATE_CHECK_FAILURE_DEDUPE_MS - 1;
+    report(error);
+
+    expect(captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports again after the interval so a later outage is visible', () => {
+    let now = 1_000;
+    const captureException = vi.fn();
+    const report = createRateLimitedUpdateCheckReporter({
+      captureException,
+      now: () => now,
+    });
+    const error = new TypeError('Failed to update a ServiceWorker');
+
+    report(error);
+    now += UPDATE_CHECK_FAILURE_DEDUPE_MS;
+    report(error);
+
+    expect(captureException).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -179,6 +179,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNamedListOverflowOnRail('Shopping');
       await alice.renameNamedListFromRail('Shopping', 'Errands', { submit: 'done' });
       await alice.shouldSeeRailItems(railWith('Errands'));
+      await alice.openRailNamedList('Errands');
+      await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTaskPlace('Errands', '1 open');
     }, 60_000);
 

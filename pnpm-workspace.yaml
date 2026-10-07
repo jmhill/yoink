@@ -4,11 +4,14 @@ packages:
 
 overrides:
   minimatch: '>=10.2.3'
-  '@isaacs/brace-expansion': '>=5.0.9'
-  brace-expansion: '>=5.0.9'
+  '@isaacs/brace-expansion': '>=5.0.11'
+  brace-expansion: '>=5.0.11'
   handlebars: '>=4.7.9'
   '@babel/plugin-transform-modules-systemjs': '^7.29.4'
-  fast-uri: '>=3.1.5'
+  fast-uri: '>=3.1.7'
+  proxy-addr: '>=2.0.8'
+  tinypool: '>=2.1.2'
+  source-map-js: '>=1.2.2'
   rollup: '>=4.59.0'
   ws: '>=8.21.0'
   picomatch: '>=4.0.4'
@@ -20,6 +23,13 @@ auditConfig:
     - GHSA-83w8-p2f5-377r
     - GHSA-c96f-x56v-gq3h
     - GHSA-f88m-g3jw-g9cj
+    # Fastify 4 has no patch; these are fixed only in 5.12.2.
+    - GHSA-667r-xxjv-c9mm
+    - GHSA-p68q-wchp-6fh7
+    - GHSA-hwr6-493r-vm6h
+    - GHSA-9q9j-q6p8-xq58
+    # braces has no patched release.
+    - GHSA-vfj7-8cjw-p6xm
 
 allowBuilds:
   '@sentry/cli': true

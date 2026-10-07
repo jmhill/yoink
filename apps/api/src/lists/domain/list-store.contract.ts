@@ -82,6 +82,60 @@ export const runListStoreContractTests = (options: ListStoreContractOptions) => 
       });
     });
 
+    describe('update', () => {
+      it('renames a saved list', async () => {
+        const list = createTestList({
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          name: 'groceries',
+        });
+        await store.save(list);
+
+        const updated = { ...list, name: 'Shopping' };
+        const result = await store.update(updated);
+        expect(result.isOk()).toBe(true);
+
+        const found = await store.findById(list.id);
+        expect(found.isOk()).toBe(true);
+        if (found.isOk()) {
+          expect(found.value).toEqual(updated);
+        }
+      });
+
+      it('allows changing only the capitalization of its own name', async () => {
+        const list = createTestList({
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          name: 'groceries',
+        });
+        await store.save(list);
+
+        const result = await store.update({ ...list, name: 'Groceries' });
+        expect(result.isOk()).toBe(true);
+
+        const found = await store.findById(list.id);
+        expect(found.isOk()).toBe(true);
+        if (found.isOk()) {
+          expect(found.value?.name).toBe('Groceries');
+        }
+      });
+
+      it('rejects a name another list in the organization already has ignoring case', async () => {
+        await store.save(
+          createTestList({
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            name: 'Groceries',
+          })
+        );
+        const weekend = createTestList({
+          id: '550e8400-e29b-41d4-a716-446655440016',
+          name: 'Weekend',
+        });
+        await store.save(weekend);
+
+        const result = await store.update({ ...weekend, name: 'groceries' });
+        expect(result.isErr()).toBe(true);
+      });
+    });
+
     describe('findByOrganization', () => {
       it('returns lists for that organization only', async () => {
         const org1 = createTestList({

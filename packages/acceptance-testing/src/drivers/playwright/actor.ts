@@ -500,6 +500,34 @@ export const createPlaywrightActor = (
       return created;
     },
 
+    async renameNamedList(id: string, name: string): Promise<NamedList> {
+      const response = await page.request.patch(`/api/lists/${id}`, { data: { name } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Name is required');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('List', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'A list with this name already exists');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to rename named list: ${response.status()}`);
+      }
+      const renamed = (await response.json()) as NamedList;
+      await page.reload();
+      await tasksPage.waitForTasksOrEmpty();
+      if (await appRail.desktop().isVisible().catch(() => false)) {
+        await expect(appRail.itemByLabel(renamed.name)).toBeVisible();
+      }
+      return renamed;
+    },
+
     async deleteNamedList(id: string): Promise<void> {
       await appRail.waitForVisible();
       const lists = await tasksPage.getNamedPiles();
@@ -1082,9 +1110,18 @@ export const createPlaywrightActor = (
       await appRail.waitForVisible();
       await expect(appRail.overflowByLabel(name)).toBeVisible();
       await appRail.openOverflow(name);
-      const deleteItem = page.getByRole('menuitem', { name: 'Delete', exact: true });
+      const menu = page.getByRole('menu');
+      const renameItem = menu.getByRole('menuitem', { name: 'Rename', exact: true });
+      const deleteItem = menu.getByRole('menuitem', { name: 'Delete', exact: true });
+      await expect(renameItem).toBeVisible();
       await expect(deleteItem).toBeVisible();
-      await page.getByRole('menu').press('Escape');
+      const renameBox = await renameItem.boundingBox();
+      const deleteBox = await deleteItem.boundingBox();
+      if (!renameBox || !deleteBox) {
+        throw new Error(`Rename and Delete should both be laid out for "${name}"`);
+      }
+      expect(renameBox.y).toBeLessThan(deleteBox.y);
+      await menu.press('Escape');
       await expect(deleteItem).toBeHidden();
     },
 
@@ -1124,6 +1161,35 @@ export const createPlaywrightActor = (
       if (result.status === 'has-open-tasks') {
         throw new ConflictError('This list still has open tasks');
       }
+    },
+
+    async renameNamedListFromRail(
+      currentName: string,
+      newName: string,
+      options?: { submit?: 'enter' | 'done' }
+    ): Promise<NamedList> {
+      const result = await appRail.renameNamedList(currentName, newName, options?.submit ?? 'enter');
+      if (result.status === 'empty' || result.status === 'invalid') {
+        throw new ValidationError('Name is required');
+      }
+      if (result.status === 'duplicate') {
+        throw new ConflictError('A list with this name already exists');
+      }
+      return {
+        id: result.id,
+        name: result.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+      };
+    },
+
+    async cancelNamedListRenameFromRail(
+      currentName: string,
+      draftName: string,
+      via: 'escape' | 'click-away'
+    ): Promise<void> {
+      await appRail.cancelNamedListRename(currentName, draftName, via);
     },
 
     async shouldBeOnTaskFilter(
@@ -2583,6 +2649,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async createNamedList(_name: string): Promise<NamedList> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async renameNamedList(_id: string, _name: string): Promise<NamedList> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

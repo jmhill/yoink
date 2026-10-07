@@ -12,6 +12,7 @@ type NamedListRailOverflowProps = {
   surface: 'desktop' | 'mobile-tasks';
   listId: string;
   label: string;
+  onRename: () => void;
   onDelete: () => void;
 };
 
@@ -19,13 +20,14 @@ type NamedListRailOverflowProps = {
  * Named-list ⋯ overflow. Kit DropdownMenu cannot sit above the chrome
  * on either surface: Vaul’s overlay is the HTML top layer on phone, and
  * the always-visible desktop rail is a z-50 overflow clip that hides or
- * swallows a same-layer portaled menu. Portal Delete above that chrome
- * and place it from the trigger box.
+ * swallows a same-layer portaled menu. Portal Rename + Delete above that
+ * chrome and place them from the trigger box.
  */
 export function NamedListRailOverflow({
   surface,
   listId,
   label,
+  onRename,
   onDelete,
 }: NamedListRailOverflowProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +159,22 @@ export function NamedListRailOverflow({
                 width: NAMED_LIST_OVERFLOW_MENU_WIDTH,
               }}
             >
+              <button
+                type="button"
+                role="menuitem"
+                className={cn(
+                  'relative flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-left text-sm',
+                  'outline-hidden select-none'
+                )}
+                onClick={() => {
+                  close();
+                  window.setTimeout(() => {
+                    onRename();
+                  }, 0);
+                }}
+              >
+                Rename
+              </button>
               <button
                 type="button"
                 role="menuitem"

@@ -1,5 +1,6 @@
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { handleCreateNamedList } from './handle-create-named-list.js';
+import { handleRenameNamedList } from './handle-rename-named-list.js';
 import { handleDeleteNamedList } from './handle-delete-named-list.js';
 import { handleListOpenTasksOnList } from './handle-list-open-tasks.js';
 import { handleListUnlistedOpenTasks } from './handle-list-unlisted-open-tasks.js';
@@ -31,6 +32,8 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
     handleListNamedLists(query, deps),
   create: (command: Parameters<typeof handleCreateNamedList>[0]) =>
     handleCreateNamedList(command, deps),
+  rename: (command: Parameters<typeof handleRenameNamedList>[0]) =>
+    handleRenameNamedList(command, deps),
   delete: (command: Parameters<typeof handleDeleteNamedList>[0]) =>
     handleDeleteNamedList(command, deps),
   listOpenTasks: (query: Parameters<typeof handleListOpenTasksOnList>[0]) =>

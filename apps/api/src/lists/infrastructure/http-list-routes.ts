@@ -78,6 +78,46 @@ export const registerListRoutes = async (
         );
       },
 
+      rename: async ({ params, body, request }) => {
+        const result = await listHandlers.rename({
+          id: params.id,
+          name: body.name,
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          ({ view }) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_LIST_NAME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message },
+                };
+              case 'DUPLICATE_LIST_NAME':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              case 'LIST_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
       listOpenTasks: async ({ params, request }) => {
         const result = await listHandlers.listOpenTasks({
           listId: params.id,

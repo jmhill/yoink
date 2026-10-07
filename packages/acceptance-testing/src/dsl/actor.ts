@@ -48,6 +48,7 @@ export type CoreActor = {
   // Named lists. createNamedList is the product write path (any org member).
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
+  renameNamedList(id: string, name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
@@ -649,8 +650,8 @@ export type BrowserActorOperations = {
   createNamedListFromRail(name: string): Promise<NamedList>;
 
   /**
-   * Assert this named-list rail row has a kit overflow whose menu includes Delete.
-   * Unlisted and smart views do not have this overflow.
+   * Assert this named-list rail row has a kit overflow whose menu includes
+   * Rename next to Delete. Unlisted and smart views do not have this overflow.
    */
   shouldSeeNamedListOverflowOnRail(name: string): Promise<void>;
 
@@ -702,6 +703,28 @@ export type BrowserActorOperations = {
    * @throws ConflictError if the list still has open tasks
    */
   deleteNamedListFromRail(name: string): Promise<void>;
+
+  /**
+   * Rename a named list from its rail-row overflow: Rename next to Delete,
+   * then in-place edit. Saves on Enter or Done.
+   * @throws ValidationError if the name is blank or over 200 characters
+   * @throws ConflictError if another list already has the name
+   */
+  renameNamedListFromRail(
+    currentName: string,
+    newName: string,
+    options?: { submit?: 'enter' | 'done' }
+  ): Promise<NamedList>;
+
+  /**
+   * Start a rail rename, type a draft, then cancel via Escape or clicking away.
+   * The old name stays.
+   */
+  cancelNamedListRenameFromRail(
+    currentName: string,
+    draftName: string,
+    via: 'escape' | 'click-away'
+  ): Promise<void>;
 
   /**
    * Assert the current Tasks filter (does not navigate).
@@ -1237,6 +1260,7 @@ export type AnonymousActor = {
   getCapture(id: string): Promise<Capture>;
   listNamedLists(): Promise<NamedList[]>;
   createNamedList(name: string): Promise<NamedList>;
+  renameNamedList(id: string, name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;

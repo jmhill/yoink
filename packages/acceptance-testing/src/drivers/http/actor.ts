@@ -244,6 +244,28 @@ export const createHttpActor = (
       return response.json<NamedList>();
     },
 
+    async renameNamedList(id: string, name: string): Promise<NamedList> {
+      const response = await client.patch(`/api/lists/${id}`, { name }, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('List', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A list with this name already exists');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to rename named list: ${response.body}`);
+      }
+      return response.json<NamedList>();
+    },
+
     async deleteNamedList(id: string): Promise<void> {
       const response = await client.delete(`/api/lists/${id}`, authHeaders());
       if (response.statusCode === 401) {
@@ -651,6 +673,22 @@ export const createHttpActor = (
 
     async deleteNamedListFromRail(_name: string): Promise<void> {
       throw new UnsupportedOperationError('deleteNamedListFromRail', 'http');
+    },
+
+    async renameNamedListFromRail(
+      _currentName: string,
+      _newName: string,
+      _options?: { submit?: 'enter' | 'done' }
+    ): Promise<NamedList> {
+      throw new UnsupportedOperationError('renameNamedListFromRail', 'http');
+    },
+
+    async cancelNamedListRenameFromRail(
+      _currentName: string,
+      _draftName: string,
+      _via: 'escape' | 'click-away'
+    ): Promise<void> {
+      throw new UnsupportedOperationError('cancelNamedListRenameFromRail', 'http');
     },
 
     async shouldBeOnTaskFilter(
@@ -1395,6 +1433,18 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
 
   async createNamedList(name: string): Promise<NamedList> {
     const response = await client.post('/api/lists', { name });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 400) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    return response.json<NamedList>();
+  },
+
+  async renameNamedList(id: string, name: string): Promise<NamedList> {
+    const response = await client.patch(`/api/lists/${id}`, { name });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }

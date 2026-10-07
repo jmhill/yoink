@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   createTestApp,
+  createTestAppWithWebAuthn,
   TEST_TOKEN,
   TEST_ORG_ID,
   TEST_USER_ID,
@@ -168,6 +169,225 @@ describe('POST /api/lists', () => {
 
     expect(second.statusCode).toBe(201);
     expect(second.json<NamedList>().name).toBe('Weekend');
+  });
+});
+
+describe('PATCH /api/lists/:id', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const auth = { authorization: `Bearer ${TEST_TOKEN}` };
+
+  const createList = async (name: string): Promise<NamedList> => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: auth,
+      payload: { name },
+    });
+    expect(response.statusCode).toBe(201);
+    return response.json<NamedList>();
+  };
+
+  const listedNames = async (): Promise<string[]> => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/lists',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    return response.json<{ lists: NamedList[] }>().lists.map((list) => list.name);
+  };
+
+  it('renames a named list for the authenticated member', async () => {
+    const list = await createList('groceries');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: 'Shopping' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<NamedList>();
+    expect(body).toEqual({
+      ...list,
+      name: 'Shopping',
+    });
+    expect(await listedNames()).toEqual(['Shopping']);
+  });
+
+  it('rejects an empty name and keeps the old name', async () => {
+    const list = await createList('Groceries');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: '' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toHaveProperty('message');
+    expect(await listedNames()).toEqual(['Groceries']);
+  });
+
+  it('rejects a name over 200 characters and keeps the old name', async () => {
+    const list = await createList('Groceries');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: 'a'.repeat(201) },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(await listedNames()).toEqual(['Groceries']);
+  });
+
+  it('rejects a name another list already has ignoring case and keeps the old name', async () => {
+    const list = await createList('Groceries');
+    await createList('Weekend');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: 'weekend' },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      message: 'A list with this name already exists',
+    });
+    expect(await listedNames()).toEqual(['Groceries', 'Weekend']);
+  });
+
+  it('allows changing only the capitalization of its own name', async () => {
+    const list = await createList('groceries');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: 'Groceries' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<NamedList>().name).toBe('Groceries');
+    expect(await listedNames()).toEqual(['Groceries']);
+  });
+
+  it('leaves tasks, their order, assignees, and list membership untouched', async () => {
+    const list = await createList('Groceries');
+    const milk = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Milk', listId: list.id, assigneeId: TEST_USER_ID },
+    });
+    expect(milk.statusCode).toBe(201);
+    const eggs = await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Eggs', listId: list.id },
+    });
+    expect(eggs.statusCode).toBe(201);
+    const milkTask = milk.json<Task>();
+    const eggsTask = eggs.json<Task>();
+
+    const reordered = await app.inject({
+      method: 'PUT',
+      url: `/api/lists/${list.id}/tasks/order`,
+      headers: auth,
+      payload: { taskIds: [eggsTask.id, milkTask.id] },
+    });
+    expect(reordered.statusCode).toBe(200);
+
+    const renamed = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: auth,
+      payload: { name: 'Shopping' },
+    });
+    expect(renamed.statusCode).toBe(200);
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: `/api/lists/${list.id}/tasks`,
+      headers: auth,
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Eggs',
+      'Milk',
+    ]);
+
+    const milkAfter = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${milkTask.id}`,
+      headers: auth,
+    });
+    expect(milkAfter.statusCode).toBe(200);
+    const milkBody = milkAfter.json<Task>();
+    expect(milkBody.listId).toBe(list.id);
+    expect(milkBody.assigneeId).toBe(TEST_USER_ID);
+    expect(milkBody.title).toBe('Milk');
+    expect(milkBody.openOrder).toBe(1);
+  });
+
+  it('lets an agent token rename a named list in the same organization', async () => {
+    app = await createTestAppWithWebAuthn();
+    const list = await createList('Bot board');
+    const minted = await app.inject({
+      method: 'POST',
+      url: `/api/organizations/${TEST_ORG_ID}/agents`,
+      headers: auth,
+      payload: { name: 'List renamer' },
+    });
+    expect(minted.statusCode).toBe(201);
+    const { rawToken } = minted.json<{ rawToken: string }>();
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      headers: { authorization: `Bearer ${rawToken}` },
+      payload: { name: 'Renamed board' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<NamedList>().name).toBe('Renamed board');
+    expect(await listedNames()).toEqual(['Renamed board']);
+  });
+
+  it('returns 401 without authentication', async () => {
+    const list = await createList('Groceries');
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${list.id}`,
+      payload: { name: 'Shopping' },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('returns 404 for an unknown list', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/lists/550e8400-e29b-41d4-a716-446655440099',
+      headers: auth,
+      payload: { name: 'Shopping' },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ message: 'List not found' });
   });
 });
 

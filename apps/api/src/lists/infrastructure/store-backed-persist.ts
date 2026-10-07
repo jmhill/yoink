@@ -27,6 +27,14 @@ export const createStoreBackedPersist = ({
       }
       case 'NamedListDeleted':
         return clearCompletedListIds(event.id).andThen(() => store.remove(event.id));
+      case 'NamedListRenamed':
+        return store.findById(event.id).andThen((current) => {
+          const view = applyNamedListEvent(current, event);
+          if (!view) {
+            return errAsync(storageError('Rename did not project a list'));
+          }
+          return store.update(view);
+        });
     }
   };
 };

@@ -1,6 +1,7 @@
 export const NAMED_LIST_OVERFLOW_MENU_WIDTH = 128;
 export const NAMED_LIST_OVERFLOW_MENU_GAP = 4;
-export const NAMED_LIST_OVERFLOW_MENU_HEIGHT = 36;
+/** Two kit menuitems (Rename + Delete) plus the menu padding. */
+export const NAMED_LIST_OVERFLOW_MENU_HEIGHT = 72;
 
 export type OverflowBox = {
   top: number;
@@ -12,9 +13,10 @@ export type OverflowBox = {
 };
 
 /**
- * Place Delete to the right of ⋯, flipping above the trigger when it
- * would run off the container. Same math for the mobile drawer (coords
- * relative to the sheet) and the desktop rail (viewport / position:fixed).
+ * Place Rename and Delete to the right of ⋯, flipping above the trigger
+ * when it would run off the container. Same math for the mobile drawer
+ * (coords relative to the sheet) and the desktop rail (viewport /
+ * position:fixed).
  */
 export function namedListOverflowMenuCoords(input: {
   trigger: OverflowBox;

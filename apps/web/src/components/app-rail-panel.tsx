@@ -16,6 +16,7 @@ import { tsr, tsrLists } from '@/api/client';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
+import { NamedListRenameField } from '@/components/named-list-rename-field';
 import {
   INBOX_MODE_CUE,
   RAIL_LABEL_WRAP_CLASS,
@@ -98,6 +99,7 @@ export function AppRailPanel({
   const [createListOpen, setCreateListOpen] = useState(false);
   const [createListKey, setCreateListKey] = useState(0);
   const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
+  const [renamingListId, setRenamingListId] = useState<string | null>(null);
 
   const openCreateList = () => {
     setCreateListKey((key) => key + 1);
@@ -259,34 +261,56 @@ export function AppRailPanel({
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     )}
                   >
-                    <Link
-                      to="/tasks"
-                      search={railTaskSearch(item)}
-                      data-rail-item="named"
-                      data-rail-label={item.label}
-                      data-rail-list-id={item.listId}
-                      data-rail-active={active ? 'true' : undefined}
-                      className={cn(
-                        'flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-sm transition-colors',
-                        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                      )}
-                      onClick={active ? onDestinationChosen : undefined}
-                    >
-                      <Icon className="h-5 w-5 shrink-0" />
-                      <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
-                        {item.label}
-                      </span>
-                    </Link>
-                    {railItemHasOverflow(item) ? (
-                      <NamedListRailOverflow
-                        surface={surface}
-                        listId={item.listId}
-                        label={item.label}
-                        onDelete={() => {
-                          setDeletingList({ id: item.listId, name: item.label });
-                        }}
-                      />
-                    ) : null}
+                    {renamingListId === item.listId ? (
+                      <div
+                        data-rail-item="named"
+                        data-rail-label={item.label}
+                        data-rail-list-id={item.listId}
+                        data-rail-active={active ? 'true' : undefined}
+                        className="flex min-w-0 flex-1 items-start"
+                      >
+                        <NamedListRenameField
+                          listId={item.listId}
+                          currentName={item.label}
+                          onCancel={() => setRenamingListId(null)}
+                          onRenamed={() => setRenamingListId(null)}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <Link
+                          to="/tasks"
+                          search={railTaskSearch(item)}
+                          data-rail-item="named"
+                          data-rail-label={item.label}
+                          data-rail-list-id={item.listId}
+                          data-rail-active={active ? 'true' : undefined}
+                          className={cn(
+                            'flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-sm transition-colors',
+                            active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                          )}
+                          onClick={active ? onDestinationChosen : undefined}
+                        >
+                          <Icon className="h-5 w-5 shrink-0" />
+                          <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                            {item.label}
+                          </span>
+                        </Link>
+                        {railItemHasOverflow(item) ? (
+                          <NamedListRailOverflow
+                            surface={surface}
+                            listId={item.listId}
+                            label={item.label}
+                            onRename={() => {
+                              setRenamingListId(item.listId);
+                            }}
+                            onDelete={() => {
+                              setDeletingList({ id: item.listId, name: item.label });
+                            }}
+                          />
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </Fragment>
               );

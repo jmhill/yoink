@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { CreateNamedListSchema, NamedListSchema, ReorderOpenTasksSchema } from './list.js';
+import {
+  CreateNamedListSchema,
+  NamedListSchema,
+  RenameNamedListSchema,
+  ReorderOpenTasksSchema,
+} from './list.js';
 
 describe('NamedListSchema', () => {
   const validList = {
@@ -77,6 +82,39 @@ describe('CreateNamedListSchema', () => {
 
   it('rejects a name over 200 characters', () => {
     const result = CreateNamedListSchema.safeParse({ name: 'a'.repeat(201) });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('RenameNamedListSchema', () => {
+  it('accepts a name', () => {
+    const result = RenameNamedListSchema.safeParse({ name: 'Shopping' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Shopping');
+    }
+  });
+
+  it('trims surrounding whitespace', () => {
+    const result = RenameNamedListSchema.safeParse({ name: '  Weekend  ' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Weekend');
+    }
+  });
+
+  it('rejects an empty name', () => {
+    const result = RenameNamedListSchema.safeParse({ name: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a whitespace-only name', () => {
+    const result = RenameNamedListSchema.safeParse({ name: '   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a name over 200 characters', () => {
+    const result = RenameNamedListSchema.safeParse({ name: 'a'.repeat(201) });
     expect(result.success).toBe(false);
   });
 });

@@ -48,6 +48,11 @@ export type DeleteNamedListError =
   | StorageError
   | ListNotFoundError
   | ListHasOpenTasksError;
+export type RenameNamedListError =
+  | StorageError
+  | InvalidListNameError
+  | DuplicateListNameError
+  | ListNotFoundError;
 export type ListOpenTasksOnListError = StorageError | ListNotFoundError;
 export type ReorderOpenTasksError =
   | StorageError

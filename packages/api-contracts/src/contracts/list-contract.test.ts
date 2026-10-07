@@ -36,8 +36,17 @@ describe('listContract', () => {
     expect(listContract.delete.responses).toHaveProperty('409');
   });
 
-  it('does not expose update', () => {
-    expect(listContract).not.toHaveProperty('update');
+  it('defines a rename endpoint', () => {
+    expect(listContract.rename.method).toBe('PATCH');
+    expect(listContract.rename.path).toBe('/api/lists/:id');
+  });
+
+  it('has 200, 400, 401, 404, and 409 responses on rename', () => {
+    expect(listContract.rename.responses).toHaveProperty('200');
+    expect(listContract.rename.responses).toHaveProperty('400');
+    expect(listContract.rename.responses).toHaveProperty('401');
+    expect(listContract.rename.responses).toHaveProperty('404');
+    expect(listContract.rename.responses).toHaveProperty('409');
   });
 
   it('defines list-open-tasks and reorder endpoints', () => {

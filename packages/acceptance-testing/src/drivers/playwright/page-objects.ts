@@ -2443,4 +2443,94 @@ export class AppRail {
     }
     return { status: 'deleted' };
   }
+
+  async renameNamedList(
+    currentName: string,
+    newName: string,
+    submit: 'enter' | 'done' = 'enter'
+  ): Promise<
+    | { status: 'renamed'; id: string; name: string }
+    | { status: 'empty' }
+    | { status: 'duplicate' }
+    | { status: 'invalid' }
+  > {
+    await this.ensureAvailable();
+    const listId = await this.itemByLabel(currentName).getAttribute('data-rail-list-id');
+    if (!listId) {
+      throw new Error(`Named list "${currentName}" has no id on the rail`);
+    }
+
+    await this.openOverflow(currentName);
+    const renameItem = this.page.getByRole('menuitem', { name: 'Rename', exact: true });
+    await renameItem.waitFor({ state: 'visible' });
+    await renameItem.click();
+
+    const input = this.page.locator('[data-list-rename-input]');
+    await input.waitFor({ state: 'visible' });
+    await input.fill(newName);
+
+    const done = this.page.locator('[data-list-rename-done]');
+    if (await done.isDisabled()) {
+      await this.page.keyboard.press('Escape');
+      await input.waitFor({ state: 'hidden' });
+      return { status: 'empty' };
+    }
+
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/lists/${listId}`) &&
+        response.request().method() === 'PATCH'
+    );
+    if (submit === 'done') {
+      await done.click();
+    } else {
+      await input.press('Enter');
+    }
+    const response = await responsePromise;
+
+    if (response.status() === 409) {
+      await this.page.locator('[data-list-rename-error]').waitFor({ state: 'visible' });
+      await this.page.keyboard.press('Escape');
+      await input.waitFor({ state: 'hidden' }).catch(() => undefined);
+      return { status: 'duplicate' };
+    }
+    if (response.status() === 400) {
+      await this.page.keyboard.press('Escape');
+      await input.waitFor({ state: 'hidden' }).catch(() => undefined);
+      return { status: 'invalid' };
+    }
+    if (response.status() !== 200) {
+      throw new Error(`Failed to rename named list from the rail: ${response.status()}`);
+    }
+
+    const body = (await response.json()) as { id: string; name: string };
+    await this.itemByLabel(body.name).waitFor({ state: 'visible' });
+    return { status: 'renamed', id: body.id, name: body.name };
+  }
+
+  async cancelNamedListRename(
+    currentName: string,
+    draftName: string,
+    via: 'escape' | 'click-away'
+  ): Promise<void> {
+    await this.ensureAvailable();
+    await this.openOverflow(currentName);
+    const renameItem = this.page.getByRole('menuitem', { name: 'Rename', exact: true });
+    await renameItem.waitFor({ state: 'visible' });
+    await renameItem.click();
+
+    const input = this.page.locator('[data-list-rename-input]');
+    await input.waitFor({ state: 'visible' });
+    await input.fill(draftName);
+
+    if (via === 'escape') {
+      await this.page.keyboard.press('Escape');
+    } else {
+      const heading = this.root().locator('[data-rail-heading="lists"]');
+      await heading.click({ force: true });
+    }
+
+    await input.waitFor({ state: 'hidden' });
+    await this.itemByLabel(currentName).waitFor({ state: 'visible' });
+  }
 }

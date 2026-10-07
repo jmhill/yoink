@@ -25,6 +25,30 @@ describe('applyNamedListEvent', () => {
     });
   });
 
+  describe('NamedListRenamed', () => {
+    it('projects only the new name onto the current list', () => {
+      const current: NamedList = {
+        id: 'list-id-1',
+        organizationId: 'org-123',
+        createdById: 'user-456',
+        name: 'groceries',
+        createdAt: '2025-01-15T10:00:00.000Z',
+      };
+
+      expect(
+        applyNamedListEvent(current, {
+          type: 'NamedListRenamed',
+          id: 'list-id-1',
+          organizationId: 'org-123',
+          name: 'Groceries',
+        })
+      ).toEqual({
+        ...current,
+        name: 'Groceries',
+      });
+    });
+  });
+
   describe('NamedListDeleted', () => {
     it('projects the list away', () => {
       const current: NamedList = {

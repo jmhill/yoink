@@ -58,6 +58,22 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
       );
     },
 
+    update: (list: NamedList): ResultAsync<void, StorageError> => {
+      return ResultAsync.fromPromise(
+        db
+          .execute({
+            sql: `
+              UPDATE lists
+              SET name = ?
+              WHERE id = ?
+            `,
+            args: [list.name, list.id],
+          })
+          .then(() => undefined),
+        (cause) => storageError('Failed to rename named list', cause)
+      );
+    },
+
     findById: (id: string): ResultAsync<NamedList | null, StorageError> => {
       return ResultAsync.fromPromise(
         db

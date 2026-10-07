@@ -16,5 +16,13 @@ export const applyNamedListEvent = (
       };
     case 'NamedListDeleted':
       return null;
+    case 'NamedListRenamed':
+      if (!_current) {
+        return null;
+      }
+      return {
+        ..._current,
+        name: event.name,
+      };
   }
 };

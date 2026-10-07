@@ -3,11 +3,10 @@ import type { CreateNamedListCommand } from './list-commands.js';
 import type { NamedListCreated } from './events.js';
 import {
   duplicateListNameError,
-  invalidListNameError,
   type DuplicateListNameError,
   type InvalidListNameError,
 } from './list-errors.js';
-import { NAMED_LIST_NAME_MAX_LENGTH, normalizeListName } from './list-name.js';
+import { listNameIsTaken, parseListName } from './list-name.js';
 
 export type DecideCreateNamedListInput = {
   command: CreateNamedListCommand;
@@ -24,21 +23,13 @@ export const decideCreateNamedList = ({
   id,
   now,
 }: DecideCreateNamedListInput): Result<NamedListCreated, DecideCreateNamedListError> => {
-  const name = command.name.trim();
-
-  if (name.length < 1) {
-    return err(invalidListNameError('Name is required'));
+  const parsed = parseListName(command.name);
+  if (parsed.isErr()) {
+    return err(parsed.error);
   }
 
-  if (name.length > NAMED_LIST_NAME_MAX_LENGTH) {
-    return err(invalidListNameError('Name must be 200 characters or fewer'));
-  }
-
-  const normalized = normalizeListName(name);
-  const taken = existingNames.some(
-    (existing) => normalizeListName(existing) === normalized
-  );
-  if (taken) {
+  const name = parsed.value;
+  if (listNameIsTaken(name, existingNames)) {
     return err(duplicateListNameError(name));
   }
 

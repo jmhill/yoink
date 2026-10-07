@@ -6,6 +6,7 @@ import { normalizeListName } from '../domain/list-name.js';
 
 export type FakeListStoreOptions = {
   shouldFailOnSave?: boolean;
+  shouldFailOnUpdate?: boolean;
   shouldFailOnFind?: boolean;
   shouldFailOnRemove?: boolean;
   initialLists?: NamedList[];
@@ -30,6 +31,27 @@ export const createFakeListStore = (
         return errAsync(storageError('Failed to save named list'));
       }
       lists.push(list);
+      return okAsync(undefined);
+    },
+
+    update: (list: NamedList): ResultAsync<void, StorageError> => {
+      if (options.shouldFailOnUpdate) {
+        return errAsync(storageError('Update failed'));
+      }
+      const index = lists.findIndex((existing) => existing.id === list.id);
+      if (index === -1) {
+        return errAsync(storageError('Failed to rename named list'));
+      }
+      const taken = lists.some(
+        (existing) =>
+          existing.id !== list.id &&
+          existing.organizationId === list.organizationId &&
+          normalizeListName(existing.name) === normalizeListName(list.name)
+      );
+      if (taken) {
+        return errAsync(storageError('Failed to rename named list'));
+      }
+      lists[index] = list;
       return okAsync(undefined);
     },
 

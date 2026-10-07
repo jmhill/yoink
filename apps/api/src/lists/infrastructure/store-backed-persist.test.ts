@@ -41,6 +41,34 @@ describe('createStoreBackedPersist', () => {
     }
   });
 
+  it('projects NamedListRenamed onto the store without touching other fields', async () => {
+    const store = createFakeListStore({ initialLists: [groceriesList] });
+    const persist = createStoreBackedPersist({
+      store,
+      clearCompletedListIds: () => okAsync(undefined),
+    });
+
+    const result = await persist({
+      event: {
+        type: 'NamedListRenamed',
+        id: groceriesList.id,
+        organizationId: groceriesList.organizationId,
+        name: 'Shopping',
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const loaded = await store.findById(groceriesList.id);
+    expect(loaded.isOk()).toBe(true);
+    if (loaded.isOk()) {
+      expect(loaded.value).toEqual({
+        ...groceriesList,
+        name: 'Shopping',
+      });
+    }
+  });
+
   it('clears completed tasks’ listId then removes the list on NamedListDeleted', async () => {
     const store = createFakeListStore({ initialLists: [groceriesList] });
     const doneOnList: Task = {

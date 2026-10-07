@@ -13,4 +13,11 @@ export type NamedListDeleted = {
   organizationId: string;
 };
 
-export type NamedListEvent = NamedListCreated | NamedListDeleted;
+export type NamedListRenamed = {
+  type: 'NamedListRenamed';
+  id: string;
+  organizationId: string;
+  name: string;
+};
+
+export type NamedListEvent = NamedListCreated | NamedListDeleted | NamedListRenamed;

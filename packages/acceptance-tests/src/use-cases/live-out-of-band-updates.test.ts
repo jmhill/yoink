@@ -72,14 +72,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Eggs', 'Bread']);
 
       await bot.updateTask(milk.id, { listId: weekend.id });
-      await alice.shouldSeeOpenTasksInOrder(['Bread', 'Eggs']);
+      await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Bread']);
 
       const open = await bot.listOpenTasksOnList(groceries.id);
+      const reversed = [...open].reverse();
       await bot.reorderOpenTasksOnList(
         groceries.id,
-        open.map((task) => task.id).reverse()
+        reversed.map((task) => task.id)
       );
-      await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Bread']);
+      await alice.shouldSeeOpenTasksInOrder(reversed.map((task) => task.title));
     }, 60_000);
 
     it('updates the list rail and create-task picker when a bot changes lists', async () => {

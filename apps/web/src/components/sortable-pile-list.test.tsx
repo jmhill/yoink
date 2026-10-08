@@ -126,6 +126,37 @@ describe('SortablePileList', () => {
     ]);
   });
 
+  it('does not reset an in-progress drag when the task list refreshes', () => {
+    const { rerender, root, tasks, onPersistOrder } = renderPile();
+    const handle = dragHandle('Milk');
+
+    firePointer(handle, 'pointerdown', { clientY: 40, buttons: 1 });
+    firePointer(handle, 'pointermove', { clientY: 200, buttons: 1 });
+    expect(root.querySelector('[data-dragging]')).toBeTruthy();
+
+    rerender(
+      <SortablePileList
+        tasks={tasks.map((task) => ({ ...task }))}
+        onPersistOrder={onPersistOrder}
+        renderTask={(task: Task, dragHandle: SortablePileDragHandle) => (
+          <button type="button" aria-label={`Drag to reorder ${task.title}`} {...dragHandle}>
+            {task.title}
+          </button>
+        )}
+      />
+    );
+
+    expect(root.querySelector('[data-dragging]')).toBeTruthy();
+
+    firePointer(dragHandle('Milk'), 'pointerup', { clientY: 200, buttons: 0 });
+    expect(onPersistOrder).toHaveBeenCalledTimes(1);
+    expect(onPersistOrder).toHaveBeenCalledWith([
+      tasks[1]!.id,
+      tasks[2]!.id,
+      tasks[0]!.id,
+    ]);
+  });
+
   it('opens a neighbor gap and an insertion line while the pointer is down', () => {
     const { root } = renderPile();
     const handle = dragHandle('Milk');

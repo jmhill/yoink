@@ -34,7 +34,7 @@ type TaskEditModalProps = {
   onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => void;
   onDelete: (taskId: string) => void;
   isLoading?: boolean;
-  isFetchingCapture?: boolean;
+  isLoadingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
   lists?: Array<{ id: string; name: string }>;
 };
@@ -47,7 +47,7 @@ export function TaskEditModal({
   onSave,
   onDelete,
   isLoading = false,
-  isFetchingCapture = false,
+  isLoadingCapture = false,
   members = [],
   lists = [],
 }: TaskEditModalProps) {
@@ -56,15 +56,19 @@ export function TaskEditModal({
   const [assigneeId, setAssigneeId] = useState('');
   const [listId, setListId] = useState('');
 
-  // Reset form when task changes
+  const taskId = task?.id;
+  // Reset only when a different task is opened. A live refresh must not
+  // replace in-progress typing with whatever the server has now.
   useEffect(() => {
-    if (task) {
-      setTitle(task.title);
-      setDueDate(task.dueDate ?? '');
-      setAssigneeId(task.assigneeId ?? '');
-      setListId(task.listId ?? '');
+    if (!task) {
+      return;
     }
-  }, [task]);
+    setTitle(task.title);
+    setDueDate(task.dueDate ?? '');
+    setAssigneeId(task.assigneeId ?? '');
+    setListId(task.listId ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- task.id gates the reset
+  }, [taskId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +218,7 @@ export function TaskEditModal({
               </Label>
               <Card className="bg-muted/50">
                 <CardContent className="py-3">
-                  {isFetchingCapture ? (
+                  {isLoadingCapture ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : sourceCapture ? (
                     <div className="space-y-2">

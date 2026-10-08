@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
+import { isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox, AlarmClockOff, Clock } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -135,7 +136,7 @@ function SnoozedPage() {
 
   return (
     <InboxPaneShell active="snoozed">
-      {error ? (
+      {isBlockingQueryFailure(error, data) && error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>

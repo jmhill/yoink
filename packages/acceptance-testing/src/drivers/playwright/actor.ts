@@ -1192,6 +1192,14 @@ export const createPlaywrightActor = (
       await appRail.cancelNamedListRename(currentName, draftName, via);
     },
 
+    async beginNamedListRenameFromRail(currentName: string): Promise<void> {
+      await appRail.beginRename(currentName);
+    },
+
+    async shouldSeeNamedListRenameDraft(value: string): Promise<void> {
+      await expect(page.locator('[data-list-rename-input]')).toHaveValue(value);
+    },
+
     async shouldBeOnTaskFilter(
       filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
@@ -1898,6 +1906,122 @@ export const createPlaywrightActor = (
       const dialog = page.getByRole('dialog', { name: 'Edit Task' });
       await dialog.getByRole('button', { name: 'Cancel' }).click();
       await expect(dialog).toHaveCount(0);
+    },
+
+    async saveOpenTaskEdit(): Promise<void> {
+      await tasksPage.saveEdit();
+    },
+
+    async shouldSeeNamedListInCreateTaskPicker(name: string): Promise<void> {
+      const picker = tasksPage.createTaskListPicker();
+      await expect(picker).toBeVisible();
+      await picker.click();
+      const option = page
+        .getByRole('listbox')
+        .locator('[data-slot="select-item"]')
+        .filter({ hasText: name });
+      await expect(option).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('listbox')).toHaveCount(0);
+    },
+
+    async useShortLiveQueryInterval(intervalMs = 250): Promise<void> {
+      const ms = Math.max(1, Math.floor(intervalMs));
+      await page.evaluate(`(() => {
+        const setter = window.__YOINK_SET_LIVE_QUERY_INTERVAL_MS;
+        if (typeof setter !== 'function') {
+          throw new Error('Live query interval hook was not installed');
+        }
+        setter(${ms});
+      })()`);
+    },
+
+    async hideApp(): Promise<void> {
+      await page.evaluate(`(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get() { return 'hidden'; },
+        });
+        Object.defineProperty(document, 'hidden', {
+          configurable: true,
+          get() { return true; },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('blur'));
+      })()`);
+    },
+
+    async showApp(): Promise<void> {
+      await page.evaluate(`(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get() { return 'visible'; },
+        });
+        Object.defineProperty(document, 'hidden', {
+          configurable: true,
+          get() { return false; },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('focus'));
+      })()`);
+    },
+
+    async countLiveDataGetsDuring(durationMs: number): Promise<number> {
+      let count = 0;
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        if (request.method() !== 'GET') {
+          return;
+        }
+        const url = request.url();
+        if (
+          url.includes('/api/tasks') ||
+          url.includes('/api/lists') ||
+          url.includes('/api/unlisted') ||
+          url.includes('/api/captures')
+        ) {
+          count += 1;
+        }
+      };
+      page.on('request', onRequest);
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+      page.off('request', onRequest);
+      return count;
+    },
+
+    async failBackgroundLiveQueries(): Promise<void> {
+      const failGet = async (route: {
+        request: () => { method: () => string };
+        abort: (errorCode: string) => Promise<void>;
+        continue: () => Promise<void>;
+      }) => {
+        if (route.request().method() === 'GET') {
+          await route.abort('failed');
+          return;
+        }
+        await route.continue();
+      };
+      await page.route('**/api/tasks**', failGet);
+      await page.route('**/api/lists**', failGet);
+      await page.route('**/api/unlisted**', failGet);
+      await page.route('**/api/captures**', failGet);
+    },
+
+    async restoreBackgroundLiveQueries(): Promise<void> {
+      await page.unroute('**/api/tasks**');
+      await page.unroute('**/api/lists**');
+      await page.unroute('**/api/unlisted**');
+      await page.unroute('**/api/captures**');
+    },
+
+    async shouldNotSeeQueryError(): Promise<void> {
+      await expect(page.getByText('Unable to connect to the server')).toHaveCount(0);
+      await expect(page.getByText('Something went wrong')).toHaveCount(0);
+      await expect(page.getByText('Your session has expired')).toHaveCount(0);
+      await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+    },
+
+    async shouldNotSeeLoadingPlaceholder(): Promise<void> {
+      await expect(page.getByText('Loading...', { exact: true })).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { tsr } from '@/api/client';
+import { isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, RotateCcw, X } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -236,7 +237,7 @@ function TrashPage() {
 
   return (
     <InboxPaneShell active="trash">
-      {error ? (
+      {isBlockingQueryFailure(error, data) && error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { tsrTasks, tsr, tsrLists } from '@/api/client';
+import { isBlockingQueryFailure } from '@/lib/live-query';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
@@ -230,10 +231,11 @@ function TasksPage() {
     allPile === null &&
     (boardFilter === 'today' || boardFilter === 'upcoming' || boardFilter === 'mine');
 
-  const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
+  const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
     queryData: { params: { id: editingTask?.captureId ?? '' } },
     enabled: !!editingTask?.captureId,
+    refetchInterval: false,
   });
   const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
 
@@ -651,6 +653,12 @@ function TasksPage() {
       ? groupAllTasksByPile(boardTasks, namedLists)
       : [];
 
+  const activeData =
+    allPile?.kind === 'named'
+      ? namedPileData
+      : allPile?.kind === 'unlisted'
+        ? unlistedPileData
+        : data;
   const activeError =
     allPile?.kind === 'named'
       ? namedPileMissing
@@ -659,6 +667,9 @@ function TasksPage() {
       : allPile?.kind === 'unlisted'
         ? unlistedPileError
         : error;
+  const blockingError = isBlockingQueryFailure(activeError, activeData)
+    ? activeError
+    : null;
   const activePending =
     allPile?.kind === 'named'
       ? listsPending || (!namedPileMissing && namedPilePending)
@@ -832,8 +843,8 @@ function TasksPage() {
         </form>
       )}
 
-      {activeError ? (
-        <ErrorState error={activeError} onRetry={() => refetchActive()} />
+      {blockingError ? (
+        <ErrorState error={blockingError} onRetry={() => refetchActive()} />
       ) : activePending ? (
         <p className="text-center text-muted-foreground">Loading...</p>
       ) : namedPileMissing ? (
@@ -973,7 +984,7 @@ function TasksPage() {
           setDeleteConfirmId(id);
         }}
         isLoading={updateMutation.isPending}
-        isFetchingCapture={isFetchingCapture}
+        isLoadingCapture={isLoadingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
         lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
       />

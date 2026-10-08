@@ -28,4 +28,60 @@ describe('TaskEditModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onDelete).toHaveBeenCalledWith(milk.id);
   });
+
+  it('keeps in-progress typing when the same task is refreshed underneath', () => {
+    const onSave = vi.fn();
+    const { rerender } = render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={milk}
+        sourceCapture={null}
+        onSave={onSave}
+        onDelete={vi.fn()}
+      />
+    );
+
+    const title = screen.getByLabelText('Title');
+    fireEvent.change(title, { target: { value: 'Oat milk' } });
+
+    rerender(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{ ...milk, title: 'Bot renamed this' }}
+        sourceCapture={null}
+        onSave={onSave}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Oat milk');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).toHaveBeenCalledWith(milk.id, { title: 'Oat milk' });
+  });
+
+  it('does not swap the original capture for a loading placeholder on background refetch', () => {
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{ ...milk, captureId: '00000000-0000-4000-8000-000000000021' }}
+        sourceCapture={{
+          id: '00000000-0000-4000-8000-000000000021',
+          organizationId: milk.organizationId,
+          createdById: milk.createdById,
+          content: 'Grab milk',
+          status: 'processed',
+          capturedAt: '2026-01-01T00:00:00.000Z',
+        }}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+        isLoadingCapture={false}
+      />
+    );
+
+    expect(screen.getByText('Grab milk')).toBeTruthy();
+    expect(screen.queryByText('Loading...')).toBeNull();
+  });
 });

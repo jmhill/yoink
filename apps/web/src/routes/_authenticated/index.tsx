@@ -5,6 +5,7 @@ import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrTasks, tsrLists } from '@/api/client';
+import { isBlockingQueryFailure } from '@/lib/live-query';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
@@ -453,7 +454,7 @@ function InboxPage() {
         </div>
       </form>
 
-      {error ? (
+      {isBlockingQueryFailure(error, data) && error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>

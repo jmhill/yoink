@@ -2444,6 +2444,15 @@ export class AppRail {
     return { status: 'deleted' };
   }
 
+  async beginRename(currentName: string): Promise<void> {
+    await this.ensureAvailable();
+    await this.openOverflow(currentName);
+    const renameItem = this.page.getByRole('menuitem', { name: 'Rename', exact: true });
+    await renameItem.waitFor({ state: 'visible' });
+    await renameItem.click();
+    await this.page.locator('[data-list-rename-input]').waitFor({ state: 'visible' });
+  }
+
   async renameNamedList(
     currentName: string,
     newName: string,

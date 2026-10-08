@@ -727,6 +727,16 @@ export type BrowserActorOperations = {
   ): Promise<void>;
 
   /**
+   * Open the rail rename field for this list and leave it focused.
+   */
+  beginNamedListRenameFromRail(currentName: string): Promise<void>;
+
+  /**
+   * Assert the open rail rename field still has this draft text.
+   */
+  shouldSeeNamedListRenameDraft(value: string): Promise<void>;
+
+  /**
    * Assert the current Tasks filter (does not navigate).
    */
   shouldBeOnTaskFilter(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
@@ -1180,6 +1190,56 @@ export type BrowserActorOperations = {
    * Close the task edit modal/sheet without saving.
    */
   closeTaskEdit(): Promise<void>;
+
+  /**
+   * Save the open task edit dialog.
+   */
+  saveOpenTaskEdit(): Promise<void>;
+
+  /**
+   * Assert the Today / pile create-task list picker includes this named list.
+   */
+  shouldSeeNamedListInCreateTaskPicker(name: string): Promise<void>;
+
+  /**
+   * Shorten the live-query interval for this page (E2E only) and refetch now.
+   */
+  useShortLiveQueryInterval(intervalMs?: number): Promise<void>;
+
+  /**
+   * Hide the document (backgrounded app / hidden tab) so live checks must stop.
+   */
+  hideApp(): Promise<void>;
+
+  /**
+   * Show the document again. Live checks must run immediately, as on focus today.
+   */
+  showApp(): Promise<void>;
+
+  /**
+   * Count GET requests to tasks/lists/captures/unlisted during this window.
+   */
+  countLiveDataGetsDuring(durationMs: number): Promise<number>;
+
+  /**
+   * Fail subsequent live-data GETs (server down / no signal) without going offline.
+   */
+  failBackgroundLiveQueries(): Promise<void>;
+
+  /**
+   * Stop failing live-data GETs so the next check can catch up.
+   */
+  restoreBackgroundLiveQueries(): Promise<void>;
+
+  /**
+   * Assert no query error card, connect banner, or toast is showing.
+   */
+  shouldNotSeeQueryError(): Promise<void>;
+
+  /**
+   * Assert the page is not showing the initial "Loading..." placeholder.
+   */
+  shouldNotSeeLoadingPlaceholder(): Promise<void>;
 
   // ==========================================================================
   // Organization Member Management

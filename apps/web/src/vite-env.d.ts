@@ -7,6 +7,11 @@ interface ImportMetaEnv {
   readonly VITE_SENTRY_DSN?: string;
 }
 
+interface Window {
+  __YOINK_LIVE_QUERY_INTERVAL_MS?: number;
+  __YOINK_SET_LIVE_QUERY_INTERVAL_MS?: (intervalMs: number) => void;
+}
+
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }

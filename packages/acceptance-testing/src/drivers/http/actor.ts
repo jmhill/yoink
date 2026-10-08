@@ -955,6 +955,16 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('completeOpenTaskFromRow', 'http');
     },
 
+    async completeOpenTaskFromRowAgainstStalePilePoll(
+      _taskId: string,
+      _listId: string
+    ): Promise<void> {
+      throw new UnsupportedOperationError(
+        'completeOpenTaskFromRowAgainstStalePilePoll',
+        'http'
+      );
+    },
+
     async uncompleteTaskFromRow(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('uncompleteTaskFromRow', 'http');
     },

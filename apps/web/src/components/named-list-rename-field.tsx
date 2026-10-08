@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { tsrLists } from '@/api/client';
+import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
@@ -26,10 +27,13 @@ export function NamedListRenameField({
   const trimmedName = name.trim();
 
   const renameMutation = tsrLists.rename.useMutation({
+    onMutate: async () => {
+      await cancelLiveQueries(queryClient);
+    },
     onSuccess: async (result) => {
       if (result.status !== 200) return;
       setFormError(null);
-      await queryClient.invalidateQueries({ queryKey: ['lists'] });
+      await invalidateLiveQueries(queryClient);
       onRenamed(result.body.name);
     },
     onError: (err) => {

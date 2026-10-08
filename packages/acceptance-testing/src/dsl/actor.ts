@@ -1079,6 +1079,14 @@ export type BrowserActorOperations = {
   completeOpenTaskFromRow(taskId: string): Promise<void>;
 
   /**
+   * Complete this open task from the row while a slower GET of the named
+   * list pile — snapshotted before the click — is allowed to land after
+   * the optimistic update and before the complete POST settles. The
+   * completed task must stay gone (stale poll must not restore it).
+   */
+  completeOpenTaskFromRowAgainstStalePilePoll(taskId: string, listId: string): Promise<void>;
+
+  /**
    * Uncomplete a completed task by tapping/clicking the row complete control.
    * The task leaves the current completed view (Done).
    */

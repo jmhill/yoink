@@ -1715,6 +1715,94 @@ export const createPlaywrightActor = (
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
+    async completeOpenTaskFromRowAgainstStalePilePoll(
+      taskId: string,
+      listId: string
+    ): Promise<void> {
+      let releasePoll = (): void => undefined;
+      let releaseComplete = (): void => undefined;
+      let pollParked = false;
+      let pollDelivered = false;
+      const pollGate = new Promise<void>((resolve) => {
+        releasePoll = resolve;
+      });
+      const completeGate = new Promise<void>((resolve) => {
+        releaseComplete = resolve;
+      });
+
+      const isOpenListTasksGet = (url: URL): boolean =>
+        url.pathname === `/api/lists/${listId}/tasks`;
+      const isCompletePost = (url: URL): boolean =>
+        url.pathname === `/api/tasks/${taskId}/complete`;
+
+      const pollRoute = async (route: {
+        request: () => { method: () => string };
+        fetch: () => Promise<{ status: () => number; text: () => Promise<string> }>;
+        fulfill: (response: {
+          status: number;
+          contentType: string;
+          body: string;
+        }) => Promise<void>;
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'GET') {
+          await route.continue();
+          return;
+        }
+        if (pollParked) {
+          await route.continue();
+          return;
+        }
+        pollParked = true;
+        const snapshot = await route.fetch();
+        const body = await snapshot.text();
+        await pollGate;
+        try {
+          await route.fulfill({
+            status: snapshot.status(),
+            contentType: 'application/json',
+            body,
+          });
+        } catch {
+          // cancelQueries aborted the in-flight poll
+        } finally {
+          pollDelivered = true;
+        }
+      };
+
+      const completeRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        await completeGate;
+        await route.continue();
+      };
+
+      await page.route(isOpenListTasksGet, pollRoute);
+      await page.route(isCompletePost, completeRoute);
+
+      try {
+        await expect.poll(() => pollParked, { timeout: 10_000 }).toBe(true);
+        await tasksPage.waitForTask(taskId);
+        await tasksPage.completeControl(taskId).click();
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+        releasePoll();
+        await expect.poll(() => pollDelivered, { timeout: 10_000 }).toBe(true);
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+        releaseComplete();
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+      } finally {
+        releasePoll();
+        releaseComplete();
+        await page.unroute(isOpenListTasksGet, pollRoute);
+        await page.unroute(isCompletePost, completeRoute);
+      }
+    },
+
     async uncompleteTaskFromRow(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       await tasksPage.completeControl(taskId).click();

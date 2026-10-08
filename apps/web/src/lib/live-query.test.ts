@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   LIVE_QUERY_REFETCH_INTERVAL_MS,
   LIVE_QUERY_TEST_INTERVAL_KEY,
+  cancelLiveQueries,
   createAppQueryClient,
   isBlockingQueryFailure,
+  isLiveOpenTaskListQueryKey,
   liveQueryRefetchInterval,
+  mapLiveOpenTaskLists,
   readLiveQueryIntervalMs,
 } from './live-query';
 
@@ -56,5 +59,45 @@ describe('live query interval', () => {
     expect(queries?.refetchInterval).toBe(liveQueryRefetchInterval);
     expect(queries?.refetchIntervalInBackground).toBe(false);
     expect(queries?.refetchOnWindowFocus).toBe(true);
+  });
+
+  it('treats named-pile and unlisted caches as live open-task lists', () => {
+    expect(isLiveOpenTaskListQueryKey(['tasks', 'today'])).toBe(true);
+    expect(isLiveOpenTaskListQueryKey(['tasks', 'completed'])).toBe(false);
+    expect(isLiveOpenTaskListQueryKey(['lists'])).toBe(false);
+    expect(isLiveOpenTaskListQueryKey(['lists', 'list-1', 'tasks'])).toBe(true);
+    expect(isLiveOpenTaskListQueryKey(['unlisted', 'tasks'])).toBe(true);
+    expect(isLiveOpenTaskListQueryKey(['captures', 'inbox'])).toBe(false);
+  });
+
+  it('does not let a cancelled in-flight pile poll overwrite a user mutation', async () => {
+    const client = createAppQueryClient();
+    const key = ['lists', '11111111-1111-1111-1111-111111111111', 'tasks'];
+    const eggs = {
+      id: 'eggs',
+      organizationId: 'org',
+      createdById: 'user',
+      title: 'Eggs',
+      createdAt: '2026-10-08T00:00:00.000Z',
+    };
+    const stale = { status: 200, body: { tasks: [eggs] } };
+    const mutated = { status: 200, body: { tasks: [] } };
+    client.setQueryData(key, stale);
+
+    let resolveFetch: (value: typeof stale) => void = () => undefined;
+    const delayed = new Promise<typeof stale>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const fetchPromise = client.prefetchQuery({
+      queryKey: key,
+      queryFn: () => delayed,
+    });
+
+    await cancelLiveQueries(client);
+    mapLiveOpenTaskLists(client, (tasks) => tasks.filter((task) => task.id !== 'eggs'));
+    resolveFetch(stale);
+    await fetchPromise.catch(() => undefined);
+
+    expect(client.getQueryData(key)).toEqual(mutated);
   });
 });

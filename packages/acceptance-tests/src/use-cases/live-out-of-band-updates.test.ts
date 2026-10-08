@@ -202,6 +202,21 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'While hidden']);
     }, 60_000);
 
+    it('keeps a user complete when a slower pile poll lands afterwards', async () => {
+      const groceries = await alice.createNamedList('Groceries');
+      await alice.createTask({ title: 'Milk', listId: groceries.id });
+      const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
+
+      await alice.useDesktopViewport();
+      await alice.openRailNamedList('Groceries');
+      await alice.useShortLiveQueryInterval(250);
+      await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs']);
+
+      await alice.completeOpenTaskFromRowAgainstStalePilePoll(eggs.id, groceries.id);
+      await alice.shouldNotSeeTask(eggs.id);
+      await alice.shouldSeeOpenTasksInOrder(['Milk']);
+    }, 60_000);
+
     it('shows no error UI when a background check fails, then catches up', async () => {
       const groceries = await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Milk', listId: groceries.id });

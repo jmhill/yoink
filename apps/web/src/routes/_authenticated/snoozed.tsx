@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
-import { isBlockingQueryFailure } from '@/lib/live-query';
+import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox, AlarmClockOff, Clock } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -29,7 +29,7 @@ function SnoozedPage() {
   const unsnoozeMutation = tsr.unsnooze.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
       const previousSnoozed = tsrQueryClient.list.getQueryData([
@@ -105,7 +105,7 @@ function SnoozedPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 

@@ -4,8 +4,8 @@ import { Button } from '@yoink/ui-base/components/button';
 import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { tsr, tsrTasks, tsrLists } from '@/api/client';
-import { isBlockingQueryFailure } from '@/lib/live-query';
+import { tsr, tsrLists } from '@/api/client';
+import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
@@ -37,8 +37,6 @@ function InboxPage() {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, []);
-  const tsrTasksQueryClient = tsrTasks.useQueryClient();
-  const tsrListsQueryClient = tsrLists.useQueryClient();
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -54,7 +52,7 @@ function InboxPage() {
   const createMutation = tsr.create.useMutation({
     onMutate: async ({ body }) => {
       // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
       const previousInbox = tsrQueryClient.list.getQueryData([
@@ -118,7 +116,7 @@ function InboxPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server (replaces temp ID with real one)
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
       // Keep focus on input for rapid multi-capture
       // Use requestAnimationFrame to ensure focus happens after React's render cycle
       requestAnimationFrame(() => {
@@ -130,7 +128,7 @@ function InboxPage() {
   const trashMutation = tsr.trash.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
       const previousInbox = tsrQueryClient.list.getQueryData([
@@ -206,7 +204,7 @@ function InboxPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
@@ -214,7 +212,7 @@ function InboxPage() {
   const snoozeMutation = tsr.snooze.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
       const previousInbox = tsrQueryClient.list.getQueryData([
@@ -287,14 +285,14 @@ function InboxPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   // Process capture to task mutation
   const processMutation = tsr.process.useMutation({
     onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       const previousInbox = tsrQueryClient.list.getQueryData([
         'captures',
@@ -347,10 +345,7 @@ function InboxPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
-      tsrTasksQueryClient.invalidateQueries({ queryKey: ['tasks'] });
-      tsrListsQueryClient.invalidateQueries({ queryKey: ['lists'] });
-      tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 

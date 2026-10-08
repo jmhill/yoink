@@ -1,4 +1,89 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, type QueryKey } from '@tanstack/react-query';
+import type { Task } from '@yoink/api-contracts';
+
+/** Collection prefixes the 10s live poll refreshes. Partial-match so pile keys cancel too. */
+export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
+  ['captures'],
+  ['tasks'],
+  ['lists'],
+  ['unlisted'],
+];
+
+type TaskListResult = {
+  status: number;
+  body: { tasks: Task[] };
+};
+
+const isTaskListResult = (data: unknown): data is TaskListResult => {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+  const result = data as { status?: unknown; body?: { tasks?: unknown } };
+  return result.status === 200 && Array.isArray(result.body?.tasks);
+};
+
+/**
+ * Open-task list caches the UI actually renders: board filters (not Done),
+ * named-pile `['lists', id, 'tasks']`, and unlisted.
+ */
+export const isLiveOpenTaskListQueryKey = (queryKey: QueryKey): boolean => {
+  const [root, second, third] = queryKey;
+  if (root === 'tasks') {
+    return second !== 'completed';
+  }
+  if (root === 'unlisted' && second === 'tasks') {
+    return true;
+  }
+  return root === 'lists' && third === 'tasks';
+};
+
+export const cancelLiveQueries = async (queryClient: QueryClient): Promise<void> => {
+  await Promise.all(
+    LIVE_QUERY_COLLECTION_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey }))
+  );
+};
+
+export const invalidateLiveQueries = (queryClient: QueryClient): Promise<void> =>
+  Promise.all(
+    LIVE_QUERY_COLLECTION_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))
+  ).then(() => undefined);
+
+export const snapshotLiveOpenTaskLists = (
+  queryClient: QueryClient
+): ReturnType<QueryClient['getQueriesData']> =>
+  queryClient.getQueriesData({
+    predicate: (query) => isLiveOpenTaskListQueryKey(query.queryKey),
+  });
+
+export const restoreQuerySnapshots = (
+  queryClient: QueryClient,
+  snapshots: ReturnType<QueryClient['getQueriesData']>
+): void => {
+  for (const [queryKey, data] of snapshots) {
+    queryClient.setQueryData(queryKey, data);
+  }
+};
+
+export const mapLiveOpenTaskLists = (
+  queryClient: QueryClient,
+  mapTasks: (tasks: Task[], queryKey: QueryKey) => Task[]
+): void => {
+  const entries = queryClient.getQueriesData({
+    predicate: (query) => isLiveOpenTaskListQueryKey(query.queryKey),
+  });
+  for (const [queryKey, data] of entries) {
+    if (!isTaskListResult(data)) {
+      continue;
+    }
+    queryClient.setQueryData(queryKey, {
+      ...data,
+      body: {
+        ...data.body,
+        tasks: mapTasks(data.body.tasks, queryKey),
+      },
+    });
+  }
+};
 
 /** Product lock: 10–15s is fine; pick the fast end so a slow request still lands inside 15s. */
 export const LIVE_QUERY_REFETCH_INTERVAL_MS = 10_000;

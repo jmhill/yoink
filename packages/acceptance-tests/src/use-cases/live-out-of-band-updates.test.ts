@@ -69,7 +69,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Bread']);
 
       await bot.uncompleteTask(eggs.id);
-      await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Bread', 'Eggs']);
+      await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Eggs', 'Bread']);
 
       await bot.updateTask(milk.id, { listId: weekend.id });
       await alice.shouldSeeOpenTasksInOrder(['Bread', 'Eggs']);
@@ -102,7 +102,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         throw new Error('expected Weekend to exist');
       }
       await bot.renameNamedList(weekend.id, 'Errands');
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Errands'));
+      await alice.shouldSeeRailItems(railWith('Errands', 'Groceries'));
       await alice.shouldSeeNamedListInCreateTaskPicker('Errands');
 
       await bot.deleteNamedList(weekend.id);
@@ -168,7 +168,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.typeIntoFocusedField('Groceries and more');
       await bot.createNamedList('Tonight');
       await alice.shouldSeeNamedListRenameDraft('Groceries and more');
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Weekend', 'Tonight'));
+      await alice.shouldSeeRailItems(railWith('Groceries', 'Tonight', 'Weekend'));
 
       await alice.openRailNamedList('Groceries');
       await alice.enterReorderMode();

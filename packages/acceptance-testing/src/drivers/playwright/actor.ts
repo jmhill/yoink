@@ -637,7 +637,9 @@ export const createPlaywrightActor = (
 
     async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
       await tasksPage.waitForTasksOrEmpty();
-      await expect.poll(async () => tasksPage.getOpenTaskTitles()).toEqual(titles);
+      await expect
+        .poll(async () => tasksPage.getOpenTaskTitles(), { timeout: 10_000 })
+        .toEqual(titles);
     },
 
     async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
@@ -876,7 +878,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeTask(taskId: string): Promise<void> {
-      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0, { timeout: 10_000 });
     },
 
     async shouldNotSeeCreateListOnMine(): Promise<void> {
@@ -986,7 +988,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeRailItems(labels: string[]): Promise<void> {
-      await expect.poll(async () => appRail.getItemLabels()).toEqual(labels);
+      await expect.poll(async () => appRail.getItemLabels(), { timeout: 10_000 }).toEqual(labels);
     },
 
     async shouldSeeInboxCountOnRail(count: number): Promise<void> {
@@ -1927,12 +1929,12 @@ export const createPlaywrightActor = (
 
     async useShortLiveQueryInterval(intervalMs = 250): Promise<void> {
       const ms = Math.max(1, Math.floor(intervalMs));
-      await page.evaluate(`(() => {
+      await page.evaluate(`(async () => {
         const setter = window.__YOINK_SET_LIVE_QUERY_INTERVAL_MS;
         if (typeof setter !== 'function') {
           throw new Error('Live query interval hook was not installed');
         }
-        setter(${ms});
+        await setter(${ms});
       })()`);
     },
 

@@ -9,7 +9,7 @@ interface ImportMetaEnv {
 
 interface Window {
   __YOINK_LIVE_QUERY_INTERVAL_MS?: number;
-  __YOINK_SET_LIVE_QUERY_INTERVAL_MS?: (intervalMs: number) => void;
+  __YOINK_SET_LIVE_QUERY_INTERVAL_MS?: (intervalMs: number) => void | Promise<void>;
 }
 
 interface ImportMeta {

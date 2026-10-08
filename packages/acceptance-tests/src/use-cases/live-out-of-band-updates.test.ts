@@ -66,6 +66,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Eggs', 'Bread']);
 
       await bot.completeTask(eggs.id);
+      await alice.shouldNotSeeTask(eggs.id);
       await alice.shouldSeeOpenTasksInOrder(['Oat milk', 'Bread']);
 
       await bot.uncompleteTask(eggs.id);

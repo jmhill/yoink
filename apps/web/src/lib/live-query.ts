@@ -11,7 +11,7 @@ export const LIVE_QUERY_TEST_SET_KEY = '__YOINK_SET_LIVE_QUERY_INTERVAL_MS';
 
 type LiveQueryTestWindow = Window & {
   [LIVE_QUERY_TEST_INTERVAL_KEY]?: number;
-  [LIVE_QUERY_TEST_SET_KEY]?: (intervalMs: number) => void;
+  [LIVE_QUERY_TEST_SET_KEY]?: (intervalMs: number) => void | Promise<void>;
 };
 
 const liveQueryTestWindow = (): LiveQueryTestWindow | undefined => {
@@ -65,8 +65,9 @@ export const installLiveQueryTestHook = (queryClient: QueryClient): void => {
   if (!target) {
     return;
   }
-  target[LIVE_QUERY_TEST_SET_KEY] = (intervalMs: number) => {
+  target[LIVE_QUERY_TEST_SET_KEY] = async (intervalMs: number) => {
     target[LIVE_QUERY_TEST_INTERVAL_KEY] = intervalMs;
-    void queryClient.invalidateQueries();
+    await queryClient.cancelQueries();
+    await queryClient.invalidateQueries();
   };
 };

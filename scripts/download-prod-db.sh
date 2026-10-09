@@ -15,7 +15,8 @@ set -e
 APP_NAME="jhtc-yoink-api"
 OUTPUT_DIR="./tmp"
 OUTPUT_FILE="prod-backup.db"
-LITESTREAM_IMAGE="litestream/litestream:0.3.13"
+# litestream/litestream:0.3.13 via GCR Docker Hub mirror (not registry-1.docker.io)
+LITESTREAM_IMAGE="mirror.gcr.io/litestream/litestream:0.3.13@sha256:027eda2a89a86015b9797d2129d4dd447e8953097b4190e1d5a30b73e76d8d58"
 
 # Colors for output
 RED='\033[0;31m'

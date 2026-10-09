@@ -22,6 +22,10 @@ For testing philosophy, test pyramid, and how to write tests, see `docs/testing/
 
 For environment variables and operational config, see `docs/operations/ENVIRONMENT.md`.
 
+CI and the API image pull `node:24-alpine` from Amazon ECR Public
+(`public.ecr.aws/docker/library/...`), not Docker Hub. Digests are pinned.
+See `docs/operations/CI.md` to bump a digest or switch to the GCR fallback.
+
 ## Architecture
 
 This is a monorepo with a Fastify API server (`apps/api/`) and shared packages (`packages/api-contracts/`, `packages/infrastructure/`). The API follows hexagonal architecture — see `apps/api/AGENTS.md` for details.

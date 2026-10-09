@@ -1057,6 +1057,25 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('useShortLiveQueryInterval', 'http');
     },
 
+    async awaitLiveOpenListTasks(
+      _listId: string,
+      _matches: (tasks: Array<{ id: string; title: string }>) => boolean
+    ): Promise<void> {
+      throw new UnsupportedOperationError('awaitLiveOpenListTasks', 'http');
+    },
+
+    async awaitLiveNamedLists(
+      _matches: (lists: Array<{ id: string; name: string }>) => boolean
+    ): Promise<void> {
+      throw new UnsupportedOperationError('awaitLiveNamedLists', 'http');
+    },
+
+    async awaitLiveInboxCaptures(
+      _matches: (captures: Array<{ id: string; content: string }>) => boolean
+    ): Promise<void> {
+      throw new UnsupportedOperationError('awaitLiveInboxCaptures', 'http');
+    },
+
     async hideApp(): Promise<void> {
       throw new UnsupportedOperationError('hideApp', 'http');
     },

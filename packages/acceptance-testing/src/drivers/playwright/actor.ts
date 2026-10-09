@@ -130,6 +130,94 @@ type ActorCredentials = {
   organizationId: string;
 };
 
+/** Product lock: out-of-band changes must show within 15s. */
+const LIVE_OUT_OF_BAND_VISIBLE_MS = 15_000;
+
+const waitForLiveJsonGet = async (
+  page: Page,
+  pathIs: (pathname: string) => boolean,
+  bodyIs: (body: unknown) => boolean
+): Promise<void> => {
+  await page.waitForResponse(
+    async (response) => {
+      if (response.request().method() !== 'GET' || !response.ok()) {
+        return false;
+      }
+      try {
+        const pathname = new URL(response.url()).pathname;
+        if (!pathIs(pathname)) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+      try {
+        return bodyIs(await response.json());
+      } catch {
+        return false;
+      }
+    },
+    { timeout: LIVE_OUT_OF_BAND_VISIBLE_MS }
+  );
+};
+
+const asNamedTasks = (
+  body: unknown
+): Array<{ id: string; title: string }> | null => {
+  if (typeof body !== 'object' || body === null || !('tasks' in body)) {
+    return null;
+  }
+  const tasks = (body as { tasks: unknown }).tasks;
+  if (!Array.isArray(tasks)) {
+    return null;
+  }
+  return tasks.filter(
+    (task): task is { id: string; title: string } =>
+      typeof task === 'object' &&
+      task !== null &&
+      typeof (task as { id?: unknown }).id === 'string' &&
+      typeof (task as { title?: unknown }).title === 'string'
+  );
+};
+
+const asNamedLists = (
+  body: unknown
+): Array<{ id: string; name: string }> | null => {
+  if (typeof body !== 'object' || body === null || !('lists' in body)) {
+    return null;
+  }
+  const lists = (body as { lists: unknown }).lists;
+  if (!Array.isArray(lists)) {
+    return null;
+  }
+  return lists.filter(
+    (list): list is { id: string; name: string } =>
+      typeof list === 'object' &&
+      list !== null &&
+      typeof (list as { id?: unknown }).id === 'string' &&
+      typeof (list as { name?: unknown }).name === 'string'
+  );
+};
+
+const asInboxCaptures = (
+  body: unknown
+): Array<{ id: string; content: string }> | null => {
+  if (typeof body !== 'object' || body === null || !('captures' in body)) {
+    return null;
+  }
+  const captures = (body as { captures: unknown }).captures;
+  if (!Array.isArray(captures)) {
+    return null;
+  }
+  return captures.filter(
+    (capture): capture is { id: string; content: string } =>
+      typeof capture === 'object' &&
+      capture !== null &&
+      typeof (capture as { id?: unknown }).id === 'string' &&
+      typeof (capture as { content?: unknown }).content === 'string'
+  );
+};
+
 /**
  * Playwright implementation of the Actor interface.
  * Interacts with the web UI to perform operations.
@@ -2024,6 +2112,46 @@ export const createPlaywrightActor = (
         }
         await setter(${ms});
       })()`);
+    },
+
+    async awaitLiveOpenListTasks(
+      listId: string,
+      matches: (tasks: Array<{ id: string; title: string }>) => boolean
+    ): Promise<void> {
+      await waitForLiveJsonGet(
+        page,
+        (pathname) => pathname === `/api/lists/${listId}/tasks`,
+        (body) => {
+          const tasks = asNamedTasks(body);
+          return tasks !== null && matches(tasks);
+        }
+      );
+    },
+
+    async awaitLiveNamedLists(
+      matches: (lists: Array<{ id: string; name: string }>) => boolean
+    ): Promise<void> {
+      await waitForLiveJsonGet(
+        page,
+        (pathname) => pathname === '/api/lists',
+        (body) => {
+          const lists = asNamedLists(body);
+          return lists !== null && matches(lists);
+        }
+      );
+    },
+
+    async awaitLiveInboxCaptures(
+      matches: (captures: Array<{ id: string; content: string }>) => boolean
+    ): Promise<void> {
+      await waitForLiveJsonGet(
+        page,
+        (pathname) => pathname === '/api/captures',
+        (body) => {
+          const captures = asInboxCaptures(body);
+          return captures !== null && matches(captures);
+        }
+      );
     },
 
     async hideApp(): Promise<void> {

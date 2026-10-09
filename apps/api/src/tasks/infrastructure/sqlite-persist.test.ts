@@ -85,7 +85,8 @@ describe('sqlite task persist', () => {
   });
 
   it('records pin as a hidden change and does not update last_changed_at', async () => {
-    const persist = createSqliteTaskPersist({ db, nextId: () => 'log-pin' });
+    let n = 0;
+    const persist = createSqliteTaskPersist({ db, nextId: () => `log-pin-${++n}` });
     await persist({
       current: null,
       actor: null,
@@ -105,7 +106,7 @@ describe('sqlite task persist', () => {
     const current = (await store.findById('task-1'))._unsafeUnwrap();
     expect(current).not.toBeNull();
 
-    await persist({
+    const pinned = await persist({
       current,
       actor: null,
       now: '2025-01-15T11:00:00.000Z',
@@ -116,6 +117,7 @@ describe('sqlite task persist', () => {
         pinnedAt: '2025-01-15T11:00:00.000Z',
       },
     });
+    expect(pinned.isOk()).toBe(true);
 
     const after = (await store.findById('task-1'))._unsafeUnwrap();
     expect(after?.pinnedAt).toBe('2025-01-15T11:00:00.000Z');

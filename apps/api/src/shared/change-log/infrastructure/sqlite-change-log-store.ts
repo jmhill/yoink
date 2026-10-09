@@ -34,7 +34,7 @@ type ChangeLogRow = {
 };
 
 const rowToUnknown = (row: ChangeLogRow): unknown => {
-  let payload: unknown = {};
+  let payload: unknown;
   try {
     payload = JSON.parse(row.payload_json) as unknown;
   } catch {

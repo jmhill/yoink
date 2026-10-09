@@ -4,7 +4,7 @@ import type { NamedList } from '@yoink/api-contracts';
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { storageError } from '../domain/list-errors.js';
 import { namedListCursor } from '../../listing/domain/list-keys.js';
-import { encodeKeysetCursor } from '../../listing/infrastructure/keyset-codec.js';
+import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
 
 const groceries: NamedList = {
   id: '550e8400-e29b-41d4-a716-446655440010',
@@ -99,7 +99,7 @@ describe('handleListNamedLists', () => {
     if (result.isOk()) {
       expect(result.value.items).toEqual([groceries]);
       expect(result.value.hasMore).toBe(true);
-      expect(result.value.nextCursor).toBe(encodeKeysetCursor(namedListCursor(groceries)));
+      expect(result.value.nextCursor).toBe(encodeKeysetCursor(namedListCursor.of(groceries)));
       expect(result.value.total).toBe(2);
     }
   });

@@ -36,6 +36,15 @@ export type KeysetCursor =
   | { view: 'captures.feed'; keys: z.infer<typeof captureFeedKeysSchema> }
   | { view: 'captures.snoozed'; keys: z.infer<typeof snoozedCaptureKeysSchema> };
 
+export type ListedCursor<T, V extends CursorView> = {
+  readonly view: V;
+  readonly of: (item: T) => Extract<KeysetCursor, { view: V }>;
+};
+
+export type AnyListedCursor<T> = {
+  [View in CursorView]: ListedCursor<T, View>;
+}[CursorView];
+
 export type ListedCursorPayload = {
   v: 1;
   view: CursorView;

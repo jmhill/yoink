@@ -21,9 +21,8 @@ export const handleListTasks = (
   const completed = query.filter === 'completed';
   return runListedQuery({
     cursor: query.cursor,
-    view: completed ? 'tasks.completed' : 'tasks.board',
-    limit,
     cursorOf: completed ? completedTaskCursor : taskBoardCursor,
+    limit,
     load: (seek, fetchLimit) =>
       deps.list({
         organizationId: query.organizationId,

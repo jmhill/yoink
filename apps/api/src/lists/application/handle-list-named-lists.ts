@@ -18,9 +18,8 @@ export const handleListNamedLists = (
 ): ResultAsync<ListedPage<NamedList>, ListNamedListsError> => {
   return runListedQuery({
     cursor: query.cursor,
-    view: 'lists',
-    limit: resolveListLimit(query.limit, 'pile'),
     cursorOf: namedListCursor,
+    limit: resolveListLimit(query.limit, 'pile'),
     load: (seek, fetchLimit) =>
       deps.pageNamedLists({
         organizationId: query.organizationId,

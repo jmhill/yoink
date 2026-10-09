@@ -18,9 +18,8 @@ export const handleListUnlistedOpenTasks = (
 ): ResultAsync<ListedPage<Task>, ListUnlistedOpenTasksError> => {
   return runListedQuery({
     cursor: query.cursor,
-    view: 'tasks.pile',
-    limit: resolveListLimit(query.limit, 'pile'),
     cursorOf: openPileTaskCursor,
+    limit: resolveListLimit(query.limit, 'pile'),
     load: (seek, fetchLimit) =>
       deps.pageOpenTasksOnList({
         organizationId: query.organizationId,

@@ -24,9 +24,8 @@ export const handleListCaptures = (
   const snoozed = query.snoozed === true;
   return runListedQuery({
     cursor: query.cursor,
-    view: snoozed ? 'captures.snoozed' : 'captures.feed',
-    limit,
     cursorOf: snoozed ? snoozedCaptureCursor : captureFeedCursor,
+    limit,
     load: (seek, fetchLimit) =>
       deps.list({
         organizationId: query.organizationId,

@@ -1,48 +1,64 @@
 import type { Capture, NamedList, Task } from '@yoink/api-contracts';
-import type { KeysetCursor } from './keyset-cursor.js';
+import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
 const UNPINNED_SENTINEL = '';
 const MISSING_OPEN_ORDER = 2_147_483_647;
 
-type CursorFor<View extends KeysetCursor['view']> = Extract<KeysetCursor, { view: View }>;
-
-export const taskBoardCursor = (task: Task): CursorFor<'tasks.board'> => ({
+export const taskBoardCursor: ListedCursor<Task, 'tasks.board'> = {
   view: 'tasks.board',
-  keys: [task.pinnedAt ?? UNPINNED_SENTINEL, task.createdAt, task.id],
-});
+  of: (task) => ({
+    view: 'tasks.board',
+    keys: [task.pinnedAt ?? UNPINNED_SENTINEL, task.createdAt, task.id],
+  }),
+};
 
-export const completedTaskCursor = (task: Task): CursorFor<'tasks.completed'> => ({
+export const completedTaskCursor: ListedCursor<Task, 'tasks.completed'> = {
   view: 'tasks.completed',
-  keys: [task.completedAt ?? '', task.id],
-});
+  of: (task) => ({
+    view: 'tasks.completed',
+    keys: [task.completedAt ?? '', task.id],
+  }),
+};
 
-export const openPileTaskCursor = (task: Task): CursorFor<'tasks.pile'> => ({
+export const openPileTaskCursor: ListedCursor<Task, 'tasks.pile'> = {
   view: 'tasks.pile',
-  keys: [task.openOrder ?? MISSING_OPEN_ORDER, task.createdAt, task.id],
-});
+  of: (task) => ({
+    view: 'tasks.pile',
+    keys: [task.openOrder ?? MISSING_OPEN_ORDER, task.createdAt, task.id],
+  }),
+};
 
-export const namedListCursor = (list: NamedList): CursorFor<'lists'> => ({
+export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
   view: 'lists',
-  keys: [list.name, list.createdAt, list.id],
-});
+  of: (list) => ({
+    view: 'lists',
+    keys: [list.name, list.createdAt, list.id],
+  }),
+};
 
-export const captureFeedCursor = (capture: Capture): CursorFor<'captures.feed'> => ({
+export const captureFeedCursor: ListedCursor<Capture, 'captures.feed'> = {
   view: 'captures.feed',
-  keys: [capture.capturedAt, capture.id],
-});
+  of: (capture) => ({
+    view: 'captures.feed',
+    keys: [capture.capturedAt, capture.id],
+  }),
+};
 
-export const snoozedCaptureCursor = (capture: Capture): CursorFor<'captures.snoozed'> => ({
+export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
   view: 'captures.snoozed',
-  keys: [capture.snoozedUntil ?? '', capture.id],
-});
+  of: (capture) => ({
+    view: 'captures.snoozed',
+    keys: [capture.snoozedUntil ?? '', capture.id],
+  }),
+};
 
-export const taskBoardKeys = (task: Task) => taskBoardCursor(task).keys;
-export const completedTaskKeys = (task: Task) => completedTaskCursor(task).keys;
-export const openPileTaskKeys = (task: Task) => openPileTaskCursor(task).keys;
-export const namedListKeys = (list: NamedList) => namedListCursor(list).keys;
-export const captureFeedKeys = (capture: Capture) => captureFeedCursor(capture).keys;
-export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor(capture).keys;
+export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
+export const completedTaskKeys = (task: Task) => completedTaskCursor.of(task).keys;
+export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
+export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
+export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
+export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(capture).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';

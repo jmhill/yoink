@@ -25,9 +25,8 @@ export const handleListOpenTasksOnList = (
 
     return runListedQuery({
       cursor: query.cursor,
-      view: 'tasks.pile',
-      limit: resolveListLimit(query.limit, 'pile'),
       cursorOf: openPileTaskCursor,
+      limit: resolveListLimit(query.limit, 'pile'),
       load: (seek, fetchLimit) =>
         deps.pageOpenTasksOnList({
           organizationId: query.organizationId,

@@ -5,7 +5,7 @@ import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrLists } from '@/api/client';
-import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
+import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
 import { useNetworkStatus } from '@/lib/use-network-status';

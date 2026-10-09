@@ -9,6 +9,7 @@ const elements = [
   { type: 'config', pattern: 'src/config/**' },
   { type: 'database', pattern: 'src/database/**' },
   { type: 'health', pattern: 'src/health/**' },
+  { type: 'listing', pattern: 'src/listing/**' },
   { type: 'lists', pattern: 'src/lists/**' },
   { type: 'logging', pattern: 'src/logging/**' },
   { type: 'processing', pattern: 'src/processing/**' },
@@ -48,7 +49,7 @@ export default [
         {
           default: 'disallow',
           rules: [
-            { from: '*', allow: ['shared', 'config', 'database', 'logging'] },
+            { from: '*', allow: ['shared', 'listing', 'config', 'database', 'logging'] },
             { from: 'app', allow: ['*'] },
             { from: 'composition', allow: ['*'] },
             { from: 'entrypoint', allow: ['*'] },

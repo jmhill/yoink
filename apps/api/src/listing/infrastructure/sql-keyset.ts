@@ -1,4 +1,4 @@
-import type { KeysetCursor, KeysetValue } from '../domain/keyset-cursor.js';
+import type { KeysetCursor } from '../domain/keyset-cursor.js';
 import type { KeysetDirection } from '../domain/keyset-window.js';
 
 export const sqlKeysetClause = (options: {

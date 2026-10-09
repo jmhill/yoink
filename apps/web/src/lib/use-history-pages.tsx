@@ -167,6 +167,9 @@ const nextHistoryCursor = (lastPage: { status: number; body: { hasMore: boolean;
   return lastPage.body.nextCursor ?? undefined;
 };
 
+const historyCursor = (pageParam: unknown): string | undefined =>
+  typeof pageParam === 'string' && pageParam.length > 0 ? pageParam : undefined;
+
 /**
  * Paged history (Done). First-class pile reads do not use this —
  * those send one request up to the safety cap. Query keys stay under the
@@ -176,12 +179,12 @@ export const useCompletedTaskPages = (enabled: boolean) => {
   const query = tsrTasks.list.useInfiniteQuery({
     queryKey: ['tasks', 'completed'],
     enabled,
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     queryData: ({ pageParam }) => ({
       query: {
         filter: 'completed' as const,
         limit: HISTORY_PAGE_DEFAULT,
-        ...(pageParam ? { cursor: pageParam } : {}),
+        cursor: historyCursor(pageParam),
       },
     }),
     getNextPageParam: nextHistoryCursor,
@@ -209,12 +212,12 @@ export const useTrashedCapturePages = (enabled: boolean) => {
   const query = tsr.list.useInfiniteQuery({
     queryKey: ['captures', 'trashed'],
     enabled,
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     queryData: ({ pageParam }) => ({
       query: {
         status: 'trashed' as const,
         limit: HISTORY_PAGE_DEFAULT,
-        ...(pageParam ? { cursor: pageParam } : {}),
+        cursor: historyCursor(pageParam),
       },
     }),
     getNextPageParam: nextHistoryCursor,

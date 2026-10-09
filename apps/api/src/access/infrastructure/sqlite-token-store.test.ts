@@ -19,20 +19,15 @@ const TEST_USER = {
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-const createTestToken = (
-  overrides: Partial<Omit<ApiToken, 'name'>> & { name?: string | null } = {}
-): ApiToken => {
-  const { name, ...rest } = overrides;
-  return {
-    id: '550e8400-e29b-41d4-a716-446655440003',
-    userId: TEST_USER.id,
-    organizationId: TEST_ORG.id,
-    tokenHash: 'bcrypt-hash-here',
-    name: name === undefined ? 'default-token' : name,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    ...rest,
-  };
-};
+const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
+  id: '550e8400-e29b-41d4-a716-446655440003',
+  userId: TEST_USER.id,
+  organizationId: TEST_ORG.id,
+  tokenHash: 'bcrypt-hash-here',
+  name: 'default-token',
+  createdAt: '2024-01-01T00:00:00.000Z',
+  ...overrides,
+});
 
 describe('createSqliteTokenStore', () => {
   let db: Database;
@@ -308,7 +303,7 @@ describe('createSqliteTokenStore', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.type).toBe('TOKEN_STORAGE_ERROR');
-        expect(result.error.message).toBe('Unique constraint failed');
+        expect(result.error.message).toBe('Failed to save token');
       }
     });
   });
@@ -319,7 +314,8 @@ describe('createSqliteTokenStore', () => {
       await store.save(oldToken);
 
       const result = await store.reissue({
-        revokeIds: [oldToken.id],
+        userId: TEST_USER.id,
+        organizationId: TEST_ORG.id,
         revokedAt: '2026-10-09T12:00:00.000Z',
         token: createTestToken({
           id: '550e8400-e29b-41d4-a716-446655440099',
@@ -331,6 +327,39 @@ describe('createSqliteTokenStore', () => {
 
       expect(result.isOk()).toBe(true);
       expect((await store.findById(oldToken.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
+      expect(listed._unsafeUnwrap()[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440099');
+    });
+
+    it('revokes every live token for the user and org', async () => {
+      const first = createTestToken({ name: 'Tycho' });
+      const second = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        name: 'Tycho-2',
+      });
+      await store.save(first);
+      await store.save(second);
+
+      const result = await store.reissue({
+        userId: TEST_USER.id,
+        organizationId: TEST_ORG.id,
+        revokedAt: '2026-10-09T12:00:00.000Z',
+        token: createTestToken({
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          name: 'Tycho',
+          tokenHash: 'new-hash',
+          createdAt: '2026-10-09T12:00:00.000Z',
+        }),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect((await store.findById(first.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      expect((await store.findById(second.id))._unsafeUnwrap()?.revokedAt).toBe(
         '2026-10-09T12:00:00.000Z'
       );
       const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);

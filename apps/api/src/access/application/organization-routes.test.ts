@@ -244,7 +244,8 @@ describe('organization routes', () => {
 
     const passwordHasher = createFakePasswordHasher();
     const tokenHandlers = createTokenHandlers({
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
+      listUserOrgTokens: (userId, organizationId) =>
+        tokenStore.findByUserAndOrganization(userId, organizationId),
       load: (id) => tokenStore.findById(id),
       loadMembership: (userId, organizationId) =>
         membershipStore
@@ -273,7 +274,7 @@ describe('organization routes', () => {
       nextId: () => idGenerator.generate(),
       nextSecret: () => idGenerator.generate(),
       now: () => clock.now().toISOString(),
-      maxTokensPerUserPerOrg: 50,
+      maxTokensPerUserPerOrg: 2,
     });
 
     const agentService = createAgentService({

@@ -6,34 +6,25 @@ export type TokenOwnerInfo = {
   kind: PrincipalKind;
 };
 
-export type TokenProjection = {
+export type TokenInfo = {
   id: string;
-  name: string | null;
+  name: string;
   lastUsedAt: string | undefined;
   createdAt: string;
 };
-
-export type TokenInfo = TokenProjection;
 
 export type TokenListResult = {
   tokens: TokenInfo[];
 };
 
-export const toTokenProjection = (token: {
+export const toTokenInfo = (token: {
   id: string;
-  name: string | null;
+  name: string;
   lastUsedAt?: string;
   createdAt: string;
-}): TokenProjection => ({
+}): TokenInfo => ({
   id: token.id,
   name: token.name,
   lastUsedAt: token.lastUsedAt,
   createdAt: token.createdAt,
 });
-
-export const toTokenInfo = (token: {
-  id: string;
-  name: string | null;
-  lastUsedAt?: string;
-  createdAt: string;
-}): TokenInfo => toTokenProjection(token);

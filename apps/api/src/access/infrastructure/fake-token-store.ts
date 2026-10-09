@@ -87,12 +87,18 @@ export const createFakeTokenStore = (
       return okAsync(undefined);
     },
 
-    reissue: ({ revokeIds, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
+    reissue: ({ userId, organizationId, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Reissue failed'));
       }
-      for (const id of revokeIds) {
-        revokeInPlace(id, revokedAt);
+      for (const candidate of tokens) {
+        if (
+          candidate.userId === userId &&
+          candidate.organizationId === organizationId &&
+          !candidate.revokedAt
+        ) {
+          revokeInPlace(candidate.id, revokedAt);
+        }
       }
       tokens.push(token);
       return okAsync(undefined);

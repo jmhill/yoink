@@ -97,7 +97,8 @@ describe('AgentService', () => {
       idGenerator,
     });
     const tokenHandlers = createTokenHandlers({
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
+      listUserOrgTokens: (userId, organizationId) =>
+        tokenStore.findByUserAndOrganization(userId, organizationId),
       load: (id) => tokenStore.findById(id),
       loadMembership: (userId, organizationId) =>
         membershipStore
@@ -126,7 +127,7 @@ describe('AgentService', () => {
       nextId: () => idGenerator.generate(),
       nextSecret: () => idGenerator.generate(),
       now: () => clock.now().toISOString(),
-      maxTokensPerUserPerOrg: 50,
+      maxTokensPerUserPerOrg: 2,
     });
 
     service = createAgentService({
@@ -209,6 +210,19 @@ describe('AgentService', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('MEMBERSHIP_NOT_FOUND');
+    }
+  });
+
+  it('refuses a bot actor before validating the name', async () => {
+    const result = await service.mintAgent({
+      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane' },
+      organizationId: ORG_ID,
+      name: '   ',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
     }
   });
 

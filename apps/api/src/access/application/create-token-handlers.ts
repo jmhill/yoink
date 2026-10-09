@@ -3,7 +3,7 @@ import { handleListTokens } from './handle-list-tokens.js';
 import { handleRevokeToken } from './handle-revoke-token.js';
 import type {
   HashSecret,
-  ListOrgTokens,
+  ListUserOrgTokens,
   LoadActorMembership,
   LoadToken,
   LoadTokenOwner,
@@ -11,7 +11,7 @@ import type {
 } from './token-ports.js';
 
 export type TokenHandlerDeps = {
-  listOrgTokens: ListOrgTokens;
+  listUserOrgTokens: ListUserOrgTokens;
   load: LoadToken;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
@@ -26,7 +26,7 @@ export type TokenHandlerDeps = {
 export const createTokenHandlers = (deps: TokenHandlerDeps) => ({
   list: (query: Parameters<typeof handleListTokens>[0]) =>
     handleListTokens(query, {
-      listOrgTokens: deps.listOrgTokens,
+      listUserOrgTokens: deps.listUserOrgTokens,
     }),
   create: (command: Parameters<typeof handleCreateToken>[0]) =>
     handleCreateToken(command, deps),

@@ -8,14 +8,14 @@ import { tokenStorageError } from '../domain/auth-errors.js';
 import type { CreateNamedTokenError } from '../domain/token-errors.js';
 import type {
   HashSecret,
-  ListOrgTokens,
+  ListUserOrgTokens,
   LoadActorMembership,
   LoadTokenOwner,
   PersistTokenEvent,
 } from './token-ports.js';
 
 export type HandleCreateTokenDeps = {
-  listOrgTokens: ListOrgTokens;
+  listUserOrgTokens: ListUserOrgTokens;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
   persist: PersistTokenEvent;
@@ -38,12 +38,10 @@ export const handleCreateToken = (
 ): ResultAsync<CreateTokenResult, CreateNamedTokenError> => {
   const actorUserId = command.actor.userId;
 
-  return deps.listOrgTokens(command.organizationId).andThen((orgTokens) =>
+  return deps.listUserOrgTokens(command.userId, command.organizationId).andThen((userTokens) =>
     deps.loadMembership(actorUserId, command.organizationId).andThen((membership) =>
       deps.loadOwner(command.userId).andThen((owner) => {
-        const tokenCountForUser = orgTokens.filter(
-          (token) => token.userId === command.userId
-        ).length;
+        const tokenCountForUser = userTokens.length;
 
         const id = deps.nextId();
         const secret = deps.nextSecret();

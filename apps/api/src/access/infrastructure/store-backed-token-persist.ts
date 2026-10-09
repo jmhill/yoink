@@ -29,7 +29,8 @@ export const createStoreBackedTokenPersist = (store: TokenStore): PersistTokenEv
 export const createStoreBackedTokenReissue = (store: TokenStore): PersistReissue => {
   return ({ revoke, create, tokenHash }) =>
     store.reissue({
-      revokeIds: revoke.map((event) => event.id),
+      userId: create.userId,
+      organizationId: create.organizationId,
       revokedAt: revoke[0]?.revokedAt ?? create.createdAt,
       token: {
         id: create.id,

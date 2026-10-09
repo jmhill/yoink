@@ -8,11 +8,13 @@ import type { TokenCreated, TokenRevoked } from '../domain/token-events.js';
 import { decideReissueAgentToken } from '../domain/decide-reissue-agent-token.js';
 import { applyTokenEvent } from '../domain/apply-token-event.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
-import type { TokenInfo } from '../domain/token-info.js';
-import type { DecideReissueAgentTokenError } from '../domain/decide-reissue-agent-token.js';
 import type { TokenWriteError } from '../domain/token-store.js';
 import type { UserServiceError } from '../domain/user-errors.js';
 import type { MembershipServiceError } from '../domain/organization-errors.js';
+import type {
+  ReissueAgentTokenError,
+  ReissueAgentTokenResult,
+} from '../domain/reissue-agent-token.js';
 
 export type LoadMembership = (
   userId: string,
@@ -44,17 +46,6 @@ export type HandleReissueAgentTokenDeps = {
   nextSecret: () => string;
   now: () => string;
 };
-
-export type ReissueAgentTokenResult = {
-  token: TokenInfo;
-  rawToken: string;
-};
-
-export type ReissueAgentTokenError =
-  | DecideReissueAgentTokenError
-  | MembershipServiceError
-  | UserServiceError
-  | TokenWriteError;
 
 export const handleReissueAgentToken = (
   command: ReissueAgentTokenCommand,

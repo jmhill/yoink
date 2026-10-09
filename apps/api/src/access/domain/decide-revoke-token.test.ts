@@ -26,8 +26,6 @@ const decide = (
   decideRevokeToken({
     command: command(),
     current: token,
-    actorRole: 'member',
-    tokenOwnerKind: 'human',
     now: '2026-10-09T12:00:00.000Z',
     ...overrides,
   });
@@ -79,14 +77,16 @@ describe('decideRevokeToken', () => {
     }
   });
 
-  it('lets an owner revoke an agent token', () => {
+  it('refuses an owner revoking an agent token', () => {
     const result = decide({
+      command: command({ actor: { kind: 'user', userId: 'owner-1' } }),
       current: { ...token, userId: 'agent-1' },
-      actorRole: 'owner',
-      tokenOwnerKind: 'agent',
     });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_OWNERSHIP_ERROR');
+    }
   });
 
   it('refuses a bot actor', () => {

@@ -15,14 +15,6 @@ describe('handleListTokens', () => {
         lastUsedAt: '2026-10-09T12:00:00.000Z',
         createdAt: '2026-01-01T00:00:00.000Z',
       },
-      {
-        id: 'token-2',
-        userId: 'agent-1',
-        organizationId: 'org-1',
-        tokenHash: 'hash',
-        name: 'Sid',
-        createdAt: '2026-02-01T00:00:00.000Z',
-      },
     ];
 
     const result = await handleListTokens(
@@ -32,7 +24,7 @@ describe('handleListTokens', () => {
         organizationId: 'org-1',
       },
       {
-        listOrgTokens: () => okAsync(tokens),
+        listUserOrgTokens: () => okAsync(tokens),
       }
     );
 

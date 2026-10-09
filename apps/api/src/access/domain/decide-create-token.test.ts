@@ -15,7 +15,7 @@ const input = (
 ) => ({
   command: humanCommand(),
   tokenCountForUser: 0,
-  maxTokensPerUserPerOrg: 50,
+  maxTokensPerUserPerOrg: 2,
   actorRole: 'owner' as const,
   targetKind: 'human' as const,
   id: 'token-1',
@@ -59,7 +59,7 @@ describe('decideCreateToken', () => {
   });
 
   it('rejects when the user is at the token limit', () => {
-    const result = decideCreateToken(input({ tokenCountForUser: 50 }));
+    const result = decideCreateToken(input({ tokenCountForUser: 2 }));
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

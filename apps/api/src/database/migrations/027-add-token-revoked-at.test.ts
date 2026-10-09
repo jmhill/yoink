@@ -44,13 +44,4 @@ describe('Migration 27: add_token_revoked_at', () => {
     expect(result.rows[0]?.name).toBe('Lane');
     expect(result.rows[0]?.revoked_at).toBeNull();
   });
-
-  it('does not add a unique name index', async () => {
-    await runMigrations(db, migrations);
-
-    const result = await db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_api_tokens_org_name_ci'`,
-    });
-    expect(result.rows).toHaveLength(0);
-  });
 });

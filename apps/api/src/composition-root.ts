@@ -229,7 +229,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     });
 
     const tokenHandlers = createTokenHandlers({
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
+      listUserOrgTokens: (userId, organizationId) =>
+        tokenStore.findByUserAndOrganization(userId, organizationId),
       load: (id) => tokenStore.findById(id),
       loadMembership: (userId, organizationId) =>
         membershipStore

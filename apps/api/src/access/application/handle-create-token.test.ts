@@ -26,14 +26,14 @@ const deps = (
     persist: Parameters<typeof handleCreateToken>[1]['persist'];
   }
 ) => ({
-  listOrgTokens: () => okAsync([]),
+  listUserOrgTokens: () => okAsync([]),
   loadMembership: () => okAsync({ role: 'owner' as const }),
   loadOwner: () => okAsync(owner),
   hashSecret: (secret: string) => okAsync(`hashed:${secret}`),
   nextId: () => 'token-1',
   nextSecret: () => 'secret-1',
   now: () => '2026-10-09T12:00:00.000Z',
-  maxTokensPerUserPerOrg: 50,
+  maxTokensPerUserPerOrg: 2,
   ...overrides,
 });
 
@@ -84,7 +84,7 @@ describe('handleCreateToken', () => {
     const { persist, events } = persistEvents();
 
     const result = await handleCreateToken(command, deps({
-      listOrgTokens: () => errAsync(tokenStorageError('Find failed')),
+      listUserOrgTokens: () => errAsync(tokenStorageError('Find failed')),
       persist,
     }));
 

@@ -5,7 +5,8 @@ import type { TokenStorageError } from './auth-errors.js';
 export type TokenWriteError = TokenStorageError;
 
 export type TokenReissueWrite = {
-  revokeIds: readonly string[];
+  userId: string;
+  organizationId: string;
   revokedAt: string;
   token: ApiToken;
 };

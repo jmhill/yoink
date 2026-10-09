@@ -436,42 +436,6 @@ export const mintAgent = async (
   return { ok: true, data };
 };
 
-export type ReissuedAgentToken = {
-  token: { id: string; name: string | null; createdAt: string };
-  rawToken: string;
-};
-
-/**
- * Issue a new token for an existing agent member. Owner only.
- * The previous token stops working immediately. The secret is shown once.
- */
-export const reissueAgentToken = async (
-  organizationId: string,
-  memberUserId: string
-): Promise<ApiResponse<ReissuedAgentToken>> => {
-  const response = await fetch(
-    `/api/organizations/${organizationId}/members/${memberUserId}/token`,
-    {
-      method: 'POST',
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
-      return { ok: false, error: body.message || 'Only the owner can issue a new agent token' };
-    }
-    if (response.status === 404) {
-      return { ok: false, error: body.message || 'Agent member not found' };
-    }
-    return { ok: false, error: body.message || 'Failed to issue token' };
-  }
-
-  const data = await response.json();
-  return { ok: true, data };
-};
-
 /**
  * Remove a member from the current organization.
  */

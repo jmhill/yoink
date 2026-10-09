@@ -1,10 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { ApiToken } from './api-token.js';
-import type { MembershipRole } from './organization-membership.js';
-import type { PrincipalKind } from './user.js';
 import type { RevokeTokenCommand } from './token-commands.js';
 import type { TokenRevoked } from './token-events.js';
-import { canManageOrgToken } from './can-manage-token.js';
 import { requireHumanActor } from './require-human-actor.js';
 import {
   tokenOwnershipError,
@@ -15,8 +12,6 @@ import {
 export type DecideRevokeTokenInput = {
   command: RevokeTokenCommand;
   current: ApiToken | null;
-  actorRole: MembershipRole | null;
-  tokenOwnerKind: PrincipalKind;
   now: string;
 };
 
@@ -25,8 +20,6 @@ export type DecideRevokeTokenError = Exclude<RevokeTokenError, { type: 'TOKEN_ST
 export const decideRevokeToken = ({
   command,
   current,
-  actorRole,
-  tokenOwnerKind,
   now,
 }: DecideRevokeTokenInput): Result<TokenRevoked, DecideRevokeTokenError> => {
   const actor = requireHumanActor(command.actor);
@@ -38,14 +31,7 @@ export const decideRevokeToken = ({
     return err(userTokenNotFoundError(command.tokenId));
   }
 
-  if (
-    !canManageOrgToken({
-      actorUserId: actor.value.userId,
-      actorRole,
-      tokenUserId: current.userId,
-      tokenOwnerKind,
-    })
-  ) {
+  if (current.userId !== actor.value.userId) {
     return err(tokenOwnershipError(command.tokenId, actor.value.userId));
   }
 

@@ -1,5 +1,5 @@
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
-import { captureContract, listContract, taskContract, tokenContract } from '@yoink/api-contracts';
+import { captureContract, listContract, organizationContract, taskContract, tokenContract } from '@yoink/api-contracts';
 import { tokenStorage } from '@/lib/token';
 
 /**
@@ -100,6 +100,18 @@ export const tsrLists = initTsrReactQuery(listContract, {
  * Uses session cookies for authentication.
  */
 export const tsrTokens = initTsrReactQuery(tokenContract, {
+  baseUrl: '',
+  baseHeaders: {
+    'Content-Type': 'application/json',
+  },
+  api: createApi(),
+});
+
+/**
+ * ts-rest React Query client for organization endpoints.
+ * Uses session cookies for authentication.
+ */
+export const tsrOrganizations = initTsrReactQuery(organizationContract, {
   baseUrl: '',
   baseHeaders: {
     'Content-Type': 'application/json',

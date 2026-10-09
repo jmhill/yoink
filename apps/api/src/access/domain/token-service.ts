@@ -15,7 +15,6 @@ import {
   invalidSecretError,
   type TokenValidationError,
 } from './auth-errors.js';
-import { shouldUpdateLastUsed } from './last-used-throttle.js';
 
 export type AuthResult = {
   organization: Organization;
@@ -113,10 +112,8 @@ export const createTokenService = (
                 return errAsync(userNotFoundError(token.userId));
               }
 
-              const now = clock.now();
-              if (shouldUpdateLastUsed(token.lastUsedAt, now)) {
-                tokenStore.updateLastUsed(token.id, now.toISOString());
-              }
+              // Update lastUsedAt (fire and forget - we don't want to fail validation if this fails)
+              tokenStore.updateLastUsed(token.id, clock.now().toISOString());
 
               return okAsync({ organization, user, token });
             });

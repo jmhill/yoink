@@ -68,14 +68,14 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
   return {
     mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError> {
       const { actor, organizationId, name } = command;
-      const agentName = name.trim();
-      if (agentName.length === 0) {
-        return errAsync({ type: 'INVALID_TOKEN_NAME', message: 'Name is required' });
-      }
-
       const human = requireHumanActor(actor);
       if (human.isErr()) {
         return errAsync(human.error);
+      }
+
+      const agentName = name.trim();
+      if (agentName.length === 0) {
+        return errAsync({ type: 'INVALID_TOKEN_NAME', message: 'Name is required' });
       }
 
       const actorUserId = human.value.userId;

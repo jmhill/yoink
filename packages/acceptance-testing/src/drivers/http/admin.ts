@@ -131,10 +131,10 @@ export const createHttpAdmin = (
     return response.json<User>();
   },
 
-  async createToken(organizationId: string, userId: string, name?: string): Promise<CreateTokenResult> {
+  async createToken(organizationId: string, userId: string, name: string): Promise<CreateTokenResult> {
     const response = await client.post(
       `/api/admin/organizations/${organizationId}/tokens`,
-      name ? { userId, name } : { userId }
+      { userId, name }
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();

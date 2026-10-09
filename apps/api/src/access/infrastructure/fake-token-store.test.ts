@@ -2,18 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { createFakeTokenStore } from './fake-token-store.js';
 import type { ApiToken } from '../domain/api-token.js';
 
-const createTestToken = (overrides: Partial<Omit<ApiToken, 'name'>> & { name?: string | null } = {}): ApiToken => {
-  const { name, ...rest } = overrides;
-  return {
-    id: 'token-123',
-    userId: 'user-456',
-    organizationId: 'org-789',
-    tokenHash: 'hashed-secret',
-    name: name === undefined ? 'test-token' : name,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    ...rest,
-  };
-};
+const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
+  id: 'token-123',
+  userId: 'user-456',
+  organizationId: 'org-789',
+  tokenHash: 'hashed-secret',
+  name: 'test-token',
+  createdAt: '2024-01-01T00:00:00.000Z',
+  ...overrides,
+});
 
 describe('createFakeTokenStore', () => {
   describe('save', () => {

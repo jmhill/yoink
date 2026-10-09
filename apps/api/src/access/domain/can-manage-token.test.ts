@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canManageOrgToken, tokenIsVisibleTo } from './can-manage-token.js';
+import { canManageOrgToken } from './can-manage-token.js';
 
 describe('canManageOrgToken', () => {
   it('allows a member to manage their own token', () => {
@@ -52,28 +52,6 @@ describe('canManageOrgToken', () => {
         actorUserId: 'justin',
         actorRole: 'owner',
         tokenUserId: 'polly',
-        tokenOwnerKind: 'human',
-      })
-    ).toBe(false);
-  });
-});
-
-describe('tokenIsVisibleTo', () => {
-  it('lets a bot see only tokens owned by its user', () => {
-    expect(
-      tokenIsVisibleTo({
-        actor: { kind: 'bot', tokenId: 't1', name: 'Lane', userId: 'lane' },
-        actorRole: 'member',
-        tokenUserId: 'lane',
-        tokenOwnerKind: 'agent',
-      })
-    ).toBe(true);
-
-    expect(
-      tokenIsVisibleTo({
-        actor: { kind: 'bot', tokenId: 't1', name: 'Lane', userId: 'lane' },
-        actorRole: 'member',
-        tokenUserId: 'justin',
         tokenOwnerKind: 'human',
       })
     ).toBe(false);

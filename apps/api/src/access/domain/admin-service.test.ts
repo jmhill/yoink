@@ -375,17 +375,7 @@ describe('AdminService', () => {
       }
     });
 
-    it('trims a supplied name and defaults a blank one', async () => {
-      const blank = await service.createToken({
-        organizationId: testOrg.id,
-        userId: testUser.id,
-        name: '   ',
-      });
-      expect(blank.isOk()).toBe(true);
-      if (blank.isOk()) {
-        expect(blank.value.token.name).toBe('admin-token');
-      }
-
+    it('trims a supplied name', async () => {
       const trimmed = await service.createToken({
         organizationId: testOrg.id,
         userId: testUser.id,

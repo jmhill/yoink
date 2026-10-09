@@ -6,7 +6,8 @@ import type { TokenOwnerInfo } from '../domain/token-info.js';
 import type { TokenEvent } from '../domain/token-events.js';
 import type { TokenWriteError } from '../domain/token-store.js';
 
-export type ListOrgTokens = (
+export type ListUserOrgTokens = (
+  userId: string,
   organizationId: string
 ) => ResultAsync<ApiToken[], TokenStorageError>;
 

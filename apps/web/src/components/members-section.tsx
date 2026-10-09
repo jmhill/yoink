@@ -12,7 +12,20 @@ import {
 import { Crown, Shield, User, Trash2, Loader2, AlertCircle, Users, Bot, Plus, Copy, Check, KeyRound } from 'lucide-react';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
-import { listMembers, removeMember, mintAgent, reissueAgentToken, memberLabel, type Member } from '@/api/auth';
+import { listMembers, removeMember, mintAgent, memberLabel, type Member } from '@/api/auth';
+import { tsrOrganizations } from '@/api/client';
+
+const errorBodyMessage = (body: unknown): string | null => {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+  return null;
+};
 
 type MembersSectionProps = {
   organizationId: string;
@@ -82,9 +95,21 @@ export function MembersSection({
   const [rawAgentToken, setRawAgentToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [reissuingMember, setReissuingMember] = useState<Member | null>(null);
-  const [isReissuing, setIsReissuing] = useState(false);
   const [reissueError, setReissueError] = useState<string | null>(null);
   const [rawReissuedToken, setRawReissuedToken] = useState<string | null>(null);
+
+  const reissueMutation = tsrOrganizations.reissueAgentToken.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 201) {
+        setRawReissuedToken(result.body.rawToken);
+        return;
+      }
+      setReissueError(errorBodyMessage(result.body) ?? 'Failed to issue token');
+    },
+    onError: () => {
+      setReissueError('Failed to issue token');
+    },
+  });
 
   const canMint = currentUserRole === 'owner' || currentUserRole === 'admin';
   const canReissue = currentUserRole === 'owner';
@@ -414,26 +439,21 @@ export function MembersSection({
                 <Button
                   variant="outline"
                   onClick={() => setReissuingMember(null)}
-                  disabled={isReissuing}
+                  disabled={reissueMutation.isPending}
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={async () => {
+                  onClick={() => {
                     if (!reissuingMember) return;
-                    setIsReissuing(true);
                     setReissueError(null);
-                    const result = await reissueAgentToken(organizationId, reissuingMember.userId);
-                    setIsReissuing(false);
-                    if (result.ok) {
-                      setRawReissuedToken(result.data.rawToken);
-                    } else {
-                      setReissueError(result.error);
-                    }
+                    reissueMutation.mutate({
+                      params: { organizationId, userId: reissuingMember.userId },
+                    });
                   }}
-                  disabled={isReissuing}
+                  disabled={reissueMutation.isPending}
                 >
-                  {isReissuing ? (
+                  {reissueMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Issuing...

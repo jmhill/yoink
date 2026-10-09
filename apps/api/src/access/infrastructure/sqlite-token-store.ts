@@ -9,7 +9,7 @@ type TokenRow = {
   user_id: string;
   organization_id: string;
   token_hash: string;
-  name: string | null;
+  name: string;
   last_used_at: string | null;
   created_at: string;
   revoked_at: string | null;
@@ -25,22 +25,6 @@ const rowToToken = (row: TokenRow): ApiToken => ({
   createdAt: row.created_at,
   revokedAt: row.revoked_at ?? undefined,
 });
-
-const uniqueConstraintFailed = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const candidate = error as { message?: unknown };
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
-  return /UNIQUE constraint failed/i.test(message);
-};
-
-const writeError = (fallback: string, error: unknown): TokenWriteError => {
-  if (uniqueConstraintFailed(error)) {
-    return tokenStorageError('Unique constraint failed', error);
-  }
-  return tokenStorageError(fallback, error);
-};
 
 /**
  * Validates that the required database schema exists.
@@ -74,13 +58,13 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
             token.userId,
             token.organizationId,
             token.tokenHash,
-            token.name ?? null,
+            token.name,
             token.lastUsedAt ?? null,
             token.createdAt,
             token.revokedAt ?? null,
           ],
         }),
-        (error) => writeError('Failed to save token', error)
+        (error) => tokenStorageError('Failed to save token', error)
       ).map(() => undefined);
     },
 
@@ -156,12 +140,12 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       ).map(() => undefined);
     },
 
-    reissue: ({ revokeIds, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
+    reissue: ({ userId, organizationId, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
       const queries = [
-        ...revokeIds.map((id) => ({
-          sql: `UPDATE api_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`,
-          args: [revokedAt, id],
-        })),
+        {
+          sql: `UPDATE api_tokens SET revoked_at = ? WHERE user_id = ? AND organization_id = ? AND revoked_at IS NULL`,
+          args: [revokedAt, userId, organizationId],
+        },
         {
           sql: `
             INSERT INTO api_tokens (id, user_id, organization_id, token_hash, name, last_used_at, created_at, revoked_at)
@@ -172,7 +156,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
             token.userId,
             token.organizationId,
             token.tokenHash,
-            token.name ?? null,
+            token.name,
             token.lastUsedAt ?? null,
             token.createdAt,
             token.revokedAt ?? null,
@@ -182,7 +166,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
 
       return ResultAsync.fromPromise(
         db.batch(queries, 'write'),
-        (error) => writeError('Failed to reissue token', error)
+        (error) => tokenStorageError('Failed to reissue token', error)
       ).map(() => undefined);
     },
 

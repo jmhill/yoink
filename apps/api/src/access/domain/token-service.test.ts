@@ -220,31 +220,6 @@ describe('TokenService', () => {
     }
   });
 
-  it('does not write lastUsedAt again within a minute', async () => {
-    const organizationStore = createFakeOrganizationStore({
-      initialOrganizations: [testOrg],
-    });
-    const userStore = createFakeUserStore({ initialUsers: [testUser] });
-    const recent = createFakeTokenStore({
-      initialTokens: [
-        { ...testToken, lastUsedAt: '2024-06-15T11:59:30.000Z' },
-      ],
-    });
-    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
-    const service = createTokenService({
-      organizationStore,
-      userStore,
-      tokenStore: recent,
-      passwordHasher: createFakePasswordHasher(),
-      clock,
-    });
-
-    await service.validateToken({ plaintext: VALID_TOKEN });
-
-    const found = await recent.findById(testToken.id);
-    expect(found._unsafeUnwrap()?.lastUsedAt).toBe('2024-06-15T11:59:30.000Z');
-  });
-
   it('does not update lastUsedAt on failed validation', async () => {
     await tokenService.validateToken({
       plaintext: `${testToken.id}:wrong-secret`,

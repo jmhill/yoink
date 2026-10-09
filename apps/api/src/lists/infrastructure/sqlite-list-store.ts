@@ -40,44 +40,6 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
   await validateSchema(db);
 
   return {
-    save: (list: NamedList): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `
-              INSERT INTO lists (
-                id, organization_id, created_by_id, name, created_at
-              ) VALUES (?, ?, ?, ?, ?)
-            `,
-            args: [
-              list.id,
-              list.organizationId,
-              list.createdById,
-              list.name,
-              list.createdAt,
-            ],
-          })
-          .then(() => undefined),
-        (cause) => storageError('Failed to save named list', cause)
-      );
-    },
-
-    update: (list: NamedList): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `
-              UPDATE lists
-              SET name = ?
-              WHERE id = ?
-            `,
-            args: [list.name, list.id],
-          })
-          .then(() => undefined),
-        (cause) => storageError('Failed to rename named list', cause)
-      );
-    },
-
     findById: (id: string): ResultAsync<NamedList | null, StorageError> => {
       return ResultAsync.fromPromise(
         db
@@ -134,18 +96,6 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
         mapRow: (row) => rowToNamedList(row as ListRow),
         errorMessage: 'Failed to list named lists',
       });
-    },
-
-    remove: (id: string): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `DELETE FROM lists WHERE id = ?`,
-            args: [id],
-          })
-          .then(() => undefined),
-        (cause) => storageError('Failed to delete named list', cause)
-      );
     },
   };
 };

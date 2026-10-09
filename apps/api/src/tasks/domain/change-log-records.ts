@@ -21,11 +21,16 @@ import type {
 } from '../../shared/change-log/domain/payloads.js';
 import type { TaskEvent } from './events.js';
 
+export type TaskChangeLogIds = {
+  recordId: string;
+  renumberRecordId?: string;
+};
+
 export type ChangeLogRecordsFromTaskEventInput = {
   event: TaskEvent;
   current: Task | null;
   actor: Actor | null;
-  ids: readonly string[];
+  ids: TaskChangeLogIds;
 };
 
 const actorFields = (actor: Actor | null) => ({
@@ -33,16 +38,13 @@ const actorFields = (actor: Actor | null) => ({
   actorKind: actor?.kind ?? null,
 });
 
-const takeId = (ids: readonly string[], index: number): string =>
-  ids[index] ?? ids[0] ?? '';
-
 const envelope = (
   input: ChangeLogRecordsFromTaskEventInput,
   subject: { subjectType: 'task' | 'list'; subjectId: string; organizationId: string },
   occurredAt: string,
-  idIndex: number
+  recordId: string
 ) => ({
-  id: takeId(input.ids, idIndex),
+  id: recordId,
   organizationId: subject.organizationId,
   projectId: null as string | null,
   subjectType: subject.subjectType,
@@ -100,7 +102,7 @@ const taskPayloadByType = {
 
 /**
  * Typed, versioned change-log records built from the domain event.
- * Ids are data — the caller pre-generates them.
+ * Ids are data — the caller pre-generates them by name.
  */
 export const changeLogRecordsFromTaskEvent = (
   input: ChangeLogRecordsFromTaskEventInput
@@ -116,7 +118,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskCreated':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskCreated',
           hidden: hiddenFor('TaskCreated'),
           payload: taskPayloadByType.TaskCreated(event),
@@ -125,7 +127,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskUpdated':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskUpdated',
           hidden: hiddenFor('TaskUpdated'),
           payload: taskPayloadByType.TaskUpdated(event),
@@ -134,7 +136,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskCompleted':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskCompleted',
           hidden: hiddenFor('TaskCompleted'),
           payload: taskPayloadByType.TaskCompleted(event),
@@ -143,13 +145,14 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskUncompleted': {
       const records: ChangeLogRecord[] = [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskUncompleted',
           hidden: hiddenFor('TaskUncompleted'),
           payload: taskPayloadByType.TaskUncompleted(event),
         },
       ];
-      if (event.siblingOrders.length > 0) {
+      const { renumberRecordId } = input.ids;
+      if (event.siblingOrders.length > 0 && renumberRecordId !== undefined) {
         const listId = current?.listId ?? null;
         const renumberPayload: OpenTasksRenumberedPayloadV1 = {
           listId,
@@ -164,7 +167,7 @@ export const changeLogRecordsFromTaskEvent = (
               organizationId: event.organizationId,
             },
             event.occurredAt,
-            1
+            renumberRecordId
           ),
           kind: 'OpenTasksRenumbered',
           hidden: hiddenFor('OpenTasksRenumbered'),
@@ -176,7 +179,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskDeleted':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskDeleted',
           hidden: hiddenFor('TaskDeleted'),
           payload: taskPayloadByType.TaskDeleted(event),
@@ -185,7 +188,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskPinned':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskPinned',
           hidden: hiddenFor('TaskPinned'),
           payload: taskPayloadByType.TaskPinned(event),
@@ -194,7 +197,7 @@ export const changeLogRecordsFromTaskEvent = (
     case 'TaskUnpinned':
       return [
         {
-          ...envelope(input, subject, event.occurredAt, 0),
+          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
           kind: 'TaskUnpinned',
           hidden: hiddenFor('TaskUnpinned'),
           payload: taskPayloadByType.TaskUnpinned(event),

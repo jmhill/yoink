@@ -171,9 +171,6 @@ importers:
       neverthrow:
         specifier: ^8.2.0
         version: 8.2.0
-      pino:
-        specifier: ^10.4.0
-        version: 10.4.0
       zod:
         specifier: ^3.24.0
         version: 3.25.76

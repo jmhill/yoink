@@ -2,12 +2,11 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { UpdateTaskCommand } from '../domain/task-commands.js';
 import type { UpdateTaskError } from '../domain/task-errors.js';
 import type { TaskUpdated } from '../domain/events.js';
-import { storageError } from '../domain/task-errors.js';
 import { decideUpdateTask } from '../domain/decide-update.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadNamedList, LoadNextOpenOrder, LoadTask, PersistTaskChange } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 
 export type HandleUpdateTaskDeps = {
@@ -76,7 +75,7 @@ export const handleUpdateTask = (
           }
 
           if (decision.value.type === 'Noop') {
-            return okAsync({ event: null, view: current });
+            return okAsync({ event: null, view: current, eventKinds: [] });
           }
 
           const event = decision.value;
@@ -84,14 +83,12 @@ export const handleUpdateTask = (
             event,
             current,
             actor: command.actor,
-            ids: [deps.nextId(), deps.nextId()],
+            ids: { recordId: deps.nextId() },
           });
-          if (plan.action === 'delete') {
-            return errAsync(storageError('Update did not project a task'));
-          }
           return deps.persist(plan).map(() => ({
             event,
             view: plan.view,
+            eventKinds: kindsFromRecords(plan.records),
           }));
         });
       })

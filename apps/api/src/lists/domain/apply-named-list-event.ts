@@ -1,5 +1,21 @@
 import type { NamedList } from '@yoink/api-contracts';
-import type { ListEvent } from './events.js';
+import type { ListEvent, NamedListCreated, NamedListRenamed } from './events.js';
+
+export const applyNamedListCreated = (event: NamedListCreated): NamedList => ({
+  id: event.id,
+  organizationId: event.organizationId,
+  createdById: event.createdById,
+  name: event.name,
+  createdAt: event.createdAt,
+});
+
+export const applyNamedListRenamed = (
+  current: NamedList,
+  event: NamedListRenamed
+): NamedList => ({
+  ...current,
+  name: event.name,
+});
 
 export const applyNamedListEvent = (
   _current: NamedList | null,
@@ -9,22 +25,13 @@ export const applyNamedListEvent = (
     case 'OpenTasksReordered':
       return _current;
     case 'NamedListCreated':
-      return {
-        id: event.id,
-        organizationId: event.organizationId,
-        createdById: event.createdById,
-        name: event.name,
-        createdAt: event.createdAt,
-      };
+      return applyNamedListCreated(event);
     case 'NamedListDeleted':
       return null;
     case 'NamedListRenamed':
       if (!_current) {
         return null;
       }
-      return {
-        ..._current,
-        name: event.name,
-      };
+      return applyNamedListRenamed(_current, event);
   }
 };

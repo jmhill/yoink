@@ -1,7 +1,7 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Database } from './database/types.js';
-import { createApp, type AdminConfig, type SignupConfig } from './app.js';
+import { createApp, createFastifyInstance, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
@@ -13,9 +13,12 @@ import { createSqliteListPersist } from './lists/infrastructure/store-backed-per
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
+import {
+  clearCompletedListIdQuery,
+  setOpenOrderQueries,
+} from './tasks/infrastructure/task-row-statements.js';
 import { createPinoCommandLogger } from './logging/index.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
-import pino from 'pino';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
@@ -325,18 +328,18 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
-  const commandLogger = createPinoCommandLogger(
-    pino({
-      level: config.log.level,
-      redact: ['req.headers.authorization', 'req.headers.cookie'],
-    })
-  );
+  const app = createFastifyInstance(config.log);
+  const commandLogger = createPinoCommandLogger(app.log);
 
   const listStore = await createSqliteListStore(database);
   const taskStore = await createSqliteTaskStore(database);
   const listHandlers = createListHandlers({
     persist: createSqliteListPersist({
       db: database,
+      taskSql: {
+        clearCompletedListId: clearCompletedListIdQuery,
+        setOpenOrders: setOpenOrderQueries,
+      },
     }),
     list: (organizationId) => listStore.findByOrganization(organizationId),
     pageNamedLists: (options) => listStore.pageByOrganization(options),
@@ -415,6 +418,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   }
 
   return createApp({
+    app,
     captureHandlers,
     listHandlers,
     taskService,

@@ -42,8 +42,8 @@ describe('createStoreBackedPersist', () => {
         },
         current: null,
         actor: null,
-        ids: ['log-1'],
-      })!
+        ids: { recordId: 'log-1' },
+      })
     );
 
     expect(result.isOk()).toBe(true);
@@ -74,8 +74,8 @@ describe('createStoreBackedPersist', () => {
         },
         current: groceriesList,
         actor: null,
-        ids: ['log-1'],
-      })!
+        ids: { recordId: 'log-1' },
+      })
     );
 
     expect(result.isOk()).toBe(true);
@@ -130,8 +130,8 @@ describe('createStoreBackedPersist', () => {
         },
         current: groceriesList,
         actor: null,
-        ids: ['log-1'],
-      })!
+        ids: { recordId: 'log-1' },
+      })
     );
 
     expect(result.isOk()).toBe(true);

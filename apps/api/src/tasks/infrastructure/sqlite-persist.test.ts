@@ -15,7 +15,7 @@ const persistEvent = (
   persist: ReturnType<typeof createSqliteTaskPersist>,
   event: TaskEvent,
   current: Task | null,
-  ids = ['log-1', 'log-2']
+  ids = { recordId: 'log-1', renumberRecordId: 'log-2' }
 ) =>
   persist(
     event.type === 'TaskCreated'
@@ -75,7 +75,7 @@ describe('sqlite task persist', () => {
       organizationId: 'org-1',
       title: 'Should not stick',
       occurredAt: later,
-    }, current, ['log-2', 'log-3']);
+    }, current, { recordId: 'log-2', renumberRecordId: 'log-3' });
     expect(updated.isErr()).toBe(true);
 
     const row = await db.execute({
@@ -108,7 +108,7 @@ describe('sqlite task persist', () => {
       organizationId: 'org-1',
       pinnedAt: later,
       occurredAt: later,
-    }, current, ['log-pin', 'log-pin-2']);
+    }, current, { recordId: 'log-pin' });
     expect(pinned.isOk()).toBe(true);
 
     const after = (await store.findById('task-1'))._unsafeUnwrap();
@@ -168,7 +168,7 @@ describe('sqlite task persist', () => {
       captureId: 'cap-1',
       deletedAt: later,
       occurredAt: later,
-    }, current, ['log-del', 'log-del-2']);
+    }, current, { recordId: 'log-del' });
     expect(deleted.isOk()).toBe(true);
 
     expect((await store.findById('task-1'))._unsafeUnwrap()).toBeNull();
@@ -227,7 +227,7 @@ describe('sqlite task persist', () => {
       captureId: 'cap-1',
       deletedAt: later,
       occurredAt: later,
-    }, current, ['log-del', 'log-del-2']);
+    }, current, { recordId: 'log-del' });
     expect(deleted.isErr()).toBe(true);
 
     expect((await store.findById('task-1'))._unsafeUnwrap()?.title).toBe('Buy milk');
@@ -259,7 +259,7 @@ describe('sqlite task persist', () => {
       openOrder: 1,
       createdAt: now,
       occurredAt: now,
-    }, null, ['log-c2', 'log-c2b']);
+    }, null, { recordId: 'log-c2' });
 
     const store = await createSqliteTaskStore(db);
     let done = (await store.findById('task-done'))._unsafeUnwrap();
@@ -270,7 +270,7 @@ describe('sqlite task persist', () => {
       organizationId: 'org-1',
       completedAt: later,
       occurredAt: later,
-    }, done, ['log-done', 'log-done-2']);
+    }, done, { recordId: 'log-done' });
 
     await db.execute({
       sql: `
@@ -290,12 +290,57 @@ describe('sqlite task persist', () => {
       openOrder: 1,
       siblingOrders: [{ id: 'task-open', openOrder: 0 }],
       occurredAt: '2025-01-15T12:00:00.000Z',
-    }, done, ['log-unc', 'log-ren']);
+    }, done, { recordId: 'log-unc', renumberRecordId: 'log-ren' });
     expect(uncompleted.isErr()).toBe(true);
 
     const stillDone = (await store.findById('task-done'))._unsafeUnwrap();
     expect(stillDone?.completedAt).toBe(later);
     const sibling = (await store.findById('task-open'))._unsafeUnwrap();
     expect(sibling?.openOrder).toBe(0);
+  });
+
+  it('returns NOT_FOUND for the loser when two deletes race, and writes exactly one TaskDeleted', async () => {
+    const persist = createSqliteTaskPersist({ db });
+    await persistEvent(persist, {
+      type: 'TaskCreated',
+      id: 'task-1',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      title: 'Buy milk',
+      openOrder: 0,
+      createdAt: now,
+      occurredAt: now,
+    }, null);
+
+    const store = await createSqliteTaskStore(db);
+    const current = (await store.findById('task-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+
+    const [first, second] = await Promise.all([
+      persistEvent(persist, {
+        type: 'TaskDeleted',
+        id: 'task-1',
+        organizationId: 'org-1',
+        deletedAt: later,
+        occurredAt: later,
+      }, current, { recordId: 'log-del-a' }),
+      persistEvent(persist, {
+        type: 'TaskDeleted',
+        id: 'task-1',
+        organizationId: 'org-1',
+        deletedAt: later,
+        occurredAt: later,
+      }, current, { recordId: 'log-del-b' }),
+    ]);
+
+    const outcomes = [first, second];
+    expect(outcomes.filter((result) => result.isOk())).toHaveLength(1);
+    expect(
+      outcomes.filter((result) => result.isErr() && result.error.type === 'TASK_NOT_FOUND')
+    ).toHaveLength(1);
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();
+    expect(records.filter((record) => record.kind === 'TaskDeleted')).toHaveLength(1);
   });
 });

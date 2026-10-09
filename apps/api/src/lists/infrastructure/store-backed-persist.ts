@@ -1,4 +1,4 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { Database } from '../../database/types.js';
 import { insertChangeLogQuery, type SqlQuery } from '../../shared/change-log/infrastructure/sql.js';
 import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
@@ -6,18 +6,21 @@ import { storageError, type StorageError } from '../domain/list-errors.js';
 import type { PersistNamedListChange } from '../application/ports.js';
 import type { ListChangePlan } from '../domain/plan-list-change.js';
 import type { FakeListStore } from './fake-list-store.js';
-import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import {
   insertListQuery,
   removeListQuery,
   updateListNameQuery,
 } from './list-row-statements.js';
-import {
-  clearCompletedListIdQuery,
-  setOpenOrderQueries,
-} from '../../tasks/infrastructure/task-row-statements.js';
 
-const queriesForPlan = (plan: ListChangePlan): SqlQuery[] => {
+export type ListTaskSql = {
+  clearCompletedListId: (listId: string, organizationId: string) => SqlQuery;
+  setOpenOrders: (
+    organizationId: string,
+    orders: { id: string; openOrder: number }[]
+  ) => SqlQuery[];
+};
+
+const queriesForPlan = (plan: ListChangePlan, taskSql: ListTaskSql): SqlQuery[] => {
   const history = plan.records.map(insertChangeLogQuery);
 
   switch (plan.action) {
@@ -31,26 +34,35 @@ const queriesForPlan = (plan: ListChangePlan): SqlQuery[] => {
     case 'delete':
       return [
         ...history,
-        clearCompletedListIdQuery(plan.listId, plan.organizationId),
+        taskSql.clearCompletedListId(plan.listId, plan.organizationId),
         removeListQuery(plan.listId, plan.organizationId),
       ];
     case 'reorder':
-      return [...setOpenOrderQueries(plan.organizationId, plan.orders), ...history];
+      return [...taskSql.setOpenOrders(plan.organizationId, plan.orders), ...history];
   }
 };
 
-export const createSqliteListPersist = (deps: { db: Database }): PersistNamedListChange => {
+export const createSqliteListPersist = (deps: {
+  db: Database;
+  taskSql: ListTaskSql;
+}): PersistNamedListChange => {
   return (plan) =>
     ResultAsync.fromPromise(
-      deps.db.batch(queriesForPlan(plan), 'write'),
+      deps.db.batch(queriesForPlan(plan, deps.taskSql), 'write'),
       (error) => storageError('Failed to persist list change', error)
     ).map(() => undefined);
+};
+
+export type ListTaskSideEffects = {
+  captureSnapshot: () => () => void;
+  applyClearListIdOnCompleted: (listId: string) => void;
+  applySetOpenOrders: (orders: { id: string; openOrder: number }[]) => void;
 };
 
 export type StoreBackedPersistDeps = {
   store: FakeListStore;
   changeLog: FakeChangeLogStore;
-  tasks: FakeTaskStore;
+  tasks: ListTaskSideEffects;
 };
 
 export const createStoreBackedPersist = ({
@@ -100,6 +112,3 @@ export const createStoreBackedPersist = ({
     });
   };
 };
-
-export const planPersistError = (): ReturnType<PersistNamedListChange> =>
-  errAsync(storageError('Create did not project a list'));

@@ -2,12 +2,11 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { PinTaskCommand } from '../domain/task-commands.js';
 import type { PinTaskError } from '../domain/task-errors.js';
 import type { TaskPinned } from '../domain/events.js';
-import { storageError } from '../domain/task-errors.js';
 import { decidePinTask } from '../domain/decide-pin.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadTask, PersistTaskChange } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 
 export type HandlePinTaskDeps = {
   load: LoadTask;
@@ -33,7 +32,7 @@ export const handlePinTask = (
     }
 
     if (decision.value.type === 'Noop') {
-      return okAsync({ event: null, view: current });
+      return okAsync({ event: null, view: current, eventKinds: [] });
     }
 
     const event = decision.value;
@@ -41,14 +40,12 @@ export const handlePinTask = (
       event,
       current,
       actor: command.actor,
-      ids: [deps.nextId(), deps.nextId()],
+      ids: { recordId: deps.nextId() },
     });
-    if (plan.action === 'delete') {
-      return errAsync(storageError('Pin did not project a task'));
-    }
     return deps.persist(plan).map(() => ({
       event,
       view: plan.view,
+      eventKinds: kindsFromRecords(plan.records),
     }));
   });
 };

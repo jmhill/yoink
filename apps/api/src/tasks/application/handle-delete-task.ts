@@ -6,6 +6,8 @@ import { decideDeleteTask } from '../domain/decide-delete.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadTask, PersistTaskChange } from './ports.js';
+import { kindsFromRecords } from './write-result.js';
+import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 
 export type HandleDeleteTaskDeps = {
   load: LoadTask;
@@ -16,6 +18,7 @@ export type HandleDeleteTaskDeps = {
 
 export type DeleteTaskResult = {
   event: TaskDeleted;
+  eventKinds: ChangeLogKind[];
 };
 
 export const handleDeleteTask = (
@@ -39,8 +42,11 @@ export const handleDeleteTask = (
       event,
       current,
       actor: command.actor,
-      ids: [deps.nextId(), deps.nextId()],
+      ids: { recordId: deps.nextId() },
     });
-    return deps.persist(plan).map(() => ({ event }));
+    return deps.persist(plan).map(() => ({
+      event,
+      eventKinds: kindsFromRecords(plan.records),
+    }));
   });
 };

@@ -2,12 +2,11 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { UncompleteTaskCommand } from '../domain/task-commands.js';
 import type { UncompleteTaskError } from '../domain/task-errors.js';
 import type { TaskUncompleted } from '../domain/events.js';
-import { storageError } from '../domain/task-errors.js';
 import { decideUncompleteTask } from '../domain/decide-uncomplete.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadOpenTasksInPile, LoadTask, PersistTaskChange } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 
 export type HandleUncompleteTaskDeps = {
   load: LoadTask;
@@ -43,7 +42,7 @@ export const handleUncompleteTask = (
         }
 
         if (decision.value.type === 'Noop') {
-          return okAsync({ event: null, view: current });
+          return okAsync({ event: null, view: current, eventKinds: [] });
         }
 
         const event = decision.value;
@@ -51,14 +50,15 @@ export const handleUncompleteTask = (
           event,
           current,
           actor: command.actor,
-          ids: [deps.nextId(), deps.nextId()],
+          ids: {
+            recordId: deps.nextId(),
+            renumberRecordId: deps.nextId(),
+          },
         });
-        if (plan.action === 'delete') {
-          return errAsync(storageError('Uncomplete did not project a task'));
-        }
         return deps.persist(plan).map(() => ({
           event,
           view: plan.view,
+          eventKinds: kindsFromRecords(plan.records),
         }));
       });
   });

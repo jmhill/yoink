@@ -5,8 +5,6 @@ import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type { StorageError } from './list-errors.js';
 
 export type ListStore = {
-  save(list: NamedList): ResultAsync<void, StorageError>;
-  update(list: NamedList): ResultAsync<void, StorageError>;
   findById(id: string): ResultAsync<NamedList | null, StorageError>;
   findByOrganization(organizationId: string): ResultAsync<NamedList[], StorageError>;
   pageByOrganization(options: {
@@ -14,5 +12,4 @@ export type ListStore = {
     fetchLimit: number;
     seek?: KeysetCursor;
   }): ResultAsync<KeysetRows<NamedList>, StorageError>;
-  remove(id: string): ResultAsync<void, StorageError>;
 };

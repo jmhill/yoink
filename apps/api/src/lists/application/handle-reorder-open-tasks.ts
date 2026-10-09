@@ -3,7 +3,6 @@ import type { Task } from '@yoink/api-contracts';
 import type { ReorderOpenTasksCommand } from '../domain/list-commands.js';
 import type { ReorderOpenTasksError } from '../domain/list-errors.js';
 import type { OpenTasksReordered } from '../domain/events.js';
-import { storageError } from '../domain/list-errors.js';
 import { decideReorderOpenTasks } from '../domain/decide-reorder.js';
 import { planListChange } from '../domain/plan-list-change.js';
 import type {
@@ -77,11 +76,8 @@ export const handleReorderOpenTasks = (
             event,
             current: list,
             actor: command.actor,
-            ids: [deps.nextId()],
+            ids: { recordId: deps.nextId() },
           });
-          if (!plan || plan.action !== 'reorder') {
-            return errAsync(storageError('Reorder did not project a plan'));
-          }
 
           return deps.persist(plan).map(() => {
             const byId = new Map(openTasks.map((task) => [task.id, task]));

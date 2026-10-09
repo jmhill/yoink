@@ -26,6 +26,7 @@ export type FakeTaskStoreOptions = {
 
 export type FakeTaskStore = TaskStore & {
   captureSnapshot: () => () => void;
+  hasActive: (id: string) => boolean;
   applyInsert: (task: Task) => void;
   applyReplace: (task: Task) => void;
   applySoftDelete: (id: string) => void;
@@ -52,6 +53,8 @@ export const createFakeTaskStore = (
         }
       };
     },
+    hasActive: (id: string) =>
+      !deletedIds.has(id) && tasks.some((task) => task.id === id),
     applyInsert: (task: Task) => {
       tasks.push(task);
     },

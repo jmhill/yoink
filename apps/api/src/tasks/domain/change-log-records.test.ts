@@ -31,7 +31,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       },
       current: null,
       actor: null,
-      ids: ['log-1', 'log-2'],
+      ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
     expect(records).toHaveLength(1);
@@ -54,7 +54,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       },
       current,
       actor: null,
-      ids: ['log-1', 'log-2'],
+      ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
     expect(records.map((record) => record.kind)).toEqual([
@@ -82,7 +82,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       },
       current: { ...current, listId: undefined },
       actor: null,
-      ids: ['log-1', 'log-2'],
+      ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
     expect(records[1]?.subjectId).toBe(UNLISTED_PILE_SUBJECT_ID);
@@ -99,7 +99,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       },
       current,
       actor: null,
-      ids: ['log-1'],
+      ids: { recordId: 'log-1' },
     });
 
     expect(records[0]?.kind).toBe('TaskPinned');

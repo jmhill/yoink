@@ -15,7 +15,28 @@ describe('SqliteListStore', () => {
   });
 
   runListStoreContractTests({
-    createStore: () => createSqliteListStore(db),
+    createHarness: async () => {
+      const store = await createSqliteListStore(db);
+      return {
+        store,
+        seed: async (list) => {
+          await db.execute({
+            sql: `
+              INSERT INTO lists (
+                id, organization_id, created_by_id, name, created_at
+              ) VALUES (?, ?, ?, ?, ?)
+            `,
+            args: [
+              list.id,
+              list.organizationId,
+              list.createdById,
+              list.name,
+              list.createdAt,
+            ],
+          });
+        },
+      };
+    },
     beforeEach: async () => {
       await db.execute({ sql: 'DELETE FROM lists' });
       await db.execute({ sql: 'DELETE FROM users WHERE id = ?', args: ['550e8400-e29b-41d4-a716-446655440002'] });

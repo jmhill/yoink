@@ -2,22 +2,38 @@ import type { Task } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/actor.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import { applyTaskCreated, applyTaskMutation } from './apply-task-event.js';
-import { changeLogRecordsFromTaskEvent } from './change-log-records.js';
-import type { TaskCreated, TaskDeleted, TaskEvent } from './events.js';
+import {
+  changeLogRecordsFromTaskEvent,
+  type TaskChangeLogIds,
+} from './change-log-records.js';
+import type {
+  TaskCompleted,
+  TaskCreated,
+  TaskDeleted,
+  TaskEvent,
+  TaskPinned,
+  TaskUncompleted,
+  TaskUnpinned,
+  TaskUpdated,
+} from './events.js';
 
-export type TaskChangePlanInput =
-  | {
-      event: TaskCreated;
-      current: null;
-      actor: Actor | null;
-      ids: readonly string[];
-    }
-  | {
-      event: Exclude<TaskEvent, TaskCreated>;
-      current: Task;
-      actor: Actor | null;
-      ids: readonly string[];
-    };
+export type { TaskChangeLogIds };
+
+export type CreateTaskChangeInput = {
+  event: TaskCreated;
+  current: null;
+  actor: Actor | null;
+  ids: TaskChangeLogIds;
+};
+
+export type MutateTaskChangeInput = {
+  event: Exclude<TaskEvent, TaskCreated>;
+  current: Task;
+  actor: Actor | null;
+  ids: TaskChangeLogIds;
+};
+
+export type TaskChangePlanInput = CreateTaskChangeInput | MutateTaskChangeInput;
 
 export type TaskChangePlan =
   | {
@@ -72,31 +88,36 @@ const deletePlan = (event: TaskDeleted, records: ChangeLogRecord[]): TaskChangeP
 /**
  * Pure: event + pre-generated ids → next state and typed change-log records.
  * Persist only turns this plan into SQL (or fake mutations).
+ * Narrow on `current === null` for create; the mutate switch covers every other case.
  */
-export const planTaskChange = (input: TaskChangePlanInput): TaskChangePlan => {
-  const { event, actor } = input;
+export function planTaskChange(
+  input: CreateTaskChangeInput
+): Extract<TaskChangePlan, { action: 'insert' }>;
+export function planTaskChange(
+  input: { event: TaskDeleted } & Omit<MutateTaskChangeInput, 'event'>
+): Extract<TaskChangePlan, { action: 'delete' }>;
+export function planTaskChange(
+  input: { event: TaskUncompleted } & Omit<MutateTaskChangeInput, 'event'>
+): Extract<TaskChangePlan, { action: 'uncomplete' }>;
+export function planTaskChange(
+  input: {
+    event: TaskUpdated | TaskCompleted | TaskPinned | TaskUnpinned;
+  } & Omit<MutateTaskChangeInput, 'event'>
+): Extract<TaskChangePlan, { action: 'update' }>;
+export function planTaskChange(input: TaskChangePlanInput): TaskChangePlan;
+export function planTaskChange(input: TaskChangePlanInput): TaskChangePlan {
   const records = recordsOf(input);
 
-  if (event.type === 'TaskCreated') {
+  if (input.current === null) {
     return {
       action: 'insert',
-      organizationId: event.organizationId,
-      view: applyTaskCreated(event, meta(actor)),
+      organizationId: input.event.organizationId,
+      view: applyTaskCreated(input.event, meta(input.actor)),
       records,
     };
   }
 
-  const current = input.current;
-  if (current === null) {
-    return {
-      action: 'delete',
-      organizationId: event.organizationId,
-      taskId: event.id,
-      deletedAt: event.type === 'TaskDeleted' ? event.deletedAt : event.occurredAt,
-      records,
-    };
-  }
-
+  const { event, current, actor } = input;
   switch (event.type) {
     case 'TaskUpdated':
     case 'TaskCompleted':
@@ -119,4 +140,4 @@ export const planTaskChange = (input: TaskChangePlanInput): TaskChangePlan => {
     case 'TaskDeleted':
       return deletePlan(event, records);
   }
-};
+}

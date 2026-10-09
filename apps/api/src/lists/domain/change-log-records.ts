@@ -12,10 +12,14 @@ import type {
 } from '../../shared/change-log/domain/payloads.js';
 import type { ListEvent } from './events.js';
 
+export type ListChangeLogIds = {
+  recordId: string;
+};
+
 export type ChangeLogRecordsFromListEventInput = {
   event: ListEvent;
   actor: Actor | null;
-  ids: readonly string[];
+  ids: ListChangeLogIds;
 };
 
 const actorFields = (actor: Actor | null) => ({
@@ -23,16 +27,13 @@ const actorFields = (actor: Actor | null) => ({
   actorKind: actor?.kind ?? null,
 });
 
-const takeId = (ids: readonly string[], index: number): string =>
-  ids[index] ?? ids[0] ?? '';
-
 const envelope = (
   input: ChangeLogRecordsFromListEventInput,
   subjectId: string,
   organizationId: string,
   occurredAt: string
 ) => ({
-  id: takeId(input.ids, 0),
+  id: input.ids.recordId,
   organizationId,
   projectId: null as string | null,
   subjectType: 'list' as const,

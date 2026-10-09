@@ -6,7 +6,7 @@ import { storageError } from '../domain/task-errors.js';
 import { decideCreateTask } from '../domain/decide-create.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import type { LoadNamedList, LoadNextOpenOrder, PersistTaskChange } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 export type HandleCreateTaskDeps = {
   loadList: LoadNamedList;
@@ -58,15 +58,20 @@ export const handleCreateTask = (
           event,
           current: null,
           actor: command.actor,
-          ids: [deps.nextId(), deps.nextId()],
+          ids: { recordId: deps.nextId() },
         });
-        if (plan.action !== 'insert') {
-          return errAsync(storageError('Create did not project a task'));
-        }
-        return deps.persist(plan).map(() => ({
-          event,
-          view: plan.view,
-        }));
+        return deps
+          .persist(plan)
+          .mapErr((error): CreateTaskError =>
+            error.type === 'TASK_NOT_FOUND'
+              ? storageError('Failed to persist task change')
+              : error
+          )
+          .map(() => ({
+            event,
+            view: plan.view,
+            eventKinds: kindsFromRecords(plan.records),
+          }));
       });
     });
   });

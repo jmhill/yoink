@@ -2,12 +2,11 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { UnpinTaskCommand } from '../domain/task-commands.js';
 import type { UnpinTaskError } from '../domain/task-errors.js';
 import type { TaskUnpinned } from '../domain/events.js';
-import { storageError } from '../domain/task-errors.js';
 import { decideUnpinTask } from '../domain/decide-unpin.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadTask, PersistTaskChange } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 
 export type HandleUnpinTaskDeps = {
   load: LoadTask;
@@ -33,7 +32,7 @@ export const handleUnpinTask = (
     }
 
     if (decision.value.type === 'Noop') {
-      return okAsync({ event: null, view: current });
+      return okAsync({ event: null, view: current, eventKinds: [] });
     }
 
     const event = decision.value;
@@ -41,14 +40,12 @@ export const handleUnpinTask = (
       event,
       current,
       actor: command.actor,
-      ids: [deps.nextId(), deps.nextId()],
+      ids: { recordId: deps.nextId() },
     });
-    if (plan.action === 'delete') {
-      return errAsync(storageError('Unpin did not project a task'));
-    }
     return deps.persist(plan).map(() => ({
       event,
       view: plan.view,
+      eventKinds: kindsFromRecords(plan.records),
     }));
   });
 };

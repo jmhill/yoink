@@ -18,7 +18,7 @@ import {
   withCommandLog,
   type CommandLogger,
 } from '../../shared/change-log/application/command-log.js';
-import { eventKindsFromDelete, eventKindsFromWrite } from './event-kinds.js';
+import { eventKindsOf } from './event-kinds.js';
 
 export type TaskHandlerDeps = HandleCreateTaskDeps &
   HandleUpdateTaskDeps &
@@ -40,7 +40,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handleCreateTask(command, deps)
     ),
   update: (command: Parameters<typeof handleUpdateTask>[0]) =>
@@ -51,7 +51,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handleUpdateTask(command, deps)
     ),
   complete: (command: Parameters<typeof handleCompleteTask>[0]) =>
@@ -62,7 +62,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handleCompleteTask(command, deps)
     ),
   uncomplete: (command: Parameters<typeof handleUncompleteTask>[0]) =>
@@ -73,7 +73,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handleUncompleteTask(command, deps)
     ),
   list: (query: Parameters<typeof handleListTasks>[0]) =>
@@ -86,7 +86,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handlePinTask(command, deps)
     ),
   unpin: (command: Parameters<typeof handleUnpinTask>[0]) =>
@@ -97,7 +97,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromWrite,
+      eventKindsOf,
       () => handleUnpinTask(command, deps)
     ),
   delete: (command: Parameters<typeof handleDeleteTask>[0]) =>
@@ -108,7 +108,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      eventKindsFromDelete,
+      eventKindsOf,
       () => handleDeleteTask(command, deps)
     ),
 });

@@ -1,7 +1,7 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { DeleteNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListDeleted } from '../domain/events.js';
-import { storageError, type DeleteNamedListError } from '../domain/list-errors.js';
+import { type DeleteNamedListError } from '../domain/list-errors.js';
 import { decideDeleteNamedList } from '../domain/decide-delete.js';
 import { planListChange } from '../domain/plan-list-change.js';
 import type {
@@ -48,11 +48,8 @@ export const handleDeleteNamedList = (
         event,
         current,
         actor: command.actor,
-        ids: [deps.nextId()],
+        ids: { recordId: deps.nextId() },
       });
-      if (!plan || plan.action !== 'delete') {
-        return errAsync(storageError('Delete did not project a list'));
-      }
 
       return deps.persist(plan).map(() => ({ event }));
     };

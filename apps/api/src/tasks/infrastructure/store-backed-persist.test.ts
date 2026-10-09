@@ -33,7 +33,7 @@ const persistEvent = (
   persist: ReturnType<typeof createStoreBackedPersist>,
   event: TaskEvent,
   currentTask: Task | null,
-  ids = ['log-1', 'log-2']
+  ids = { recordId: 'log-1', renumberRecordId: 'log-2' }
 ) =>
   persist(
     event.type === 'TaskCreated'

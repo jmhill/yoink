@@ -2,7 +2,7 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { CreateNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListCreated } from '../domain/events.js';
-import { storageError, type CreateNamedListError } from '../domain/list-errors.js';
+import { type CreateNamedListError } from '../domain/list-errors.js';
 import { decideCreateNamedList } from '../domain/decide-create.js';
 import { planListChange } from '../domain/plan-list-change.js';
 import type { ListNamedLists, PersistNamedListChange } from './ports.js';
@@ -41,11 +41,8 @@ export const handleCreateNamedList = (
       event,
       current: null,
       actor: command.actor,
-      ids: [deps.nextId()],
+      ids: { recordId: deps.nextId() },
     });
-    if (!plan || plan.action !== 'insert') {
-      return errAsync(storageError('Create did not project a list'));
-    }
 
     return deps.persist(plan).map(() => ({
       event,

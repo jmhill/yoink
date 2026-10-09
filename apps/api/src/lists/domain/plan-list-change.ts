@@ -1,16 +1,42 @@
 import type { NamedList } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/actor.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
-import { applyNamedListEvent } from './apply-named-list-event.js';
-import { changeLogRecordsFromListEvent } from './change-log-records.js';
-import type { ListEvent } from './events.js';
+import { applyNamedListCreated, applyNamedListRenamed } from './apply-named-list-event.js';
+import {
+  changeLogRecordsFromListEvent,
+  type ListChangeLogIds,
+} from './change-log-records.js';
+import type {
+  NamedListCreated,
+  NamedListDeleted,
+  NamedListRenamed,
+  OpenTasksReordered,
+} from './events.js';
 
-export type ListChangePlanInput = {
-  event: ListEvent;
-  current: NamedList | null;
+export type { ListChangeLogIds };
+
+type ListPlanBase = {
   actor: Actor | null;
-  ids: readonly string[];
+  ids: ListChangeLogIds;
 };
+
+export type ListChangePlanInput =
+  | {
+      event: NamedListCreated;
+      current: null;
+    } & ListPlanBase
+  | {
+      event: NamedListRenamed;
+      current: NamedList;
+    } & ListPlanBase
+  | {
+      event: NamedListDeleted;
+      current: NamedList | null;
+    } & ListPlanBase
+  | {
+      event: OpenTasksReordered;
+      current: NamedList | null;
+    } & ListPlanBase;
 
 export type ListChangePlan =
   | {
@@ -42,38 +68,42 @@ export type ListChangePlan =
 
 /**
  * Pure: event + pre-generated ids → next state and typed change-log records.
+ * Always returns a plan — create/rename project without a null fallback.
  */
-export const planListChange = (input: ListChangePlanInput): ListChangePlan | null => {
-  const { event, current, actor, ids } = input;
+export function planListChange(
+  input: Extract<ListChangePlanInput, { event: NamedListCreated }>
+): Extract<ListChangePlan, { action: 'insert' }>;
+export function planListChange(
+  input: Extract<ListChangePlanInput, { event: NamedListRenamed }>
+): Extract<ListChangePlan, { action: 'rename' }>;
+export function planListChange(
+  input: Extract<ListChangePlanInput, { event: NamedListDeleted }>
+): Extract<ListChangePlan, { action: 'delete' }>;
+export function planListChange(
+  input: Extract<ListChangePlanInput, { event: OpenTasksReordered }>
+): Extract<ListChangePlan, { action: 'reorder' }>;
+export function planListChange(input: ListChangePlanInput): ListChangePlan;
+export function planListChange(input: ListChangePlanInput): ListChangePlan {
+  const { event, actor, ids } = input;
   const records = changeLogRecordsFromListEvent({ event, actor, ids });
 
   switch (event.type) {
-    case 'NamedListCreated': {
-      const view = applyNamedListEvent(null, event);
-      if (!view) {
-        return null;
-      }
+    case 'NamedListCreated':
       return {
         action: 'insert',
         organizationId: event.organizationId,
-        view,
+        view: applyNamedListCreated(event),
         records,
       };
-    }
-    case 'NamedListRenamed': {
-      const view = applyNamedListEvent(current, event);
-      if (!view) {
-        return null;
-      }
+    case 'NamedListRenamed':
       return {
         action: 'rename',
         organizationId: event.organizationId,
         listId: event.id,
         name: event.name,
-        view,
+        view: applyNamedListRenamed(input.current, event),
         records,
       };
-    }
     case 'NamedListDeleted':
       return {
         action: 'delete',
@@ -89,4 +119,4 @@ export const planListChange = (input: ListChangePlanInput): ListChangePlan | nul
         records,
       };
   }
-};
+}

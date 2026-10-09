@@ -2,7 +2,7 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { RenameNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListRenamed } from '../domain/events.js';
-import { storageError, type RenameNamedListError } from '../domain/list-errors.js';
+import { listNotFoundError, type RenameNamedListError } from '../domain/list-errors.js';
 import { decideRenameNamedList } from '../domain/decide-rename.js';
 import { planListChange } from '../domain/plan-list-change.js';
 import type { ListNamedLists, LoadNamedList, PersistNamedListChange } from './ports.js';
@@ -41,16 +41,17 @@ export const handleRenameNamedList = (
         return errAsync(decision.error);
       }
 
+      if (current === null) {
+        return errAsync(listNotFoundError(command.id));
+      }
+
       const event = decision.value;
       const plan = planListChange({
         event,
         current,
         actor: command.actor,
-        ids: [deps.nextId()],
+        ids: { recordId: deps.nextId() },
       });
-      if (!plan || plan.action !== 'rename') {
-        return errAsync(storageError('Rename did not project a list'));
-      }
 
       return deps.persist(plan).map(() => ({ event, view: plan.view }));
     };

@@ -3,20 +3,37 @@ import { createTestDatabase } from '../../database/test-utils.js';
 import type { Database } from '../../database/types.js';
 import { createSqliteListPersist } from './store-backed-persist.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
-import { planListChange } from '../domain/plan-list-change.js';
+import { planListChange, type ListChangePlanInput } from '../domain/plan-list-change.js';
+import type { ListChangeLogIds } from '../domain/change-log-records.js';
 import type { ListEvent } from '../domain/events.js';
 import { createSqliteTaskPersist } from '../../tasks/infrastructure/store-backed-persist.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
+import {
+  clearCompletedListIdQuery,
+  setOpenOrderQueries,
+} from '../../tasks/infrastructure/task-row-statements.js';
 import { createSqliteListStore } from './sqlite-list-store.js';
 
 const now = '2025-01-15T10:00:00.000Z';
 const later = '2025-01-15T11:00:00.000Z';
 
+const listPersistOf = (db: Database) =>
+  createSqliteListPersist({
+    db,
+    taskSql: {
+      clearCompletedListId: clearCompletedListIdQuery,
+      setOpenOrders: setOpenOrderQueries,
+    },
+  });
+
 const persistList = (
   persist: ReturnType<typeof createSqliteListPersist>,
-  event: ListEvent,
-  ids = ['log-1']
-) => persist(planListChange({ event, current: null, actor: null, ids })!);
+  event: Exclude<ListEvent, { type: 'NamedListRenamed' }>,
+  ids: ListChangeLogIds = { recordId: 'log-1' }
+) =>
+  persist(
+    planListChange({ event, current: null, actor: null, ids } as ListChangePlanInput)
+  );
 
 describe('sqlite list persist', () => {
   let db: Database;
@@ -38,7 +55,7 @@ describe('sqlite list persist', () => {
   });
 
   it('writes exactly one NamedListCreated record that is not hidden', async () => {
-    const persist = createSqliteListPersist({ db });
+    const persist = listPersistOf(db);
     const result = await persistList(persist, {
       type: 'NamedListCreated',
       id: 'list-1',
@@ -58,7 +75,7 @@ describe('sqlite list persist', () => {
   });
 
   it('writes exactly one NamedListRenamed record that is not hidden', async () => {
-    const persist = createSqliteListPersist({ db });
+    const persist = listPersistOf(db);
     await persistList(persist, {
       type: 'NamedListCreated',
       id: 'list-1',
@@ -70,6 +87,10 @@ describe('sqlite list persist', () => {
     });
     const listStore = await createSqliteListStore(db);
     const current = (await listStore.findById('list-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected list');
+    }
     const renamed = await persist(
       planListChange({
         event: {
@@ -81,8 +102,8 @@ describe('sqlite list persist', () => {
         },
         current,
         actor: null,
-        ids: ['log-rename'],
-      })!
+        ids: { recordId: 'log-rename' },
+      })
     );
     expect(renamed.isOk()).toBe(true);
 
@@ -94,7 +115,7 @@ describe('sqlite list persist', () => {
   });
 
   it('writes exactly one NamedListDeleted record that is not hidden', async () => {
-    const persist = createSqliteListPersist({ db });
+    const persist = listPersistOf(db);
     await persistList(persist, {
       type: 'NamedListCreated',
       id: 'list-1',
@@ -109,7 +130,7 @@ describe('sqlite list persist', () => {
       id: 'list-1',
       organizationId: 'org-1',
       occurredAt: later,
-    }, ['log-del']);
+    }, { recordId: 'log-del' });
     expect(deleted.isOk()).toBe(true);
 
     const log = createSqliteChangeLogStore(db);
@@ -120,7 +141,7 @@ describe('sqlite list persist', () => {
   });
 
   it('writes exactly one hidden OpenTasksReordered record', async () => {
-    const persist = createSqliteListPersist({ db });
+    const persist = listPersistOf(db);
     await persistList(persist, {
       type: 'NamedListCreated',
       id: 'list-1',
@@ -147,7 +168,7 @@ describe('sqlite list persist', () => {
         },
         current: null,
         actor: null,
-        ids: ['t-a'],
+        ids: { recordId: 't-a' },
       })
     );
     await taskPersist(
@@ -165,7 +186,7 @@ describe('sqlite list persist', () => {
         },
         current: null,
         actor: null,
-        ids: ['t-b'],
+        ids: { recordId: 't-b' },
       })
     );
 
@@ -178,7 +199,7 @@ describe('sqlite list persist', () => {
         { id: 'task-a', openOrder: 1 },
       ],
       occurredAt: later,
-    }, ['log-reorder']);
+    }, { recordId: 'log-reorder' });
     expect(reordered.isOk()).toBe(true);
 
     const log = createSqliteChangeLogStore(db);
@@ -189,7 +210,7 @@ describe('sqlite list persist', () => {
   });
 
   it('rolls back list delete when history insert fails', async () => {
-    const persist = createSqliteListPersist({ db });
+    const persist = listPersistOf(db);
     await persistList(persist, {
       type: 'NamedListCreated',
       id: 'list-1',
@@ -215,7 +236,7 @@ describe('sqlite list persist', () => {
       id: 'list-1',
       organizationId: 'org-1',
       occurredAt: later,
-    }, ['log-del']);
+    }, { recordId: 'log-del' });
     expect(deleted.isErr()).toBe(true);
 
     const listStore = await createSqliteListStore(db);

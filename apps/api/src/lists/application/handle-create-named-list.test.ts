@@ -3,7 +3,7 @@ import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateNamedList } from './handle-create-named-list.js';
 import type { ListNamedLists, PersistNamedListEvent } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
-import type { NamedListEvent } from '../domain/events.js';
+import type { ListEvent } from '../domain/events.js';
 import type { NamedList } from '@yoink/api-contracts';
 
 const groceries: NamedList = {
@@ -16,9 +16,9 @@ const groceries: NamedList = {
 
 const createInMemoryPersist = (): {
   persist: PersistNamedListEvent;
-  events: NamedListEvent[];
+  events: ListEvent[];
 } => {
-  const events: NamedListEvent[] = [];
+  const events: ListEvent[] = [];
   return {
     events,
     persist: ({ event }) => {

@@ -13,6 +13,7 @@ export type HandleDeleteNamedListDeps = {
   load: LoadNamedList;
   countOpenOnList: CountOpenTasksOnList;
   persist: PersistNamedListEvent;
+  now: () => string;
 };
 
 export type DeleteNamedListResult = {
@@ -39,7 +40,7 @@ export const handleDeleteNamedList = (
       }
 
       const event = decision.value;
-      return deps.persist({ event }).map(() => ({ event }));
+      return deps.persist({ event, actor: command.actor ?? null, now: deps.now() }).map(() => ({ event }));
     };
 
     if (!current) {

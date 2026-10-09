@@ -20,6 +20,7 @@ export const decideCompleteTask = ({
   return ok({
     type: 'TaskCompleted',
     id: current.id,
+    organizationId: current.organizationId,
     completedAt: now,
   });
 };

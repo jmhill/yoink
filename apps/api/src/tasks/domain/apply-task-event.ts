@@ -1,7 +1,22 @@
 import type { Task } from '@yoink/api-contracts';
 import type { TaskEvent } from './events.js';
 
-export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => {
+export type ApplyTaskMeta = {
+  now: string;
+  actorUserId: string | null;
+};
+
+const withLastChanged = (task: Task, meta: ApplyTaskMeta): Task => ({
+  ...task,
+  lastChangedAt: meta.now,
+  lastChangedBy: meta.actorUserId,
+});
+
+export const applyTaskEvent = (
+  current: Task | null,
+  event: TaskEvent,
+  meta: ApplyTaskMeta
+): Task => {
   if (event.type === 'TaskCreated') {
     const created: Task = {
       id: event.id,
@@ -10,6 +25,9 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
       title: event.title,
       createdAt: event.createdAt,
       openOrder: event.openOrder,
+      lastChangedAt: event.createdAt,
+      lastChangedBy: meta.actorUserId,
+      completedBy: null,
     };
 
     if (event.dueDate !== undefined) {
@@ -30,6 +48,10 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
 
   if (!current) {
     throw new Error(`Cannot apply ${event.type} without current state`);
+  }
+
+  if (event.type === 'TaskDeleted') {
+    throw new Error('TaskDeleted has no task view');
   }
 
   switch (event.type) {
@@ -67,20 +89,36 @@ export const applyTaskEvent = (current: Task | null, event: TaskEvent): Task => 
         updated.openOrder = event.openOrder;
       }
 
-      return updated;
+      return withLastChanged(updated, meta);
     }
     case 'TaskCompleted': {
-      return {
-        ...current,
-        completedAt: event.completedAt,
-      };
+      return withLastChanged(
+        {
+          ...current,
+          completedAt: event.completedAt,
+          completedBy: meta.actorUserId,
+        },
+        { now: event.completedAt, actorUserId: meta.actorUserId }
+      );
     }
     case 'TaskUncompleted': {
       const updated: Task = {
         ...current,
         openOrder: event.openOrder,
+        completedBy: null,
       };
       delete updated.completedAt;
+      return withLastChanged(updated, meta);
+    }
+    case 'TaskPinned': {
+      return {
+        ...current,
+        pinnedAt: event.pinnedAt,
+      };
+    }
+    case 'TaskUnpinned': {
+      const updated: Task = { ...current };
+      delete updated.pinnedAt;
       return updated;
     }
   }

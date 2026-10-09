@@ -16,12 +16,23 @@ export type FakeListStoreOptions = {
   initialLists?: NamedList[];
 };
 
+export type FakeListStore = ListStore & {
+  captureSnapshot: () => () => void;
+};
+
 export const createFakeListStore = (
   options: FakeListStoreOptions = {}
-): ListStore => {
+): FakeListStore => {
   const lists: NamedList[] = [...(options.initialLists ?? [])];
 
   return {
+    captureSnapshot: () => {
+      const copy = lists.map((list) => ({ ...list }));
+      return () => {
+        lists.length = 0;
+        lists.push(...copy);
+      };
+    },
     save: (list: NamedList): ResultAsync<void, StorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(storageError('Save failed'));

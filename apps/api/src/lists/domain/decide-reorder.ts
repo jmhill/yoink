@@ -1,6 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { ReorderOpenTasksCommand } from './list-commands.js';
+import type { OpenTasksReordered } from './events.js';
 import {
   invalidOpenOrderError,
   listNotFoundError,
@@ -9,13 +10,6 @@ import {
   type ListNotFoundError,
   type TaskNotOpenError,
 } from './list-errors.js';
-
-export type OpenTasksReordered = {
-  type: 'OpenTasksReordered';
-  listId: string | null;
-  organizationId: string;
-  orders: { id: string; openOrder: number }[];
-};
 
 export type DecideReorderOpenTasksInput = {
   command: ReorderOpenTasksCommand;

@@ -1,11 +1,13 @@
 import type { NamedList } from '@yoink/api-contracts';
-import type { NamedListEvent } from './events.js';
+import type { ListEvent } from './events.js';
 
 export const applyNamedListEvent = (
   _current: NamedList | null,
-  event: NamedListEvent
+  event: ListEvent
 ): NamedList | null => {
   switch (event.type) {
+    case 'OpenTasksReordered':
+      return _current;
     case 'NamedListCreated':
       return {
         id: event.id,

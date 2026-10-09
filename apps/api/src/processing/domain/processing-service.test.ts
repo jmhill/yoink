@@ -6,6 +6,7 @@ import { createFakeCaptureStore } from '../../captures/infrastructure/fake-captu
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
 import { createStoreBackedPersist } from '../../tasks/infrastructure/store-backed-persist.js';
+import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { handleCreateTask } from '../../tasks/application/handle-create-task.js';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
 import type { TaskStore } from '../../tasks/domain/task-store.js';
@@ -51,7 +52,11 @@ describe('CaptureProcessingService', () => {
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
     listStore = createFakeListStore({ initialLists: [groceries, otherOrgList] });
-    const persist = createStoreBackedPersist(taskStore);
+    const persist = createStoreBackedPersist({
+      store: taskStore,
+      changeLog: createFakeChangeLogStore(),
+      nextId: () => idGenerator.generate(),
+    });
     service = createCaptureProcessingService({
       captureStore,
       taskStore,

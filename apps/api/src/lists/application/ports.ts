@@ -1,7 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NamedList, Task } from '@yoink/api-contracts';
+import type { Actor } from '../../shared/actor.js';
 import type { StorageError } from '../domain/list-errors.js';
-import type { NamedListEvent } from '../domain/events.js';
+import type { ListEvent } from '../domain/events.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
@@ -28,7 +29,9 @@ export type ClearCompletedListIds = (
 ) => ResultAsync<void, StorageError>;
 
 export type PersistNamedListEvent = (input: {
-  event: NamedListEvent;
+  event: ListEvent;
+  actor: Actor | null;
+  now: string;
 }) => ResultAsync<void, StorageError>;
 
 export type LoadOpenTasksOnList = (

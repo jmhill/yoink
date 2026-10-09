@@ -7,7 +7,7 @@ import type {
   PersistNamedListEvent,
 } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
-import type { NamedListEvent } from '../domain/events.js';
+import type { ListEvent } from '../domain/events.js';
 import type { NamedList } from '@yoink/api-contracts';
 
 const groceries: NamedList = {
@@ -25,9 +25,9 @@ const command = {
 
 const createInMemoryPersist = (): {
   persist: PersistNamedListEvent;
-  events: NamedListEvent[];
+  events: ListEvent[];
 } => {
-  const events: NamedListEvent[] = [];
+  const events: ListEvent[] = [];
   return {
     events,
     persist: ({ event }) => {
@@ -53,6 +53,7 @@ describe('handleDeleteNamedList', () => {
       load: loadGroceries,
       countOpenOnList,
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -80,6 +81,7 @@ describe('handleDeleteNamedList', () => {
       load: loadGroceries,
       countOpenOnList: () => okAsync(1),
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -100,6 +102,7 @@ describe('handleDeleteNamedList', () => {
         return okAsync(0);
       },
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -121,6 +124,7 @@ describe('handleDeleteNamedList', () => {
         return okAsync(0);
       },
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -138,6 +142,7 @@ describe('handleDeleteNamedList', () => {
       load: () => errAsync(storageError('Find failed')),
       countOpenOnList: () => okAsync(0),
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -154,6 +159,7 @@ describe('handleDeleteNamedList', () => {
       load: loadGroceries,
       countOpenOnList: () => errAsync(storageError('Count failed')),
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -170,6 +176,7 @@ describe('handleDeleteNamedList', () => {
       load: loadGroceries,
       countOpenOnList: () => okAsync(0),
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);

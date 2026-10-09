@@ -2,22 +2,25 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { ReorderOpenTasksCommand } from '../domain/list-commands.js';
 import type { ReorderOpenTasksError } from '../domain/list-errors.js';
+import type { OpenTasksReordered } from '../domain/events.js';
 import { decideReorderOpenTasks } from '../domain/decide-reorder.js';
 import type {
   LoadNamedList,
   LoadOpenTasksOnList,
   LoadTasksByIds,
-  PersistOpenTaskOrders,
+  PersistNamedListEvent,
 } from './ports.js';
 
 export type HandleReorderOpenTasksDeps = {
   load: LoadNamedList;
   loadOpenTasksOnList: LoadOpenTasksOnList;
   loadTasksByIds: LoadTasksByIds;
-  persistOpenTaskOrders: PersistOpenTaskOrders;
+  persist: PersistNamedListEvent;
+  now: () => string;
 };
 
 export type ReorderOpenTasksResult = {
+  event: OpenTasksReordered;
   tasks: Task[];
 };
 
@@ -64,13 +67,15 @@ export const handleReorderOpenTasks = (
           }
 
           const event = decision.value;
-          return deps.persistOpenTaskOrders(event.orders).map(() => {
+          const actor = command.actor ?? null;
+          const now = deps.now();
+          return deps.persist({ event, actor, now }).map(() => {
             const byId = new Map(openTasks.map((task) => [task.id, task]));
             const tasks = event.orders.flatMap((order) => {
               const task = byId.get(order.id);
               return task ? [{ ...task, openOrder: order.openOrder }] : [];
             });
-            return { tasks };
+            return { event, tasks };
           });
         });
       });

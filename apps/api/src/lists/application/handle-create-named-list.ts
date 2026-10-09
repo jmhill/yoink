@@ -24,11 +24,12 @@ export const handleCreateNamedList = (
   deps: HandleCreateNamedListDeps
 ): ResultAsync<CreateNamedListResult, CreateNamedListError> => {
   return deps.list(command.organizationId).andThen((existing) => {
+    const now = deps.now();
     const decision = decideCreateNamedList({
       command,
       existingNames: existing.map((list) => list.name),
       id: deps.nextId(),
-      now: deps.now(),
+      now,
     });
 
     if (decision.isErr()) {
@@ -41,7 +42,7 @@ export const handleCreateNamedList = (
       return errAsync(storageError('Create did not project a list'));
     }
 
-    return deps.persist({ event }).map(() => ({
+    return deps.persist({ event, actor: command.actor ?? null, now }).map(() => ({
       event,
       view,
     }));

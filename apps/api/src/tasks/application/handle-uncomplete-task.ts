@@ -12,6 +12,7 @@ export type HandleUncompleteTaskDeps = {
   load: LoadTask;
   loadOpenInPile: LoadOpenTasksInPile;
   persist: PersistTaskEvent;
+  now: () => string;
 };
 
 export const handleUncompleteTask = (
@@ -42,9 +43,14 @@ export const handleUncompleteTask = (
         }
 
         const event = decision.value;
-        return deps.persist({ event, current }).map(() => ({
+        const actor = command.actor ?? null;
+        const now = deps.now();
+        return deps.persist({ event, current, actor, now }).map(() => ({
           event,
-          view: applyTaskEvent(current, event),
+          view: applyTaskEvent(current, event, {
+            now,
+            actorUserId: actor?.userId ?? null,
+          }),
         }));
       });
   });

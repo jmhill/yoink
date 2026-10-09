@@ -1075,6 +1075,13 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeExistingTaskEditUi', 'http');
     },
 
+    async shouldSeeTaskEditChangeHistory(_options?: {
+      lastChangedBeforeHistory?: boolean;
+      completed?: boolean;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskEditChangeHistory', 'http');
+    },
+
     async closeTaskEdit(): Promise<void> {
       throw new UnsupportedOperationError('closeTaskEdit', 'http');
     },

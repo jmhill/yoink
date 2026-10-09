@@ -24,13 +24,29 @@ export type FakeTaskStoreOptions = {
   initialTasks?: Task[];
 };
 
+export type FakeTaskStore = TaskStore & {
+  captureSnapshot: () => () => void;
+};
+
 export const createFakeTaskStore = (
   options: FakeTaskStoreOptions = {}
-): TaskStore => {
+): FakeTaskStore => {
   const tasks: Task[] = [...(options.initialTasks ?? [])];
   const deletedIds = new Set<string>();
 
   return {
+    captureSnapshot: () => {
+      const tasksCopy = tasks.map((task) => ({ ...task }));
+      const deletedCopy = new Set(deletedIds);
+      return () => {
+        tasks.length = 0;
+        tasks.push(...tasksCopy);
+        deletedIds.clear();
+        for (const id of deletedCopy) {
+          deletedIds.add(id);
+        }
+      };
+    },
     save: (task: Task): ResultAsync<void, StorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(storageError('Save failed'));

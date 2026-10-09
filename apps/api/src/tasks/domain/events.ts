@@ -26,18 +26,48 @@ export type TaskUpdated = {
 export type TaskCompleted = {
   type: 'TaskCompleted';
   id: string;
+  organizationId: string;
   completedAt: string;
 };
 
 export type TaskUncompleted = {
   type: 'TaskUncompleted';
   id: string;
+  organizationId: string;
   openOrder: number;
   siblingOrders: { id: string; openOrder: number }[];
+};
+
+export type TaskDeleted = {
+  type: 'TaskDeleted';
+  id: string;
+  organizationId: string;
+  captureId?: string;
+  deletedAt: string;
+};
+
+export type TaskPinned = {
+  type: 'TaskPinned';
+  id: string;
+  organizationId: string;
+  pinnedAt: string;
+};
+
+export type TaskUnpinned = {
+  type: 'TaskUnpinned';
+  id: string;
+  organizationId: string;
 };
 
 export type Noop = {
   type: 'Noop';
 };
 
-export type TaskEvent = TaskCreated | TaskUpdated | TaskCompleted | TaskUncompleted;
+export type TaskEvent =
+  | TaskCreated
+  | TaskUpdated
+  | TaskCompleted
+  | TaskUncompleted
+  | TaskDeleted
+  | TaskPinned
+  | TaskUnpinned;

@@ -20,4 +20,13 @@ export type NamedListRenamed = {
   name: string;
 };
 
+export type OpenTasksReordered = {
+  type: 'OpenTasksReordered';
+  listId: string | null;
+  organizationId: string;
+  orders: { id: string; openOrder: number }[];
+};
+
 export type NamedListEvent = NamedListCreated | NamedListDeleted | NamedListRenamed;
+
+export type ListEvent = NamedListEvent | OpenTasksReordered;

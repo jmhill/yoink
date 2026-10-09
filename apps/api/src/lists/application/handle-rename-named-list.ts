@@ -11,6 +11,7 @@ export type HandleRenameNamedListDeps = {
   load: LoadNamedList;
   list: ListNamedLists;
   persist: PersistNamedListEvent;
+  now: () => string;
 };
 
 export type RenameNamedListResult = {
@@ -43,7 +44,7 @@ export const handleRenameNamedList = (
         return errAsync(storageError('Rename did not project a list'));
       }
 
-      return deps.persist({ event }).map(() => ({ event, view }));
+      return deps.persist({ event, actor: command.actor ?? null, now: deps.now() }).map(() => ({ event, view }));
     };
 
     if (!current) {

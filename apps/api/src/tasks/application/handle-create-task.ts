@@ -39,13 +39,15 @@ export const handleCreateTask = (
         : okAsync(null as boolean | null);
 
     return assigneeCheck.andThen((assigneeInOrganization) => {
+      const now = deps.now();
+      const actor = command.actor ?? null;
       const decision = decideCreateTask({
         command,
         list,
         assigneeInOrganization,
         nextOpenOrder,
         id: deps.nextId(),
-        now: deps.now(),
+        now,
       });
 
       if (decision.isErr()) {
@@ -53,9 +55,9 @@ export const handleCreateTask = (
       }
 
       const event = decision.value;
-      return deps.persist({ event, current: null }).map(() => ({
+      return deps.persist({ event, current: null, actor, now }).map(() => ({
         event,
-        view: applyTaskEvent(null, event),
+        view: applyTaskEvent(null, event, { now, actorUserId: actor?.userId ?? null }),
       }));
     });
     });

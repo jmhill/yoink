@@ -27,6 +27,7 @@ export const decideUncompleteTask = ({
   return ok({
     type: 'TaskUncompleted',
     id: current.id,
+    organizationId: current.organizationId,
     openOrder,
     siblingOrders,
   });

@@ -15,6 +15,7 @@ export type HandleUpdateTaskDeps = {
   loadNextOpenOrder: LoadNextOpenOrder;
   persist: PersistTaskEvent;
   principalLookup?: OrgPrincipalLookup;
+  now: () => string;
 };
 
 export const handleUpdateTask = (
@@ -75,9 +76,14 @@ export const handleUpdateTask = (
         }
 
         const event = decision.value;
-        return deps.persist({ event, current }).map(() => ({
+        const actor = command.actor ?? null;
+        const now = deps.now();
+        return deps.persist({ event, current, actor, now }).map(() => ({
           event,
-          view: applyTaskEvent(current, event),
+          view: applyTaskEvent(current, event, {
+            now,
+            actorUserId: actor?.userId ?? null,
+          }),
         }));
       });
     })

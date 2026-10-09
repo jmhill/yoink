@@ -23,10 +23,12 @@ export const handleCompleteTask = (
     organizationId: command.organizationId,
     load: deps.load,
   }).andThen((current) => {
+    const now = deps.now();
+    const actor = command.actor ?? null;
     const decision = decideCompleteTask({
       current,
       command,
-      now: deps.now(),
+      now,
     });
 
     if (decision.isErr()) {
@@ -38,9 +40,12 @@ export const handleCompleteTask = (
     }
 
     const event = decision.value;
-    return deps.persist({ event, current }).map(() => ({
+    return deps.persist({ event, current, actor, now }).map(() => ({
       event,
-      view: applyTaskEvent(current, event),
+      view: applyTaskEvent(current, event, {
+        now,
+        actorUserId: actor?.userId ?? null,
+      }),
     }));
   });
 };

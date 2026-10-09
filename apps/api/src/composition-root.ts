@@ -9,10 +9,16 @@ import { createStoreBackedPersist } from './captures/infrastructure/store-backed
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
 import { createListHandlers } from './lists/application/create-list-handlers.js';
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
-import { createStoreBackedPersist as createListStoreBackedPersist } from './lists/infrastructure/store-backed-persist.js';
+import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
-import { createStoreBackedPersist as createTaskStoreBackedPersist } from './tasks/infrastructure/store-backed-persist.js';
+import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
+import {
+  clearCompletedListIdQuery,
+  setOpenOrderQueries,
+} from './tasks/infrastructure/task-row-statements.js';
+import { silentCommandLogger } from './shared/change-log/application/silent-logger.js';
+import type { CommandLogger } from './shared/change-log/application/command-log.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
@@ -323,12 +329,25 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
+  const commandLogger: CommandLogger =
+    config.log.level === 'error' || config.log.level === 'fatal'
+      ? silentCommandLogger
+      : {
+          info: (fields) => {
+            process.stdout.write(`${JSON.stringify({ msg: 'command_outcome', ...fields })}\n`);
+          },
+        };
+
   const listStore = await createSqliteListStore(database);
   const taskStore = await createSqliteTaskStore(database, clock);
   const listHandlers = createListHandlers({
-    persist: createListStoreBackedPersist({
-      store: listStore,
-      clearCompletedListIds: (listId) => taskStore.clearListIdOnCompleted(listId),
+    persist: createSqliteListPersist({
+      db: database,
+      nextId: () => idGenerator.generate(),
+      sideQueries: {
+        clearCompletedListIdQuery,
+        setOpenOrderQueries,
+      },
     }),
     list: (organizationId) => listStore.findByOrganization(organizationId),
     pageNamedLists: (options) => listStore.pageByOrganization(options),
@@ -341,9 +360,9 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
         tasks.filter((task): task is Task => task !== null)
       ),
-    persistOpenTaskOrders: (updates) => taskStore.setOpenOrders(updates),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
+    logger: commandLogger,
   });
 
   // Create task store and service (async initialization)
@@ -361,7 +380,10 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     principalLookup,
   });
   const taskHandlers = createTaskHandlers({
-    persist: createTaskStoreBackedPersist(taskStore),
+    persist: createSqliteTaskPersist({
+      db: database,
+      nextId: () => idGenerator.generate(),
+    }),
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
     loadNextOpenOrder: (organizationId, listId) =>
@@ -373,6 +395,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     principalLookup,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
+    logger: commandLogger,
   });
 
   // Create capture processing service (cross-entity operations).

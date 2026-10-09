@@ -22,6 +22,8 @@ describe('createStoreBackedPersist', () => {
     });
 
     const result = await persist({
+      actor: null,
+      now: '2025-01-15T10:00:00.000Z',
       event: {
         type: 'NamedListCreated',
         id: groceriesList.id,
@@ -49,6 +51,8 @@ describe('createStoreBackedPersist', () => {
     });
 
     const result = await persist({
+      actor: null,
+      now: '2025-01-15T10:00:00.000Z',
       event: {
         type: 'NamedListRenamed',
         id: groceriesList.id,
@@ -97,6 +101,8 @@ describe('createStoreBackedPersist', () => {
     });
 
     const result = await persist({
+      actor: null,
+      now: '2025-01-15T10:00:00.000Z',
       event: {
         type: 'NamedListDeleted',
         id: groceriesList.id,

@@ -2111,6 +2111,25 @@ export const createPlaywrightActor = (
       await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
     },
 
+    async shouldSeeTaskEditChangeHistory(options?: {
+      lastChangedBeforeHistory?: boolean;
+      completed?: boolean;
+    }): Promise<void> {
+      const dialog = page.getByRole('dialog', { name: 'Edit Task' });
+      await expect(dialog.getByTestId('task-edit-added')).toBeVisible();
+      await expect(dialog.getByTestId('task-edit-added')).toContainText('Added');
+      const lastChanged = dialog.getByTestId('task-edit-last-changed');
+      await expect(lastChanged).toBeVisible();
+      if (options?.lastChangedBeforeHistory) {
+        await expect(lastChanged).toHaveText('Last changed before history started');
+      } else {
+        await expect(lastChanged).toContainText('Last changed');
+      }
+      if (options?.completed) {
+        await expect(dialog.getByTestId('task-edit-completed')).toContainText('Completed');
+      }
+    },
+
     async closeTaskEdit(): Promise<void> {
       const dialog = page.getByRole('dialog', { name: 'Edit Task' });
       await dialog.getByRole('button', { name: 'Cancel' }).click();

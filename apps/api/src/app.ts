@@ -136,7 +136,6 @@ export const createApp = async (deps: AppDependencies) => {
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
-    captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });
 

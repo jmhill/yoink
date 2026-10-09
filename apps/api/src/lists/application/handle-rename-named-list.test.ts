@@ -3,7 +3,7 @@ import { errAsync, okAsync } from 'neverthrow';
 import { handleRenameNamedList } from './handle-rename-named-list.js';
 import type { ListNamedLists, LoadNamedList, PersistNamedListEvent } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
-import type { NamedListEvent } from '../domain/events.js';
+import type { ListEvent } from '../domain/events.js';
 import type { NamedList } from '@yoink/api-contracts';
 
 const groceries: NamedList = {
@@ -30,9 +30,9 @@ const command = {
 
 const createInMemoryPersist = (): {
   persist: PersistNamedListEvent;
-  events: NamedListEvent[];
+  events: ListEvent[];
 } => {
-  const events: NamedListEvent[] = [];
+  const events: ListEvent[] = [];
   return {
     events,
     persist: ({ event }) => {
@@ -55,6 +55,7 @@ describe('handleRenameNamedList', () => {
       load: loadGroceries,
       list: listOrg,
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -89,6 +90,7 @@ describe('handleRenameNamedList', () => {
         load: loadGroceries,
         list: listOrg,
         persist,
+      now: () => '2025-01-15T10:00:00.000Z',
       }
     );
 
@@ -108,6 +110,7 @@ describe('handleRenameNamedList', () => {
         load: loadGroceries,
         list: listOrg,
         persist,
+      now: () => '2025-01-15T10:00:00.000Z',
       }
     );
 
@@ -127,6 +130,7 @@ describe('handleRenameNamedList', () => {
         load: loadGroceries,
         list: listOrg,
         persist,
+      now: () => '2025-01-15T10:00:00.000Z',
       }
     );
 
@@ -148,6 +152,7 @@ describe('handleRenameNamedList', () => {
         return okAsync([]);
       },
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -169,6 +174,7 @@ describe('handleRenameNamedList', () => {
         return okAsync([]);
       },
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -186,6 +192,7 @@ describe('handleRenameNamedList', () => {
       load: () => errAsync(storageError('Find failed')),
       list: listOrg,
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -202,6 +209,7 @@ describe('handleRenameNamedList', () => {
       load: loadGroceries,
       list: () => errAsync(storageError('List failed')),
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -218,6 +226,7 @@ describe('handleRenameNamedList', () => {
       load: loadGroceries,
       list: listOrg,
       persist,
+      now: () => '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);

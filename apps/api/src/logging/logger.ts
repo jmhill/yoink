@@ -8,6 +8,9 @@ import type { LogConfig } from '../config/schema.js';
  * - Configurable log level (fatal, error, warn, info, debug, trace)
  * - Pretty printing for development (pino-pretty transport)
  * - Sensitive field redaction (authorization, cookies)
+ *
+ * Stdout is unchanged when Sentry Logs are enabled. Sentry's pinoIntegration
+ * reads Pino's serialized (already redacted) JSON via diagnostics_channel.
  */
 export const createLoggerOptions = (config: LogConfig): PinoLoggerOptions => {
   return {

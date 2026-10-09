@@ -8,6 +8,7 @@ import {
   type WebAuthnConfig,
   type CookieConfig,
   LogLevelSchema,
+  LogConfigSchema,
 } from './schema.js';
 
 /**
@@ -67,18 +68,44 @@ const parseLogLevel = (value: string | undefined): LogLevel | undefined => {
 };
 
 /**
+ * Parse SENTRY_LOGS_ENABLED. Unset means on in production, off in tests and local
+ * dev. Explicit "true" / "false" override that default.
+ */
+const parseSentryLogsEnabled = (isProduction: boolean): boolean => {
+  const raw = process.env.SENTRY_LOGS_ENABLED;
+  if (raw === undefined) {
+    return isProduction;
+  }
+  if (raw === 'true') {
+    return true;
+  }
+  if (raw === 'false') {
+    return false;
+  }
+  throw new Error(
+    `Invalid SENTRY_LOGS_ENABLED value: "${raw}". Must be "true" or "false".`
+  );
+};
+
+/**
  * Load logging configuration from environment variables.
  * - LOG_LEVEL: fatal, error, warn, info, debug, trace (default: info in prod, debug in dev)
  * - Pretty printing auto-enabled in development
+ * - SENTRY_LOGS_ENABLED: forward Pino logs to Sentry (default: true in production)
+ * - SENTRY_LOGS_LEVEL: minimum Sentry log level (default: info)
  */
-const loadLogConfig = (): LogConfig => {
+export const loadLogConfig = (): LogConfig => {
   const isProduction = process.env.NODE_ENV === 'production';
   const defaultLevel: LogLevel = isProduction ? 'info' : 'debug';
 
-  return {
+  return LogConfigSchema.parse({
     level: parseLogLevel(process.env.LOG_LEVEL) ?? defaultLevel,
     pretty: !isProduction,
-  };
+    sentry: {
+      enabled: parseSentryLogsEnabled(isProduction),
+      minLevel: parseLogLevel(process.env.SENTRY_LOGS_LEVEL) ?? 'info',
+    },
+  });
 };
 
 /**

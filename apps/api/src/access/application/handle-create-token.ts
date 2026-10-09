@@ -49,7 +49,7 @@ export const handleCreateToken = (
       deps.loadOwner(command.userId).andThen((owner) => {
         const named = orgTokens
           .map((token) => token.name)
-          .filter((name): name is string => name !== null);
+          .filter((name): name is NonNullable<typeof name> => name !== null);
         const tokenCountForUser = orgTokens.filter(
           (token) => token.userId === command.userId
         ).length;

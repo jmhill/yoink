@@ -16,6 +16,7 @@ import type { Organization } from './organization.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
 import { agentEmailFor } from './user.js';
+import { asTokenName } from './token-name.js';
 
 const TEST_DATE = new Date('2024-01-15T10:00:00.000Z');
 
@@ -217,7 +218,7 @@ describe('AgentService', () => {
       userId: OWNER_ID,
       organizationId: ORG_ID,
       tokenHash: 'hash',
-      name: 'Lane',
+      name: asTokenName('Lane'),
       createdAt: TEST_DATE.toISOString(),
     });
 

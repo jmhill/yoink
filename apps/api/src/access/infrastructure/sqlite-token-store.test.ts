@@ -5,6 +5,7 @@ import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';
+import { asTokenName } from '../domain/token-name.js';
 
 const TEST_ORG = {
   id: '550e8400-e29b-41d4-a716-446655440001',
@@ -19,15 +20,20 @@ const TEST_USER = {
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-const createTestToken = (overrides: Partial<ApiToken> = {}): ApiToken => ({
-  id: '550e8400-e29b-41d4-a716-446655440003',
-  userId: TEST_USER.id,
-  organizationId: TEST_ORG.id,
-  tokenHash: 'bcrypt-hash-here',
-  name: 'default-token',
-  createdAt: '2024-01-01T00:00:00.000Z',
-  ...overrides,
-});
+const createTestToken = (
+  overrides: Partial<Omit<ApiToken, 'name'>> & { name?: string | null } = {}
+): ApiToken => {
+  const { name, ...rest } = overrides;
+  return {
+    id: '550e8400-e29b-41d4-a716-446655440003',
+    userId: TEST_USER.id,
+    organizationId: TEST_ORG.id,
+    tokenHash: 'bcrypt-hash-here',
+    name: name === undefined ? asTokenName('default-token') : name === null ? null : asTokenName(name),
+    createdAt: '2024-01-01T00:00:00.000Z',
+    ...rest,
+  };
+};
 
 describe('createSqliteTokenStore', () => {
   let db: Database;

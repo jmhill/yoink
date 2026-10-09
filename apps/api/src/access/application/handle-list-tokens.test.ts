@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
 import { handleListTokens } from './handle-list-tokens.js';
 import type { ApiToken } from '../domain/api-token.js';
+import { asTokenName } from '../domain/token-name.js';
 
 describe('handleListTokens', () => {
   it('returns visible tokens with owner, cap, and owned count', async () => {
@@ -11,7 +12,7 @@ describe('handleListTokens', () => {
         userId: 'user-1',
         organizationId: 'org-1',
         tokenHash: 'hash',
-        name: 'Lane',
+        name: asTokenName('Lane'),
         lastUsedAt: '2026-10-09T12:00:00.000Z',
         createdAt: '2026-01-01T00:00:00.000Z',
       },
@@ -20,7 +21,7 @@ describe('handleListTokens', () => {
         userId: 'agent-1',
         organizationId: 'org-1',
         tokenHash: 'hash',
-        name: 'Sid',
+        name: asTokenName('Sid'),
         createdAt: '2026-02-01T00:00:00.000Z',
       },
     ];
@@ -74,7 +75,7 @@ describe('handleListTokens', () => {
         userId: 'user-1',
         organizationId: 'org-1',
         tokenHash: 'hash',
-        name: 'Mine',
+        name: asTokenName('Mine'),
         createdAt: '2026-01-01T00:00:00.000Z',
       },
       {
@@ -82,7 +83,7 @@ describe('handleListTokens', () => {
         userId: 'agent-1',
         organizationId: 'org-1',
         tokenHash: 'hash',
-        name: 'Lane',
+        name: asTokenName('Lane'),
         createdAt: '2026-02-01T00:00:00.000Z',
       },
     ];

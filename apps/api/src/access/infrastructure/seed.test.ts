@@ -10,6 +10,7 @@ import type { OrganizationMembership } from '../domain/organization-membership.j
 import type { Invitation } from '../domain/invitation.js';
 import type { User } from '../domain/user.js';
 import type { ApiToken } from '../domain/api-token.js';
+import { asTokenName } from '../domain/token-name.js';
 import {
   createFakePasswordHasher,
   createFakeClock,
@@ -176,7 +177,7 @@ describe('seedAuthData', () => {
       userId: 'existing-user',
       organizationId: 'existing-org',
       tokenHash: 'hash',
-      name: 'existing',
+      name: asTokenName('existing'),
       createdAt: '2024-01-01T00:00:00.000Z',
     };
 

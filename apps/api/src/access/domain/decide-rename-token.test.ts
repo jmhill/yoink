@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { decideRenameToken } from './decide-rename-token.js';
 import type { ApiToken } from './api-token.js';
+import { asTokenName } from './token-name.js';
 import type { RenameTokenCommand } from './token-commands.js';
 
 const unnamed: ApiToken = {
@@ -14,7 +15,7 @@ const unnamed: ApiToken = {
 
 const named: ApiToken = {
   ...unnamed,
-  name: 'Lane',
+  name: asTokenName('Lane'),
 };
 
 const command = (overrides: Partial<RenameTokenCommand> = {}): RenameTokenCommand => ({

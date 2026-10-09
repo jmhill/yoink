@@ -3,6 +3,7 @@ import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateToken } from './handle-create-token.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import type { ApiToken } from '../domain/api-token.js';
+import { asTokenName } from '../domain/token-name.js';
 import type { TokenEvent } from '../domain/token-events.js';
 
 const persistEvents = () => {
@@ -89,7 +90,7 @@ describe('handleCreateToken', () => {
       userId: 'user-2',
       organizationId: 'org-1',
       tokenHash: 'hash',
-      name: 'Lane',
+      name: asTokenName('Lane'),
       createdAt: '2026-01-01T00:00:00.000Z',
     };
 

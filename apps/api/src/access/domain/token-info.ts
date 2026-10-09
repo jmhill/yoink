@@ -39,15 +39,12 @@ export const toTokenProjection = (token: {
 export const toTokenInfo = (
   token: {
     id: string;
-    name: string | null;
+    name: TokenName | null;
     lastUsedAt?: string;
     createdAt: string;
   },
   owner: TokenOwnerInfo
 ): TokenInfo => ({
-  ...toTokenProjection({
-    ...token,
-    name: token.name as TokenName | null,
-  }),
+  ...toTokenProjection(token),
   owner,
 });

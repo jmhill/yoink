@@ -3,7 +3,15 @@ import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
 import { duplicateTokenNameError } from '../domain/token-errors.js';
-import { normalizeTokenName } from '../domain/token-name.js';
+import { asTokenName, normalizeTokenName, type TokenName } from '../domain/token-name.js';
+
+const storedName = (name: string | null): TokenName | null =>
+  name === null ? null : asTokenName(name);
+
+const brandToken = (token: ApiToken): ApiToken => ({
+  ...token,
+  name: storedName(token.name),
+});
 
 export type FakeTokenStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -31,17 +39,18 @@ const nameTaken = (tokens: ApiToken[], candidate: ApiToken): boolean => {
 export const createFakeTokenStore = (
   options: FakeTokenStoreOptions = {}
 ): TokenStore => {
-  const tokens: ApiToken[] = [...(options.initialTokens ?? [])];
+  const tokens: ApiToken[] = (options.initialTokens ?? []).map(brandToken);
 
   return {
     save: (token: ApiToken): ResultAsync<void, TokenWriteError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Save failed'));
       }
-      if (nameTaken(tokens, token)) {
-        return errAsync(duplicateTokenNameError(token.name ?? ''));
+      const stored = brandToken(token);
+      if (nameTaken(tokens, stored)) {
+        return errAsync(duplicateTokenNameError(stored.name ?? ''));
       }
-      tokens.push(token);
+      tokens.push(stored);
       return okAsync(undefined);
     },
 
@@ -85,7 +94,7 @@ export const createFakeTokenStore = (
       }
       const token = tokens.find((t) => t.id === id);
       if (token) {
-        const next = { ...token, name };
+        const next = { ...token, name: storedName(name) };
         if (nameTaken(tokens, next)) {
           return errAsync(duplicateTokenNameError(name ?? ''));
         }

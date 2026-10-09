@@ -24,6 +24,7 @@ import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { ApiToken } from '../domain/api-token.js';
+import { asTokenName } from '../domain/token-name.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
@@ -74,7 +75,7 @@ describe('organization routes', () => {
     userId: agentUser.id,
     organizationId: teamOrg.id,
     tokenHash: 'fake-hash:agent-secret',
-    name: 'Roster bot',
+    name: asTokenName('Roster bot'),
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
@@ -85,7 +86,7 @@ describe('organization routes', () => {
     userId: testUser.id,
     organizationId: personalOrg.id,
     tokenHash: 'fake-hash:owner-secret',
-    name: 'Lane',
+    name: asTokenName('Lane'),
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 

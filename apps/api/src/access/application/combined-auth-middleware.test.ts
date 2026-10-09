@@ -10,6 +10,7 @@ import { createFakeOrganizationStore } from '../infrastructure/fake-organization
 import type { User } from '../domain/user.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import type { ApiToken } from '../domain/api-token.js';
+import { asTokenName } from '../domain/token-name.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
@@ -54,7 +55,7 @@ describe('combinedAuthMiddleware', () => {
     userId: testUser.id,
     organizationId: testOrg.id,
     tokenHash: 'fake-hash:valid-token',
-    name: 'test-token',
+    name: asTokenName('test-token'),
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 

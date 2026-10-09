@@ -21,6 +21,7 @@ import type { OrganizationMembership } from '../domain/organization-membership.j
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenStore } from '../domain/token-store.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
+import { asTokenName } from '../domain/token-name.js';
 import { principalKindOf } from '../domain/user.js';
 import {
   createFakeClock,
@@ -410,7 +411,7 @@ describe('token routes', () => {
         userId: testUser.id,
         organizationId: '550e8400-e29b-41d4-a716-446655440099',
         tokenHash: 'hash',
-        name: 'OtherOrg',
+        name: asTokenName('OtherOrg'),
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 

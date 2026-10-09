@@ -79,7 +79,7 @@ export const handleRenameToken = (
           persistDecision(
             orgTokens
               .map((token) => token.name)
-              .filter((name): name is string => name !== null)
+              .filter((name): name is NonNullable<typeof name> => name !== null)
           )
         );
       });

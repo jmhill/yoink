@@ -85,7 +85,7 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
           return listOrgTokens(organizationId).andThen((orgTokens) => {
             const existingNames = orgTokens
               .map((token) => token.name)
-              .filter((existing): existing is string => existing !== null);
+              .filter((existing): existing is NonNullable<typeof existing> => existing !== null);
 
             if (tokenNameIsTaken(tokenName, existingNames)) {
               return errAsync(duplicateTokenNameError(tokenName));

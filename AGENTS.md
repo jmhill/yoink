@@ -26,6 +26,10 @@ For environment variables and operational config, see `docs/operations/ENVIRONME
 
 This is a monorepo with a Fastify API server (`apps/api/`) and shared packages (`packages/api-contracts/`, `packages/infrastructure/`). The API follows hexagonal architecture — see `apps/api/AGENTS.md` for details.
 
+## UI design handoff
+
+Designs for a UI story live in `docs/design/<issue>-<slug>/` (e.g. `docs/design/144-work-screen/`): HTML/CSS sources, rendered PNGs, and a README that marks what's decided versus placeholder and maps each part of the design to existing components and theme tokens. The story issue links to that folder. Treat the HTML structure and the decided items as the spec; placeholders (colors, sample data, spacing) are free to change, but only within the existing theme tokens and components.
+
 ## Continuous Delivery
 
 Every commit should be potentially releasable. Use branch by abstraction, expand/migrate/contract, backwards-compatible API design, evolutionary database design, and feature toggles to maintain a releasable state.

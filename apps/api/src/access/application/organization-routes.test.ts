@@ -35,6 +35,7 @@ const USER_SESSION_COOKIE = 'user_session';
 describe('organization routes', () => {
   let app: FastifyInstance;
   let sessionStore: ReturnType<typeof createFakeUserSessionStore>;
+  let membershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
 
   const personalOrg: Organization = {
     id: '550e8400-e29b-41d4-a716-446655440001',
@@ -78,6 +79,17 @@ describe('organization routes', () => {
   };
 
   const agentRawToken = `${agentToken.id}:agent-secret`;
+
+  const ownerToken: ApiToken = {
+    id: '550e8400-e29b-41d4-a716-446655440041',
+    userId: testUser.id,
+    organizationId: personalOrg.id,
+    tokenHash: 'fake-hash:owner-secret',
+    name: 'Lane',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const ownerRawToken = `${ownerToken.id}:owner-secret`;
 
   const personalMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440020',
@@ -125,11 +137,11 @@ describe('organization routes', () => {
     const userStore = createFakeUserStore({
       initialUsers: [testUser, agentUser],
     });
-    const membershipStore = createFakeOrganizationMembershipStore({
+    membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [personalMembership, teamMembership, agentMembership],
     });
     const tokenStore = createFakeTokenStore({
-      initialTokens: [agentToken],
+      initialTokens: [agentToken, ownerToken],
     });
     sessionStore = createFakeUserSessionStore({
       initialSessions: [testSession],
@@ -193,6 +205,7 @@ describe('organization routes', () => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
+      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
     });
@@ -394,7 +407,41 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Only owners and admins');
+      expect(response.json().message).toContain('Bot tokens cannot');
+    });
+
+    it('cannot mint an agent with a human-owned bot token', async () => {
+      const membersBefore = await membershipStore.findByOrganizationId(personalOrg.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${personalOrg.id}/agents`,
+        headers: { authorization: `Bearer ${ownerRawToken}` },
+        payload: { name: 'Vault bot' },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Bot tokens cannot');
+
+      const membersAfter = await membershipStore.findByOrganizationId(personalOrg.id);
+      expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+    });
+
+    it('returns 409 and creates no member when the token name already exists', async () => {
+      const membersBefore = await membershipStore.findByOrganizationId(personalOrg.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${personalOrg.id}/agents`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+        payload: { name: 'Lane' },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().message).toContain('already exists');
+
+      const membersAfter = await membershipStore.findByOrganizationId(personalOrg.id);
+      expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
     });
 
     it('cannot remove a member', async () => {

@@ -262,6 +262,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
+      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
     });

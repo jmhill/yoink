@@ -4,7 +4,7 @@ import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
-import type { User } from './user.js';
+import { agentEmailFor, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
@@ -31,6 +31,8 @@ export type CreateUserCommand = {
   email: string;
   /** Defaults to member. Owner is reserved for personal orgs. */
   role?: 'admin' | 'member';
+  kind?: PrincipalKind;
+  name?: string;
 };
 
 export type CreateTokenCommand = {
@@ -137,7 +139,7 @@ export const createAdminService = (
     },
 
     createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {
-      const { organizationId, email, role = 'member' } = command;
+      const { organizationId, email, role = 'member', kind, name } = command;
       const now = clock.now().toISOString();
       const userId = idGenerator.generate();
 
@@ -152,7 +154,9 @@ export const createAdminService = (
 
         const user: User = {
           id: userId,
-          email,
+          email: kind === 'agent' ? agentEmailFor(userId) : email,
+          ...(name !== undefined ? { name } : {}),
+          ...(kind !== undefined ? { kind } : {}),
           createdAt: now,
         };
 

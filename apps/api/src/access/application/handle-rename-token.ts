@@ -37,7 +37,7 @@ export const handleRenameToken = (
   command: RenameTokenCommand,
   deps: HandleRenameTokenDeps
 ): ResultAsync<RenameTokenResult, RenameTokenError> => {
-  const actorUserId = command.actor.kind === 'user' ? command.actor.userId : command.userId;
+  const actorUserId = command.actor.userId;
 
   return deps.load(command.tokenId).andThen((current) =>
     deps.loadMembership(actorUserId, command.organizationId).andThen((membership) => {

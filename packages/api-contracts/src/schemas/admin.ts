@@ -60,6 +60,8 @@ export type CreateTokenResponse = z.infer<typeof CreateTokenResponseSchema>;
 export const CreateUserSchema = z.object({
   email: z.string().email(),
   role: z.enum(['admin', 'member']).default('member'),
+  kind: z.enum(['human', 'agent']).optional(),
+  name: z.string().min(1).max(100).optional(),
 });
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 

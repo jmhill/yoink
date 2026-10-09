@@ -39,9 +39,19 @@ type ActorCredentials = {
  * HTTP implementation of the Actor interface.
  * All requests are authenticated with the provided token.
  */
+export type HttpActorOptions = {
+  /**
+   * HTTP actors authenticate as bots. Minting is human-session only, so the
+   * HTTP driver provisions agents through admin for tenant-admin actors.
+   * Bot actors omit this and POST /agents, which returns 403.
+   */
+  provisionAgent?: (name: string) => Promise<MintedAgent>;
+};
+
 export const createHttpActor = (
   client: HttpClient,
-  credentials: ActorCredentials
+  credentials: ActorCredentials,
+  options: HttpActorOptions = {}
 ): Actor => {
   const authHeaders = () => ({
     authorization: `Bearer ${credentials.token}`,
@@ -1426,6 +1436,10 @@ export const createHttpActor = (
     },
 
     async mintAgent(name: string): Promise<MintedAgent> {
+      if (options.provisionAgent) {
+        return options.provisionAgent(name);
+      }
+
       const response = await client.post(
         `/api/organizations/${credentials.organizationId}/agents`,
         { name },

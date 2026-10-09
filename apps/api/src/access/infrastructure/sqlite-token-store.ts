@@ -4,6 +4,7 @@ import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
 import { duplicateTokenNameError } from '../domain/token-errors.js';
+import { asTokenName } from '../domain/token-name.js';
 
 type TokenRow = {
   id: string;
@@ -21,24 +22,23 @@ const rowToToken = (row: TokenRow): ApiToken => ({
   userId: row.user_id,
   organizationId: row.organization_id,
   tokenHash: row.token_hash,
-  name: row.name,
+  name: row.name === null ? null : asTokenName(row.name),
   lastUsedAt: row.last_used_at ?? undefined,
   createdAt: row.created_at,
   revokedAt: row.revoked_at ?? undefined,
 });
 
-const uniqueConstraintFailed = (error: unknown): boolean => {
+const uniqueNameIndexFailed = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
   }
-  const candidate = error as { code?: unknown; message?: unknown };
-  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const candidate = error as { message?: unknown };
   const message = typeof candidate.message === 'string' ? candidate.message : '';
-  return code.includes('CONSTRAINT') || message.includes('UNIQUE constraint failed');
+  return message.includes('idx_api_tokens_org_name_ci');
 };
 
 const writeError = (fallback: string, name: string | null, error: unknown): TokenWriteError => {
-  if (uniqueConstraintFailed(error)) {
+  if (uniqueNameIndexFailed(error)) {
     return duplicateTokenNameError(name ?? '');
   }
   return tokenStorageError(fallback, error);

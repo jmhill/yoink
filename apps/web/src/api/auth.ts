@@ -429,6 +429,9 @@ export const mintAgent = async (
     if (response.status === 403) {
       return { ok: false, error: body.message || 'Only owners and admins can mint agents' };
     }
+    if (response.status === 409) {
+      return { ok: false, error: body.message || 'A token with this name already exists' };
+    }
     return { ok: false, error: body.message || 'Failed to mint agent' };
   }
 

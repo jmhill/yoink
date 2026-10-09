@@ -36,12 +36,44 @@ export const createHttpDriver = (config: DriverConfig): Driver => {
         const user = await admin.createUser(org.id, uniqueEmail, { role: 'admin' });
         const { rawToken } = await admin.createToken(org.id, user.id, 'test-token');
 
-        return createHttpActor(client, {
-          email,
-          userId: user.id,
-          organizationId: org.id,
-          token: rawToken,
-        });
+        return createHttpActor(
+          client,
+          {
+            email,
+            userId: user.id,
+            organizationId: org.id,
+            token: rawToken,
+          },
+          {
+            provisionAgent: async (name) => {
+              await admin.login();
+              try {
+                const agentUser = await admin.createUser(
+                  org.id,
+                  `agent-setup-${Date.now()}@example.com`,
+                  {
+                    role: 'member',
+                    kind: 'agent',
+                    name,
+                  }
+                );
+                const created = await admin.createToken(org.id, agentUser.id, name);
+                return {
+                  agent: {
+                    userId: agentUser.id,
+                    name,
+                    kind: 'agent',
+                    role: 'member',
+                  },
+                  token: created.token,
+                  rawToken: created.rawToken,
+                };
+              } finally {
+                await admin.logout();
+              }
+            },
+          }
+        );
       } finally {
         await admin.logout();
       }

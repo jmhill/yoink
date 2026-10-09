@@ -42,7 +42,7 @@ export const handleCreateToken = (
   command: CreateNamedTokenCommand,
   deps: HandleCreateTokenDeps
 ): ResultAsync<CreateTokenResult, CreateNamedTokenError> => {
-  const actorUserId = command.actor.kind === 'user' ? command.actor.userId : command.userId;
+  const actorUserId = command.actor.userId;
 
   return deps.listOrgTokens(command.organizationId).andThen((orgTokens) =>
     deps.loadMembership(actorUserId, command.organizationId).andThen((membership) =>

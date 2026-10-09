@@ -303,10 +303,9 @@ export const registerOrganizationRoutes = async (
 
       createAgent: async ({ params, body, request }) => {
         const { organizationId } = params;
-        const actorUserId = request.authContext.userId;
 
         const result = await agentService.mintAgent({
-          actorUserId,
+          actor: request.authContext.actor,
           organizationId,
           name: body.name,
         });
@@ -336,6 +335,24 @@ export const registerOrganizationRoutes = async (
               return {
                 status: 403 as const,
                 body: { message: 'Only owners and admins can mint agents' },
+              };
+            }
+            if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
+              return {
+                status: 403 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INVALID_TOKEN_NAME') {
+              return {
+                status: 400 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'DUPLICATE_TOKEN_NAME') {
+              return {
+                status: 409 as const,
+                body: { message: error.message },
               };
             }
             if (error.type === 'ORGANIZATION_NOT_FOUND') {

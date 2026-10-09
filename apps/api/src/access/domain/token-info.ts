@@ -1,5 +1,5 @@
 import type { PrincipalKind } from './user.js';
-import { storedTokenName, type TokenName } from './token-name.js';
+import type { TokenName } from './token-name.js';
 
 export type TokenOwnerInfo = {
   userId: string;
@@ -26,12 +26,12 @@ export type TokenListResult = {
 
 export const toTokenProjection = (token: {
   id: string;
-  name: string | null;
+  name: TokenName | null;
   lastUsedAt?: string;
   createdAt: string;
 }): TokenProjection => ({
   id: token.id,
-  name: storedTokenName(token.name),
+  name: token.name,
   lastUsedAt: token.lastUsedAt,
   createdAt: token.createdAt,
 });
@@ -45,6 +45,9 @@ export const toTokenInfo = (
   },
   owner: TokenOwnerInfo
 ): TokenInfo => ({
-  ...toTokenProjection(token),
+  ...toTokenProjection({
+    ...token,
+    name: token.name as TokenName | null,
+  }),
   owner,
 });

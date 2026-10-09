@@ -66,12 +66,13 @@ const memberMembership: OrganizationMembership = {
 describe('AgentService', () => {
   let service: AgentService;
   let userStore: ReturnType<typeof createFakeUserStore>;
+  let membershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
   let tokenStore: ReturnType<typeof createFakeTokenStore>;
 
   beforeEach(() => {
     userStore = createFakeUserStore({ initialUsers: [owner, member] });
     const organizationStore = createFakeOrganizationStore({ initialOrganizations: [org] });
-    const membershipStore = createFakeOrganizationMembershipStore({
+    membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [ownerMembership, memberMembership],
     });
     tokenStore = createFakeTokenStore();
@@ -129,6 +130,7 @@ describe('AgentService', () => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
+      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
     });
@@ -136,7 +138,7 @@ describe('AgentService', () => {
 
   it('mints an agent member with its own token', async () => {
     const result = await service.mintAgent({
-      actorUserId: OWNER_ID,
+      actor: { kind: 'user', userId: OWNER_ID },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -166,7 +168,7 @@ describe('AgentService', () => {
 
   it('rejects minting when the actor is a regular member', async () => {
     const result = await service.mintAgent({
-      actorUserId: MEMBER_ID,
+      actor: { kind: 'user', userId: MEMBER_ID },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -179,7 +181,7 @@ describe('AgentService', () => {
 
   it('rejects minting when the actor is not a member', async () => {
     const result = await service.mintAgent({
-      actorUserId: '550e8400-e29b-41d4-a716-446655440099',
+      actor: { kind: 'user', userId: '550e8400-e29b-41d4-a716-446655440099' },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -188,5 +190,52 @@ describe('AgentService', () => {
     if (result.isErr()) {
       expect(result.error.type).toBe('MEMBERSHIP_NOT_FOUND');
     }
+  });
+
+  it('refuses a bot actor before creating a member', async () => {
+    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
+
+    const result = await service.mintAgent({
+      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane' },
+      organizationId: ORG_ID,
+      name: 'Vault bot',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+
+    const membersAfter = await membershipStore.findByOrganizationId(ORG_ID);
+    expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+    expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
+  });
+
+  it('refuses a duplicate token name before creating a member', async () => {
+    await tokenStore.save({
+      id: AGENT_TOKEN_ID,
+      userId: OWNER_ID,
+      organizationId: ORG_ID,
+      tokenHash: 'hash',
+      name: 'Lane',
+      createdAt: TEST_DATE.toISOString(),
+    });
+
+    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
+
+    const result = await service.mintAgent({
+      actor: { kind: 'user', userId: OWNER_ID },
+      organizationId: ORG_ID,
+      name: 'Lane',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
+    }
+
+    const membersAfter = await membershipStore.findByOrganizationId(ORG_ID);
+    expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+    expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
   });
 });

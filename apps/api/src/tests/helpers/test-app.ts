@@ -19,6 +19,10 @@ export const TEST_ORG_ID = '550e8400-e29b-41d4-a716-446655440001';
 // Test user uses the hardcoded SEED_USER_ID from seed.ts
 export const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 
+/** Seeded session for the test user when WebAuthn (session auth) is enabled. */
+export const TEST_SESSION_ID = '550e8400-e29b-41d4-a716-446655440050';
+export const TEST_SESSION_COOKIE = 'yoink_session';
+
 // Admin test credentials
 export const TEST_ADMIN_PASSWORD = 'test-admin-password';
 export const TEST_SESSION_SECRET = 'test-session-secret-32-chars-min!';
@@ -115,15 +119,33 @@ export const createTestAppWithAdmin = async () => {
  * Creates an in-process Fastify app with WebAuthn (session auth) enabled.
  * Uses in-memory SQLite and fake infrastructure (clock, ID generator, etc.)
  */
+const seedTestUserSession = async (database: {
+  execute: (query: { sql: string; args?: unknown[] }) => Promise<unknown>;
+}) => {
+  await database.execute({
+    sql: `INSERT INTO user_sessions (id, user_id, current_organization_id, created_at, expires_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      TEST_SESSION_ID,
+      TEST_USER_ID,
+      TEST_ORG_ID,
+      '2025-01-15T10:00:00.000Z',
+      '2026-12-31T00:00:00.000Z',
+      '2025-01-15T10:00:00.000Z',
+    ],
+  });
+};
+
 export const createTestAppWithWebAuthn = async () => {
   const infrastructure = createInfrastructure(testConfigWithWebAuthn);
   await runMigrations(infrastructure.database, migrations);
 
-  return bootstrapApp({
+  const app = await bootstrapApp({
     config: testConfigWithWebAuthn,
     infrastructure,
     silent: true,
   });
+  await seedTestUserSession(infrastructure.database);
+  return app;
 };
 
 /**
@@ -134,9 +156,11 @@ export const createTestAppFull = async () => {
   const infrastructure = createInfrastructure(testConfigFull);
   await runMigrations(infrastructure.database, migrations);
 
-  return bootstrapApp({
+  const app = await bootstrapApp({
     config: testConfigFull,
     infrastructure,
     silent: true,
   });
+  await seedTestUserSession(infrastructure.database);
+  return app;
 };

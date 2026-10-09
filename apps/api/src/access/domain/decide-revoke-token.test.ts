@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideRevokeToken } from './decide-revoke-token.js';
 import type { ApiToken } from './api-token.js';
-import { asTokenName } from './token-name.js';
 import type { RevokeTokenCommand } from './token-commands.js';
 
 const token: ApiToken = {
@@ -9,7 +8,7 @@ const token: ApiToken = {
   userId: 'user-1',
   organizationId: 'org-1',
   tokenHash: 'hash',
-  name: asTokenName('Lane'),
+  name: 'Lane',
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 

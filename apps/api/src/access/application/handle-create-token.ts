@@ -1,7 +1,7 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { CreateNamedTokenCommand } from '../domain/token-commands.js';
 import type { TokenCreated } from '../domain/token-events.js';
-import type { TokenInfo, TokenOwnerInfo } from '../domain/token-info.js';
+import type { TokenInfo } from '../domain/token-info.js';
 import { applyTokenEvent } from '../domain/apply-token-event.js';
 import { decideCreateToken } from '../domain/decide-create-token.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
@@ -32,12 +32,6 @@ export type CreateTokenResult = {
   rawToken: string;
 };
 
-const unknownOwner = (userId: string): TokenOwnerInfo => ({
-  userId,
-  name: null,
-  kind: 'human',
-});
-
 export const handleCreateToken = (
   command: CreateNamedTokenCommand,
   deps: HandleCreateTokenDeps
@@ -47,9 +41,6 @@ export const handleCreateToken = (
   return deps.listOrgTokens(command.organizationId).andThen((orgTokens) =>
     deps.loadMembership(actorUserId, command.organizationId).andThen((membership) =>
       deps.loadOwner(command.userId).andThen((owner) => {
-        const named = orgTokens
-          .map((token) => token.name)
-          .filter((name): name is NonNullable<typeof name> => name !== null);
         const tokenCountForUser = orgTokens.filter(
           (token) => token.userId === command.userId
         ).length;
@@ -58,7 +49,6 @@ export const handleCreateToken = (
         const secret = deps.nextSecret();
         const decision = decideCreateToken({
           command,
-          existingNames: named,
           tokenCountForUser,
           maxTokensPerUserPerOrg: deps.maxTokensPerUserPerOrg,
           actorRole: membership?.role ?? null,
@@ -80,10 +70,7 @@ export const handleCreateToken = (
         return deps.hashSecret(secret).andThen((tokenHash) =>
           deps.persist({ event, tokenHash }).map(() => ({
             event,
-            token: {
-              ...projected,
-              owner: owner ?? unknownOwner(command.userId),
-            },
+            token: projected,
             rawToken: `${id}:${secret}`,
           }))
         );

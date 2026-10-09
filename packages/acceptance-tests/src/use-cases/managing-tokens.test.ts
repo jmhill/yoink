@@ -5,7 +5,7 @@ import { UnauthorizedError, ForbiddenError } from '@yoink/acceptance-testing';
  * User token self-service.
  *
  * HTTP actors authenticate as bots (Bearer token), so they can list
- * tokens but cannot create, rename, or revoke them.
+ * tokens but cannot create or revoke them.
  */
 usingDrivers(['http'] as const, (ctx) => {
   const BOOTSTRAP_TOKEN_NAME = 'test-token';
@@ -43,13 +43,6 @@ usingDrivers(['http'] as const, (ctx) => {
       const bob = await ctx.createActor('bob-token-create@example.com');
 
       await expect(bob.createToken('Lane')).rejects.toThrow(ForbiddenError);
-    });
-
-    it('refuses rename from a bot token', async () => {
-      const carol = await ctx.createActor('carol-token-rename@example.com');
-      const tokens = await carol.listTokens();
-
-      await expect(carol.renameToken(tokens[0].id, 'Lane')).rejects.toThrow(ForbiddenError);
     });
 
     it('refuses revoke from a bot token', async () => {

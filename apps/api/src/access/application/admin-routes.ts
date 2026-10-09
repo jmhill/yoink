@@ -275,21 +275,7 @@ export const registerAdminRoutes = async (
               rawToken: tokenResult.rawToken,
             },
           }),
-          (error) => {
-            if (error.type === 'INVALID_TOKEN_NAME') {
-              return {
-                status: 400 as const,
-                body: { message: error.message },
-              };
-            }
-            if (error.type === 'DUPLICATE_TOKEN_NAME') {
-              return {
-                status: 409 as const,
-                body: { message: error.message },
-              };
-            }
-            return storageErrorResponse('Failed to create token');
-          }
+          () => storageErrorResponse('Failed to create token')
         );
       },
 

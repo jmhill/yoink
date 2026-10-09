@@ -5,7 +5,6 @@ import { createFakeOrganizationStore } from '../infrastructure/fake-organization
 import type { User } from './user.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import type { ApiToken } from './api-token.js';
-import { asTokenName } from './token-name.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
 
@@ -27,7 +26,7 @@ describe('TokenService', () => {
     userId: testUser.id,
     organizationId: testOrg.id,
     tokenHash: 'fake-hash:my-secret-token',
-    name: asTokenName('test-token'),
+    name: 'test-token',
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
@@ -134,7 +133,7 @@ describe('TokenService', () => {
       userId: 'non-existent-user',
       organizationId: testOrg.id,
       tokenHash: 'fake-hash:orphan-secret',
-      name: asTokenName('orphan-token'),
+      name: 'orphan-token',
       createdAt: '2024-01-01T00:00:00.000Z',
     };
 
@@ -173,7 +172,7 @@ describe('TokenService', () => {
       userId: orphanUser.id,
       organizationId: 'non-existent-org',
       tokenHash: 'fake-hash:orphan-secret',
-      name: asTokenName('orphan-token'),
+      name: 'orphan-token',
       createdAt: '2024-01-01T00:00:00.000Z',
     };
 

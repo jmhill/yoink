@@ -21,7 +21,11 @@ import {
   createCombinedAuthMiddleware,
 } from './access/application/index.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
-import { createStoreBackedTokenPersist } from './access/infrastructure/store-backed-token-persist.js';
+import {
+  createStoreBackedTokenPersist,
+  createStoreBackedTokenReissue,
+} from './access/infrastructure/store-backed-token-persist.js';
+import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
 import { principalKindOf } from './access/domain/user.js';
@@ -262,9 +266,25 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
+      reissueAgentToken: (command) =>
+        handleReissueAgentToken(command, {
+          loadMembership: (userId, organizationId) =>
+            membershipService.getMembership({ userId, organizationId }),
+          loadUser: (userId) => userService.getUser(userId),
+          listMemberTokens: (userId, organizationId) =>
+            tokenStore.findByUserAndOrganization(userId, organizationId),
+          persistReissue: createStoreBackedTokenReissue(tokenStore),
+          hashSecret: (secret) =>
+            ResultAsync.fromPromise(
+              passwordHasher.hash(secret),
+              (error) => tokenStorageError('Failed to hash token secret', error)
+            ),
+          nextId: () => idGenerator.generate(),
+          nextSecret: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
     });
 
     signupConfig = {

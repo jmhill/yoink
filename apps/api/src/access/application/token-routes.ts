@@ -81,11 +81,6 @@ export const registerTokenRoutes = async (
                   status: 403 as const,
                   body: { message: error.type === 'TOKEN_OWNERSHIP_ERROR' ? 'You do not own this token' : error.message },
                 };
-              case 'DUPLICATE_TOKEN_NAME':
-                return {
-                  status: 409 as const,
-                  body: { message: error.message },
-                };
               case 'TOKEN_LIMIT_REACHED':
                 return {
                   status: 409 as const,
@@ -98,59 +93,6 @@ export const registerTokenRoutes = async (
                 return {
                   status: 500 as const,
                   body: { message: 'Failed to create token' },
-                };
-            }
-          }
-        );
-      },
-
-      rename: async ({ params, body, request }) => {
-        const { userId, organizationId, actor } = request.authContext;
-        const result = await tokenHandlers.rename({
-          actor,
-          tokenId: params.tokenId,
-          userId,
-          organizationId,
-          name: body.name,
-        });
-
-        return result.match(
-          ({ token }) => ({
-            status: 200 as const,
-            body: token,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_TOKEN_NAME':
-                return {
-                  status: 400 as const,
-                  body: { message: error.message },
-                };
-              case 'BOT_CANNOT_MANAGE_TOKENS':
-                return {
-                  status: 403 as const,
-                  body: { message: error.message },
-                };
-              case 'TOKEN_OWNERSHIP_ERROR':
-                return {
-                  status: 403 as const,
-                  body: { message: 'You do not own this token' },
-                };
-              case 'USER_TOKEN_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Token not found' },
-                };
-              case 'DUPLICATE_TOKEN_NAME':
-                return {
-                  status: 409 as const,
-                  body: { message: error.message },
-                };
-              default:
-                request.log.error({ error }, 'Failed to rename token');
-                return {
-                  status: 500 as const,
-                  body: { message: 'Failed to rename token' },
                 };
             }
           }

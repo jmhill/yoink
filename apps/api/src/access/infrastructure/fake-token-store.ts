@@ -2,16 +2,6 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
-import { duplicateTokenNameError } from '../domain/token-errors.js';
-import { asTokenName, normalizeTokenName, type TokenName } from '../domain/token-name.js';
-
-const storedName = (name: string | null): TokenName | null =>
-  name === null ? null : asTokenName(name);
-
-const brandToken = (token: ApiToken): ApiToken => ({
-  ...token,
-  name: storedName(token.name),
-});
 
 export type FakeTokenStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -21,36 +11,25 @@ export type FakeTokenStoreOptions = {
 
 const isActive = (token: ApiToken): boolean => token.revokedAt === undefined;
 
-const nameTaken = (tokens: ApiToken[], candidate: ApiToken): boolean => {
-  if (candidate.name === null || !isActive(candidate)) {
-    return false;
-  }
-  const normalized = normalizeTokenName(candidate.name);
-  return tokens.some(
-    (token) =>
-      token.id !== candidate.id &&
-      isActive(token) &&
-      token.organizationId === candidate.organizationId &&
-      token.name !== null &&
-      normalizeTokenName(token.name) === normalized
-  );
-};
-
 export const createFakeTokenStore = (
   options: FakeTokenStoreOptions = {}
 ): TokenStore => {
-  const tokens: ApiToken[] = (options.initialTokens ?? []).map(brandToken);
+  const tokens: ApiToken[] = [...(options.initialTokens ?? [])];
+
+  const revokeInPlace = (id: string, revokedAt: string): void => {
+    const token = tokens.find((candidate) => candidate.id === id);
+    if (token && !token.revokedAt) {
+      const index = tokens.indexOf(token);
+      tokens[index] = { ...token, revokedAt };
+    }
+  };
 
   return {
     save: (token: ApiToken): ResultAsync<void, TokenWriteError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Save failed'));
       }
-      const stored = brandToken(token);
-      if (nameTaken(tokens, stored)) {
-        return errAsync(duplicateTokenNameError(stored.name ?? ''));
-      }
-      tokens.push(stored);
+      tokens.push(token);
       return okAsync(undefined);
     },
 
@@ -88,22 +67,6 @@ export const createFakeTokenStore = (
       return okAsync(found);
     },
 
-    updateName: (id: string, name: string | null): ResultAsync<void, TokenWriteError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(tokenStorageError('Update failed'));
-      }
-      const token = tokens.find((t) => t.id === id);
-      if (token) {
-        const next = { ...token, name: storedName(name) };
-        if (nameTaken(tokens, next)) {
-          return errAsync(duplicateTokenNameError(name ?? ''));
-        }
-        const index = tokens.indexOf(token);
-        tokens[index] = next;
-      }
-      return okAsync(undefined);
-    },
-
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Update failed'));
@@ -120,11 +83,18 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Delete failed'));
       }
-      const token = tokens.find((t) => t.id === id);
-      if (token && !token.revokedAt) {
-        const index = tokens.indexOf(token);
-        tokens[index] = { ...token, revokedAt };
+      revokeInPlace(id, revokedAt);
+      return okAsync(undefined);
+    },
+
+    reissue: ({ revokeIds, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(tokenStorageError('Reissue failed'));
       }
+      for (const id of revokeIds) {
+        revokeInPlace(id, revokedAt);
+      }
+      tokens.push(token);
       return okAsync(undefined);
     },
 

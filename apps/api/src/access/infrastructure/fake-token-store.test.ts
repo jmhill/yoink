@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createFakeTokenStore } from './fake-token-store.js';
 import type { ApiToken } from '../domain/api-token.js';
-import { asTokenName } from '../domain/token-name.js';
 
 const createTestToken = (overrides: Partial<Omit<ApiToken, 'name'>> & { name?: string | null } = {}): ApiToken => {
   const { name, ...rest } = overrides;
@@ -10,7 +9,7 @@ const createTestToken = (overrides: Partial<Omit<ApiToken, 'name'>> & { name?: s
     userId: 'user-456',
     organizationId: 'org-789',
     tokenHash: 'hashed-secret',
-    name: name === undefined ? asTokenName('test-token') : name === null ? null : asTokenName(name),
+    name: name === undefined ? 'test-token' : name,
     createdAt: '2024-01-01T00:00:00.000Z',
     ...rest,
   };

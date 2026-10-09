@@ -2405,28 +2405,10 @@ export const createPlaywrightActor = (
       await settingsPage.openOrganizationTab();
     },
 
-    async createNamedBotTokenFromSettings(name: string): Promise<string> {
+    async issueNewTokenForAgentFromMembers(memberName: string): Promise<string> {
       await settingsPage.goto();
       await settingsPage.openOrganizationTab();
-      return settingsPage.createNamedToken(name);
-    },
-
-    async shouldSeeNamedTokenInSettings(name: string): Promise<void> {
-      await settingsPage.goto();
-      await settingsPage.openOrganizationTab();
-      await settingsPage.shouldSeeToken(name);
-    },
-
-    async nameUnnamedTokenFromSettings(name: string): Promise<void> {
-      await settingsPage.goto();
-      await settingsPage.openOrganizationTab();
-      await settingsPage.nameUnnamedToken(name);
-    },
-
-    async revokeNamedTokenFromSettings(name: string): Promise<void> {
-      await settingsPage.goto();
-      await settingsPage.openOrganizationTab();
-      await settingsPage.revokeNamedToken(name);
+      return settingsPage.issueNewTokenForAgent(memberName);
     },
 
     async logout(): Promise<void> {
@@ -2634,10 +2616,17 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async renameToken(tokenId: string, name: string): Promise<Token> {
-      const response = await page.request.patch(`/api/auth/tokens/${tokenId}`, {
-        data: { name },
-      });
+    async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.post(
+        `/api/organizations/${orgId}/members/${memberUserId}/token`
+      );
 
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -2647,18 +2636,10 @@ export const createPlaywrightActor = (
         throw new ForbiddenError(body.message || 'Permission denied');
       }
       if (response.status() === 404) {
-        throw new NotFoundError('Token', tokenId);
+        throw new NotFoundError('Agent member', memberUserId);
       }
-      if (response.status() === 400) {
-        const body = await response.json();
-        throw new ValidationError(body.message || 'Invalid request');
-      }
-      if (response.status() === 409) {
-        const body = await response.json();
-        throw new ConflictError(body.message || 'A token with this name already exists');
-      }
-      if (response.status() !== 200) {
-        throw new Error(`Failed to rename token: ${response.status()}`);
+      if (!response.ok()) {
+        throw new Error(`Failed to reissue agent token: ${response.status()}`);
       }
       return response.json();
     },

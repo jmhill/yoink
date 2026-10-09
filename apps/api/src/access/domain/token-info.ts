@@ -1,5 +1,4 @@
 import type { PrincipalKind } from './user.js';
-import type { TokenName } from './token-name.js';
 
 export type TokenOwnerInfo = {
   userId: string;
@@ -9,24 +8,20 @@ export type TokenOwnerInfo = {
 
 export type TokenProjection = {
   id: string;
-  name: TokenName | null;
+  name: string | null;
   lastUsedAt: string | undefined;
   createdAt: string;
 };
 
-export type TokenInfo = TokenProjection & {
-  owner: TokenOwnerInfo;
-};
+export type TokenInfo = TokenProjection;
 
 export type TokenListResult = {
   tokens: TokenInfo[];
-  maxTokensPerUser: number;
-  ownedCount: number;
 };
 
 export const toTokenProjection = (token: {
   id: string;
-  name: TokenName | null;
+  name: string | null;
   lastUsedAt?: string;
   createdAt: string;
 }): TokenProjection => ({
@@ -36,15 +31,9 @@ export const toTokenProjection = (token: {
   createdAt: token.createdAt,
 });
 
-export const toTokenInfo = (
-  token: {
-    id: string;
-    name: TokenName | null;
-    lastUsedAt?: string;
-    createdAt: string;
-  },
-  owner: TokenOwnerInfo
-): TokenInfo => ({
-  ...toTokenProjection(token),
-  owner,
-});
+export const toTokenInfo = (token: {
+  id: string;
+  name: string | null;
+  lastUsedAt?: string;
+  createdAt: string;
+}): TokenInfo => toTokenProjection(token);

@@ -3,8 +3,6 @@ import { ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
-import { duplicateTokenNameError } from '../domain/token-errors.js';
-import { asTokenName } from '../domain/token-name.js';
 
 type TokenRow = {
   id: string;
@@ -22,24 +20,24 @@ const rowToToken = (row: TokenRow): ApiToken => ({
   userId: row.user_id,
   organizationId: row.organization_id,
   tokenHash: row.token_hash,
-  name: row.name === null ? null : asTokenName(row.name),
+  name: row.name,
   lastUsedAt: row.last_used_at ?? undefined,
   createdAt: row.created_at,
   revokedAt: row.revoked_at ?? undefined,
 });
 
-const uniqueNameIndexFailed = (error: unknown): boolean => {
+const uniqueConstraintFailed = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
   }
   const candidate = error as { message?: unknown };
   const message = typeof candidate.message === 'string' ? candidate.message : '';
-  return message.includes('idx_api_tokens_org_name_ci');
+  return /UNIQUE constraint failed/i.test(message);
 };
 
-const writeError = (fallback: string, name: string | null, error: unknown): TokenWriteError => {
-  if (uniqueNameIndexFailed(error)) {
-    return duplicateTokenNameError(name ?? '');
+const writeError = (fallback: string, error: unknown): TokenWriteError => {
+  if (uniqueConstraintFailed(error)) {
+    return tokenStorageError('Unique constraint failed', error);
   }
   return tokenStorageError(fallback, error);
 };
@@ -82,7 +80,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
             token.revokedAt ?? null,
           ],
         }),
-        (error) => writeError('Failed to save token', token.name, error)
+        (error) => writeError('Failed to save token', error)
       ).map(() => undefined);
     },
 
@@ -138,16 +136,6 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       });
     },
 
-    updateName: (id: string, name: string | null): ResultAsync<void, TokenWriteError> => {
-      return ResultAsync.fromPromise(
-        db.execute({
-          sql: `UPDATE api_tokens SET name = ? WHERE id = ?`,
-          args: [name, id],
-        }),
-        (error) => writeError('Failed to update token name', name, error)
-      ).map(() => undefined);
-    },
-
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
@@ -165,6 +153,36 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
           args: [revokedAt, id],
         }),
         (error) => tokenStorageError('Failed to revoke token', error)
+      ).map(() => undefined);
+    },
+
+    reissue: ({ revokeIds, revokedAt, token }): ResultAsync<void, TokenWriteError> => {
+      const queries = [
+        ...revokeIds.map((id) => ({
+          sql: `UPDATE api_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`,
+          args: [revokedAt, id],
+        })),
+        {
+          sql: `
+            INSERT INTO api_tokens (id, user_id, organization_id, token_hash, name, last_used_at, created_at, revoked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            token.id,
+            token.userId,
+            token.organizationId,
+            token.tokenHash,
+            token.name ?? null,
+            token.lastUsedAt ?? null,
+            token.createdAt,
+            token.revokedAt ?? null,
+          ],
+        },
+      ];
+
+      return ResultAsync.fromPromise(
+        db.batch(queries, 'write'),
+        (error) => writeError('Failed to reissue token', error)
       ).map(() => undefined);
     },
 

@@ -14,7 +14,6 @@ const input = (
   overrides: Partial<Parameters<typeof decideCreateToken>[0]> = {}
 ) => ({
   command: humanCommand(),
-  existingNames: [],
   tokenCountForUser: 0,
   maxTokensPerUserPerOrg: 50,
   actorRole: 'owner' as const,
@@ -25,7 +24,7 @@ const input = (
 });
 
 describe('decideCreateToken', () => {
-  it('decides a TokenCreated fact with the parsed name', () => {
+  it('decides a TokenCreated fact', () => {
     const result = decideCreateToken(input());
 
     expect(result.isOk()).toBe(true);
@@ -56,31 +55,6 @@ describe('decideCreateToken', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('INVALID_TOKEN_NAME');
-    }
-  });
-
-  it('rejects a name over 200 characters', () => {
-    const result = decideCreateToken(
-      input({ command: humanCommand({ name: 'a'.repeat(201) }) })
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('INVALID_TOKEN_NAME');
-    }
-  });
-
-  it('rejects a name already used in the organization ignoring case', () => {
-    const result = decideCreateToken(
-      input({
-        command: humanCommand({ name: 'lane' }),
-        existingNames: ['Lane'],
-      })
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
     }
   });
 

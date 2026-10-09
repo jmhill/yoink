@@ -8,10 +8,14 @@ import type { MembershipService } from './membership-service.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { CreateNamedToken } from './create-named-token.js';
 import type { TokenInfo } from './token-info.js';
-import type { TokenStore } from './token-store.js';
 import { requireHumanActor } from './require-human-actor.js';
-import { parseTokenName, tokenNameIsTaken } from './token-name.js';
-import { duplicateTokenNameError, type CreateNamedTokenError } from './token-errors.js';
+import type { CreateNamedTokenError } from './token-errors.js';
+import type { ReissueAgentTokenCommand } from './token-commands.js';
+import type {
+  ReissueAgentToken,
+  ReissueAgentTokenError,
+  ReissueAgentTokenResult,
+} from './reissue-agent-token.js';
 import {
   membershipNotFoundError,
   insufficientPermissionsError,
@@ -40,27 +44,33 @@ export type AgentService = {
    * Caller must be a human owner or admin. Returns the agent's API token once.
    */
   mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError>;
+  /**
+   * Issue a new token for an existing agent member. Owner only.
+   * Revokes the member's current active tokens and returns the secret once.
+   */
+  reissueAgentToken(
+    command: ReissueAgentTokenCommand
+  ): ResultAsync<ReissueAgentTokenResult, ReissueAgentTokenError>;
 };
 
 export type AgentServiceDependencies = {
   userService: UserService;
   membershipService: MembershipService;
   createToken: CreateNamedToken;
-  listOrgTokens: TokenStore['findByOrganizationId'];
   clock: Clock;
   idGenerator: IdGenerator;
+  reissueAgentToken: ReissueAgentToken;
 };
 
 export const createAgentService = (deps: AgentServiceDependencies): AgentService => {
-  const { userService, membershipService, createToken, listOrgTokens, clock, idGenerator } = deps;
+  const { userService, membershipService, createToken, clock, idGenerator, reissueAgentToken } = deps;
 
   return {
     mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError> {
       const { actor, organizationId, name } = command;
-
-      const parsed = parseTokenName(name);
-      if (parsed.isErr()) {
-        return errAsync(parsed.error);
+      const agentName = name.trim();
+      if (agentName.length === 0) {
+        return errAsync({ type: 'INVALID_TOKEN_NAME', message: 'Name is required' });
       }
 
       const human = requireHumanActor(actor);
@@ -69,7 +79,6 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
       }
 
       const actorUserId = human.value.userId;
-      const tokenName = parsed.value;
 
       return membershipService
         .getMembership({ userId: actorUserId, organizationId })
@@ -82,50 +91,42 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
             return errAsync(insufficientPermissionsError('admin', actorMembership.role));
           }
 
-          return listOrgTokens(organizationId).andThen((orgTokens) => {
-            const existingNames = orgTokens
-              .map((token) => token.name)
-              .filter((existing): existing is NonNullable<typeof existing> => existing !== null);
+          const userId = idGenerator.generate();
+          const now = clock.now().toISOString();
 
-            if (tokenNameIsTaken(tokenName, existingNames)) {
-              return errAsync(duplicateTokenNameError(tokenName));
-            }
-
-            const userId = idGenerator.generate();
-            const now = clock.now().toISOString();
-
-            return userService
-              .createUser({
-                id: userId,
-                email: agentEmailFor(userId),
-                name: tokenName,
-                kind: 'agent',
-                createdAt: now,
-              })
-              .andThen((user) =>
-                membershipService
-                  .addMember({
+          return userService
+            .createUser({
+              id: userId,
+              email: agentEmailFor(userId),
+              name: agentName,
+              kind: 'agent',
+              createdAt: now,
+            })
+            .andThen((user) =>
+              membershipService
+                .addMember({
+                  userId: user.id,
+                  organizationId,
+                  role: 'member',
+                  isPersonalOrg: false,
+                })
+                .andThen((membership) =>
+                  createToken({
+                    actor: human.value,
                     userId: user.id,
                     organizationId,
-                    role: 'member',
-                    isPersonalOrg: false,
-                  })
-                  .andThen((membership) =>
-                    createToken({
-                      actor: human.value,
-                      userId: user.id,
-                      organizationId,
-                      name: tokenName,
-                    }).map(({ token, rawToken }) => ({
-                      user,
-                      membership,
-                      token,
-                      rawToken,
-                    }))
-                  )
-              );
-          });
+                    name: agentName,
+                  }).map(({ token, rawToken }) => ({
+                    user,
+                    membership,
+                    token,
+                    rawToken,
+                  }))
+                )
+            );
         });
     },
+
+    reissueAgentToken,
   };
 };

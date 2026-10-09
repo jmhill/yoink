@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateToken } from './handle-create-token.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
-import type { ApiToken } from '../domain/api-token.js';
-import { asTokenName } from '../domain/token-name.js';
 import type { TokenEvent } from '../domain/token-events.js';
 
 const persistEvents = () => {
@@ -61,7 +59,6 @@ describe('handleCreateToken', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.token.name).toBe('Lane');
-      expect(result.value.token.owner).toEqual(owner);
       expect(result.value.rawToken).toBe('token-1:secret-1');
     }
     expect(hashed).toBe('hashed:secret-1');
@@ -79,29 +76,6 @@ describe('handleCreateToken', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
-    }
-    expect(events).toHaveLength(0);
-  });
-
-  it('does not persist a duplicate name', async () => {
-    const { persist, events } = persistEvents();
-    const existing: ApiToken = {
-      id: 'token-existing',
-      userId: 'user-2',
-      organizationId: 'org-1',
-      tokenHash: 'hash',
-      name: asTokenName('Lane'),
-      createdAt: '2026-01-01T00:00:00.000Z',
-    };
-
-    const result = await handleCreateToken(command, deps({
-      listOrgTokens: () => okAsync([existing]),
-      persist,
-    }));
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
     }
     expect(events).toHaveLength(0);
   });

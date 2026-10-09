@@ -21,7 +21,6 @@ import type { OrganizationMembership } from '../domain/organization-membership.j
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenStore } from '../domain/token-store.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
-import { asTokenName } from '../domain/token-name.js';
 import { principalKindOf } from '../domain/user.js';
 import {
   createFakeClock,
@@ -188,90 +187,21 @@ describe('token routes', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({
         tokens: [],
-        maxTokensPerUser: 2,
-        ownedCount: 0,
       });
     });
 
-    it('lists tokens by name with created and last used', async () => {
+    it('lists the caller tokens with created and last used', async () => {
       await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
 
       const response = await sessionRequest('GET', '/api/auth/tokens');
       const body = response.json();
 
       expect(response.statusCode).toBe(200);
-      expect(body.maxTokensPerUser).toBe(2);
-      expect(body.ownedCount).toBe(1);
       expect(body.tokens[0]).toMatchObject({
         name: 'Lane',
         createdAt: '2024-06-15T12:00:00.000Z',
-        owner: { userId: testUser.id, name: null, kind: 'human' },
       });
       expect(body.tokens[0].lastUsedAt).toBeUndefined();
-    });
-
-    it('shows existing tokens as unnamed', async () => {
-      await tokenStore.save({
-        id: '550e8400-e29b-41d4-a716-446655440099',
-        userId: testUser.id,
-        organizationId: testOrg.id,
-        tokenHash: 'hash',
-        name: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const response = await sessionRequest('GET', '/api/auth/tokens');
-      expect(response.json().tokens[0].name).toBeNull();
-    });
-
-    it('lets an owner list and rename an agent member token', async () => {
-      const agent: User = {
-        id: '550e8400-e29b-41d4-a716-446655440200',
-        email: 'agent-lane@yoink.invalid',
-        name: 'Lane',
-        kind: 'agent',
-        createdAt: '2024-01-01T00:00:00.000Z',
-      };
-      await userStore.save(agent);
-      await membershipStore.save({
-        id: '550e8400-e29b-41d4-a716-446655440201',
-        userId: agent.id,
-        organizationId: testOrg.id,
-        role: 'member',
-        isPersonalOrg: false,
-        joinedAt: '2024-01-01T00:00:00.000Z',
-      });
-      await tokenStore.save({
-        id: '550e8400-e29b-41d4-a716-446655440202',
-        userId: agent.id,
-        organizationId: testOrg.id,
-        tokenHash: 'hash',
-        name: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const listed = await sessionRequest('GET', '/api/auth/tokens');
-      expect(listed.statusCode).toBe(200);
-      expect(listed.json().tokens).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: '550e8400-e29b-41d4-a716-446655440202',
-            name: null,
-            owner: { userId: agent.id, name: 'Lane', kind: 'agent' },
-          }),
-        ])
-      );
-
-      const renamed = await sessionRequest(
-        'PATCH',
-        '/api/auth/tokens/550e8400-e29b-41d4-a716-446655440202',
-        { name: 'Lane' }
-      );
-      expect(renamed.statusCode).toBe(200);
-      expect(renamed.json()).toMatchObject({
-        name: 'Lane',
-        owner: { userId: agent.id, name: 'Lane', kind: 'agent' },
-      });
     });
 
     it('lets a bot token list', async () => {
@@ -297,14 +227,6 @@ describe('token routes', () => {
       const body = response.json();
       expect(body.token.name).toBe('Lane');
       expect(body.rawToken).toMatch(/^[^:]+:[^:]+$/);
-    });
-
-    it('returns 409 when the name is taken ignoring case', async () => {
-      await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
-      const response = await sessionRequest('POST', '/api/auth/tokens', { name: 'lane' });
-
-      expect(response.statusCode).toBe(409);
-      expect(response.json().message).toContain('already exists');
     });
 
     it('returns 409 when the token limit is reached', async () => {
@@ -342,41 +264,6 @@ describe('token routes', () => {
     });
   });
 
-  describe('PATCH /api/auth/tokens/:tokenId', () => {
-    it('names an unnamed token', async () => {
-      await tokenStore.save({
-        id: '550e8400-e29b-41d4-a716-446655440088',
-        userId: testUser.id,
-        organizationId: testOrg.id,
-        tokenHash: 'hash',
-        name: null,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const response = await sessionRequest(
-        'PATCH',
-        '/api/auth/tokens/550e8400-e29b-41d4-a716-446655440088',
-        { name: 'Lane' }
-      );
-
-      expect(response.statusCode).toBe(200);
-      expect(response.json().name).toBe('Lane');
-    });
-
-    it('returns 403 when a bot token tries to rename', async () => {
-      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
-      const { token, rawToken } = created.json();
-
-      const response = await bearerRequest(
-        'PATCH',
-        `/api/auth/tokens/${token.id}`,
-        rawToken,
-        { name: 'Charlie' }
-      );
-      expect(response.statusCode).toBe(403);
-    });
-  });
-
   describe('DELETE /api/auth/tokens/:tokenId', () => {
     it('revokes a token so the next request is 401', async () => {
       const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
@@ -411,7 +298,7 @@ describe('token routes', () => {
         userId: testUser.id,
         organizationId: '550e8400-e29b-41d4-a716-446655440099',
         tokenHash: 'hash',
-        name: asTokenName('OtherOrg'),
+        name: 'OtherOrg',
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 
@@ -423,8 +310,8 @@ describe('token routes', () => {
     });
   });
 
-  describe('existing unnamed tokens keep working', () => {
-    it('authenticates a legacy unnamed hashed token', async () => {
+  describe('existing tokens keep working', () => {
+    it('authenticates a hashed token that was not created through the product route', async () => {
       const secret = 'legacy-secret';
       const tokenId = '550e8400-e29b-41d4-a716-446655440077';
       const tokenHash = await passwordHasher.hash(secret);
@@ -433,13 +320,13 @@ describe('token routes', () => {
         userId: testUser.id,
         organizationId: testOrg.id,
         tokenHash,
-        name: null,
+        name: 'Lane',
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 
       const response = await bearerRequest('GET', '/api/auth/tokens', `${tokenId}:${secret}`);
       expect(response.statusCode).toBe(200);
-      expect(response.json().tokens[0].name).toBeNull();
+      expect(response.json().tokens[0].name).toBe('Lane');
     });
   });
 });

@@ -8,7 +8,11 @@ import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
 import { createAgentService } from '../domain/agent-service.js';
 import { createTokenHandlers } from './create-token-handlers.js';
-import { createStoreBackedTokenPersist } from '../infrastructure/store-backed-token-persist.js';
+import {
+  createStoreBackedTokenPersist,
+  createStoreBackedTokenReissue,
+} from '../infrastructure/store-backed-token-persist.js';
+import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import { principalKindOf } from '../domain/user.js';
 import { ResultAsync } from 'neverthrow';
@@ -24,7 +28,6 @@ import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { ApiToken } from '../domain/api-token.js';
-import { asTokenName } from '../domain/token-name.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
@@ -75,7 +78,7 @@ describe('organization routes', () => {
     userId: agentUser.id,
     organizationId: teamOrg.id,
     tokenHash: 'fake-hash:agent-secret',
-    name: asTokenName('Roster bot'),
+    name: 'Roster bot',
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
@@ -86,11 +89,31 @@ describe('organization routes', () => {
     userId: testUser.id,
     organizationId: personalOrg.id,
     tokenHash: 'fake-hash:owner-secret',
-    name: asTokenName('Lane'),
+    name: 'Lane',
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
   const ownerRawToken = `${ownerToken.id}:owner-secret`;
+
+  const teamOwner: User = {
+    id: '550e8400-e29b-41d4-a716-446655440012',
+    email: 'owner@example.com',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const teamAdmin: User = {
+    id: '550e8400-e29b-41d4-a716-446655440013',
+    email: 'admin@example.com',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const otherAgent: User = {
+    id: '550e8400-e29b-41d4-a716-446655440014',
+    email: 'agent-other@yoink.invalid',
+    name: 'Other bot',
+    kind: 'agent',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
 
   const personalMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440020',
@@ -119,10 +142,55 @@ describe('organization routes', () => {
     joinedAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const teamOwnerMembership: OrganizationMembership = {
+    id: '550e8400-e29b-41d4-a716-446655440023',
+    userId: teamOwner.id,
+    organizationId: teamOrg.id,
+    role: 'owner',
+    isPersonalOrg: false,
+    joinedAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const teamAdminMembership: OrganizationMembership = {
+    id: '550e8400-e29b-41d4-a716-446655440024',
+    userId: teamAdmin.id,
+    organizationId: teamOrg.id,
+    role: 'admin',
+    isPersonalOrg: false,
+    joinedAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const otherAgentMembership: OrganizationMembership = {
+    id: '550e8400-e29b-41d4-a716-446655440025',
+    userId: otherAgent.id,
+    organizationId: otherOrg.id,
+    role: 'member',
+    isPersonalOrg: false,
+    joinedAt: '2024-01-01T00:00:00.000Z',
+  };
+
   const testSession: UserSession = {
     id: '550e8400-e29b-41d4-a716-446655440030',
     userId: testUser.id,
     currentOrganizationId: personalOrg.id,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    expiresAt: '2024-12-31T00:00:00.000Z',
+    lastActiveAt: '2024-06-15T12:00:00.000Z',
+  };
+
+  const teamOwnerSession: UserSession = {
+    id: '550e8400-e29b-41d4-a716-446655440031',
+    userId: teamOwner.id,
+    currentOrganizationId: teamOrg.id,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    expiresAt: '2024-12-31T00:00:00.000Z',
+    lastActiveAt: '2024-06-15T12:00:00.000Z',
+  };
+
+  const teamAdminSession: UserSession = {
+    id: '550e8400-e29b-41d4-a716-446655440032',
+    userId: teamAdmin.id,
+    currentOrganizationId: teamOrg.id,
     createdAt: '2024-01-01T00:00:00.000Z',
     expiresAt: '2024-12-31T00:00:00.000Z',
     lastActiveAt: '2024-06-15T12:00:00.000Z',
@@ -136,16 +204,23 @@ describe('organization routes', () => {
       initialOrganizations: [personalOrg, teamOrg, otherOrg],
     });
     const userStore = createFakeUserStore({
-      initialUsers: [testUser, agentUser],
+      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent],
     });
     membershipStore = createFakeOrganizationMembershipStore({
-      initialMemberships: [personalMembership, teamMembership, agentMembership],
+      initialMemberships: [
+        personalMembership,
+        teamMembership,
+        agentMembership,
+        teamOwnerMembership,
+        teamAdminMembership,
+        otherAgentMembership,
+      ],
     });
     const tokenStore = createFakeTokenStore({
       initialTokens: [agentToken, ownerToken],
     });
     sessionStore = createFakeUserSessionStore({
-      initialSessions: [testSession],
+      initialSessions: [testSession, teamOwnerSession, teamAdminSession],
     });
 
     const userService = createUserService({ userStore });
@@ -206,9 +281,25 @@ describe('organization routes', () => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
+      reissueAgentToken: (command) =>
+        handleReissueAgentToken(command, {
+          loadMembership: (userId, organizationId) =>
+            membershipService.getMembership({ userId, organizationId }),
+          loadUser: (userId) => userService.getUser(userId),
+          listMemberTokens: (userId, organizationId) =>
+            tokenStore.findByUserAndOrganization(userId, organizationId),
+          persistReissue: createStoreBackedTokenReissue(tokenStore),
+          hashSecret: (secret) =>
+            ResultAsync.fromPromise(
+              passwordHasher.hash(secret),
+              (error) => tokenStorageError('Failed to hash token secret', error)
+            ),
+          nextId: () => idGenerator.generate(),
+          nextSecret: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
     });
 
     app = Fastify();
@@ -428,23 +519,6 @@ describe('organization routes', () => {
       expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
     });
 
-    it('returns 409 and creates no member when the token name already exists', async () => {
-      const membersBefore = await membershipStore.findByOrganizationId(personalOrg.id);
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/organizations/${personalOrg.id}/agents`,
-        cookies: { [USER_SESSION_COOKIE]: testSession.id },
-        payload: { name: 'Lane' },
-      });
-
-      expect(response.statusCode).toBe(409);
-      expect(response.json().message).toContain('already exists');
-
-      const membersAfter = await membershipStore.findByOrganizationId(personalOrg.id);
-      expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
-    });
-
     it('cannot remove a member', async () => {
       const response = await app.inject({
         method: 'DELETE',
@@ -453,6 +527,92 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('POST /api/organizations/:organizationId/members/:userId/token', () => {
+    it('lets the owner reissue so the old token is 401 and the new one works', async () => {
+      const membersBefore = await membershipStore.findByOrganizationId(teamOrg.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json() as { rawToken: string; token: { name: string | null } };
+      expect(body.token.name).toBe('Roster bot');
+      expect(body.rawToken).toMatch(/^[^:]+:[^:]+$/);
+
+      const oldAuth = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+      expect(oldAuth.statusCode).toBe(401);
+
+      const newAuth = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+        headers: { authorization: `Bearer ${body.rawToken}` },
+      });
+      expect(newAuth.statusCode).toBe(200);
+      const { members } = newAuth.json() as {
+        members: Array<{ userId: string; name?: string; kind: string }>;
+      };
+      expect(members.filter((member) => member.userId === agentUser.id)).toHaveLength(1);
+      expect(members.find((member) => member.userId === agentUser.id)?.name).toBe('Roster bot');
+
+      const membersAfter = await membershipStore.findByOrganizationId(teamOrg.id);
+      expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+    });
+
+    it('returns 403 when a bot token tries', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Bot tokens cannot');
+    });
+
+    it('returns 403 when a non-owner human tries', async () => {
+      const asMember = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+      expect(asMember.statusCode).toBe(403);
+
+      const asAdmin = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+      expect(asAdmin.statusCode).toBe(403);
+    });
+
+    it('returns 404 when the target is a human member', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${testUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 404 when the target is in another organization', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${otherAgent.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(404);
     });
   });
 });

@@ -1256,20 +1256,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openOrganizationSettings', 'http');
     },
 
-    async createNamedBotTokenFromSettings(_name: string): Promise<string> {
-      throw new UnsupportedOperationError('createNamedBotTokenFromSettings', 'http');
-    },
-
-    async shouldSeeNamedTokenInSettings(_name: string): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeNamedTokenInSettings', 'http');
-    },
-
-    async nameUnnamedTokenFromSettings(_name: string): Promise<void> {
-      throw new UnsupportedOperationError('nameUnnamedTokenFromSettings', 'http');
-    },
-
-    async revokeNamedTokenFromSettings(_name: string): Promise<void> {
-      throw new UnsupportedOperationError('revokeNamedTokenFromSettings', 'http');
+    async issueNewTokenForAgentFromMembers(_memberName: string): Promise<string> {
+      throw new UnsupportedOperationError('issueNewTokenForAgentFromMembers', 'http');
     },
 
     async logout(): Promise<void> {
@@ -1395,8 +1383,12 @@ export const createHttpActor = (
       return response.json<CreateTokenResult>();
     },
 
-    async renameToken(tokenId: string, name: string): Promise<Token> {
-      const response = await client.patch(`/api/auth/tokens/${tokenId}`, { name }, authHeaders());
+    async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
+      const response = await client.post(
+        `/api/organizations/${credentials.organizationId}/members/${memberUserId}/token`,
+        undefined,
+        authHeaders()
+      );
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -1405,20 +1397,12 @@ export const createHttpActor = (
         throw new ForbiddenError(error.message ?? 'Permission denied');
       }
       if (response.statusCode === 404) {
-        throw new NotFoundError('Token', tokenId);
+        throw new NotFoundError('Agent member', memberUserId);
       }
-      if (response.statusCode === 400) {
-        const error = response.json<{ message?: string }>();
-        throw new ValidationError(error.message ?? 'Invalid request');
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to reissue agent token: ${response.body}`);
       }
-      if (response.statusCode === 409) {
-        const error = response.json<{ message?: string }>();
-        throw new ConflictError(error.message ?? 'A token with this name already exists');
-      }
-      if (response.statusCode !== 200) {
-        throw new Error(`Failed to rename token: ${response.body}`);
-      }
-      return response.json<Token>();
+      return response.json<{ token: Token; rawToken: string }>();
     },
 
     async revokeToken(tokenId: string): Promise<void> {

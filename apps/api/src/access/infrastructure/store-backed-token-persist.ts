@@ -2,6 +2,7 @@ import { errAsync } from 'neverthrow';
 import type { TokenStore } from '../domain/token-store.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import type { PersistTokenEvent } from '../application/token-ports.js';
+import type { PersistReissue } from '../application/handle-reissue-agent-token.js';
 
 export const createStoreBackedTokenPersist = (store: TokenStore): PersistTokenEvent => {
   return ({ event, tokenHash }) => {
@@ -19,10 +20,24 @@ export const createStoreBackedTokenPersist = (store: TokenStore): PersistTokenEv
           createdAt: event.createdAt,
         });
       }
-      case 'TokenRenamed':
-        return store.updateName(event.id, event.name);
       case 'TokenRevoked':
         return store.revoke(event.id, event.revokedAt);
     }
   };
+};
+
+export const createStoreBackedTokenReissue = (store: TokenStore): PersistReissue => {
+  return ({ revoke, create, tokenHash }) =>
+    store.reissue({
+      revokeIds: revoke.map((event) => event.id),
+      revokedAt: revoke[0]?.revokedAt ?? create.createdAt,
+      token: {
+        id: create.id,
+        userId: create.userId,
+        organizationId: create.organizationId,
+        tokenHash,
+        name: create.name,
+        createdAt: create.createdAt,
+      },
+    });
 };

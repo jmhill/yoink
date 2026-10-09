@@ -3,7 +3,11 @@ import { createAgentService, type AgentService } from './agent-service.js';
 import { createUserService } from './user-service.js';
 import { createMembershipService } from './membership-service.js';
 import { createTokenHandlers } from '../application/create-token-handlers.js';
-import { createStoreBackedTokenPersist } from '../infrastructure/store-backed-token-persist.js';
+import {
+  createStoreBackedTokenPersist,
+  createStoreBackedTokenReissue,
+} from '../infrastructure/store-backed-token-persist.js';
+import { handleReissueAgentToken } from '../application/handle-reissue-agent-token.js';
 import { tokenStorageError } from './auth-errors.js';
 import { principalKindOf } from './user.js';
 import { ResultAsync } from 'neverthrow';
@@ -16,7 +20,6 @@ import type { Organization } from './organization.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
 import { agentEmailFor } from './user.js';
-import { asTokenName } from './token-name.js';
 
 const TEST_DATE = new Date('2024-01-15T10:00:00.000Z');
 
@@ -131,9 +134,25 @@ describe('AgentService', () => {
       membershipService,
       createToken: (command) =>
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
-      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
       clock,
       idGenerator,
+      reissueAgentToken: (command) =>
+        handleReissueAgentToken(command, {
+          loadMembership: (userId, organizationId) =>
+            membershipService.getMembership({ userId, organizationId }),
+          loadUser: (userId) => userService.getUser(userId),
+          listMemberTokens: (userId, organizationId) =>
+            tokenStore.findByUserAndOrganization(userId, organizationId),
+          persistReissue: createStoreBackedTokenReissue(tokenStore),
+          hashSecret: (secret) =>
+            ResultAsync.fromPromise(
+              Promise.resolve(`hashed:${secret}`),
+              (error) => tokenStorageError('Failed to hash token secret', error)
+            ),
+          nextId: () => idGenerator.generate(),
+          nextSecret: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
     });
   });
 
@@ -212,31 +231,36 @@ describe('AgentService', () => {
     expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
   });
 
-  it('refuses a duplicate token name before creating a member', async () => {
-    await tokenStore.save({
-      id: AGENT_TOKEN_ID,
-      userId: OWNER_ID,
-      organizationId: ORG_ID,
-      tokenHash: 'hash',
-      name: asTokenName('Lane'),
-      createdAt: TEST_DATE.toISOString(),
-    });
-
-    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
-
-    const result = await service.mintAgent({
+  it('reissues an agent token without creating a new member', async () => {
+    const minted = await service.mintAgent({
       actor: { kind: 'user', userId: OWNER_ID },
       organizationId: ORG_ID,
-      name: 'Lane',
+      name: 'Tycho',
+    });
+    expect(minted.isOk()).toBe(true);
+    if (!minted.isOk()) return;
+
+    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
+    const result = await service.reissueAgentToken({
+      actor: { kind: 'user', userId: OWNER_ID },
+      organizationId: ORG_ID,
+      memberUserId: minted.value.user.id,
     });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.token.name).toBe('Tycho');
+      expect(result.value.rawToken).not.toBe(minted.value.rawToken);
     }
 
     const membersAfter = await membershipStore.findByOrganizationId(ORG_ID);
     expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
-    expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
+    expect((await userStore.findById(minted.value.user.id))._unsafeUnwrap()?.id).toBe(
+      minted.value.user.id
+    );
+
+    const active = await tokenStore.findByUserAndOrganization(minted.value.user.id, ORG_ID);
+    expect(active._unsafeUnwrap()).toHaveLength(1);
+    expect(active._unsafeUnwrap()[0]?.id).not.toBe(minted.value.token.id);
   });
 });

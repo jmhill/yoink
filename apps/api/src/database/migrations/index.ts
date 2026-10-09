@@ -38,7 +38,7 @@ import { migration as createLists } from './023-create-lists.js';
 import { migration as uniqueListNamePerOrg } from './024-unique-list-name-per-org.js';
 import { migration as addTaskListId } from './025-add-task-list-id.js';
 import { migration as addTaskOpenOrder } from './026-add-task-open-order.js';
-import { migration as nullableNamedTokens } from './027-nullable-named-tokens.js';
+import { migration as addTokenRevokedAt } from './027-add-token-revoked-at.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -67,7 +67,7 @@ export const migrations: Migration[] = [
   uniqueListNamePerOrg,
   addTaskListId,
   addTaskOpenOrder,
-  nullableNamedTokens,
+  addTokenRevokedAt,
 ];
 
 export type { Migration };

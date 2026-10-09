@@ -5,8 +5,6 @@ import {
   CreateUserTokenResponseSchema,
   ListUserTokensResponseSchema,
   DeleteUserTokenResponseSchema,
-  RenameUserTokenRequestSchema,
-  TokenInfoSchema,
 } from '../schemas/token.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -15,7 +13,7 @@ const c = initContract();
 /**
  * User token management contract.
  *
- * Creating, renaming, and revoking tokens is human-session only.
+ * Creating and revoking tokens is human-session only.
  * Listing is available to any authenticated member, including bots.
  */
 export const tokenContract = c.router({
@@ -27,7 +25,7 @@ export const tokenContract = c.router({
       401: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'List API tokens the caller can manage in this organization',
+    summary: 'List API tokens for the caller in this organization',
   },
 
   create: {
@@ -43,25 +41,6 @@ export const tokenContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Create a new API token',
-  },
-
-  rename: {
-    method: 'PATCH',
-    path: '/api/auth/tokens/:tokenId',
-    pathParams: z.object({
-      tokenId: z.string(),
-    }),
-    body: RenameUserTokenRequestSchema,
-    responses: {
-      200: TokenInfoSchema,
-      400: ErrorSchema,
-      401: ErrorSchema,
-      403: ErrorSchema,
-      404: ErrorSchema,
-      409: ErrorSchema,
-      500: ErrorSchema,
-    },
-    summary: 'Name or rename an API token',
   },
 
   delete: {

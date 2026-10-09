@@ -1,6 +1,5 @@
 import { handleCreateToken } from './handle-create-token.js';
 import { handleListTokens } from './handle-list-tokens.js';
-import { handleRenameToken } from './handle-rename-token.js';
 import { handleRevokeToken } from './handle-revoke-token.js';
 import type {
   HashSecret,
@@ -28,14 +27,9 @@ export const createTokenHandlers = (deps: TokenHandlerDeps) => ({
   list: (query: Parameters<typeof handleListTokens>[0]) =>
     handleListTokens(query, {
       listOrgTokens: deps.listOrgTokens,
-      loadMembership: deps.loadMembership,
-      loadOwner: deps.loadOwner,
-      maxTokensPerUser: deps.maxTokensPerUserPerOrg,
     }),
   create: (command: Parameters<typeof handleCreateToken>[0]) =>
     handleCreateToken(command, deps),
-  rename: (command: Parameters<typeof handleRenameToken>[0]) =>
-    handleRenameToken(command, deps),
   revoke: (command: Parameters<typeof handleRevokeToken>[0]) =>
     handleRevokeToken(command, deps),
 });

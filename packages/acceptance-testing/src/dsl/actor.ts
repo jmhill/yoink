@@ -103,9 +103,9 @@ export type CoreActor = {
   createToken(name: string): Promise<CreateTokenResult>;
 
   /**
-   * Name or rename an API token. Human-session only.
+   * Issue a new token for an existing agent member. Owner only.
    */
-  renameToken(tokenId: string, name: string): Promise<Token>;
+  reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }>;
 
   /**
    * Revoke (delete) an API token by ID.
@@ -160,25 +160,10 @@ export type BrowserActorOperations = {
   openOrganizationSettings(): Promise<void>;
 
   /**
-   * Create a named bot token through the Settings UI.
+   * Issue a new token for an agent member through the Members list.
    * Returns the raw token shown once in the dialog.
    */
-  createNamedBotTokenFromSettings(name: string): Promise<string>;
-
-  /**
-   * Assert Settings lists this token by name, with created and last-used text.
-   */
-  shouldSeeNamedTokenInSettings(name: string): Promise<void>;
-
-  /**
-   * Name an unnamed token through the Settings rename action.
-   */
-  nameUnnamedTokenFromSettings(name: string): Promise<void>;
-
-  /**
-   * Revoke a token by name through the Settings UI.
-   */
-  revokeNamedTokenFromSettings(name: string): Promise<void>;
+  issueNewTokenForAgentFromMembers(memberName: string): Promise<string>;
 
   /**
    * Switch to a different organization.

@@ -4,7 +4,6 @@ import type { OrganizationMembershipStore } from '../domain/organization-members
 import type { InvitationStore } from '../domain/invitation-store.js';
 import type { UserStore } from '../domain/user-store.js';
 import type { TokenStore } from '../domain/token-store.js';
-import { asTokenName } from '../domain/token-name.js';
 
 // Use the same UUIDs as the hardcoded auth context for backward compatibility
 const SEED_ORG_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -106,7 +105,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> 
     userId: SEED_USER_ID,
     organizationId: SEED_ORG_ID,
     tokenHash,
-    name: asTokenName('seed-token'),
+    name: 'seed-token',
     createdAt: now,
   });
   if (saveTokenResult.isErr()) {

@@ -349,12 +349,6 @@ export const registerOrganizationRoutes = async (
                 body: { message: error.message },
               };
             }
-            if (error.type === 'DUPLICATE_TOKEN_NAME') {
-              return {
-                status: 409 as const,
-                body: { message: error.message },
-              };
-            }
             if (error.type === 'ORGANIZATION_NOT_FOUND') {
               return {
                 status: 404 as const,
@@ -365,6 +359,52 @@ export const registerOrganizationRoutes = async (
             return {
               status: 500 as const,
               body: { message: 'Failed to mint agent' },
+            };
+          }
+        );
+      },
+
+      reissueAgentToken: async ({ params, request }) => {
+        const result = await agentService.reissueAgentToken({
+          actor: request.authContext.actor,
+          organizationId: params.organizationId,
+          memberUserId: params.userId,
+        });
+
+        return result.match(
+          ({ token, rawToken }) => ({
+            status: 201 as const,
+            body: { token, rawToken },
+          }),
+          (error) => {
+            if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
+              return {
+                status: 403 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
+              return {
+                status: 403 as const,
+                body: { message: 'Only the owner can issue a new agent token' },
+              };
+            }
+            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
+              if (error.userId === request.authContext.actor.userId) {
+                return {
+                  status: 403 as const,
+                  body: { message: 'Not a member of this organization' },
+                };
+              }
+              return {
+                status: 404 as const,
+                body: { message: 'Agent member not found' },
+              };
+            }
+            request.log.error({ error }, 'Failed to reissue agent token');
+            return {
+              status: 500 as const,
+              body: { message: 'Failed to reissue agent token' },
             };
           }
         );

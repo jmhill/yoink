@@ -375,15 +375,15 @@ describe('AdminService', () => {
       }
     });
 
-    it('parses names through parseTokenName', async () => {
+    it('trims a supplied name and defaults a blank one', async () => {
       const blank = await service.createToken({
         organizationId: testOrg.id,
         userId: testUser.id,
         name: '   ',
       });
-      expect(blank.isErr()).toBe(true);
-      if (blank.isErr()) {
-        expect(blank.error.type).toBe('INVALID_TOKEN_NAME');
+      expect(blank.isOk()).toBe(true);
+      if (blank.isOk()) {
+        expect(blank.value.token.name).toBe('admin-token');
       }
 
       const trimmed = await service.createToken({

@@ -5,9 +5,8 @@ import type { CreateNamedTokenCommand } from './token-commands.js';
 import type { TokenCreated } from './token-events.js';
 import { canManageOrgToken } from './can-manage-token.js';
 import { requireHumanActor } from './require-human-actor.js';
-import { parseTokenName, tokenNameIsTaken } from './token-name.js';
 import {
-  duplicateTokenNameError,
+  invalidTokenNameError,
   tokenLimitReachedError,
   tokenOwnershipError,
   type CreateNamedTokenError,
@@ -15,7 +14,6 @@ import {
 
 export type DecideCreateTokenInput = {
   command: CreateNamedTokenCommand;
-  existingNames: readonly string[];
   tokenCountForUser: number;
   maxTokensPerUserPerOrg: number;
   actorRole: MembershipRole | null;
@@ -28,7 +26,6 @@ export type DecideCreateTokenError = Exclude<CreateNamedTokenError, { type: 'TOK
 
 export const decideCreateToken = ({
   command,
-  existingNames,
   tokenCountForUser,
   maxTokensPerUserPerOrg,
   actorRole,
@@ -53,14 +50,9 @@ export const decideCreateToken = ({
     return err(tokenOwnershipError(id, actor.value.userId));
   }
 
-  const parsed = parseTokenName(command.name);
-  if (parsed.isErr()) {
-    return err(parsed.error);
-  }
-
-  const name = parsed.value;
-  if (tokenNameIsTaken(name, existingNames)) {
-    return err(duplicateTokenNameError(name));
+  const name = command.name.trim();
+  if (name.length === 0) {
+    return err(invalidTokenNameError('Name is required'));
   }
 
   if (tokenCountForUser >= maxTokensPerUserPerOrg) {

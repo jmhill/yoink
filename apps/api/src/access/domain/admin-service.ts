@@ -8,7 +8,6 @@ import { agentEmailFor, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
-import { parseTokenName } from './token-name.js';
 import type {
   AdminServiceError,
   OrganizationStorageError,
@@ -183,11 +182,7 @@ export const createAdminService = (
 
     createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError> {
       const { organizationId, userId, name } = command;
-      const parsedName =
-        name === undefined ? undefined : parseTokenName(name);
-      if (parsedName && parsedName.isErr()) {
-        return errAsync(parsedName.error);
-      }
+      const tokenName = name?.trim() || 'admin-token';
 
       const tokenId = idGenerator.generate();
       const secret = idGenerator.generate(); // Use UUID as secret for sufficient entropy
@@ -207,7 +202,7 @@ export const createAdminService = (
           userId,
           organizationId,
           tokenHash,
-          name: parsedName ? parsedName.value : null,
+          name: tokenName,
           createdAt: clock.now().toISOString(),
         };
 

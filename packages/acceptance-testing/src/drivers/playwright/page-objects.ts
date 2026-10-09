@@ -582,12 +582,20 @@ export class SettingsPage {
     await expect(row).toContainText('Last used');
   }
 
-  async nameUnnamedToken(name: string): Promise<void> {
-    const row = this.tokenRow('Unnamed');
-    await row.getByRole('button', { name: 'Name this token' }).click();
-    await this.page.getByLabel('Token Name').fill(name);
-    await this.page.getByRole('button', { name: 'Save name' }).click();
-    await this.tokenRow(name).waitFor({ state: 'visible' });
+  memberRow(name: string) {
+    return this.page.locator(`[data-member-row="${name}"]`);
+  }
+
+  async issueNewTokenForAgent(name: string): Promise<string> {
+    const row = this.memberRow(name);
+    await row.waitFor({ state: 'visible' });
+    await row.getByRole('button', { name: 'Issue new token' }).click();
+    await this.page.getByRole('button', { name: 'Issue new token' }).click();
+    await this.page.getByRole('heading', { name: 'New agent token' }).waitFor({ state: 'visible' });
+    const rawToken = (await this.page.locator('.font-mono').last().textContent()) ?? '';
+    await this.page.getByRole('button', { name: 'Done' }).click();
+    await this.page.getByRole('heading', { name: 'New agent token' }).waitFor({ state: 'hidden' });
+    return rawToken;
   }
 
   async revokeNamedToken(name: string): Promise<void> {

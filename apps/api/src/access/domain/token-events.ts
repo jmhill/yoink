@@ -1,20 +1,10 @@
-import type { TokenName } from './token-name.js';
-
 export type TokenCreated = {
   type: 'TokenCreated';
   id: string;
   userId: string;
   organizationId: string;
-  name: TokenName;
+  name: string;
   createdAt: string;
-};
-
-export type TokenRenamed = {
-  type: 'TokenRenamed';
-  id: string;
-  userId: string;
-  organizationId: string;
-  name: TokenName;
 };
 
 export type TokenRevoked = {
@@ -25,4 +15,4 @@ export type TokenRevoked = {
   revokedAt: string;
 };
 
-export type TokenEvent = TokenCreated | TokenRenamed | TokenRevoked;
+export type TokenEvent = TokenCreated | TokenRevoked;

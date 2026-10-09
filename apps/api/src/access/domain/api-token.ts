@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { TokenName } from './token-name.js';
 
 export const ApiTokenSchema = z.object({
   id: z.string().uuid(),
@@ -12,6 +11,4 @@ export const ApiTokenSchema = z.object({
   revokedAt: z.string().datetime().optional(),
 });
 
-export type ApiToken = Omit<z.infer<typeof ApiTokenSchema>, 'name'> & {
-  name: TokenName | null;
-};
+export type ApiToken = z.infer<typeof ApiTokenSchema>;

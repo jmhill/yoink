@@ -8,6 +8,7 @@ import {
   CreateAgentRequestSchema,
   CreateAgentResponseSchema,
 } from '../schemas/organization.js';
+import { ReissueAgentTokenResponseSchema } from '../schemas/token.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -123,6 +124,29 @@ export const organizationContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Mint an agent member and return its API token once',
+  },
+
+  /**
+   * Issue a new token for an existing agent member.
+   * Owner only. Revokes the member's current tokens and returns the new secret once.
+   * Requires auth (token or session).
+   */
+  reissueAgentToken: {
+    method: 'POST',
+    path: '/api/organizations/:organizationId/members/:userId/token',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+      userId: z.string().uuid(),
+    }),
+    body: z.undefined(),
+    responses: {
+      201: ReissueAgentTokenResponseSchema,
+      401: ErrorSchema,
+      403: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Issue a new token for an existing agent member',
   },
 }, {
   strictStatusCodes: true,

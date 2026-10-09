@@ -5,7 +5,6 @@ import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore } from '../domain/token-store.js';
-import { asTokenName } from '../domain/token-name.js';
 
 const TEST_ORG = {
   id: '550e8400-e29b-41d4-a716-446655440001',
@@ -29,7 +28,7 @@ const createTestToken = (
     userId: TEST_USER.id,
     organizationId: TEST_ORG.id,
     tokenHash: 'bcrypt-hash-here',
-    name: name === undefined ? asTokenName('default-token') : name === null ? null : asTokenName(name),
+    name: name === undefined ? 'default-token' : name,
     createdAt: '2024-01-01T00:00:00.000Z',
     ...rest,
   };
@@ -65,16 +64,6 @@ describe('createSqliteTokenStore', () => {
   });
 
   describe('save', () => {
-    it('persists an unnamed token', async () => {
-      const token = createTestToken({ name: null });
-
-      const saveResult = await store.save(token);
-      expect(saveResult.isOk()).toBe(true);
-
-      const findResult = await store.findById(token.id);
-      expect(findResult._unsafeUnwrap()?.name).toBeNull();
-    });
-
     it('persists a token', async () => {
       const token = createTestToken();
 
@@ -127,19 +116,6 @@ describe('createSqliteTokenStore', () => {
       if (result.isOk()) {
         expect(result.value).toBeNull();
       }
-    });
-  });
-
-  describe('updateName', () => {
-    it('names an unnamed token', async () => {
-      const token = createTestToken({ name: null });
-      await store.save(token);
-
-      const updateResult = await store.updateName(token.id, 'Lane');
-      expect(updateResult.isOk()).toBe(true);
-
-      const findResult = await store.findById(token.id);
-      expect(findResult._unsafeUnwrap()?.name).toBe('Lane');
     });
   });
 
@@ -323,21 +299,43 @@ describe('createSqliteTokenStore', () => {
     });
   });
 
-  describe('unique name', () => {
-    it('maps a unique-index collision to DuplicateTokenName', async () => {
+  describe('unique constraint', () => {
+    it('maps a primary-key collision to a storage error', async () => {
       await store.save(createTestToken({ name: 'Lane' }));
 
-      const result = await store.save(
-        createTestToken({
-          id: '550e8400-e29b-41d4-a716-446655440099',
-          name: 'lane',
-        })
-      );
+      const result = await store.save(createTestToken({ name: 'Charlie' }));
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
+        expect(result.error.type).toBe('TOKEN_STORAGE_ERROR');
+        expect(result.error.message).toBe('Unique constraint failed');
       }
+    });
+  });
+
+  describe('reissue', () => {
+    it('revokes the old token and inserts the new one in one write', async () => {
+      const oldToken = createTestToken({ name: 'Tycho' });
+      await store.save(oldToken);
+
+      const result = await store.reissue({
+        revokeIds: [oldToken.id],
+        revokedAt: '2026-10-09T12:00:00.000Z',
+        token: createTestToken({
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          name: 'Tycho',
+          tokenHash: 'new-hash',
+          createdAt: '2026-10-09T12:00:00.000Z',
+        }),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect((await store.findById(oldToken.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
+      expect(listed._unsafeUnwrap()[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440099');
     });
   });
 });

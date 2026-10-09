@@ -23,6 +23,8 @@ import {
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import { createStoreBackedTokenPersist } from './access/infrastructure/store-backed-token-persist.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
+import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
+import { principalKindOf } from './access/domain/user.js';
 import {
   createSqliteTokenStore,
   createSqlitePasskeyCredentialStore,
@@ -38,7 +40,6 @@ import {
   createPasskeyService,
   createSessionService,
   createSignupService,
-  createUserTokenService,
   createInvitationService,
   createOrganizationService,
   createUserService,
@@ -223,19 +224,27 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       idGenerator,
     });
 
-    const userTokenService = createUserTokenService({
-      tokenStore,
-      clock,
-      idGenerator,
-      passwordHasher,
-      maxTokensPerUserPerOrg: 2,
-    });
-
     const tokenHandlers = createTokenHandlers({
       listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
-      listUserOrgTokens: (userId, organizationId) =>
-        tokenStore.findByUserAndOrganization(userId, organizationId),
       load: (id) => tokenStore.findById(id),
+      loadMembership: (userId, organizationId) =>
+        membershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((membership) => (membership ? { role: membership.role } : null)),
+      loadOwner: (userId) =>
+        userStore
+          .findById(userId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((user) =>
+            user
+              ? {
+                  userId: user.id,
+                  name: user.name ?? null,
+                  kind: principalKindOf(user),
+                }
+              : null
+          ),
       persist: createStoreBackedTokenPersist(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
@@ -245,13 +254,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       nextId: () => idGenerator.generate(),
       nextSecret: () => idGenerator.generate(),
       now: () => clock.now().toISOString(),
-      maxTokensPerUserPerOrg: 2,
+      maxTokensPerUserPerOrg: MAX_TOKENS_PER_USER_PER_ORG,
     });
 
     const agentService = createAgentService({
       userService,
       membershipService,
-      userTokenService,
+      createToken: (command) =>
+        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
     });
@@ -262,7 +272,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       sessionService,
       tokenService,
       userService,
-      userTokenService,
       tokenHandlers,
       agentService,
     };

@@ -28,6 +28,8 @@ describe('handleRenameToken', () => {
       {
         load: () => okAsync(unnamed),
         listOrgTokens: () => okAsync([unnamed]),
+        loadMembership: () => okAsync({ role: 'member' }),
+        loadOwner: () => okAsync({ userId: 'user-1', name: 'Justin', kind: 'human' }),
         persist: ({ event }) => {
           events.push(event);
           return okAsync(undefined);

@@ -8,6 +8,7 @@ import type { User } from './user.js';
 import type { UserStore } from './user-store.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
+import { parseTokenName } from './token-name.js';
 import type {
   AdminServiceError,
   OrganizationStorageError,
@@ -68,7 +69,7 @@ export type AdminService = {
 };
 
 const toApiTokenView = (token: ApiToken): ApiTokenView => {
-  const { tokenHash: _hash, ...view } = token;
+  const { tokenHash: _hash, revokedAt: _revoked, ...view } = token;
   return view;
 };
 
@@ -177,7 +178,13 @@ export const createAdminService = (
     },
 
     createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError> {
-      const { organizationId, userId, name = undefined } = command;
+      const { organizationId, userId, name } = command;
+      const parsedName =
+        name === undefined ? undefined : parseTokenName(name);
+      if (parsedName && parsedName.isErr()) {
+        return errAsync(parsedName.error);
+      }
+
       const tokenId = idGenerator.generate();
       const secret = idGenerator.generate(); // Use UUID as secret for sufficient entropy
 
@@ -196,7 +203,7 @@ export const createAdminService = (
           userId,
           organizationId,
           tokenHash,
-          name: name ?? null,
+          name: parsedName ? parsedName.value : null,
           createdAt: clock.now().toISOString(),
         };
 
@@ -208,7 +215,7 @@ export const createAdminService = (
     },
 
     revokeToken(id: string) {
-      return tokenStore.delete(id);
+      return tokenStore.revoke(id, clock.now().toISOString());
     },
   };
 };

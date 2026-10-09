@@ -5,15 +5,17 @@ import { handleRevokeToken } from './handle-revoke-token.js';
 import type {
   HashSecret,
   ListOrgTokens,
-  ListUserOrgTokens,
+  LoadActorMembership,
   LoadToken,
+  LoadTokenOwner,
   PersistTokenEvent,
 } from './token-ports.js';
 
 export type TokenHandlerDeps = {
   listOrgTokens: ListOrgTokens;
-  listUserOrgTokens: ListUserOrgTokens;
   load: LoadToken;
+  loadMembership: LoadActorMembership;
+  loadOwner: LoadTokenOwner;
   persist: PersistTokenEvent;
   hashSecret: HashSecret;
   nextId: () => string;
@@ -23,7 +25,13 @@ export type TokenHandlerDeps = {
 };
 
 export const createTokenHandlers = (deps: TokenHandlerDeps) => ({
-  list: (query: Parameters<typeof handleListTokens>[0]) => handleListTokens(query, deps),
+  list: (query: Parameters<typeof handleListTokens>[0]) =>
+    handleListTokens(query, {
+      listOrgTokens: deps.listOrgTokens,
+      loadMembership: deps.loadMembership,
+      loadOwner: deps.loadOwner,
+      maxTokensPerUser: deps.maxTokensPerUserPerOrg,
+    }),
   create: (command: Parameters<typeof handleCreateToken>[0]) =>
     handleCreateToken(command, deps),
   rename: (command: Parameters<typeof handleRenameToken>[0]) =>

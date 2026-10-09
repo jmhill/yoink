@@ -26,12 +26,23 @@ const command = (overrides: Partial<RenameTokenCommand> = {}): RenameTokenComman
   ...overrides,
 });
 
+const decide = (
+  overrides: Partial<Parameters<typeof decideRenameToken>[0]> = {}
+) =>
+  decideRenameToken({
+    command: command(),
+    current: unnamed,
+    existingNames: [],
+    actorRole: 'member',
+    tokenOwnerKind: 'human',
+    ...overrides,
+  });
+
 describe('decideRenameToken', () => {
   it('names an unnamed token', () => {
-    const result = decideRenameToken({
+    const result = decide({
       command: command({ name: 'Lane' }),
       current: unnamed,
-      existingNames: [],
     });
 
     expect(result.isOk()).toBe(true);
@@ -47,7 +58,7 @@ describe('decideRenameToken', () => {
   });
 
   it('allows capitalization-only change of the current name', () => {
-    const result = decideRenameToken({
+    const result = decide({
       command: command({ name: 'LANE' }),
       current: named,
       existingNames: ['Lane'],
@@ -60,7 +71,7 @@ describe('decideRenameToken', () => {
   });
 
   it('rejects a name taken by another token ignoring case', () => {
-    const result = decideRenameToken({
+    const result = decide({
       command: command({ name: 'charlie' }),
       current: named,
       existingNames: ['Lane', 'Charlie'],
@@ -73,10 +84,9 @@ describe('decideRenameToken', () => {
   });
 
   it('rejects a blank name', () => {
-    const result = decideRenameToken({
+    const result = decide({
       command: command({ name: '  ' }),
       current: unnamed,
-      existingNames: [],
     });
 
     expect(result.isErr()).toBe(true);
@@ -86,10 +96,17 @@ describe('decideRenameToken', () => {
   });
 
   it('rejects a missing token', () => {
-    const result = decideRenameToken({
-      command: command(),
-      current: null,
-      existingNames: [],
+    const result = decide({ current: null });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('USER_TOKEN_NOT_FOUND');
+    }
+  });
+
+  it('rejects a token in another organization', () => {
+    const result = decide({
+      current: { ...unnamed, organizationId: 'org-other' },
     });
 
     expect(result.isErr()).toBe(true);
@@ -98,11 +115,22 @@ describe('decideRenameToken', () => {
     }
   });
 
-  it('rejects a token owned by someone else', () => {
-    const result = decideRenameToken({
-      command: command(),
+  it('rejects a revoked token as not found', () => {
+    const result = decide({
+      current: { ...unnamed, revokedAt: '2026-10-01T00:00:00.000Z' },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('USER_TOKEN_NOT_FOUND');
+    }
+  });
+
+  it('rejects a member renaming someone else token', () => {
+    const result = decide({
       current: { ...unnamed, userId: 'other-user' },
-      existingNames: [],
+      actorRole: 'member',
+      tokenOwnerKind: 'human',
     });
 
     expect(result.isErr()).toBe(true);
@@ -111,11 +139,22 @@ describe('decideRenameToken', () => {
     }
   });
 
+  it('lets an owner rename an agent token', () => {
+    const result = decide({
+      command: command({ name: 'Lane' }),
+      current: { ...unnamed, userId: 'agent-1' },
+      actorRole: 'owner',
+      tokenOwnerKind: 'agent',
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
   it('refuses a bot actor', () => {
-    const result = decideRenameToken({
-      command: command({ actor: { kind: 'bot', tokenId: 'token-bot', name: 'Lane' } }),
-      current: unnamed,
-      existingNames: [],
+    const result = decide({
+      command: command({
+        actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' },
+      }),
     });
 
     expect(result.isErr()).toBe(true);

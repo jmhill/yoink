@@ -1,8 +1,9 @@
 import type { Database } from '../../database/types.js';
 import { ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
-import type { TokenStore } from '../domain/token-store.js';
+import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
+import { duplicateTokenNameError } from '../domain/token-errors.js';
 
 type TokenRow = {
   id: string;
@@ -12,6 +13,7 @@ type TokenRow = {
   name: string | null;
   last_used_at: string | null;
   created_at: string;
+  revoked_at: string | null;
 };
 
 const rowToToken = (row: TokenRow): ApiToken => ({
@@ -22,7 +24,25 @@ const rowToToken = (row: TokenRow): ApiToken => ({
   name: row.name,
   lastUsedAt: row.last_used_at ?? undefined,
   createdAt: row.created_at,
+  revokedAt: row.revoked_at ?? undefined,
 });
+
+const uniqueConstraintFailed = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  return code.includes('CONSTRAINT') || message.includes('UNIQUE constraint failed');
+};
+
+const writeError = (fallback: string, name: string | null, error: unknown): TokenWriteError => {
+  if (uniqueConstraintFailed(error)) {
+    return duplicateTokenNameError(name ?? '');
+  }
+  return tokenStorageError(fallback, error);
+};
 
 /**
  * Validates that the required database schema exists.
@@ -44,12 +64,12 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
   await validateSchema(db);
 
   return {
-    save: (token: ApiToken): ResultAsync<void, TokenStorageError> => {
+    save: (token: ApiToken): ResultAsync<void, TokenWriteError> => {
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            INSERT INTO api_tokens (id, user_id, organization_id, token_hash, name, last_used_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO api_tokens (id, user_id, organization_id, token_hash, name, last_used_at, created_at, revoked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
             token.id,
@@ -59,9 +79,10 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
             token.name ?? null,
             token.lastUsedAt ?? null,
             token.createdAt,
+            token.revokedAt ?? null,
           ],
         }),
-        (error) => tokenStorageError('Failed to save token', error)
+        (error) => writeError('Failed to save token', token.name, error)
       ).map(() => undefined);
     },
 
@@ -81,7 +102,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
     findByUserId: (userId: string): ResultAsync<ApiToken[], TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT * FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC`,
+          sql: `SELECT * FROM api_tokens WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC`,
           args: [userId],
         }),
         (error) => tokenStorageError('Failed to find tokens by user', error)
@@ -94,7 +115,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
     findByOrganizationId: (organizationId: string): ResultAsync<ApiToken[], TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT * FROM api_tokens WHERE organization_id = ? ORDER BY created_at DESC`,
+          sql: `SELECT * FROM api_tokens WHERE organization_id = ? AND revoked_at IS NULL ORDER BY created_at DESC`,
           args: [organizationId],
         }),
         (error) => tokenStorageError('Failed to find tokens by organization', error)
@@ -107,7 +128,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
     findByUserAndOrganization: (userId: string, organizationId: string): ResultAsync<ApiToken[], TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT * FROM api_tokens WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC`,
+          sql: `SELECT * FROM api_tokens WHERE user_id = ? AND organization_id = ? AND revoked_at IS NULL ORDER BY created_at DESC`,
           args: [userId, organizationId],
         }),
         (error) => tokenStorageError('Failed to find tokens by user and organization', error)
@@ -117,13 +138,13 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       });
     },
 
-    updateName: (id: string, name: string | null): ResultAsync<void, TokenStorageError> => {
+    updateName: (id: string, name: string | null): ResultAsync<void, TokenWriteError> => {
       return ResultAsync.fromPromise(
         db.execute({
           sql: `UPDATE api_tokens SET name = ? WHERE id = ?`,
           args: [name, id],
         }),
-        (error) => tokenStorageError('Failed to update token name', error)
+        (error) => writeError('Failed to update token name', name, error)
       ).map(() => undefined);
     },
 
@@ -137,20 +158,20 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
       ).map(() => undefined);
     },
 
-    delete: (id: string): ResultAsync<void, TokenStorageError> => {
+    revoke: (id: string, revokedAt: string): ResultAsync<void, TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `DELETE FROM api_tokens WHERE id = ?`,
-          args: [id],
+          sql: `UPDATE api_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`,
+          args: [revokedAt, id],
         }),
-        (error) => tokenStorageError('Failed to delete token', error)
+        (error) => tokenStorageError('Failed to revoke token', error)
       ).map(() => undefined);
     },
 
     hasAnyTokens: (): ResultAsync<boolean, TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT 1 FROM api_tokens LIMIT 1`,
+          sql: `SELECT 1 FROM api_tokens WHERE revoked_at IS NULL LIMIT 1`,
         }),
         (error) => tokenStorageError('Failed to check for tokens', error)
       ).map((result) => result.rows.length > 0);

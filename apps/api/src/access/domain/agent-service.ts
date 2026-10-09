@@ -5,14 +5,15 @@ import { agentEmailFor } from './user.js';
 import type { UserService } from './user-service.js';
 import type { MembershipService } from './membership-service.js';
 import type { OrganizationMembership } from './organization-membership.js';
-import type { UserTokenService, TokenInfo } from './user-token-service.js';
+import type { CreateNamedToken } from './create-named-token.js';
+import type { TokenInfo } from './token-info.js';
 import {
   membershipNotFoundError,
   insufficientPermissionsError,
   type MembershipServiceError,
 } from './organization-errors.js';
 import type { UserServiceError } from './user-errors.js';
-import type { UserTokenServiceError } from './auth-errors.js';
+import type { CreateNamedTokenError } from './token-errors.js';
 
 export type MintAgentCommand = {
   actorUserId: string;
@@ -27,7 +28,7 @@ export type MintedAgent = {
   rawToken: string;
 };
 
-export type AgentServiceError = MembershipServiceError | UserServiceError | UserTokenServiceError;
+export type AgentServiceError = MembershipServiceError | UserServiceError | CreateNamedTokenError;
 
 export type AgentService = {
   /**
@@ -40,13 +41,13 @@ export type AgentService = {
 export type AgentServiceDependencies = {
   userService: UserService;
   membershipService: MembershipService;
-  userTokenService: UserTokenService;
+  createToken: CreateNamedToken;
   clock: Clock;
   idGenerator: IdGenerator;
 };
 
 export const createAgentService = (deps: AgentServiceDependencies): AgentService => {
-  const { userService, membershipService, userTokenService, clock, idGenerator } = deps;
+  const { userService, membershipService, createToken, clock, idGenerator } = deps;
 
   return {
     mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError> {
@@ -83,18 +84,17 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
                   isPersonalOrg: false,
                 })
                 .andThen((membership) =>
-                  userTokenService
-                    .createToken({
-                      userId: user.id,
-                      organizationId,
-                      name,
-                    })
-                    .map(({ token, rawToken }) => ({
-                      user,
-                      membership,
-                      token,
-                      rawToken,
-                    }))
+                  createToken({
+                    actor: { kind: 'user', userId: actorUserId },
+                    userId: user.id,
+                    organizationId,
+                    name,
+                  }).map(({ token, rawToken }) => ({
+                    user,
+                    membership,
+                    token,
+                    rawToken,
+                  }))
                 )
             );
         });

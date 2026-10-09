@@ -7,7 +7,11 @@ import { createSessionService } from '../domain/session-service.js';
 import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
 import { createAgentService } from '../domain/agent-service.js';
-import { createUserTokenService } from '../domain/user-token-service.js';
+import { createTokenHandlers } from './create-token-handlers.js';
+import { createStoreBackedTokenPersist } from '../infrastructure/store-backed-token-persist.js';
+import { tokenStorageError } from '../domain/auth-errors.js';
+import { principalKindOf } from '../domain/user.js';
+import { ResultAsync } from 'neverthrow';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
@@ -150,16 +154,45 @@ describe('organization routes', () => {
       refreshThresholdMs: 24 * 60 * 60 * 1000,
     });
 
+    const passwordHasher = createFakePasswordHasher();
+    const tokenHandlers = createTokenHandlers({
+      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
+      load: (id) => tokenStore.findById(id),
+      loadMembership: (userId, organizationId) =>
+        membershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((membership) => (membership ? { role: membership.role } : null)),
+      loadOwner: (userId) =>
+        userStore
+          .findById(userId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((user) =>
+            user
+              ? {
+                  userId: user.id,
+                  name: user.name ?? null,
+                  kind: principalKindOf(user),
+                }
+              : null
+          ),
+      persist: createStoreBackedTokenPersist(tokenStore),
+      hashSecret: (secret) =>
+        ResultAsync.fromPromise(
+          passwordHasher.hash(secret),
+          (error) => tokenStorageError('Failed to hash token secret', error)
+        ),
+      nextId: () => idGenerator.generate(),
+      nextSecret: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
+      maxTokensPerUserPerOrg: 50,
+    });
+
     const agentService = createAgentService({
       userService,
       membershipService,
-      userTokenService: createUserTokenService({
-        tokenStore,
-        clock,
-        idGenerator,
-        passwordHasher: createFakePasswordHasher(),
-        maxTokensPerUserPerOrg: 2,
-      }),
+      createToken: (command) =>
+        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
     });

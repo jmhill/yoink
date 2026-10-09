@@ -19,4 +19,5 @@ export type RevokeTokenCommand = {
   actor: Actor;
   tokenId: string;
   userId: string;
+  organizationId: string;
 };

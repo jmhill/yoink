@@ -200,7 +200,7 @@ describe('combinedAuthMiddleware', () => {
         organizationId: testOrg.id,
         userId: testUser.id,
         principalKind: 'human',
-        actor: { kind: 'bot', tokenId: testToken.id, name: 'test-token' },
+        actor: { kind: 'bot', tokenId: testToken.id, userId: testUser.id, name: 'test-token' },
       });
       expect(response.json().hasSession).toBe(false);
     });

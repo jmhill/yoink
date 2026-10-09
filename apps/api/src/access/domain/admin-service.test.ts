@@ -356,6 +356,28 @@ describe('AdminService', () => {
       }
     });
 
+    it('parses names through parseTokenName', async () => {
+      const blank = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: '   ',
+      });
+      expect(blank.isErr()).toBe(true);
+      if (blank.isErr()) {
+        expect(blank.error.type).toBe('INVALID_TOKEN_NAME');
+      }
+
+      const trimmed = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: '  Lane  ',
+      });
+      expect(trimmed.isOk()).toBe(true);
+      if (trimmed.isOk()) {
+        expect(trimmed.value.token.name).toBe('Lane');
+      }
+    });
+
     it('revokes (deletes) a token', async () => {
       const createResult = await service.createToken({
         organizationId: testOrg.id,

@@ -7,11 +7,20 @@ import { z } from 'zod';
  * (name is null) until they are named once.
  */
 
+export const TokenOwnerSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string().nullable(),
+  kind: z.enum(['human', 'agent']),
+});
+
+export type TokenOwner = z.infer<typeof TokenOwnerSchema>;
+
 export const TokenInfoSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(200).nullable(),
   lastUsedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
+  owner: TokenOwnerSchema,
 });
 
 export type TokenInfo = z.infer<typeof TokenInfoSchema>;
@@ -37,9 +46,8 @@ export type CreateUserTokenResponse = z.infer<typeof CreateUserTokenResponseSche
 
 export const ListUserTokensResponseSchema = z.object({
   tokens: z.array(TokenInfoSchema),
-  hasMore: z.boolean(),
-  nextCursor: z.string().nullable(),
-  total: z.number().int().nonnegative(),
+  maxTokensPerUser: z.number().int().positive(),
+  ownedCount: z.number().int().nonnegative(),
 });
 
 export type ListUserTokensResponse = z.infer<typeof ListUserTokensResponseSchema>;

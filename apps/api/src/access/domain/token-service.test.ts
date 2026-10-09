@@ -209,6 +209,42 @@ describe('TokenService', () => {
     }
   });
 
+  it('rejects a revoked token after comparing the secret', async () => {
+    await tokenStore.revoke(testToken.id, '2026-10-09T12:00:00.000Z');
+
+    const result = await tokenService.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_NOT_FOUND');
+    }
+  });
+
+  it('does not write lastUsedAt again within a minute', async () => {
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [testOrg],
+    });
+    const userStore = createFakeUserStore({ initialUsers: [testUser] });
+    const recent = createFakeTokenStore({
+      initialTokens: [
+        { ...testToken, lastUsedAt: '2024-06-15T11:59:30.000Z' },
+      ],
+    });
+    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const service = createTokenService({
+      organizationStore,
+      userStore,
+      tokenStore: recent,
+      passwordHasher: createFakePasswordHasher(),
+      clock,
+    });
+
+    await service.validateToken({ plaintext: VALID_TOKEN });
+
+    const found = await recent.findById(testToken.id);
+    expect(found._unsafeUnwrap()?.lastUsedAt).toBe('2024-06-15T11:59:30.000Z');
+  });
+
   it('does not update lastUsedAt on failed validation', async () => {
     await tokenService.validateToken({
       plaintext: `${testToken.id}:wrong-secret`,

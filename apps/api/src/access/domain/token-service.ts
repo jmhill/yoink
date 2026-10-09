@@ -15,6 +15,7 @@ import {
   invalidSecretError,
   type TokenValidationError,
 } from './auth-errors.js';
+import { shouldUpdateLastUsed } from './last-used-throttle.js';
 
 export type AuthResult = {
   organization: Organization;
@@ -96,6 +97,10 @@ export const createTokenService = (
             return errAsync(invalidSecretError(parsed.tokenId));
           }
 
+          if (token.revokedAt) {
+            return errAsync(tokenNotFoundError(parsed.tokenId));
+          }
+
           // Use token.organizationId to determine the org context
           // Tokens are now scoped to organizations, so we use the token's org, not the user's
           return organizationStore.findById(token.organizationId).andThen((organization) => {
@@ -108,8 +113,10 @@ export const createTokenService = (
                 return errAsync(userNotFoundError(token.userId));
               }
 
-              // Update lastUsedAt (fire and forget - we don't want to fail validation if this fails)
-              tokenStore.updateLastUsed(token.id, clock.now().toISOString());
+              const now = clock.now();
+              if (shouldUpdateLastUsed(token.lastUsedAt, now)) {
+                tokenStore.updateLastUsed(token.id, now.toISOString());
+              }
 
               return okAsync({ organization, user, token });
             });

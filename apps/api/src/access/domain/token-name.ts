@@ -9,7 +9,11 @@ export type TokenName = string & { readonly [tokenNameBrand]: typeof tokenNameBr
 
 export const normalizeTokenName = (name: string): string => name.trim().toLowerCase();
 
-const asTokenName = (name: string): TokenName => name as TokenName;
+export const asTokenName = (name: string): TokenName => name as TokenName;
+
+/** Stored names are already validated; brand them without re-parsing. */
+export const storedTokenName = (name: string | null): TokenName | null =>
+  name === null ? null : asTokenName(name);
 
 export const parseTokenName = (raw: string): Result<TokenName, InvalidTokenNameError> => {
   const name = raw.trim();

@@ -295,24 +295,43 @@ describe('createSqliteTokenStore', () => {
     });
   });
 
-  describe('delete', () => {
-    it('removes a token from the database', async () => {
-      const token = createTestToken();
+  describe('revoke', () => {
+    it('soft-deletes a token so lists hide it and findById still resolves the name', async () => {
+      const token = createTestToken({ name: 'Lane' });
       await store.save(token);
 
-      const deleteResult = await store.delete(token.id);
-      expect(deleteResult.isOk()).toBe(true);
+      const revokeResult = await store.revoke(token.id, '2026-10-09T12:00:00.000Z');
+      expect(revokeResult.isOk()).toBe(true);
 
       const findResult = await store.findById(token.id);
-      expect(findResult.isOk()).toBe(true);
-      if (findResult.isOk()) {
-        expect(findResult.value).toBeNull();
-      }
+      expect(findResult._unsafeUnwrap()?.name).toBe('Lane');
+      expect(findResult._unsafeUnwrap()?.revokedAt).toBe('2026-10-09T12:00:00.000Z');
+
+      const listed = await store.findByOrganizationId(TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toEqual([]);
     });
 
-    it('succeeds when deleting non-existent token', async () => {
-      const result = await store.delete('non-existent-id');
+    it('succeeds when revoking a non-existent token', async () => {
+      const result = await store.revoke('non-existent-id', '2026-10-09T12:00:00.000Z');
       expect(result.isOk()).toBe(true);
+    });
+  });
+
+  describe('unique name', () => {
+    it('maps a unique-index collision to DuplicateTokenName', async () => {
+      await store.save(createTestToken({ name: 'Lane' }));
+
+      const result = await store.save(
+        createTestToken({
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          name: 'lane',
+        })
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('DUPLICATE_TOKEN_NAME');
+      }
     });
   });
 });

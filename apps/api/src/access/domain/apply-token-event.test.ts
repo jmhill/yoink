@@ -58,7 +58,7 @@ describe('applyTokenEvent', () => {
     const view = applyTokenEvent(
       {
         id: 'token-1',
-        name: 'Lane',
+        name: name('Lane'),
         lastUsedAt: undefined,
         createdAt: '2026-01-01T00:00:00.000Z',
       },
@@ -66,6 +66,8 @@ describe('applyTokenEvent', () => {
         type: 'TokenRevoked',
         id: 'token-1',
         userId: 'user-1',
+        organizationId: 'org-1',
+        revokedAt: '2026-10-09T12:00:00.000Z',
       }
     );
 

@@ -16,7 +16,9 @@ const input = (
   command: humanCommand(),
   existingNames: [],
   tokenCountForUser: 0,
-  maxTokensPerUserPerOrg: 2,
+  maxTokensPerUserPerOrg: 50,
+  actorRole: 'owner' as const,
+  targetKind: 'human' as const,
   id: 'token-1',
   now: '2026-10-09T12:00:00.000Z',
   ...overrides,
@@ -83,7 +85,7 @@ describe('decideCreateToken', () => {
   });
 
   it('rejects when the user is at the token limit', () => {
-    const result = decideCreateToken(input({ tokenCountForUser: 2 }));
+    const result = decideCreateToken(input({ tokenCountForUser: 50 }));
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -91,11 +93,41 @@ describe('decideCreateToken', () => {
     }
   });
 
+  it('lets an owner mint a token for an agent member', () => {
+    const result = decideCreateToken(
+      input({
+        command: humanCommand({ userId: 'agent-1' }),
+        actorRole: 'owner',
+        targetKind: 'agent',
+      })
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.userId).toBe('agent-1');
+    }
+  });
+
+  it('refuses an owner minting a token for another human', () => {
+    const result = decideCreateToken(
+      input({
+        command: humanCommand({ userId: 'polly' }),
+        actorRole: 'owner',
+        targetKind: 'human',
+      })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_OWNERSHIP_ERROR');
+    }
+  });
+
   it('refuses a bot actor', () => {
     const result = decideCreateToken(
       input({
         command: humanCommand({
-          actor: { kind: 'bot', tokenId: 'token-bot', name: 'Lane' },
+          actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' },
         }),
       })
     );

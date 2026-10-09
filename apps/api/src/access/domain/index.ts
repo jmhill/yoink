@@ -24,10 +24,6 @@ export {
 
 // Authentication services
 export { createTokenService, type TokenService } from './token-service.js';
-export {
-  createUserTokenService,
-  type UserTokenService,
-} from './user-token-service.js';
 export { createSessionService, type SessionService } from './session-service.js';
 export { createPasskeyService, type PasskeyService } from './passkey-service.js';
 export { createSignupService, type SignupService } from './signup-service.js';
@@ -64,7 +60,6 @@ export type {
   TokenValidationError,
   PasskeyServiceError,
   SessionServiceError,
-  UserTokenServiceError,
 } from './auth-errors.js';
 export type { SignupServiceError } from './signup-service.js';
 export type { AdminServiceError } from './admin-errors.js';

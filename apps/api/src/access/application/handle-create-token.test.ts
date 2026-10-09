@@ -16,6 +16,28 @@ const persistEvents = () => {
   };
 };
 
+const owner = {
+  userId: 'user-1',
+  name: 'Justin',
+  kind: 'human' as const,
+};
+
+const deps = (
+  overrides: Omit<Partial<Parameters<typeof handleCreateToken>[1]>, 'persist'> & {
+    persist: Parameters<typeof handleCreateToken>[1]['persist'];
+  }
+) => ({
+  listOrgTokens: () => okAsync([]),
+  loadMembership: () => okAsync({ role: 'owner' as const }),
+  loadOwner: () => okAsync(owner),
+  hashSecret: (secret: string) => okAsync(`hashed:${secret}`),
+  nextId: () => 'token-1',
+  nextSecret: () => 'secret-1',
+  now: () => '2026-10-09T12:00:00.000Z',
+  maxTokensPerUserPerOrg: 50,
+  ...overrides,
+});
+
 describe('handleCreateToken', () => {
   const command = {
     actor: { kind: 'user' as const, userId: 'user-1' },
@@ -28,22 +50,17 @@ describe('handleCreateToken', () => {
     const { persist, events } = persistEvents();
     let hashed: string | undefined;
 
-    const result = await handleCreateToken(command, {
-      listOrgTokens: () => okAsync([]),
+    const result = await handleCreateToken(command, deps({
       persist: ({ event, tokenHash }) => {
         hashed = tokenHash;
         return persist({ event, tokenHash });
       },
-      hashSecret: (secret) => okAsync(`hashed:${secret}`),
-      nextId: () => 'token-1',
-      nextSecret: () => 'secret-1',
-      now: () => '2026-10-09T12:00:00.000Z',
-      maxTokensPerUserPerOrg: 2,
-    });
+    }));
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.token.name).toBe('Lane');
+      expect(result.value.token.owner).toEqual(owner);
       expect(result.value.rawToken).toBe('token-1:secret-1');
     }
     expect(hashed).toBe('hashed:secret-1');
@@ -54,16 +71,8 @@ describe('handleCreateToken', () => {
     const { persist, events } = persistEvents();
 
     const result = await handleCreateToken(
-      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', name: 'Lane' } },
-      {
-        listOrgTokens: () => okAsync([]),
-        persist,
-        hashSecret: (secret) => okAsync(`hashed:${secret}`),
-        nextId: () => 'token-1',
-        nextSecret: () => 'secret-1',
-        now: () => '2026-10-09T12:00:00.000Z',
-        maxTokensPerUserPerOrg: 2,
-      }
+      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' } },
+      deps({ persist })
     );
 
     expect(result.isErr()).toBe(true);
@@ -84,15 +93,10 @@ describe('handleCreateToken', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
     };
 
-    const result = await handleCreateToken(command, {
+    const result = await handleCreateToken(command, deps({
       listOrgTokens: () => okAsync([existing]),
       persist,
-      hashSecret: (secret) => okAsync(`hashed:${secret}`),
-      nextId: () => 'token-1',
-      nextSecret: () => 'secret-1',
-      now: () => '2026-10-09T12:00:00.000Z',
-      maxTokensPerUserPerOrg: 2,
-    });
+    }));
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -104,15 +108,10 @@ describe('handleCreateToken', () => {
   it('returns storage error when listing fails', async () => {
     const { persist, events } = persistEvents();
 
-    const result = await handleCreateToken(command, {
+    const result = await handleCreateToken(command, deps({
       listOrgTokens: () => errAsync(tokenStorageError('Find failed')),
       persist,
-      hashSecret: (secret) => okAsync(`hashed:${secret}`),
-      nextId: () => 'token-1',
-      nextSecret: () => 'secret-1',
-      now: () => '2026-10-09T12:00:00.000Z',
-      maxTokensPerUserPerOrg: 2,
-    });
+    }));
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

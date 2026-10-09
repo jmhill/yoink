@@ -13,40 +13,42 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check, Pencil } from 'lucide-react';
 import type { TokenInfo } from '@yoink/api-contracts';
-import { listTokens, createToken, revokeToken, renameToken } from '@/api/tokens';
+import { tsrTokens } from '@/api/client';
 
-type TokenListState =
-  | { status: 'loading' }
-  | { status: 'error'; error: string }
-  | { status: 'success'; tokens: TokenInfo[] };
-
-const MAX_TOKENS = 2;
+const errorBodyMessage = (body: unknown): string | null => {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+  return null;
+};
 
 export function TokensSection() {
-  const [listState, setListState] = useState<TokenListState>({ status: 'loading' });
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<TokenInfo | null>(null);
   const [tokenToRename, setTokenToRename] = useState<TokenInfo | null>(null);
 
-  const loadTokens = async () => {
-    setListState({ status: 'loading' });
-    const result = await listTokens();
-    if (result.ok) {
-      setListState({ status: 'success', tokens: result.data.tokens });
-    } else {
-      setListState({ status: 'error', error: result.error });
-    }
-  };
+  const listQuery = tsrTokens.list.useQuery({
+    queryKey: ['tokens'],
+    queryData: {},
+  });
 
-  useEffect(() => {
-    loadTokens();
-  }, []);
+  const listBody = listQuery.data?.status === 200 ? listQuery.data.body : undefined;
+  const listError = listQuery.error
+    ? 'Failed to list tokens'
+    : listQuery.data && listQuery.data.status !== 200
+      ? errorBodyMessage(listQuery.data.body) ?? 'Failed to list tokens'
+      : null;
 
   const handleCreateSuccess = () => {
     setCreateDialogOpen(false);
-    loadTokens();
+    void listQuery.refetch();
   };
 
   const handleDeleteClick = (token: TokenInfo) => {
@@ -57,7 +59,7 @@ export function TokensSection() {
   const handleDeleteSuccess = () => {
     setDeleteDialogOpen(false);
     setTokenToDelete(null);
-    loadTokens();
+    void listQuery.refetch();
   };
 
   const handleRenameClick = (token: TokenInfo) => {
@@ -68,11 +70,14 @@ export function TokensSection() {
   const handleRenameSuccess = () => {
     setRenameDialogOpen(false);
     setTokenToRename(null);
-    loadTokens();
+    void listQuery.refetch();
   };
 
+  const maxTokensPerUser = listBody?.maxTokensPerUser;
   const canCreate =
-    listState.status === 'success' && listState.tokens.length < MAX_TOKENS;
+    listBody !== undefined &&
+    maxTokensPerUser !== undefined &&
+    listBody.ownedCount < maxTokensPerUser;
 
   return (
     <>
@@ -84,27 +89,29 @@ export function TokensSection() {
           </CardTitle>
           <CardDescription>
             Manage tokens for browser extension and CLI access.
-            Maximum {MAX_TOKENS} tokens per organization.
+            {maxTokensPerUser !== undefined
+              ? ` Maximum ${maxTokensPerUser} tokens per member.`
+              : null}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {listState.status === 'loading' && (
+          {listQuery.isPending && (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           )}
 
-          {listState.status === 'error' && (
+          {listError && (
             <div className="flex items-center gap-2 text-destructive text-sm">
               <AlertCircle className="h-4 w-4" />
-              {listState.error}
+              {listError}
             </div>
           )}
 
-          {listState.status === 'success' && (
+          {listBody && (
             <>
               <div className="space-y-2">
-                {listState.tokens.map((token) => (
+                {listBody.tokens.map((token) => (
                   <TokenItem
                     key={token.id}
                     token={token}
@@ -112,7 +119,7 @@ export function TokensSection() {
                     onDelete={() => handleDeleteClick(token)}
                   />
                 ))}
-                {listState.tokens.length === 0 && (
+                {listBody.tokens.length === 0 && (
                   <p className="text-muted-foreground text-sm py-2">
                     No API tokens. Create one to use with the browser extension or CLI.
                   </p>
@@ -122,7 +129,11 @@ export function TokensSection() {
                 onClick={() => setCreateDialogOpen(true)}
                 className="w-full"
                 disabled={!canCreate}
-                title={canCreate ? undefined : `Maximum ${MAX_TOKENS} tokens allowed`}
+                title={
+                  canCreate || maxTokensPerUser === undefined
+                    ? undefined
+                    : `Maximum ${maxTokensPerUser} tokens allowed`
+                }
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Token
@@ -163,12 +174,16 @@ type TokenItemProps = {
 
 export const unnamedTokenLabel = 'Unnamed';
 
+const ownerLabel = (token: TokenInfo): string =>
+  token.owner.name ?? (token.owner.kind === 'agent' ? 'Agent' : 'You');
+
 function TokenItem({ token, onRename, onDelete }: TokenItemProps) {
   const createdDate = new Date(token.createdAt).toLocaleDateString();
   const lastUsedDate = token.lastUsedAt
     ? new Date(token.lastUsedAt).toLocaleDateString()
     : 'Never';
   const displayName = token.name ?? unnamedTokenLabel;
+  const member = ownerLabel(token);
 
   return (
     <div
@@ -184,7 +199,7 @@ function TokenItem({ token, onRename, onDelete }: TokenItemProps) {
             {displayName}
           </p>
           <p className="text-xs text-muted-foreground">
-            Created {createdDate} · Last used {lastUsedDate}
+            {member} · Created {createdDate} · Last used {lastUsedDate}
           </p>
         </div>
       </div>
@@ -218,12 +233,23 @@ type CreateTokenDialogProps = {
 
 function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogProps) {
   const [tokenName, setTokenName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawToken, setRawToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Reset state when dialog opens
+  const createMutation = tsrTokens.create.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 201) {
+        setRawToken(result.body.rawToken);
+        return;
+      }
+      setError(errorBodyMessage(result.body) ?? 'Failed to create token');
+    },
+    onError: () => {
+      setError('Failed to create token');
+    },
+  });
+
   useEffect(() => {
     if (open) {
       setTokenName('');
@@ -233,24 +259,14 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
     }
   }, [open]);
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!tokenName.trim()) {
       setError('Token name is required');
       return;
     }
 
-    setIsCreating(true);
     setError(null);
-
-    const result = await createToken(tokenName.trim());
-
-    setIsCreating(false);
-
-    if (result.ok) {
-      setRawToken(result.data.rawToken);
-    } else {
-      setError(result.error);
-    }
+    createMutation.mutate({ body: { name: tokenName.trim() } });
   };
 
   const handleCopy = async () => {
@@ -268,7 +284,6 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
     }
   };
 
-  // Show success state with raw token
   if (rawToken) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
@@ -337,7 +352,7 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
               value={tokenName}
               onChange={(e) => setTokenName(e.target.value)}
               placeholder="e.g., Lane"
-              disabled={isCreating}
+              disabled={createMutation.isPending}
             />
             <p className="text-xs text-muted-foreground">
               A friendly name to identify this token.
@@ -353,11 +368,11 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createMutation.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={isCreating}>
-            {isCreating ? (
+          <Button onClick={handleCreate} disabled={createMutation.isPending}>
+            {createMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Creating...
@@ -385,31 +400,31 @@ function DeleteTokenDialog({
   token,
   onSuccess,
 }: DeleteTokenDialogProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset error when dialog opens
+  const revokeMutation = tsrTokens.delete.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 200) {
+        onSuccess();
+        return;
+      }
+      setError(errorBodyMessage(result.body) ?? 'Failed to revoke token');
+    },
+    onError: () => {
+      setError('Failed to revoke token');
+    },
+  });
+
   useEffect(() => {
     if (open) {
       setError(null);
     }
   }, [open]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!token) return;
-
-    setIsDeleting(true);
     setError(null);
-
-    const result = await revokeToken(token.id);
-
-    setIsDeleting(false);
-
-    if (result.ok) {
-      onSuccess();
-    } else {
-      setError(result.error);
-    }
+    revokeMutation.mutate({ params: { tokenId: token.id } });
   };
 
   return (
@@ -432,11 +447,11 @@ function DeleteTokenDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDeleting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={revokeMutation.isPending}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? (
+          <Button variant="destructive" onClick={handleDelete} disabled={revokeMutation.isPending}>
+            {revokeMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Revoking...
@@ -465,8 +480,20 @@ function RenameTokenDialog({
   onSuccess,
 }: RenameTokenDialogProps) {
   const [tokenName, setTokenName] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const renameMutation = tsrTokens.rename.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 200) {
+        onSuccess();
+        return;
+      }
+      setError(errorBodyMessage(result.body) ?? 'Failed to rename token');
+    },
+    onError: () => {
+      setError('Failed to rename token');
+    },
+  });
 
   useEffect(() => {
     if (open) {
@@ -475,23 +502,18 @@ function RenameTokenDialog({
     }
   }, [open, token]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!token) return;
     if (!tokenName.trim()) {
       setError('Token name is required');
       return;
     }
 
-    setIsSaving(true);
     setError(null);
-    const result = await renameToken(token.id, tokenName.trim());
-    setIsSaving(false);
-
-    if (result.ok) {
-      onSuccess();
-    } else {
-      setError(result.error);
-    }
+    renameMutation.mutate({
+      params: { tokenId: token.id },
+      body: { name: tokenName.trim() },
+    });
   };
 
   return (
@@ -512,7 +534,7 @@ function RenameTokenDialog({
               value={tokenName}
               onChange={(e) => setTokenName(e.target.value)}
               placeholder="e.g., Lane"
-              disabled={isSaving}
+              disabled={renameMutation.isPending}
             />
           </div>
 
@@ -525,11 +547,11 @@ function RenameTokenDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={renameMutation.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
+          <Button onClick={handleSave} disabled={renameMutation.isPending}>
+            {renameMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...

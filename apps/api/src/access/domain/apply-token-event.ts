@@ -1,10 +1,10 @@
-import type { TokenInfo } from './token-info.js';
+import type { TokenProjection } from './token-info.js';
 import type { TokenEvent } from './token-events.js';
 
 export const applyTokenEvent = (
-  current: TokenInfo | null,
+  current: TokenProjection | null,
   event: TokenEvent
-): TokenInfo | null => {
+): TokenProjection | null => {
   switch (event.type) {
     case 'TokenCreated':
       return {

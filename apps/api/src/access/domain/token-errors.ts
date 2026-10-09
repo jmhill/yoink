@@ -29,6 +29,7 @@ export type CreateNamedTokenError =
   | InvalidTokenNameError
   | DuplicateTokenNameError
   | TokenLimitReachedError
+  | TokenOwnershipError
   | TokenStorageError;
 
 export type RenameTokenError =
@@ -43,6 +44,7 @@ export type RevokeTokenError =
   | BotCannotManageTokensError
   | UserTokenNotFoundError
   | TokenOwnershipError
+  | DuplicateTokenNameError
   | TokenStorageError;
 
 export type ListTokensError = TokenStorageError;

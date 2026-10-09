@@ -12,7 +12,7 @@ import {
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;
   sessionService: SessionService;
-  tokenService?: TokenService;
+  tokenService: TokenService;
   sessionCookieName: string;
 };
 
@@ -23,20 +23,11 @@ export const registerTokenRoutes = async (
   const { tokenHandlers, sessionService, tokenService, sessionCookieName } = deps;
   const s = initServer();
 
-  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = tokenService
-    ? { tokenService, sessionService, sessionCookieName }
-    : {
-        tokenService: {
-          validateToken: () =>
-            Promise.resolve({
-              isErr: () => true,
-              isOk: () => false,
-              error: { type: 'INVALID_TOKEN_FORMAT' as const },
-            }),
-        } as unknown as TokenService,
-        sessionService,
-        sessionCookieName,
-      };
+  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
+    tokenService,
+    sessionService,
+    sessionCookieName,
+  };
 
   const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
 
@@ -45,8 +36,8 @@ export const registerTokenRoutes = async (
 
     const router = s.router(tokenContract, {
       list: async ({ request }) => {
-        const { userId, organizationId } = request.authContext;
-        const result = await tokenHandlers.list({ userId, organizationId });
+        const { userId, organizationId, actor } = request.authContext;
+        const result = await tokenHandlers.list({ actor, userId, organizationId });
 
         return result.match(
           (page) => ({
@@ -85,9 +76,10 @@ export const registerTokenRoutes = async (
                   body: { message: error.message },
                 };
               case 'BOT_CANNOT_MANAGE_TOKENS':
+              case 'TOKEN_OWNERSHIP_ERROR':
                 return {
                   status: 403 as const,
-                  body: { message: error.message },
+                  body: { message: error.type === 'TOKEN_OWNERSHIP_ERROR' ? 'You do not own this token' : error.message },
                 };
               case 'DUPLICATE_TOKEN_NAME':
                 return {
@@ -166,11 +158,12 @@ export const registerTokenRoutes = async (
       },
 
       delete: async ({ params, request }) => {
-        const { userId, actor } = request.authContext;
+        const { userId, organizationId, actor } = request.authContext;
         const result = await tokenHandlers.revoke({
           actor,
           tokenId: params.tokenId,
           userId,
+          organizationId,
         });
 
         return result.match(

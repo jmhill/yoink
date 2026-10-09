@@ -39,7 +39,6 @@ import type {
   SessionService,
   TokenService,
   UserService,
-  UserTokenService,
   AgentService,
 } from './access/domain/index.js';
 // TODO(8.5.4): store interfaces are not part of the access public API;
@@ -62,7 +61,6 @@ export type SignupConfig = {
   sessionService: SessionService;
   tokenService: TokenService;
   userService: UserService;
-  userTokenService: UserTokenService;
   tokenHandlers: TokenHandlers;
   agentService: AgentService;
 };

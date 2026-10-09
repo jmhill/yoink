@@ -21,6 +21,8 @@ export type TokenRevoked = {
   type: 'TokenRevoked';
   id: string;
   userId: string;
+  organizationId: string;
+  revokedAt: string;
 };
 
 export type TokenEvent = TokenCreated | TokenRenamed | TokenRevoked;

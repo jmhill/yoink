@@ -1,12 +1,31 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
-import type { TokenStore } from '../domain/token-store.js';
+import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
+import { duplicateTokenNameError } from '../domain/token-errors.js';
+import { normalizeTokenName } from '../domain/token-name.js';
 
 export type FakeTokenStoreOptions = {
   shouldFailOnSave?: boolean;
   shouldFailOnFind?: boolean;
   initialTokens?: ApiToken[];
+};
+
+const isActive = (token: ApiToken): boolean => token.revokedAt === undefined;
+
+const nameTaken = (tokens: ApiToken[], candidate: ApiToken): boolean => {
+  if (candidate.name === null || !isActive(candidate)) {
+    return false;
+  }
+  const normalized = normalizeTokenName(candidate.name);
+  return tokens.some(
+    (token) =>
+      token.id !== candidate.id &&
+      isActive(token) &&
+      token.organizationId === candidate.organizationId &&
+      token.name !== null &&
+      normalizeTokenName(token.name) === normalized
+  );
 };
 
 export const createFakeTokenStore = (
@@ -15,9 +34,12 @@ export const createFakeTokenStore = (
   const tokens: ApiToken[] = [...(options.initialTokens ?? [])];
 
   return {
-    save: (token: ApiToken): ResultAsync<void, TokenStorageError> => {
+    save: (token: ApiToken): ResultAsync<void, TokenWriteError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Save failed'));
+      }
+      if (nameTaken(tokens, token)) {
+        return errAsync(duplicateTokenNameError(token.name ?? ''));
       }
       tokens.push(token);
       return okAsync(undefined);
@@ -35,7 +57,7 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnFind) {
         return errAsync(tokenStorageError('Find failed'));
       }
-      const found = tokens.filter((t) => t.userId === userId);
+      const found = tokens.filter((t) => t.userId === userId && isActive(t));
       return okAsync(found);
     },
 
@@ -43,7 +65,7 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnFind) {
         return errAsync(tokenStorageError('Find failed'));
       }
-      const found = tokens.filter((t) => t.organizationId === organizationId);
+      const found = tokens.filter((t) => t.organizationId === organizationId && isActive(t));
       return okAsync(found);
     },
 
@@ -51,18 +73,24 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnFind) {
         return errAsync(tokenStorageError('Find failed'));
       }
-      const found = tokens.filter((t) => t.userId === userId && t.organizationId === organizationId);
+      const found = tokens.filter(
+        (t) => t.userId === userId && t.organizationId === organizationId && isActive(t)
+      );
       return okAsync(found);
     },
 
-    updateName: (id: string, name: string | null): ResultAsync<void, TokenStorageError> => {
+    updateName: (id: string, name: string | null): ResultAsync<void, TokenWriteError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Update failed'));
       }
       const token = tokens.find((t) => t.id === id);
       if (token) {
+        const next = { ...token, name };
+        if (nameTaken(tokens, next)) {
+          return errAsync(duplicateTokenNameError(name ?? ''));
+        }
         const index = tokens.indexOf(token);
-        tokens[index] = { ...token, name };
+        tokens[index] = next;
       }
       return okAsync(undefined);
     },
@@ -79,13 +107,14 @@ export const createFakeTokenStore = (
       return okAsync(undefined);
     },
 
-    delete: (id: string): ResultAsync<void, TokenStorageError> => {
+    revoke: (id: string, revokedAt: string): ResultAsync<void, TokenStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Delete failed'));
       }
-      const index = tokens.findIndex((t) => t.id === id);
-      if (index !== -1) {
-        tokens.splice(index, 1);
+      const token = tokens.find((t) => t.id === id);
+      if (token && !token.revokedAt) {
+        const index = tokens.indexOf(token);
+        tokens[index] = { ...token, revokedAt };
       }
       return okAsync(undefined);
     },
@@ -94,7 +123,7 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnFind) {
         return errAsync(tokenStorageError('Check failed'));
       }
-      return okAsync(tokens.length > 0);
+      return okAsync(tokens.some(isActive));
     },
   };
 };

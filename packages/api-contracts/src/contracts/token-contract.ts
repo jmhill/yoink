@@ -27,7 +27,7 @@ export const tokenContract = c.router({
       401: ErrorSchema,
       500: ErrorSchema,
     },
-    summary: 'List API tokens for the current user and organization',
+    summary: 'List API tokens the caller can manage in this organization',
   },
 
   create: {

@@ -204,6 +204,7 @@ export const adminProtectedContract = c.router(
         400: ErrorSchema,
         401: ErrorSchema,
         404: ErrorSchema,
+        409: ErrorSchema,
         500: ErrorSchema,
       },
       summary: 'Create a new API token for a user in an organization',

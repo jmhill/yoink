@@ -21,6 +21,7 @@ import type { OrganizationMembership } from '../domain/organization-membership.j
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenStore } from '../domain/token-store.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
+import { principalKindOf } from '../domain/user.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
@@ -33,6 +34,8 @@ describe('token routes', () => {
   let app: FastifyInstance;
   let clock: ReturnType<typeof createFakeClock>;
   let tokenStore: TokenStore;
+  let userStore: ReturnType<typeof createFakeUserStore>;
+  let membershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
   let passwordHasher: ReturnType<typeof createFakePasswordHasher>;
 
   const testOrg: Organization = {
@@ -73,10 +76,10 @@ describe('token routes', () => {
     const organizationStore = createFakeOrganizationStore({
       initialOrganizations: [testOrg],
     });
-    const userStore = createFakeUserStore({
+    userStore = createFakeUserStore({
       initialUsers: [testUser],
     });
-    const membershipStore = createFakeOrganizationMembershipStore({
+    membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [testMembership],
     });
     tokenStore = createFakeTokenStore();
@@ -113,9 +116,25 @@ describe('token routes', () => {
 
     const tokenHandlers = createTokenHandlers({
       listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
-      listUserOrgTokens: (userId, organizationId) =>
-        tokenStore.findByUserAndOrganization(userId, organizationId),
       load: (id) => tokenStore.findById(id),
+      loadMembership: (userId, organizationId) =>
+        membershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((membership) => (membership ? { role: membership.role } : null)),
+      loadOwner: (userId) =>
+        userStore
+          .findById(userId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((user) =>
+            user
+              ? {
+                  userId: user.id,
+                  name: user.name ?? null,
+                  kind: principalKindOf(user),
+                }
+              : null
+          ),
       persist: createStoreBackedTokenPersist(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
@@ -168,9 +187,8 @@ describe('token routes', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({
         tokens: [],
-        hasMore: false,
-        nextCursor: null,
-        total: 0,
+        maxTokensPerUser: 2,
+        ownedCount: 0,
       });
     });
 
@@ -181,12 +199,12 @@ describe('token routes', () => {
       const body = response.json();
 
       expect(response.statusCode).toBe(200);
-      expect(body.hasMore).toBe(false);
-      expect(body.nextCursor).toBeNull();
-      expect(body.total).toBe(1);
+      expect(body.maxTokensPerUser).toBe(2);
+      expect(body.ownedCount).toBe(1);
       expect(body.tokens[0]).toMatchObject({
         name: 'Lane',
         createdAt: '2024-06-15T12:00:00.000Z',
+        owner: { userId: testUser.id, name: null, kind: 'human' },
       });
       expect(body.tokens[0].lastUsedAt).toBeUndefined();
     });
@@ -203,6 +221,56 @@ describe('token routes', () => {
 
       const response = await sessionRequest('GET', '/api/auth/tokens');
       expect(response.json().tokens[0].name).toBeNull();
+    });
+
+    it('lets an owner list and rename an agent member token', async () => {
+      const agent: User = {
+        id: '550e8400-e29b-41d4-a716-446655440200',
+        email: 'agent-lane@yoink.invalid',
+        name: 'Lane',
+        kind: 'agent',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      await userStore.save(agent);
+      await membershipStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440201',
+        userId: agent.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await tokenStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440202',
+        userId: agent.id,
+        organizationId: testOrg.id,
+        tokenHash: 'hash',
+        name: null,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const listed = await sessionRequest('GET', '/api/auth/tokens');
+      expect(listed.statusCode).toBe(200);
+      expect(listed.json().tokens).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: '550e8400-e29b-41d4-a716-446655440202',
+            name: null,
+            owner: { userId: agent.id, name: 'Lane', kind: 'agent' },
+          }),
+        ])
+      );
+
+      const renamed = await sessionRequest(
+        'PATCH',
+        '/api/auth/tokens/550e8400-e29b-41d4-a716-446655440202',
+        { name: 'Lane' }
+      );
+      expect(renamed.statusCode).toBe(200);
+      expect(renamed.json()).toMatchObject({
+        name: 'Lane',
+        owner: { userId: agent.id, name: 'Lane', kind: 'agent' },
+      });
     });
 
     it('lets a bot token list', async () => {
@@ -333,6 +401,23 @@ describe('token routes', () => {
 
     it('returns 404 when the token does not exist', async () => {
       const response = await sessionRequest('DELETE', '/api/auth/tokens/missing');
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 404 when the token belongs to another organization', async () => {
+      await tokenStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440066',
+        userId: testUser.id,
+        organizationId: '550e8400-e29b-41d4-a716-446655440099',
+        tokenHash: 'hash',
+        name: 'OtherOrg',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const response = await sessionRequest(
+        'DELETE',
+        '/api/auth/tokens/550e8400-e29b-41d4-a716-446655440066'
+      );
       expect(response.statusCode).toBe(404);
     });
   });

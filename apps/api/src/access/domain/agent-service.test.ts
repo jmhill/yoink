@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createAgentService, type AgentService } from './agent-service.js';
 import { createUserService } from './user-service.js';
 import { createMembershipService } from './membership-service.js';
-import { createUserTokenService } from './user-token-service.js';
+import { createTokenHandlers } from '../application/create-token-handlers.js';
+import { createStoreBackedTokenPersist } from '../infrastructure/store-backed-token-persist.js';
+import { tokenStorageError } from './auth-errors.js';
+import { principalKindOf } from './user.js';
+import { ResultAsync } from 'neverthrow';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
@@ -87,21 +91,44 @@ describe('AgentService', () => {
       clock,
       idGenerator,
     });
-    const userTokenService = createUserTokenService({
-      tokenStore,
-      clock,
-      idGenerator,
-      passwordHasher: {
-        hash: async (password: string) => `hashed:${password}`,
-        compare: async (password: string, hash: string) => hash === `hashed:${password}`,
-      },
-      maxTokensPerUserPerOrg: 2,
+    const tokenHandlers = createTokenHandlers({
+      listOrgTokens: (organizationId) => tokenStore.findByOrganizationId(organizationId),
+      load: (id) => tokenStore.findById(id),
+      loadMembership: (userId, organizationId) =>
+        membershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((membership) => (membership ? { role: membership.role } : null)),
+      loadOwner: (userId) =>
+        userStore
+          .findById(userId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((user) =>
+            user
+              ? {
+                  userId: user.id,
+                  name: user.name ?? null,
+                  kind: principalKindOf(user),
+                }
+              : null
+          ),
+      persist: createStoreBackedTokenPersist(tokenStore),
+      hashSecret: (secret) =>
+        ResultAsync.fromPromise(
+          Promise.resolve(`hashed:${secret}`),
+          (error) => tokenStorageError('Failed to hash token secret', error)
+        ),
+      nextId: () => idGenerator.generate(),
+      nextSecret: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
+      maxTokensPerUserPerOrg: 50,
     });
 
     service = createAgentService({
       userService,
       membershipService,
-      userTokenService,
+      createToken: (command) =>
+        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
     });

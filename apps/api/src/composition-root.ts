@@ -22,7 +22,8 @@ import {
 } from './access/application/index.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import {
-  createStoreBackedTokenPersist,
+  createStoreBackedTokenCreated,
+  createStoreBackedTokenRevoked,
   createStoreBackedTokenReissue,
 } from './access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
@@ -245,12 +246,12 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
             user
               ? {
                   userId: user.id,
-                  name: user.name ?? null,
                   kind: principalKindOf(user),
                 }
               : null
           ),
-      persist: createStoreBackedTokenPersist(tokenStore),
+      persistCreate: createStoreBackedTokenCreated(tokenStore),
+      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
           passwordHasher.hash(secret),
@@ -262,6 +263,22 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       maxTokensPerUserPerOrg: MAX_TOKENS_PER_USER_PER_ORG,
     });
 
+    const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
+      handleReissueAgentToken(command, {
+        loadMembership: (userId, organizationId) =>
+          membershipService.getMembership({ userId, organizationId }),
+        loadUser: (userId) => userService.getUser(userId),
+        persistReissue: createStoreBackedTokenReissue(tokenStore),
+        hashSecret: (secret) =>
+          ResultAsync.fromPromise(
+            passwordHasher.hash(secret),
+            (error) => tokenStorageError('Failed to hash token secret', error)
+          ),
+        nextId: () => idGenerator.generate(),
+        nextSecret: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
     const agentService = createAgentService({
       userService,
       membershipService,
@@ -269,23 +286,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
-      reissueAgentToken: (command) =>
-        handleReissueAgentToken(command, {
-          loadMembership: (userId, organizationId) =>
-            membershipService.getMembership({ userId, organizationId }),
-          loadUser: (userId) => userService.getUser(userId),
-          listMemberTokens: (userId, organizationId) =>
-            tokenStore.findByUserAndOrganization(userId, organizationId),
-          persistReissue: createStoreBackedTokenReissue(tokenStore),
-          hashSecret: (secret) =>
-            ResultAsync.fromPromise(
-              passwordHasher.hash(secret),
-              (error) => tokenStorageError('Failed to hash token secret', error)
-            ),
-          nextId: () => idGenerator.generate(),
-          nextSecret: () => idGenerator.generate(),
-          now: () => clock.now().toISOString(),
-        }),
     });
 
     signupConfig = {
@@ -296,6 +296,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       userService,
       tokenHandlers,
       agentService,
+      reissueAgentToken,
     };
   }
 

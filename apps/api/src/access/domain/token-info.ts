@@ -2,7 +2,6 @@ import type { PrincipalKind } from './user.js';
 
 export type TokenOwnerInfo = {
   userId: string;
-  name: string | null;
   kind: PrincipalKind;
 };
 

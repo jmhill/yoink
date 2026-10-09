@@ -6,6 +6,7 @@ import type { MembershipService } from '../domain/membership-service.js';
 import type { UserService } from '../domain/user-service.js';
 import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
+import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 import { principalKindOf } from '../domain/user.js';
 
 export type OrganizationRoutesDependencies = {
@@ -13,6 +14,7 @@ export type OrganizationRoutesDependencies = {
   membershipService: MembershipService;
   userService: UserService;
   agentService: AgentService;
+  reissueAgentToken: ReissueAgentToken;
   authMiddleware: AuthMiddleware;
 };
 
@@ -20,7 +22,7 @@ export const registerOrganizationRoutes = async (
   app: FastifyInstance,
   deps: OrganizationRoutesDependencies
 ) => {
-  const { sessionService, membershipService, userService, agentService, authMiddleware } = deps;
+  const { sessionService, membershipService, userService, agentService, reissueAgentToken, authMiddleware } = deps;
   const s = initServer();
 
   await app.register(async (orgApp) => {
@@ -365,7 +367,7 @@ export const registerOrganizationRoutes = async (
       },
 
       reissueAgentToken: async ({ params, request }) => {
-        const result = await agentService.reissueAgentToken({
+        const result = await reissueAgentToken({
           actor: request.authContext.actor,
           organizationId: params.organizationId,
           memberUserId: params.userId,
@@ -380,6 +382,12 @@ export const registerOrganizationRoutes = async (
             if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
               return {
                 status: 403 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INVALID_TOKEN_NAME') {
+              return {
+                status: 400 as const,
                 body: { message: error.message },
               };
             }

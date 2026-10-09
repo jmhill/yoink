@@ -4,7 +4,8 @@ import { createUserService } from './user-service.js';
 import { createMembershipService } from './membership-service.js';
 import { createTokenHandlers } from '../application/create-token-handlers.js';
 import {
-  createStoreBackedTokenPersist,
+  createStoreBackedTokenCreated,
+  createStoreBackedTokenRevoked,
   createStoreBackedTokenReissue,
 } from '../infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from '../application/handle-reissue-agent-token.js';
@@ -113,12 +114,12 @@ describe('AgentService', () => {
             user
               ? {
                   userId: user.id,
-                  name: user.name ?? null,
                   kind: principalKindOf(user),
                 }
               : null
           ),
-      persist: createStoreBackedTokenPersist(tokenStore),
+      persistCreate: createStoreBackedTokenCreated(tokenStore),
+      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
           Promise.resolve(`hashed:${secret}`),
@@ -137,23 +138,6 @@ describe('AgentService', () => {
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
-      reissueAgentToken: (command) =>
-        handleReissueAgentToken(command, {
-          loadMembership: (userId, organizationId) =>
-            membershipService.getMembership({ userId, organizationId }),
-          loadUser: (userId) => userService.getUser(userId),
-          listMemberTokens: (userId, organizationId) =>
-            tokenStore.findByUserAndOrganization(userId, organizationId),
-          persistReissue: createStoreBackedTokenReissue(tokenStore),
-          hashSecret: (secret) =>
-            ResultAsync.fromPromise(
-              Promise.resolve(`hashed:${secret}`),
-              (error) => tokenStorageError('Failed to hash token secret', error)
-            ),
-          nextId: () => idGenerator.generate(),
-          nextSecret: () => idGenerator.generate(),
-          now: () => clock.now().toISOString(),
-        }),
     });
   });
 
@@ -255,11 +239,27 @@ describe('AgentService', () => {
     if (!minted.isOk()) return;
 
     const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
-    const result = await service.reissueAgentToken({
-      actor: { kind: 'user', userId: OWNER_ID },
-      organizationId: ORG_ID,
-      memberUserId: minted.value.user.id,
-    });
+    const result = await handleReissueAgentToken(
+      {
+        actor: { kind: 'user', userId: OWNER_ID },
+        organizationId: ORG_ID,
+        memberUserId: minted.value.user.id,
+      },
+      {
+        loadMembership: (userId, organizationId) =>
+          membershipStore.findByUserAndOrg(userId, organizationId),
+        loadUser: (userId) => userStore.findById(userId),
+        persistReissue: createStoreBackedTokenReissue(tokenStore),
+        hashSecret: (secret) =>
+          ResultAsync.fromPromise(
+            Promise.resolve(`hashed:${secret}`),
+            (error) => tokenStorageError('Failed to hash token secret', error)
+          ),
+        nextId: () => '550e8400-e29b-41d4-a716-446655440200',
+        nextSecret: () => '550e8400-e29b-41d4-a716-446655440201',
+        now: () => TEST_DATE.toISOString(),
+      }
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {

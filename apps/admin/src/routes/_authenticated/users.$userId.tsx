@@ -106,8 +106,8 @@ function UserDetailPage() {
     });
   };
 
-  const handleRevokeToken = (tokenId: string, tokenName: string | null) => {
-    if (!confirm(`Are you sure you want to revoke the token "${tokenName ?? 'Unnamed'}"?`)) {
+  const handleRevokeToken = (tokenId: string, tokenName: string) => {
+    if (!confirm(`Are you sure you want to revoke the token "${tokenName}"?`)) {
       return;
     }
     revokeTokenMutation.mutate({ params: { id: tokenId } });
@@ -297,7 +297,7 @@ function UserDetailPage() {
               <TableBody>
                 {tokens.map((token) => (
                   <TableRow key={token.id}>
-                    <TableCell className="font-medium">{token.name ?? 'Unnamed'}</TableCell>
+                    <TableCell className="font-medium">{token.name}</TableCell>
                     <TableCell>
                       {token.lastUsedAt
                         ? formatDate(token.lastUsedAt)

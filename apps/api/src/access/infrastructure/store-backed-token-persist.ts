@@ -1,44 +1,39 @@
-import { errAsync } from 'neverthrow';
 import type { TokenStore } from '../domain/token-store.js';
-import { tokenStorageError } from '../domain/auth-errors.js';
-import type { PersistTokenEvent } from '../application/token-ports.js';
-import type { PersistReissue } from '../application/handle-reissue-agent-token.js';
+import type {
+  PersistReissue,
+  PersistTokenCreated,
+  PersistTokenRevoked,
+} from '../application/token-ports.js';
 
-export const createStoreBackedTokenPersist = (store: TokenStore): PersistTokenEvent => {
-  return ({ event, tokenHash }) => {
-    switch (event.type) {
-      case 'TokenCreated': {
-        if (!tokenHash) {
-          return errAsync(tokenStorageError('Create persist requires a token hash'));
-        }
-        return store.save({
-          id: event.id,
-          userId: event.userId,
-          organizationId: event.organizationId,
-          tokenHash,
-          name: event.name,
-          createdAt: event.createdAt,
-        });
-      }
-      case 'TokenRevoked':
-        return store.revoke(event.id, event.revokedAt);
-    }
-  };
+export const createStoreBackedTokenCreated = (store: TokenStore): PersistTokenCreated => {
+  return ({ event, tokenHash }) =>
+    store.save({
+      id: event.id,
+      userId: event.userId,
+      organizationId: event.organizationId,
+      tokenHash,
+      name: event.name,
+      createdAt: event.createdAt,
+    });
+};
+
+export const createStoreBackedTokenRevoked = (store: TokenStore): PersistTokenRevoked => {
+  return (event) => store.revoke(event.id, event.revokedAt);
 };
 
 export const createStoreBackedTokenReissue = (store: TokenStore): PersistReissue => {
-  return ({ revoke, create, tokenHash }) =>
+  return ({ revoke, create }) =>
     store.reissue({
-      userId: create.userId,
-      organizationId: create.organizationId,
-      revokedAt: revoke[0]?.revokedAt ?? create.createdAt,
+      userId: revoke.userId,
+      organizationId: revoke.organizationId,
+      revokedAt: revoke.revokedAt,
       token: {
-        id: create.id,
-        userId: create.userId,
-        organizationId: create.organizationId,
-        tokenHash,
-        name: create.name,
-        createdAt: create.createdAt,
+        id: create.event.id,
+        userId: create.event.userId,
+        organizationId: create.event.organizationId,
+        tokenHash: create.tokenHash,
+        name: create.event.name,
+        createdAt: create.event.createdAt,
       },
     });
 };

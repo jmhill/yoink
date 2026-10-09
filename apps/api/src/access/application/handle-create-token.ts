@@ -1,24 +1,24 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { CreateNamedTokenCommand } from '../domain/token-commands.js';
+import type { CreateTokenCommand } from '../domain/token-commands.js';
 import type { TokenCreated } from '../domain/token-events.js';
 import type { TokenInfo } from '../domain/token-info.js';
 import { applyTokenEvent } from '../domain/apply-token-event.js';
 import { decideCreateToken } from '../domain/decide-create-token.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
-import type { CreateNamedTokenError } from '../domain/token-errors.js';
+import type { CreateTokenError } from '../domain/token-errors.js';
 import type {
   HashSecret,
   ListUserOrgTokens,
   LoadActorMembership,
   LoadTokenOwner,
-  PersistTokenEvent,
+  PersistTokenCreated,
 } from './token-ports.js';
 
 export type HandleCreateTokenDeps = {
   listUserOrgTokens: ListUserOrgTokens;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
-  persist: PersistTokenEvent;
+  persistCreate: PersistTokenCreated;
   hashSecret: HashSecret;
   nextId: () => string;
   nextSecret: () => string;
@@ -33,9 +33,9 @@ export type CreateTokenResult = {
 };
 
 export const handleCreateToken = (
-  command: CreateNamedTokenCommand,
+  command: CreateTokenCommand,
   deps: HandleCreateTokenDeps
-): ResultAsync<CreateTokenResult, CreateNamedTokenError> => {
+): ResultAsync<CreateTokenResult, CreateTokenError> => {
   const actorUserId = command.actor.userId;
 
   return deps.listUserOrgTokens(command.userId, command.organizationId).andThen((userTokens) =>
@@ -66,7 +66,7 @@ export const handleCreateToken = (
         }
 
         return deps.hashSecret(secret).andThen((tokenHash) =>
-          deps.persist({ event, tokenHash }).map(() => ({
+          deps.persistCreate({ event, tokenHash }).map(() => ({
             event,
             token: projected,
             rawToken: `${id}:${secret}`,

@@ -1,7 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { MembershipRole } from './organization-membership.js';
 import type { PrincipalKind } from './user.js';
-import type { CreateNamedTokenCommand } from './token-commands.js';
+import type { CreateTokenCommand } from './token-commands.js';
 import type { TokenCreated } from './token-events.js';
 import { canManageOrgToken } from './can-manage-token.js';
 import { requireHumanActor } from './require-human-actor.js';
@@ -9,11 +9,11 @@ import {
   invalidTokenNameError,
   tokenLimitReachedError,
   tokenOwnershipError,
-  type CreateNamedTokenError,
+  type CreateTokenError,
 } from './token-errors.js';
 
 export type DecideCreateTokenInput = {
-  command: CreateNamedTokenCommand;
+  command: CreateTokenCommand;
   tokenCountForUser: number;
   maxTokensPerUserPerOrg: number;
   actorRole: MembershipRole | null;
@@ -22,7 +22,7 @@ export type DecideCreateTokenInput = {
   now: string;
 };
 
-export type DecideCreateTokenError = Exclude<CreateNamedTokenError, { type: 'TOKEN_STORAGE_ERROR' }>;
+export type DecideCreateTokenError = Exclude<CreateTokenError, { type: 'TOKEN_STORAGE_ERROR' }>;
 
 export const decideCreateToken = ({
   command,

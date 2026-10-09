@@ -9,7 +9,7 @@ export type BotActor = {
   readonly kind: 'bot';
   readonly tokenId: string;
   readonly userId: string;
-  readonly name: string | null;
+  readonly name: string;
 };
 
 export type Actor = UserActor | BotActor;
@@ -22,7 +22,7 @@ export const actorFromSession = (userId: string): UserActor => ({
 export const actorFromToken = (token: {
   id: string;
   userId: string;
-  name: string | null;
+  name: string;
 }): BotActor => ({
   kind: 'bot',
   tokenId: token.id,

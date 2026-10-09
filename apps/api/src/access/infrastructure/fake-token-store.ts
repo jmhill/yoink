@@ -108,7 +108,7 @@ export const createFakeTokenStore = (
       if (options.shouldFailOnFind) {
         return errAsync(tokenStorageError('Check failed'));
       }
-      return okAsync(tokens.some(isActive));
+      return okAsync(tokens.length > 0);
     },
   };
 };

@@ -7,7 +7,8 @@ import type {
   LoadActorMembership,
   LoadToken,
   LoadTokenOwner,
-  PersistTokenEvent,
+  PersistTokenCreated,
+  PersistTokenRevoked,
 } from './token-ports.js';
 
 export type TokenHandlerDeps = {
@@ -15,7 +16,8 @@ export type TokenHandlerDeps = {
   load: LoadToken;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
-  persist: PersistTokenEvent;
+  persistCreate: PersistTokenCreated;
+  persistRevoke: PersistTokenRevoked;
   hashSecret: HashSecret;
   nextId: () => string;
   nextSecret: () => string;
@@ -31,7 +33,11 @@ export const createTokenHandlers = (deps: TokenHandlerDeps) => ({
   create: (command: Parameters<typeof handleCreateToken>[0]) =>
     handleCreateToken(command, deps),
   revoke: (command: Parameters<typeof handleRevokeToken>[0]) =>
-    handleRevokeToken(command, deps),
+    handleRevokeToken(command, {
+      load: deps.load,
+      persistRevoke: deps.persistRevoke,
+      now: deps.now,
+    }),
 });
 
 export type TokenHandlers = ReturnType<typeof createTokenHandlers>;

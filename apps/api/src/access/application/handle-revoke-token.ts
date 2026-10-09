@@ -3,11 +3,11 @@ import type { RevokeTokenCommand } from '../domain/token-commands.js';
 import type { TokenRevoked } from '../domain/token-events.js';
 import { decideRevokeToken } from '../domain/decide-revoke-token.js';
 import type { RevokeTokenError } from '../domain/token-errors.js';
-import type { LoadToken, PersistTokenEvent } from './token-ports.js';
+import type { LoadToken, PersistTokenRevoked } from './token-ports.js';
 
 export type HandleRevokeTokenDeps = {
   load: LoadToken;
-  persist: PersistTokenEvent;
+  persistRevoke: PersistTokenRevoked;
   now: () => string;
 };
 
@@ -26,6 +26,6 @@ export const handleRevokeToken = (
     }
 
     const event = decision.value;
-    return deps.persist({ event }).map(() => event);
+    return deps.persistRevoke(event).map(() => event);
   });
 };

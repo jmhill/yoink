@@ -3,8 +3,12 @@ import type { MembershipRole } from './organization-membership.js';
 import type { PrincipalKind } from './user.js';
 import { requireHumanActor } from './require-human-actor.js';
 import type { ReissueAgentTokenCommand } from './token-commands.js';
-import type { TokenCreated, TokenRevoked } from './token-events.js';
-import type { BotCannotManageTokensError } from './token-errors.js';
+import type { TokenCreated } from './token-events.js';
+import {
+  invalidTokenNameError,
+  type BotCannotManageTokensError,
+  type InvalidTokenNameError,
+} from './token-errors.js';
 import {
   insufficientPermissionsError,
   membershipNotFoundError,
@@ -12,13 +16,20 @@ import {
   type MembershipNotFoundError,
 } from './organization-errors.js';
 
+export type ReissueScope = {
+  userId: string;
+  organizationId: string;
+  revokedAt: string;
+};
+
 export type ReissueAgentTokenDecision = {
-  revoke: TokenRevoked[];
+  revoke: ReissueScope;
   create: TokenCreated;
 };
 
 export type DecideReissueAgentTokenError =
   | BotCannotManageTokensError
+  | InvalidTokenNameError
   | InsufficientPermissionsError
   | MembershipNotFoundError;
 
@@ -27,8 +38,7 @@ export type DecideReissueAgentTokenInput = {
   actorRole: MembershipRole | null;
   targetMembership: { userId: string; organizationId: string } | null;
   targetKind: PrincipalKind | null;
-  activeTokens: readonly { id: string; userId: string; organizationId: string }[];
-  tokenName: string;
+  tokenName: string | null;
   newTokenId: string;
   now: string;
 };
@@ -38,7 +48,6 @@ export const decideReissueAgentToken = ({
   actorRole,
   targetMembership,
   targetKind,
-  activeTokens,
   tokenName,
   newTokenId,
   now,
@@ -66,20 +75,23 @@ export const decideReissueAgentToken = ({
     );
   }
 
+  const name = tokenName?.trim() ?? '';
+  if (name.length === 0) {
+    return err(invalidTokenNameError('Agent name is required'));
+  }
+
   return ok({
-    revoke: activeTokens.map((token) => ({
-      type: 'TokenRevoked' as const,
-      id: token.id,
-      userId: token.userId,
-      organizationId: token.organizationId,
+    revoke: {
+      userId: command.memberUserId,
+      organizationId: command.organizationId,
       revokedAt: now,
-    })),
+    },
     create: {
       type: 'TokenCreated',
       id: newTokenId,
       userId: command.memberUserId,
       organizationId: command.organizationId,
-      name: tokenName,
+      name,
       createdAt: now,
     },
   });

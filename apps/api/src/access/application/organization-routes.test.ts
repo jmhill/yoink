@@ -9,7 +9,8 @@ import { createMembershipService } from '../domain/membership-service.js';
 import { createAgentService } from '../domain/agent-service.js';
 import { createTokenHandlers } from './create-token-handlers.js';
 import {
-  createStoreBackedTokenPersist,
+  createStoreBackedTokenCreated,
+  createStoreBackedTokenRevoked,
   createStoreBackedTokenReissue,
 } from '../infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
@@ -260,12 +261,12 @@ describe('organization routes', () => {
             user
               ? {
                   userId: user.id,
-                  name: user.name ?? null,
                   kind: principalKindOf(user),
                 }
               : null
           ),
-      persist: createStoreBackedTokenPersist(tokenStore),
+      persistCreate: createStoreBackedTokenCreated(tokenStore),
+      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
           passwordHasher.hash(secret),
@@ -284,24 +285,22 @@ describe('organization routes', () => {
         tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
       clock,
       idGenerator,
-      reissueAgentToken: (command) =>
-        handleReissueAgentToken(command, {
-          loadMembership: (userId, organizationId) =>
-            membershipService.getMembership({ userId, organizationId }),
-          loadUser: (userId) => userService.getUser(userId),
-          listMemberTokens: (userId, organizationId) =>
-            tokenStore.findByUserAndOrganization(userId, organizationId),
-          persistReissue: createStoreBackedTokenReissue(tokenStore),
-          hashSecret: (secret) =>
-            ResultAsync.fromPromise(
-              passwordHasher.hash(secret),
-              (error) => tokenStorageError('Failed to hash token secret', error)
-            ),
-          nextId: () => idGenerator.generate(),
-          nextSecret: () => idGenerator.generate(),
-          now: () => clock.now().toISOString(),
-        }),
     });
+    const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
+      handleReissueAgentToken(command, {
+        loadMembership: (userId, organizationId) =>
+          membershipService.getMembership({ userId, organizationId }),
+        loadUser: (userId) => userService.getUser(userId),
+        persistReissue: createStoreBackedTokenReissue(tokenStore),
+        hashSecret: (secret) =>
+          ResultAsync.fromPromise(
+            passwordHasher.hash(secret),
+            (error) => tokenStorageError('Failed to hash token secret', error)
+          ),
+        nextId: () => idGenerator.generate(),
+        nextSecret: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
 
     app = Fastify();
     await app.register(cookie);
@@ -323,6 +322,7 @@ describe('organization routes', () => {
       membershipService,
       userService,
       agentService,
+      reissueAgentToken,
       authMiddleware,
     });
 

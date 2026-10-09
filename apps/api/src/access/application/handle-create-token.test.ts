@@ -8,7 +8,7 @@ const persistEvents = () => {
   const events: TokenEvent[] = [];
   return {
     events,
-    persist: ({ event }: { event: TokenEvent; tokenHash?: string }) => {
+    persistCreate: ({ event }: { event: TokenEvent; tokenHash: string }) => {
       events.push(event);
       return okAsync(undefined);
     },
@@ -17,13 +17,12 @@ const persistEvents = () => {
 
 const owner = {
   userId: 'user-1',
-  name: 'Justin',
   kind: 'human' as const,
 };
 
 const deps = (
-  overrides: Omit<Partial<Parameters<typeof handleCreateToken>[1]>, 'persist'> & {
-    persist: Parameters<typeof handleCreateToken>[1]['persist'];
+  overrides: Omit<Partial<Parameters<typeof handleCreateToken>[1]>, 'persistCreate'> & {
+    persistCreate: Parameters<typeof handleCreateToken>[1]['persistCreate'];
   }
 ) => ({
   listUserOrgTokens: () => okAsync([]),
@@ -46,13 +45,13 @@ describe('handleCreateToken', () => {
   };
 
   it('hashes the secret, persists TokenCreated, and returns rawToken without logging it', async () => {
-    const { persist, events } = persistEvents();
+    const { persistCreate, events } = persistEvents();
     let hashed: string | undefined;
 
     const result = await handleCreateToken(command, deps({
-      persist: ({ event, tokenHash }) => {
+      persistCreate: ({ event, tokenHash }) => {
         hashed = tokenHash;
-        return persist({ event, tokenHash });
+        return persistCreate({ event, tokenHash });
       },
     }));
 
@@ -66,11 +65,11 @@ describe('handleCreateToken', () => {
   });
 
   it('does not persist when a bot actor calls', async () => {
-    const { persist, events } = persistEvents();
+    const { persistCreate, events } = persistEvents();
 
     const result = await handleCreateToken(
       { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' } },
-      deps({ persist })
+      deps({ persistCreate })
     );
 
     expect(result.isErr()).toBe(true);
@@ -81,11 +80,11 @@ describe('handleCreateToken', () => {
   });
 
   it('returns storage error when listing fails', async () => {
-    const { persist, events } = persistEvents();
+    const { persistCreate, events } = persistEvents();
 
     const result = await handleCreateToken(command, deps({
       listUserOrgTokens: () => errAsync(tokenStorageError('Find failed')),
-      persist,
+      persistCreate,
     }));
 
     expect(result.isErr()).toBe(true);

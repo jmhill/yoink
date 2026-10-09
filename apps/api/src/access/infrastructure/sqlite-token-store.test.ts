@@ -151,6 +151,19 @@ describe('createSqliteTokenStore', () => {
         expect(result.value).toBe(true);
       }
     });
+
+    it('returns true when only revoked tokens exist', async () => {
+      const token = createTestToken();
+      await store.save(token);
+      await store.revoke(token.id, '2026-10-09T12:00:00.000Z');
+
+      const result = await store.hasAnyTokens();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
   });
 
   describe('findByUserId', () => {
@@ -365,6 +378,40 @@ describe('createSqliteTokenStore', () => {
       const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
       expect(listed._unsafeUnwrap()).toHaveLength(1);
       expect(listed._unsafeUnwrap()[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440099');
+    });
+
+    it('leaves exactly one live token when two reissues run together', async () => {
+      await store.save(createTestToken({ name: 'Tycho' }));
+
+      const [first, second] = await Promise.all([
+        store.reissue({
+          userId: TEST_USER.id,
+          organizationId: TEST_ORG.id,
+          revokedAt: '2026-10-09T12:00:00.000Z',
+          token: createTestToken({
+            id: '550e8400-e29b-41d4-a716-4466554400aa',
+            name: 'Tycho',
+            tokenHash: 'hash-a',
+            createdAt: '2026-10-09T12:00:00.000Z',
+          }),
+        }),
+        store.reissue({
+          userId: TEST_USER.id,
+          organizationId: TEST_ORG.id,
+          revokedAt: '2026-10-09T12:00:01.000Z',
+          token: createTestToken({
+            id: '550e8400-e29b-41d4-a716-4466554400bb',
+            name: 'Tycho',
+            tokenHash: 'hash-b',
+            createdAt: '2026-10-09T12:00:01.000Z',
+          }),
+        }),
+      ]);
+
+      expect(first.isOk()).toBe(true);
+      expect(second.isOk()).toBe(true);
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
     });
   });
 });

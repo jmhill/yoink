@@ -5,7 +5,10 @@ import cookie from '@fastify/cookie';
 import { ResultAsync } from 'neverthrow';
 import { registerTokenRoutes } from './token-routes.js';
 import { createTokenHandlers } from './create-token-handlers.js';
-import { createStoreBackedTokenPersist } from '../infrastructure/store-backed-token-persist.js';
+import {
+  createStoreBackedTokenCreated,
+  createStoreBackedTokenRevoked,
+} from '../infrastructure/store-backed-token-persist.js';
 import { createSessionService } from '../domain/session-service.js';
 import { createTokenService } from '../domain/token-service.js';
 import { createUserService } from '../domain/user-service.js';
@@ -54,7 +57,7 @@ describe('token routes', () => {
     id: '550e8400-e29b-41d4-a716-446655440010',
     userId: testUser.id,
     organizationId: testOrg.id,
-    role: 'admin',
+    role: 'owner',
     isPersonalOrg: true,
     joinedAt: '2024-01-01T00:00:00.000Z',
   };
@@ -131,12 +134,12 @@ describe('token routes', () => {
             user
               ? {
                   userId: user.id,
-                  name: user.name ?? null,
                   kind: principalKindOf(user),
                 }
               : null
           ),
-      persist: createStoreBackedTokenPersist(tokenStore),
+      persistCreate: createStoreBackedTokenCreated(tokenStore),
+      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
           passwordHasher.hash(secret),
@@ -291,6 +294,38 @@ describe('token routes', () => {
     it('returns 404 when the token does not exist', async () => {
       const response = await sessionRequest('DELETE', '/api/auth/tokens/missing');
       expect(response.statusCode).toBe(404);
+    });
+
+    it("returns 403 when an owner deletes an agent's token", async () => {
+      const agent: User = {
+        id: '550e8400-e29b-41d4-a716-446655440088',
+        email: 'agent-tycho@yoink.invalid',
+        name: 'Tycho',
+        kind: 'agent',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const agentTokenId = '550e8400-e29b-41d4-a716-446655440089';
+      await userStore.save(agent);
+      await membershipStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440090',
+        userId: agent.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await tokenStore.save({
+        id: agentTokenId,
+        userId: agent.id,
+        organizationId: testOrg.id,
+        tokenHash: 'agent-hash',
+        name: 'Tycho',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const response = await sessionRequest('DELETE', `/api/auth/tokens/${agentTokenId}`);
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toBe('You do not own this token');
     });
 
     it('returns 404 when the token belongs to another organization', async () => {

@@ -1,6 +1,6 @@
 import type { Actor } from './actor.js';
 
-export type CreateNamedTokenCommand = {
+export type CreateTokenCommand = {
   actor: Actor;
   userId: string;
   organizationId: string;

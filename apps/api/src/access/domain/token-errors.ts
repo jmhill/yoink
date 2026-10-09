@@ -18,7 +18,7 @@ export type BotCannotManageTokensError = {
   readonly message: string;
 };
 
-export type CreateNamedTokenError =
+export type CreateTokenError =
   | BotCannotManageTokensError
   | InvalidTokenNameError
   | TokenLimitReachedError

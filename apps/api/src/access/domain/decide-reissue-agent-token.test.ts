@@ -19,7 +19,6 @@ const input = (
     actorRole: 'owner',
     targetMembership: { userId: 'agent-1', organizationId: 'org-1' },
     targetKind: 'agent',
-    activeTokens: [{ id: 'old-token', userId: 'agent-1', organizationId: 'org-1' }],
     tokenName: 'Tycho',
     newTokenId: 'new-token',
     now: '2026-10-09T12:00:00.000Z',
@@ -27,20 +26,16 @@ const input = (
   });
 
 describe('decideReissueAgentToken', () => {
-  it('revokes active tokens and creates one replacement', () => {
+  it('revokes every live token for the user and org, then creates one', () => {
     const result = input();
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.revoke).toEqual([
-        {
-          type: 'TokenRevoked',
-          id: 'old-token',
-          userId: 'agent-1',
-          organizationId: 'org-1',
-          revokedAt: '2026-10-09T12:00:00.000Z',
-        },
-      ]);
+      expect(result.value.revoke).toEqual({
+        userId: 'agent-1',
+        organizationId: 'org-1',
+        revokedAt: '2026-10-09T12:00:00.000Z',
+      });
       expect(result.value.create).toEqual({
         type: 'TokenCreated',
         id: 'new-token',
@@ -52,13 +47,12 @@ describe('decideReissueAgentToken', () => {
     }
   });
 
-  it('still creates a token when the member has none active', () => {
-    const result = input({ activeTokens: [] });
+  it('refuses a blank agent name', () => {
+    const result = input({ tokenName: '   ' });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.revoke).toEqual([]);
-      expect(result.value.create.userId).toBe('agent-1');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_TOKEN_NAME');
     }
   });
 

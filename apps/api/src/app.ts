@@ -20,6 +20,7 @@ import {
   registerOrganizationRoutes,
   registerTokenRoutes,
   type AuthMiddleware,
+  type ReissueAgentToken,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
@@ -63,6 +64,7 @@ export type SignupConfig = {
   userService: UserService;
   tokenHandlers: TokenHandlers;
   agentService: AgentService;
+  reissueAgentToken: ReissueAgentToken;
 };
 
 export type AppDependencies = {
@@ -198,6 +200,7 @@ export const createApp = async (deps: AppDependencies) => {
       membershipService: deps.membershipService,
       userService: deps.signup.userService,
       agentService: deps.signup.agentService,
+      reissueAgentToken: deps.signup.reissueAgentToken,
       authMiddleware: deps.authMiddleware,
     });
 

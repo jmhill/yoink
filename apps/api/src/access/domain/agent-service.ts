@@ -6,16 +6,10 @@ import { agentEmailFor } from './user.js';
 import type { UserService } from './user-service.js';
 import type { MembershipService } from './membership-service.js';
 import type { OrganizationMembership } from './organization-membership.js';
-import type { CreateNamedToken } from './create-named-token.js';
+import type { CreateToken } from './create-token.js';
 import type { TokenInfo } from './token-info.js';
 import { requireHumanActor } from './require-human-actor.js';
-import type { CreateNamedTokenError } from './token-errors.js';
-import type { ReissueAgentTokenCommand } from './token-commands.js';
-import type {
-  ReissueAgentToken,
-  ReissueAgentTokenError,
-  ReissueAgentTokenResult,
-} from './reissue-agent-token.js';
+import type { CreateTokenError } from './token-errors.js';
 import {
   membershipNotFoundError,
   insufficientPermissionsError,
@@ -36,7 +30,7 @@ export type MintedAgent = {
   rawToken: string;
 };
 
-export type AgentServiceError = MembershipServiceError | UserServiceError | CreateNamedTokenError;
+export type AgentServiceError = MembershipServiceError | UserServiceError | CreateTokenError;
 
 export type AgentService = {
   /**
@@ -44,26 +38,18 @@ export type AgentService = {
    * Caller must be a human owner or admin. Returns the agent's API token once.
    */
   mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError>;
-  /**
-   * Issue a new token for an existing agent member. Owner only.
-   * Revokes the member's current active tokens and returns the secret once.
-   */
-  reissueAgentToken(
-    command: ReissueAgentTokenCommand
-  ): ResultAsync<ReissueAgentTokenResult, ReissueAgentTokenError>;
 };
 
 export type AgentServiceDependencies = {
   userService: UserService;
   membershipService: MembershipService;
-  createToken: CreateNamedToken;
+  createToken: CreateToken;
   clock: Clock;
   idGenerator: IdGenerator;
-  reissueAgentToken: ReissueAgentToken;
 };
 
 export const createAgentService = (deps: AgentServiceDependencies): AgentService => {
-  const { userService, membershipService, createToken, clock, idGenerator, reissueAgentToken } = deps;
+  const { userService, membershipService, createToken, clock, idGenerator } = deps;
 
   return {
     mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError> {
@@ -126,7 +112,5 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
             );
         });
     },
-
-    reissueAgentToken,
   };
 };

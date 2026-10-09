@@ -120,7 +120,6 @@ export const organizationContract = c.router({
       401: ErrorSchema,
       403: ErrorSchema,
       404: ErrorSchema,
-      409: ErrorSchema,
       500: ErrorSchema,
     },
     summary: 'Mint an agent member and return its API token once',
@@ -141,6 +140,7 @@ export const organizationContract = c.router({
     body: z.undefined(),
     responses: {
       201: ReissueAgentTokenResponseSchema,
+      400: ErrorSchema,
       401: ErrorSchema,
       403: ErrorSchema,
       404: ErrorSchema,

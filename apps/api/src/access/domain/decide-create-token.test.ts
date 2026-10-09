@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { decideCreateToken } from './decide-create-token.js';
-import type { CreateNamedTokenCommand } from './token-commands.js';
+import type { CreateTokenCommand } from './token-commands.js';
 
-const humanCommand = (overrides: Partial<CreateNamedTokenCommand> = {}): CreateNamedTokenCommand => ({
+const humanCommand = (overrides: Partial<CreateTokenCommand> = {}): CreateTokenCommand => ({
   actor: { kind: 'user', userId: 'user-1' },
   userId: 'user-1',
   organizationId: 'org-1',

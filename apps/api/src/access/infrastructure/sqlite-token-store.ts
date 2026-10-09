@@ -173,7 +173,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
     hasAnyTokens: (): ResultAsync<boolean, TokenStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
-          sql: `SELECT 1 FROM api_tokens WHERE revoked_at IS NULL LIMIT 1`,
+          sql: `SELECT 1 FROM api_tokens LIMIT 1`,
         }),
         (error) => tokenStorageError('Failed to check for tokens', error)
       ).map((result) => result.rows.length > 0);

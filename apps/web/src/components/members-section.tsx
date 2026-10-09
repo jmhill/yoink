@@ -449,6 +449,7 @@ export function MembersSection({
                     setReissueError(null);
                     reissueMutation.mutate({
                       params: { organizationId, userId: reissuingMember.userId },
+                      body: {},
                     });
                   }}
                   disabled={reissueMutation.isPending}

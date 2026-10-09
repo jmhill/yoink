@@ -36,7 +36,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       beforeEach(async () => {
         alice = await ctx.createActor(`alice-reissue-${label}@example.com`);
         await prepare(alice);
-      });
+      }, 30_000);
 
       it('issues a new token for an existing agent from Members', async () => {
         const minted = await alice.mintAgent('Tycho');

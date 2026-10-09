@@ -1386,7 +1386,7 @@ export const createHttpActor = (
     async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
       const response = await client.post(
         `/api/organizations/${credentials.organizationId}/members/${memberUserId}/token`,
-        undefined,
+        {},
         authHeaders()
       );
       if (response.statusCode === 401) {

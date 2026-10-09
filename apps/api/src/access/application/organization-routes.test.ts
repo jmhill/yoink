@@ -539,6 +539,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: {},
       });
 
       expect(response.statusCode).toBe(201);
@@ -574,6 +575,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
         headers: { authorization: `Bearer ${agentRawToken}` },
+        payload: {},
       });
 
       expect(response.statusCode).toBe(403);
@@ -585,6 +587,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: testSession.id },
+        payload: {},
       });
       expect(asMember.statusCode).toBe(403);
 
@@ -592,6 +595,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: {},
       });
       expect(asAdmin.statusCode).toBe(403);
     });
@@ -601,6 +605,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${testUser.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: {},
       });
 
       expect(response.statusCode).toBe(404);
@@ -611,6 +616,7 @@ describe('organization routes', () => {
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${otherAgent.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: {},
       });
 
       expect(response.statusCode).toBe(404);

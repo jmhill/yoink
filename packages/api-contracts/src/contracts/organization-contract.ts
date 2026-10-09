@@ -137,7 +137,7 @@ export const organizationContract = c.router({
       organizationId: z.string().uuid(),
       userId: z.string().uuid(),
     }),
-    body: z.undefined(),
+    body: z.object({}), // Empty body — Fastify rejects application/json with no payload
     responses: {
       201: ReissueAgentTokenResponseSchema,
       400: ErrorSchema,

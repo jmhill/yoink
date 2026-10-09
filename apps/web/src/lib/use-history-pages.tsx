@@ -5,18 +5,28 @@ import { tokenStorage } from '@/lib/token';
 
 export const LOAD_MORE_TEST_ID = 'load-more';
 
-type HistoryPageBody<K extends string, T> = {
-  [key in K]: T[];
-} & {
+type HistoryPageMeta = {
   hasMore: boolean;
   nextCursor: string | null;
   total: number;
+};
+
+type HistoryPageBody<K extends string, T> = HistoryPageMeta & {
+  [key in K]: T[];
 };
 
 export type HistoryPagesData<K extends string, T> = {
   pages: Array<{
     status: number;
     body: HistoryPageBody<K, T>;
+  }>;
+  pageParams: unknown[];
+};
+
+type AnyHistoryPagesData = {
+  pages: Array<{
+    status: number;
+    body: HistoryPageMeta & Record<string, unknown>;
   }>;
   pageParams: unknown[];
 };
@@ -38,13 +48,11 @@ export const emptyHistoryPages = <K extends string>(
   pageParams: [undefined],
 });
 
-export const isHistoryPagesData = (
-  data: unknown
-): data is HistoryPagesData<string, unknown> => {
+export const isHistoryPagesData = (data: unknown): data is AnyHistoryPagesData => {
   if (typeof data !== 'object' || data === null || !('pages' in data)) {
     return false;
   }
-  return Array.isArray((data as HistoryPagesData<string, unknown>).pages);
+  return Array.isArray((data as AnyHistoryPagesData).pages);
 };
 
 export const mapHistoryPageItems = <K extends string, T>(

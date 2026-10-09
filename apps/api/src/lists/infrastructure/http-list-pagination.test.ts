@@ -97,12 +97,12 @@ describe('GET /api/lists list completeness', () => {
     let pages = 0;
 
     while (hasMore) {
-      const url = cursor
+      const url: string = cursor
         ? `/api/lists?limit=50&cursor=${cursor}`
         : '/api/lists?limit=50';
       const response = await app.inject({ method: 'GET', url, headers: auth });
       expect(response.statusCode).toBe(200);
-      const body = response.json<NamedListListPage>();
+      const body = response.json() as NamedListListPage;
       ids.push(...body.lists.map((list) => list.id));
       hasMore = body.hasMore;
       cursor = body.nextCursor;
@@ -182,12 +182,12 @@ describe('GET pile reads list completeness', () => {
     let hasMore = true;
 
     while (hasMore) {
-      const url = cursor
+      const url: string = cursor
         ? `/api/lists/${list.id}/tasks?limit=50&cursor=${cursor}`
         : `/api/lists/${list.id}/tasks?limit=50`;
       const response = await app.inject({ method: 'GET', url, headers: auth });
       expect(response.statusCode).toBe(200);
-      const body = response.json<TaskListPage>();
+      const body = response.json() as TaskListPage;
       ids.push(...body.tasks.map((task) => task.id));
       hasMore = body.hasMore;
       cursor = body.nextCursor;

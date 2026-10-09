@@ -19,14 +19,14 @@ const collectPages = async (
   let hasMore = true;
 
   while (hasMore) {
-    const qs = cursor ? `${query}&cursor=${cursor}` : query;
+    const qs: string = cursor ? `${query}&cursor=${cursor}` : query;
     const response = await app.inject({
       method: 'GET',
       url: `/api/captures?${qs}`,
       headers: auth,
     });
     expect(response.statusCode).toBe(200);
-    const body = response.json<CaptureListPage>();
+    const body = response.json() as CaptureListPage;
     pages.push(body);
     ids.push(...body.captures.map((capture) => capture.id));
     hasMore = body.hasMore;

@@ -14,13 +14,13 @@ const collectPages = async (
   const ids: string[] = [];
   let cursor: string | null = null;
   let hasMore = true;
-  let query = firstQuery;
+  const query = firstQuery;
 
   while (hasMore) {
-    const url = cursor ? `${path}?${query}&cursor=${cursor}` : `${path}?${query}`;
+    const url: string = cursor ? `${path}?${query}&cursor=${cursor}` : `${path}?${query}`;
     const response = await app.inject({ method: 'GET', url, headers: auth });
     expect(response.statusCode).toBe(200);
-    const body = response.json<TaskListPage>();
+    const body = response.json() as TaskListPage;
     expect(body.nextCursor).toEqual(body.hasMore ? expect.any(String) : null);
     pages.push(body);
     ids.push(...body.tasks.map((task) => task.id));

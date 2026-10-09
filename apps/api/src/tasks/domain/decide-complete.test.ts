@@ -30,6 +30,7 @@ describe('decideCompleteTask', () => {
         id: 'task-123',
         organizationId: 'org-123',
         completedAt: '2025-01-16T10:00:00.000Z',
+        occurredAt: '2025-01-16T10:00:00.000Z',
       });
     }
   });

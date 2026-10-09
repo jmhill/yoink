@@ -25,6 +25,7 @@ describe('decideDeleteTask', () => {
       id: current.id,
       organizationId: current.organizationId,
       deletedAt: '2025-01-15T12:00:00.000Z',
+      occurredAt: '2025-01-15T12:00:00.000Z',
     });
   });
 

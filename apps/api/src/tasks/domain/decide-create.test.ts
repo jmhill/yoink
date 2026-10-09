@@ -37,6 +37,7 @@ describe('decideCreateTask', () => {
         listId: undefined,
         openOrder: 0,
         createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });

@@ -64,16 +64,11 @@ describe('handleDeleteNamedList', () => {
         type: 'NamedListDeleted',
         id: 'list-groceries',
         organizationId: 'org-123',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
     expect(counted).toEqual(['list-groceries']);
-    expect(events).toEqual([
-      {
-        type: 'NamedListDeleted',
-        id: 'list-groceries',
-        organizationId: 'org-123',
-      },
-    ]);
+    expect(events).toEqual([{ type: 'NamedListDeleted' }]);
   });
 
   it('does not persist when an open task is still on the list', async () => {

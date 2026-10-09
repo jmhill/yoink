@@ -26,6 +26,7 @@ describe('decidePinTask', () => {
       id: current.id,
       organizationId: current.organizationId,
       pinnedAt: '2025-01-15T11:00:00.000Z',
+      occurredAt: '2025-01-15T11:00:00.000Z',
     });
   });
 
@@ -50,6 +51,7 @@ describe('decideUnpinTask', () => {
       type: 'TaskUnpinned',
       id: current.id,
       organizationId: current.organizationId,
+      occurredAt: '2025-01-15T11:00:00.000Z',
     });
   });
 

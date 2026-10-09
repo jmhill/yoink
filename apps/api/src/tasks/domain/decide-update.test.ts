@@ -45,6 +45,7 @@ describe('decideUpdateTask', () => {
         assigneeId: undefined,
         listId: 'list-groceries',
         openOrder: 0,
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -329,6 +330,7 @@ describe('decideUpdateTask', () => {
         assigneeId: undefined,
         listId: null,
         openOrder: 0,
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });

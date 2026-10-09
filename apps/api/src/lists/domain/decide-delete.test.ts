@@ -31,6 +31,7 @@ describe('decideDeleteNamedList', () => {
         type: 'NamedListDeleted',
         id: 'list-groceries',
         organizationId: 'org-123',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });

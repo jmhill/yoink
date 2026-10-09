@@ -57,6 +57,7 @@ describe('handleCreateNamedList', () => {
         createdById: 'user-456',
         name: 'Groceries',
         createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
       expect(result.value.view).toEqual({
         id: 'list-id-1',

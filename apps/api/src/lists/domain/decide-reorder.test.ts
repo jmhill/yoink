@@ -192,6 +192,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
           { id: 'task-errand', openOrder: 0 },
           { id: 'task-notes', openOrder: 1 },
         ],
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });

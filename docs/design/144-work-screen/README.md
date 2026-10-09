@@ -29,6 +29,16 @@ Each HTML file is self-contained (inline CSS and SVG, no external assets). Open 
   - Selecting a list shows it in the main pane.
   - The sidebar order is Capture, Process, Work, Review.
 - **Rows:** a circle and a title, the same as today's rows (#118). Rows have no other controls.
+- **Row meta line in Now:** project name, due date, and owner name. No list label.
+- **Whose items Now shows** (Justin, Fri Oct 9, 2026, 1:45pm CT; see the [#144 comment](https://github.com/jmhill/yoink/issues/144#issuecomment-6087133013)):
+  - By default, Now shows next actions for every member, bots included.
+  - A **Mine** toggle narrows Now to the viewer's own items. It works like the existing Mine view in Tasks. Turning it off brings everyone's items back.
+  - A row owned by someone other than the viewer shows the owner's name, using the same assignee label rows already have.
+  - Through the API, a bot can ask for everyone's Now items or only its own.
+- **Acceptance cases** (from the same comment):
+  1. With Mine off, a bot's next action on an active project appears in Now with the bot's name on it.
+  2. With Mine on, only items owned by the viewer appear. Turning Mine off brings the others back.
+  3. Through the API, a bot can ask for everyone's Now items or only its own.
 
 ## What's NOT decided (placeholders, don't copy)
 
@@ -36,6 +46,7 @@ Each HTML file is self-contained (inline CSS and SVG, no external assets). Open 
 - **The desktop right-hand detail panel:** its content is a placeholder. Today's task edit behavior stays, unless a later story changes it.
 - **Sample content:** the list names, task counts, the "Justin Hill" sidebar footer, and the inbox badge number are sample data.
 - **Spacing and type sizes:** pixel values are approximate. Follow the existing components.
+- **The mockups predate the owner decision:** they show no owner names and no Mine toggle. Where the toggle sits is open; follow the existing components.
 
 ## Render the PNGs
 
@@ -52,13 +63,16 @@ Add `--no-sandbox` if Chrome runs in a container. That gives 780×1688 phone PNG
 
 ## Reuse in the codebase
 
-What each part of design B maps to today, in `apps/web/src` unless noted. Verified against `main` at 0cd2464. Items marked **new** have no existing component.
+What each part of design B maps to today, in `apps/web/src` unless noted. Verified against `main` at 0cd2464; the owner and Mine rows were re-verified at b454496. Items marked **new** have no existing component.
 
 | Design B part | Reuse | Notes |
 | --- | --- | --- |
 | Colors in the mockup | `packages/ui-base/src/styles/variables.css` (imported by `apps/web/src/index.css`) | Use the semantic tokens through Tailwind (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`, `text-primary`, `bg-primary/10`, `text-destructive`, `bg-sidebar`…). They're defined for default light, `.dark`, and `.theme-tokyo-night` (light and dark). Theme switching lives in `lib/use-theme.ts`. Don't add hex colors. |
 | Mockup amber accent (active tab, selected rail item) | `text-primary`, `bg-primary/10 text-primary` | Same active style as `components/app-rail-panel.tsx` (`railClassName`) and `components/bottom-nav.tsx`. |
-| Task row (circle + title + small meta) | `components/task-card.tsx` (`TaskCard`) | Already has the 44px complete circle, swipe-right to complete (`components/swipeable-card.tsx`), tap to edit, and a meta line with due date, assignee, and list. **New:** a project-name meta item; it has `listLabel` today, not a project. |
+| Task row (circle + title + small meta) | `components/task-card.tsx` (`TaskCard`) | Already has the 44px complete circle, swipe-right to complete (`components/swipeable-card.tsx`), tap to edit, and a meta line with due date (`dueDate`), assignee (`assigneeLabel`), and list (`listLabel`). In Now, pass `assigneeLabel` for the owner and don't pass `listLabel`. **New:** a project-name meta item; `TaskCard` has no project prop today. |
+| Owner name on a row | `assigneeLabelFor` in `routes/_authenticated/tasks.tsx`, built on `memberLabel` and `listMembers` in `api/auth.ts` | `memberLabel` gives a bot its name (`kind: 'agent'`) and a person their **email**, not a display name. Show the label only when the owner isn't the viewer. |
+| Mine toggle | The Mine view in Tasks: `?filter=mine` on `routes/_authenticated/tasks.tsx` (desktop `TabsTrigger value="mine"`, `User` icon), the `mine` rail item in `lib/app-rail.ts`, and `{ kind: 'mine' }` in `lib/task-place.ts` | Server side, `filter: 'mine'` means open tasks with `assignee_id` = the caller (`apps/api/src/tasks/infrastructure/sqlite-task-store.ts`; the caller comes from `callerId` in `apps/api/src/tasks/domain/task-commands.ts`). Unassigned tasks are left out. **New:** the toggle control. `@yoink/ui-base` has no switch or toggle component, so use `Button` with `aria-pressed` (as `TaskCard`'s complete button does) or `Tabs`. Open: whether unassigned next actions count as the viewer's under Mine. Existing Mine excludes them. |
+| Bot API: everyone's items or only its own | No Now endpoint exists yet | **New:** the Now query (e.g. `GET /api/work/now`) needs an owner parameter, e.g. `owner=all` (default) or `owner=me`. `me` resolves to the authenticated principal, so a bot's own token gives its own items, the same way `filter=mine` uses `callerId` on `GET /api/tasks` (`packages/api-contracts/src/contracts/task-contract.ts`). Define it in the contract as a Zod enum and parse it at the edge. Responses follow the #129 paging rule. |
 | Due date text, overdue in red | `TaskCard` `formatDueDate` / `getDueDateColorClass` | Overdue is `text-destructive`; today and future use the existing orange/green classes. Mockup colors are placeholders. |
 | "Next actions" / "Due" section headings with counts | Section heading pattern in `routes/_authenticated/tasks.tsx` (`TodayTaskList`, `PileGroupList`) and `RAIL_SECTION_HEADING_CLASS` in `components/app-rail-panel.tsx` | **New** component for the two Now sections. Rows render inside `components/animated-list.tsx` (`AnimatedList`, `AnimatedListItem`), as on the Tasks board. |
 | Header "Work" + "Fri Oct 9 · 6 next actions · 1 due" | `components/place-heading.tsx` (`PlaceHeading`) with `components/header.tsx` (`Header`) above it | `PlaceHeading` is title plus muted subcopy, with an optional `action` slot. |

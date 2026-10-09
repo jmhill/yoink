@@ -9,10 +9,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { Crown, Shield, User, Trash2, Loader2, AlertCircle, Users, Bot, Plus, Copy, Check } from 'lucide-react';
+import { Crown, Shield, User, Trash2, Loader2, AlertCircle, Users, Bot, Plus, Copy, Check, KeyRound } from 'lucide-react';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { listMembers, removeMember, mintAgent, memberLabel, type Member } from '@/api/auth';
+import { tsrOrganizations } from '@/api/client';
+
+const errorBodyMessage = (body: unknown): string | null => {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+  return null;
+};
 
 type MembersSectionProps = {
   organizationId: string;
@@ -81,8 +94,25 @@ export function MembersSection({
   const [mintError, setMintError] = useState<string | null>(null);
   const [rawAgentToken, setRawAgentToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [reissuingMember, setReissuingMember] = useState<Member | null>(null);
+  const [reissueError, setReissueError] = useState<string | null>(null);
+  const [rawReissuedToken, setRawReissuedToken] = useState<string | null>(null);
+
+  const reissueMutation = tsrOrganizations.reissueAgentToken.useMutation({
+    onSuccess: (result) => {
+      if (result.status === 201) {
+        setRawReissuedToken(result.body.rawToken);
+        return;
+      }
+      setReissueError(errorBodyMessage(result.body) ?? 'Failed to issue token');
+    },
+    onError: () => {
+      setReissueError('Failed to issue token');
+    },
+  });
 
   const canMint = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const canReissue = currentUserRole === 'owner';
 
   const loadMembers = async () => {
     setState({ status: 'loading' });
@@ -156,6 +186,7 @@ export function MembersSection({
                 return (
                   <div
                     key={member.userId}
+                    data-member-row={memberLabel(member)}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card"
                   >
                     <div className="flex items-center gap-3">
@@ -182,16 +213,33 @@ export function MembersSection({
                       </div>
                     </div>
 
-                    {showRemove && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setRemovingMember(member)}
-                        title={`Remove ${member.email}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {canReissue && member.kind === 'agent' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setReissuingMember(member);
+                            setReissueError(null);
+                            setRawReissuedToken(null);
+                            setCopied(false);
+                          }}
+                        >
+                          <KeyRound className="h-4 w-4 mr-1" />
+                          Issue new token
+                        </Button>
+                      )}
+                      {showRemove && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setRemovingMember(member)}
+                          title={`Remove ${member.email}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -320,6 +368,99 @@ export function MembersSection({
                     </>
                   ) : (
                     'Create agent'
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!reissuingMember} onOpenChange={(open) => {
+        if (!open) {
+          setReissuingMember(null);
+          setRawReissuedToken(null);
+          setReissueError(null);
+        }
+      }}>
+        <DialogContent>
+          {rawReissuedToken ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  New agent token
+                </DialogTitle>
+                <DialogDescription>
+                  Copy this token now. You won&apos;t be able to see it again.
+                  The previous token for {reissuingMember ? memberLabel(reissuingMember) : 'this agent'} no longer works.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-3 rounded-lg border bg-muted font-mono text-sm break-all">
+                {rawReissuedToken}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(rawReissuedToken);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+                <Button onClick={() => {
+                  setReissuingMember(null);
+                  setRawReissuedToken(null);
+                }}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Issue new token</DialogTitle>
+                <DialogDescription>
+                  The current token for {reissuingMember ? memberLabel(reissuingMember) : 'this agent'} will
+                  stop working immediately. Anyone still using it will be locked out.
+                  The member&apos;s name, tasks, and history stay the same.
+                </DialogDescription>
+              </DialogHeader>
+              {reissueError && (
+                <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{reissueError}</span>
+                </div>
+              )}
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setReissuingMember(null)}
+                  disabled={reissueMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!reissuingMember) return;
+                    setReissueError(null);
+                    reissueMutation.mutate({
+                      params: { organizationId, userId: reissuingMember.userId },
+                      body: {},
+                    });
+                  }}
+                  disabled={reissueMutation.isPending}
+                >
+                  {reissueMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Issuing...
+                    </>
+                  ) : (
+                    'Issue new token'
                   )}
                 </Button>
               </DialogFooter>

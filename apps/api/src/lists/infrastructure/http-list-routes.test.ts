@@ -5,6 +5,8 @@ import {
   TEST_TOKEN,
   TEST_ORG_ID,
   TEST_USER_ID,
+  TEST_SESSION_ID,
+  TEST_SESSION_COOKIE,
 } from '../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { NamedList, Task } from '@yoink/api-contracts';
@@ -353,7 +355,7 @@ describe('PATCH /api/lists/:id', () => {
     const minted = await app.inject({
       method: 'POST',
       url: `/api/organizations/${TEST_ORG_ID}/agents`,
-      headers: auth,
+      cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID },
       payload: { name: 'List renamer' },
     });
     expect(minted.statusCode).toBe(201);

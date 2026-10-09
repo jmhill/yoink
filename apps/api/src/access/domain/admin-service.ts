@@ -4,7 +4,7 @@ import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
-import type { User } from './user.js';
+import { agentEmailFor, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
@@ -30,6 +30,8 @@ export type CreateUserCommand = {
   email: string;
   /** Defaults to member. Owner is reserved for personal orgs. */
   role?: 'admin' | 'member';
+  kind?: PrincipalKind;
+  name?: string;
 };
 
 export type CreateTokenCommand = {
@@ -68,7 +70,7 @@ export type AdminService = {
 };
 
 const toApiTokenView = (token: ApiToken): ApiTokenView => {
-  const { tokenHash: _hash, ...view } = token;
+  const { tokenHash: _hash, revokedAt: _revoked, ...view } = token;
   return view;
 };
 
@@ -136,7 +138,7 @@ export const createAdminService = (
     },
 
     createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {
-      const { organizationId, email, role = 'member' } = command;
+      const { organizationId, email, role = 'member', kind, name } = command;
       const now = clock.now().toISOString();
       const userId = idGenerator.generate();
 
@@ -151,7 +153,9 @@ export const createAdminService = (
 
         const user: User = {
           id: userId,
-          email,
+          email: kind === 'agent' ? agentEmailFor(userId) : email,
+          ...(name !== undefined ? { name } : {}),
+          ...(kind !== undefined ? { kind } : {}),
           createdAt: now,
         };
 
@@ -178,6 +182,8 @@ export const createAdminService = (
 
     createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError> {
       const { organizationId, userId, name } = command;
+      const tokenName = name.trim();
+
       const tokenId = idGenerator.generate();
       const secret = idGenerator.generate(); // Use UUID as secret for sufficient entropy
 
@@ -196,7 +202,7 @@ export const createAdminService = (
           userId,
           organizationId,
           tokenHash,
-          name,
+          name: tokenName,
           createdAt: clock.now().toISOString(),
         };
 
@@ -208,7 +214,7 @@ export const createAdminService = (
     },
 
     revokeToken(id: string) {
-      return tokenStore.delete(id);
+      return tokenStore.revoke(id, clock.now().toISOString());
     },
   };
 };

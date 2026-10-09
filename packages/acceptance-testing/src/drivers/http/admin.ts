@@ -89,11 +89,13 @@ export const createHttpAdmin = (
   async createUser(
     organizationId: string,
     email: string,
-    options?: { role?: 'admin' | 'member' }
+    options?: { role?: 'admin' | 'member'; kind?: 'human' | 'agent'; name?: string }
   ): Promise<User> {
     const response = await client.post(`/api/admin/organizations/${organizationId}/users`, {
       email,
       ...(options?.role !== undefined ? { role: options.role } : {}),
+      ...(options?.kind !== undefined ? { kind: options.kind } : {}),
+      ...(options?.name !== undefined ? { name: options.name } : {}),
     });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();

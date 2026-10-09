@@ -1,5 +1,9 @@
 import type { UserStorageError, UserNotFoundError, UserServiceError } from './user-errors.js';
 import type { OrganizationStorageError, OrganizationNotFoundError, MembershipServiceError } from './organization-errors.js';
+import type {
+  BotCannotManageTokensError,
+  InvalidTokenNameError,
+} from './token-errors.js';
 
 // ============================================================================
 // Storage Errors (auth-specific)
@@ -321,7 +325,9 @@ export type UserTokenServiceError =
   | UserTokenNotFoundError
   | TokenOwnershipError
   | TokenLimitReachedError
-  | TokenStorageError;
+  | TokenStorageError
+  | InvalidTokenNameError
+  | BotCannotManageTokensError;
 
 export const userTokenNotFoundError = (tokenId: string): UserTokenNotFoundError => ({
   type: 'USER_TOKEN_NOT_FOUND',

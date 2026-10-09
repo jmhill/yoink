@@ -186,6 +186,8 @@ export const registerAdminRoutes = async (
           organizationId: params.organizationId,
           email: body.email,
           role: body.role,
+          kind: body.kind,
+          name: body.name,
         });
 
         return result.match(

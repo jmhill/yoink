@@ -151,6 +151,19 @@ describe('createSqliteTokenStore', () => {
         expect(result.value).toBe(true);
       }
     });
+
+    it('returns true when only revoked tokens exist', async () => {
+      const token = createTestToken();
+      await store.save(token);
+      await store.revoke(token.id, '2026-10-09T12:00:00.000Z');
+
+      const result = await store.hasAnyTokens();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
   });
 
   describe('findByUserId', () => {
@@ -272,24 +285,133 @@ describe('createSqliteTokenStore', () => {
     });
   });
 
-  describe('delete', () => {
-    it('removes a token from the database', async () => {
-      const token = createTestToken();
+  describe('revoke', () => {
+    it('soft-deletes a token so lists hide it and findById still resolves the name', async () => {
+      const token = createTestToken({ name: 'Lane' });
       await store.save(token);
 
-      const deleteResult = await store.delete(token.id);
-      expect(deleteResult.isOk()).toBe(true);
+      const revokeResult = await store.revoke(token.id, '2026-10-09T12:00:00.000Z');
+      expect(revokeResult.isOk()).toBe(true);
 
       const findResult = await store.findById(token.id);
-      expect(findResult.isOk()).toBe(true);
-      if (findResult.isOk()) {
-        expect(findResult.value).toBeNull();
-      }
+      expect(findResult._unsafeUnwrap()?.name).toBe('Lane');
+      expect(findResult._unsafeUnwrap()?.revokedAt).toBe('2026-10-09T12:00:00.000Z');
+
+      const listed = await store.findByOrganizationId(TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toEqual([]);
     });
 
-    it('succeeds when deleting non-existent token', async () => {
-      const result = await store.delete('non-existent-id');
+    it('succeeds when revoking a non-existent token', async () => {
+      const result = await store.revoke('non-existent-id', '2026-10-09T12:00:00.000Z');
       expect(result.isOk()).toBe(true);
+    });
+  });
+
+  describe('unique constraint', () => {
+    it('maps a primary-key collision to a storage error', async () => {
+      await store.save(createTestToken({ name: 'Lane' }));
+
+      const result = await store.save(createTestToken({ name: 'Charlie' }));
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('TOKEN_STORAGE_ERROR');
+        expect(result.error.message).toBe('Failed to save token');
+      }
+    });
+  });
+
+  describe('reissue', () => {
+    it('revokes the old token and inserts the new one in one write', async () => {
+      const oldToken = createTestToken({ name: 'Tycho' });
+      await store.save(oldToken);
+
+      const result = await store.reissue({
+        userId: TEST_USER.id,
+        organizationId: TEST_ORG.id,
+        revokedAt: '2026-10-09T12:00:00.000Z',
+        token: createTestToken({
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          name: 'Tycho',
+          tokenHash: 'new-hash',
+          createdAt: '2026-10-09T12:00:00.000Z',
+        }),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect((await store.findById(oldToken.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
+      expect(listed._unsafeUnwrap()[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440099');
+    });
+
+    it('revokes every live token for the user and org', async () => {
+      const first = createTestToken({ name: 'Tycho' });
+      const second = createTestToken({
+        id: '550e8400-e29b-41d4-a716-446655440004',
+        name: 'Tycho-2',
+      });
+      await store.save(first);
+      await store.save(second);
+
+      const result = await store.reissue({
+        userId: TEST_USER.id,
+        organizationId: TEST_ORG.id,
+        revokedAt: '2026-10-09T12:00:00.000Z',
+        token: createTestToken({
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          name: 'Tycho',
+          tokenHash: 'new-hash',
+          createdAt: '2026-10-09T12:00:00.000Z',
+        }),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect((await store.findById(first.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      expect((await store.findById(second.id))._unsafeUnwrap()?.revokedAt).toBe(
+        '2026-10-09T12:00:00.000Z'
+      );
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
+      expect(listed._unsafeUnwrap()[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440099');
+    });
+
+    it('leaves exactly one live token when two reissues run together', async () => {
+      await store.save(createTestToken({ name: 'Tycho' }));
+
+      const [first, second] = await Promise.all([
+        store.reissue({
+          userId: TEST_USER.id,
+          organizationId: TEST_ORG.id,
+          revokedAt: '2026-10-09T12:00:00.000Z',
+          token: createTestToken({
+            id: '550e8400-e29b-41d4-a716-4466554400aa',
+            name: 'Tycho',
+            tokenHash: 'hash-a',
+            createdAt: '2026-10-09T12:00:00.000Z',
+          }),
+        }),
+        store.reissue({
+          userId: TEST_USER.id,
+          organizationId: TEST_ORG.id,
+          revokedAt: '2026-10-09T12:00:01.000Z',
+          token: createTestToken({
+            id: '550e8400-e29b-41d4-a716-4466554400bb',
+            name: 'Tycho',
+            tokenHash: 'hash-b',
+            createdAt: '2026-10-09T12:00:01.000Z',
+          }),
+        }),
+      ]);
+
+      expect(first.isOk()).toBe(true);
+      expect(second.isOk()).toBe(true);
+      const listed = await store.findByUserAndOrganization(TEST_USER.id, TEST_ORG.id);
+      expect(listed._unsafeUnwrap()).toHaveLength(1);
     });
   });
 });

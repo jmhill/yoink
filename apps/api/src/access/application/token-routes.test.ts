@@ -2,9 +2,15 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
+import { ResultAsync } from 'neverthrow';
 import { registerTokenRoutes } from './token-routes.js';
-import { createUserTokenService } from '../domain/user-token-service.js';
+import { createTokenHandlers } from './create-token-handlers.js';
+import {
+  createStoreBackedTokenCreated,
+  createStoreBackedTokenRevoked,
+} from '../infrastructure/store-backed-token-persist.js';
 import { createSessionService } from '../domain/session-service.js';
+import { createTokenService } from '../domain/token-service.js';
 import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
@@ -17,9 +23,12 @@ import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenStore } from '../domain/token-store.js';
+import { tokenStorageError } from '../domain/auth-errors.js';
+import { principalKindOf } from '../domain/user.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
+  createFakePasswordHasher,
 } from '@yoink/infrastructure';
 
 const USER_SESSION_COOKIE = 'user_session';
@@ -28,6 +37,9 @@ describe('token routes', () => {
   let app: FastifyInstance;
   let clock: ReturnType<typeof createFakeClock>;
   let tokenStore: TokenStore;
+  let userStore: ReturnType<typeof createFakeUserStore>;
+  let membershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
+  let passwordHasher: ReturnType<typeof createFakePasswordHasher>;
 
   const testOrg: Organization = {
     id: '550e8400-e29b-41d4-a716-446655440001',
@@ -45,7 +57,7 @@ describe('token routes', () => {
     id: '550e8400-e29b-41d4-a716-446655440010',
     userId: testUser.id,
     organizationId: testOrg.id,
-    role: 'admin',
+    role: 'owner',
     isPersonalOrg: true,
     joinedAt: '2024-01-01T00:00:00.000Z',
   };
@@ -59,22 +71,18 @@ describe('token routes', () => {
     lastActiveAt: '2024-06-15T12:00:00.000Z',
   };
 
-  const passwordHasher = {
-    hash: async (password: string) => `hashed:${password}`,
-    compare: async (password: string, hash: string) => hash === `hashed:${password}`,
-  };
-
   beforeEach(async () => {
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
     const idGenerator = createFakeIdGenerator();
+    passwordHasher = createFakePasswordHasher();
 
     const organizationStore = createFakeOrganizationStore({
       initialOrganizations: [testOrg],
     });
-    const userStore = createFakeUserStore({
+    userStore = createFakeUserStore({
       initialUsers: [testUser],
     });
-    const membershipStore = createFakeOrganizationMembershipStore({
+    membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [testMembership],
     });
     tokenStore = createFakeTokenStore();
@@ -98,14 +106,48 @@ describe('token routes', () => {
       clock,
       idGenerator,
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
-      refreshThresholdMs: 24 * 60 * 60 * 1000,
+      refreshThresholdMs: 24 * 24 * 60 * 60 * 1000,
     });
 
-    const userTokenService = createUserTokenService({
+    const tokenService = createTokenService({
+      organizationStore,
+      userStore,
       tokenStore,
-      clock,
-      idGenerator,
       passwordHasher,
+      clock,
+    });
+
+    const tokenHandlers = createTokenHandlers({
+      listUserOrgTokens: (userId, organizationId) =>
+        tokenStore.findByUserAndOrganization(userId, organizationId),
+      load: (id) => tokenStore.findById(id),
+      loadMembership: (userId, organizationId) =>
+        membershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((membership) => (membership ? { role: membership.role } : null)),
+      loadOwner: (userId) =>
+        userStore
+          .findById(userId)
+          .mapErr((error) => tokenStorageError(error.message, error))
+          .map((user) =>
+            user
+              ? {
+                  userId: user.id,
+                  kind: principalKindOf(user),
+                }
+              : null
+          ),
+      persistCreate: createStoreBackedTokenCreated(tokenStore),
+      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
+      hashSecret: (secret) =>
+        ResultAsync.fromPromise(
+          passwordHasher.hash(secret),
+          (error) => tokenStorageError('Failed to hash token secret', error)
+        ),
+      nextId: () => idGenerator.generate(),
+      nextSecret: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
       maxTokensPerUserPerOrg: 2,
     });
 
@@ -113,17 +155,18 @@ describe('token routes', () => {
     await app.register(cookie);
 
     await registerTokenRoutes(app, {
-      userTokenService,
+      tokenHandlers,
       sessionService,
+      tokenService,
       sessionCookieName: USER_SESSION_COOKIE,
     });
 
     await app.ready();
   });
 
-  const makeAuthenticatedRequest = async (method: string, url: string, body?: object) => {
+  const sessionRequest = async (method: string, url: string, body?: object) => {
     return app.inject({
-      method: method as 'GET' | 'POST' | 'DELETE',
+      method: method as 'GET' | 'POST' | 'PATCH' | 'DELETE',
       url,
       cookies: {
         [USER_SESSION_COOKIE]: testSession.id,
@@ -132,118 +175,194 @@ describe('token routes', () => {
     });
   };
 
+  const bearerRequest = async (method: string, url: string, token: string, body?: object) => {
+    return app.inject({
+      method: method as 'GET' | 'POST' | 'PATCH' | 'DELETE',
+      url,
+      headers: { authorization: `Bearer ${token}` },
+      payload: body,
+    });
+  };
+
   describe('GET /api/auth/tokens', () => {
-    it('returns empty array when user has no tokens', async () => {
-      const response = await makeAuthenticatedRequest('GET', '/api/auth/tokens');
+    it('returns an empty complete page when the user has no tokens', async () => {
+      const response = await sessionRequest('GET', '/api/auth/tokens');
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ tokens: [] });
+      expect(response.json()).toEqual({
+        tokens: [],
+      });
+    });
+
+    it('lists the caller tokens with created and last used', async () => {
+      await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+
+      const response = await sessionRequest('GET', '/api/auth/tokens');
+      const body = response.json();
+
+      expect(response.statusCode).toBe(200);
+      expect(body.tokens[0]).toMatchObject({
+        name: 'Lane',
+        createdAt: '2024-06-15T12:00:00.000Z',
+      });
+      expect(body.tokens[0].lastUsedAt).toBeUndefined();
+    });
+
+    it('lets a bot token list', async () => {
+      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+      const rawToken = created.json().rawToken;
+
+      const response = await bearerRequest('GET', '/api/auth/tokens', rawToken);
+      expect(response.statusCode).toBe(200);
+      expect(response.json().tokens[0].name).toBe('Lane');
     });
 
     it('returns 401 when not authenticated', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/api/auth/tokens',
-      });
-
+      const response = await app.inject({ method: 'GET', url: '/api/auth/tokens' });
       expect(response.statusCode).toBe(401);
     });
   });
 
   describe('POST /api/auth/tokens', () => {
-    it('creates a new token and returns the raw value', async () => {
-      const response = await makeAuthenticatedRequest('POST', '/api/auth/tokens', {
-        name: 'My Extension Token',
-      });
+    it('creates a named token and returns the raw value once', async () => {
+      const response = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
 
       expect(response.statusCode).toBe(201);
       const body = response.json();
-      expect(body.token.name).toBe('My Extension Token');
+      expect(body.token.name).toBe('Lane');
       expect(body.rawToken).toMatch(/^[^:]+:[^:]+$/);
     });
 
-    it('returns 409 when token limit is reached', async () => {
-      // Create 2 tokens (the limit)
-      await makeAuthenticatedRequest('POST', '/api/auth/tokens', { name: 'Token 1' });
-      await makeAuthenticatedRequest('POST', '/api/auth/tokens', { name: 'Token 2' });
+    it('returns 409 when the token limit is reached', async () => {
+      await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+      await sessionRequest('POST', '/api/auth/tokens', { name: 'Charlie' });
 
-      // Try to create a third
-      const response = await makeAuthenticatedRequest('POST', '/api/auth/tokens', {
-        name: 'Token 3',
-      });
-
+      const response = await sessionRequest('POST', '/api/auth/tokens', { name: 'Sid' });
       expect(response.statusCode).toBe(409);
       expect(response.json().message).toContain('at most 2');
     });
 
-    it('returns 400 when name is missing', async () => {
-      const response = await makeAuthenticatedRequest('POST', '/api/auth/tokens', {});
-
+    it('returns 400 when the name is blank', async () => {
+      const response = await sessionRequest('POST', '/api/auth/tokens', { name: '   ' });
       expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 403 when a bot token tries to create', async () => {
+      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+      const rawToken = created.json().rawToken;
+
+      const response = await bearerRequest('POST', '/api/auth/tokens', rawToken, {
+        name: 'Charlie',
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Bot tokens cannot');
     });
 
     it('returns 401 when not authenticated', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/auth/tokens',
-        payload: { name: 'Test Token' },
+        payload: { name: 'Lane' },
       });
-
       expect(response.statusCode).toBe(401);
     });
   });
 
   describe('DELETE /api/auth/tokens/:tokenId', () => {
-    it('deletes a token owned by the user', async () => {
-      // Create a token first
-      const createResponse = await makeAuthenticatedRequest('POST', '/api/auth/tokens', {
-        name: 'Token to delete',
-      });
-      const { token } = createResponse.json();
+    it('revokes a token so the next request is 401', async () => {
+      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+      const { token, rawToken } = created.json();
 
-      // Delete it
-      const response = await makeAuthenticatedRequest('DELETE', `/api/auth/tokens/${token.id}`);
+      const before = await bearerRequest('GET', '/api/auth/tokens', rawToken);
+      expect(before.statusCode).toBe(200);
 
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ success: true });
+      const revoked = await sessionRequest('DELETE', `/api/auth/tokens/${token.id}`);
+      expect(revoked.statusCode).toBe(200);
 
-      // Verify it's gone
-      const listResponse = await makeAuthenticatedRequest('GET', '/api/auth/tokens');
-      expect(listResponse.json().tokens).toEqual([]);
+      const after = await bearerRequest('GET', '/api/auth/tokens', rawToken);
+      expect(after.statusCode).toBe(401);
     });
 
-    it('returns 404 when token does not exist', async () => {
-      const response = await makeAuthenticatedRequest(
-        'DELETE',
-        '/api/auth/tokens/non-existent-id'
-      );
+    it('returns 403 when a bot token tries to revoke', async () => {
+      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
+      const { token, rawToken } = created.json();
 
-      expect(response.statusCode).toBe(404);
-    });
-
-    it('returns 403 when trying to delete another user token', async () => {
-      // Save a token for a different user
-      await tokenStore.save({
-        id: 'other-token',
-        userId: 'other-user-id',
-        organizationId: testOrg.id,
-        tokenHash: 'hash',
-        name: 'Other Token',
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const response = await makeAuthenticatedRequest('DELETE', '/api/auth/tokens/other-token');
-
+      const response = await bearerRequest('DELETE', `/api/auth/tokens/${token.id}`, rawToken);
       expect(response.statusCode).toBe(403);
     });
 
-    it('returns 401 when not authenticated', async () => {
-      const response = await app.inject({
-        method: 'DELETE',
-        url: '/api/auth/tokens/some-id',
+    it('returns 404 when the token does not exist', async () => {
+      const response = await sessionRequest('DELETE', '/api/auth/tokens/missing');
+      expect(response.statusCode).toBe(404);
+    });
+
+    it("returns 403 when an owner deletes an agent's token", async () => {
+      const agent: User = {
+        id: '550e8400-e29b-41d4-a716-446655440088',
+        email: 'agent-tycho@yoink.invalid',
+        name: 'Tycho',
+        kind: 'agent',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const agentTokenId = '550e8400-e29b-41d4-a716-446655440089';
+      await userStore.save(agent);
+      await membershipStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440090',
+        userId: agent.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await tokenStore.save({
+        id: agentTokenId,
+        userId: agent.id,
+        organizationId: testOrg.id,
+        tokenHash: 'agent-hash',
+        name: 'Tycho',
+        createdAt: '2024-01-01T00:00:00.000Z',
       });
 
-      expect(response.statusCode).toBe(401);
+      const response = await sessionRequest('DELETE', `/api/auth/tokens/${agentTokenId}`);
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toBe('You do not own this token');
+    });
+
+    it('returns 404 when the token belongs to another organization', async () => {
+      await tokenStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440066',
+        userId: testUser.id,
+        organizationId: '550e8400-e29b-41d4-a716-446655440099',
+        tokenHash: 'hash',
+        name: 'OtherOrg',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const response = await sessionRequest(
+        'DELETE',
+        '/api/auth/tokens/550e8400-e29b-41d4-a716-446655440066'
+      );
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('existing tokens keep working', () => {
+    it('authenticates a hashed token that was not created through the product route', async () => {
+      const secret = 'legacy-secret';
+      const tokenId = '550e8400-e29b-41d4-a716-446655440077';
+      const tokenHash = await passwordHasher.hash(secret);
+      await tokenStore.save({
+        id: tokenId,
+        userId: testUser.id,
+        organizationId: testOrg.id,
+        tokenHash,
+        name: 'Lane',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const response = await bearerRequest('GET', '/api/auth/tokens', `${tokenId}:${secret}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.json().tokens[0].name).toBe('Lane');
     });
   });
 });

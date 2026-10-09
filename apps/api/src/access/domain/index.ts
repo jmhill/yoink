@@ -24,10 +24,6 @@ export {
 
 // Authentication services
 export { createTokenService, type TokenService } from './token-service.js';
-export {
-  createUserTokenService,
-  type UserTokenService,
-} from './user-token-service.js';
 export { createSessionService, type SessionService } from './session-service.js';
 export { createPasskeyService, type PasskeyService } from './passkey-service.js';
 export { createSignupService, type SignupService } from './signup-service.js';
@@ -48,6 +44,8 @@ export type {
 } from './organization-membership.js';
 export type { Invitation, InvitationRole } from './invitation.js';
 export type { ApiToken } from './api-token.js';
+export type { Actor, UserActor, BotActor } from './actor.js';
+export { actorFromSession, actorFromToken } from './actor.js';
 export type { PasskeyCredential } from './passkey-credential.js';
 export type { UserSession } from './user-session.js';
 
@@ -62,7 +60,6 @@ export type {
   TokenValidationError,
   PasskeyServiceError,
   SessionServiceError,
-  UserTokenServiceError,
 } from './auth-errors.js';
 export type { SignupServiceError } from './signup-service.js';
 export type { AdminServiceError } from './admin-errors.js';

@@ -39,9 +39,19 @@ type ActorCredentials = {
  * HTTP implementation of the Actor interface.
  * All requests are authenticated with the provided token.
  */
+export type HttpActorOptions = {
+  /**
+   * HTTP actors authenticate as bots. Minting is human-session only, so the
+   * HTTP driver provisions agents through admin for tenant-admin actors.
+   * Bot actors omit this and POST /agents, which returns 403.
+   */
+  provisionAgent?: (name: string) => Promise<MintedAgent>;
+};
+
 export const createHttpActor = (
   client: HttpClient,
-  credentials: ActorCredentials
+  credentials: ActorCredentials,
+  options: HttpActorOptions = {}
 ): Actor => {
   const authHeaders = () => ({
     authorization: `Bearer ${credentials.token}`,
@@ -1242,6 +1252,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('goToSettings', 'http');
     },
 
+    async openOrganizationSettings(): Promise<void> {
+      throw new UnsupportedOperationError('openOrganizationSettings', 'http');
+    },
+
+    async issueNewTokenForAgentFromMembers(_memberName: string): Promise<string> {
+      throw new UnsupportedOperationError('issueNewTokenForAgentFromMembers', 'http');
+    },
+
     async logout(): Promise<void> {
       throw new UnsupportedOperationError('logout', 'http');
     },
@@ -1348,6 +1366,10 @@ export const createHttpActor = (
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Permission denied');
+      }
       if (response.statusCode === 400) {
         const error = response.json<{ message?: string }>();
         throw new ValidationError(error.message ?? 'Invalid request');
@@ -1359,6 +1381,28 @@ export const createHttpActor = (
         throw new Error(`Failed to create token: ${response.body}`);
       }
       return response.json<CreateTokenResult>();
+    },
+
+    async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
+      const response = await client.post(
+        `/api/organizations/${credentials.organizationId}/members/${memberUserId}/token`,
+        {},
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Permission denied');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Agent member', memberUserId);
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to reissue agent token: ${response.body}`);
+      }
+      return response.json<{ token: Token; rawToken: string }>();
     },
 
     async revokeToken(tokenId: string): Promise<void> {
@@ -1376,6 +1420,10 @@ export const createHttpActor = (
     },
 
     async mintAgent(name: string): Promise<MintedAgent> {
+      if (options.provisionAgent) {
+        return options.provisionAgent(name);
+      }
+
       const response = await client.post(
         `/api/organizations/${credentials.organizationId}/agents`,
         { name },

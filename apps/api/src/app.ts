@@ -20,7 +20,9 @@ import {
   registerOrganizationRoutes,
   registerTokenRoutes,
   type AuthMiddleware,
+  type ReissueAgentToken,
 } from './access/application/index.js';
+import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
@@ -38,7 +40,6 @@ import type {
   SessionService,
   TokenService,
   UserService,
-  UserTokenService,
   AgentService,
 } from './access/domain/index.js';
 // TODO(8.5.4): store interfaces are not part of the access public API;
@@ -61,8 +62,9 @@ export type SignupConfig = {
   sessionService: SessionService;
   tokenService: TokenService;
   userService: UserService;
-  userTokenService: UserTokenService;
+  tokenHandlers: TokenHandlers;
   agentService: AgentService;
+  reissueAgentToken: ReissueAgentToken;
 };
 
 export type AppDependencies = {
@@ -198,12 +200,13 @@ export const createApp = async (deps: AppDependencies) => {
       membershipService: deps.membershipService,
       userService: deps.signup.userService,
       agentService: deps.signup.agentService,
+      reissueAgentToken: deps.signup.reissueAgentToken,
       authMiddleware: deps.authMiddleware,
     });
 
     // User token self-service routes
     await registerTokenRoutes(app, {
-      userTokenService: deps.signup.userTokenService,
+      tokenHandlers: deps.signup.tokenHandlers,
       sessionService: deps.signup.sessionService,
       tokenService: deps.signup.tokenService,
       sessionCookieName,

@@ -6,6 +6,7 @@ import type { MembershipService } from '../domain/membership-service.js';
 import type { UserService } from '../domain/user-service.js';
 import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
+import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 import { principalKindOf } from '../domain/user.js';
 
 export type OrganizationRoutesDependencies = {
@@ -13,6 +14,7 @@ export type OrganizationRoutesDependencies = {
   membershipService: MembershipService;
   userService: UserService;
   agentService: AgentService;
+  reissueAgentToken: ReissueAgentToken;
   authMiddleware: AuthMiddleware;
 };
 
@@ -20,7 +22,7 @@ export const registerOrganizationRoutes = async (
   app: FastifyInstance,
   deps: OrganizationRoutesDependencies
 ) => {
-  const { sessionService, membershipService, userService, agentService, authMiddleware } = deps;
+  const { sessionService, membershipService, userService, agentService, reissueAgentToken, authMiddleware } = deps;
   const s = initServer();
 
   await app.register(async (orgApp) => {
@@ -303,10 +305,9 @@ export const registerOrganizationRoutes = async (
 
       createAgent: async ({ params, body, request }) => {
         const { organizationId } = params;
-        const actorUserId = request.authContext.userId;
 
         const result = await agentService.mintAgent({
-          actorUserId,
+          actor: request.authContext.actor,
           organizationId,
           name: body.name,
         });
@@ -338,6 +339,18 @@ export const registerOrganizationRoutes = async (
                 body: { message: 'Only owners and admins can mint agents' },
               };
             }
+            if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
+              return {
+                status: 403 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INVALID_TOKEN_NAME') {
+              return {
+                status: 400 as const,
+                body: { message: error.message },
+              };
+            }
             if (error.type === 'ORGANIZATION_NOT_FOUND') {
               return {
                 status: 404 as const,
@@ -348,6 +361,58 @@ export const registerOrganizationRoutes = async (
             return {
               status: 500 as const,
               body: { message: 'Failed to mint agent' },
+            };
+          }
+        );
+      },
+
+      reissueAgentToken: async ({ params, request }) => {
+        const result = await reissueAgentToken({
+          actor: request.authContext.actor,
+          organizationId: params.organizationId,
+          memberUserId: params.userId,
+        });
+
+        return result.match(
+          ({ token, rawToken }) => ({
+            status: 201 as const,
+            body: { token, rawToken },
+          }),
+          (error) => {
+            if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
+              return {
+                status: 403 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INVALID_TOKEN_NAME') {
+              return {
+                status: 400 as const,
+                body: { message: error.message },
+              };
+            }
+            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
+              return {
+                status: 403 as const,
+                body: { message: 'Only the owner can issue a new agent token' },
+              };
+            }
+            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
+              if (error.userId === request.authContext.actor.userId) {
+                return {
+                  status: 403 as const,
+                  body: { message: 'Not a member of this organization' },
+                };
+              }
+              return {
+                status: 404 as const,
+                body: { message: 'Agent member not found' },
+              };
+            }
+            request.log.error({ error }, 'Failed to reissue agent token');
+            return {
+              status: 500 as const,
+              body: { message: 'Failed to reissue agent token' },
             };
           }
         );

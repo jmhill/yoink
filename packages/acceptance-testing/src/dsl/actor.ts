@@ -96,16 +96,22 @@ export type CoreActor = {
 
   /**
    * Create a new API token for this user in the current organization.
-   * Returns the token info and the raw token value (shown only once).
+   * Human-session only. Bot tokens receive 403.
    * @throws TokenLimitReachedError if user has reached the max tokens (2 per org)
+   * @throws ForbiddenError if a bot token tries to create
    */
   createToken(name: string): Promise<CreateTokenResult>;
+
+  /**
+   * Issue a new token for an existing agent member. Owner only.
+   */
+  reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }>;
 
   /**
    * Revoke (delete) an API token by ID.
    * Only the token owner can revoke their own tokens.
    * @throws NotFoundError if token does not exist
-   * @throws ForbiddenError if user does not own the token
+   * @throws ForbiddenError if user does not own the token, or a bot token tries
    */
   revokeToken(tokenId: string): Promise<void>;
 
@@ -147,6 +153,17 @@ export type BrowserActorOperations = {
    * Navigate to the settings page.
    */
   goToSettings(): Promise<void>;
+
+  /**
+   * Open the Organization tab on Settings.
+   */
+  openOrganizationSettings(): Promise<void>;
+
+  /**
+   * Issue a new token for an agent member through the Members list.
+   * Returns the raw token shown once in the dialog.
+   */
+  issueNewTokenForAgentFromMembers(memberName: string): Promise<string>;
 
   /**
    * Switch to a different organization.

@@ -12,5 +12,6 @@ export { registerSignupRoutes } from './signup-routes.js';
 export { registerPasskeyRoutes } from './passkey-routes.js';
 export { registerTokenRoutes } from './token-routes.js';
 export { registerOrganizationRoutes } from './organization-routes.js';
+export type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 export { registerInvitationRoutes } from './invitation-routes.js';
 export { registerAdminRoutes } from './admin-routes.js';

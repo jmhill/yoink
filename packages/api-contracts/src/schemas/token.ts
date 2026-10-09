@@ -45,3 +45,10 @@ export const DeleteUserTokenResponseSchema = z.object({
 });
 
 export type DeleteUserTokenResponse = z.infer<typeof DeleteUserTokenResponseSchema>;
+
+export const ReissueAgentTokenResponseSchema = z.object({
+  token: TokenInfoSchema,
+  rawToken: z.string(),
+});
+
+export type ReissueAgentTokenResponse = z.infer<typeof ReissueAgentTokenResponseSchema>;

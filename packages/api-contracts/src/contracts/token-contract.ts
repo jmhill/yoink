@@ -48,6 +48,7 @@ export const tokenContract = c.router({
       201: CreateUserTokenResponseSchema,
       400: ErrorSchema, // Invalid request
       401: ErrorSchema,
+      403: ErrorSchema, // Bot tokens cannot create tokens
       409: ErrorSchema, // Token limit reached (max 2 per user per org)
       500: ErrorSchema,
     },

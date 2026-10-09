@@ -1,7 +1,38 @@
 export type PrincipalKind = 'human' | 'agent';
 
+export type UserActor = {
+  readonly kind: 'user';
+  readonly userId: string;
+};
+
+export type BotActor = {
+  readonly kind: 'bot';
+  readonly tokenId: string;
+  readonly userId: string;
+  readonly name: string;
+};
+
+export type Actor = UserActor | BotActor;
+
+export const actorFromSession = (userId: string): UserActor => ({
+  kind: 'user',
+  userId,
+});
+
+export const actorFromToken = (token: {
+  id: string;
+  userId: string;
+  name: string;
+}): BotActor => ({
+  kind: 'bot',
+  tokenId: token.id,
+  userId: token.userId,
+  name: token.name,
+});
+
 export type AuthContext = {
   organizationId: string;
   userId: string;
   principalKind: PrincipalKind;
+  actor: Actor;
 };

@@ -2400,6 +2400,17 @@ export const createPlaywrightActor = (
       await inboxPage.goToSettings();
     },
 
+    async openOrganizationSettings(): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+    },
+
+    async issueNewTokenForAgentFromMembers(memberName: string): Promise<string> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+      return settingsPage.issueNewTokenForAgent(memberName);
+    },
+
     async logout(): Promise<void> {
       await settingsPage.goto();
       await settingsPage.logout();
@@ -2588,6 +2599,10 @@ export const createPlaywrightActor = (
       if (response.status() === 401) {
         throw new UnauthorizedError();
       }
+      if (response.status() === 403) {
+        const body = await response.json();
+        throw new ForbiddenError(body.message || 'Permission denied');
+      }
       if (response.status() === 400) {
         const body = await response.json();
         throw new ValidationError(body.message || 'Invalid request');
@@ -2597,6 +2612,34 @@ export const createPlaywrightActor = (
       }
       if (response.status() !== 201) {
         throw new Error(`Failed to create token: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.post(
+        `/api/organizations/${orgId}/members/${memberUserId}/token`
+      );
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        const body = await response.json();
+        throw new ForbiddenError(body.message || 'Permission denied');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Agent member', memberUserId);
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to reissue agent token: ${response.status()}`);
       }
       return response.json();
     },

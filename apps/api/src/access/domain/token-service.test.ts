@@ -209,6 +209,17 @@ describe('TokenService', () => {
     }
   });
 
+  it('rejects a revoked token after comparing the secret', async () => {
+    await tokenStore.revoke(testToken.id, '2026-10-09T12:00:00.000Z');
+
+    const result = await tokenService.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_NOT_FOUND');
+    }
+  });
+
   it('does not update lastUsedAt on failed validation', async () => {
     await tokenService.validateToken({
       plaintext: `${testToken.id}:wrong-secret`,

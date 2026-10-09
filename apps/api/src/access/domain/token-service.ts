@@ -96,6 +96,10 @@ export const createTokenService = (
             return errAsync(invalidSecretError(parsed.tokenId));
           }
 
+          if (token.revokedAt) {
+            return errAsync(tokenNotFoundError(parsed.tokenId));
+          }
+
           // Use token.organizationId to determine the org context
           // Tokens are now scoped to organizations, so we use the token's org, not the user's
           return organizationStore.findById(token.organizationId).andThen((organization) => {

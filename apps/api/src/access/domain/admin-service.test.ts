@@ -133,6 +133,25 @@ describe('AdminService', () => {
       expect(membership.isOk() && membership.value?.role).toBe('member');
     });
 
+    it('creates an agent member with a reserved email', async () => {
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+
+      const result = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'unused@example.com',
+        kind: 'agent',
+        name: 'Vault bot',
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      expect(result.value.kind).toBe('agent');
+      expect(result.value.name).toBe('Vault bot');
+      expect(result.value.email).toMatch(/^agent-.+@yoink\.invalid$/);
+    });
+
     it('creates an admin when role is admin', async () => {
       const orgResult = await service.createOrganization('Test Org');
       expect(orgResult.isOk()).toBe(true);
@@ -353,6 +372,18 @@ describe('AdminService', () => {
       if (result.isOk()) {
         expect(result.value).toHaveLength(1);
         expect(result.value[0].name).toBe('device-1');
+      }
+    });
+
+    it('trims a supplied name', async () => {
+      const trimmed = await service.createToken({
+        organizationId: testOrg.id,
+        userId: testUser.id,
+        name: '  Lane  ',
+      });
+      expect(trimmed.isOk()).toBe(true);
+      if (trimmed.isOk()) {
+        expect(trimmed.value.token.name).toBe('Lane');
       }
     });
 

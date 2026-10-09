@@ -555,6 +555,56 @@ export class SettingsPage {
     await this.page.waitForURL('/');
   }
 
+  async openOrganizationTab(): Promise<void> {
+    await this.page.getByRole('tab', { name: 'Organization' }).click();
+    await this.page.getByText('Current Organization').waitFor({ state: 'visible' });
+  }
+
+  tokenRow(name: string) {
+    return this.page.locator(`[data-token-row="${name}"]`);
+  }
+
+  async createNamedToken(name: string): Promise<string> {
+    await this.page.getByRole('button', { name: 'Create Token' }).click();
+    await this.page.getByLabel('Token Name').fill(name);
+    await this.page.getByRole('button', { name: 'Create Token' }).click();
+    await this.page.getByRole('heading', { name: 'Token Created' }).waitFor({ state: 'visible' });
+    const rawToken = (await this.page.locator('.font-mono').last().textContent()) ?? '';
+    await this.page.getByRole('button', { name: 'Done' }).click();
+    await this.page.getByRole('heading', { name: 'Token Created' }).waitFor({ state: 'hidden' });
+    return rawToken;
+  }
+
+  async shouldSeeToken(name: string): Promise<void> {
+    const row = this.tokenRow(name);
+    await row.waitFor({ state: 'visible' });
+    await expect(row).toContainText('Created');
+    await expect(row).toContainText('Last used');
+  }
+
+  memberRow(name: string) {
+    return this.page.locator(`[data-member-row="${name}"]`);
+  }
+
+  async issueNewTokenForAgent(name: string): Promise<string> {
+    const row = this.memberRow(name);
+    await row.waitFor({ state: 'visible' });
+    await row.getByRole('button', { name: 'Issue new token' }).click();
+    await this.page.getByRole('button', { name: 'Issue new token' }).click();
+    await this.page.getByRole('heading', { name: 'New agent token' }).waitFor({ state: 'visible' });
+    const rawToken = (await this.page.locator('.font-mono').last().textContent()) ?? '';
+    await this.page.getByRole('button', { name: 'Done' }).click();
+    await this.page.getByRole('heading', { name: 'New agent token' }).waitFor({ state: 'hidden' });
+    return rawToken;
+  }
+
+  async revokeNamedToken(name: string): Promise<void> {
+    const row = this.tokenRow(name);
+    await row.getByRole('button', { name: `Revoke ${name}` }).click();
+    await this.page.getByRole('button', { name: 'Revoke Token' }).click();
+    await this.tokenRow(name).waitFor({ state: 'hidden' });
+  }
+
   /**
    * Click the "Add Passkey" button in the Security section.
    */

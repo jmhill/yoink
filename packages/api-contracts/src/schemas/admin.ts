@@ -39,7 +39,7 @@ export const ApiTokenSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
-// Creating a token requires userId in the body (org comes from URL)
+// Creating a token requires userId in the body (org comes from URL).
 export const CreateTokenSchema = z.object({
   userId: z.string().uuid(),
   name: z.string().min(1).max(100),
@@ -59,6 +59,8 @@ export type CreateTokenResponse = z.infer<typeof CreateTokenResponseSchema>;
 export const CreateUserSchema = z.object({
   email: z.string().email(),
   role: z.enum(['admin', 'member']).default('member'),
+  kind: z.enum(['human', 'agent']).optional(),
+  name: z.string().min(1).max(100).optional(),
 });
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 

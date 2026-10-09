@@ -129,6 +129,19 @@ describe('createFakeTokenStore', () => {
       }
     });
 
+    it('returns true when only revoked tokens exist', async () => {
+      const store = createFakeTokenStore({
+        initialTokens: [createTestToken({ revokedAt: '2026-10-09T12:00:00.000Z' })],
+      });
+
+      const result = await store.hasAnyTokens();
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe(true);
+      }
+    });
+
     it('returns error when configured to fail', async () => {
       const store = createFakeTokenStore({ shouldFailOnFind: true });
 

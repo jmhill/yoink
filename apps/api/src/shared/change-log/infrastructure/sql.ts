@@ -31,8 +31,17 @@ const existsClause = (
  * Insert a history row only when the subject still exists, so two concurrent
  * deletes cannot both log.
  */
-export const insertChangeLogQuery = (record: ChangeLogRecord): SqlQuery => {
+export const insertChangeLogQuery = (
+  record: ChangeLogRecord,
+  requireTask?: { id: string; organizationId: string }
+): SqlQuery => {
   const exists = existsClause(record);
+  const alsoExists = requireTask
+    ? {
+        sql: ` AND EXISTS (SELECT 1 FROM tasks WHERE id = ? AND organization_id = ? AND deleted_at IS NULL)`,
+        args: [requireTask.id, requireTask.organizationId],
+      }
+    : { sql: '', args: [] as unknown[] };
   return {
     sql: `
       INSERT INTO change_log (
@@ -41,7 +50,7 @@ export const insertChangeLogQuery = (record: ChangeLogRecord): SqlQuery => {
         occurred_at, hidden
       )
       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      WHERE EXISTS (${exists.sql})
+      WHERE EXISTS (${exists.sql})${alsoExists.sql}
     `,
     args: [
       record.id,
@@ -57,6 +66,7 @@ export const insertChangeLogQuery = (record: ChangeLogRecord): SqlQuery => {
       record.occurredAt,
       record.hidden ? 1 : 0,
       ...exists.args,
+      ...alsoExists.args,
     ],
   };
 };

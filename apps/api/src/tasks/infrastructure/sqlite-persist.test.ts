@@ -5,24 +5,64 @@ import { createSqliteTaskPersist } from './store-backed-persist.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTaskStore } from './sqlite-task-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
-import type { TaskChangeLogIds } from '../domain/change-log-records.js';
+import type {
+  TaskChangeLogIds,
+  TaskUncompletedChangeLogIds,
+} from '../domain/change-log-records.js';
+import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
 import type { Task } from '@yoink/api-contracts';
-import type { TaskEvent } from '../domain/events.js';
+import type { TaskCreated, TaskEvent, TaskUncompleted } from '../domain/events.js';
 
 const now = '2025-01-15T10:00:00.000Z';
 const later = '2025-01-15T11:00:00.000Z';
 
-const persistEvent = (
-  persist: ReturnType<typeof createSqliteTaskPersist>,
+type Persist = ReturnType<typeof createSqliteTaskPersist>;
+
+function persistEvent(
+  persist: Persist,
+  event: TaskCreated,
+  current: null,
+  ids?: TaskChangeLogIds
+): ReturnType<Persist>;
+function persistEvent(
+  persist: Persist,
+  event: TaskUncompleted,
+  current: Task,
+  ids: TaskUncompletedChangeLogIds
+): ReturnType<Persist>;
+function persistEvent(
+  persist: Persist,
+  event: Exclude<TaskEvent, TaskCreated | TaskUncompleted>,
+  current: Task | null,
+  ids?: TaskChangeLogIds
+): ReturnType<Persist>;
+function persistEvent(
+  persist: Persist,
   event: TaskEvent,
   current: Task | null,
-  ids: TaskChangeLogIds = { recordId: 'log-1', renumberRecordId: 'log-2' }
-) =>
-  persist(
-    event.type === 'TaskCreated'
-      ? planTaskChange({ event, current: null, actor: null, ids })
-      : planTaskChange({ event, current: current as Task, actor: null, ids })
-  );
+  ids: TaskChangeLogIds | TaskUncompletedChangeLogIds = { recordId: 'log-1' }
+) {
+  if (event.type === 'TaskCreated') {
+    return persist(planTaskChange({ event, current: null, actor: null, ids }));
+  }
+  if (event.type === 'TaskUncompleted') {
+    if (current === null || !('renumberRecordId' in ids)) {
+      throw new Error('TaskUncompleted requires current and renumberRecordId');
+    }
+    return persist(
+      planTaskChange({
+        event,
+        current,
+        actor: null,
+        ids: { recordId: ids.recordId, renumberRecordId: ids.renumberRecordId },
+      })
+    );
+  }
+  if (current === null) {
+    throw new Error(`${event.type} requires current`);
+  }
+  return persist(planTaskChange({ event, current, actor: null, ids }));
+}
 
 describe('sqlite task persist', () => {
   let db: Database;
@@ -76,7 +116,7 @@ describe('sqlite task persist', () => {
       organizationId: 'org-1',
       title: 'Should not stick',
       occurredAt: later,
-    }, current, { recordId: 'log-2', renumberRecordId: 'log-3' });
+    }, current, { recordId: 'log-2' });
     expect(updated.isErr()).toBe(true);
 
     const row = await db.execute({
@@ -284,6 +324,9 @@ describe('sqlite task persist', () => {
     });
 
     done = (await store.findById('task-done'))._unsafeUnwrap();
+    if (!done) {
+      throw new Error('expected task-done');
+    }
     const uncompleted = await persistEvent(persist, {
       type: 'TaskUncompleted',
       id: 'task-done',
@@ -343,5 +386,119 @@ describe('sqlite task persist', () => {
     const log = createSqliteChangeLogStore(db);
     const records = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();
     expect(records.filter((record) => record.kind === 'TaskDeleted')).toHaveLength(1);
+  });
+
+  it('returns NOT_FOUND and does not renumber siblings when the uncompleted task is gone', async () => {
+    const persist = createSqliteTaskPersist({ db });
+    await persistEvent(persist, {
+      type: 'TaskCreated',
+      id: 'task-open',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      title: 'Eggs',
+      openOrder: 0,
+      createdAt: now,
+      occurredAt: now,
+    }, null);
+    await persistEvent(persist, {
+      type: 'TaskCreated',
+      id: 'task-done',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      title: 'Milk',
+      openOrder: 1,
+      createdAt: now,
+      occurredAt: now,
+    }, null, { recordId: 'log-c2' });
+
+    const store = await createSqliteTaskStore(db);
+    let done = (await store.findById('task-done'))._unsafeUnwrap();
+    expect(done).not.toBeNull();
+    await persistEvent(persist, {
+      type: 'TaskCompleted',
+      id: 'task-done',
+      organizationId: 'org-1',
+      completedAt: later,
+      occurredAt: later,
+    }, done, { recordId: 'log-done' });
+
+    done = (await store.findById('task-done'))._unsafeUnwrap();
+    if (!done) {
+      throw new Error('expected task-done');
+    }
+    await persistEvent(persist, {
+      type: 'TaskDeleted',
+      id: 'task-done',
+      organizationId: 'org-1',
+      deletedAt: '2025-01-15T12:00:00.000Z',
+      occurredAt: '2025-01-15T12:00:00.000Z',
+    }, done, { recordId: 'log-del' });
+
+    const uncompleted = await persistEvent(persist, {
+      type: 'TaskUncompleted',
+      id: 'task-done',
+      organizationId: 'org-1',
+      openOrder: 1,
+      siblingOrders: [{ id: 'task-open', openOrder: 99 }],
+      occurredAt: '2025-01-15T13:00:00.000Z',
+    }, done, { recordId: 'log-unc', renumberRecordId: 'log-ren' });
+
+    expect(uncompleted.isErr() && uncompleted.error.type === 'TASK_NOT_FOUND').toBe(true);
+
+    const sibling = (await store.findById('task-open'))._unsafeUnwrap();
+    expect(sibling?.openOrder).toBe(0);
+
+    const log = createSqliteChangeLogStore(db);
+    const taskRecords = (await log.findBySubject('task', 'task-done'))._unsafeUnwrap();
+    expect(taskRecords.map((record) => record.kind)).toEqual([
+      'TaskCreated',
+      'TaskCompleted',
+      'TaskDeleted',
+    ]);
+    const listRecords = (
+      await log.findBySubject('list', UNLISTED_PILE_SUBJECT_ID)
+    )._unsafeUnwrap();
+    expect(listRecords.filter((record) => record.kind === 'OpenTasksRenumbered')).toHaveLength(0);
+  });
+
+  it('returns NOT_FOUND and writes no TaskUpdated when the row is gone', async () => {
+    const persist = createSqliteTaskPersist({ db });
+    await persistEvent(persist, {
+      type: 'TaskCreated',
+      id: 'task-1',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      title: 'Buy milk',
+      openOrder: 0,
+      createdAt: now,
+      occurredAt: now,
+    }, null);
+
+    const store = await createSqliteTaskStore(db);
+    const current = (await store.findById('task-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+
+    await persistEvent(persist, {
+      type: 'TaskDeleted',
+      id: 'task-1',
+      organizationId: 'org-1',
+      deletedAt: later,
+      occurredAt: later,
+    }, current, { recordId: 'log-del' });
+
+    const updated = await persistEvent(persist, {
+      type: 'TaskUpdated',
+      id: 'task-1',
+      organizationId: 'org-1',
+      title: 'Should not stick',
+      occurredAt: '2025-01-15T12:00:00.000Z',
+    }, current, { recordId: 'log-upd' });
+
+    expect(updated.isErr() && updated.error.type === 'TASK_NOT_FOUND').toBe(true);
+    expect((await store.findById('task-1'))._unsafeUnwrap()).toBeNull();
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();
+    expect(records.filter((record) => record.kind === 'TaskUpdated')).toHaveLength(0);
   });
 });

@@ -21,7 +21,7 @@ export type ListTaskSql = {
 };
 
 const queriesForPlan = (plan: ListChangePlan, taskSql: ListTaskSql): SqlQuery[] => {
-  const history = plan.records.map(insertChangeLogQuery);
+  const history = plan.records.map((record) => insertChangeLogQuery(record));
 
   switch (plan.action) {
     case 'insert':

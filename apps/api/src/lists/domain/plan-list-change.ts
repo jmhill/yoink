@@ -90,6 +90,11 @@ export function planListChange(input: ListChangePlanInput): ListChangePlan {
     ids: input.ids,
   });
 
+  const isRename = (
+    value: ListChangePlanInput
+  ): value is Extract<ListChangePlanInput, { event: NamedListRenamed }> =>
+    value.event.type === 'NamedListRenamed';
+
   if (input.event.type === 'NamedListCreated') {
     return {
       action: 'insert',
@@ -98,14 +103,13 @@ export function planListChange(input: ListChangePlanInput): ListChangePlan {
       records,
     };
   }
-  if (input.event.type === 'NamedListRenamed') {
-    const current = input.current as NamedList;
+  if (isRename(input)) {
     return {
       action: 'rename',
       organizationId: input.event.organizationId,
       listId: input.event.id,
       name: input.event.name,
-      view: applyNamedListRenamed(current, input.event),
+      view: applyNamedListRenamed(input.current, input.event),
       records,
     };
   }

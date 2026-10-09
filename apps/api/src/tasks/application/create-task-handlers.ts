@@ -18,7 +18,7 @@ import {
   withCommandLog,
   type CommandLogger,
 } from '../../shared/change-log/application/command-log.js';
-import { eventKindsOf } from './event-kinds.js';
+import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 
 export type TaskHandlerDeps = HandleCreateTaskDeps &
   HandleUpdateTaskDeps &
@@ -30,6 +30,8 @@ export type TaskHandlerDeps = HandleCreateTaskDeps &
   HandleDeleteTaskDeps & {
     logger: CommandLogger;
   };
+
+const eventKindsOf = (result: { eventKinds: ChangeLogKind[] }) => result.eventKinds;
 
 export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
   create: (command: Parameters<typeof handleCreateTask>[0]) =>

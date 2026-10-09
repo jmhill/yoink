@@ -32,9 +32,9 @@ const persistOf = (
 
 const persistEvent = (
   persist: ReturnType<typeof createStoreBackedPersist>,
-  event: TaskEvent,
+  event: Exclude<TaskEvent, { type: 'TaskUncompleted' }>,
   currentTask: Task | null,
-  ids: TaskChangeLogIds = { recordId: 'log-1', renumberRecordId: 'log-2' }
+  ids: TaskChangeLogIds = { recordId: 'log-1' }
 ) =>
   persist(
     event.type === 'TaskCreated'

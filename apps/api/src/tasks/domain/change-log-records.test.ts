@@ -31,7 +31,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       },
       current: null,
       actor: null,
-      ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
+      ids: { recordId: 'log-1' },
     });
 
     expect(records).toHaveLength(1);

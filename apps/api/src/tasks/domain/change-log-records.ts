@@ -23,15 +23,32 @@ import type { TaskEvent } from './events.js';
 
 export type TaskChangeLogIds = {
   recordId: string;
-  renumberRecordId?: string;
 };
 
-export type ChangeLogRecordsFromTaskEventInput = {
-  event: TaskEvent;
-  current: Task | null;
-  actor: Actor | null;
-  ids: TaskChangeLogIds;
+export type TaskUncompletedChangeLogIds = {
+  recordId: string;
+  renumberRecordId: string;
 };
+
+export type UncompleteChangeLogRecordsInput = {
+  event: Extract<TaskEvent, { type: 'TaskUncompleted' }>;
+  current: Task;
+  actor: Actor | null;
+  ids: TaskUncompletedChangeLogIds;
+};
+
+export type ChangeLogRecordsFromTaskEventInput =
+  | UncompleteChangeLogRecordsInput
+  | {
+      event: Exclude<TaskEvent, { type: 'TaskUncompleted' }>;
+      current: Task | null;
+      actor: Actor | null;
+      ids: TaskChangeLogIds;
+    };
+
+const isUncomplete = (
+  value: ChangeLogRecordsFromTaskEventInput
+): value is UncompleteChangeLogRecordsInput => value.event.type === 'TaskUncompleted';
 
 const actorFields = (actor: Actor | null) => ({
   actorUserId: actor?.userId ?? null,
@@ -100,6 +117,48 @@ const taskPayloadByType = {
   [K in TaskEvent['type']]: (event: Extract<TaskEvent, { type: K }>) => unknown;
 };
 
+const recordsForUncomplete = (
+  input: UncompleteChangeLogRecordsInput
+): ChangeLogRecord[] => {
+  const { event, current } = input;
+  const subject = {
+    subjectType: 'task' as const,
+    subjectId: event.id,
+    organizationId: event.organizationId,
+  };
+  const records: ChangeLogRecord[] = [
+    {
+      ...envelope(input, subject, event.occurredAt, input.ids.recordId),
+      kind: 'TaskUncompleted',
+      hidden: hiddenFor('TaskUncompleted'),
+      payload: taskPayloadByType.TaskUncompleted(event),
+    },
+  ];
+  if (event.siblingOrders.length > 0) {
+    const listId = current.listId ?? null;
+    const renumberPayload: OpenTasksRenumberedPayloadV1 = {
+      listId,
+      orders: event.siblingOrders,
+    };
+    records.push({
+      ...envelope(
+        input,
+        {
+          subjectType: 'list',
+          subjectId: listId ?? UNLISTED_PILE_SUBJECT_ID,
+          organizationId: event.organizationId,
+        },
+        event.occurredAt,
+        input.ids.renumberRecordId
+      ),
+      kind: 'OpenTasksRenumbered',
+      hidden: hiddenFor('OpenTasksRenumbered'),
+      payload: renumberPayload,
+    });
+  }
+  return records;
+};
+
 /**
  * Typed, versioned change-log records built from the domain event.
  * Ids are data — the caller pre-generates them by name.
@@ -107,7 +166,11 @@ const taskPayloadByType = {
 export const changeLogRecordsFromTaskEvent = (
   input: ChangeLogRecordsFromTaskEventInput
 ): ChangeLogRecord[] => {
-  const { event, current } = input;
+  if (isUncomplete(input)) {
+    return recordsForUncomplete(input);
+  }
+
+  const { event } = input;
   const subject = {
     subjectType: 'task' as const,
     subjectId: event.id,
@@ -142,40 +205,6 @@ export const changeLogRecordsFromTaskEvent = (
           payload: taskPayloadByType.TaskCompleted(event),
         },
       ];
-    case 'TaskUncompleted': {
-      const records: ChangeLogRecord[] = [
-        {
-          ...envelope(input, subject, event.occurredAt, input.ids.recordId),
-          kind: 'TaskUncompleted',
-          hidden: hiddenFor('TaskUncompleted'),
-          payload: taskPayloadByType.TaskUncompleted(event),
-        },
-      ];
-      const { renumberRecordId } = input.ids;
-      if (event.siblingOrders.length > 0 && renumberRecordId !== undefined) {
-        const listId = current?.listId ?? null;
-        const renumberPayload: OpenTasksRenumberedPayloadV1 = {
-          listId,
-          orders: event.siblingOrders,
-        };
-        records.push({
-          ...envelope(
-            input,
-            {
-              subjectType: 'list',
-              subjectId: listId ?? UNLISTED_PILE_SUBJECT_ID,
-              organizationId: event.organizationId,
-            },
-            event.occurredAt,
-            renumberRecordId
-          ),
-          kind: 'OpenTasksRenumbered',
-          hidden: hiddenFor('OpenTasksRenumbered'),
-          payload: renumberPayload,
-        });
-      }
-      return records;
-    }
     case 'TaskDeleted':
       return [
         {

@@ -15,8 +15,18 @@ import {
   updateTaskQuery,
 } from './task-row-statements.js';
 
+const historyQueries = (plan: TaskChangePlan) =>
+  plan.action === 'uncomplete'
+    ? plan.records.map((record) =>
+        insertChangeLogQuery(record, {
+          id: plan.view.id,
+          organizationId: plan.organizationId,
+        })
+      )
+    : plan.records.map((record) => insertChangeLogQuery(record));
+
 const queriesForPlan = (plan: TaskChangePlan) => {
-  const history = plan.records.map(insertChangeLogQuery);
+  const history = historyQueries(plan);
 
   switch (plan.action) {
     case 'insert':
@@ -26,7 +36,11 @@ const queriesForPlan = (plan: TaskChangePlan) => {
     case 'uncomplete':
       return [
         updateTaskQuery(plan.view),
-        ...setOpenOrderQueries(plan.organizationId, plan.siblingOrders),
+        ...setOpenOrderQueries(
+          plan.organizationId,
+          plan.siblingOrders,
+          plan.view.id
+        ),
         ...history,
       ];
     case 'delete': {

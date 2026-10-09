@@ -1,8 +1,41 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { listContract } from '@yoink/api-contracts';
+import { listContract, resolveListLimit, type NamedList, type Task } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { ListHandlers } from '../application/create-list-handlers.js';
+import { pageListedItems } from '../../shared/page-listed-items.js';
+
+const toNamedListPage = (
+  lists: NamedList[],
+  query: { limit?: number; cursor?: string }
+) => {
+  const page = pageListedItems(lists, {
+    limit: resolveListLimit(query.limit, 'pile'),
+    cursor: query.cursor,
+  });
+  return {
+    lists: page.items,
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+    total: page.total,
+  };
+};
+
+const toTaskListPage = (
+  tasks: Task[],
+  query: { limit?: number; cursor?: string }
+) => {
+  const page = pageListedItems(tasks, {
+    limit: resolveListLimit(query.limit, 'pile'),
+    cursor: query.cursor,
+  });
+  return {
+    tasks: page.items,
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+    total: page.total,
+  };
+};
 
 export type ListRoutesDependencies = {
   listHandlers: ListHandlers;
@@ -20,7 +53,7 @@ export const registerListRoutes = async (
     authedApp.addHook('preHandler', authMiddleware);
 
     const listRouter = s.router(listContract, {
-      list: async ({ request }) => {
+      list: async ({ query, request }) => {
         const result = await listHandlers.list({
           organizationId: request.authContext.organizationId,
         });
@@ -28,7 +61,7 @@ export const registerListRoutes = async (
         return result.match(
           (lists) => ({
             status: 200 as const,
-            body: { lists },
+            body: toNamedListPage(lists, query),
           }),
           (error) => {
             switch (error.type) {
@@ -118,7 +151,7 @@ export const registerListRoutes = async (
         );
       },
 
-      listOpenTasks: async ({ params, request }) => {
+      listOpenTasks: async ({ params, query, request }) => {
         const result = await listHandlers.listOpenTasks({
           listId: params.id,
           organizationId: request.authContext.organizationId,
@@ -127,7 +160,7 @@ export const registerListRoutes = async (
         return result.match(
           (tasks) => ({
             status: 200 as const,
-            body: { tasks },
+            body: toTaskListPage(tasks, query),
           }),
           (error) => {
             switch (error.type) {
@@ -187,7 +220,7 @@ export const registerListRoutes = async (
         );
       },
 
-      listUnlistedOpenTasks: async ({ request }) => {
+      listUnlistedOpenTasks: async ({ query, request }) => {
         const result = await listHandlers.listUnlistedOpenTasks({
           organizationId: request.authContext.organizationId,
         });
@@ -195,7 +228,7 @@ export const registerListRoutes = async (
         return result.match(
           (tasks) => ({
             status: 200 as const,
-            body: { tasks },
+            body: toTaskListPage(tasks, query),
           }),
           (error) => {
             switch (error.type) {

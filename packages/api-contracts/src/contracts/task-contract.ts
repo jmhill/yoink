@@ -1,6 +1,7 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { TaskSchema, CreateTaskSchema, UpdateTaskSchema, TaskFilterSchema } from '../schemas/task.js';
+import { ListPageQuerySchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -23,16 +24,11 @@ export const taskContract = c.router({
   list: {
     method: 'GET',
     path: '/api/tasks',
-    query: z.object({
+    query: ListPageQuerySchema.extend({
       filter: TaskFilterSchema.optional(), // today, upcoming, all, completed, mine
-      limit: z.coerce.number().min(1).max(100).default(50),
-      cursor: z.string().uuid().optional(),
     }),
     responses: {
-      200: z.object({
-        tasks: z.array(TaskSchema),
-        nextCursor: z.string().uuid().optional(),
-      }),
+      200: TaskListPageSchema,
       401: ErrorSchema,
       500: ErrorSchema,
     },

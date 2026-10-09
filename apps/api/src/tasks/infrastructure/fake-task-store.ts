@@ -7,6 +7,7 @@ import type {
 } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
 import { compareOpenOrder, nextOpenOrder } from '../domain/open-order.js';
+import { pageListedItems } from '../../shared/page-listed-items.js';
 
 export type FakeTaskStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -89,12 +90,13 @@ export const createFakeTaskStore = (
           break;
       }
 
-      // Sort: pinned first (by pinnedAt DESC), then by createdAt DESC
+      // Sort: pinned first (by pinnedAt DESC), then by createdAt DESC, then id DESC
       if (opts.filter === 'completed') {
         filtered = filtered.sort((a, b) => {
           const aTime = new Date(a.completedAt!).getTime();
           const bTime = new Date(b.completedAt!).getTime();
-          return bTime - aTime;
+          if (bTime !== aTime) return bTime - aTime;
+          return b.id.localeCompare(a.id);
         });
       } else {
         filtered = filtered.sort((a, b) => {
@@ -102,15 +104,26 @@ export const createFakeTaskStore = (
           if (a.pinnedAt && !b.pinnedAt) return -1;
           if (!a.pinnedAt && b.pinnedAt) return 1;
           if (a.pinnedAt && b.pinnedAt) {
-            return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
+            const pinDiff = new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
+            if (pinDiff !== 0) return pinDiff;
           }
-          // Then by createdAt DESC
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          const createdDiff =
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (createdDiff !== 0) return createdDiff;
+          return b.id.localeCompare(a.id);
         });
       }
 
-      filtered = filtered.slice(0, opts.limit ?? Infinity);
-      return okAsync({ tasks: filtered });
+      const page = pageListedItems(filtered, {
+        limit: opts.limit,
+        cursor: opts.cursor,
+      });
+      return okAsync({
+        tasks: page.items,
+        hasMore: page.hasMore,
+        nextCursor: page.nextCursor,
+        total: page.total,
+      });
     },
 
     findByCaptureId: (captureId: string): ResultAsync<Task | null, StorageError> => {

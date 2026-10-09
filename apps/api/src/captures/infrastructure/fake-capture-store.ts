@@ -8,6 +8,7 @@ import type {
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
+import { pageListedItems } from '../../shared/page-listed-items.js';
 
 export type FakeCaptureStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -77,21 +78,33 @@ export const createFakeCaptureStore = (
 
       // Sort based on view type
       if (opts.snoozed === true) {
-        // Snoozed view: sort by snoozedUntil ASC (soonest first)
+        // Snoozed view: sort by snoozedUntil ASC (soonest first), then id ASC
         filtered = filtered.sort((a, b) => {
           const aTime = new Date(a.snoozedUntil!).getTime();
           const bTime = new Date(b.snoozedUntil!).getTime();
-          return aTime - bTime;
+          if (aTime !== bTime) return aTime - bTime;
+          return a.id.localeCompare(b.id);
         });
       } else {
-        // Inbox/trashed: sort by capturedAt DESC (newest first)
+        // Inbox/trashed: sort by capturedAt DESC (newest first), then id DESC
         filtered = filtered.sort((a, b) => {
-          return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
+          const capturedDiff =
+            new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
+          if (capturedDiff !== 0) return capturedDiff;
+          return b.id.localeCompare(a.id);
         });
       }
 
-      filtered = filtered.slice(0, opts.limit ?? Infinity);
-      return okAsync({ captures: filtered });
+      const page = pageListedItems(filtered, {
+        limit: opts.limit,
+        cursor: opts.cursor,
+      });
+      return okAsync({
+        captures: page.items,
+        hasMore: page.hasMore,
+        nextCursor: page.nextCursor,
+        total: page.total,
+      });
     },
 
     softDelete: (id: string): ResultAsync<void, StorageError> => {

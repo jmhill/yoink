@@ -5,7 +5,9 @@ import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrLists } from '@/api/client';
+import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
+import { isHistoryPagesData, prependHistoryPageItem } from '@/lib/use-history-pages';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
@@ -40,13 +42,13 @@ function InboxPage() {
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
-    queryData: {},
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false } },
+    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
   });
 
   const createMutation = tsr.create.useMutation({
@@ -79,6 +81,7 @@ function InboxPage() {
           body: {
             ...previousInbox.body,
             captures: [optimisticCapture, ...previousInbox.body.captures],
+            total: previousInbox.body.total + 1,
           },
         });
       }
@@ -135,10 +138,7 @@ function InboxPage() {
         'captures',
         'inbox',
       ]);
-      const previousTrashed = tsrQueryClient.list.getQueryData([
-        'captures',
-        'trashed',
-      ]);
+      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
 
       // Find the capture being trashed
       if (previousInbox?.status === 200) {
@@ -154,21 +154,18 @@ function InboxPage() {
             captures: previousInbox.body.captures.filter(
               (c) => c.id !== params.id
             ),
+            total: Math.max(0, previousInbox.body.total - 1),
           },
         });
 
-        // Add to trashed (if cache exists)
-        if (captureToTrash && previousTrashed?.status === 200) {
-          tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
-            ...previousTrashed,
-            body: {
-              ...previousTrashed.body,
-              captures: [
-                { ...captureToTrash, status: 'trashed' as const },
-                ...previousTrashed.body.captures,
-              ],
-            },
-          });
+        if (captureToTrash && isHistoryPagesData(previousTrashed)) {
+          tsrQueryClient.setQueryData(
+            ['captures', 'trashed'],
+            prependHistoryPageItem<'captures', Capture>(previousTrashed, 'captures', {
+              ...captureToTrash,
+              status: 'trashed',
+            })
+          );
         }
       }
 
@@ -184,7 +181,7 @@ function InboxPage() {
         );
       }
       if (context?.previousTrashed) {
-        tsrQueryClient.list.setQueryData(
+        tsrQueryClient.setQueryData(
           ['captures', 'trashed'],
           context.previousTrashed
         );
@@ -238,6 +235,7 @@ function InboxPage() {
             captures: previousInbox.body.captures.filter(
               (c) => c.id !== params.id
             ),
+            total: Math.max(0, previousInbox.body.total - 1),
           },
         });
 
@@ -248,6 +246,7 @@ function InboxPage() {
             body: {
               ...previousSnoozed.body,
               captures: [captureToSnooze, ...previousSnoozed.body.captures],
+              total: previousSnoozed.body.total + 1,
             },
           });
         }
@@ -308,6 +307,7 @@ function InboxPage() {
             captures: previousInbox.body.captures.filter(
               (c) => c.id !== params.id
             ),
+            total: Math.max(0, previousInbox.body.total - 1),
           },
         });
       }

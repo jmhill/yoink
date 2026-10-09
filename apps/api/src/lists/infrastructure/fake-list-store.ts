@@ -76,7 +76,9 @@ export const createFakeListStore = (
         .sort((a, b) => {
           const byName = a.name.localeCompare(b.name);
           if (byName !== 0) return byName;
-          return a.createdAt.localeCompare(b.createdAt);
+          const byCreated = a.createdAt.localeCompare(b.createdAt);
+          if (byCreated !== 0) return byCreated;
+          return a.id.localeCompare(b.id);
         });
 
       return okAsync(filtered);

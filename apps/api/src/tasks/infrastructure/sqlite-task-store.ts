@@ -8,6 +8,7 @@ import type {
   FindByOrganizationResult,
 } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
+import { pageListedItems } from '../../shared/page-listed-items.js';
 
 type TaskRow = {
   id: string;
@@ -138,7 +139,7 @@ export const createSqliteTaskStore = async (
     findByOrganization: (
       options: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {
-      const { organizationId, filter, today, limit = 50, assigneeId } = options;
+      const { organizationId, filter, today, limit, cursor, assigneeId } = options;
 
       let sql = `
         SELECT * FROM tasks
@@ -175,21 +176,26 @@ export const createSqliteTaskStore = async (
           break;
       }
 
-      // Sort: pinned first, then by created_at (newest first)
-      // For completed, sort by completed_at DESC
+      // Sort: pinned first, then by created_at (newest first), then id
+      // For completed, sort by completed_at DESC, then id DESC
       if (filter === 'completed') {
-        sql += ` ORDER BY completed_at DESC LIMIT ?`;
+        sql += ` ORDER BY completed_at DESC, id DESC`;
       } else {
-        sql += ` ORDER BY pinned_at DESC NULLS LAST, created_at DESC LIMIT ?`;
+        sql += ` ORDER BY pinned_at DESC NULLS LAST, created_at DESC, id DESC`;
       }
-      params.push(limit);
 
       return ResultAsync.fromPromise(
         db.execute({ sql, args: params }),
         (error) => storageError('Failed to find tasks', error)
       ).map((result) => {
-        const rows = result.rows as TaskRow[];
-        return { tasks: rows.map(rowToTask) };
+        const ordered = (result.rows as TaskRow[]).map(rowToTask);
+        const page = pageListedItems(ordered, { limit, cursor });
+        return {
+          tasks: page.items,
+          hasMore: page.hasMore,
+          nextCursor: page.nextCursor,
+          total: page.total,
+        };
       });
     },
 

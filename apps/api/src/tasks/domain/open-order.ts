@@ -10,7 +10,11 @@ export const compareOpenOrder = (left: OrderedTask, right: OrderedTask): number 
   if (leftOrder !== rightOrder) {
     return leftOrder - rightOrder;
   }
-  return (left.createdAt ?? '').localeCompare(right.createdAt ?? '');
+  const created = (left.createdAt ?? '').localeCompare(right.createdAt ?? '');
+  if (created !== 0) {
+    return created;
+  }
+  return left.id.localeCompare(right.id);
 };
 
 export const nextOpenOrder = (openTasks: OrderedTask[]): number => {

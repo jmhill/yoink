@@ -156,6 +156,82 @@ export const runCaptureStoreContractTests = (
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
           expect(result.value.captures).toHaveLength(2);
+          expect(result.value.hasMore).toBe(true);
+          expect(result.value.nextCursor).toBe(result.value.captures[1]?.id);
+          expect(result.value.total).toBe(5);
+        }
+      });
+
+      it('pages without gaps or duplicates', async () => {
+        for (let i = 0; i < 5; i++) {
+          await store.save(
+            createTestCapture({
+              id: `capture-page-${i}`,
+              capturedAt: `2025-01-15T1${i}:00:00.000Z`,
+            })
+          );
+        }
+
+        const first = await store.findByOrganization({
+          organizationId: 'org-123',
+          limit: 2,
+        });
+        expect(first.isOk()).toBe(true);
+        if (!first.isOk()) return;
+
+        const second = await store.findByOrganization({
+          organizationId: 'org-123',
+          limit: 2,
+          cursor: first.value.nextCursor ?? undefined,
+        });
+        expect(second.isOk()).toBe(true);
+        if (!second.isOk()) return;
+
+        const third = await store.findByOrganization({
+          organizationId: 'org-123',
+          limit: 2,
+          cursor: second.value.nextCursor ?? undefined,
+        });
+        expect(third.isOk()).toBe(true);
+        if (!third.isOk()) return;
+
+        const ids = [
+          ...first.value.captures,
+          ...second.value.captures,
+          ...third.value.captures,
+        ].map((capture) => capture.id);
+        expect(ids).toHaveLength(5);
+        expect(new Set(ids).size).toBe(5);
+        expect(first.value.hasMore).toBe(true);
+        expect(second.value.hasMore).toBe(true);
+        expect(third.value.hasMore).toBe(false);
+        expect(third.value.nextCursor).toBeNull();
+      });
+
+      it('reports hasMore when the safety cap is hit', async () => {
+        const cap = 8;
+        for (let i = 0; i < cap + 1; i++) {
+          await store.save(
+            createTestCapture({
+              id: `capture-cap-${i}`,
+              capturedAt: `2025-01-16T${String(i).padStart(2, '0')}:00:00.000Z`,
+            })
+          );
+        }
+
+        const result = await store.findByOrganization({
+          organizationId: 'org-123',
+          limit: cap,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          expect(result.value.captures).toHaveLength(cap);
+          expect(result.value.hasMore).toBe(true);
+          expect(result.value.nextCursor).toBe(
+            result.value.captures[cap - 1]?.id
+          );
+          expect(result.value.total).toBe(cap + 1);
         }
       });
 

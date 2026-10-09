@@ -45,6 +45,7 @@ Operational guides and runbooks.
 | Document | Description |
 |----------|-------------|
 | [DATABASE_ACCESS.md](./operations/DATABASE_ACCESS.md) | How to access local and production databases for debugging |
+| [API.md](./operations/API.md) | How bots read piles in one request and page history (`hasMore` / `nextCursor`) |
 
 ### [completed/](./completed/)
 

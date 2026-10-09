@@ -1,6 +1,7 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { CaptureSchema, CaptureStatusSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
+import { CaptureListPageSchema, ListPageQuerySchema } from '../schemas/list-page.js';
 import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -44,17 +45,12 @@ export const captureContract = c.router({
   list: {
     method: 'GET',
     path: '/api/captures',
-    query: z.object({
+    query: ListPageQuerySchema.extend({
       status: CaptureStatusSchema.optional(),
       snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
-      limit: z.coerce.number().min(1).max(100).default(50),
-      cursor: z.string().uuid().optional(),
     }),
     responses: {
-      200: z.object({
-        captures: z.array(CaptureSchema),
-        nextCursor: z.string().uuid().optional(),
-      }),
+      200: CaptureListPageSchema,
       401: ErrorSchema,
       500: ErrorSchema,
     },

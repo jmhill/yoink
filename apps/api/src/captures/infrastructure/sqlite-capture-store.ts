@@ -10,6 +10,7 @@ import type {
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
+import { pageListedItems } from '../../shared/page-listed-items.js';
 
 type CaptureRow = {
   id: string;
@@ -142,7 +143,7 @@ export const createSqliteCaptureStore = async (
     findByOrganization: (
       options: FindByOrganizationOptions
     ): ResultAsync<FindByOrganizationResult, StorageError> => {
-      const { organizationId, status, snoozed, now, limit = 50 } = options;
+      const { organizationId, status, snoozed, now, limit, cursor } = options;
 
       let sql = `
         SELECT * FROM captures
@@ -175,19 +176,24 @@ export const createSqliteCaptureStore = async (
       // Sorting depends on whether we're querying snoozed items
       if (snoozed === true) {
         // Snoozed view: sort by snooze time ascending (soonest first)
-        sql += ` ORDER BY snoozed_until ASC LIMIT ?`;
+        sql += ` ORDER BY snoozed_until ASC, id ASC`;
       } else {
         // Inbox/trashed: sort by captured_at DESC (newest first)
-        sql += ` ORDER BY captured_at DESC LIMIT ?`;
+        sql += ` ORDER BY captured_at DESC, id DESC`;
       }
-      params.push(limit);
 
       return ResultAsync.fromPromise(
         db.execute({ sql, args: params }),
         (error) => storageError('Failed to find captures', error)
       ).map((result) => {
-        const rows = result.rows as CaptureRow[];
-        return { captures: rows.map(rowToCapture) };
+        const ordered = (result.rows as CaptureRow[]).map(rowToCapture);
+        const page = pageListedItems(ordered, { limit, cursor });
+        return {
+          captures: page.items,
+          hasMore: page.hasMore,
+          nextCursor: page.nextCursor,
+          total: page.total,
+        };
       });
     },
 

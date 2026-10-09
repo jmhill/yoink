@@ -38,6 +38,18 @@ export const testConfig: AppConfig = {
   seedToken: TEST_TOKEN_SECRET,
   log: { level: 'error', pretty: false }, // Quiet logs during tests
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
+  // Production caps at 100 req/min. Pagination tests create 120–1001 rows via inject.
+  rateLimit: {
+    enabled: false,
+    globalMax: 100,
+    globalTimeWindow: '1 minute',
+    adminLoginMax: 5,
+    adminLoginTimeWindow: '15 minutes',
+    authLoginMax: 10,
+    authLoginTimeWindow: '15 minutes',
+    signupMax: 5,
+    signupTimeWindow: '1 hour',
+  },
 };
 
 export const testConfigWithAdmin: AppConfig = {

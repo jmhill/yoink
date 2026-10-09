@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr } from '@/api/client';
+import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox, AlarmClockOff, Clock } from 'lucide-react';
@@ -23,7 +24,7 @@ function SnoozedPage() {
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'snoozed'],
-    queryData: { query: { status: 'inbox' as const, snoozed: true } },
+    queryData: { query: { status: 'inbox' as const, snoozed: true, limit: PILE_SAFETY_CAP } },
   });
 
   const unsnoozeMutation = tsr.unsnooze.useMutation({
@@ -55,6 +56,7 @@ function SnoozedPage() {
             captures: previousSnoozed.body.captures.filter(
               (c) => c.id !== params.id
             ),
+            total: Math.max(0, previousSnoozed.body.total - 1),
           },
         });
 
@@ -68,6 +70,7 @@ function SnoozedPage() {
                 { ...captureToUnsnooze, snoozedUntil: undefined },
                 ...previousInbox.body.captures,
               ],
+              total: previousInbox.body.total + 1,
             },
           });
         }

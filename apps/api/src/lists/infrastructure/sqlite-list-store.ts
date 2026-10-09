@@ -103,7 +103,7 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
               SELECT id, organization_id, created_by_id, name, created_at
               FROM lists
               WHERE organization_id = ?
-              ORDER BY name ASC, created_at ASC
+              ORDER BY name ASC, created_at ASC, id ASC
             `,
             args: [organizationId],
           })

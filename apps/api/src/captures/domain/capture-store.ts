@@ -24,7 +24,9 @@ export type FindByOrganizationOptions = {
 
 export type FindByOrganizationResult = {
   captures: Capture[];
-  nextCursor?: string;
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
 };
 
 export type CaptureStore = {

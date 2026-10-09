@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+import { resolveListLimit, type Task } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { TaskStore, FindByOrganizationResult } from './task-store.js';
 import type {
@@ -113,7 +113,10 @@ export const createTaskService = (
         organizationId: query.organizationId,
         filter: query.filter,
         today: getToday(clock),
-        limit: query.limit,
+        limit: resolveListLimit(
+          query.limit,
+          query.filter === 'completed' ? 'history' : 'pile'
+        ),
         cursor: query.cursor,
         assigneeId: query.callerId,
       });

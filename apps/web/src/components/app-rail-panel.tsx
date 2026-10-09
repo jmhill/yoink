@@ -13,6 +13,7 @@ import {
   User,
 } from 'lucide-react';
 import { tsr, tsrLists } from '@/api/client';
+import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
@@ -108,14 +109,14 @@ export function AppRailPanel({
 
   const { data: inboxData } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false } },
+    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
   });
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
-    queryData: {},
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
 
-  const inboxCount = inboxData?.status === 200 ? inboxData.body.captures.length : 0;
+  const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const railItems = buildAppRailItems({ inboxCount, namedLists });
   const location: RailLocation = {

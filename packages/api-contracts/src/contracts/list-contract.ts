@@ -6,6 +6,11 @@ import {
   RenameNamedListSchema,
   ReorderOpenTasksSchema,
 } from '../schemas/list.js';
+import {
+  ListPageQuerySchema,
+  NamedListListPageSchema,
+  TaskListPageSchema,
+} from '../schemas/list-page.js';
 import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -16,10 +21,9 @@ export const listContract = c.router(
     list: {
       method: 'GET',
       path: '/api/lists',
+      query: ListPageQuerySchema,
       responses: {
-        200: z.object({
-          lists: z.array(NamedListSchema),
-        }),
+        200: NamedListListPageSchema,
         401: ErrorSchema,
         500: ErrorSchema,
       },
@@ -81,10 +85,9 @@ export const listContract = c.router(
       pathParams: z.object({
         id: z.string().uuid(),
       }),
+      query: ListPageQuerySchema,
       responses: {
-        200: z.object({
-          tasks: z.array(TaskSchema),
-        }),
+        200: TaskListPageSchema,
         401: ErrorSchema,
         404: ErrorSchema,
         500: ErrorSchema,
@@ -114,10 +117,9 @@ export const listContract = c.router(
     listUnlistedOpenTasks: {
       method: 'GET',
       path: '/api/unlisted/tasks',
+      query: ListPageQuerySchema,
       responses: {
-        200: z.object({
-          tasks: z.array(TaskSchema),
-        }),
+        200: TaskListPageSchema,
         401: ErrorSchema,
         500: ErrorSchema,
       },

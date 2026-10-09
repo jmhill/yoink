@@ -14,7 +14,9 @@ export type FindByOrganizationOptions = {
 
 export type FindByOrganizationResult = {
   tasks: Task[];
-  nextCursor?: string;
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
 };
 
 export type TaskStore = {

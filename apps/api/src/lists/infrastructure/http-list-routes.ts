@@ -3,6 +3,11 @@ import { initServer } from '@ts-rest/fastify';
 import { listContract } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { ListHandlers } from '../application/create-list-handlers.js';
+import {
+  invalidCursorHttp,
+  toNamedListListBody,
+  toTaskListBody,
+} from '../../listing/infrastructure/http-listed-page.js';
 
 export type ListRoutesDependencies = {
   listHandlers: ListHandlers;
@@ -20,20 +25,23 @@ export const registerListRoutes = async (
     authedApp.addHook('preHandler', authMiddleware);
 
     const listRouter = s.router(listContract, {
-      list: async ({ request }) => {
+      list: async ({ query, request }) => {
         const result = await listHandlers.list({
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (lists) => ({
+          (page) => ({
             status: 200 as const,
-            body: { lists },
+            body: toNamedListListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -118,26 +126,29 @@ export const registerListRoutes = async (
         );
       },
 
-      listOpenTasks: async ({ params, request }) => {
+      listOpenTasks: async ({ params, query, request }) => {
         const result = await listHandlers.listOpenTasks({
           listId: params.id,
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (tasks) => ({
+          (page) => ({
             status: 200 as const,
-            body: { tasks },
+            body: toTaskListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'LIST_NOT_FOUND':
                 return {
                   status: 404 as const,
                   body: { message: error.message },
                 };
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -187,20 +198,23 @@ export const registerListRoutes = async (
         );
       },
 
-      listUnlistedOpenTasks: async ({ request }) => {
+      listUnlistedOpenTasks: async ({ query, request }) => {
         const result = await listHandlers.listUnlistedOpenTasks({
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (tasks) => ({
+          (page) => ({
             status: 200 as const,
-            body: { tasks },
+            body: toTaskListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },

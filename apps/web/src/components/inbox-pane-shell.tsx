@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { tsr } from '@/api/client';
+import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { Header } from '@/components/header';
 import { InboxPaneTabs } from '@/components/inbox-pane-tabs';
 import { PlaceHeading } from '@/components/place-heading';
@@ -24,9 +25,9 @@ type InboxPaneShellProps = {
 export function InboxPaneShell({ active, children }: InboxPaneShellProps) {
   const { data } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false } },
+    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
   });
-  const toProcessCount = data?.status === 200 ? data.body.captures.length : 0;
+  const toProcessCount = data?.status === 200 ? data.body.total : 0;
 
   return (
     <div

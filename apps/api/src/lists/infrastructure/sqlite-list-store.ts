@@ -3,6 +3,10 @@ import { ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import { namedListDirection } from '../../listing/domain/list-keys.js';
 
 type ListRow = {
   id: string;
@@ -103,13 +107,33 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
               SELECT id, organization_id, created_by_id, name, created_at
               FROM lists
               WHERE organization_id = ?
-              ORDER BY name ASC, created_at ASC
+              ORDER BY name ASC, created_at ASC, id ASC
             `,
             args: [organizationId],
           })
           .then((result) => result.rows.map((row) => rowToNamedList(row as ListRow))),
         (cause) => storageError('Failed to list named lists', cause)
       );
+    },
+
+    pageByOrganization: (options: {
+      organizationId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<NamedList>, StorageError> => {
+      return pageSqlite({
+        db,
+        from: 'lists',
+        whereSql: 'organization_id = ?',
+        whereArgs: [options.organizationId],
+        orderSql: 'ORDER BY name ASC, created_at ASC, id ASC',
+        keyColumns: ['name', 'created_at', 'id'],
+        direction: namedListDirection,
+        fetchLimit: options.fetchLimit,
+        seek: options.seek,
+        mapRow: (row) => rowToNamedList(row as ListRow),
+        errorMessage: 'Failed to list named lists',
+      });
     },
 
     remove: (id: string): ResultAsync<void, StorageError> => {

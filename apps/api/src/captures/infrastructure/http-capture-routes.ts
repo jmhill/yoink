@@ -4,6 +4,10 @@ import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { CaptureHandlers } from '../application/create-capture-handlers.js';
+import {
+  invalidCursorHttp,
+  toCaptureListBody,
+} from '../../listing/infrastructure/http-listed-page.js';
 
 export type CaptureRoutesDependencies = {
   captureHandlers: CaptureHandlers;
@@ -67,14 +71,15 @@ export const registerCaptureRoutes = async (
         });
 
         return result.match(
-          (data) => ({
+          (page) => ({
             status: 200 as const,
-            body: data,
+            body: toCaptureListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },

@@ -139,6 +139,7 @@ export function TaskCard({
 
   return (
     <div
+      data-task-title={task.title}
       {...(dragHandle
         ? { 'data-open-task-id': task.id, 'data-open-task-title': task.title }
         : {})}

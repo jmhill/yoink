@@ -17,6 +17,27 @@ describe('listContract', () => {
     expect(listContract.list.responses).toHaveProperty('401');
   });
 
+  it('requires hasMore and an explicit nextCursor on list and pile responses', () => {
+    const lists = listContract.list.responses[200].safeParse({
+      lists: [],
+      hasMore: false,
+      nextCursor: null,
+      total: 0,
+    });
+    expect(lists.success).toBe(true);
+
+    const pile = listContract.listOpenTasks.responses[200].safeParse({
+      tasks: [],
+      hasMore: false,
+      nextCursor: null,
+      total: 0,
+    });
+    expect(pile.success).toBe(true);
+
+    const missing = listContract.list.responses[200].safeParse({ lists: [] });
+    expect(missing.success).toBe(false);
+  });
+
   it('has 201, 400, 401, and 409 responses on create', () => {
     expect(listContract.create.responses).toHaveProperty('201');
     expect(listContract.create.responses).toHaveProperty('400');

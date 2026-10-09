@@ -3,6 +3,10 @@ import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
 import { normalizeListName } from '../domain/list-name.js';
+import { compareKeyset, pageOrdered } from '../../listing/domain/keyset-window.js';
+import { namedListDirection, namedListKeys } from '../../listing/domain/list-keys.js';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
 export type FakeListStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -73,13 +77,32 @@ export const createFakeListStore = (
       const filtered = lists
         .filter((list) => list.organizationId === organizationId)
         .slice()
-        .sort((a, b) => {
-          const byName = a.name.localeCompare(b.name);
-          if (byName !== 0) return byName;
-          return a.createdAt.localeCompare(b.createdAt);
-        });
+        .sort((a, b) => compareKeyset(namedListKeys(a), namedListKeys(b)));
 
       return okAsync(filtered);
+    },
+
+    pageByOrganization: (query: {
+      organizationId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<NamedList>, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const ordered = lists
+        .filter((list) => list.organizationId === query.organizationId)
+        .slice()
+        .sort((a, b) => compareKeyset(namedListKeys(a), namedListKeys(b)));
+      return okAsync(
+        pageOrdered({
+          ordered,
+          keysOf: namedListKeys,
+          direction: namedListDirection,
+          fetchLimit: query.fetchLimit,
+          seek: query.seek,
+        })
+      );
     },
 
     remove: (id: string): ResultAsync<void, StorageError> => {

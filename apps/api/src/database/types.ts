@@ -21,13 +21,13 @@ export type Database = {
   execute: (query: { sql: string; args?: unknown[] }) => Promise<QueryResult>;
 
   /**
-   * Execute multiple SQL statements in a batch.
-   * Use for migrations or multi-statement operations.
+   * Execute multiple SQL statements in a batch (one transaction).
+   * Use for migrations, multi-statement operations, or a consistent read.
    */
   batch: (
     queries: { sql: string; args?: unknown[] }[],
     mode?: 'write' | 'read'
-  ) => Promise<void>;
+  ) => Promise<QueryResult[]>;
 
   /**
    * Close the database connection.

@@ -2,12 +2,16 @@ import type { Database } from '../../database/types.js';
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock } from '@yoink/infrastructure';
-import type {
-  TaskStore,
-  FindByOrganizationOptions,
-  FindByOrganizationResult,
-} from '../domain/task-store.js';
+import type { TaskStore, FindByOrganizationOptions } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import {
+  completedTaskDirection,
+  openPileTaskDirection,
+  taskBoardDirection,
+} from '../../listing/domain/list-keys.js';
 
 type TaskRow = {
   id: string;
@@ -137,59 +141,58 @@ export const createSqliteTaskStore = async (
 
     findByOrganization: (
       options: FindByOrganizationOptions
-    ): ResultAsync<FindByOrganizationResult, StorageError> => {
-      const { organizationId, filter, today, limit = 50, assigneeId } = options;
+    ): ResultAsync<KeysetRows<Task>, StorageError> => {
+      const { organizationId, filter, today, fetchLimit, seek, assigneeId } = options;
 
-      let sql = `
-        SELECT * FROM tasks
-        WHERE organization_id = ?
+      let whereSql = `
+        organization_id = ?
           AND deleted_at IS NULL
       `;
-      const params: (string | number)[] = [organizationId];
+      const whereArgs: (string | number)[] = [organizationId];
 
-      // Apply filter
       switch (filter) {
         case 'today':
-          // Tasks due today OR overdue (due before today), and not completed
-          sql += ` AND due_date <= ? AND completed_at IS NULL`;
-          params.push(today ?? new Date().toISOString().split('T')[0]);
+          whereSql += ` AND due_date <= ? AND completed_at IS NULL`;
+          whereArgs.push(today ?? new Date().toISOString().split('T')[0]);
           break;
         case 'upcoming':
-          // Tasks due after today (and not completed)
-          sql += ` AND due_date > ? AND completed_at IS NULL`;
-          params.push(today ?? new Date().toISOString().split('T')[0]);
+          whereSql += ` AND due_date > ? AND completed_at IS NULL`;
+          whereArgs.push(today ?? new Date().toISOString().split('T')[0]);
           break;
         case 'completed':
-          // Only completed tasks
-          sql += ` AND completed_at IS NOT NULL`;
+          whereSql += ` AND completed_at IS NOT NULL`;
           break;
         case 'mine':
-          // Incomplete tasks assigned to the caller (unassigned excluded)
-          sql += ` AND assignee_id = ? AND completed_at IS NULL`;
-          params.push(assigneeId ?? '');
+          whereSql += ` AND assignee_id = ? AND completed_at IS NULL`;
+          whereArgs.push(assigneeId ?? '');
           break;
         case 'all':
         default:
-          // All incomplete tasks (tasks without due dates appear here too)
-          sql += ` AND completed_at IS NULL`;
+          whereSql += ` AND completed_at IS NULL`;
           break;
       }
 
-      // Sort: pinned first, then by created_at (newest first)
-      // For completed, sort by completed_at DESC
-      if (filter === 'completed') {
-        sql += ` ORDER BY completed_at DESC LIMIT ?`;
-      } else {
-        sql += ` ORDER BY pinned_at DESC NULLS LAST, created_at DESC LIMIT ?`;
-      }
-      params.push(limit);
+      const completed = filter === 'completed';
+      const orderSql = completed
+        ? `ORDER BY completed_at DESC, id DESC`
+        : `ORDER BY COALESCE(pinned_at, '') DESC, created_at DESC, id DESC`;
+      const keyColumns = completed
+        ? (['completed_at', 'id'] as const)
+        : ([`COALESCE(pinned_at, '')`, 'created_at', 'id'] as const);
+      const direction = completed ? completedTaskDirection : taskBoardDirection;
 
-      return ResultAsync.fromPromise(
-        db.execute({ sql, args: params }),
-        (error) => storageError('Failed to find tasks', error)
-      ).map((result) => {
-        const rows = result.rows as TaskRow[];
-        return { tasks: rows.map(rowToTask) };
+      return pageSqlite({
+        db,
+        from: 'tasks',
+        whereSql,
+        whereArgs,
+        orderSql,
+        keyColumns,
+        direction,
+        fetchLimit,
+        seek,
+        mapRow: (row) => rowToTask(row as TaskRow),
+        errorMessage: 'Failed to find tasks',
       });
     },
 
@@ -236,6 +239,37 @@ export const createSqliteTaskStore = async (
         }),
         (error) => storageError('Failed to count open tasks on list', error)
       ).map((result) => Number(result.rows[0]?.count ?? 0));
+    },
+
+    pageOpenInPile: (options: {
+      organizationId: string;
+      listId: string | null;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      const listClause = options.listId === null ? 'list_id IS NULL' : 'list_id = ?';
+      const whereArgs =
+        options.listId === null
+          ? [options.organizationId]
+          : [options.organizationId, options.listId];
+      return pageSqlite({
+        db,
+        from: 'tasks',
+        whereSql: `
+          organization_id = ?
+            AND ${listClause}
+            AND completed_at IS NULL
+            AND deleted_at IS NULL
+        `,
+        whereArgs,
+        orderSql: `ORDER BY COALESCE(open_order, 2147483647) ASC, created_at ASC, id ASC`,
+        keyColumns: [`COALESCE(open_order, 2147483647)`, 'created_at', 'id'],
+        direction: openPileTaskDirection,
+        fetchLimit: options.fetchLimit,
+        seek: options.seek,
+        mapRow: (row) => rowToTask(row as TaskRow),
+        errorMessage: 'Failed to list open tasks in pile',
+      });
     },
 
     findOpenInPile: (options: {

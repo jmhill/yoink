@@ -1,5 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Capture, CaptureStatus, ProcessedToType } from '@yoink/api-contracts';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type { CaptureNotInInboxError, StorageError } from './capture-errors.js';
 
 export type MarkAsProcessedOptions = {
@@ -18,13 +20,8 @@ export type FindByOrganizationOptions = {
   status?: CaptureStatus;
   snoozed?: boolean; // true = only snoozed, false = exclude snoozed, undefined = no filtering
   now?: string; // Current time for snooze comparison (ISO datetime)
-  limit?: number;
-  cursor?: string;
-};
-
-export type FindByOrganizationResult = {
-  captures: Capture[];
-  nextCursor?: string;
+  fetchLimit: number;
+  seek?: KeysetCursor;
 };
 
 export type CaptureStore = {
@@ -33,7 +30,7 @@ export type CaptureStore = {
   update(capture: Capture): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
-  ): ResultAsync<FindByOrganizationResult, StorageError>;
+  ): ResultAsync<KeysetRows<Capture>, StorageError>;
   // Soft delete - sets deletedAt timestamp
   softDelete(id: string): ResultAsync<void, StorageError>;
   // Soft delete all trashed captures for an organization

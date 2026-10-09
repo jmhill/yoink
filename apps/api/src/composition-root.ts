@@ -278,10 +278,12 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       clearCompletedListIds: (listId) => taskStore.clearListIdOnCompleted(listId),
     }),
     list: (organizationId) => listStore.findByOrganization(organizationId),
+    pageNamedLists: (options) => listStore.pageByOrganization(options),
     load: (id) => listStore.findById(id),
     countOpenOnList: (listId) => taskStore.countOpenOnList(listId),
     loadOpenTasksOnList: (organizationId, listId) =>
       taskStore.findOpenInPile({ organizationId, listId }),
+    pageOpenTasksOnList: (options) => taskStore.pageOpenInPile(options),
     loadTasksByIds: (ids) =>
       ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
         tasks.filter((task): task is Task => task !== null)
@@ -313,6 +315,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       taskStore.nextOpenOrderInPile({ organizationId, listId }),
     loadOpenInPile: (organizationId, listId) =>
       taskStore.findOpenInPile({ organizationId, listId }),
+    list: (options) => taskStore.findByOrganization(options),
+    today: () => clock.now().toISOString().slice(0, 10),
     principalLookup,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),

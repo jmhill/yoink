@@ -24,7 +24,12 @@ describe('GET /api/lists', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ lists: [] });
+    expect(response.json()).toEqual({
+      lists: [],
+      hasMore: false,
+      nextCursor: null,
+      total: 0,
+    });
   });
 
   it('returns 401 without authentication', async () => {

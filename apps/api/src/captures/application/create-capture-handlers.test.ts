@@ -118,8 +118,8 @@ describe('createCaptureHandlers', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value.captures).toHaveLength(1);
-        expect(result.value.captures[0].content).toBe('Content');
+        expect(result.value.items).toHaveLength(1);
+        expect(result.value.items[0]?.content).toBe('Content');
       }
     });
   });

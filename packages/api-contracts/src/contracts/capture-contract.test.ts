@@ -20,6 +20,21 @@ describe('captureContract', () => {
     expect(captureContract.list.responses).toHaveProperty('200');
   });
 
+  it('requires hasMore and an explicit nextCursor on list responses', () => {
+    const parsed = captureContract.list.responses[200].safeParse({
+      captures: [],
+      hasMore: false,
+      nextCursor: null,
+      total: 0,
+    });
+    expect(parsed.success).toBe(true);
+
+    const missing = captureContract.list.responses[200].safeParse({
+      captures: [],
+    });
+    expect(missing.success).toBe(false);
+  });
+
   it('has 401 response for unauthorized on both endpoints', () => {
     expect(captureContract.create.responses).toHaveProperty('401');
     expect(captureContract.list.responses).toHaveProperty('401');

@@ -41,7 +41,13 @@ import { SortablePileList } from '@/components/sortable-pile-list';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
-import { TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
+import { PILE_SAFETY_CAP, TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
+import {
+  LoadMoreButton,
+  isTaskHistoryData,
+  mapTaskHistoryPageItems,
+  useCompletedTaskPages,
+} from '@/lib/use-history-pages';
 import {
   ALL_PILE_OVERVIEW,
   ALL_PILE_UNLISTED,
@@ -271,7 +277,7 @@ function TasksPage() {
 
   const { data: listsData, isPending: listsPending } = tsrLists.list.useQuery({
     queryKey: ['lists'],
-    queryData: {},
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const namedPileList =
@@ -290,11 +296,14 @@ function TasksPage() {
   };
 
   const boardQueryEnabled = allPile === null;
+  const completedBoard = boardQueryEnabled && boardFilter === 'completed';
+  const liveBoard = boardQueryEnabled && boardFilter !== 'completed';
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', boardFilter],
-    queryData: { query: { filter: boardFilter } },
-    enabled: boardQueryEnabled,
+    queryData: { query: { filter: boardFilter, limit: PILE_SAFETY_CAP } },
+    enabled: liveBoard,
   });
+  const completedPages = useCompletedTaskPages(completedBoard);
 
   const {
     data: namedPileData,
@@ -303,7 +312,10 @@ function TasksPage() {
     refetch: refetchNamedPile,
   } = tsrLists.listOpenTasks.useQuery({
     queryKey: ['lists', namedPileId ?? 'none', 'tasks'],
-    queryData: { params: { id: namedPileId ?? UNKNOWN_LIST_ID } },
+    queryData: {
+      params: { id: namedPileId ?? UNKNOWN_LIST_ID },
+      query: { limit: PILE_SAFETY_CAP },
+    },
     enabled: Boolean(namedPileId) && !namedPileMissing,
   });
 
@@ -314,7 +326,7 @@ function TasksPage() {
     refetch: refetchUnlistedPile,
   } = tsrLists.listUnlistedOpenTasks.useQuery({
     queryKey: ['unlisted', 'tasks'],
-    queryData: {},
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
     enabled: allPile?.kind === 'unlisted',
   });
 
@@ -440,6 +452,10 @@ function TasksPage() {
             body: {
               ...current.body,
               tasks: [optimisticTask, ...current.body.tasks],
+              total:
+                ('total' in current.body && typeof current.body.total === 'number'
+                  ? current.body.total
+                  : current.body.tasks.length) + 1,
             },
           });
         }
@@ -514,6 +530,18 @@ function TasksPage() {
       const queryKey = displayedTasksQueryKey();
       const previousTasks = tsrQueryClient.getQueryData(queryKey);
 
+      if (completedBoard) {
+        if (isTaskHistoryData(previousTasks)) {
+          tsrQueryClient.setQueryData(
+            queryKey,
+            mapTaskHistoryPageItems(previousTasks, (items) =>
+              items.filter((task) => task.id !== params.id)
+            )
+          );
+        }
+        return { previousTasks, queryKey };
+      }
+
       if (previousTasks && typeof previousTasks === 'object' && 'status' in previousTasks) {
         const current = previousTasks as { status: number; body: { tasks: Task[] } };
         if (current.status === 200) {
@@ -553,15 +581,28 @@ function TasksPage() {
     onMutate: async ({ params }) => {
       await cancelLiveQueries(tsrQueryClient);
       const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
+      const completedKey = ['tasks', 'completed'] as const;
+      const previousCompleted = tsrQueryClient.getQueryData(completedKey);
       mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
         tasks.filter((task) => task.id !== params.id)
       );
-      return { previous };
+      if (isTaskHistoryData(previousCompleted)) {
+        tsrQueryClient.setQueryData(
+          completedKey,
+          mapTaskHistoryPageItems(previousCompleted, (items) =>
+            items.filter((task) => task.id !== params.id)
+          )
+        );
+      }
+      return { previous, previousCompleted, completedKey };
     },
 
     onError: (err, _variables, context) => {
       if (context?.previous) {
         restoreQuerySnapshots(tsrQueryClient, context.previous);
+      }
+      if (context?.completedKey) {
+        tsrQueryClient.setQueryData(context.completedKey, context.previousCompleted);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -689,7 +730,11 @@ function TasksPage() {
     });
   };
 
-  const boardTasks = data?.status === 200 ? data.body.tasks : [];
+  const boardTasks = completedBoard
+    ? completedPages.items
+    : data?.status === 200
+      ? data.body.tasks
+      : [];
   const namedPileTasks = namedPileData?.status === 200 ? namedPileData.body.tasks : [];
   const unlistedPileTasks = unlistedPileData?.status === 200 ? unlistedPileData.body.tasks : [];
   const canReorder = allPile?.kind === 'named' || allPile?.kind === 'unlisted';
@@ -709,7 +754,9 @@ function TasksPage() {
       ? namedPileData
       : allPile?.kind === 'unlisted'
         ? unlistedPileData
-        : data;
+        : completedBoard
+          ? completedPages.data
+          : data;
   const activeError =
     allPile?.kind === 'named'
       ? namedPileMissing
@@ -717,7 +764,9 @@ function TasksPage() {
         : namedPileError
       : allPile?.kind === 'unlisted'
         ? unlistedPileError
-        : error;
+        : completedBoard
+          ? completedPages.error
+          : error;
   const blockingError = isBlockingQueryFailure(activeError, activeData)
     ? activeError
     : null;
@@ -726,7 +775,9 @@ function TasksPage() {
       ? listsPending || (!namedPileMissing && namedPilePending)
       : allPile?.kind === 'unlisted'
         ? unlistedPilePending
-        : isPending || (showsPileGroups && listsPending);
+        : completedBoard
+          ? completedPages.isPending
+          : isPending || (showsPileGroups && listsPending);
   const refetchActive = () => {
     if (allPile?.kind === 'named') {
       void refetchNamedPile();
@@ -736,8 +787,26 @@ function TasksPage() {
       void refetchUnlistedPile();
       return;
     }
+    if (completedBoard) {
+      void completedPages.refetch();
+      return;
+    }
     void refetch();
   };
+  const displayedCount =
+    allPile?.kind === 'named'
+      ? namedPileData?.status === 200
+        ? namedPileData.body.total
+        : namedPileTasks.length
+      : allPile?.kind === 'unlisted'
+        ? unlistedPileData?.status === 200
+          ? unlistedPileData.body.total
+          : unlistedPileTasks.length
+        : completedBoard
+          ? completedPages.total
+          : data?.status === 200
+            ? data.body.total
+            : boardTasks.length;
 
   const reorderPending = reorderNamedMutation.isPending || reorderUnlistedMutation.isPending;
   const isLoading =
@@ -805,7 +874,7 @@ function TasksPage() {
       <Header leading={<MobileTasksRailDrawer />} />
       <PlaceHeading
         title={isReordering ? 'Reorder' : taskPlaceHeading(place)}
-        subcopy={taskPlaceSubcopy(place, tasks.length)}
+        subcopy={taskPlaceSubcopy(place, displayedCount)}
         subcopyTestId={TASK_PLACE_SUBCOPY_TEST_ID}
         action={
           canReorder && tasks.length > 0 ? (
@@ -974,6 +1043,7 @@ function TasksPage() {
             )}
           />
         ) : (
+        <>
         <AnimatedList>
           {tasks.map((task) => (
             <AnimatedListItem
@@ -993,6 +1063,14 @@ function TasksPage() {
             </AnimatedListItem>
           ))}
         </AnimatedList>
+        {completedBoard ? (
+          <LoadMoreButton
+            hasNextPage={Boolean(completedPages.hasNextPage)}
+            isFetchingNextPage={completedPages.isFetchingNextPage}
+            onLoadMore={() => void completedPages.fetchNextPage()}
+          />
+        ) : null}
+        </>
         )
       )}
 

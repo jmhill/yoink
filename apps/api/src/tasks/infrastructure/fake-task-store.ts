@@ -1,12 +1,22 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type {
-  TaskStore,
-  FindByOrganizationOptions,
-  FindByOrganizationResult,
-} from '../domain/task-store.js';
+import type { TaskStore, FindByOrganizationOptions } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
 import { compareOpenOrder, nextOpenOrder } from '../domain/open-order.js';
+import {
+  compareKeyset,
+  pageOrdered,
+} from '../../listing/domain/keyset-window.js';
+import {
+  completedTaskDirection,
+  completedTaskKeys,
+  openPileTaskDirection,
+  openPileTaskKeys,
+  taskBoardDirection,
+  taskBoardKeys,
+} from '../../listing/domain/list-keys.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 
 export type FakeTaskStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -53,7 +63,7 @@ export const createFakeTaskStore = (
 
     findByOrganization: (
       opts: FindByOrganizationOptions
-    ): ResultAsync<FindByOrganizationResult, StorageError> => {
+    ): ResultAsync<KeysetRows<Task>, StorageError> => {
       if (options.shouldFailOnFind) {
         return errAsync(storageError('Find failed'));
       }
@@ -62,11 +72,9 @@ export const createFakeTaskStore = (
         .filter((t) => t.organizationId === opts.organizationId)
         .filter((t) => !deletedIds.has(t.id));
 
-      // Apply filter
       const today = opts.today ?? new Date().toISOString().split('T')[0];
       switch (opts.filter) {
         case 'today':
-          // Include tasks due today OR overdue (due before today)
           filtered = filtered.filter((t) => t.dueDate && t.dueDate <= today && !t.completedAt);
           break;
         case 'upcoming':
@@ -89,28 +97,23 @@ export const createFakeTaskStore = (
           break;
       }
 
-      // Sort: pinned first (by pinnedAt DESC), then by createdAt DESC
-      if (opts.filter === 'completed') {
-        filtered = filtered.sort((a, b) => {
-          const aTime = new Date(a.completedAt!).getTime();
-          const bTime = new Date(b.completedAt!).getTime();
-          return bTime - aTime;
-        });
-      } else {
-        filtered = filtered.sort((a, b) => {
-          // Pinned items first
-          if (a.pinnedAt && !b.pinnedAt) return -1;
-          if (!a.pinnedAt && b.pinnedAt) return 1;
-          if (a.pinnedAt && b.pinnedAt) {
-            return new Date(b.pinnedAt).getTime() - new Date(a.pinnedAt).getTime();
-          }
-          // Then by createdAt DESC
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-      }
+      const keysOf = opts.filter === 'completed' ? completedTaskKeys : taskBoardKeys;
+      const direction =
+        opts.filter === 'completed' ? completedTaskDirection : taskBoardDirection;
+      const ordered = [...filtered].sort((a, b) => {
+        const cmp = compareKeyset(keysOf(a), keysOf(b));
+        return direction === 'asc' ? cmp : -cmp;
+      });
 
-      filtered = filtered.slice(0, opts.limit ?? Infinity);
-      return okAsync({ tasks: filtered });
+      return okAsync(
+        pageOrdered({
+          ordered,
+          keysOf,
+          direction,
+          fetchLimit: opts.fetchLimit,
+          seek: opts.seek,
+        })
+      );
     },
 
     findByCaptureId: (captureId: string): ResultAsync<Task | null, StorageError> => {
@@ -140,6 +143,32 @@ export const createFakeTaskStore = (
           !deletedIds.has(task.id)
       ).length;
       return okAsync(count);
+    },
+
+    pageOpenInPile: (pile: {
+      organizationId: string;
+      listId: string | null;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const open = tasks
+        .filter((task) => task.organizationId === pile.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .filter((task) => !task.completedAt)
+        .filter((task) => (task.listId ?? null) === pile.listId)
+        .sort((a, b) => compareKeyset(openPileTaskKeys(a), openPileTaskKeys(b)));
+      return okAsync(
+        pageOrdered({
+          ordered: open,
+          keysOf: openPileTaskKeys,
+          direction: openPileTaskDirection,
+          fetchLimit: pile.fetchLimit,
+          seek: pile.seek,
+        })
+      );
     },
 
     findOpenInPile: (pile: {

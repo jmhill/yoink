@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx,js,jsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
     "@sentry/react": "^10.32.1",

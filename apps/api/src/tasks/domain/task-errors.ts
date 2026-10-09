@@ -1,3 +1,5 @@
+import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
+
 export type StorageError = {
   readonly type: 'STORAGE_ERROR';
   readonly message: string;
@@ -31,7 +33,7 @@ export type CreateTaskError =
   | StorageError
   | AssigneeNotInOrganizationError
   | ListNotInOrganizationError;
-export type ListTasksError = StorageError;
+export type ListTasksError = StorageError | InvalidCursorError;
 export type FindTaskError = StorageError | TaskNotFoundError;
 export type UpdateTaskError =
   | StorageError

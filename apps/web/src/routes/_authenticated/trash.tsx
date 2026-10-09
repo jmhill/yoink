@@ -12,6 +12,13 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsr } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
+import {
+  LoadMoreButton,
+  emptyCaptureHistoryPages,
+  isCaptureHistoryData,
+  mapCaptureHistoryPageItems,
+  useTrashedCapturePages,
+} from '@/lib/use-history-pages';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, RotateCcw, X } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -31,10 +38,16 @@ function TrashPage() {
   const [emptyTrashConfirmOpen, setEmptyTrashConfirmOpen] = useState(false);
   const tsrQueryClient = tsr.useQueryClient();
 
-  const { data, isPending, error, refetch } = tsr.list.useQuery({
-    queryKey: ['captures', 'trashed'],
-    queryData: { query: { status: 'trashed' as const } },
-  });
+  const {
+    data,
+    items: captures,
+    isPending,
+    error,
+    refetch,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useTrashedCapturePages(true);
 
   const restoreMutation = tsr.restore.useMutation({
     onMutate: async ({ params }) => {
@@ -42,45 +55,35 @@ function TrashPage() {
       await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
-      const previousTrashed = tsrQueryClient.list.getQueryData([
-        'captures',
-        'trashed',
-      ]);
+      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
       const previousInbox = tsrQueryClient.list.getQueryData([
         'captures',
         'inbox',
       ]);
 
-      // Find the capture being restored
-      if (previousTrashed?.status === 200) {
-        const captureToRestore = previousTrashed.body.captures.find(
-          (c) => c.id === params.id
-        );
+      const captureToRestore = captures.find((c) => c.id === params.id);
 
-        // Remove from trashed
-        tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
-          ...previousTrashed,
+      if (isCaptureHistoryData(previousTrashed)) {
+        tsrQueryClient.setQueryData(
+          ['captures', 'trashed'],
+          mapCaptureHistoryPageItems(previousTrashed, (items) =>
+            items.filter((c) => c.id !== params.id)
+          )
+        );
+      }
+
+      if (captureToRestore && previousInbox?.status === 200) {
+        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+          ...previousInbox,
           body: {
-            ...previousTrashed.body,
-            captures: previousTrashed.body.captures.filter(
-              (c) => c.id !== params.id
-            ),
+            ...previousInbox.body,
+            captures: [
+              { ...captureToRestore, status: 'inbox' as const },
+              ...previousInbox.body.captures,
+            ],
+            total: previousInbox.body.total + 1,
           },
         });
-
-        // Add to inbox (if cache exists)
-        if (captureToRestore && previousInbox?.status === 200) {
-          tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-            ...previousInbox,
-            body: {
-              ...previousInbox.body,
-              captures: [
-                { ...captureToRestore, status: 'inbox' as const },
-                ...previousInbox.body.captures,
-              ],
-            },
-          });
-        }
       }
 
       return { previousTrashed, previousInbox };
@@ -89,10 +92,7 @@ function TrashPage() {
     onError: (err, _variables, context) => {
       // Rollback on error
       if (context?.previousTrashed) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'trashed'],
-          context.previousTrashed
-        );
+        tsrQueryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
       }
       if (context?.previousInbox) {
         tsrQueryClient.list.setQueryData(
@@ -123,21 +123,15 @@ function TrashPage() {
     onMutate: async ({ params }) => {
       await cancelLiveQueries(tsrQueryClient);
 
-      const previousTrashed = tsrQueryClient.list.getQueryData([
-        'captures',
-        'trashed',
-      ]);
+      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
 
-      if (previousTrashed?.status === 200) {
-        tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
-          ...previousTrashed,
-          body: {
-            ...previousTrashed.body,
-            captures: previousTrashed.body.captures.filter(
-              (c) => c.id !== params.id
-            ),
-          },
-        });
+      if (isCaptureHistoryData(previousTrashed)) {
+        tsrQueryClient.setQueryData(
+          ['captures', 'trashed'],
+          mapCaptureHistoryPageItems(previousTrashed, (items) =>
+            items.filter((c) => c.id !== params.id)
+          )
+        );
       }
 
       return { previousTrashed };
@@ -145,10 +139,7 @@ function TrashPage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousTrashed) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'trashed'],
-          context.previousTrashed
-        );
+        tsrQueryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
       }
 
       if (isFetchError(err)) {
@@ -171,26 +162,19 @@ function TrashPage() {
     onMutate: async () => {
       await cancelLiveQueries(tsrQueryClient);
 
-      const previousTrashed = tsrQueryClient.list.getQueryData([
-        'captures',
-        'trashed',
-      ]);
+      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
 
-      tsrQueryClient.list.setQueryData(['captures', 'trashed'], {
-        status: 200 as const,
-        body: { captures: [] },
-        headers: new Headers(),
-      });
+      tsrQueryClient.setQueryData(
+        ['captures', 'trashed'],
+        emptyCaptureHistoryPages()
+      );
 
       return { previousTrashed };
     },
 
     onError: (err, _variables, context) => {
       if (context?.previousTrashed) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'trashed'],
-          context.previousTrashed
-        );
+        tsrQueryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
       }
 
       if (isFetchError(err)) {
@@ -232,8 +216,6 @@ function TrashPage() {
     emptyTrashMutation.mutate({ body: {} });
     setEmptyTrashConfirmOpen(false);
   };
-
-  const captures = data?.status === 200 ? data.body.captures : [];
 
   return (
     <InboxPaneShell active="trash">
@@ -316,6 +298,11 @@ function TrashPage() {
               </AnimatedListItem>
             ))}
           </AnimatedList>
+          <LoadMoreButton
+            hasNextPage={Boolean(hasNextPage)}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={() => void fetchNextPage()}
+          />
         </>
       )}
 

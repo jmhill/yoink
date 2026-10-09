@@ -29,6 +29,9 @@ Yoink is designed around a simple workflow:
 
 ## Documentation
 
+Bot and token clients: see **[docs/operations/API.md](./docs/operations/API.md)**
+for how to read a whole pile in one request (and how to page Done / Trash).
+
 See the [docs/](./docs/) directory for detailed documentation:
 
 - **[docs/PLAN.md](./docs/PLAN.md)** - Master implementation plan with current status and next steps

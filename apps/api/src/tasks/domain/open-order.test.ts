@@ -59,4 +59,13 @@ describe('compareOpenOrder', () => {
     const sorted = [...tasks].sort(compareOpenOrder).map((task) => task.id);
     expect(sorted).toEqual(['ordered', 'earlier', 'later']);
   });
+
+  it('breaks createdAt ties by id so paging stays stable', () => {
+    const tasks = [
+      { id: 'b', createdAt: '2025-01-15T10:00:00.000Z' },
+      { id: 'a', createdAt: '2025-01-15T10:00:00.000Z' },
+    ];
+
+    expect([...tasks].sort(compareOpenOrder).map((task) => task.id)).toEqual(['a', 'b']);
+  });
 });

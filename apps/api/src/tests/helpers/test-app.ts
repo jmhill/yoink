@@ -41,6 +41,22 @@ export const testConfig: AppConfig = {
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
 };
 
+/** Production caps at 100 req/min. Pagination suites create 120–1001 rows via inject. */
+export const pagingTestConfig: AppConfig = {
+  ...testConfig,
+  rateLimit: {
+    enabled: false,
+    globalMax: 100,
+    globalTimeWindow: '1 minute',
+    adminLoginMax: 5,
+    adminLoginTimeWindow: '15 minutes',
+    authLoginMax: 10,
+    authLoginTimeWindow: '15 minutes',
+    signupMax: 5,
+    signupTimeWindow: '1 hour',
+  },
+};
+
 export const testConfigWithAdmin: AppConfig = {
   ...testConfig,
   admin: {
@@ -73,11 +89,11 @@ export const testConfigFull: AppConfig = {
  * Creates an in-process Fastify app for unit/integration testing.
  * Uses in-memory SQLite and fake infrastructure (clock, ID generator, etc.)
  */
-export const createTestApp = async () => {
-  const infrastructure = createInfrastructure(testConfig);
+export const createTestApp = async (config: AppConfig = testConfig) => {
+  const infrastructure = createInfrastructure(config);
   await runMigrations(infrastructure.database, migrations);
 
-  return bootstrapApp({ config: testConfig, infrastructure, silent: true });
+  return bootstrapApp({ config, infrastructure, silent: true });
 };
 
 /**

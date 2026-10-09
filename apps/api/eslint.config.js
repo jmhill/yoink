@@ -9,6 +9,7 @@ const elements = [
   { type: 'config', pattern: 'src/config/**' },
   { type: 'database', pattern: 'src/database/**' },
   { type: 'health', pattern: 'src/health/**' },
+  { type: 'listing', pattern: 'src/listing/**' },
   { type: 'lists', pattern: 'src/lists/**' },
   { type: 'logging', pattern: 'src/logging/**' },
   { type: 'processing', pattern: 'src/processing/**' },
@@ -48,7 +49,7 @@ export default [
         {
           default: 'disallow',
           rules: [
-            { from: '*', allow: ['shared', 'config', 'database', 'logging'] },
+            { from: '*', allow: ['shared', 'listing', 'config', 'database', 'logging'] },
             { from: 'app', allow: ['*'] },
             { from: 'composition', allow: ['*'] },
             { from: 'entrypoint', allow: ['*'] },
@@ -63,6 +64,27 @@ export default [
         },
       ],
       'boundaries/no-unknown': 'warn',
+    },
+  },
+  {
+    // Hexagonal: domain and application must not import adapters.
+    // Tests may import fakes. `@yoink/infrastructure` (Clock, etc.) is a
+    // shared kernel, not a feature adapter, so it is not in this pattern.
+    files: ['src/**/{domain,application}/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '**/infrastructure/*'],
+              message:
+                'domain and application must not import hexagonal infrastructure adapters',
+            },
+          ],
+        },
+      ],
     },
   },
 ];

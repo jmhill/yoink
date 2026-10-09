@@ -11,7 +11,7 @@ export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
 
 type TaskListResult = {
   status: number;
-  body: { tasks: Task[] };
+  body: { tasks: Task[]; total?: number };
 };
 
 const isTaskListResult = (data: unknown): data is TaskListResult => {
@@ -75,11 +75,17 @@ export const mapLiveOpenTaskLists = (
     if (!isTaskListResult(data)) {
       continue;
     }
+    const tasks = mapTasks(data.body.tasks, queryKey);
+    const total =
+      typeof data.body.total === 'number'
+        ? Math.max(0, data.body.total + (tasks.length - data.body.tasks.length))
+        : data.body.total;
     queryClient.setQueryData(queryKey, {
       ...data,
       body: {
         ...data.body,
-        tasks: mapTasks(data.body.tasks, queryKey),
+        tasks,
+        ...(typeof total === 'number' ? { total } : {}),
       },
     });
   }

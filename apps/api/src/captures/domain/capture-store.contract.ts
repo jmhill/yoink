@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Capture } from '@yoink/api-contracts';
 import type { CaptureStore } from './capture-store.js';
+import { captureFeedKeys } from '../../listing/domain/list-keys.js';
 
 const createTestCapture = (overrides: Partial<Capture> = {}): Capture => ({
   id: `capture-${Math.random().toString(36).slice(2)}`,
@@ -38,11 +39,12 @@ export const runCaptureStoreContractTests = (
 
         const findResult = await store.findByOrganization({
           organizationId: capture.organizationId,
+          fetchLimit: 10,
         });
         expect(findResult.isOk()).toBe(true);
         if (findResult.isOk()) {
-          expect(findResult.value.captures).toHaveLength(1);
-          expect(findResult.value.captures[0]).toEqual(capture);
+          expect(findResult.value.rows).toHaveLength(1);
+          expect(findResult.value.rows[0]).toEqual(capture);
         }
       });
 
@@ -58,14 +60,15 @@ export const runCaptureStoreContractTests = (
 
         const findResult = await store.findByOrganization({
           organizationId: capture.organizationId,
+          fetchLimit: 10,
         });
         expect(findResult.isOk()).toBe(true);
         if (findResult.isOk()) {
-          expect(findResult.value.captures[0].title).toBe('A title');
-          expect(findResult.value.captures[0].sourceUrl).toBe(
+          expect(findResult.value.rows[0]?.title).toBe('A title');
+          expect(findResult.value.rows[0]?.sourceUrl).toBe(
             'https://example.com'
           );
-          expect(findResult.value.captures[0].sourceApp).toBe(
+          expect(findResult.value.rows[0]?.sourceApp).toBe(
             'browser-extension'
           );
         }
@@ -86,12 +89,15 @@ export const runCaptureStoreContractTests = (
         await store.save(org1Capture);
         await store.save(org2Capture);
 
-        const result = await store.findByOrganization({ organizationId: 'org-1' });
+        const result = await store.findByOrganization({
+          organizationId: 'org-1',
+          fetchLimit: 10,
+        });
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value.captures).toHaveLength(1);
-          expect(result.value.captures[0].content).toBe('Org 1');
+          expect(result.value.rows).toHaveLength(1);
+          expect(result.value.rows[0]?.content).toBe('Org 1');
         }
       });
 
@@ -112,12 +118,13 @@ export const runCaptureStoreContractTests = (
 
         const result = await store.findByOrganization({
           organizationId: older.organizationId,
+          fetchLimit: 10,
         });
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value.captures[0].content).toBe('Newer');
-          expect(result.value.captures[1].content).toBe('Older');
+          expect(result.value.rows[0]?.content).toBe('Newer');
+          expect(result.value.rows[1]?.content).toBe('Older');
         }
       });
 
@@ -134,39 +141,87 @@ export const runCaptureStoreContractTests = (
         const result = await store.findByOrganization({
           organizationId: inbox.organizationId,
           status: 'inbox',
+          fetchLimit: 10,
         });
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value.captures).toHaveLength(1);
-          expect(result.value.captures[0].status).toBe('inbox');
+          expect(result.value.rows).toHaveLength(1);
+          expect(result.value.rows[0]?.status).toBe('inbox');
         }
       });
 
-      it('limits results', async () => {
+      it('applies LIMIT mechanically and reports total', async () => {
         for (let i = 0; i < 5; i++) {
           await store.save(createTestCapture({ id: `capture-${i}` }));
         }
 
         const result = await store.findByOrganization({
           organizationId: 'org-123',
-          limit: 2,
+          fetchLimit: 2,
         });
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value.captures).toHaveLength(2);
+          expect(result.value.rows).toHaveLength(2);
+          expect(result.value.total).toBe(5);
         }
       });
 
-      it('returns empty array when no captures exist', async () => {
+      it('resumes with a keyset seek and keeps remaining rows when the seek item is gone', async () => {
+        const captures = [
+          createTestCapture({
+            id: 'capture-page-0',
+            capturedAt: '2025-01-15T12:00:00.000Z',
+          }),
+          createTestCapture({
+            id: 'capture-page-1',
+            capturedAt: '2025-01-15T11:00:00.000Z',
+          }),
+          createTestCapture({
+            id: 'capture-page-2',
+            capturedAt: '2025-01-15T10:00:00.000Z',
+          }),
+        ];
+        for (const capture of captures) {
+          await store.save(capture);
+        }
+
+        const first = await store.findByOrganization({
+          organizationId: 'org-123',
+          fetchLimit: 2,
+        });
+        expect(first.isOk()).toBe(true);
+        if (!first.isOk()) return;
+        const cursorItem = first.value.rows[1];
+        expect(cursorItem?.id).toBe('capture-page-1');
+        if (!cursorItem) return;
+
+        await store.softDelete(cursorItem.id);
+
+        const remaining = await store.findByOrganization({
+          organizationId: 'org-123',
+          fetchLimit: 10,
+          seek: { view: 'captures.feed', keys: captureFeedKeys(cursorItem) },
+        });
+        expect(remaining.isOk()).toBe(true);
+        if (!remaining.isOk()) return;
+        expect(remaining.value.rows.map((capture) => capture.id)).toEqual([
+          'capture-page-2',
+        ]);
+        expect(remaining.value.total).toBe(2);
+      });
+
+      it('returns empty rows when no captures exist', async () => {
         const result = await store.findByOrganization({
           organizationId: 'non-existent-org',
+          fetchLimit: 10,
         });
 
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
-          expect(result.value.captures).toEqual([]);
+          expect(result.value.rows).toEqual([]);
+          expect(result.value.total).toBe(0);
         }
       });
     });

@@ -5,6 +5,7 @@ export * from './error.js';
 export * from './health.js';
 export * from './invitation.js';
 export * from './list.js';
+export * from './list-page.js';
 export * from './organization.js';
 export * from './passkey.js';
 export * from './signup.js';

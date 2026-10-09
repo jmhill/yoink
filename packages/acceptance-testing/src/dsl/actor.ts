@@ -1215,6 +1215,32 @@ export type BrowserActorOperations = {
   useShortLiveQueryInterval(intervalMs?: number): Promise<void>;
 
   /**
+   * Wait until a live GET of this named list's open tasks has a body that
+   * matches. Ignores in-flight GETs whose JSON is still the old pile.
+   * Start this before the out-of-band write so a fast poll is not missed.
+   */
+  awaitLiveOpenListTasks(
+    listId: string,
+    matches: (tasks: Array<{ id: string; title: string }>) => boolean
+  ): Promise<void>;
+
+  /**
+   * Wait until a live GET of named lists has a body that matches.
+   * Start this before the out-of-band write.
+   */
+  awaitLiveNamedLists(
+    matches: (lists: Array<{ id: string; name: string }>) => boolean
+  ): Promise<void>;
+
+  /**
+   * Wait until a live GET of inbox captures has a body that matches.
+   * Start this before the out-of-band write.
+   */
+  awaitLiveInboxCaptures(
+    matches: (captures: Array<{ id: string; content: string }>) => boolean
+  ): Promise<void>;
+
+  /**
    * Hide the document (backgrounded app / hidden tab) so live checks must stop.
    */
   hideApp(): Promise<void>;

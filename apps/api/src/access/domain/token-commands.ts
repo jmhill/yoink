@@ -1,0 +1,22 @@
+import type { Actor } from './actor.js';
+
+export type CreateNamedTokenCommand = {
+  actor: Actor;
+  userId: string;
+  organizationId: string;
+  name: string;
+};
+
+export type RenameTokenCommand = {
+  actor: Actor;
+  tokenId: string;
+  userId: string;
+  organizationId: string;
+  name: string;
+};
+
+export type RevokeTokenCommand = {
+  actor: Actor;
+  tokenId: string;
+  userId: string;
+};

@@ -62,8 +62,9 @@ export type User = {
 
 export type Token = {
   id: string;
-  name: string;
-  userId: string;
+  name: string | null;
+  userId?: string;
+  lastUsedAt?: string;
   createdAt: string;
 };
 

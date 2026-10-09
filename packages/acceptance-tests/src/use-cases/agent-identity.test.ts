@@ -1,6 +1,6 @@
 import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
 import type { CoreActor } from '@yoink/acceptance-testing';
-import { ForbiddenError, TokenLimitReachedError } from '@yoink/acceptance-testing';
+import { ForbiddenError } from '@yoink/acceptance-testing';
 
 /**
  * Identity slice: token-only agent principals sit on the task board.
@@ -150,8 +150,9 @@ usingDrivers(['http'] as const, (ctx) => {
     });
 
     it('minting an agent does not consume the human token bucket', async () => {
-      await alice.createToken('CLI token');
-      await expect(alice.createToken('One too many')).rejects.toThrow(TokenLimitReachedError);
+      await ctx.admin.login();
+      await ctx.admin.createToken(alice.organizationId, alice.userId, 'CLI token');
+      await ctx.admin.logout();
 
       const minted = await alice.mintAgent('Extra bot');
       expect(minted.rawToken).toMatch(/^[^:]+:[^:]+$/);

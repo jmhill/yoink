@@ -2400,6 +2400,35 @@ export const createPlaywrightActor = (
       await inboxPage.goToSettings();
     },
 
+    async openOrganizationSettings(): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+    },
+
+    async createNamedBotTokenFromSettings(name: string): Promise<string> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+      return settingsPage.createNamedToken(name);
+    },
+
+    async shouldSeeNamedTokenInSettings(name: string): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+      await settingsPage.shouldSeeToken(name);
+    },
+
+    async nameUnnamedTokenFromSettings(name: string): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+      await settingsPage.nameUnnamedToken(name);
+    },
+
+    async revokeNamedTokenFromSettings(name: string): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.openOrganizationTab();
+      await settingsPage.revokeNamedToken(name);
+    },
+
     async logout(): Promise<void> {
       await settingsPage.goto();
       await settingsPage.logout();
@@ -2588,6 +2617,10 @@ export const createPlaywrightActor = (
       if (response.status() === 401) {
         throw new UnauthorizedError();
       }
+      if (response.status() === 403) {
+        const body = await response.json();
+        throw new ForbiddenError(body.message || 'Permission denied');
+      }
       if (response.status() === 400) {
         const body = await response.json();
         throw new ValidationError(body.message || 'Invalid request');
@@ -2597,6 +2630,35 @@ export const createPlaywrightActor = (
       }
       if (response.status() !== 201) {
         throw new Error(`Failed to create token: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async renameToken(tokenId: string, name: string): Promise<Token> {
+      const response = await page.request.patch(`/api/auth/tokens/${tokenId}`, {
+        data: { name },
+      });
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        const body = await response.json();
+        throw new ForbiddenError(body.message || 'Permission denied');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Token', tokenId);
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message || 'Invalid request');
+      }
+      if (response.status() === 409) {
+        const body = await response.json();
+        throw new ConflictError(body.message || 'A token with this name already exists');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to rename token: ${response.status()}`);
       }
       return response.json();
     },

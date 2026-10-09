@@ -555,6 +555,48 @@ export class SettingsPage {
     await this.page.waitForURL('/');
   }
 
+  async openOrganizationTab(): Promise<void> {
+    await this.page.getByRole('tab', { name: 'Organization' }).click();
+    await this.page.getByRole('heading', { name: 'API Tokens' }).waitFor({ state: 'visible' });
+  }
+
+  tokenRow(name: string) {
+    return this.page.locator(`[data-token-row="${name}"]`);
+  }
+
+  async createNamedToken(name: string): Promise<string> {
+    await this.page.getByRole('button', { name: 'Create Token' }).click();
+    await this.page.getByLabel('Token Name').fill(name);
+    await this.page.getByRole('button', { name: 'Create Token' }).click();
+    await this.page.getByRole('heading', { name: 'Token Created' }).waitFor({ state: 'visible' });
+    const rawToken = (await this.page.locator('.font-mono').last().textContent()) ?? '';
+    await this.page.getByRole('button', { name: 'Done' }).click();
+    await this.page.getByRole('heading', { name: 'Token Created' }).waitFor({ state: 'hidden' });
+    return rawToken;
+  }
+
+  async shouldSeeToken(name: string): Promise<void> {
+    const row = this.tokenRow(name);
+    await row.waitFor({ state: 'visible' });
+    await expect(row).toContainText('Created');
+    await expect(row).toContainText('Last used');
+  }
+
+  async nameUnnamedToken(name: string): Promise<void> {
+    const row = this.tokenRow('Unnamed');
+    await row.getByRole('button', { name: 'Name this token' }).click();
+    await this.page.getByLabel('Token Name').fill(name);
+    await this.page.getByRole('button', { name: 'Save name' }).click();
+    await this.tokenRow(name).waitFor({ state: 'visible' });
+  }
+
+  async revokeNamedToken(name: string): Promise<void> {
+    const row = this.tokenRow(name);
+    await row.getByRole('button', { name: `Revoke ${name}` }).click();
+    await this.page.getByRole('button', { name: 'Revoke Token' }).click();
+    await this.tokenRow(name).waitFor({ state: 'hidden' });
+  }
+
   /**
    * Click the "Add Passkey" button in the Security section.
    */

@@ -21,6 +21,7 @@ import {
   registerTokenRoutes,
   type AuthMiddleware,
 } from './access/application/index.js';
+import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
@@ -62,6 +63,7 @@ export type SignupConfig = {
   tokenService: TokenService;
   userService: UserService;
   userTokenService: UserTokenService;
+  tokenHandlers: TokenHandlers;
   agentService: AgentService;
 };
 
@@ -203,7 +205,7 @@ export const createApp = async (deps: AppDependencies) => {
 
     // User token self-service routes
     await registerTokenRoutes(app, {
-      userTokenService: deps.signup.userTokenService,
+      tokenHandlers: deps.signup.tokenHandlers,
       sessionService: deps.signup.sessionService,
       tokenService: deps.signup.tokenService,
       sessionCookieName,

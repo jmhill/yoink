@@ -1,11 +1,8 @@
-import type { TokenInfo, CreateUserTokenResponse } from '@yoink/api-contracts';
+import type { TokenInfo, CreateUserTokenResponse, ListUserTokensResponse } from '@yoink/api-contracts';
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
-/**
- * List all API tokens for the current user in the current organization.
- */
-export const listTokens = async (): Promise<ApiResponse<{ tokens: TokenInfo[] }>> => {
+export const listTokens = async (): Promise<ApiResponse<ListUserTokensResponse>> => {
   const response = await fetch('/api/auth/tokens', {
     method: 'GET',
     credentials: 'include',
@@ -20,10 +17,6 @@ export const listTokens = async (): Promise<ApiResponse<{ tokens: TokenInfo[] }>
   return { ok: true, data };
 };
 
-/**
- * Create a new API token.
- * Returns the token info and raw token value (only shown once).
- */
 export const createToken = async (
   name: string
 ): Promise<ApiResponse<CreateUserTokenResponse>> => {
@@ -43,9 +36,26 @@ export const createToken = async (
   return { ok: true, data };
 };
 
-/**
- * Revoke (delete) an API token.
- */
+export const renameToken = async (
+  tokenId: string,
+  name: string
+): Promise<ApiResponse<TokenInfo>> => {
+  const response = await fetch(`/api/auth/tokens/${encodeURIComponent(tokenId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    return { ok: false, error: body.message || 'Failed to rename token' };
+  }
+
+  const data = await response.json();
+  return { ok: true, data };
+};
+
 export const revokeToken = async (
   tokenId: string
 ): Promise<ApiResponse<{ success: true }>> => {

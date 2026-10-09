@@ -96,16 +96,22 @@ export type CoreActor = {
 
   /**
    * Create a new API token for this user in the current organization.
-   * Returns the token info and the raw token value (shown only once).
+   * Human-session only. Bot tokens receive 403.
    * @throws TokenLimitReachedError if user has reached the max tokens (2 per org)
+   * @throws ForbiddenError if a bot token tries to create
    */
   createToken(name: string): Promise<CreateTokenResult>;
+
+  /**
+   * Name or rename an API token. Human-session only.
+   */
+  renameToken(tokenId: string, name: string): Promise<Token>;
 
   /**
    * Revoke (delete) an API token by ID.
    * Only the token owner can revoke their own tokens.
    * @throws NotFoundError if token does not exist
-   * @throws ForbiddenError if user does not own the token
+   * @throws ForbiddenError if user does not own the token, or a bot token tries
    */
   revokeToken(tokenId: string): Promise<void>;
 
@@ -147,6 +153,32 @@ export type BrowserActorOperations = {
    * Navigate to the settings page.
    */
   goToSettings(): Promise<void>;
+
+  /**
+   * Open the Organization tab on Settings.
+   */
+  openOrganizationSettings(): Promise<void>;
+
+  /**
+   * Create a named bot token through the Settings UI.
+   * Returns the raw token shown once in the dialog.
+   */
+  createNamedBotTokenFromSettings(name: string): Promise<string>;
+
+  /**
+   * Assert Settings lists this token by name, with created and last-used text.
+   */
+  shouldSeeNamedTokenInSettings(name: string): Promise<void>;
+
+  /**
+   * Name an unnamed token through the Settings rename action.
+   */
+  nameUnnamedTokenFromSettings(name: string): Promise<void>;
+
+  /**
+   * Revoke a token by name through the Settings UI.
+   */
+  revokeNamedTokenFromSettings(name: string): Promise<void>;
 
   /**
    * Switch to a different organization.

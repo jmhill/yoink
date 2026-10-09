@@ -9,6 +9,7 @@ export type TokenStore = {
   findByOrganizationId(organizationId: string): ResultAsync<ApiToken[], TokenStorageError>;
   findByUserAndOrganization(userId: string, organizationId: string): ResultAsync<ApiToken[], TokenStorageError>;
   updateLastUsed(id: string, timestamp: string): ResultAsync<void, TokenStorageError>;
+  updateName(id: string, name: string | null): ResultAsync<void, TokenStorageError>;
   delete(id: string): ResultAsync<void, TokenStorageError>;
   hasAnyTokens(): ResultAsync<boolean, TokenStorageError>;
 };

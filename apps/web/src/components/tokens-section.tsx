@@ -11,9 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
+import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check, Pencil } from 'lucide-react';
 import type { TokenInfo } from '@yoink/api-contracts';
-import { listTokens, createToken, revokeToken } from '@/api/tokens';
+import { listTokens, createToken, revokeToken, renameToken } from '@/api/tokens';
 
 type TokenListState =
   | { status: 'loading' }
@@ -26,7 +26,9 @@ export function TokensSection() {
   const [listState, setListState] = useState<TokenListState>({ status: 'loading' });
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<TokenInfo | null>(null);
+  const [tokenToRename, setTokenToRename] = useState<TokenInfo | null>(null);
 
   const loadTokens = async () => {
     setListState({ status: 'loading' });
@@ -55,6 +57,17 @@ export function TokensSection() {
   const handleDeleteSuccess = () => {
     setDeleteDialogOpen(false);
     setTokenToDelete(null);
+    loadTokens();
+  };
+
+  const handleRenameClick = (token: TokenInfo) => {
+    setTokenToRename(token);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameSuccess = () => {
+    setRenameDialogOpen(false);
+    setTokenToRename(null);
     loadTokens();
   };
 
@@ -95,6 +108,7 @@ export function TokensSection() {
                   <TokenItem
                     key={token.id}
                     token={token}
+                    onRename={() => handleRenameClick(token)}
                     onDelete={() => handleDeleteClick(token)}
                   />
                 ))}
@@ -130,42 +144,68 @@ export function TokensSection() {
         token={tokenToDelete}
         onSuccess={handleDeleteSuccess}
       />
+
+      <RenameTokenDialog
+        open={renameDialogOpen}
+        onOpenChange={setRenameDialogOpen}
+        token={tokenToRename}
+        onSuccess={handleRenameSuccess}
+      />
     </>
   );
 }
 
 type TokenItemProps = {
   token: TokenInfo;
+  onRename: () => void;
   onDelete: () => void;
 };
 
-function TokenItem({ token, onDelete }: TokenItemProps) {
+export const unnamedTokenLabel = 'Unnamed';
+
+function TokenItem({ token, onRename, onDelete }: TokenItemProps) {
   const createdDate = new Date(token.createdAt).toLocaleDateString();
   const lastUsedDate = token.lastUsedAt
     ? new Date(token.lastUsedAt).toLocaleDateString()
     : 'Never';
+  const displayName = token.name ?? unnamedTokenLabel;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-      <div className="flex items-center gap-3">
+    <div
+      className="flex items-center justify-between p-3 rounded-lg border bg-card"
+      data-token-row={displayName}
+    >
+      <div className="flex items-center gap-3 min-w-0">
         <div className="p-2 rounded-full bg-muted">
           <Key className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div>
-          <p className="font-medium text-sm">{token.name}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-sm truncate">
+            {displayName}
+          </p>
           <p className="text-xs text-muted-foreground">
             Created {createdDate} · Last used {lastUsedDate}
           </p>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onDelete}
-        title="Revoke token"
-      >
-        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-      </Button>
+      <div className="flex items-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onRename}
+          title={token.name ? `Rename ${token.name}` : 'Name this token'}
+        >
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onDelete}
+          title={token.name ? `Revoke ${token.name}` : 'Revoke unnamed token'}
+        >
+          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -296,7 +336,7 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
               id="token-name"
               value={tokenName}
               onChange={(e) => setTokenName(e.target.value)}
-              placeholder="e.g., Browser Extension"
+              placeholder="e.g., Lane"
               disabled={isCreating}
             />
             <p className="text-xs text-muted-foreground">
@@ -379,7 +419,7 @@ function DeleteTokenDialog({
           <DialogTitle>Revoke Token</DialogTitle>
           <DialogDescription>
             Are you sure you want to revoke{' '}
-            <strong>{token?.name || 'this token'}</strong>? Any applications using
+            <strong>{token?.name ?? unnamedTokenLabel}</strong>? Any applications using
             this token will stop working immediately.
           </DialogDescription>
         </DialogHeader>
@@ -403,6 +443,99 @@ function DeleteTokenDialog({
               </>
             ) : (
               'Revoke Token'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type RenameTokenDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  token: TokenInfo | null;
+  onSuccess: () => void;
+};
+
+function RenameTokenDialog({
+  open,
+  onOpenChange,
+  token,
+  onSuccess,
+}: RenameTokenDialogProps) {
+  const [tokenName, setTokenName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setTokenName(token?.name ?? '');
+      setError(null);
+    }
+  }, [open, token]);
+
+  const handleSave = async () => {
+    if (!token) return;
+    if (!tokenName.trim()) {
+      setError('Token name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    const result = await renameToken(token.id, tokenName.trim());
+    setIsSaving(false);
+
+    if (result.ok) {
+      onSuccess();
+    } else {
+      setError(result.error);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{token?.name ? 'Rename Token' : 'Name Token'}</DialogTitle>
+          <DialogDescription>
+            Give this bot a name, like Lane. Names must be unique in this organization.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="rename-token-name">Token Name</Label>
+            <Input
+              id="rename-token-name"
+              value={tokenName}
+              onChange={(e) => setTokenName(e.target.value)}
+              placeholder="e.g., Lane"
+              disabled={isSaving}
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save name'
             )}
           </Button>
         </DialogFooter>

@@ -1,19 +1,13 @@
 import { usingDrivers, describe, it, expect, beforeAll, afterAll } from '@yoink/acceptance-testing';
-import { UnauthorizedError, NotFoundError, TokenLimitReachedError } from '@yoink/acceptance-testing';
+import { UnauthorizedError, ForbiddenError } from '@yoink/acceptance-testing';
 
 /**
- * Tests for user token self-service.
+ * User token self-service.
  *
- * Users can create, list, and revoke their own API tokens.
- * Tokens are scoped to organizations (one user can have different tokens per org).
- * Maximum 2 tokens per user per organization.
- *
- * NOTE: The HTTP driver creates actors with a bootstrap token (named 'test-token')
- * for API authentication. This token counts toward the 2-token limit, so actors
- * start with 1 token already.
+ * HTTP actors authenticate as bots (Bearer token), so they can list
+ * tokens but cannot create, rename, or revoke them.
  */
 usingDrivers(['http'] as const, (ctx) => {
-  // The HTTP driver creates a 'test-token' for each actor during setup
   const BOOTSTRAP_TOKEN_NAME = 'test-token';
 
   describe(`Managing API tokens [${ctx.driverName}]`, () => {
@@ -25,105 +19,44 @@ usingDrivers(['http'] as const, (ctx) => {
       await ctx.admin.logout();
     });
 
-    describe('listing tokens', () => {
-      it('lists the bootstrap token for a new actor', async () => {
-        const alice = await ctx.createActor('alice-token-list@example.com');
+    it('lists the bootstrap token for a new actor', async () => {
+      const alice = await ctx.createActor('alice-token-list@example.com');
 
-        const tokens = await alice.listTokens();
+      const tokens = await alice.listTokens();
 
-        // HTTP driver actors start with 1 token (used for API auth)
-        expect(tokens).toHaveLength(1);
-        expect(tokens[0].name).toBe(BOOTSTRAP_TOKEN_NAME);
-      });
-
-      it('requires authentication to list tokens', async () => {
-        const anonymous = ctx.createActorWithCredentials({
-          email: 'anonymous@example.com',
-          userId: 'fake-user-id',
-          organizationId: 'fake-org-id',
-          token: 'invalid-token',
-        });
-
-        await expect(anonymous.listTokens()).rejects.toThrow(UnauthorizedError);
-      });
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].name).toBe(BOOTSTRAP_TOKEN_NAME);
     });
 
-    describe('creating tokens', () => {
-      it('creates a new token and returns the raw value', async () => {
-        const bob = await ctx.createActor('bob-token-create@example.com');
-
-        const result = await bob.createToken('Extension Token');
-
-        expect(result.token.name).toBe('Extension Token');
-        expect(result.rawToken).toMatch(/^[^:]+:[^:]+$/); // tokenId:secret format
+    it('requires authentication to list tokens', async () => {
+      const anonymous = ctx.createActorWithCredentials({
+        email: 'anonymous@example.com',
+        userId: 'fake-user-id',
+        organizationId: 'fake-org-id',
+        token: 'invalid-token',
       });
 
-      it('lists the created token alongside the bootstrap token', async () => {
-        const carol = await ctx.createActor('carol-token-list@example.com');
-
-        await carol.createToken('My CLI Token');
-
-        const tokens = await carol.listTokens();
-        // Bootstrap token + newly created token
-        expect(tokens).toHaveLength(2);
-        expect(tokens.map((t) => t.name)).toContain('My CLI Token');
-        expect(tokens.map((t) => t.name)).toContain(BOOTSTRAP_TOKEN_NAME);
-      });
-
-      it('enforces the 2-token limit per user per org', async () => {
-        const dave = await ctx.createActor('dave-token-limit@example.com');
-
-        // Dave already has 1 token (bootstrap), can create 1 more
-        await dave.createToken('Token 2');
-
-        // Third token should fail (bootstrap + Token 2 = 2, at limit)
-        await expect(dave.createToken('Token 3')).rejects.toThrow(TokenLimitReachedError);
-      });
-
-      it('requires authentication to create tokens', async () => {
-        const anonymous = ctx.createActorWithCredentials({
-          email: 'anonymous@example.com',
-          userId: 'fake-user-id',
-          organizationId: 'fake-org-id',
-          token: 'invalid-token',
-        });
-
-        await expect(anonymous.createToken('Test Token')).rejects.toThrow(UnauthorizedError);
-      });
+      await expect(anonymous.listTokens()).rejects.toThrow(UnauthorizedError);
     });
 
-    describe('revoking tokens', () => {
-      it('revokes a token owned by the user', async () => {
-        const eve = await ctx.createActor('eve-token-revoke@example.com');
+    it('refuses create from a bot token', async () => {
+      const bob = await ctx.createActor('bob-token-create@example.com');
 
-        // Create a token (eve now has 2: bootstrap + this one)
-        const result = await eve.createToken('Token to revoke');
+      await expect(bob.createToken('Lane')).rejects.toThrow(ForbiddenError);
+    });
 
-        // Revoke the newly created token
-        await eve.revokeToken(result.token.id);
+    it('refuses rename from a bot token', async () => {
+      const carol = await ctx.createActor('carol-token-rename@example.com');
+      const tokens = await carol.listTokens();
 
-        // Verify only the bootstrap token remains
-        const tokens = await eve.listTokens();
-        expect(tokens).toHaveLength(1);
-        expect(tokens[0].name).toBe(BOOTSTRAP_TOKEN_NAME);
-      });
+      await expect(carol.renameToken(tokens[0].id, 'Lane')).rejects.toThrow(ForbiddenError);
+    });
 
-      it('returns not found for non-existent token', async () => {
-        const frank = await ctx.createActor('frank-token-notfound@example.com');
+    it('refuses revoke from a bot token', async () => {
+      const eve = await ctx.createActor('eve-token-revoke@example.com');
+      const tokens = await eve.listTokens();
 
-        await expect(frank.revokeToken('non-existent-token-id')).rejects.toThrow(NotFoundError);
-      });
-
-      it('requires authentication to revoke tokens', async () => {
-        const anonymous = ctx.createActorWithCredentials({
-          email: 'anonymous@example.com',
-          userId: 'fake-user-id',
-          organizationId: 'fake-org-id',
-          token: 'invalid-token',
-        });
-
-        await expect(anonymous.revokeToken('some-token-id')).rejects.toThrow(UnauthorizedError);
-      });
+      await expect(eve.revokeToken(tokens[0].id)).rejects.toThrow(ForbiddenError);
     });
   });
 });

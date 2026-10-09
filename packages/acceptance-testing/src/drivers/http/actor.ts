@@ -1242,6 +1242,26 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('goToSettings', 'http');
     },
 
+    async openOrganizationSettings(): Promise<void> {
+      throw new UnsupportedOperationError('openOrganizationSettings', 'http');
+    },
+
+    async createNamedBotTokenFromSettings(_name: string): Promise<string> {
+      throw new UnsupportedOperationError('createNamedBotTokenFromSettings', 'http');
+    },
+
+    async shouldSeeNamedTokenInSettings(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedTokenInSettings', 'http');
+    },
+
+    async nameUnnamedTokenFromSettings(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('nameUnnamedTokenFromSettings', 'http');
+    },
+
+    async revokeNamedTokenFromSettings(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('revokeNamedTokenFromSettings', 'http');
+    },
+
     async logout(): Promise<void> {
       throw new UnsupportedOperationError('logout', 'http');
     },
@@ -1348,6 +1368,10 @@ export const createHttpActor = (
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Permission denied');
+      }
       if (response.statusCode === 400) {
         const error = response.json<{ message?: string }>();
         throw new ValidationError(error.message ?? 'Invalid request');
@@ -1359,6 +1383,32 @@ export const createHttpActor = (
         throw new Error(`Failed to create token: ${response.body}`);
       }
       return response.json<CreateTokenResult>();
+    },
+
+    async renameToken(tokenId: string, name: string): Promise<Token> {
+      const response = await client.patch(`/api/auth/tokens/${tokenId}`, { name }, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Permission denied');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Token', tokenId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A token with this name already exists');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to rename token: ${response.body}`);
+      }
+      return response.json<Token>();
     },
 
     async revokeToken(tokenId: string): Promise<void> {

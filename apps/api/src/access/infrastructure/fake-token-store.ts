@@ -55,6 +55,18 @@ export const createFakeTokenStore = (
       return okAsync(found);
     },
 
+    updateName: (id: string, name: string | null): ResultAsync<void, TokenStorageError> => {
+      if (options.shouldFailOnSave) {
+        return errAsync(tokenStorageError('Update failed'));
+      }
+      const token = tokens.find((t) => t.id === id);
+      if (token) {
+        const index = tokens.indexOf(token);
+        tokens[index] = { ...token, name };
+      }
+      return okAsync(undefined);
+    },
+
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(tokenStorageError('Update failed'));

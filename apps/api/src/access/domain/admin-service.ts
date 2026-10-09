@@ -35,7 +35,7 @@ export type CreateUserCommand = {
 export type CreateTokenCommand = {
   organizationId: string;
   userId: string;
-  name: string;
+  name?: string;
 };
 
 export type CreateTokenResult = {
@@ -177,7 +177,7 @@ export const createAdminService = (
     },
 
     createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError> {
-      const { organizationId, userId, name } = command;
+      const { organizationId, userId, name = undefined } = command;
       const tokenId = idGenerator.generate();
       const secret = idGenerator.generate(); // Use UUID as secret for sufficient entropy
 
@@ -196,7 +196,7 @@ export const createAdminService = (
           userId,
           organizationId,
           tokenHash,
-          name,
+          name: name ?? null,
           createdAt: clock.now().toISOString(),
         };
 

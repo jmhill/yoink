@@ -9,7 +9,7 @@ type TokenRow = {
   user_id: string;
   organization_id: string;
   token_hash: string;
-  name: string;
+  name: string | null;
   last_used_at: string | null;
   created_at: string;
 };
@@ -56,7 +56,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
             token.userId,
             token.organizationId,
             token.tokenHash,
-            token.name,
+            token.name ?? null,
             token.lastUsedAt ?? null,
             token.createdAt,
           ],
@@ -115,6 +115,16 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
         const rows = result.rows as TokenRow[];
         return rows.map(rowToToken);
       });
+    },
+
+    updateName: (id: string, name: string | null): ResultAsync<void, TokenStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE api_tokens SET name = ? WHERE id = ?`,
+          args: [name, id],
+        }),
+        (error) => tokenStorageError('Failed to update token name', error)
+      ).map(() => undefined);
     },
 
     updateLastUsed: (id: string, timestamp: string): ResultAsync<void, TokenStorageError> => {

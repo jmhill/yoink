@@ -59,6 +59,16 @@ describe('createSqliteTokenStore', () => {
   });
 
   describe('save', () => {
+    it('persists an unnamed token', async () => {
+      const token = createTestToken({ name: null });
+
+      const saveResult = await store.save(token);
+      expect(saveResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(token.id);
+      expect(findResult._unsafeUnwrap()?.name).toBeNull();
+    });
+
     it('persists a token', async () => {
       const token = createTestToken();
 
@@ -111,6 +121,19 @@ describe('createSqliteTokenStore', () => {
       if (result.isOk()) {
         expect(result.value).toBeNull();
       }
+    });
+  });
+
+  describe('updateName', () => {
+    it('names an unnamed token', async () => {
+      const token = createTestToken({ name: null });
+      await store.save(token);
+
+      const updateResult = await store.updateName(token.id, 'Lane');
+      expect(updateResult.isOk()).toBe(true);
+
+      const findResult = await store.findById(token.id);
+      expect(findResult._unsafeUnwrap()?.name).toBe('Lane');
     });
   });
 

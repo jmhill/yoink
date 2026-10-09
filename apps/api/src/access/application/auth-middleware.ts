@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthContext } from '../../shared/auth-context.js';
 import type { TokenService } from '../domain/token-service.js';
+import { actorFromToken } from '../../shared/auth-context.js';
 import { principalKindOf } from '../domain/user.js';
 
 declare module 'fastify' {
@@ -41,6 +42,7 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
       organizationId: result.value.organization.id,
       userId: result.value.user.id,
       principalKind: principalKindOf(result.value.user),
+      actor: actorFromToken(result.value.token),
     };
 
     // Bind auth context to request logger for all subsequent logs

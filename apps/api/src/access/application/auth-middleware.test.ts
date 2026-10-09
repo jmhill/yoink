@@ -82,6 +82,7 @@ describe('authMiddleware', () => {
       organizationId: testOrg.id,
       userId: testUser.id,
       principalKind: 'human',
+      actor: { kind: 'bot', tokenId: testToken.id, name: 'test-token' },
     });
   });
 

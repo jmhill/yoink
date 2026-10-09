@@ -36,7 +36,7 @@ export type Admin = {
   getUser(id: string): Promise<User>;
 
   // Token management
-  createToken(organizationId: string, userId: string, name: string): Promise<CreateTokenResult>;
+  createToken(organizationId: string, userId: string, name?: string): Promise<CreateTokenResult>;
   listTokens(organizationId: string, userId: string): Promise<Token[]>;
   revokeToken(tokenId: string): Promise<void>;
 

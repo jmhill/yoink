@@ -243,7 +243,7 @@ export const registerAdminRoutes = async (
         );
       },
 
-      createToken: async ({ params, body }: { params: { organizationId: string }; body: { userId: string; name: string } }) => {
+      createToken: async ({ params, body }: { params: { organizationId: string }; body: { userId: string; name?: string } }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);
         const orgCheck = orgResult.match(

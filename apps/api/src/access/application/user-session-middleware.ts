@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthContext } from '../../shared/auth-context.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { SessionService } from '../domain/session-service.js';
+import { actorFromSession } from '../../shared/auth-context.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -51,6 +52,7 @@ export const createUserSessionMiddleware = (
       organizationId: session.currentOrganizationId,
       userId: session.userId,
       principalKind: 'human',
+      actor: actorFromSession(session.userId),
     };
 
     // Also expose the full session for handlers that need it

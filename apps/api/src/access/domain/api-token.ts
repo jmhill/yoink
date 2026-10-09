@@ -5,7 +5,7 @@ export const ApiTokenSchema = z.object({
   userId: z.string().uuid(),
   organizationId: z.string().uuid(),
   tokenHash: z.string().min(1),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(200).nullable(),
   lastUsedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
 });

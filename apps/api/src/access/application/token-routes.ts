@@ -1,16 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { tokenContract } from '@yoink/api-contracts';
-import type { UserTokenService } from '../domain/user-token-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { TokenService } from '../domain/token-service.js';
+import type { TokenHandlers } from './create-token-handlers.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
 
 export type TokenRoutesDependencies = {
-  userTokenService: UserTokenService;
+  tokenHandlers: TokenHandlers;
   sessionService: SessionService;
   tokenService?: TokenService;
   sessionCookieName: string;
@@ -20,10 +20,9 @@ export const registerTokenRoutes = async (
   app: FastifyInstance,
   deps: TokenRoutesDependencies
 ) => {
-  const { userTokenService, sessionService, tokenService, sessionCookieName } = deps;
+  const { tokenHandlers, sessionService, tokenService, sessionCookieName } = deps;
   const s = initServer();
 
-  // Create combined auth middleware if tokenService is provided
   const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = tokenService
     ? { tokenService, sessionService, sessionCookieName }
     : {
@@ -41,20 +40,18 @@ export const registerTokenRoutes = async (
 
   const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
 
-  // All token routes require authentication
   await app.register(async (protectedApp) => {
     protectedApp.addHook('preHandler', authMiddleware);
 
     const router = s.router(tokenContract, {
       list: async ({ request }) => {
         const { userId, organizationId } = request.authContext;
-
-        const result = await userTokenService.listTokens(userId, organizationId);
+        const result = await tokenHandlers.list({ userId, organizationId });
 
         return result.match(
-          (tokens) => ({
+          (page) => ({
             status: 200 as const,
-            body: { tokens },
+            body: page,
           }),
           (error) => {
             request.log.error({ error }, 'Failed to list tokens');
@@ -67,13 +64,12 @@ export const registerTokenRoutes = async (
       },
 
       create: async ({ body, request }) => {
-        const { userId, organizationId } = request.authContext;
-        const { name } = body;
-
-        const result = await userTokenService.createToken({
+        const { userId, organizationId, actor } = request.authContext;
+        const result = await tokenHandlers.create({
+          actor,
           userId,
           organizationId,
-          name,
+          name: body.name,
         });
 
         return result.match(
@@ -83,6 +79,21 @@ export const registerTokenRoutes = async (
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_TOKEN_NAME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message },
+                };
+              case 'BOT_CANNOT_MANAGE_TOKENS':
+                return {
+                  status: 403 as const,
+                  body: { message: error.message },
+                };
+              case 'DUPLICATE_TOKEN_NAME':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
               case 'TOKEN_LIMIT_REACHED':
                 return {
                   status: 409 as const,
@@ -101,11 +112,66 @@ export const registerTokenRoutes = async (
         );
       },
 
-      delete: async ({ params, request }) => {
-        const { userId } = request.authContext;
-        const { tokenId } = params;
+      rename: async ({ params, body, request }) => {
+        const { userId, organizationId, actor } = request.authContext;
+        const result = await tokenHandlers.rename({
+          actor,
+          tokenId: params.tokenId,
+          userId,
+          organizationId,
+          name: body.name,
+        });
 
-        const result = await userTokenService.revokeToken(userId, tokenId);
+        return result.match(
+          ({ token }) => ({
+            status: 200 as const,
+            body: token,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_TOKEN_NAME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message },
+                };
+              case 'BOT_CANNOT_MANAGE_TOKENS':
+                return {
+                  status: 403 as const,
+                  body: { message: error.message },
+                };
+              case 'TOKEN_OWNERSHIP_ERROR':
+                return {
+                  status: 403 as const,
+                  body: { message: 'You do not own this token' },
+                };
+              case 'USER_TOKEN_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Token not found' },
+                };
+              case 'DUPLICATE_TOKEN_NAME':
+                return {
+                  status: 409 as const,
+                  body: { message: error.message },
+                };
+              default:
+                request.log.error({ error }, 'Failed to rename token');
+                return {
+                  status: 500 as const,
+                  body: { message: 'Failed to rename token' },
+                };
+            }
+          }
+        );
+      },
+
+      delete: async ({ params, request }) => {
+        const { userId, actor } = request.authContext;
+        const result = await tokenHandlers.revoke({
+          actor,
+          tokenId: params.tokenId,
+          userId,
+        });
 
         return result.match(
           () => ({
@@ -114,15 +180,20 @@ export const registerTokenRoutes = async (
           }),
           (error) => {
             switch (error.type) {
-              case 'USER_TOKEN_NOT_FOUND':
+              case 'BOT_CANNOT_MANAGE_TOKENS':
                 return {
-                  status: 404 as const,
-                  body: { message: 'Token not found' },
+                  status: 403 as const,
+                  body: { message: error.message },
                 };
               case 'TOKEN_OWNERSHIP_ERROR':
                 return {
                   status: 403 as const,
                   body: { message: 'You do not own this token' },
+                };
+              case 'USER_TOKEN_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Token not found' },
                 };
               default:
                 request.log.error({ error }, 'Failed to delete token');

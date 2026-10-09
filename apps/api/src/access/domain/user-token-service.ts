@@ -6,13 +6,12 @@ import {
   tokenStorageError,
   userTokenNotFoundError,
   tokenOwnershipError,
-  tokenLimitReachedError,
   type UserTokenServiceError,
 } from './auth-errors.js';
+import { decideCreateToken } from './decide-create-token.js';
+import { toTokenInfo, type TokenInfo } from './token-info.js';
 
-// ============================================================================
-// Types
-// ============================================================================
+export type { TokenInfo } from './token-info.js';
 
 export type UserTokenServiceDependencies = {
   tokenStore: TokenStore;
@@ -28,40 +27,16 @@ export type CreateTokenCommand = {
   name: string;
 };
 
-/** Token info returned to users (no hash) */
-export type TokenInfo = {
-  id: string;
-  name: string;
-  lastUsedAt: string | undefined;
-  createdAt: string;
-};
-
 export type CreateTokenResult = {
   token: TokenInfo;
   rawToken: string;
 };
 
 export type UserTokenService = {
-  /** List all tokens for a user in a specific organization */
   listTokens(userId: string, organizationId: string): ResultAsync<TokenInfo[], UserTokenServiceError>;
-
-  /** Create a new token. Returns error if user has reached the limit. */
   createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, UserTokenServiceError>;
-
-  /** Revoke a token. Only the owner can revoke their own tokens. */
   revokeToken(userId: string, tokenId: string): ResultAsync<void, UserTokenServiceError>;
 };
-
-// ============================================================================
-// Implementation
-// ============================================================================
-
-const toTokenInfo = (token: ApiToken): TokenInfo => ({
-  id: token.id,
-  name: token.name,
-  lastUsedAt: token.lastUsedAt,
-  createdAt: token.createdAt,
-});
 
 export const createUserTokenService = (
   deps: UserTokenServiceDependencies
@@ -69,49 +44,62 @@ export const createUserTokenService = (
   const { tokenStore, clock, idGenerator, passwordHasher, maxTokensPerUserPerOrg } = deps;
 
   return {
-    listTokens(userId: string, organizationId: string): ResultAsync<TokenInfo[], UserTokenServiceError> {
+    listTokens(userId: string, organizationId: string) {
       return tokenStore
         .findByUserAndOrganization(userId, organizationId)
         .map((tokens) => tokens.map(toTokenInfo));
     },
 
-    createToken(command: CreateTokenCommand): ResultAsync<CreateTokenResult, UserTokenServiceError> {
+    createToken(command: CreateTokenCommand) {
       const { userId, organizationId, name } = command;
 
-      // Check current token count
-      return tokenStore
-        .findByUserAndOrganization(userId, organizationId)
-        .andThen((existingTokens) => {
-          if (existingTokens.length >= maxTokensPerUserPerOrg) {
-            return errAsync(tokenLimitReachedError(userId, organizationId, maxTokensPerUserPerOrg));
-          }
-
-          const tokenId = idGenerator.generate();
-          const secret = idGenerator.generate();
-
-          // Hash the secret
-          return ResultAsync.fromPromise(
-            passwordHasher.hash(secret),
-            (error) => tokenStorageError('Failed to hash token secret', error)
-          ).andThen((tokenHash) => {
-            const token: ApiToken = {
-              id: tokenId,
-              userId,
-              organizationId,
-              tokenHash,
-              name,
-              createdAt: clock.now().toISOString(),
-            };
-
-            return tokenStore.save(token).map(() => ({
-              token: toTokenInfo(token),
-              rawToken: `${tokenId}:${secret}`,
-            }));
-          });
+      return tokenStore.findByOrganizationId(organizationId).andThen((orgTokens) => {
+        const named = orgTokens
+          .map((token) => token.name)
+          .filter((tokenName): tokenName is string => tokenName !== null);
+        const tokenCountForUser = orgTokens.filter((token) => token.userId === userId).length;
+        const tokenId = idGenerator.generate();
+        const secret = idGenerator.generate();
+        const decision = decideCreateToken({
+          command: {
+            actor: { kind: 'user', userId },
+            userId,
+            organizationId,
+            name,
+          },
+          existingNames: named,
+          tokenCountForUser,
+          maxTokensPerUserPerOrg,
+          id: tokenId,
+          now: clock.now().toISOString(),
         });
+
+        if (decision.isErr()) {
+          return errAsync(decision.error);
+        }
+
+        return ResultAsync.fromPromise(
+          passwordHasher.hash(secret),
+          (error) => tokenStorageError('Failed to hash token secret', error)
+        ).andThen((tokenHash) => {
+          const token: ApiToken = {
+            id: tokenId,
+            userId,
+            organizationId,
+            tokenHash,
+            name: decision.value.name,
+            createdAt: decision.value.createdAt,
+          };
+
+          return tokenStore.save(token).map(() => ({
+            token: toTokenInfo(token),
+            rawToken: `${tokenId}:${secret}`,
+          }));
+        });
+      });
     },
 
-    revokeToken(userId: string, tokenId: string): ResultAsync<void, UserTokenServiceError> {
+    revokeToken(userId: string, tokenId: string) {
       return tokenStore.findById(tokenId).andThen((token) => {
         if (!token) {
           return errAsync(userTokenNotFoundError(tokenId));

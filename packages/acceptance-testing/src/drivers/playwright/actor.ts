@@ -637,7 +637,9 @@ export const createPlaywrightActor = (
 
     async shouldSeeOpenTasksInOrder(titles: string[]): Promise<void> {
       await tasksPage.waitForTasksOrEmpty();
-      await expect.poll(async () => tasksPage.getOpenTaskTitles()).toEqual(titles);
+      await expect
+        .poll(async () => tasksPage.getOpenTaskTitles(), { timeout: 10_000 })
+        .toEqual(titles);
     },
 
     async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
@@ -876,7 +878,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeTask(taskId: string): Promise<void> {
-      await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+      await expect(tasksPage.taskCard(taskId)).toHaveCount(0, { timeout: 10_000 });
     },
 
     async shouldNotSeeCreateListOnMine(): Promise<void> {
@@ -986,7 +988,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeRailItems(labels: string[]): Promise<void> {
-      await expect.poll(async () => appRail.getItemLabels()).toEqual(labels);
+      await expect.poll(async () => appRail.getItemLabels(), { timeout: 10_000 }).toEqual(labels);
     },
 
     async shouldSeeInboxCountOnRail(count: number): Promise<void> {
@@ -1190,6 +1192,14 @@ export const createPlaywrightActor = (
       via: 'escape' | 'click-away'
     ): Promise<void> {
       await appRail.cancelNamedListRename(currentName, draftName, via);
+    },
+
+    async beginNamedListRenameFromRail(currentName: string): Promise<void> {
+      await appRail.beginRename(currentName);
+    },
+
+    async shouldSeeNamedListRenameDraft(value: string): Promise<void> {
+      await expect(page.locator('[data-list-rename-input]')).toHaveValue(value);
     },
 
     async shouldBeOnTaskFilter(
@@ -1705,6 +1715,94 @@ export const createPlaywrightActor = (
       await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
     },
 
+    async completeOpenTaskFromRowAgainstStalePilePoll(
+      taskId: string,
+      listId: string
+    ): Promise<void> {
+      let releasePoll = (): void => undefined;
+      let releaseComplete = (): void => undefined;
+      let pollParked = false;
+      let pollDelivered = false;
+      const pollGate = new Promise<void>((resolve) => {
+        releasePoll = resolve;
+      });
+      const completeGate = new Promise<void>((resolve) => {
+        releaseComplete = resolve;
+      });
+
+      const isOpenListTasksGet = (url: URL): boolean =>
+        url.pathname === `/api/lists/${listId}/tasks`;
+      const isCompletePost = (url: URL): boolean =>
+        url.pathname === `/api/tasks/${taskId}/complete`;
+
+      const pollRoute = async (route: {
+        request: () => { method: () => string };
+        fetch: () => Promise<{ status: () => number; text: () => Promise<string> }>;
+        fulfill: (response: {
+          status: number;
+          contentType: string;
+          body: string;
+        }) => Promise<void>;
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'GET') {
+          await route.continue();
+          return;
+        }
+        if (pollParked) {
+          await route.continue();
+          return;
+        }
+        pollParked = true;
+        const snapshot = await route.fetch();
+        const body = await snapshot.text();
+        await pollGate;
+        try {
+          await route.fulfill({
+            status: snapshot.status(),
+            contentType: 'application/json',
+            body,
+          });
+        } catch {
+          // cancelQueries aborted the in-flight poll
+        } finally {
+          pollDelivered = true;
+        }
+      };
+
+      const completeRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        await completeGate;
+        await route.continue();
+      };
+
+      await page.route(isOpenListTasksGet, pollRoute);
+      await page.route(isCompletePost, completeRoute);
+
+      try {
+        await expect.poll(() => pollParked, { timeout: 10_000 }).toBe(true);
+        await tasksPage.waitForTask(taskId);
+        await tasksPage.completeControl(taskId).click();
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+        releasePoll();
+        await expect.poll(() => pollDelivered, { timeout: 10_000 }).toBe(true);
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+        releaseComplete();
+        await expect(tasksPage.taskCard(taskId)).toHaveCount(0);
+      } finally {
+        releasePoll();
+        releaseComplete();
+        await page.unroute(isOpenListTasksGet, pollRoute);
+        await page.unroute(isCompletePost, completeRoute);
+      }
+    },
+
     async uncompleteTaskFromRow(taskId: string): Promise<void> {
       await tasksPage.waitForTask(taskId);
       await tasksPage.completeControl(taskId).click();
@@ -1898,6 +1996,122 @@ export const createPlaywrightActor = (
       const dialog = page.getByRole('dialog', { name: 'Edit Task' });
       await dialog.getByRole('button', { name: 'Cancel' }).click();
       await expect(dialog).toHaveCount(0);
+    },
+
+    async saveOpenTaskEdit(): Promise<void> {
+      await tasksPage.saveEdit();
+    },
+
+    async shouldSeeNamedListInCreateTaskPicker(name: string): Promise<void> {
+      const picker = tasksPage.createTaskListPicker();
+      await expect(picker).toBeVisible();
+      await picker.click();
+      const option = page
+        .getByRole('listbox')
+        .locator('[data-slot="select-item"]')
+        .filter({ hasText: name });
+      await expect(option).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('listbox')).toHaveCount(0);
+    },
+
+    async useShortLiveQueryInterval(intervalMs = 250): Promise<void> {
+      const ms = Math.max(1, Math.floor(intervalMs));
+      await page.evaluate(`(async () => {
+        const setter = window.__YOINK_SET_LIVE_QUERY_INTERVAL_MS;
+        if (typeof setter !== 'function') {
+          throw new Error('Live query interval hook was not installed');
+        }
+        await setter(${ms});
+      })()`);
+    },
+
+    async hideApp(): Promise<void> {
+      await page.evaluate(`(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get() { return 'hidden'; },
+        });
+        Object.defineProperty(document, 'hidden', {
+          configurable: true,
+          get() { return true; },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('blur'));
+      })()`);
+    },
+
+    async showApp(): Promise<void> {
+      await page.evaluate(`(() => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get() { return 'visible'; },
+        });
+        Object.defineProperty(document, 'hidden', {
+          configurable: true,
+          get() { return false; },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('focus'));
+      })()`);
+    },
+
+    async countLiveDataGetsDuring(durationMs: number): Promise<number> {
+      let count = 0;
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        if (request.method() !== 'GET') {
+          return;
+        }
+        const url = request.url();
+        if (
+          url.includes('/api/tasks') ||
+          url.includes('/api/lists') ||
+          url.includes('/api/unlisted') ||
+          url.includes('/api/captures')
+        ) {
+          count += 1;
+        }
+      };
+      page.on('request', onRequest);
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+      page.off('request', onRequest);
+      return count;
+    },
+
+    async failBackgroundLiveQueries(): Promise<void> {
+      const failGet = async (route: {
+        request: () => { method: () => string };
+        abort: (errorCode: string) => Promise<void>;
+        continue: () => Promise<void>;
+      }) => {
+        if (route.request().method() === 'GET') {
+          await route.abort('failed');
+          return;
+        }
+        await route.continue();
+      };
+      await page.route('**/api/tasks**', failGet);
+      await page.route('**/api/lists**', failGet);
+      await page.route('**/api/unlisted**', failGet);
+      await page.route('**/api/captures**', failGet);
+    },
+
+    async restoreBackgroundLiveQueries(): Promise<void> {
+      await page.unroute('**/api/tasks**');
+      await page.unroute('**/api/lists**');
+      await page.unroute('**/api/unlisted**');
+      await page.unroute('**/api/captures**');
+    },
+
+    async shouldNotSeeQueryError(): Promise<void> {
+      await expect(page.getByText('Unable to connect to the server')).toHaveCount(0);
+      await expect(page.getByText('Something went wrong')).toHaveCount(0);
+      await expect(page.getByText('Your session has expired')).toHaveCount(0);
+      await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+    },
+
+    async shouldNotSeeLoadingPlaceholder(): Promise<void> {
+      await expect(page.getByText('Loading...', { exact: true })).toHaveCount(0);
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {

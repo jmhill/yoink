@@ -691,6 +691,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('cancelNamedListRenameFromRail', 'http');
     },
 
+    async beginNamedListRenameFromRail(_currentName: string): Promise<void> {
+      throw new UnsupportedOperationError('beginNamedListRenameFromRail', 'http');
+    },
+
+    async shouldSeeNamedListRenameDraft(_value: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedListRenameDraft', 'http');
+    },
+
     async shouldBeOnTaskFilter(
       _filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
@@ -947,6 +955,16 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('completeOpenTaskFromRow', 'http');
     },
 
+    async completeOpenTaskFromRowAgainstStalePilePoll(
+      _taskId: string,
+      _listId: string
+    ): Promise<void> {
+      throw new UnsupportedOperationError(
+        'completeOpenTaskFromRowAgainstStalePilePoll',
+        'http'
+      );
+    },
+
     async uncompleteTaskFromRow(_taskId: string): Promise<void> {
       throw new UnsupportedOperationError('uncompleteTaskFromRow', 'http');
     },
@@ -1025,6 +1043,46 @@ export const createHttpActor = (
 
     async closeTaskEdit(): Promise<void> {
       throw new UnsupportedOperationError('closeTaskEdit', 'http');
+    },
+
+    async saveOpenTaskEdit(): Promise<void> {
+      throw new UnsupportedOperationError('saveOpenTaskEdit', 'http');
+    },
+
+    async shouldSeeNamedListInCreateTaskPicker(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNamedListInCreateTaskPicker', 'http');
+    },
+
+    async useShortLiveQueryInterval(_intervalMs?: number): Promise<void> {
+      throw new UnsupportedOperationError('useShortLiveQueryInterval', 'http');
+    },
+
+    async hideApp(): Promise<void> {
+      throw new UnsupportedOperationError('hideApp', 'http');
+    },
+
+    async showApp(): Promise<void> {
+      throw new UnsupportedOperationError('showApp', 'http');
+    },
+
+    async countLiveDataGetsDuring(_durationMs: number): Promise<number> {
+      throw new UnsupportedOperationError('countLiveDataGetsDuring', 'http');
+    },
+
+    async failBackgroundLiveQueries(): Promise<void> {
+      throw new UnsupportedOperationError('failBackgroundLiveQueries', 'http');
+    },
+
+    async restoreBackgroundLiveQueries(): Promise<void> {
+      throw new UnsupportedOperationError('restoreBackgroundLiveQueries', 'http');
+    },
+
+    async shouldNotSeeQueryError(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeQueryError', 'http');
+    },
+
+    async shouldNotSeeLoadingPlaceholder(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeLoadingPlaceholder', 'http');
     },
 
     // Task operations

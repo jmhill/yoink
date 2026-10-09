@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { tsr } from '@/api/client';
+import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, RotateCcw, X } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -38,7 +39,7 @@ function TrashPage() {
   const restoreMutation = tsr.restore.useMutation({
     onMutate: async ({ params }) => {
       // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       // Snapshot current state for rollback
       const previousTrashed = tsrQueryClient.list.getQueryData([
@@ -114,13 +115,13 @@ function TrashPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   const deleteMutation = tsr.delete.useMutation({
     onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       const previousTrashed = tsrQueryClient.list.getQueryData([
         'captures',
@@ -162,13 +163,13 @@ function TrashPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   const emptyTrashMutation = tsr.emptyTrash.useMutation({
     onMutate: async () => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['captures'] });
+      await cancelLiveQueries(tsrQueryClient);
 
       const previousTrashed = tsrQueryClient.list.getQueryData([
         'captures',
@@ -207,7 +208,7 @@ function TrashPage() {
     },
 
     onSettled: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
@@ -236,7 +237,7 @@ function TrashPage() {
 
   return (
     <InboxPaneShell active="trash">
-      {error ? (
+      {isBlockingQueryFailure(error, data) && error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <p className="text-center text-muted-foreground">Loading...</p>

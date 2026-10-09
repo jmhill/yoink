@@ -21,6 +21,14 @@ import {
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { tsrTasks, tsr, tsrLists } from '@/api/client';
+import {
+  cancelLiveQueries,
+  invalidateLiveQueries,
+  isBlockingQueryFailure,
+  mapLiveOpenTaskLists,
+  restoreQuerySnapshots,
+  snapshotLiveOpenTaskLists,
+} from '@/lib/live-query';
 import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
@@ -230,10 +238,11 @@ function TasksPage() {
     allPile === null &&
     (boardFilter === 'today' || boardFilter === 'upcoming' || boardFilter === 'mine');
 
-  const { data: sourceCaptureData, isFetching: isFetchingCapture } = tsr.get.useQuery({
+  const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
     queryData: { params: { id: editingTask?.captureId ?? '' } },
     enabled: !!editingTask?.captureId,
+    refetchInterval: false,
   });
   const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
 
@@ -309,20 +318,39 @@ function TasksPage() {
     enabled: allPile?.kind === 'unlisted',
   });
 
-  const invalidateTaskViews = () => {
-    tsrQueryClient.invalidateQueries({ queryKey: ['tasks'] });
-    tsrListsQueryClient.invalidateQueries({ queryKey: ['lists'] });
-    tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted'] });
-  };
-
   const reorderNamedMutation = tsrLists.reorderOpenTasks.useMutation({
+    onMutate: async ({ body }) => {
+      await cancelLiveQueries(tsrQueryClient);
+      if (!namedPileId) {
+        return {};
+      }
+      const queryKey = ['lists', namedPileId, 'tasks'];
+      const previous = tsrListsQueryClient.getQueryData(queryKey);
+      if (previous && typeof previous === 'object' && 'status' in previous) {
+        const current = previous as { status: number; body: { tasks: Task[] } };
+        if (current.status === 200) {
+          const byId = new Map(current.body.tasks.map((task) => [task.id, task]));
+          const tasks = body.taskIds
+            .map((id) => byId.get(id))
+            .filter((task): task is Task => task !== undefined);
+          tsrListsQueryClient.setQueryData(queryKey, {
+            ...current,
+            body: { ...current.body, tasks },
+          });
+        }
+      }
+      return { previous, queryKey };
+    },
     onSuccess: (result) => {
       if (result.status === 200 && namedPileId) {
         tsrListsQueryClient.setQueryData(['lists', namedPileId, 'tasks'], result);
       }
       toast.success('Order updated');
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
+      if (context?.queryKey) {
+        tsrListsQueryClient.setQueryData(context.queryKey, context.previous);
+      }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
         return;
@@ -330,20 +358,40 @@ function TasksPage() {
       toast.error('Failed to change order');
     },
     onSettled: () => {
-      if (namedPileId) {
-        tsrListsQueryClient.invalidateQueries({ queryKey: ['lists', namedPileId, 'tasks'] });
-      }
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   const reorderUnlistedMutation = tsrLists.reorderUnlistedOpenTasks.useMutation({
+    onMutate: async ({ body }) => {
+      await cancelLiveQueries(tsrQueryClient);
+      const queryKey = ['unlisted', 'tasks'];
+      const previous = tsrListsQueryClient.getQueryData(queryKey);
+      if (previous && typeof previous === 'object' && 'status' in previous) {
+        const current = previous as { status: number; body: { tasks: Task[] } };
+        if (current.status === 200) {
+          const byId = new Map(current.body.tasks.map((task) => [task.id, task]));
+          const tasks = body.taskIds
+            .map((id) => byId.get(id))
+            .filter((task): task is Task => task !== undefined);
+          tsrListsQueryClient.setQueryData(queryKey, {
+            ...current,
+            body: { ...current.body, tasks },
+          });
+        }
+      }
+      return { previous, queryKey };
+    },
     onSuccess: (result) => {
       if (result.status === 200) {
         tsrListsQueryClient.setQueryData(['unlisted', 'tasks'], result);
       }
       toast.success('Order updated');
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
+      if (context?.queryKey) {
+        tsrListsQueryClient.setQueryData(context.queryKey, context.previous);
+      }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
         return;
@@ -351,16 +399,26 @@ function TasksPage() {
       toast.error('Failed to change order');
     },
     onSettled: () => {
-      tsrListsQueryClient.invalidateQueries({ queryKey: ['unlisted', 'tasks'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
+
+  const displayedTasksQueryKey = (): string[] => {
+    if (namedPileId) {
+      return ['lists', namedPileId, 'tasks'];
+    }
+    if (allPile?.kind === 'unlisted') {
+      return ['unlisted', 'tasks'];
+    }
+    return ['tasks', boardFilter];
+  };
 
   // Create task mutation
   const createMutation = tsrTasks.create.useMutation({
     onMutate: async ({ body }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
+      await cancelLiveQueries(tsrQueryClient);
+      const queryKey = displayedTasksQueryKey();
+      const previousTasks = tsrQueryClient.getQueryData(queryKey);
 
       // Create optimistic task with unique ID to avoid collisions
       const optimisticTask: Task = {
@@ -374,23 +432,26 @@ function TasksPage() {
         ...(body.listId ? { listId: body.listId } : {}),
       };
 
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: [optimisticTask, ...previousTasks.body.tasks],
-          },
-        });
+      if (previousTasks && typeof previousTasks === 'object' && 'status' in previousTasks) {
+        const current = previousTasks as { status: number; body: { tasks: Task[] } };
+        if (current.status === 200) {
+          tsrQueryClient.setQueryData(queryKey, {
+            ...current,
+            body: {
+              ...current.body,
+              tasks: [optimisticTask, ...current.body.tasks],
+            },
+          });
+        }
       }
 
       setNewTaskTitle('');
-      return { previousTasks, previousTitle: body.title };
+      return { previousTasks, queryKey, previousTitle: body.title };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
+      if (context?.queryKey) {
+        tsrQueryClient.setQueryData(context.queryKey, context.previousTasks);
       }
       if (context?.previousTitle) {
         setNewTaskTitle(context.previousTitle);
@@ -408,7 +469,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      invalidateTaskViews();
+      void invalidateLiveQueries(tsrQueryClient);
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -418,27 +479,17 @@ function TasksPage() {
   // Complete mutation
   const completeMutation = tsrTasks.complete.useMutation({
     onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
-
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.map((t) =>
-              t.id === params.id ? { ...t, completedAt: new Date().toISOString() } : t
-            ),
-          },
-        });
-      }
-
-      return { previousTasks };
+      await cancelLiveQueries(tsrQueryClient);
+      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
+      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
+        tasks.filter((task) => task.id !== params.id)
+      );
+      return { previous };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
+      if (context?.previous) {
+        restoreQuerySnapshots(tsrQueryClient, context.previous);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -452,34 +503,38 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      invalidateTaskViews();
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   // Uncomplete mutation
   const uncompleteMutation = tsrTasks.uncomplete.useMutation({
     onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
+      await cancelLiveQueries(tsrQueryClient);
+      const queryKey = displayedTasksQueryKey();
+      const previousTasks = tsrQueryClient.getQueryData(queryKey);
 
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.map((t) =>
-              t.id === params.id ? { ...t, completedAt: undefined } : t
-            ),
-          },
-        });
+      if (previousTasks && typeof previousTasks === 'object' && 'status' in previousTasks) {
+        const current = previousTasks as { status: number; body: { tasks: Task[] } };
+        if (current.status === 200) {
+          tsrQueryClient.setQueryData(queryKey, {
+            ...current,
+            body: {
+              ...current.body,
+              tasks: current.body.tasks.map((task) =>
+                task.id === params.id ? { ...task, completedAt: undefined } : task
+              ),
+            },
+          });
+        }
       }
 
-      return { previousTasks };
+      return { previousTasks, queryKey };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
+      if (context?.queryKey) {
+        tsrQueryClient.setQueryData(context.queryKey, context.previousTasks);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -489,32 +544,24 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      invalidateTaskViews();
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   // Delete mutation
   const deleteMutation = tsrTasks.delete.useMutation({
     onMutate: async ({ params }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
-
-      if (previousTasks?.status === 200) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.filter((t) => t.id !== params.id),
-          },
-        });
-      }
-
-      return { previousTasks };
+      await cancelLiveQueries(tsrQueryClient);
+      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
+      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
+        tasks.filter((task) => task.id !== params.id)
+      );
+      return { previous };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
+      if (context?.previous) {
+        restoreQuerySnapshots(tsrQueryClient, context.previous);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -528,44 +575,50 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      invalidateTaskViews();
-      // Also invalidate captures since deleting a task may delete its source capture
-      tsrQueryClient.invalidateQueries({ queryKey: ['captures'] });
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
   // Update mutation
   const updateMutation = tsrTasks.update.useMutation({
     onMutate: async ({ params, body }) => {
-      await tsrQueryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = tsrQueryClient.list.getQueryData(['tasks', boardFilter]);
-
-      if (previousTasks?.status === 200 && body) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], {
-          ...previousTasks,
-          body: {
-            ...previousTasks.body,
-            tasks: previousTasks.body.tasks.map((t) =>
-              t.id === params.id
-                ? {
-                    ...t,
-                    title: body.title ?? t.title,
-                    dueDate: body.dueDate === null ? undefined : body.dueDate ?? t.dueDate,
-                    assigneeId: body.assigneeId === null ? undefined : body.assigneeId ?? t.assigneeId,
-                    listId: body.listId === null ? undefined : body.listId ?? t.listId,
-                  }
-                : t
-            ),
-          },
-        });
-      }
-
-      return { previousTasks };
+      await cancelLiveQueries(tsrQueryClient);
+      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
+      const displayedKey = displayedTasksQueryKey();
+      mapLiveOpenTaskLists(tsrQueryClient, (tasks, queryKey) =>
+        tasks.flatMap((task) => {
+          if (task.id !== params.id) {
+            return [task];
+          }
+          const nextListId = body?.listId === null ? undefined : body?.listId ?? task.listId;
+          const keyMatches =
+            queryKey.length === displayedKey.length &&
+            queryKey.every((part, index) => part === displayedKey[index]);
+          const leftNamedPile =
+            Boolean(namedPileId) && keyMatches && nextListId !== namedPileId;
+          const leftUnlisted =
+            allPile?.kind === 'unlisted' && keyMatches && Boolean(nextListId);
+          if (leftNamedPile || leftUnlisted) {
+            return [];
+          }
+          return [
+            {
+              ...task,
+              title: body?.title ?? task.title,
+              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
+              assigneeId:
+                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
+              listId: body?.listId === null ? undefined : nextListId,
+            },
+          ];
+        })
+      );
+      return { previous };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousTasks) {
-        tsrQueryClient.list.setQueryData(['tasks', boardFilter], context.previousTasks);
+      if (context?.previous) {
+        restoreQuerySnapshots(tsrQueryClient, context.previous);
       }
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
@@ -580,7 +633,7 @@ function TasksPage() {
     },
 
     onSettled: () => {
-      invalidateTaskViews();
+      void invalidateLiveQueries(tsrQueryClient);
     },
   });
 
@@ -651,6 +704,12 @@ function TasksPage() {
       ? groupAllTasksByPile(boardTasks, namedLists)
       : [];
 
+  const activeData =
+    allPile?.kind === 'named'
+      ? namedPileData
+      : allPile?.kind === 'unlisted'
+        ? unlistedPileData
+        : data;
   const activeError =
     allPile?.kind === 'named'
       ? namedPileMissing
@@ -659,6 +718,9 @@ function TasksPage() {
       : allPile?.kind === 'unlisted'
         ? unlistedPileError
         : error;
+  const blockingError = isBlockingQueryFailure(activeError, activeData)
+    ? activeError
+    : null;
   const activePending =
     allPile?.kind === 'named'
       ? listsPending || (!namedPileMissing && namedPilePending)
@@ -832,8 +894,8 @@ function TasksPage() {
         </form>
       )}
 
-      {activeError ? (
-        <ErrorState error={activeError} onRetry={() => refetchActive()} />
+      {blockingError ? (
+        <ErrorState error={blockingError} onRetry={() => refetchActive()} />
       ) : activePending ? (
         <p className="text-center text-muted-foreground">Loading...</p>
       ) : namedPileMissing ? (
@@ -973,7 +1035,7 @@ function TasksPage() {
           setDeleteConfirmId(id);
         }}
         isLoading={updateMutation.isPending}
-        isFetchingCapture={isFetchingCapture}
+        isLoadingCapture={isLoadingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
         lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
       />

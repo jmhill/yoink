@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { tsrLists } from '@/api/client';
+import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
@@ -32,13 +33,16 @@ export function DeleteNamedListDialog({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const deleteMutation = tsrLists.delete.useMutation({
+    onMutate: async () => {
+      await cancelLiveQueries(queryClient);
+    },
     onSuccess: async (result) => {
       if (result.status !== 204) return;
       toast.success('List deleted');
       setDeleteError(null);
       onDeleted?.();
       onOpenChange(false);
-      await queryClient.invalidateQueries({ queryKey: ['lists'] });
+      await invalidateLiveQueries(queryClient);
     },
     onError: (err) => {
       if (isFetchError(err)) {

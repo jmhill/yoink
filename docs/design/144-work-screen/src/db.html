@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1440px;height:900px;overflow:hidden}
+body{background:#1b1713;color:#eee6da;font-family:Inter,sans-serif;-webkit-font-smoothing:antialiased;position:relative}
+.status{height:47px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px 34px;font-size:15px;font-weight:600}
+.status .r{display:flex;gap:6px;align-items:center}
+.hdr{padding:10px 20px 6px;display:flex;align-items:flex-start;justify-content:space-between}
+.hdr h1{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.hdr .sub{font-size:13px;color:#9d9284;margin-top:3px}
+.btn{border:1px solid #3a3229;background:#25201a;color:#e3d9cb;border-radius:10px;padding:7px 12px;font-size:13.5px;font-weight:500;display:flex;gap:6px;align-items:center;margin-top:6px}
+.chips{display:flex;gap:8px;padding:10px 20px 12px;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent 98%)}
+.chip{border:1px solid #3a3229;background:#221d18;border-radius:999px;padding:6px 13px;font-size:13.5px;color:#cfc4b5;flex:none}
+.chip.on{background:#3a2c1c;border-color:#7a5a33;color:#f0c58a;font-weight:600}
+.content{padding:4px 16px 100px}
+.sec{font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;color:#8d8274;font-weight:600;margin:16px 6px 8px;display:flex;justify-content:space-between}
+.sec .n{letter-spacing:0;text-transform:none;font-weight:500}
+.card{background:#231e19;border:1px solid #332c24;border-radius:12px;overflow:hidden}
+.row{display:flex;gap:13px;align-items:flex-start;padding:12px 14px;border-top:1px solid #2e2720}
+.row:first-child{border-top:none}
+.circ{width:20px;height:20px;border:1.6px solid #6f6456;border-radius:50%;flex:none;margin-top:1px}
+.t{font-size:15.5px;line-height:21px;color:#eee6da}
+.meta{font-size:12px;color:#968a7b;margin-top:2px;display:flex;gap:6px;align-items:center}
+.dot{color:#5a5046}
+.od{color:#e8846a;font-weight:600}
+.dt{color:#e3b06e;font-weight:500}
+.grp{font-size:13.5px;font-weight:600;color:#d8cdbe;margin:14px 6px 7px;display:flex;align-items:center;gap:8px}
+.grp .ic{width:7px;height:7px;border-radius:2px;background:#b98a52}
+.listrow{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;font-size:15px}
+.listrow .l{display:flex;gap:12px;align-items:center}
+.cnt{color:#8d8274;font-size:13px;display:flex;gap:8px;align-items:center}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:84px;background:#191511;border-top:1px solid #2d261f;display:flex;justify-content:space-around;padding-top:9px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:#83796c;width:80px}
+.tab.on{color:#f0c58a;font-weight:600}
+.tab svg{width:24px;height:24px}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#e9e1d5}
+.add{display:flex;gap:13px;align-items:center;padding:12px 14px;color:#8d8274;font-size:15px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#26201a;border-radius:18px 18px 0 0;border-top:1px solid #3a3229;padding:8px 16px 40px}
+.grab{width:38px;height:5px;border-radius:3px;background:#5a5046;margin:0 auto 14px}
+.sheet h2{font-size:18px;font-weight:700;margin:0 6px 4px}
+
+body{display:flex}
+.side{width:248px;flex:none;height:900px;background:#17130f;border-right:1px solid #2b241d;padding:20px 14px;display:flex;flex-direction:column}
+.logo{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;padding:4px 10px 22px}
+.logo .m{width:26px;height:26px;border-radius:8px;background:#b98a52;display:flex;align-items:center;justify-content:center;color:#1b1713;font-size:16px;font-weight:800}
+.nav{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:9px;font-size:15px;color:#cfc4b5;margin-bottom:2px}
+.nav svg{width:20px;height:20px;color:#8d8274}
+.nav.on{background:#3a2c1c;color:#f0c58a;font-weight:600}
+.nav.on svg{color:#f0c58a}
+.nav.parent{color:#f0c58a;font-weight:600}
+.nav.parent svg{color:#f0c58a}
+.badge{margin-left:auto;background:#3a2c1c;color:#f0c58a;font-size:12px;font-weight:600;border-radius:999px;padding:1px 8px}
+.sub1{display:flex;align-items:center;gap:10px;padding:7px 10px 7px 42px;border-radius:9px;font-size:14px;color:#cfc4b5;margin-bottom:1px}
+.sub1.on{background:#3a2c1c;color:#f0c58a;font-weight:600}
+.sub1 .c{margin-left:auto;color:#7d7266;font-size:12.5px}
+.glabel{font-size:11px;letter-spacing:.9px;text-transform:uppercase;color:#7d7266;font-weight:600;padding:12px 10px 5px 42px}
+.foot{margin-top:auto;padding:10px;font-size:13px;color:#7d7266}
+.main{flex:1;height:900px;overflow:hidden;display:flex}
+.pane{flex:1;padding:34px 48px 40px;overflow:hidden}
+.col{max-width:720px;margin:0 auto}
+.dhdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.dhdr h1{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.dhdr .sub{font-size:13.5px;color:#9d9284;margin-top:4px}
+.dchips{display:flex;gap:8px;margin:4px 0 16px}
+.row.sel{background:#2c241c;box-shadow:inset 3px 0 0 #d9a25f}
+.detail{width:380px;flex:none;border-left:1px solid #2b241d;background:#1f1a15;padding:34px 28px}
+.detail .k{font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;color:#7d7266;font-weight:600;margin:22px 0 6px}
+.detail .v{font-size:15px;color:#e3d9cb}
+.detail h2{font-size:21px;font-weight:600;line-height:28px;display:flex;gap:12px;align-items:flex-start}
+.detail h2 .circ{width:22px;height:22px;margin-top:3px}
+.note{border:1px solid #332c24;border-radius:10px;padding:12px;color:#7d7266;font-size:14px;min-height:90px;background:#231e19}
+.link{color:#e3b06e;font-size:14px;margin-top:22px;display:flex;gap:6px;align-items:center}
+.hint{font-size:12.5px;color:#7d7266;margin-top:6px}
+</style></head><body><div class="side"><div class="logo"><span class="m">Y</span>Yoink</div><div class="nav "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="5"/></svg><span>Capture</span><span class="badge">4</span></div><div class="nav "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg><span>Process</span></div><div class="nav parent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/></svg><span>Work</span></div><div class="sub1 on">Now<span class="c" style="color:#c99a5c">7</span></div><div class="glabel">Lists</div><div class="sub1">Money<span class="c">4</span></div><div class="sub1">Groceries<span class="c">9</span></div><div class="sub1">Boat<span class="c">3</span></div><div class="sub1">Home<span class="c">6</span></div><div class="sub1">Yoink<span class="c">5</span></div><div class="sub1">Unlisted<span class="c">2</span></div><div class="sub1" style="color:#7d7266">+ New list</div><div class="nav "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M4 10h16M8 14h3M8 17h6"/></svg><span>Review</span></div><div class="foot">Justin Hill</div></div><div class="main"><div class="pane"><div class="col" style="max-width:680px"><div class="dhdr"><div><h1>Work</h1><div class="sub">Fri Oct 9 · 6 next actions · 1 due</div></div></div><div class="sec"><span>Next actions</span><span class="n">6</span></div><div class="card"><div class="row sel"><div class="circ"></div><div><div class="t">Call the assessor</div><div class="meta">Homestead exemption<span class=dot>·</span><span class="od">Overdue</span></div></div></div><div class="row"><div class="circ"></div><div><div class="t">Write role-criteria one-pager</div><div class="meta">Next-job search<span class=dot>·</span><span class="od">Overdue</span></div></div></div><div class="row"><div class="circ"></div><div><div class="t">Pack Veterans OMV folder</div><div class="meta">Boat registration<span class=dot>·</span><span class="dt">Mon Oct 12</span></div></div></div><div class="row"><div class="circ"></div><div><div class="t">Pay Graci invoice #8704</div><div class="meta">Downstairs reno closeout<span class=dot>·</span><span class="dt">Nov 1</span></div></div></div><div class="row"><div class="circ"></div><div><div class="t">Decide on the plant list</div><div class="meta">Backyard plants</div></div></div><div class="row"><div class="circ"></div><div><div class="t">Pick a tour date with Maggie</div><div class="meta">McGehee move-up</div></div></div></div><div class="sec"><span>Due</span><span class="n">1</span></div><div class="card"><div class="row"><div class="circ"></div><div><div class="t">Close Keybase account</div><div class="meta"><span class="dt">Due Nov 30</span></div></div></div></div></div></div><div class="detail"><h2><span class="circ"></span>Call the assessor</h2>
+<div class="k">Project</div><div class="v">Homestead exemption</div><div class="hint">This is the project's next action</div>
+<div class="k">Due</div><div class="v od">Overdue</div>
+<div class="k">Notes</div><div class="note">Add a note…</div>
+<div class="link">Open project <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div></div></div></body></html>

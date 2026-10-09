@@ -1,8 +1,13 @@
 import type { ResultAsync } from 'neverthrow';
-import { resolveListLimit } from '@yoink/api-contracts';
+import type { Capture } from '@yoink/api-contracts';
 import type { ListCapturesQuery } from '../domain/capture-commands.js';
 import type { ListCapturesError } from '../domain/capture-errors.js';
-import type { FindByOrganizationResult } from '../domain/capture-store.js';
+import { listKindForCaptureList, resolveListLimit } from '../../listing/domain/list-kind.js';
+import {
+  captureFeedCursor,
+  snoozedCaptureCursor,
+} from '../../listing/domain/list-keys.js';
+import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
 import type { ListCaptures } from './ports.js';
 
 export type HandleListCapturesDeps = {
@@ -13,16 +18,21 @@ export type HandleListCapturesDeps = {
 export const handleListCaptures = (
   query: ListCapturesQuery,
   deps: HandleListCapturesDeps
-): ResultAsync<FindByOrganizationResult, ListCapturesError> => {
-  return deps.list({
-    organizationId: query.organizationId,
-    status: query.status,
-    snoozed: query.snoozed,
-    now: deps.now(),
-    limit: resolveListLimit(
-      query.limit,
-      query.status === 'trashed' || query.status === 'processed' ? 'history' : 'pile'
-    ),
+): ResultAsync<ListedPage<Capture>, ListCapturesError> => {
+  const limit = resolveListLimit(query.limit, listKindForCaptureList(query.status));
+  const cursorOf = query.snoozed === true ? snoozedCaptureCursor : captureFeedCursor;
+  return runListedQuery({
     cursor: query.cursor,
+    limit,
+    cursorOf,
+    load: (seek, fetchLimit) =>
+      deps.list({
+        organizationId: query.organizationId,
+        status: query.status,
+        snoozed: query.snoozed,
+        now: deps.now(),
+        fetchLimit,
+        seek,
+      }),
   });
 };

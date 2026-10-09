@@ -1,86 +1,105 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
-import { HISTORY_PAGE_DEFAULT } from '@yoink/api-contracts';
-import { tokenStorage } from '@/lib/token';
+import {
+  HISTORY_PAGE_DEFAULT,
+  type Capture,
+  type CaptureListPage,
+  type Task,
+  type TaskListPage,
+} from '@yoink/api-contracts';
+import { tsr, tsrTasks } from '@/api/client';
 
 export const LOAD_MORE_TEST_ID = 'load-more';
 
-type HistoryPageMeta = {
-  hasMore: boolean;
-  nextCursor: string | null;
-  total: number;
+export type TaskHistoryPage = {
+  status: 200;
+  body: TaskListPage;
 };
 
-type HistoryPageBody<K extends string, T> = HistoryPageMeta & {
-  [key in K]: T[];
+export type CaptureHistoryPage = {
+  status: 200;
+  body: CaptureListPage;
 };
 
-export type HistoryPagesData<K extends string, T> = {
-  pages: Array<{
-    status: number;
-    body: HistoryPageBody<K, T>;
-  }>;
-  pageParams: unknown[];
+export type TaskHistoryData = InfiniteData<TaskHistoryPage, string | undefined>;
+export type CaptureHistoryData = InfiniteData<CaptureHistoryPage, string | undefined>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isTaskListPage = (value: unknown): value is TaskListPage => {
+  if (!isRecord(value) || !Array.isArray(value.tasks)) {
+    return false;
+  }
+  return (
+    typeof value.hasMore === 'boolean' &&
+    (value.nextCursor === null || typeof value.nextCursor === 'string') &&
+    typeof value.total === 'number'
+  );
 };
 
-type AnyHistoryPagesData = {
-  pages: Array<{
-    status: number;
-    body: HistoryPageMeta & Record<string, unknown>;
-  }>;
-  pageParams: unknown[];
+const isCaptureListPage = (value: unknown): value is CaptureListPage => {
+  if (!isRecord(value) || !Array.isArray(value.captures)) {
+    return false;
+  }
+  return (
+    typeof value.hasMore === 'boolean' &&
+    (value.nextCursor === null || typeof value.nextCursor === 'string') &&
+    typeof value.total === 'number'
+  );
 };
 
-export const emptyHistoryPages = <K extends string>(
-  itemKey: K
-): HistoryPagesData<K, never> => ({
+export const isTaskHistoryData = (data: unknown): data is TaskHistoryData => {
+  if (!isRecord(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams)) {
+    return false;
+  }
+  return data.pages.every(
+    (page) => isRecord(page) && page.status === 200 && isTaskListPage(page.body)
+  );
+};
+
+export const isCaptureHistoryData = (data: unknown): data is CaptureHistoryData => {
+  if (!isRecord(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams)) {
+    return false;
+  }
+  return data.pages.every(
+    (page) => isRecord(page) && page.status === 200 && isCaptureListPage(page.body)
+  );
+};
+
+export const emptyCaptureHistoryPages = (): CaptureHistoryData => ({
   pages: [
     {
       status: 200,
       body: {
-        [itemKey]: [],
+        captures: [],
         hasMore: false,
         nextCursor: null,
         total: 0,
-      } as HistoryPageBody<K, never>,
+      },
     },
   ],
   pageParams: [undefined],
 });
 
-export const isHistoryPagesData = (data: unknown): data is AnyHistoryPagesData => {
-  if (typeof data !== 'object' || data === null || !('pages' in data)) {
-    return false;
-  }
-  return Array.isArray((data as AnyHistoryPagesData).pages);
-};
-
-export const mapHistoryPageItems = <K extends string, T>(
-  data: unknown,
-  itemKey: K,
-  mapItems: (items: T[]) => T[]
-): unknown => {
-  if (!isHistoryPagesData(data)) {
-    return data;
-  }
+export const mapTaskHistoryPageItems = (
+  data: TaskHistoryData,
+  mapItems: (items: Task[]) => Task[]
+): TaskHistoryData => {
   let delta = 0;
   const pages = data.pages.map((page) => {
-    if (page.status !== 200) {
-      return page;
-    }
-    const items = (page.body[itemKey] as T[] | undefined) ?? [];
-    const nextItems = mapItems(items);
-    delta += nextItems.length - items.length;
+    const nextItems = mapItems(page.body.tasks);
+    delta += nextItems.length - page.body.tasks.length;
     return {
       ...page,
       body: {
         ...page.body,
-        [itemKey]: nextItems,
+        tasks: nextItems,
       },
     };
   });
   const first = pages[0];
-  if (delta !== 0 && first?.status === 200) {
+  if (delta !== 0 && first) {
     pages[0] = {
       ...first,
       body: {
@@ -89,91 +108,121 @@ export const mapHistoryPageItems = <K extends string, T>(
       },
     };
   }
-  return {
-    ...data,
-    pages,
-  };
+  return { ...data, pages };
 };
 
-export const prependHistoryPageItem = <K extends string, T>(
-  data: unknown,
-  itemKey: K,
-  item: T
-): unknown => {
-  if (!isHistoryPagesData(data)) {
-    return data;
+export const mapCaptureHistoryPageItems = (
+  data: CaptureHistoryData,
+  mapItems: (items: Capture[]) => Capture[]
+): CaptureHistoryData => {
+  let delta = 0;
+  const pages = data.pages.map((page) => {
+    const nextItems = mapItems(page.body.captures);
+    delta += nextItems.length - page.body.captures.length;
+    return {
+      ...page,
+      body: {
+        ...page.body,
+        captures: nextItems,
+      },
+    };
+  });
+  const first = pages[0];
+  if (delta !== 0 && first) {
+    pages[0] = {
+      ...first,
+      body: {
+        ...first.body,
+        total: Math.max(0, first.body.total + delta),
+      },
+    };
   }
-  return {
-    ...data,
-    pages: data.pages.map((page, index) => {
-      if (index !== 0 || page.status !== 200) {
-        return page;
-      }
-      const items = (page.body[itemKey] as T[] | undefined) ?? [];
-      return {
-        ...page,
-        body: {
-          ...page.body,
-          [itemKey]: [item, ...items],
-          total: page.body.total + 1,
-        },
-      };
-    }),
-  };
+  return { ...data, pages };
 };
 
-type HistoryPage<K extends string, T> = {
-  status: number;
-  body: HistoryPageBody<K, T>;
+export const prependCaptureHistoryPageItem = (
+  data: CaptureHistoryData,
+  item: Capture
+): CaptureHistoryData => ({
+  ...data,
+  pages: data.pages.map((page, index) => {
+    if (index !== 0) {
+      return page;
+    }
+    return {
+      ...page,
+      body: {
+        ...page.body,
+        captures: [item, ...page.body.captures],
+        total: page.body.total + 1,
+      },
+    };
+  }),
+});
+
+const nextHistoryCursor = (lastPage: { status: number; body: { hasMore: boolean; nextCursor: string | null } }) => {
+  if (lastPage.status !== 200 || lastPage.body.hasMore !== true) {
+    return undefined;
+  }
+  return lastPage.body.nextCursor ?? undefined;
 };
 
 /**
- * Paged history (Done, Trash). First-class pile reads do not use this —
+ * Paged history (Done). First-class pile reads do not use this —
  * those send one request up to the safety cap. Query keys stay under the
  * live-update collection prefixes so #125 cancel/invalidate still match.
  */
-export const useHistoryPages = <K extends string, T>(options: {
-  queryKey: readonly unknown[];
-  path: string;
-  itemKey: K;
-  search: Record<string, string>;
-  enabled: boolean;
-}) => {
-  const query = useInfiniteQuery({
-    queryKey: [...options.queryKey],
-    enabled: options.enabled,
+export const useCompletedTaskPages = (enabled: boolean) => {
+  const query = tsrTasks.list.useInfiniteQuery({
+    queryKey: ['tasks', 'completed'],
+    enabled,
     initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }): Promise<HistoryPage<K, T>> => {
-      const params = new URLSearchParams({
-        ...options.search,
-        limit: String(HISTORY_PAGE_DEFAULT),
-      });
-      if (pageParam) {
-        params.set('cursor', pageParam);
-      }
-      const headers = new Headers();
-      const token = tokenStorage.get();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      const response = await fetch(`${options.path}?${params.toString()}`, {
-        credentials: 'include',
-        headers,
-      });
-      const body = (await response.json()) as HistoryPageBody<K, T>;
-      return { status: response.status, body };
-    },
-    getNextPageParam: (lastPage) => {
-      if (lastPage.status !== 200 || !lastPage.body.hasMore) {
-        return undefined;
-      }
-      return lastPage.body.nextCursor ?? undefined;
-    },
+    queryData: ({ pageParam }) => ({
+      query: {
+        filter: 'completed' as const,
+        limit: HISTORY_PAGE_DEFAULT,
+        ...(pageParam ? { cursor: pageParam } : {}),
+      },
+    }),
+    getNextPageParam: nextHistoryCursor,
   });
 
   const items =
     query.data?.pages.flatMap((page) =>
-      page.status === 200 ? page.body[options.itemKey] : []
+      page.status === 200 ? page.body.tasks : []
+    ) ?? [];
+  const first = query.data?.pages[0];
+  const total = first?.status === 200 ? first.body.total : items.length;
+
+  return {
+    ...query,
+    items,
+    total,
+  };
+};
+
+/**
+ * Paged history (Trash). Query keys stay under the live-update collection
+ * prefixes so #125 cancel/invalidate still match.
+ */
+export const useTrashedCapturePages = (enabled: boolean) => {
+  const query = tsr.list.useInfiniteQuery({
+    queryKey: ['captures', 'trashed'],
+    enabled,
+    initialPageParam: undefined as string | undefined,
+    queryData: ({ pageParam }) => ({
+      query: {
+        status: 'trashed' as const,
+        limit: HISTORY_PAGE_DEFAULT,
+        ...(pageParam ? { cursor: pageParam } : {}),
+      },
+    }),
+    getNextPageParam: nextHistoryCursor,
+  });
+
+  const items =
+    query.data?.pages.flatMap((page) =>
+      page.status === 200 ? page.body.captures : []
     ) ?? [];
   const first = query.data?.pages[0];
   const total = first?.status === 200 ? first.body.total : items.length;

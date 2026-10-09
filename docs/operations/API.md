@@ -11,6 +11,11 @@ whole pile in **one request**, up to a safety cap of 1000. If that cap is hit,
 `hasMore` is `true` and `nextCursor` points at the next page. History
 (completed/Done tasks, trashed captures) stays paged (default 50).
 
+Cursors are opaque keysets (sort position plus id). Resume with the previous
+page’s `nextCursor`. A malformed cursor is `400` with `code: "invalid_cursor"`
+— never an empty page that looks done. Completing, uncompleting, trashing, or
+deleting the cursor item between requests still returns the remaining rows.
+
 ## One request per pile
 
 Bots (Lane, Charlie, Sid) should read a pile with a single GET. Omit `limit`
@@ -60,10 +65,11 @@ Example complete response (small board):
 If `hasMore` is `true`, keep going with `cursor` set to `nextCursor`. Never
 treat a truncated page as the full pile.
 
-## History: loop until `hasMore` is false
+## History: loop until `hasMore` is exactly `true`
 
-Completed tasks and trashed captures are open-ended. Page with `nextCursor`
-until `hasMore` is `false`.
+Completed tasks and trashed captures are open-ended. Page with `nextCursor`.
+Break unless `hasMore` is exactly `true` — do not treat a missing field, a
+string, or an empty page as done.
 
 ```bash
 # Done / completed history
@@ -74,7 +80,7 @@ while :; do
   body=$(curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/tasks?$qs")
   echo "$body"
   hasMore=$(printf '%s' "$body" | jq -r .hasMore)
-  [ "$hasMore" = "false" ] && break
+  [ "$hasMore" = "true" ] || break
   cursor=$(printf '%s' "$body" | jq -r .nextCursor)
 done
 
@@ -86,10 +92,17 @@ while :; do
   body=$(curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/captures?$qs")
   echo "$body"
   hasMore=$(printf '%s' "$body" | jq -r .hasMore)
-  [ "$hasMore" = "false" ] && break
+  [ "$hasMore" = "true" ] || break
   cursor=$(printf '%s' "$body" | jq -r .nextCursor)
 done
 ```
 
-Cursors are the last item id on the previous page. Ordering is stable (tie-broken
-by id), so walking pages does not skip or repeat cards.
+A bad cursor:
+
+```bash
+curl -sS -o /tmp/bad.json -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  "$API/api/tasks?filter=completed&cursor=not-a-cursor"
+# 400
+# {"message":"Cursor is invalid","code":"invalid_cursor"}
+```

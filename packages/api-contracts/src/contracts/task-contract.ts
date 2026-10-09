@@ -29,6 +29,7 @@ export const taskContract = c.router({
     }),
     responses: {
       200: TaskListPageSchema,
+      400: ErrorSchema,
       401: ErrorSchema,
       500: ErrorSchema,
     },

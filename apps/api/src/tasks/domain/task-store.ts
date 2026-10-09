@@ -1,22 +1,16 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Task, TaskFilter } from '@yoink/api-contracts';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type { StorageError } from './task-errors.js';
 
 export type FindByOrganizationOptions = {
   organizationId: string;
-  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
-  today?: string; // Current date in YYYY-MM-DD format for date comparisons
-  limit?: number;
-  cursor?: string;
-  /** Caller principal id; used when filter is 'mine' */
+  filter?: TaskFilter;
+  today?: string;
   assigneeId?: string;
-};
-
-export type FindByOrganizationResult = {
-  tasks: Task[];
-  hasMore: boolean;
-  nextCursor: string | null;
-  total: number;
+  fetchLimit: number;
+  seek?: KeysetCursor;
 };
 
 export type TaskStore = {
@@ -25,16 +19,21 @@ export type TaskStore = {
   update(task: Task): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
-  ): ResultAsync<FindByOrganizationResult, StorageError>;
+  ): ResultAsync<KeysetRows<Task>, StorageError>;
   findByCaptureId(captureId: string): ResultAsync<Task | null, StorageError>;
   softDelete(id: string): ResultAsync<void, StorageError>;
   countOpenOnList(listId: string): ResultAsync<number, StorageError>;
-  /** Unlist completed (and already-deleted) tasks still pointing at this list. */
   clearListIdOnCompleted(listId: string): ResultAsync<void, StorageError>;
   findOpenInPile(options: {
     organizationId: string;
     listId: string | null;
   }): ResultAsync<Task[], StorageError>;
+  pageOpenInPile(options: {
+    organizationId: string;
+    listId: string | null;
+    fetchLimit: number;
+    seek?: KeysetCursor;
+  }): ResultAsync<KeysetRows<Task>, StorageError>;
   nextOpenOrderInPile(options: {
     organizationId: string;
     listId: string | null;

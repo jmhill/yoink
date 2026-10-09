@@ -7,7 +7,7 @@ import {
   type TaskListPage,
 } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { createTestApp, TEST_TOKEN } from '../../tests/helpers/test-app.js';
+import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 
@@ -52,7 +52,7 @@ describe('GET /api/lists list completeness', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = await createTestApp();
+    app = await createTestApp(pagingTestConfig);
   });
 
   it('always includes hasMore, nextCursor (null when done), and total', async () => {
@@ -96,7 +96,7 @@ describe('GET /api/lists list completeness', () => {
     let hasMore = true;
     let pages = 0;
 
-    while (hasMore) {
+    while (hasMore === true) {
       const url: string = cursor
         ? `/api/lists?limit=50&cursor=${cursor}`
         : '/api/lists?limit=50';
@@ -129,7 +129,7 @@ describe('GET /api/lists list completeness', () => {
     const body = response.json<NamedListListPage>();
     expect(body.lists).toHaveLength(PILE_SAFETY_CAP);
     expect(body.hasMore).toBe(true);
-    expect(body.nextCursor).toBe(body.lists[PILE_SAFETY_CAP - 1]?.id);
+    expect(body.nextCursor).toEqual(expect.any(String));
     expect(body.total).toBe(PILE_SAFETY_CAP + 1);
   }, 60_000);
 });
@@ -138,7 +138,7 @@ describe('GET pile reads list completeness', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = await createTestApp();
+    app = await createTestApp(pagingTestConfig);
   });
 
   it('returns every open task on a named list in one request', async () => {
@@ -181,7 +181,7 @@ describe('GET pile reads list completeness', () => {
     let cursor: string | null = null;
     let hasMore = true;
 
-    while (hasMore) {
+    while (hasMore === true) {
       const url: string = cursor
         ? `/api/lists/${list.id}/tasks?limit=50&cursor=${cursor}`
         : `/api/lists/${list.id}/tasks?limit=50`;
@@ -218,7 +218,7 @@ describe('GET pile reads list completeness', () => {
     const body = response.json<TaskListPage>();
     expect(body.tasks).toHaveLength(PILE_SAFETY_CAP);
     expect(body.hasMore).toBe(true);
-    expect(body.nextCursor).toBe(body.tasks[PILE_SAFETY_CAP - 1]?.id);
+    expect(body.nextCursor).toEqual(expect.any(String));
     expect(body.total).toBe(PILE_SAFETY_CAP + 1);
   }, 60_000);
 
@@ -245,5 +245,76 @@ describe('GET pile reads list completeness', () => {
     expect(body.hasMore).toBe(false);
     expect(body.nextCursor).toBeNull();
     expect(body.total).toBe(120);
+  });
+
+  it('pages unlisted tasks with no gaps or duplicates', async () => {
+    const created: Task[] = [];
+    for (let index = 0; index < 120; index++) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tasks',
+        headers: auth,
+        payload: { title: `Loose ${String(index).padStart(3, '0')}` },
+      });
+      expect(response.statusCode).toBe(201);
+      created.push(response.json<Task>());
+    }
+
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    let hasMore = true;
+    while (hasMore === true) {
+      const url: string = cursor
+        ? `/api/unlisted/tasks?limit=50&cursor=${cursor}`
+        : '/api/unlisted/tasks?limit=50';
+      const response = await app.inject({ method: 'GET', url, headers: auth });
+      expect(response.statusCode).toBe(200);
+      const body = response.json() as TaskListPage;
+      ids.push(...body.tasks.map((task) => task.id));
+      hasMore = body.hasMore;
+      cursor = body.nextCursor;
+    }
+
+    expect(ids).toHaveLength(120);
+    expect(new Set(ids).size).toBe(120);
+    expect(ids).toEqual(created.map((task) => task.id));
+  });
+
+  it('reports hasMore when unlisted tasks hit the safety cap', async () => {
+    for (let index = 0; index < PILE_SAFETY_CAP + 1; index++) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tasks',
+        headers: auth,
+        payload: { title: `Loose ${String(index).padStart(4, '0')}` },
+      });
+      expect(response.statusCode).toBe(201);
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/unlisted/tasks',
+      headers: auth,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<TaskListPage>();
+    expect(body.tasks).toHaveLength(PILE_SAFETY_CAP);
+    expect(body.hasMore).toBe(true);
+    expect(body.nextCursor).toEqual(expect.any(String));
+    expect(body.total).toBe(PILE_SAFETY_CAP + 1);
+  }, 60_000);
+
+  it('maps a malformed list cursor to 400 invalid_cursor', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/lists?cursor=not-a-cursor',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Cursor is invalid',
+      code: 'invalid_cursor',
+    });
   });
 });

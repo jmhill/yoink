@@ -1478,6 +1478,19 @@ export class TasksPage {
     await this.waitForPileScreen();
   }
 
+  async getTaskTitles(): Promise<string[]> {
+    const cards = this.page.locator('[data-task-title]');
+    const count = await cards.count();
+    const titles: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const title = await cards.nth(i).getAttribute('data-task-title');
+      if (title) {
+        titles.push(title);
+      }
+    }
+    return titles;
+  }
+
   async getOpenTaskTitles(): Promise<string[]> {
     const cards = this.page.locator('[data-open-task-title]');
     const count = await cards.count();

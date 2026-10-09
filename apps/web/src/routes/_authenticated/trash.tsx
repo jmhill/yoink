@@ -14,11 +14,11 @@ import { tsr } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import {
   LoadMoreButton,
-  emptyHistoryPages,
-  mapHistoryPageItems,
-  useHistoryPages,
+  emptyCaptureHistoryPages,
+  isCaptureHistoryData,
+  mapCaptureHistoryPageItems,
+  useTrashedCapturePages,
 } from '@/lib/use-history-pages';
-import type { Capture } from '@yoink/api-contracts';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Trash2, Inbox, RotateCcw, X } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
@@ -47,13 +47,7 @@ function TrashPage() {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useHistoryPages<'captures', Capture>({
-    queryKey: ['captures', 'trashed'],
-    path: '/api/captures',
-    itemKey: 'captures',
-    search: { status: 'trashed' },
-    enabled: true,
-  });
+  } = useTrashedCapturePages(true);
 
   const restoreMutation = tsr.restore.useMutation({
     onMutate: async ({ params }) => {
@@ -69,12 +63,14 @@ function TrashPage() {
 
       const captureToRestore = captures.find((c) => c.id === params.id);
 
-      tsrQueryClient.setQueryData(
-        ['captures', 'trashed'],
-        mapHistoryPageItems<'captures', Capture>(previousTrashed, 'captures', (items) =>
-          items.filter((c) => c.id !== params.id)
-        )
-      );
+      if (isCaptureHistoryData(previousTrashed)) {
+        tsrQueryClient.setQueryData(
+          ['captures', 'trashed'],
+          mapCaptureHistoryPageItems(previousTrashed, (items) =>
+            items.filter((c) => c.id !== params.id)
+          )
+        );
+      }
 
       if (captureToRestore && previousInbox?.status === 200) {
         tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
@@ -129,12 +125,14 @@ function TrashPage() {
 
       const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
 
-      tsrQueryClient.setQueryData(
-        ['captures', 'trashed'],
-        mapHistoryPageItems<'captures', Capture>(previousTrashed, 'captures', (items) =>
-          items.filter((c) => c.id !== params.id)
-        )
-      );
+      if (isCaptureHistoryData(previousTrashed)) {
+        tsrQueryClient.setQueryData(
+          ['captures', 'trashed'],
+          mapCaptureHistoryPageItems(previousTrashed, (items) =>
+            items.filter((c) => c.id !== params.id)
+          )
+        );
+      }
 
       return { previousTrashed };
     },
@@ -168,7 +166,7 @@ function TrashPage() {
 
       tsrQueryClient.setQueryData(
         ['captures', 'trashed'],
-        emptyHistoryPages('captures')
+        emptyCaptureHistoryPages()
       );
 
       return { previousTrashed };

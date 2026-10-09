@@ -1,5 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Capture, CaptureStatus, ProcessedToType } from '@yoink/api-contracts';
+import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type { CaptureNotInInboxError, StorageError } from './capture-errors.js';
 
 export type MarkAsProcessedOptions = {
@@ -7,7 +9,6 @@ export type MarkAsProcessedOptions = {
   processedAt: string;
   processedToType: ProcessedToType;
   processedToId: string;
-  /** If provided, the operation will fail if the capture is not in this status */
   requiredStatus?: CaptureStatus;
 };
 
@@ -16,17 +17,10 @@ export type MarkAsProcessedError = StorageError | CaptureNotInInboxError;
 export type FindByOrganizationOptions = {
   organizationId: string;
   status?: CaptureStatus;
-  snoozed?: boolean; // true = only snoozed, false = exclude snoozed, undefined = no filtering
-  now?: string; // Current time for snooze comparison (ISO datetime)
-  limit?: number;
-  cursor?: string;
-};
-
-export type FindByOrganizationResult = {
-  captures: Capture[];
-  hasMore: boolean;
-  nextCursor: string | null;
-  total: number;
+  snoozed?: boolean;
+  now?: string;
+  fetchLimit: number;
+  seek?: KeysetCursor;
 };
 
 export type CaptureStore = {
@@ -35,13 +29,8 @@ export type CaptureStore = {
   update(capture: Capture): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
-  ): ResultAsync<FindByOrganizationResult, StorageError>;
-  // Soft delete - sets deletedAt timestamp
+  ): ResultAsync<KeysetRows<Capture>, StorageError>;
   softDelete(id: string): ResultAsync<void, StorageError>;
-  // Soft delete all trashed captures for an organization
   softDeleteTrashed(organizationId: string): ResultAsync<number, StorageError>;
-  // Mark capture as processed (converted to task/note)
-  // If requiredStatus is provided and the capture is not in that status,
-  // returns CaptureNotInInboxError (for atomic status verification within transactions)
   markAsProcessed(options: MarkAsProcessedOptions): ResultAsync<Capture, MarkAsProcessedError>;
 };

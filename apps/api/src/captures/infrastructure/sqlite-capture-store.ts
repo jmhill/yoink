@@ -5,12 +5,16 @@ import type { Clock } from '@yoink/infrastructure';
 import type {
   CaptureStore,
   FindByOrganizationOptions,
-  FindByOrganizationResult,
   MarkAsProcessedOptions,
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
-import { pageListedItems } from '../../shared/page-listed-items.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import {
+  captureFeedDirection,
+  snoozedCaptureDirection,
+} from '../../listing/domain/list-keys.js';
 
 type CaptureRow = {
   id: string;
@@ -142,58 +146,47 @@ export const createSqliteCaptureStore = async (
 
     findByOrganization: (
       options: FindByOrganizationOptions
-    ): ResultAsync<FindByOrganizationResult, StorageError> => {
-      const { organizationId, status, snoozed, now, limit, cursor } = options;
+    ): ResultAsync<KeysetRows<Capture>, StorageError> => {
+      const { organizationId, status, snoozed, now, fetchLimit, seek } = options;
 
-      let sql = `
-        SELECT * FROM captures
-        WHERE organization_id = ?
+      let whereSql = `
+        organization_id = ?
           AND deleted_at IS NULL
       `;
-      const params: (string | number)[] = [organizationId];
+      const whereArgs: (string | number)[] = [organizationId];
 
       if (status) {
-        sql += ` AND status = ?`;
-        params.push(status);
+        whereSql += ` AND status = ?`;
+        whereArgs.push(status);
       }
 
-      // Handle snoozed filtering
-      // snoozed = true: only captures where snoozed_until > now
-      // snoozed = false: only captures where snoozed_until is null or snoozed_until <= now
-      // snoozed = undefined: no filtering by snooze status
       if (snoozed !== undefined && now) {
         if (snoozed) {
-          // Only snoozed items
-          sql += ` AND snoozed_until IS NOT NULL AND snoozed_until > ?`;
-          params.push(now);
+          whereSql += ` AND snoozed_until IS NOT NULL AND snoozed_until > ?`;
+          whereArgs.push(now);
         } else {
-          // Exclude snoozed items (show expired snoozes and non-snoozed)
-          sql += ` AND (snoozed_until IS NULL OR snoozed_until <= ?)`;
-          params.push(now);
+          whereSql += ` AND (snoozed_until IS NULL OR snoozed_until <= ?)`;
+          whereArgs.push(now);
         }
       }
 
-      // Sorting depends on whether we're querying snoozed items
-      if (snoozed === true) {
-        // Snoozed view: sort by snooze time ascending (soonest first)
-        sql += ` ORDER BY snoozed_until ASC, id ASC`;
-      } else {
-        // Inbox/trashed: sort by captured_at DESC (newest first)
-        sql += ` ORDER BY captured_at DESC, id DESC`;
-      }
-
-      return ResultAsync.fromPromise(
-        db.execute({ sql, args: params }),
-        (error) => storageError('Failed to find captures', error)
-      ).map((result) => {
-        const ordered = (result.rows as CaptureRow[]).map(rowToCapture);
-        const page = pageListedItems(ordered, { limit, cursor });
-        return {
-          captures: page.items,
-          hasMore: page.hasMore,
-          nextCursor: page.nextCursor,
-          total: page.total,
-        };
+      const snoozedView = snoozed === true;
+      return pageSqlite({
+        db,
+        from: 'captures',
+        whereSql,
+        whereArgs,
+        orderSql: snoozedView
+          ? `ORDER BY snoozed_until ASC, id ASC`
+          : `ORDER BY captured_at DESC, id DESC`,
+        keyColumns: snoozedView
+          ? ['snoozed_until', 'id']
+          : ['captured_at', 'id'],
+        direction: snoozedView ? snoozedCaptureDirection : captureFeedDirection,
+        fetchLimit,
+        seek,
+        mapRow: (row) => rowToCapture(row as CaptureRow),
+        errorMessage: 'Failed to find captures',
       });
     },
 

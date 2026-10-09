@@ -1,3 +1,5 @@
+import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
+
 export type StorageError = {
   readonly type: 'STORAGE_ERROR';
   readonly message: string;
@@ -30,7 +32,7 @@ export type CaptureNotInInboxError = {
 };
 
 export type CreateCaptureError = StorageError;
-export type ListCapturesError = StorageError;
+export type ListCapturesError = StorageError | InvalidCursorError;
 export type FindCaptureError = StorageError | CaptureNotFoundError;
 export type UpdateCaptureError = StorageError | CaptureNotFoundError;
 

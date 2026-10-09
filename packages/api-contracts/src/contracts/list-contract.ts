@@ -24,6 +24,7 @@ export const listContract = c.router(
       query: ListPageQuerySchema,
       responses: {
         200: NamedListListPageSchema,
+        400: ErrorSchema,
         401: ErrorSchema,
         500: ErrorSchema,
       },
@@ -88,6 +89,7 @@ export const listContract = c.router(
       query: ListPageQuerySchema,
       responses: {
         200: TaskListPageSchema,
+        400: ErrorSchema,
         401: ErrorSchema,
         404: ErrorSchema,
         500: ErrorSchema,
@@ -120,6 +122,7 @@ export const listContract = c.router(
       query: ListPageQuerySchema,
       responses: {
         200: TaskListPageSchema,
+        400: ErrorSchema,
         401: ErrorSchema,
         500: ErrorSchema,
       },

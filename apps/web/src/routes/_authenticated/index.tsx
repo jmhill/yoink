@@ -7,7 +7,7 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrLists } from '@/api/client';
 import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
-import { isHistoryPagesData, prependHistoryPageItem } from '@/lib/use-history-pages';
+import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
@@ -158,10 +158,10 @@ function InboxPage() {
           },
         });
 
-        if (captureToTrash && isHistoryPagesData(previousTrashed)) {
+        if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
           tsrQueryClient.setQueryData(
             ['captures', 'trashed'],
-            prependHistoryPageItem<'captures', Capture>(previousTrashed, 'captures', {
+            prependCaptureHistoryPageItem(previousTrashed, {
               ...captureToTrash,
               status: 'trashed',
             })

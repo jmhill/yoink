@@ -38,7 +38,11 @@ export const testConfig: AppConfig = {
   seedToken: TEST_TOKEN_SECRET,
   log: { level: 'error', pretty: false }, // Quiet logs during tests
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
-  // Production caps at 100 req/min. Pagination tests create 120–1001 rows via inject.
+};
+
+/** Production caps at 100 req/min. Pagination suites create 120–1001 rows via inject. */
+export const pagingTestConfig: AppConfig = {
+  ...testConfig,
   rateLimit: {
     enabled: false,
     globalMax: 100,
@@ -84,11 +88,11 @@ export const testConfigFull: AppConfig = {
  * Creates an in-process Fastify app for unit/integration testing.
  * Uses in-memory SQLite and fake infrastructure (clock, ID generator, etc.)
  */
-export const createTestApp = async () => {
-  const infrastructure = createInfrastructure(testConfig);
+export const createTestApp = async (config: AppConfig = testConfig) => {
+  const infrastructure = createInfrastructure(config);
   await runMigrations(infrastructure.database, migrations);
 
-  return bootstrapApp({ config: testConfig, infrastructure, silent: true });
+  return bootstrapApp({ config, infrastructure, silent: true });
 };
 
 /**

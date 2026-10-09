@@ -4,17 +4,12 @@ import {
   PILE_SAFETY_CAP,
   ListPageMetaSchema,
   ListPageQuerySchema,
-  resolveListLimit,
 } from './list-page.js';
 
 describe('list page contract', () => {
-  it('caps pile reads at 1000 and defaults history to 50', () => {
+  it('exports the pile cap and history default for clients', () => {
     expect(PILE_SAFETY_CAP).toBe(1000);
     expect(HISTORY_PAGE_DEFAULT).toBe(50);
-    expect(resolveListLimit(undefined, 'pile')).toBe(1000);
-    expect(resolveListLimit(undefined, 'history')).toBe(50);
-    expect(resolveListLimit(5, 'pile')).toBe(5);
-    expect(resolveListLimit(2000, 'pile')).toBe(1000);
   });
 
   it('requires hasMore and an explicit nextCursor (null when done)', () => {
@@ -32,10 +27,10 @@ describe('list page contract', () => {
     expect(missingCursor.success).toBe(false);
   });
 
-  it('accepts optional limit and cursor on the query string', () => {
+  it('accepts opaque cursors, not only UUIDs', () => {
     const parsed = ListPageQuerySchema.safeParse({
       limit: '50',
-      cursor: '550e8400-e29b-41d4-a716-446655440001',
+      cursor: 'eyJrIjpbImNvbXBsZXRlZCIsImlkIl19',
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {

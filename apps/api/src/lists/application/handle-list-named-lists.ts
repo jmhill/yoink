@@ -2,15 +2,28 @@ import type { ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListNamedListsQuery } from '../domain/list-queries.js';
 import type { ListNamedListsError } from '../domain/list-errors.js';
-import type { ListNamedLists } from './ports.js';
+import { resolveListLimit } from '../../listing/domain/list-kind.js';
+import { namedListCursor } from '../../listing/domain/list-keys.js';
+import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
+import type { PageNamedLists } from './ports.js';
 
 export type HandleListNamedListsDeps = {
-  list: ListNamedLists;
+  pageNamedLists: PageNamedLists;
 };
 
 export const handleListNamedLists = (
   query: ListNamedListsQuery,
   deps: HandleListNamedListsDeps
-): ResultAsync<NamedList[], ListNamedListsError> => {
-  return deps.list(query.organizationId);
+): ResultAsync<ListedPage<NamedList>, ListNamedListsError> => {
+  return runListedQuery({
+    cursor: query.cursor,
+    limit: resolveListLimit(query.limit, 'pile'),
+    cursorOf: namedListCursor,
+    load: (seek, fetchLimit) =>
+      deps.pageNamedLists({
+        organizationId: query.organizationId,
+        fetchLimit,
+        seek,
+      }),
+  });
 };

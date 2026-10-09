@@ -42,7 +42,12 @@ import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { PILE_SAFETY_CAP, TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
-import { LoadMoreButton, mapHistoryPageItems, useHistoryPages } from '@/lib/use-history-pages';
+import {
+  LoadMoreButton,
+  isTaskHistoryData,
+  mapTaskHistoryPageItems,
+  useCompletedTaskPages,
+} from '@/lib/use-history-pages';
 import {
   ALL_PILE_OVERVIEW,
   ALL_PILE_UNLISTED,
@@ -298,13 +303,7 @@ function TasksPage() {
     queryData: { query: { filter: boardFilter, limit: PILE_SAFETY_CAP } },
     enabled: liveBoard,
   });
-  const completedPages = useHistoryPages<'tasks', Task>({
-    queryKey: ['tasks', 'completed'],
-    path: '/api/tasks',
-    itemKey: 'tasks',
-    search: { filter: 'completed' },
-    enabled: completedBoard,
-  });
+  const completedPages = useCompletedTaskPages(completedBoard);
 
   const {
     data: namedPileData,
@@ -532,12 +531,14 @@ function TasksPage() {
       const previousTasks = tsrQueryClient.getQueryData(queryKey);
 
       if (completedBoard) {
-        tsrQueryClient.setQueryData(
-          queryKey,
-          mapHistoryPageItems<'tasks', Task>(previousTasks, 'tasks', (items) =>
-            items.filter((task) => task.id !== params.id)
-          )
-        );
+        if (isTaskHistoryData(previousTasks)) {
+          tsrQueryClient.setQueryData(
+            queryKey,
+            mapTaskHistoryPageItems(previousTasks, (items) =>
+              items.filter((task) => task.id !== params.id)
+            )
+          );
+        }
         return { previousTasks, queryKey };
       }
 
@@ -585,10 +586,10 @@ function TasksPage() {
       mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
         tasks.filter((task) => task.id !== params.id)
       );
-      if (previousCompleted !== undefined) {
+      if (isTaskHistoryData(previousCompleted)) {
         tsrQueryClient.setQueryData(
           completedKey,
-          mapHistoryPageItems<'tasks', Task>(previousCompleted, 'tasks', (items) =>
+          mapTaskHistoryPageItems(previousCompleted, (items) =>
             items.filter((task) => task.id !== params.id)
           )
         );

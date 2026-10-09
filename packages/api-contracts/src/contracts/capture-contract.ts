@@ -51,6 +51,7 @@ export const captureContract = c.router({
     }),
     responses: {
       200: CaptureListPageSchema,
+      400: ErrorSchema,
       401: ErrorSchema,
       500: ErrorSchema,
     },

@@ -730,6 +730,37 @@ export const createPlaywrightActor = (
         .toEqual(titles);
     },
 
+    async openDone(): Promise<void> {
+      await tasksPage.goto('completed');
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async clickLoadMore(): Promise<void> {
+      await page.getByTestId('load-more').click();
+    },
+
+    async shouldSeeLoadMore(): Promise<void> {
+      await expect(page.getByTestId('load-more')).toBeVisible();
+    },
+
+    async shouldNotSeeLoadMore(): Promise<void> {
+      await expect(page.getByTestId('load-more')).toHaveCount(0);
+    },
+
+    async shouldSeeEveryTaskTitle(titles: string[]): Promise<void> {
+      await expect
+        .poll(async () => tasksPage.getTaskTitles(), { timeout: 15_000 })
+        .toEqual(expect.arrayContaining(titles));
+      expect(await tasksPage.getTaskTitles()).toHaveLength(titles.length);
+    },
+
+    async shouldSeeEveryCaptureContent(contents: string[]): Promise<void> {
+      await expect
+        .poll(async () => trashPage.getCaptureContents(), { timeout: 15_000 })
+        .toEqual(expect.arrayContaining(contents));
+      expect(await trashPage.getCaptureContents()).toHaveLength(contents.length);
+    },
+
     async moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void> {
       await tasksPage.moveOpenTask(title, direction);
       await tasksPage.waitForTasksOrEmpty();

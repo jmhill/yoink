@@ -3,12 +3,18 @@ import type { Capture } from '@yoink/api-contracts';
 import type {
   CaptureStore,
   FindByOrganizationOptions,
-  FindByOrganizationResult,
   MarkAsProcessedOptions,
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
-import { pageListedItems } from '../../shared/page-listed-items.js';
+import { compareKeyset, pageOrdered } from '../../listing/domain/keyset-window.js';
+import {
+  captureFeedDirection,
+  captureFeedKeys,
+  snoozedCaptureDirection,
+  snoozedCaptureKeys,
+} from '../../listing/domain/list-keys.js';
+import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
 export type FakeCaptureStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -51,60 +57,45 @@ export const createFakeCaptureStore = (
 
     findByOrganization: (
       opts: FindByOrganizationOptions
-    ): ResultAsync<FindByOrganizationResult, StorageError> => {
+    ): ResultAsync<KeysetRows<Capture>, StorageError> => {
       if (options.shouldFailOnFind) {
         return errAsync(storageError('Find failed'));
       }
 
       const isSnoozed = (c: Capture): boolean => {
         if (!c.snoozedUntil || !opts.now) return false;
-        return new Date(c.snoozedUntil) > new Date(opts.now);
+        return c.snoozedUntil > opts.now;
       };
 
       let filtered = captures
         .filter((c) => c.organizationId === opts.organizationId)
         .filter((c) => !opts.status || c.status === opts.status);
 
-      // Handle snoozed filtering
       if (opts.snoozed !== undefined && opts.now) {
         if (opts.snoozed) {
-          // Only snoozed items
           filtered = filtered.filter(isSnoozed);
         } else {
-          // Exclude snoozed items
           filtered = filtered.filter((c) => !isSnoozed(c));
         }
       }
 
-      // Sort based on view type
-      if (opts.snoozed === true) {
-        // Snoozed view: sort by snoozedUntil ASC (soonest first), then id ASC
-        filtered = filtered.sort((a, b) => {
-          const aTime = new Date(a.snoozedUntil!).getTime();
-          const bTime = new Date(b.snoozedUntil!).getTime();
-          if (aTime !== bTime) return aTime - bTime;
-          return a.id.localeCompare(b.id);
-        });
-      } else {
-        // Inbox/trashed: sort by capturedAt DESC (newest first), then id DESC
-        filtered = filtered.sort((a, b) => {
-          const capturedDiff =
-            new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
-          if (capturedDiff !== 0) return capturedDiff;
-          return b.id.localeCompare(a.id);
-        });
-      }
+      const snoozedView = opts.snoozed === true;
+      const keysOf = snoozedView ? snoozedCaptureKeys : captureFeedKeys;
+      const direction = snoozedView ? snoozedCaptureDirection : captureFeedDirection;
+      const ordered = [...filtered].sort((a, b) => {
+        const cmp = compareKeyset(keysOf(a), keysOf(b));
+        return direction === 'asc' ? cmp : -cmp;
+      });
 
-      const page = pageListedItems(filtered, {
-        limit: opts.limit,
-        cursor: opts.cursor,
-      });
-      return okAsync({
-        captures: page.items,
-        hasMore: page.hasMore,
-        nextCursor: page.nextCursor,
-        total: page.total,
-      });
+      return okAsync(
+        pageOrdered({
+          ordered,
+          keysOf,
+          direction,
+          fetchLimit: opts.fetchLimit,
+          seek: opts.seek,
+        })
+      );
     },
 
     softDelete: (id: string): ResultAsync<void, StorageError> => {

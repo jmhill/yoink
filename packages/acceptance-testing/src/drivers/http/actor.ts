@@ -389,6 +389,30 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeOpenTasksInOrder', 'http');
     },
 
+    async openDone(): Promise<void> {
+      throw new UnsupportedOperationError('openDone', 'http');
+    },
+
+    async clickLoadMore(): Promise<void> {
+      throw new UnsupportedOperationError('clickLoadMore', 'http');
+    },
+
+    async shouldSeeLoadMore(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeLoadMore', 'http');
+    },
+
+    async shouldNotSeeLoadMore(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeLoadMore', 'http');
+    },
+
+    async shouldSeeEveryTaskTitle(_titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeEveryTaskTitle', 'http');
+    },
+
+    async shouldSeeEveryCaptureContent(_contents: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeEveryCaptureContent', 'http');
+    },
+
     async moveOpenTask(_title: string, _direction: 'up' | 'down'): Promise<void> {
       throw new UnsupportedOperationError('moveOpenTask', 'http');
     },

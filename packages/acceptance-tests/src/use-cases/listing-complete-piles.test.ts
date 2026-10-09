@@ -56,5 +56,26 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(titles);
       await alice.shouldSeeTaskPlace('Big pile', '51 open');
     }, 60_000);
+
+    it('loads every completed title when Load more is clicked on Done', async () => {
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+      const titles = pileTitles(51);
+      for (const title of titles) {
+        const task = await bot.createTask({ title });
+        await bot.completeTask(task.id);
+      }
+
+      await alice.openDone();
+      await alice.shouldSeeLoadMore();
+      await alice.clickLoadMore();
+      await alice.shouldSeeEveryTaskTitle(titles);
+      await alice.shouldNotSeeLoadMore();
+    }, 60_000);
   });
 });

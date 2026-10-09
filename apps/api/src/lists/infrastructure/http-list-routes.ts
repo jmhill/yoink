@@ -1,41 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { listContract, resolveListLimit, type NamedList, type Task } from '@yoink/api-contracts';
+import { listContract } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { ListHandlers } from '../application/create-list-handlers.js';
-import { pageListedItems } from '../../shared/page-listed-items.js';
-
-const toNamedListPage = (
-  lists: NamedList[],
-  query: { limit?: number; cursor?: string }
-) => {
-  const page = pageListedItems(lists, {
-    limit: resolveListLimit(query.limit, 'pile'),
-    cursor: query.cursor,
-  });
-  return {
-    lists: page.items,
-    hasMore: page.hasMore,
-    nextCursor: page.nextCursor,
-    total: page.total,
-  };
-};
-
-const toTaskListPage = (
-  tasks: Task[],
-  query: { limit?: number; cursor?: string }
-) => {
-  const page = pageListedItems(tasks, {
-    limit: resolveListLimit(query.limit, 'pile'),
-    cursor: query.cursor,
-  });
-  return {
-    tasks: page.items,
-    hasMore: page.hasMore,
-    nextCursor: page.nextCursor,
-    total: page.total,
-  };
-};
+import {
+  invalidCursorHttp,
+  toNamedListListBody,
+  toTaskListBody,
+} from '../../listing/infrastructure/http-listed-page.js';
 
 export type ListRoutesDependencies = {
   listHandlers: ListHandlers;
@@ -56,17 +28,20 @@ export const registerListRoutes = async (
       list: async ({ query, request }) => {
         const result = await listHandlers.list({
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (lists) => ({
+          (page) => ({
             status: 200 as const,
-            body: toNamedListPage(lists, query),
+            body: toNamedListListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -155,22 +130,25 @@ export const registerListRoutes = async (
         const result = await listHandlers.listOpenTasks({
           listId: params.id,
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (tasks) => ({
+          (page) => ({
             status: 200 as const,
-            body: toTaskListPage(tasks, query),
+            body: toTaskListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'LIST_NOT_FOUND':
                 return {
                   status: 404 as const,
                   body: { message: error.message },
                 };
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
@@ -223,17 +201,20 @@ export const registerListRoutes = async (
       listUnlistedOpenTasks: async ({ query, request }) => {
         const result = await listHandlers.listUnlistedOpenTasks({
           organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
         });
 
         return result.match(
-          (tasks) => ({
+          (page) => ({
             status: 200 as const,
-            body: toTaskListPage(tasks, query),
+            body: toTaskListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
-              default:
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },

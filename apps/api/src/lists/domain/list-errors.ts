@@ -1,3 +1,5 @@
+import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
+
 export type StorageError = {
   readonly type: 'STORAGE_ERROR';
   readonly message: string;
@@ -28,7 +30,7 @@ export type ListHasOpenTasksError = {
   readonly message: string;
 };
 
-export type ListNamedListsError = StorageError;
+export type ListNamedListsError = StorageError | InvalidCursorError;
 export type CreateNamedListError =
   | StorageError
   | InvalidListNameError
@@ -53,7 +55,11 @@ export type RenameNamedListError =
   | InvalidListNameError
   | DuplicateListNameError
   | ListNotFoundError;
-export type ListOpenTasksOnListError = StorageError | ListNotFoundError;
+export type ListOpenTasksOnListError =
+  | StorageError
+  | ListNotFoundError
+  | InvalidCursorError;
+export type ListUnlistedOpenTasksError = StorageError | InvalidCursorError;
 export type ReorderOpenTasksError =
   | StorageError
   | ListNotFoundError

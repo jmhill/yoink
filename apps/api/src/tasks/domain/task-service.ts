@@ -1,10 +1,9 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import { resolveListLimit, type Task } from '@yoink/api-contracts';
+import type { Task } from '@yoink/api-contracts';
 import type { Clock, IdGenerator } from '@yoink/infrastructure';
-import type { TaskStore, FindByOrganizationResult } from './task-store.js';
+import type { TaskStore } from './task-store.js';
 import type {
   CreateTaskCommand,
-  ListTasksQuery,
   FindTaskQuery,
   UpdateTaskCommand,
   CompleteTaskCommand,
@@ -15,7 +14,6 @@ import type {
 } from './task-commands.js';
 import type {
   CreateTaskError,
-  ListTasksError,
   FindTaskError,
   UpdateTaskError,
   CompleteTaskError,
@@ -34,11 +32,8 @@ export type TaskServiceDependencies = {
   principalLookup?: OrgPrincipalLookup;
 };
 
-export type ListTasksResult = FindByOrganizationResult;
-
 export type TaskService = {
   create: (command: CreateTaskCommand) => ResultAsync<Task, CreateTaskError>;
-  list: (query: ListTasksQuery) => ResultAsync<ListTasksResult, ListTasksError>;
   find: (query: FindTaskQuery) => ResultAsync<Task, FindTaskError>;
   update: (command: UpdateTaskCommand) => ResultAsync<Task, UpdateTaskError>;
   complete: (command: CompleteTaskCommand) => ResultAsync<Task, CompleteTaskError>;
@@ -46,13 +41,6 @@ export type TaskService = {
   pin: (command: PinTaskCommand) => ResultAsync<Task, PinTaskError>;
   unpin: (command: UnpinTaskCommand) => ResultAsync<Task, UnpinTaskError>;
   delete: (command: DeleteTaskCommand) => ResultAsync<void, DeleteTaskError>;
-};
-
-/**
- * Helper to get today's date in YYYY-MM-DD format
- */
-const getToday = (clock: Clock): string => {
-  return clock.now().toISOString().split('T')[0];
 };
 
 export const createTaskService = (
@@ -105,20 +93,6 @@ export const createTaskService = (
         };
 
         return store.save(task).map(() => task);
-      });
-    },
-
-    list: (query: ListTasksQuery): ResultAsync<ListTasksResult, ListTasksError> => {
-      return store.findByOrganization({
-        organizationId: query.organizationId,
-        filter: query.filter,
-        today: getToday(clock),
-        limit: resolveListLimit(
-          query.limit,
-          query.filter === 'completed' ? 'history' : 'pile'
-        ),
-        cursor: query.cursor,
-        assigneeId: query.callerId,
       });
     },
 

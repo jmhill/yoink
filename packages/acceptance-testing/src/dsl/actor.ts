@@ -321,6 +321,36 @@ export type BrowserActorOperations = {
   shouldSeeOpenTasksInOrder(titles: string[]): Promise<void>;
 
   /**
+   * Open Done (completed history).
+   */
+  openDone(): Promise<void>;
+
+  /**
+   * Click the history Load more control.
+   */
+  clickLoadMore(): Promise<void>;
+
+  /**
+   * Assert Load more is on screen.
+   */
+  shouldSeeLoadMore(): Promise<void>;
+
+  /**
+   * Assert Load more is gone — the history page is complete.
+   */
+  shouldNotSeeLoadMore(): Promise<void>;
+
+  /**
+   * Assert each task title is on the current screen (Done included).
+   */
+  shouldSeeEveryTaskTitle(titles: string[]): Promise<void>;
+
+  /**
+   * Assert each capture's content is on the current pane (Trash included).
+   */
+  shouldSeeEveryCaptureContent(contents: string[]): Promise<void>;
+
+  /**
    * Change the open-task order by dragging one step up or down.
    */
   moveOpenTask(title: string, direction: 'up' | 'down'): Promise<void>;

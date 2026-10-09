@@ -3,6 +3,8 @@ import { okAsync, errAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { storageError } from '../domain/list-errors.js';
+import { namedListCursor } from '../../listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../listing/domain/keyset-cursor.js';
 
 const groceries: NamedList = {
   id: '550e8400-e29b-41d4-a716-446655440010',
@@ -13,34 +15,56 @@ const groceries: NamedList = {
 };
 
 describe('handleListNamedLists', () => {
-  it('loads and returns the organization lists — no events', async () => {
+  it('assembles a listed page from n+1 store rows', async () => {
     const result = await handleListNamedLists(
       { organizationId: groceries.organizationId },
       {
-        list: (organizationId) => {
-          expect(organizationId).toBe(groceries.organizationId);
-          return okAsync([groceries]);
+        pageNamedLists: (options) => {
+          expect(options.organizationId).toBe(groceries.organizationId);
+          expect(options.fetchLimit).toBe(1001);
+          return okAsync({ rows: [groceries], total: 1 });
         },
       }
     );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toEqual([groceries]);
+      expect(result.value).toEqual({
+        items: [groceries],
+        hasMore: false,
+        nextCursor: null,
+        total: 1,
+      });
     }
   });
 
-  it('returns an empty array when the organization has no lists', async () => {
+  it('returns an empty page when the organization has no lists', async () => {
     const result = await handleListNamedLists(
       { organizationId: groceries.organizationId },
       {
-        list: () => okAsync([]),
+        pageNamedLists: () => okAsync({ rows: [], total: 0 }),
       }
     );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toEqual([]);
+      expect(result.value.items).toEqual([]);
+      expect(result.value.hasMore).toBe(false);
+      expect(result.value.total).toBe(0);
+    }
+  });
+
+  it('returns InvalidCursor without loading when the cursor is malformed', async () => {
+    const result = await handleListNamedLists(
+      { organizationId: groceries.organizationId, cursor: 'nope' },
+      {
+        pageNamedLists: () => errAsync(storageError('store should not load')),
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_CURSOR');
     }
   });
 
@@ -48,13 +72,35 @@ describe('handleListNamedLists', () => {
     const result = await handleListNamedLists(
       { organizationId: groceries.organizationId },
       {
-        list: () => errAsync(storageError('Find failed')),
+        pageNamedLists: () => errAsync(storageError('Find failed')),
       }
     );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('STORAGE_ERROR');
+    }
+  });
+
+  it('encodes a keyset nextCursor when more rows exist', async () => {
+    const weekend: NamedList = {
+      ...groceries,
+      id: '550e8400-e29b-41d4-a716-446655440011',
+      name: 'Weekend',
+    };
+    const result = await handleListNamedLists(
+      { organizationId: groceries.organizationId, limit: 1 },
+      {
+        pageNamedLists: () => okAsync({ rows: [groceries, weekend], total: 2 }),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.items).toEqual([groceries]);
+      expect(result.value.hasMore).toBe(true);
+      expect(result.value.nextCursor).toBe(encodeKeysetCursor(namedListCursor(groceries)));
+      expect(result.value.total).toBe(2);
     }
   });
 });

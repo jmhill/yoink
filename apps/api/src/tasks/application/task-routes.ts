@@ -5,6 +5,7 @@ import type { TaskService } from '../domain/task-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { TaskHandlers } from './create-task-handlers.js';
+import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;
@@ -63,7 +64,7 @@ export const registerTaskRoutes = async (
       },
 
       list: async ({ query, request }) => {
-        const result = await taskService.list({
+        const result = await taskHandlers.list({
           organizationId: request.authContext.organizationId,
           filter: query.filter,
           limit: query.limit,
@@ -72,12 +73,14 @@ export const registerTaskRoutes = async (
         });
 
         return result.match(
-          (data) => ({
+          (page) => ({
             status: 200 as const,
-            body: data,
+            body: toTaskListBody(page),
           }),
           (error) => {
             switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,

@@ -30,7 +30,10 @@ describe('FakeCaptureStore', () => {
     it('returns Err on find when configured to fail', async () => {
       const store = createFakeCaptureStore({ shouldFailOnFind: true });
 
-      const result = await store.findByOrganization({ organizationId: 'org-123' });
+      const result = await store.findByOrganization({
+        organizationId: 'org-123',
+        fetchLimit: 10,
+      });
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {

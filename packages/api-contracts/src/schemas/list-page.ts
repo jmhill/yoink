@@ -16,7 +16,7 @@ export const ListLimitQuerySchema = z.coerce
   .max(PILE_SAFETY_CAP)
   .optional();
 
-export const ListCursorQuerySchema = z.string().uuid().optional();
+export const ListCursorQuerySchema = z.string().min(1).optional();
 
 export const ListPageQuerySchema = z.object({
   limit: ListLimitQuerySchema,
@@ -27,7 +27,7 @@ export type ListPageQuery = z.infer<typeof ListPageQuerySchema>;
 
 export const ListPageMetaSchema = z.object({
   hasMore: z.boolean(),
-  nextCursor: z.string().uuid().nullable(),
+  nextCursor: z.string().nullable(),
   total: z.number().int().nonnegative(),
 });
 
@@ -50,12 +50,3 @@ export const NamedListListPageSchema = ListPageMetaSchema.extend({
 });
 
 export type NamedListListPage = z.infer<typeof NamedListListPageSchema>;
-
-export const resolveListLimit = (
-  requested: number | undefined,
-  kind: 'pile' | 'history'
-): number => {
-  const fallback = kind === 'history' ? HISTORY_PAGE_DEFAULT : PILE_SAFETY_CAP;
-  const limit = requested ?? fallback;
-  return Math.min(Math.max(1, limit), PILE_SAFETY_CAP);
-};

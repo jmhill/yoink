@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PILE_SAFETY_CAP, type Task, type TaskListPage } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { createTestApp, TEST_TOKEN } from '../../tests/helpers/test-app.js';
+import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 
@@ -16,7 +16,7 @@ const collectPages = async (
   let hasMore = true;
   const query = firstQuery;
 
-  while (hasMore) {
+  while (hasMore === true) {
     const url: string = cursor ? `${path}?${query}&cursor=${cursor}` : `${path}?${query}`;
     const response = await app.inject({ method: 'GET', url, headers: auth });
     expect(response.statusCode).toBe(200);
@@ -59,7 +59,7 @@ describe('GET /api/tasks list completeness', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = await createTestApp();
+    app = await createTestApp(pagingTestConfig);
   });
 
   it('always includes hasMore, nextCursor (null when done), and total on a small board', async () => {
@@ -130,7 +130,7 @@ describe('GET /api/tasks list completeness', () => {
     const body = response.json<TaskListPage>();
     expect(body.tasks).toHaveLength(PILE_SAFETY_CAP);
     expect(body.hasMore).toBe(true);
-    expect(body.nextCursor).toBe(body.tasks[PILE_SAFETY_CAP - 1]?.id);
+    expect(body.nextCursor).toEqual(expect.any(String));
     expect(body.total).toBe(PILE_SAFETY_CAP + 1);
   }, 60_000);
 
@@ -162,4 +162,62 @@ describe('GET /api/tasks list completeness', () => {
     expect(ids).toHaveLength(120);
     expect(new Set(ids).size).toBe(120);
   }, 60_000);
+
+  it('keeps paging after the cursor item is uncompleted', async () => {
+    const created = await createTasks(app, 3);
+    for (const task of created) {
+      const completed = await app.inject({
+        method: 'POST',
+        url: `/api/tasks/${task.id}/complete`,
+        headers: auth,
+        payload: {},
+      });
+      expect(completed.statusCode).toBe(200);
+    }
+
+    const first = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=completed&limit=1',
+      headers: auth,
+    });
+    expect(first.statusCode).toBe(200);
+    const firstBody = first.json<TaskListPage>();
+    expect(firstBody.tasks).toHaveLength(1);
+    const cursorItem = firstBody.tasks[0];
+    expect(cursorItem).toBeDefined();
+    expect(firstBody.nextCursor).toEqual(expect.any(String));
+
+    const uncompleted = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${cursorItem?.id}/uncomplete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(uncompleted.statusCode).toBe(200);
+
+    const second = await app.inject({
+      method: 'GET',
+      url: `/api/tasks?filter=completed&limit=10&cursor=${firstBody.nextCursor}`,
+      headers: auth,
+    });
+    expect(second.statusCode).toBe(200);
+    const secondBody = second.json<TaskListPage>();
+    expect(secondBody.tasks).toHaveLength(2);
+    expect(secondBody.tasks.map((task) => task.id)).not.toContain(cursorItem?.id);
+    expect(secondBody.hasMore).toBe(false);
+    expect(secondBody.total).toBe(2);
+  });
+
+  it('maps a malformed cursor to 400 invalid_cursor', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=completed&cursor=not-a-cursor',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Cursor is invalid',
+      code: 'invalid_cursor',
+    });
+  });
 });

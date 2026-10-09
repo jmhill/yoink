@@ -11,6 +11,8 @@ import type {
   LoadNamedList,
   LoadOpenTasksOnList,
   LoadTasksByIds,
+  PageNamedLists,
+  PageOpenTasksOnList,
   PersistNamedListEvent,
   PersistOpenTaskOrders,
 } from './ports.js';
@@ -18,9 +20,11 @@ import type {
 export type ListHandlerDeps = {
   persist: PersistNamedListEvent;
   list: ListNamedLists;
+  pageNamedLists: PageNamedLists;
   load: LoadNamedList;
   countOpenOnList: CountOpenTasksOnList;
   loadOpenTasksOnList: LoadOpenTasksOnList;
+  pageOpenTasksOnList: PageOpenTasksOnList;
   loadTasksByIds: LoadTasksByIds;
   persistOpenTaskOrders: PersistOpenTaskOrders;
   nextId: () => string;

@@ -1,39 +1,104 @@
+import { z } from 'zod';
 import { err, ok, type Result } from 'neverthrow';
 import { invalidCursorError, type InvalidCursorError } from './invalid-cursor.js';
 
-export type KeysetValue = string | number | null;
+export type KeysetValue = string | number;
 
-export type KeysetCursor = {
-  keys: readonly KeysetValue[];
+export const CursorViewSchema = z.enum([
+  'tasks.board',
+  'tasks.completed',
+  'tasks.pile',
+  'lists',
+  'captures.feed',
+  'captures.snoozed',
+]);
+
+export type CursorView = z.infer<typeof CursorViewSchema>;
+
+const taskBoardKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
+const completedTaskKeysSchema = z.tuple([z.string(), z.string()]);
+const pileTaskKeysSchema = z.tuple([z.number().int(), z.string(), z.string()]);
+const namedListKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
+const captureFeedKeysSchema = z.tuple([z.string(), z.string()]);
+const snoozedCaptureKeysSchema = z.tuple([z.string(), z.string()]);
+
+const CursorEnvelopeSchema = z.object({
+  v: z.literal(1),
+  view: CursorViewSchema,
+  k: z.unknown(),
+});
+
+export type KeysetCursor =
+  | { view: 'tasks.board'; keys: z.infer<typeof taskBoardKeysSchema> }
+  | { view: 'tasks.completed'; keys: z.infer<typeof completedTaskKeysSchema> }
+  | { view: 'tasks.pile'; keys: z.infer<typeof pileTaskKeysSchema> }
+  | { view: 'lists'; keys: z.infer<typeof namedListKeysSchema> }
+  | { view: 'captures.feed'; keys: z.infer<typeof captureFeedKeysSchema> }
+  | { view: 'captures.snoozed'; keys: z.infer<typeof snoozedCaptureKeysSchema> };
+
+export type ListedCursorPayload = {
+  v: 1;
+  view: CursorView;
+  k: readonly KeysetValue[];
 };
 
-const isKeysetValue = (value: unknown): value is KeysetValue =>
-  value === null || typeof value === 'string' || typeof value === 'number';
+export const listedCursorPayload = (cursor: KeysetCursor): ListedCursorPayload => ({
+  v: 1,
+  view: cursor.view,
+  k: cursor.keys,
+});
 
-const isKeysetPayload = (value: unknown): value is { k: KeysetValue[] } => {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  if (!('k' in value) || !Array.isArray(value.k) || value.k.length === 0) {
-    return false;
-  }
-  return value.k.every(isKeysetValue);
-};
-
-export const encodeKeysetCursor = (cursor: KeysetCursor): string =>
-  Buffer.from(JSON.stringify({ k: cursor.keys }), 'utf8').toString('base64url');
-
-export const decodeKeysetCursor = (
-  raw: string
+const parseKeys = (
+  expectedView: CursorView,
+  rawKeys: unknown
 ): Result<KeysetCursor, InvalidCursorError> => {
-  try {
-    const json = Buffer.from(raw, 'base64url').toString('utf8');
-    const parsed: unknown = JSON.parse(json);
-    if (!isKeysetPayload(parsed)) {
-      return err(invalidCursorError());
+  switch (expectedView) {
+    case 'tasks.board': {
+      const keys = taskBoardKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'tasks.board', keys: keys.data })
+        : err(invalidCursorError());
     }
-    return ok({ keys: parsed.k });
-  } catch {
+    case 'tasks.completed': {
+      const keys = completedTaskKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'tasks.completed', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'tasks.pile': {
+      const keys = pileTaskKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'tasks.pile', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'lists': {
+      const keys = namedListKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'lists', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'captures.feed': {
+      const keys = captureFeedKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'captures.feed', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'captures.snoozed': {
+      const keys = snoozedCaptureKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'captures.snoozed', keys: keys.data })
+        : err(invalidCursorError());
+    }
+  }
+};
+
+export const parseListedCursor = (
+  decoded: unknown,
+  expectedView: CursorView
+): Result<KeysetCursor, InvalidCursorError> => {
+  const envelope = CursorEnvelopeSchema.safeParse(decoded);
+  if (!envelope.success || envelope.data.view !== expectedView) {
     return err(invalidCursorError());
   }
+  return parseKeys(expectedView, envelope.data.k);
 };

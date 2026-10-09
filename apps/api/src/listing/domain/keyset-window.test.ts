@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { applyKeysetWindow, compareBinary } from './keyset-window.js';
-import { encodeKeysetCursor } from './keyset-cursor.js';
 
 const items = [
   { id: 'a', sort: '3' },
@@ -16,16 +15,12 @@ describe('keyset window', () => {
   });
 
   it('resumes after a missing cursor item', () => {
-    const cursor = encodeKeysetCursor({ keys: ['2', 'b'] });
-    const decoded = { keys: ['2', 'b'] as const };
-    expect(cursor.length).toBeGreaterThan(0);
-
     const remaining = applyKeysetWindow({
       ordered: [items[0]!, items[2]!],
       keysOf: (item) => [item.sort, item.id],
       direction: 'desc',
       fetchLimit: 10,
-      seek: decoded,
+      seek: { view: 'captures.feed', keys: ['2', 'b'] },
     });
 
     expect(remaining.map((item) => item.id)).toEqual(['c']);

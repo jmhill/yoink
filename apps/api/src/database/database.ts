@@ -44,14 +44,19 @@ export const createDatabase = (config: DatabaseConfig): Database => {
       };
     },
 
-    batch: async (queries, mode = 'write') => {
-      await client.batch(
+    batch: async (queries, mode = 'write'): Promise<QueryResult[]> => {
+      const results = await client.batch(
         queries.map((q) => ({
           sql: q.sql,
           args: (q.args ?? []) as InValue[],
         })),
         mode
       );
+      return results.map((result) => ({
+        rows: result.rows as Record<string, unknown>[],
+        rowsAffected: result.rowsAffected,
+        lastInsertRowid: result.lastInsertRowid ?? undefined,
+      }));
     },
 
     close: async () => {

@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { okAsync } from 'neverthrow';
-import { assembleListedPage, runListedQuery } from './listed-page.js';
-import { encodeKeysetCursor } from './keyset-cursor.js';
+import { assembleListedPage } from './listed-page.js';
 
 const rows = [
   { id: 'a', sort: '3' },
@@ -10,29 +8,27 @@ const rows = [
 ];
 
 describe('listed page assembly', () => {
-  it('sets hasMore and nextCursor from n+1 rows', () => {
+  it('sets hasMore and next from n+1 rows', () => {
     const page = assembleListedPage({
       rows: rows.slice(0, 3),
       total: 3,
       limit: 2,
-      cursorOf: (item) => ({ keys: [item.sort, item.id] }),
+      cursorOf: (item) => ({ view: 'captures.feed', keys: [item.sort, item.id] }),
     });
     expect(page.items.map((item) => item.id)).toEqual(['a', 'b']);
     expect(page.hasMore).toBe(true);
-    expect(page.nextCursor).toBe(encodeKeysetCursor({ keys: ['2', 'b'] }));
+    expect(page.next).toEqual({ view: 'captures.feed', keys: ['2', 'b'] });
     expect(page.total).toBe(3);
   });
 
-  it('returns InvalidCursor without loading when the cursor is malformed', async () => {
-    const result = await runListedQuery({
-      cursor: 'nope',
+  it('clears next when the page is complete', () => {
+    const page = assembleListedPage({
+      rows: rows.slice(0, 2),
+      total: 2,
       limit: 2,
-      cursorOf: (item: { id: string }) => ({ keys: [item.id] }),
-      load: () => okAsync({ rows: [], total: 0 }),
+      cursorOf: (item) => ({ view: 'captures.feed', keys: [item.sort, item.id] }),
     });
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('INVALID_CURSOR');
-    }
+    expect(page.hasMore).toBe(false);
+    expect(page.next).toBeNull();
   });
 });

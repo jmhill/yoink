@@ -16,12 +16,6 @@ export const compareKeysetValue = (left: KeysetValue, right: KeysetValue): numbe
   if (left === right) {
     return 0;
   }
-  if (left === null) {
-    return -1;
-  }
-  if (right === null) {
-    return 1;
-  }
   if (typeof left === 'number' && typeof right === 'number') {
     return left - right;
   }
@@ -34,7 +28,12 @@ export const compareKeyset = (
 ): number => {
   const length = Math.min(left.length, right.length);
   for (let index = 0; index < length; index++) {
-    const cmp = compareKeysetValue(left[index] ?? null, right[index] ?? null);
+    const leftValue = left[index];
+    const rightValue = right[index];
+    if (leftValue === undefined || rightValue === undefined) {
+      break;
+    }
+    const cmp = compareKeysetValue(leftValue, rightValue);
     if (cmp !== 0) {
       return cmp;
     }

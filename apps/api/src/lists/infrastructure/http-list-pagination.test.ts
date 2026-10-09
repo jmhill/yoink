@@ -317,4 +317,28 @@ describe('GET pile reads list completeness', () => {
       code: 'invalid_cursor',
     });
   });
+
+  it('rejects a board cursor on named lists', async () => {
+    await createTasksOnList(app, (await createLists(app, 1))[0]!.id, 2);
+
+    const board = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=all&limit=1',
+      headers: auth,
+    });
+    expect(board.statusCode).toBe(200);
+    const boardBody = board.json<TaskListPage>();
+    expect(boardBody.nextCursor).toEqual(expect.any(String));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/lists?cursor=${boardBody.nextCursor}`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Cursor is invalid',
+      code: 'invalid_cursor',
+    });
+  });
 });

@@ -4,7 +4,8 @@ import type { ListNamedListsQuery } from '../domain/list-queries.js';
 import type { ListNamedListsError } from '../domain/list-errors.js';
 import { resolveListLimit } from '../../listing/domain/list-kind.js';
 import { namedListCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
+import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import type { ListedPage } from '../../listing/domain/listed-page.js';
 import type { PageNamedLists } from './ports.js';
 
 export type HandleListNamedListsDeps = {
@@ -17,6 +18,7 @@ export const handleListNamedLists = (
 ): ResultAsync<ListedPage<NamedList>, ListNamedListsError> => {
   return runListedQuery({
     cursor: query.cursor,
+    view: 'lists',
     limit: resolveListLimit(query.limit, 'pile'),
     cursorOf: namedListCursor,
     load: (seek, fetchLimit) =>

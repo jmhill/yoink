@@ -5,7 +5,8 @@ import type { ListOpenTasksOnListError } from '../domain/list-errors.js';
 import { listNotFoundError } from '../domain/list-errors.js';
 import { resolveListLimit } from '../../listing/domain/list-kind.js';
 import { openPileTaskCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
+import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import type { ListedPage } from '../../listing/domain/listed-page.js';
 import type { LoadNamedList, PageOpenTasksOnList } from './ports.js';
 
 export type HandleListOpenTasksDeps = {
@@ -24,6 +25,7 @@ export const handleListOpenTasksOnList = (
 
     return runListedQuery({
       cursor: query.cursor,
+      view: 'tasks.pile',
       limit: resolveListLimit(query.limit, 'pile'),
       cursorOf: openPileTaskCursor,
       load: (seek, fetchLimit) =>

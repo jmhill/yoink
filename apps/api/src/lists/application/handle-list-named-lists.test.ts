@@ -4,7 +4,7 @@ import type { NamedList } from '@yoink/api-contracts';
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { storageError } from '../domain/list-errors.js';
 import { namedListCursor } from '../../listing/domain/list-keys.js';
-import { encodeKeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import { encodeKeysetCursor } from '../../listing/infrastructure/keyset-codec.js';
 
 const groceries: NamedList = {
   id: '550e8400-e29b-41d4-a716-446655440010',

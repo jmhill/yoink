@@ -7,7 +7,8 @@ import {
   captureFeedCursor,
   snoozedCaptureCursor,
 } from '../../listing/domain/list-keys.js';
-import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
+import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import type { ListedPage } from '../../listing/domain/listed-page.js';
 import type { ListCaptures } from './ports.js';
 
 export type HandleListCapturesDeps = {
@@ -20,11 +21,12 @@ export const handleListCaptures = (
   deps: HandleListCapturesDeps
 ): ResultAsync<ListedPage<Capture>, ListCapturesError> => {
   const limit = resolveListLimit(query.limit, listKindForCaptureList(query.status));
-  const cursorOf = query.snoozed === true ? snoozedCaptureCursor : captureFeedCursor;
+  const snoozed = query.snoozed === true;
   return runListedQuery({
     cursor: query.cursor,
+    view: snoozed ? 'captures.snoozed' : 'captures.feed',
     limit,
-    cursorOf,
+    cursorOf: snoozed ? snoozedCaptureCursor : captureFeedCursor,
     load: (seek, fetchLimit) =>
       deps.list({
         organizationId: query.organizationId,

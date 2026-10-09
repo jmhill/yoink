@@ -4,7 +4,8 @@ import type { ListUnlistedOpenTasksQuery } from '../domain/list-queries.js';
 import type { ListUnlistedOpenTasksError } from '../domain/list-errors.js';
 import { resolveListLimit } from '../../listing/domain/list-kind.js';
 import { openPileTaskCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery, type ListedPage } from '../../listing/domain/listed-page.js';
+import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import type { ListedPage } from '../../listing/domain/listed-page.js';
 import type { PageOpenTasksOnList } from './ports.js';
 
 export type HandleListUnlistedOpenTasksDeps = {
@@ -17,6 +18,7 @@ export const handleListUnlistedOpenTasks = (
 ): ResultAsync<ListedPage<Task>, ListUnlistedOpenTasksError> => {
   return runListedQuery({
     cursor: query.cursor,
+    view: 'tasks.pile',
     limit: resolveListLimit(query.limit, 'pile'),
     cursorOf: openPileTaskCursor,
     load: (seek, fetchLimit) =>

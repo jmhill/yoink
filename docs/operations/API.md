@@ -11,10 +11,13 @@ whole pile in **one request**, up to a safety cap of 1000. If that cap is hit,
 `hasMore` is `true` and `nextCursor` points at the next page. History
 (completed/Done tasks, trashed captures) stays paged (default 50).
 
-Cursors are opaque keysets (sort position plus id). Resume with the previous
-page’s `nextCursor`. A malformed cursor is `400` with `code: "invalid_cursor"`
-— never an empty page that looks done. Completing, uncompleting, trashing, or
-deleting the cursor item between requests still returns the remaining rows.
+Cursors are opaque keysets tagged with the list view (board, completed, pile,
+lists, capture feed, snoozed) plus the sort keys for that view. Resume with
+the previous page’s `nextCursor` on the **same** list. A malformed cursor,
+a cursor from another view, or the wrong key shape is `400` with
+`code: "invalid_cursor"` — never an empty page that looks done. Completing,
+uncompleting, trashing, or deleting the cursor item between requests still
+returns the remaining rows.
 
 ## One request per pile
 
@@ -65,11 +68,12 @@ Example complete response (small board):
 If `hasMore` is `true`, keep going with `cursor` set to `nextCursor`. Never
 treat a truncated page as the full pile.
 
-## History: loop until `hasMore` is exactly `true`
+## History: loop while `hasMore` is true
 
 Completed tasks and trashed captures are open-ended. Page with `nextCursor`.
-Break unless `hasMore` is exactly `true` — do not treat a missing field, a
-string, or an empty page as done.
+Keep going only while `hasMore` is exactly `true` — do not treat a missing
+field, a string, or an empty page as done. `curl -f` exits on `4xx`/`5xx`,
+including `400 invalid_cursor` (malformed cursor, wrong view, or wrong shape).
 
 ```bash
 # Done / completed history
@@ -77,7 +81,7 @@ cursor=""
 while :; do
   qs="filter=completed&limit=50"
   [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
-  body=$(curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/tasks?$qs")
+  body=$(curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/tasks?$qs") || exit 1
   echo "$body"
   hasMore=$(printf '%s' "$body" | jq -r .hasMore)
   [ "$hasMore" = "true" ] || break
@@ -89,7 +93,7 @@ cursor=""
 while :; do
   qs="status=trashed&limit=50"
   [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
-  body=$(curl -sS -H "Authorization: Bearer $TOKEN" "$API/api/captures?$qs")
+  body=$(curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/captures?$qs") || exit 1
   echo "$body"
   hasMore=$(printf '%s' "$body" | jq -r .hasMore)
   [ "$hasMore" = "true" ] || break
@@ -97,12 +101,11 @@ while :; do
 done
 ```
 
-A bad cursor:
+A bad cursor (wrong view, wrong arity, or garbage) fails loudly:
 
 ```bash
-curl -sS -o /tmp/bad.json -w "%{http_code}" \
+curl -fsS -o /tmp/bad.json -w "%{http_code}\n" \
   -H "Authorization: Bearer $TOKEN" \
   "$API/api/tasks?filter=completed&cursor=not-a-cursor"
-# 400
-# {"message":"Cursor is invalid","code":"invalid_cursor"}
+# curl: (22) The requested URL returned error: 400
 ```

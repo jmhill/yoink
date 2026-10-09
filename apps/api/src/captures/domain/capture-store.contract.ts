@@ -202,7 +202,7 @@ export const runCaptureStoreContractTests = (
         const remaining = await store.findByOrganization({
           organizationId: 'org-123',
           fetchLimit: 10,
-          seek: { keys: captureFeedKeys(cursorItem) },
+          seek: { view: 'captures.feed', keys: captureFeedKeys(cursorItem) },
         });
         expect(remaining.isOk()).toBe(true);
         if (!remaining.isOk()) return;

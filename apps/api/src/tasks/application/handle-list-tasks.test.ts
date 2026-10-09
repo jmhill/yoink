@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
 import { completedTaskCursor } from '../../listing/domain/list-keys.js';
-import { encodeKeysetCursor } from '../../listing/domain/keyset-cursor.js';
+import { encodeKeysetCursor } from '../../listing/infrastructure/keyset-codec.js';
 
 const today = () => '2025-01-15';
 

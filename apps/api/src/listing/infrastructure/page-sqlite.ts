@@ -33,23 +33,26 @@ export const pageSqlite = <T>(options: {
     : [...options.whereArgs, options.fetchLimit];
 
   return ResultAsync.fromPromise(
-    Promise.all([
-      options.db.execute({
-        sql: `SELECT COUNT(*) AS count FROM ${options.from} WHERE ${options.whereSql}`,
-        args: options.whereArgs,
-      }),
-      options.db.execute({
-        sql: `SELECT * FROM ${options.from} WHERE ${selectWhere} ${options.orderSql} LIMIT ?`,
-        args: selectArgs,
-      }),
-    ]),
+    options.db.batch(
+      [
+        {
+          sql: `SELECT COUNT(*) AS count FROM ${options.from} WHERE ${options.whereSql}`,
+          args: options.whereArgs,
+        },
+        {
+          sql: `SELECT * FROM ${options.from} WHERE ${selectWhere} ${options.orderSql} LIMIT ?`,
+          args: selectArgs,
+        },
+      ],
+      'read'
+    ),
     (cause) => ({
       type: 'STORAGE_ERROR' as const,
       message: options.errorMessage,
       cause,
     })
   ).map(([countResult, pageResult]) => ({
-    rows: pageResult.rows.map((row) => options.mapRow(row)),
-    total: Number(countResult.rows[0]?.count ?? 0),
+    rows: (pageResult?.rows ?? []).map((row) => options.mapRow(row)),
+    total: Number(countResult?.rows[0]?.count ?? 0),
   }));
 };

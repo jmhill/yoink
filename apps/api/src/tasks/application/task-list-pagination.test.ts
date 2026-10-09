@@ -220,4 +220,84 @@ describe('GET /api/tasks list completeness', () => {
       code: 'invalid_cursor',
     });
   });
+
+  it('rejects a Done cursor on the open board', async () => {
+    const created = await createTasks(app, 2);
+    for (const task of created) {
+      const completed = await app.inject({
+        method: 'POST',
+        url: `/api/tasks/${task.id}/complete`,
+        headers: auth,
+        payload: {},
+      });
+      expect(completed.statusCode).toBe(200);
+    }
+
+    const done = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=completed&limit=1',
+      headers: auth,
+    });
+    expect(done.statusCode).toBe(200);
+    const doneBody = done.json<TaskListPage>();
+    expect(doneBody.nextCursor).toEqual(expect.any(String));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/tasks?filter=all&cursor=${doneBody.nextCursor}`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Cursor is invalid',
+      code: 'invalid_cursor',
+    });
+  });
+
+  it('rejects a board cursor on completed history', async () => {
+    await createTasks(app, 2);
+    const board = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=all&limit=1',
+      headers: auth,
+    });
+    expect(board.statusCode).toBe(200);
+    const boardBody = board.json<TaskListPage>();
+    expect(boardBody.nextCursor).toEqual(expect.any(String));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/tasks?filter=completed&cursor=${boardBody.nextCursor}`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Cursor is invalid',
+      code: 'invalid_cursor',
+    });
+  });
+
+  it('rejects numbers, the wrong arity, and extra keyset values', async () => {
+    const opaque = (payload: unknown): string =>
+      Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+
+    const cases = [
+      { v: 1, view: 'tasks.board', k: [1, 2, 3] },
+      { v: 1, view: 'tasks.board', k: ['only'] },
+      { v: 1, view: 'tasks.board', k: ['a', 'b', 'c', 'd'] },
+    ];
+
+    for (const payload of cases) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/tasks?filter=all&cursor=${opaque(payload)}`,
+        headers: auth,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        message: 'Cursor is invalid',
+        code: 'invalid_cursor',
+      });
+    }
+  });
 });

@@ -1,29 +1,42 @@
-import type { KeysetCursor } from '../domain/keyset-cursor.js';
+import type { KeysetCursor, KeysetValue } from '../domain/keyset-cursor.js';
 import type { KeysetDirection } from '../domain/keyset-window.js';
+
+const asSqlArg = (value: KeysetValue | undefined): KeysetValue | undefined => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
+  return undefined;
+};
 
 export const sqlKeysetClause = (options: {
   columns: readonly string[];
   direction: KeysetDirection;
   seek: KeysetCursor;
-}): { sql: string; args: (string | number)[] } => {
+}): { sql: string; args: KeysetValue[] } => {
   const op = options.direction === 'asc' ? '>' : '<';
   const terms: string[] = [];
-  const args: (string | number)[] = [];
+  const args: KeysetValue[] = [];
 
   for (let index = 0; index < options.columns.length; index++) {
     const equalities: string[] = [];
+    let complete = true;
     for (let prefix = 0; prefix < index; prefix++) {
-      equalities.push(`${options.columns[prefix]} = ?`);
-      const value = options.seek.keys[prefix];
-      args.push(value === null ? '' : value);
+      const prefixValue = asSqlArg(options.seek.keys[prefix]);
+      const prefixColumn = options.columns[prefix];
+      if (prefixValue === undefined || prefixColumn === undefined) {
+        complete = false;
+        break;
+      }
+      equalities.push(`${prefixColumn} = ?`);
+      args.push(prefixValue);
     }
     const column = options.columns[index];
-    if (column === undefined) {
+    const value = asSqlArg(options.seek.keys[index]);
+    if (!complete || column === undefined || value === undefined) {
       continue;
     }
     equalities.push(`${column} ${op} ?`);
-    const value = options.seek.keys[index];
-    args.push(value === null ? '' : value);
+    args.push(value);
     terms.push(`(${equalities.join(' AND ')})`);
   }
 

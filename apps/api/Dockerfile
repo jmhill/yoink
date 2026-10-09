@@ -1,6 +1,10 @@
-# syntax=docker/dockerfile:1
+# node:24-alpine — Amazon ECR Public official-image mirror (not Docker Hub).
+# Same digest: mirror.gcr.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+# Bump: docs/operations/CI.md
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+
 # Build stage
-FROM node:24-alpine AS builder
+FROM ${NODE_IMAGE} AS builder
 
 # Build arguments for frontend environment variables
 ARG VITE_SENTRY_DSN
@@ -40,7 +44,7 @@ RUN --mount=type=cache,id=turbo,target=/app/.turbo \
     pnpm build
 
 # Production stage
-FROM node:24-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 
 RUN corepack enable && corepack prepare pnpm@11.24.0 --activate
 

@@ -13,8 +13,10 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   organizationId: 'org-123',
   createdById: 'user-456',
   createdAt: '2025-01-15T10:00:00.000Z',
-  ...lastChanged,
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? lastChanged.lastChangedAt,
+  lastChangedBy: overrides.lastChangedBy ?? lastChanged.lastChangedBy,
+  completedBy: overrides.completedBy ?? lastChanged.completedBy,
 });
 
 describe('createTaskService', () => {

@@ -7,10 +7,10 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   createdById: 'user-456',
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: 'list-groceries',
-  lastChangedAt: null,
-  lastChangedBy: null,
-  completedBy: null,
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
 });
 
 const current = task({

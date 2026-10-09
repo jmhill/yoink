@@ -45,7 +45,7 @@ export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChan
     ResultAsync.fromPromise(
       deps.db.batch(queriesForPlan(plan), 'write'),
       (error) => storageError('Failed to persist task change', error)
-    );
+    ).map(() => undefined);
 };
 
 export type FakeTaskPersistDeps = {

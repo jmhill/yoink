@@ -44,7 +44,7 @@ export const createSqliteListPersist = (deps: { db: Database }): PersistNamedLis
     ResultAsync.fromPromise(
       deps.db.batch(queriesForPlan(plan), 'write'),
       (error) => storageError('Failed to persist list change', error)
-    );
+    ).map(() => undefined);
 };
 
 export type StoreBackedPersistDeps = {

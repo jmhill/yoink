@@ -10,6 +10,9 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: groceries.id,
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
 });
 
 const milk = task({ id: 'task-milk', title: 'Milk', openOrder: 0 });

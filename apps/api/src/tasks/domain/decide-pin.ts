@@ -22,5 +22,6 @@ export const decidePinTask = ({
     id: current.id,
     organizationId: current.organizationId,
     pinnedAt: now,
+    occurredAt: now,
   });
 };

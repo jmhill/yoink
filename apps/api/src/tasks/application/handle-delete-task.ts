@@ -3,12 +3,14 @@ import type { DeleteTaskCommand } from '../domain/task-commands.js';
 import type { DeleteTaskError } from '../domain/task-errors.js';
 import type { TaskDeleted } from '../domain/events.js';
 import { decideDeleteTask } from '../domain/decide-delete.js';
+import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
-import type { LoadTask, PersistTaskEvent } from './ports.js';
+import type { LoadTask, PersistTaskChange } from './ports.js';
 
 export type HandleDeleteTaskDeps = {
   load: LoadTask;
-  persist: PersistTaskEvent;
+  persist: PersistTaskChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -26,7 +28,6 @@ export const handleDeleteTask = (
     load: deps.load,
   }).andThen((current) => {
     const now = deps.now();
-    const actor = command.actor ?? null;
     const decision = decideDeleteTask({ current, command, now });
 
     if (decision.isErr()) {
@@ -34,6 +35,12 @@ export const handleDeleteTask = (
     }
 
     const event = decision.value;
-    return deps.persist({ event, current, actor, now }).map(() => ({ event }));
+    const plan = planTaskChange({
+      event,
+      current,
+      actor: command.actor,
+      ids: [deps.nextId(), deps.nextId()],
+    });
+    return deps.persist(plan).map(() => ({ event }));
   });
 };

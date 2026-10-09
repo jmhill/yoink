@@ -22,5 +22,6 @@ export const decideCompleteTask = ({
     id: current.id,
     organizationId: current.organizationId,
     completedAt: now,
+    occurredAt: now,
   });
 };

@@ -1,59 +1,53 @@
 import type { Task } from '@yoink/api-contracts';
-import type { TaskEvent } from './events.js';
+import type {
+  ApplyableTaskEvent,
+  TaskCreated,
+} from './events.js';
 
 export type ApplyTaskMeta = {
-  now: string;
   actorUserId: string | null;
 };
 
-const withLastChanged = (task: Task, meta: ApplyTaskMeta): Task => ({
+const withLastChanged = (task: Task, occurredAt: string, meta: ApplyTaskMeta): Task => ({
   ...task,
-  lastChangedAt: meta.now,
+  lastChangedAt: occurredAt,
   lastChangedBy: meta.actorUserId,
 });
 
-export const applyTaskEvent = (
-  current: Task | null,
-  event: TaskEvent,
+export const applyTaskCreated = (event: TaskCreated, meta: ApplyTaskMeta): Task => {
+  const created: Task = {
+    id: event.id,
+    organizationId: event.organizationId,
+    createdById: event.createdById,
+    title: event.title,
+    createdAt: event.createdAt,
+    openOrder: event.openOrder,
+    lastChangedAt: event.occurredAt,
+    lastChangedBy: meta.actorUserId,
+    completedBy: null,
+  };
+
+  if (event.dueDate !== undefined) {
+    created.dueDate = event.dueDate;
+  }
+  if (event.captureId !== undefined) {
+    created.captureId = event.captureId;
+  }
+  if (event.assigneeId !== undefined) {
+    created.assigneeId = event.assigneeId;
+  }
+  if (event.listId !== undefined) {
+    created.listId = event.listId;
+  }
+
+  return created;
+};
+
+export const applyTaskMutation = (
+  current: Task,
+  event: Exclude<ApplyableTaskEvent, TaskCreated>,
   meta: ApplyTaskMeta
 ): Task => {
-  if (event.type === 'TaskCreated') {
-    const created: Task = {
-      id: event.id,
-      organizationId: event.organizationId,
-      createdById: event.createdById,
-      title: event.title,
-      createdAt: event.createdAt,
-      openOrder: event.openOrder,
-      lastChangedAt: event.createdAt,
-      lastChangedBy: meta.actorUserId,
-      completedBy: null,
-    };
-
-    if (event.dueDate !== undefined) {
-      created.dueDate = event.dueDate;
-    }
-    if (event.captureId !== undefined) {
-      created.captureId = event.captureId;
-    }
-    if (event.assigneeId !== undefined) {
-      created.assigneeId = event.assigneeId;
-    }
-    if (event.listId !== undefined) {
-      created.listId = event.listId;
-    }
-
-    return created;
-  }
-
-  if (!current) {
-    throw new Error(`Cannot apply ${event.type} without current state`);
-  }
-
-  if (event.type === 'TaskDeleted') {
-    throw new Error('TaskDeleted has no task view');
-  }
-
   switch (event.type) {
     case 'TaskUpdated': {
       const updated: Task = {
@@ -89,7 +83,7 @@ export const applyTaskEvent = (
         updated.openOrder = event.openOrder;
       }
 
-      return withLastChanged(updated, meta);
+      return withLastChanged(updated, event.occurredAt, meta);
     }
     case 'TaskCompleted': {
       return withLastChanged(
@@ -98,7 +92,8 @@ export const applyTaskEvent = (
           completedAt: event.completedAt,
           completedBy: meta.actorUserId,
         },
-        { now: event.completedAt, actorUserId: meta.actorUserId }
+        event.occurredAt,
+        meta
       );
     }
     case 'TaskUncompleted': {
@@ -108,7 +103,7 @@ export const applyTaskEvent = (
         completedBy: null,
       };
       delete updated.completedAt;
-      return withLastChanged(updated, meta);
+      return withLastChanged(updated, event.occurredAt, meta);
     }
     case 'TaskPinned': {
       return {

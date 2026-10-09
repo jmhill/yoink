@@ -25,7 +25,7 @@ describe('withCommandLog', () => {
         organizationId: 'org-1',
         actor: null,
       },
-      (value) => value.events.map((event) => event.type),
+      (value) => value.events.map((event) => event.type as 'NamedListCreated'),
       () =>
         okAsync({
           events: [{ type: 'NamedListCreated', name: 'SECRET TITLE' }],
@@ -88,7 +88,7 @@ describe('withCommandLog', () => {
         organizationId: 'org-1',
         actor: { kind: 'bot', userId: 'user-bot' },
       },
-      () => ['TaskCreated'],
+      () => ['TaskCreated'] as const,
       () => okAsync({ events: [{ type: 'TaskCreated' }] })
     );
 

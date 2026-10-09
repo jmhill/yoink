@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import type { NamedList, Task } from '@yoink/api-contracts';
 import { handleUpdateTask } from './handle-update-task.js';
-import type { LoadNamedList, PersistTaskEvent } from './ports.js';
+import type { LoadNamedList, PersistTaskChange } from './ports.js';
 import { storageError } from '../domain/task-errors.js';
 import type { TaskEvent } from '../domain/events.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
@@ -13,6 +13,9 @@ const current: Task = {
   createdById: 'user-456',
   title: 'Buy milk',
   createdAt: '2025-01-15T10:00:00.000Z',
+lastChangedAt: null,
+lastChangedBy: null,
+completedBy: null,
 };
 
 const groceries: NamedList = {
@@ -32,14 +35,14 @@ const otherOrgList: NamedList = {
 };
 
 const createInMemoryPersist = (): {
-  persist: PersistTaskEvent;
+  persist: PersistTaskChange;
   events: TaskEvent[];
 } => {
   const events: TaskEvent[] = [];
   return {
     events,
-    persist: ({ event }) => {
-      events.push(event);
+    persist: (plan) => {
+      events.push({ type: plan.records[0]?.kind } as TaskEvent);
       return okAsync(undefined);
     },
   };
@@ -58,8 +61,9 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
       },
-      { load: loadCurrent, loadList, loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: loadCurrent, loadList, loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -81,8 +85,9 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: 'list-missing',
+        actor: null,
       },
-      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -100,8 +105,9 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: otherOrgList.id,
+        actor: null,
       },
-      { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -119,8 +125,9 @@ describe('handleUpdateTask', () => {
         id: 'missing',
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
       },
-      { load: () => okAsync(null), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: () => okAsync(null), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -139,8 +146,9 @@ describe('handleUpdateTask', () => {
         id: onGroceries.id,
         organizationId: onGroceries.organizationId,
         listId: groceries.id,
+        actor: null,
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -163,8 +171,9 @@ describe('handleUpdateTask', () => {
         id: completed.id,
         organizationId: completed.organizationId,
         listId: groceries.id,
+        actor: null,
       },
-      { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -183,8 +192,9 @@ describe('handleUpdateTask', () => {
         id: onGroceries.id,
         organizationId: onGroceries.organizationId,
         listId: null,
+        actor: null,
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -206,8 +216,9 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
       },
-      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -231,6 +242,7 @@ describe('handleUpdateTask', () => {
         id: completedOnGroceries.id,
         organizationId: completedOnGroceries.organizationId,
         listId: null,
+        actor: null,
       },
       {
         load: () => okAsync(completedOnGroceries),
@@ -238,6 +250,7 @@ describe('handleUpdateTask', () => {
         loadNextOpenOrder: () => okAsync(0),
         persist,
         now: () => '2025-01-15T10:00:00.000Z',
+        nextId: () => 'id-1',
       }
     );
 
@@ -249,15 +262,16 @@ describe('handleUpdateTask', () => {
   });
 
   it('returns storage error when persist fails', async () => {
-    const persist: PersistTaskEvent = () => errAsync(storageError('Save failed'));
+    const persist: PersistTaskChange = () => errAsync(storageError('Save failed'));
 
     const result = await handleUpdateTask(
       {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
       },
-      { load: loadCurrent, loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z' }
+      { load: loadCurrent, loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -277,6 +291,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         assigneeId: 'outsider',
+        actor: null,
       },
       {
         load: loadCurrent,
@@ -285,6 +300,7 @@ describe('handleUpdateTask', () => {
         persist,
         principalLookup,
         now: () => '2025-01-15T10:00:00.000Z',
+        nextId: () => 'id-1',
       }
     );
 

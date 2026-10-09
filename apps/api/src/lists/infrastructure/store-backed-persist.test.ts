@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { okAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import { createFakeListStore } from './fake-list-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
+import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { createStoreBackedPersist } from './store-backed-persist.js';
+import { planListChange } from '../domain/plan-list-change.js';
 
 const groceriesList = {
   id: '550e8400-e29b-41d4-a716-446655440010',
@@ -13,26 +14,37 @@ const groceriesList = {
   createdAt: '2025-01-15T10:00:00.000Z',
 };
 
+const lastChanged = {
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
+} as const;
+
 describe('createStoreBackedPersist', () => {
   it('projects NamedListCreated onto the store', async () => {
     const store = createFakeListStore();
     const persist = createStoreBackedPersist({
       store,
-      clearCompletedListIds: () => okAsync(undefined),
+      changeLog: createFakeChangeLogStore(),
+      tasks: createFakeTaskStore(),
     });
 
-    const result = await persist({
-      actor: null,
-      now: '2025-01-15T10:00:00.000Z',
-      event: {
-        type: 'NamedListCreated',
-        id: groceriesList.id,
-        organizationId: groceriesList.organizationId,
-        createdById: groceriesList.createdById,
-        name: groceriesList.name,
-        createdAt: groceriesList.createdAt,
-      },
-    });
+    const result = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListCreated',
+          id: groceriesList.id,
+          organizationId: groceriesList.organizationId,
+          createdById: groceriesList.createdById,
+          name: groceriesList.name,
+          createdAt: groceriesList.createdAt,
+          occurredAt: groceriesList.createdAt,
+        },
+        current: null,
+        actor: null,
+        ids: ['log-1'],
+      })!
+    );
 
     expect(result.isOk()).toBe(true);
 
@@ -47,19 +59,24 @@ describe('createStoreBackedPersist', () => {
     const store = createFakeListStore({ initialLists: [groceriesList] });
     const persist = createStoreBackedPersist({
       store,
-      clearCompletedListIds: () => okAsync(undefined),
+      changeLog: createFakeChangeLogStore(),
+      tasks: createFakeTaskStore(),
     });
 
-    const result = await persist({
-      actor: null,
-      now: '2025-01-15T10:00:00.000Z',
-      event: {
-        type: 'NamedListRenamed',
-        id: groceriesList.id,
-        organizationId: groceriesList.organizationId,
-        name: 'Shopping',
-      },
-    });
+    const result = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListRenamed',
+          id: groceriesList.id,
+          organizationId: groceriesList.organizationId,
+          name: 'Shopping',
+          occurredAt: '2025-01-15T10:00:00.000Z',
+        },
+        current: groceriesList,
+        actor: null,
+        ids: ['log-1'],
+      })!
+    );
 
     expect(result.isOk()).toBe(true);
 
@@ -83,6 +100,7 @@ describe('createStoreBackedPersist', () => {
       createdAt: '2025-01-15T10:00:00.000Z',
       completedAt: '2025-01-15T11:00:00.000Z',
       listId: groceriesList.id,
+      ...lastChanged,
     };
     const openOnOther: Task = {
       id: 'task-open',
@@ -91,24 +109,30 @@ describe('createStoreBackedPersist', () => {
       title: 'Still open elsewhere',
       createdAt: '2025-01-15T10:00:00.000Z',
       listId: 'list-other',
+      ...lastChanged,
     };
     const taskStore = createFakeTaskStore({
       initialTasks: [doneOnList, openOnOther],
     });
     const persist = createStoreBackedPersist({
       store,
-      clearCompletedListIds: (listId) => taskStore.clearListIdOnCompleted(listId),
+      changeLog: createFakeChangeLogStore(),
+      tasks: taskStore,
     });
 
-    const result = await persist({
-      actor: null,
-      now: '2025-01-15T10:00:00.000Z',
-      event: {
-        type: 'NamedListDeleted',
-        id: groceriesList.id,
-        organizationId: groceriesList.organizationId,
-      },
-    });
+    const result = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListDeleted',
+          id: groceriesList.id,
+          organizationId: groceriesList.organizationId,
+          occurredAt: '2025-01-15T10:00:00.000Z',
+        },
+        current: groceriesList,
+        actor: null,
+        ids: ['log-1'],
+      })!
+    );
 
     expect(result.isOk()).toBe(true);
 

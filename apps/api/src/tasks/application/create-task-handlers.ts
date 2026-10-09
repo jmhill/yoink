@@ -38,7 +38,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'CreateTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handleCreateTask(command, deps)
@@ -49,7 +49,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'UpdateTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handleUpdateTask(command, deps)
@@ -60,7 +60,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'CompleteTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handleCompleteTask(command, deps)
@@ -71,7 +71,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'UncompleteTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handleUncompleteTask(command, deps)
@@ -84,7 +84,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'PinTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handlePinTask(command, deps)
@@ -95,7 +95,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'UnpinTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromWrite,
       () => handleUnpinTask(command, deps)
@@ -106,7 +106,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
       {
         command: 'DeleteTask',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKindsFromDelete,
       () => handleDeleteTask(command, deps)

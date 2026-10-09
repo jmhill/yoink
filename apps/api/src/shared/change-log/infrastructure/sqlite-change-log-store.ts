@@ -1,4 +1,5 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { z } from 'zod';
 import type { Database } from '../../../database/types.js';
 import { parseChangeLogRecord } from '../domain/parse-record.js';
 import type { ChangeLogParseError, ChangeLogRecord } from '../domain/record.js';
@@ -18,42 +19,47 @@ const storageError = (message: string, cause?: unknown): ChangeLogStorageError =
   cause,
 });
 
-type ChangeLogRow = {
-  id: string;
-  organization_id: string;
-  project_id: string | null;
-  subject_type: string;
-  subject_id: string;
-  kind: string;
-  schema_version: number;
-  payload_json: string;
-  actor_user_id: string | null;
-  actor_kind: string | null;
-  occurred_at: string;
-  hidden: number;
-};
+const changeLogRowSchema = z.object({
+  id: z.string(),
+  organization_id: z.string(),
+  project_id: z.string().nullable(),
+  subject_type: z.string(),
+  subject_id: z.string(),
+  kind: z.string(),
+  schema_version: z.coerce.number(),
+  payload_json: z.string(),
+  actor_user_id: z.string().nullable(),
+  actor_kind: z.string().nullable(),
+  occurred_at: z.string(),
+  hidden: z.coerce.number(),
+});
 
-const rowToUnknown = (row: ChangeLogRow): unknown => {
+const rowToUnknown = (raw: unknown): unknown => {
+  const row = changeLogRowSchema.safeParse(raw);
+  if (!row.success) {
+    return raw;
+  }
+
   let payload: unknown;
   try {
-    payload = JSON.parse(row.payload_json) as unknown;
+    payload = JSON.parse(row.data.payload_json);
   } catch {
-    payload = row.payload_json;
+    return { ...row.data, payload_json: undefined };
   }
 
   return {
-    id: row.id,
-    organizationId: row.organization_id,
-    projectId: row.project_id,
-    subjectType: row.subject_type,
-    subjectId: row.subject_id,
-    kind: row.kind,
-    schemaVersion: Number(row.schema_version),
+    id: row.data.id,
+    organizationId: row.data.organization_id,
+    projectId: row.data.project_id,
+    subjectType: row.data.subject_type,
+    subjectId: row.data.subject_id,
+    kind: row.data.kind,
+    schemaVersion: row.data.schema_version,
     payload,
-    actorUserId: row.actor_user_id,
-    actorKind: row.actor_kind,
-    occurredAt: row.occurred_at,
-    hidden: row.hidden === 1,
+    actorUserId: row.data.actor_user_id,
+    actorKind: row.data.actor_kind,
+    occurredAt: row.data.occurred_at,
+    hidden: row.data.hidden === 1,
   };
 };
 
@@ -83,7 +89,7 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
     ).andThen((result) => {
       const records: ChangeLogRecord[] = [];
       for (const raw of result.rows) {
-        const parsed = parseChangeLogRecord(rowToUnknown(raw as ChangeLogRow));
+        const parsed = parseChangeLogRecord(rowToUnknown(raw));
         if (parsed.isErr()) {
           return errAsync(parsed.error);
         }

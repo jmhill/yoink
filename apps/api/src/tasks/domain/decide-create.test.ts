@@ -5,7 +5,9 @@ const command = {
   title: 'Buy milk',
   organizationId: 'org-123',
   createdById: 'user-456',
-};
+
+  actor: null,
+  };
 
 const groceries = { id: 'list-groceries', organizationId: 'org-123' };
 const otherOrgList = { id: 'list-other', organizationId: 'org-other' };
@@ -146,6 +148,8 @@ describe('decideCreateTask', () => {
         assigneeId: 'user-456',
         captureId: 'capture-789',
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: true,

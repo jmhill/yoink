@@ -6,6 +6,8 @@ describe('decideCreateNamedList', () => {
     name: 'Groceries',
     organizationId: 'org-123',
     createdById: 'user-456',
+  
+  actor: null,
   };
 
   it('decides a NamedListCreated fact with generated id and timestamp', () => {

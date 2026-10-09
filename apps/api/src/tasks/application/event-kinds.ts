@@ -1,7 +1,8 @@
+import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 import type { WriteResult } from './write-result.js';
 import type { DeleteTaskResult } from './handle-delete-task.js';
 
-export const eventKindsFromWrite = (result: WriteResult): string[] => {
+export const eventKindsFromWrite = (result: WriteResult): ChangeLogKind[] => {
   if (!result.event) {
     return [];
   }
@@ -11,6 +12,6 @@ export const eventKindsFromWrite = (result: WriteResult): string[] => {
   return [result.event.type];
 };
 
-export const eventKindsFromDelete = (result: DeleteTaskResult): string[] => [
+export const eventKindsFromDelete = (result: DeleteTaskResult): ChangeLogKind[] => [
   result.event.type,
 ];

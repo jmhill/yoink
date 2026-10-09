@@ -79,6 +79,9 @@ describe('live query interval', () => {
       createdById: 'user',
       title: 'Eggs',
       createdAt: '2026-10-08T00:00:00.000Z',
+      lastChangedAt: null,
+      lastChangedBy: null,
+      completedBy: null,
     };
     const stale = { status: 200, body: { tasks: [eggs] } };
     const mutated = { status: 200, body: { tasks: [] } };

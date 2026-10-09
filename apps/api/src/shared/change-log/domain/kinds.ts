@@ -33,6 +33,12 @@ const hiddenKindSet: ReadonlySet<string> = new Set(HIDDEN_CHANGE_LOG_KINDS);
 export const isHiddenChangeLogKind = (kind: ChangeLogKind): boolean =>
   hiddenKindSet.has(kind);
 
+export function hiddenFor(kind: HiddenChangeLogKind): true;
+export function hiddenFor(kind: Exclude<ChangeLogKind, HiddenChangeLogKind>): false;
+export function hiddenFor(kind: ChangeLogKind): boolean {
+  return hiddenKindSet.has(kind);
+}
+
 export const countsTowardLastChanged = (kind: ChangeLogKind): boolean =>
   !hiddenKindSet.has(kind);
 

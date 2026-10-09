@@ -26,6 +26,11 @@ export type FakeTaskStoreOptions = {
 
 export type FakeTaskStore = TaskStore & {
   captureSnapshot: () => () => void;
+  applyInsert: (task: Task) => void;
+  applyReplace: (task: Task) => void;
+  applySoftDelete: (id: string) => void;
+  applySetOpenOrders: (updates: { id: string; openOrder: number }[]) => void;
+  applyClearListIdOnCompleted: (listId: string) => void;
 };
 
 export const createFakeTaskStore = (
@@ -47,12 +52,33 @@ export const createFakeTaskStore = (
         }
       };
     },
-    save: (task: Task): ResultAsync<void, StorageError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(storageError('Save failed'));
-      }
+    applyInsert: (task: Task) => {
       tasks.push(task);
-      return okAsync(undefined);
+    },
+    applyReplace: (task: Task) => {
+      const index = tasks.findIndex((item) => item.id === task.id);
+      if (index !== -1) {
+        tasks[index] = task;
+      }
+    },
+    applySoftDelete: (id: string) => {
+      deletedIds.add(id);
+    },
+    applySetOpenOrders: (updates: { id: string; openOrder: number }[]) => {
+      for (const update of updates) {
+        const task = tasks.find((item) => item.id === update.id);
+        if (task) {
+          task.openOrder = update.openOrder;
+        }
+      }
+    },
+    applyClearListIdOnCompleted: (listId: string) => {
+      for (const task of tasks) {
+        const notOpen = Boolean(task.completedAt) || deletedIds.has(task.id);
+        if (task.listId === listId && notOpen) {
+          delete task.listId;
+        }
+      }
     },
 
     findById: (id: string): ResultAsync<Task | null, StorageError> => {
@@ -64,17 +90,6 @@ export const createFakeTaskStore = (
       }
       const found = tasks.find((t) => t.id === id);
       return okAsync(found ?? null);
-    },
-
-    update: (task: Task): ResultAsync<void, StorageError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(storageError('Update failed'));
-      }
-      const index = tasks.findIndex((t) => t.id === task.id);
-      if (index !== -1) {
-        tasks[index] = task;
-      }
-      return okAsync(undefined);
     },
 
     findByOrganization: (
@@ -138,14 +153,6 @@ export const createFakeTaskStore = (
       }
       const found = tasks.find((t) => t.captureId === captureId && !deletedIds.has(t.id));
       return okAsync(found ?? null);
-    },
-
-    softDelete: (id: string): ResultAsync<void, StorageError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(storageError('Delete failed'));
-      }
-      deletedIds.add(id);
-      return okAsync(undefined);
     },
 
     countOpenOnList: (listId: string): ResultAsync<number, StorageError> => {
@@ -218,32 +225,5 @@ export const createFakeTaskStore = (
       return okAsync(nextOpenOrder(open));
     },
 
-    setOpenOrders: (
-      updates: { id: string; openOrder: number }[]
-    ): ResultAsync<void, StorageError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(storageError('Update failed'));
-      }
-      for (const update of updates) {
-        const task = tasks.find((item) => item.id === update.id);
-        if (task) {
-          task.openOrder = update.openOrder;
-        }
-      }
-      return okAsync(undefined);
-    },
-
-    clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {
-      if (options.shouldFailOnSave) {
-        return errAsync(storageError('Update failed'));
-      }
-      for (const task of tasks) {
-        const notOpen = Boolean(task.completedAt) || deletedIds.has(task.id);
-        if (task.listId === listId && notOpen) {
-          delete task.listId;
-        }
-      }
-      return okAsync(undefined);
-    },
   };
 };

@@ -10,16 +10,16 @@ export const insertListQuery = (list: NamedList): SqlQuery => ({
   args: [list.id, list.organizationId, list.createdById, list.name, list.createdAt],
 });
 
-export const updateListQuery = (list: NamedList): SqlQuery => ({
+export const updateListNameQuery = (id: string, organizationId: string, name: string): SqlQuery => ({
   sql: `
     UPDATE lists
     SET name = ?
-    WHERE id = ?
+    WHERE id = ? AND organization_id = ?
   `,
-  args: [list.name, list.id],
+  args: [name, id, organizationId],
 });
 
-export const removeListQuery = (id: string): SqlQuery => ({
-  sql: `DELETE FROM lists WHERE id = ?`,
-  args: [id],
+export const removeListQuery = (id: string, organizationId: string): SqlQuery => ({
+  sql: `DELETE FROM lists WHERE id = ? AND organization_id = ?`,
+  args: [id, organizationId],
 });

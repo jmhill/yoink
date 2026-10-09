@@ -28,6 +28,9 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   organizationId: orgId,
   createdById: userId,
   createdAt: '2026-09-01T00:00:00.000Z',
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
   ...overrides,
 });
 

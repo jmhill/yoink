@@ -8,8 +8,8 @@ import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.
 import { createStoreBackedPersist } from '../../tasks/infrastructure/store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { handleCreateTask } from '../../tasks/application/handle-create-task.js';
-import type { CaptureStore } from '../../captures/domain/capture-store.js';
-import type { TaskStore } from '../../tasks/domain/task-store.js';
+import type { FakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
+import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import type { ListStore } from '../../lists/domain/list-store.js';
 
 describe('CaptureProcessingService', () => {
@@ -17,8 +17,8 @@ describe('CaptureProcessingService', () => {
   const clock = createFakeClock(now);
   const idGenerator = createFakeIdGenerator();
 
-  let captureStore: CaptureStore;
-  let taskStore: TaskStore;
+  let captureStore: FakeCaptureStore;
+  let taskStore: FakeTaskStore;
   let listStore: ListStore;
   let service: CaptureProcessingService;
 
@@ -55,11 +55,10 @@ describe('CaptureProcessingService', () => {
     const persist = createStoreBackedPersist({
       store: taskStore,
       changeLog: createFakeChangeLogStore(),
-      nextId: () => idGenerator.generate(),
+      captures: captureStore,
     });
     service = createCaptureProcessingService({
       captureStore,
-      taskStore,
       createTask: (command) =>
         handleCreateTask(command, {
           loadList: (id) => listStore.findById(id),
@@ -173,8 +172,11 @@ describe('CaptureProcessingService', () => {
         listId: groceries.id,
         openOrder: 0,
         createdAt: '2024-12-24T08:30:00.000Z',
+        lastChangedAt: null,
+        lastChangedBy: null,
+        completedBy: null,
       };
-      await taskStore.save(existing);
+      taskStore.applyInsert(existing);
 
       const capture = createInboxCapture();
       await captureStore.save(capture);
@@ -346,81 +348,4 @@ describe('CaptureProcessingService', () => {
     });
   });
 
-  describe('deleteTaskWithCascade', () => {
-    it('deletes a task', async () => {
-      const task: Task = {
-        id: idGenerator.generate(),
-        organizationId: 'org-1',
-        createdById: 'user-1',
-        title: 'A task',
-        createdAt: now.toISOString(),
-      };
-      await taskStore.save(task);
-
-      const result = await service.deleteTaskWithCascade({
-        id: task.id,
-        organizationId: 'org-1',
-      });
-
-      expect(result.isOk()).toBe(true);
-
-      const foundTask = await taskStore.findById(task.id);
-      expect(foundTask._unsafeUnwrap()).toBeNull();
-    });
-
-    it('also deletes the source capture when task has captureId', async () => {
-      const capture = createInboxCapture();
-      await captureStore.save(capture);
-
-      const processResult = await service.processCaptureToTask({
-        id: capture.id,
-        organizationId: 'org-1',
-        createdById: 'user-1',
-      });
-      expect(processResult.isOk()).toBe(true);
-      const task = processResult._unsafeUnwrap();
-
-      const deleteResult = await service.deleteTaskWithCascade({
-        id: task.id,
-        organizationId: 'org-1',
-      });
-
-      expect(deleteResult.isOk()).toBe(true);
-
-      const foundTask = await taskStore.findById(task.id);
-      expect(foundTask._unsafeUnwrap()).toBeNull();
-
-      const foundCapture = await captureStore.findById(capture.id);
-      expect(foundCapture._unsafeUnwrap()).toBeNull();
-    });
-
-    it('returns error when task not found', async () => {
-      const result = await service.deleteTaskWithCascade({
-        id: 'non-existent',
-        organizationId: 'org-1',
-      });
-
-      expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().type).toBe('TASK_NOT_FOUND');
-    });
-
-    it('returns error when task belongs to different organization', async () => {
-      const task: Task = {
-        id: idGenerator.generate(),
-        organizationId: 'org-2',
-        createdById: 'user-1',
-        title: 'A task',
-        createdAt: now.toISOString(),
-      };
-      await taskStore.save(task);
-
-      const result = await service.deleteTaskWithCascade({
-        id: task.id,
-        organizationId: 'org-1',
-      });
-
-      expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().type).toBe('TASK_NOT_FOUND');
-    });
-  });
 });

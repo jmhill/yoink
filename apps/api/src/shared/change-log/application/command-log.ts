@@ -1,12 +1,13 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Actor } from '../../actor.js';
+import type { ChangeLogKind } from '../domain/kinds.js';
 
 export type CommandLogFields = {
   command: string;
   actorUserId: string | null;
   actorKind: 'user' | 'bot' | null;
   organizationId: string;
-  eventKinds?: string[];
+  eventKinds?: ChangeLogKind[];
   errorType?: string;
 };
 
@@ -36,7 +37,7 @@ const actorFields = (actor: Actor | null) => ({
 export const withCommandLog = <T, E extends DomainError>(
   logger: CommandLogger,
   meta: CommandLogMeta,
-  eventKindsOf: (value: T) => string[],
+  eventKindsOf: (value: T) => ChangeLogKind[],
   run: () => ResultAsync<T, E>
 ): ResultAsync<T, E> => {
   const base = {

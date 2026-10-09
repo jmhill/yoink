@@ -10,7 +10,7 @@ export type CreateTaskCommand = {
   assigneeId?: string;
   listId?: string; // optional single list bucket; new tasks are open
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type ListTasksQuery = {
@@ -35,40 +35,40 @@ export type UpdateTaskCommand = {
   assigneeId?: string | null; // null to clear
   listId?: string | null; // set, replace, or null to take off; omit to leave unchanged
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type CompleteTaskCommand = {
   id: string;
   organizationId: string;
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type UncompleteTaskCommand = {
   id: string;
   organizationId: string;
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type PinTaskCommand = {
   id: string;
   organizationId: string;
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type UnpinTaskCommand = {
   id: string;
   organizationId: string;
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };
 
 export type DeleteTaskCommand = {
   id: string;
   organizationId: string;
   /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor?: Actor | null;
+  actor: Actor | null;
 };

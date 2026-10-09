@@ -11,6 +11,9 @@ const milk: Task = {
   title: 'Milk',
   createdAt: '2026-01-01T00:00:00.000Z',
   pinnedAt: '2026-01-02T00:00:00.000Z',
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
 };
 
 const inertHandle: SortablePileDragHandle = {

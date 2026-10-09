@@ -8,6 +8,9 @@ describe('TaskSchema', () => {
     createdById: '550e8400-e29b-41d4-a716-446655440002',
     title: 'Complete the TPS report',
     createdAt: '2025-01-15T10:00:00.000Z',
+    lastChangedAt: null,
+    lastChangedBy: null,
+    completedBy: null,
   };
 
   it('validates a minimal task', () => {

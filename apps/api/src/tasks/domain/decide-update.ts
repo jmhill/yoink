@@ -23,6 +23,7 @@ export type DecideUpdateTaskInput = {
   assigneeInOrganization: boolean | null;
   /** Next open-order index in the destination pile when listId changes. */
   nextOpenOrder: number;
+  now: string;
 };
 
 export type DecideUpdateTaskError =
@@ -41,6 +42,7 @@ export const decideUpdateTask = ({
   list,
   assigneeInOrganization,
   nextOpenOrder,
+  now,
 }: DecideUpdateTaskInput): Result<TaskUpdated | Noop, DecideUpdateTaskError> => {
   let listId: string | null | undefined;
   let openOrder: number | undefined;
@@ -90,5 +92,6 @@ export const decideUpdateTask = ({
     assigneeId: command.assigneeId,
     listId,
     openOrder,
+    occurredAt: now,
   });
 };

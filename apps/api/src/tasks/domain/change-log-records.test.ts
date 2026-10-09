@@ -4,11 +4,6 @@ import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.j
 import { changeLogRecordsFromTaskEvent } from './change-log-records.js';
 import type { Task } from '@yoink/api-contracts';
 
-const ids = () => {
-  let n = 0;
-  return () => `log-${++n}`;
-};
-
 const current: Task = {
   id: 'task-1',
   organizationId: 'org-1',
@@ -16,6 +11,9 @@ const current: Task = {
   title: 'Eggs',
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: 'list-groceries',
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
 };
 
 describe('changeLogRecordsFromTaskEvent', () => {
@@ -29,11 +27,11 @@ describe('changeLogRecordsFromTaskEvent', () => {
         title: 'Buy milk',
         openOrder: 0,
         createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       },
       current: null,
       actor: null,
-      now: '2025-01-15T10:00:00.000Z',
-      nextId: ids(),
+      ids: ['log-1', 'log-2'],
     });
 
     expect(records).toHaveLength(1);
@@ -52,11 +50,11 @@ describe('changeLogRecordsFromTaskEvent', () => {
         organizationId: 'org-1',
         openOrder: 1,
         siblingOrders: [{ id: 'task-a', openOrder: 0 }],
+        occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current,
       actor: null,
-      now: '2025-01-16T10:00:00.000Z',
-      nextId: ids(),
+      ids: ['log-1', 'log-2'],
     });
 
     expect(records.map((record) => record.kind)).toEqual([
@@ -67,6 +65,8 @@ describe('changeLogRecordsFromTaskEvent', () => {
     expect(records[1]?.hidden).toBe(true);
     expect(records[1]?.subjectType).toBe('list');
     expect(records[1]?.subjectId).toBe('list-groceries');
+    expect(records[0]?.id).toBe('log-1');
+    expect(records[1]?.id).toBe('log-2');
     expect(parseChangeLogRecord(records[1]!).isOk()).toBe(true);
   });
 
@@ -78,11 +78,11 @@ describe('changeLogRecordsFromTaskEvent', () => {
         organizationId: 'org-1',
         openOrder: 0,
         siblingOrders: [{ id: 'task-a', openOrder: 1 }],
+        occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current: { ...current, listId: undefined },
       actor: null,
-      now: '2025-01-16T10:00:00.000Z',
-      nextId: ids(),
+      ids: ['log-1', 'log-2'],
     });
 
     expect(records[1]?.subjectId).toBe(UNLISTED_PILE_SUBJECT_ID);
@@ -95,11 +95,11 @@ describe('changeLogRecordsFromTaskEvent', () => {
         id: 'task-1',
         organizationId: 'org-1',
         pinnedAt: '2025-01-15T11:00:00.000Z',
+        occurredAt: '2025-01-15T11:00:00.000Z',
       },
       current,
       actor: null,
-      now: '2025-01-15T11:00:00.000Z',
-      nextId: ids(),
+      ids: ['log-1'],
     });
 
     expect(records[0]?.kind).toBe('TaskPinned');

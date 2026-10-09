@@ -1,13 +1,21 @@
 import type { Actor } from '../../shared/actor.js';
-import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
+import {
+  UNLISTED_PILE_SUBJECT_ID,
+  hiddenFor,
+} from '../../shared/change-log/domain/kinds.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+import type {
+  NamedListCreatedPayloadV1,
+  NamedListDeletedPayloadV1,
+  NamedListRenamedPayloadV1,
+  OpenTasksReorderedPayloadV1,
+} from '../../shared/change-log/domain/payloads.js';
 import type { ListEvent } from './events.js';
 
 export type ChangeLogRecordsFromListEventInput = {
   event: ListEvent;
   actor: Actor | null;
-  now: string;
-  nextId: () => string;
+  ids: readonly string[];
 };
 
 const actorFields = (actor: Actor | null) => ({
@@ -15,13 +23,16 @@ const actorFields = (actor: Actor | null) => ({
   actorKind: actor?.kind ?? null,
 });
 
+const takeId = (ids: readonly string[], index: number): string =>
+  ids[index] ?? ids[0] ?? '';
+
 const envelope = (
   input: ChangeLogRecordsFromListEventInput,
   subjectId: string,
   organizationId: string,
   occurredAt: string
 ) => ({
-  id: input.nextId(),
+  id: takeId(input.ids, 0),
   organizationId,
   projectId: null as string | null,
   subjectType: 'list' as const,
@@ -30,6 +41,31 @@ const envelope = (
   occurredAt,
   ...actorFields(input.actor),
 });
+
+const listPayloadByType = {
+  NamedListCreated: (
+    event: Extract<ListEvent, { type: 'NamedListCreated' }>
+  ): NamedListCreatedPayloadV1 => ({
+    name: event.name,
+    createdById: event.createdById,
+  }),
+  NamedListRenamed: (
+    event: Extract<ListEvent, { type: 'NamedListRenamed' }>
+  ): NamedListRenamedPayloadV1 => ({
+    name: event.name,
+  }),
+  NamedListDeleted: (
+    _event: Extract<ListEvent, { type: 'NamedListDeleted' }>
+  ): NamedListDeletedPayloadV1 => ({}),
+  OpenTasksReordered: (
+    event: Extract<ListEvent, { type: 'OpenTasksReordered' }>
+  ): OpenTasksReorderedPayloadV1 => ({
+    listId: event.listId,
+    orders: event.orders,
+  }),
+} satisfies {
+  [K in ListEvent['type']]: (event: Extract<ListEvent, { type: K }>) => unknown;
+};
 
 export const changeLogRecordsFromListEvent = (
   input: ChangeLogRecordsFromListEventInput
@@ -40,28 +76,28 @@ export const changeLogRecordsFromListEvent = (
     case 'NamedListCreated':
       return [
         {
-          ...envelope(input, event.id, event.organizationId, event.createdAt),
+          ...envelope(input, event.id, event.organizationId, event.occurredAt),
           kind: 'NamedListCreated',
-          hidden: false,
-          payload: { name: event.name, createdById: event.createdById },
+          hidden: hiddenFor('NamedListCreated'),
+          payload: listPayloadByType.NamedListCreated(event),
         },
       ];
     case 'NamedListRenamed':
       return [
         {
-          ...envelope(input, event.id, event.organizationId, input.now),
+          ...envelope(input, event.id, event.organizationId, event.occurredAt),
           kind: 'NamedListRenamed',
-          hidden: false,
-          payload: { name: event.name },
+          hidden: hiddenFor('NamedListRenamed'),
+          payload: listPayloadByType.NamedListRenamed(event),
         },
       ];
     case 'NamedListDeleted':
       return [
         {
-          ...envelope(input, event.id, event.organizationId, input.now),
+          ...envelope(input, event.id, event.organizationId, event.occurredAt),
           kind: 'NamedListDeleted',
-          hidden: false,
-          payload: {},
+          hidden: hiddenFor('NamedListDeleted'),
+          payload: listPayloadByType.NamedListDeleted(event),
         },
       ];
     case 'OpenTasksReordered':
@@ -71,11 +107,11 @@ export const changeLogRecordsFromListEvent = (
             input,
             event.listId ?? UNLISTED_PILE_SUBJECT_ID,
             event.organizationId,
-            input.now
+            event.occurredAt
           ),
           kind: 'OpenTasksReordered',
-          hidden: true,
-          payload: { listId: event.listId, orders: event.orders },
+          hidden: hiddenFor('OpenTasksReordered'),
+          payload: listPayloadByType.OpenTasksReordered(event),
         },
       ];
   }

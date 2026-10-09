@@ -2,16 +2,18 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { UncompleteTaskCommand } from '../domain/task-commands.js';
 import type { UncompleteTaskError } from '../domain/task-errors.js';
 import type { TaskUncompleted } from '../domain/events.js';
+import { storageError } from '../domain/task-errors.js';
 import { decideUncompleteTask } from '../domain/decide-uncomplete.js';
-import { applyTaskEvent } from '../domain/apply-task-event.js';
+import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
-import type { LoadOpenTasksInPile, LoadTask, PersistTaskEvent } from './ports.js';
+import type { LoadOpenTasksInPile, LoadTask, PersistTaskChange } from './ports.js';
 import type { WriteResult } from './write-result.js';
 
 export type HandleUncompleteTaskDeps = {
   load: LoadTask;
   loadOpenInPile: LoadOpenTasksInPile;
-  persist: PersistTaskEvent;
+  persist: PersistTaskChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -27,11 +29,13 @@ export const handleUncompleteTask = (
     return deps
       .loadOpenInPile(command.organizationId, current.listId ?? null)
       .andThen((openInPile) => {
+        const now = deps.now();
         const openSiblings = openInPile.filter((task) => task.id !== current.id);
         const decision = decideUncompleteTask({
           current,
           command,
           openSiblings,
+          now,
         });
 
         if (decision.isErr()) {
@@ -43,14 +47,18 @@ export const handleUncompleteTask = (
         }
 
         const event = decision.value;
-        const actor = command.actor ?? null;
-        const now = deps.now();
-        return deps.persist({ event, current, actor, now }).map(() => ({
+        const plan = planTaskChange({
           event,
-          view: applyTaskEvent(current, event, {
-            now,
-            actorUserId: actor?.userId ?? null,
-          }),
+          current,
+          actor: command.actor,
+          ids: [deps.nextId(), deps.nextId()],
+        });
+        if (plan.action === 'delete') {
+          return errAsync(storageError('Uncomplete did not project a task'));
+        }
+        return deps.persist(plan).map(() => ({
+          event,
+          view: plan.view,
         }));
       });
   });

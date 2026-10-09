@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import { handleRenameNamedList } from './handle-rename-named-list.js';
-import type { ListNamedLists, LoadNamedList, PersistNamedListEvent } from './ports.js';
+import type { ListNamedLists, LoadNamedList, PersistNamedListChange } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
 import type { ListEvent } from '../domain/events.js';
 import type { NamedList } from '@yoink/api-contracts';
@@ -26,17 +26,18 @@ const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
   name: 'Shopping',
+  actor: null,
 };
 
 const createInMemoryPersist = (): {
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
   events: ListEvent[];
 } => {
   const events: ListEvent[] = [];
   return {
     events,
-    persist: ({ event }) => {
-      events.push(event);
+    persist: (plan) => {
+      events.push({ type: plan.records[0]?.kind } as ListEvent);
       return okAsync(undefined);
     },
   };
@@ -56,6 +57,7 @@ describe('handleRenameNamedList', () => {
       list: listOrg,
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isOk()).toBe(true);
@@ -91,6 +93,7 @@ describe('handleRenameNamedList', () => {
         list: listOrg,
         persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
       }
     );
 
@@ -111,6 +114,7 @@ describe('handleRenameNamedList', () => {
         list: listOrg,
         persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
       }
     );
 
@@ -131,6 +135,7 @@ describe('handleRenameNamedList', () => {
         list: listOrg,
         persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
       }
     );
 
@@ -153,6 +158,7 @@ describe('handleRenameNamedList', () => {
       },
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -175,6 +181,7 @@ describe('handleRenameNamedList', () => {
       },
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -193,6 +200,7 @@ describe('handleRenameNamedList', () => {
       list: listOrg,
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -210,6 +218,7 @@ describe('handleRenameNamedList', () => {
       list: () => errAsync(storageError('List failed')),
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -220,13 +229,14 @@ describe('handleRenameNamedList', () => {
   });
 
   it('returns storage error when persist fails', async () => {
-    const persist: PersistNamedListEvent = () => errAsync(storageError('Update failed'));
+    const persist: PersistNamedListChange = () => errAsync(storageError('Update failed'));
 
     const result = await handleRenameNamedList(command, {
       load: loadGroceries,
       list: listOrg,
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);

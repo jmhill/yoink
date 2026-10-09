@@ -2,15 +2,17 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { CompleteTaskCommand } from '../domain/task-commands.js';
 import type { CompleteTaskError } from '../domain/task-errors.js';
 import type { TaskCompleted } from '../domain/events.js';
+import { storageError } from '../domain/task-errors.js';
 import { decideCompleteTask } from '../domain/decide-complete.js';
-import { applyTaskEvent } from '../domain/apply-task-event.js';
+import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
-import type { LoadTask, PersistTaskEvent } from './ports.js';
+import type { LoadTask, PersistTaskChange } from './ports.js';
 import type { WriteResult } from './write-result.js';
 
 export type HandleCompleteTaskDeps = {
   load: LoadTask;
-  persist: PersistTaskEvent;
+  persist: PersistTaskChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -24,7 +26,6 @@ export const handleCompleteTask = (
     load: deps.load,
   }).andThen((current) => {
     const now = deps.now();
-    const actor = command.actor ?? null;
     const decision = decideCompleteTask({
       current,
       command,
@@ -40,12 +41,18 @@ export const handleCompleteTask = (
     }
 
     const event = decision.value;
-    return deps.persist({ event, current, actor, now }).map(() => ({
+    const plan = planTaskChange({
       event,
-      view: applyTaskEvent(current, event, {
-        now,
-        actorUserId: actor?.userId ?? null,
-      }),
+      current,
+      actor: command.actor,
+      ids: [deps.nextId(), deps.nextId()],
+    });
+    if (plan.action === 'delete') {
+      return errAsync(storageError('Complete did not project a task'));
+    }
+    return deps.persist(plan).map(() => ({
+      event,
+      view: plan.view,
     }));
   });
 };

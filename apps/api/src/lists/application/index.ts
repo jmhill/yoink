@@ -5,11 +5,8 @@ export type {
   PageNamedLists,
   LoadNamedList,
   CountOpenTasksOnList,
-  ClearCompletedListIds,
-  PersistNamedListEvent,
+  PersistNamedListChange,
   LoadOpenTasksOnList,
   PageOpenTasksOnList,
   LoadTasksByIds,
-  PersistOpenTaskOrders,
 } from './ports.js';
-

@@ -3,19 +3,22 @@ import type { Task } from '@yoink/api-contracts';
 import type { ReorderOpenTasksCommand } from '../domain/list-commands.js';
 import type { ReorderOpenTasksError } from '../domain/list-errors.js';
 import type { OpenTasksReordered } from '../domain/events.js';
+import { storageError } from '../domain/list-errors.js';
 import { decideReorderOpenTasks } from '../domain/decide-reorder.js';
+import { planListChange } from '../domain/plan-list-change.js';
 import type {
   LoadNamedList,
   LoadOpenTasksOnList,
   LoadTasksByIds,
-  PersistNamedListEvent,
+  PersistNamedListChange,
 } from './ports.js';
 
 export type HandleReorderOpenTasksDeps = {
   load: LoadNamedList;
   loadOpenTasksOnList: LoadOpenTasksOnList;
   loadTasksByIds: LoadTasksByIds;
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -36,12 +39,14 @@ export const handleReorderOpenTasks = (
         );
 
   return loadedList.andThen((list) => {
+    const now = deps.now();
     if (command.listId !== null && !list) {
       const decision = decideReorderOpenTasks({
         command,
         list: null,
         openTasks: [],
         extraTasks: [],
+        now,
       });
       return errAsync(decision._unsafeUnwrapErr());
     }
@@ -60,6 +65,7 @@ export const handleReorderOpenTasks = (
             list,
             openTasks,
             extraTasks,
+            now,
           });
 
           if (decision.isErr()) {
@@ -67,9 +73,17 @@ export const handleReorderOpenTasks = (
           }
 
           const event = decision.value;
-          const actor = command.actor ?? null;
-          const now = deps.now();
-          return deps.persist({ event, actor, now }).map(() => {
+          const plan = planListChange({
+            event,
+            current: list,
+            actor: command.actor,
+            ids: [deps.nextId()],
+          });
+          if (!plan || plan.action !== 'reorder') {
+            return errAsync(storageError('Reorder did not project a plan'));
+          }
+
+          return deps.persist(plan).map(() => {
             const byId = new Map(openTasks.map((task) => [task.id, task]));
             const tasks = event.orders.flatMap((order) => {
               const task = byId.get(order.id);

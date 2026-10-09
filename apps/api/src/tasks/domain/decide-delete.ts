@@ -18,6 +18,7 @@ export const decideDeleteTask = ({
     id: current.id,
     organizationId: current.organizationId,
     deletedAt: now,
+    occurredAt: now,
   };
   if (current.captureId !== undefined) {
     event.captureId = current.captureId;

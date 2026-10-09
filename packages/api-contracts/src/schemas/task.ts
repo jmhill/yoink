@@ -20,11 +20,11 @@ export const TaskSchema = z.object({
    * before history started — the edit screen shows "before history started".
    * Reorder and sibling renumber do not update these.
    */
-  lastChangedAt: z.string().datetime().nullable().optional(),
+  lastChangedAt: z.string().datetime().nullable(),
   /** Null until typed actors (#132 / PR 151) land. */
-  lastChangedBy: z.string().uuid().nullable().optional(),
+  lastChangedBy: z.string().uuid().nullable(),
   /** Set on complete; cleared on uncomplete. Null until actors land. */
-  completedBy: z.string().uuid().nullable().optional(),
+  completedBy: z.string().uuid().nullable(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;

@@ -1,9 +1,22 @@
 import type { Task } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/actor.js';
-import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
+import {
+  UNLISTED_PILE_SUBJECT_ID,
+  hiddenFor,
+} from '../../shared/change-log/domain/kinds.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import type {
+  NamedListCreatedPayloadV1,
+  NamedListDeletedPayloadV1,
+  NamedListRenamedPayloadV1,
+  OpenTasksRenumberedPayloadV1,
+  OpenTasksReorderedPayloadV1,
+  TaskCompletedPayloadV1,
   TaskCreatedPayloadV1,
+  TaskDeletedPayloadV1,
+  TaskPinnedPayloadV1,
+  TaskUncompletedPayloadV1,
+  TaskUnpinnedPayloadV1,
   TaskUpdatedPayloadV1,
 } from '../../shared/change-log/domain/payloads.js';
 import type { TaskEvent } from './events.js';
@@ -12,8 +25,7 @@ export type ChangeLogRecordsFromTaskEventInput = {
   event: TaskEvent;
   current: Task | null;
   actor: Actor | null;
-  now: string;
-  nextId: () => string;
+  ids: readonly string[];
 };
 
 const actorFields = (actor: Actor | null) => ({
@@ -21,12 +33,16 @@ const actorFields = (actor: Actor | null) => ({
   actorKind: actor?.kind ?? null,
 });
 
+const takeId = (ids: readonly string[], index: number): string =>
+  ids[index] ?? ids[0] ?? '';
+
 const envelope = (
   input: ChangeLogRecordsFromTaskEventInput,
   subject: { subjectType: 'task' | 'list'; subjectId: string; organizationId: string },
-  occurredAt: string
+  occurredAt: string,
+  idIndex: number
 ) => ({
-  id: input.nextId(),
+  id: takeId(input.ids, idIndex),
   organizationId: subject.organizationId,
   projectId: null as string | null,
   subjectType: subject.subjectType,
@@ -36,103 +52,109 @@ const envelope = (
   ...actorFields(input.actor),
 });
 
+const taskPayloadByType = {
+  TaskCreated: (event: Extract<TaskEvent, { type: 'TaskCreated' }>): TaskCreatedPayloadV1 => {
+    const payload: TaskCreatedPayloadV1 = {
+      title: event.title,
+      openOrder: event.openOrder,
+      createdById: event.createdById,
+    };
+    if (event.dueDate !== undefined) payload.dueDate = event.dueDate;
+    if (event.captureId !== undefined) payload.captureId = event.captureId;
+    if (event.assigneeId !== undefined) payload.assigneeId = event.assigneeId;
+    if (event.listId !== undefined) payload.listId = event.listId;
+    return payload;
+  },
+  TaskUpdated: (event: Extract<TaskEvent, { type: 'TaskUpdated' }>): TaskUpdatedPayloadV1 => {
+    const payload: TaskUpdatedPayloadV1 = {};
+    if (event.title !== undefined) payload.title = event.title;
+    if (event.dueDate !== undefined) payload.dueDate = event.dueDate;
+    if (event.assigneeId !== undefined) payload.assigneeId = event.assigneeId;
+    if (event.listId !== undefined) payload.listId = event.listId;
+    if (event.openOrder !== undefined) payload.openOrder = event.openOrder;
+    return payload;
+  },
+  TaskCompleted: (
+    event: Extract<TaskEvent, { type: 'TaskCompleted' }>
+  ): TaskCompletedPayloadV1 => ({
+    completedAt: event.completedAt,
+  }),
+  TaskUncompleted: (
+    event: Extract<TaskEvent, { type: 'TaskUncompleted' }>
+  ): TaskUncompletedPayloadV1 => ({
+    openOrder: event.openOrder,
+  }),
+  TaskDeleted: (event: Extract<TaskEvent, { type: 'TaskDeleted' }>): TaskDeletedPayloadV1 => {
+    const payload: TaskDeletedPayloadV1 = {};
+    if (event.captureId !== undefined) payload.captureId = event.captureId;
+    return payload;
+  },
+  TaskPinned: (event: Extract<TaskEvent, { type: 'TaskPinned' }>): TaskPinnedPayloadV1 => ({
+    pinnedAt: event.pinnedAt,
+  }),
+  TaskUnpinned: (_event: Extract<TaskEvent, { type: 'TaskUnpinned' }>): TaskUnpinnedPayloadV1 =>
+    ({}),
+} satisfies {
+  [K in TaskEvent['type']]: (event: Extract<TaskEvent, { type: K }>) => unknown;
+};
+
 /**
  * Typed, versioned change-log records built from the domain event.
- * No ad-hoc JSON — each kind has a payload object that parseChangeLogRecord checks on read.
+ * Ids are data — the caller pre-generates them.
  */
 export const changeLogRecordsFromTaskEvent = (
   input: ChangeLogRecordsFromTaskEventInput
 ): ChangeLogRecord[] => {
   const { event, current } = input;
+  const subject = {
+    subjectType: 'task' as const,
+    subjectId: event.id,
+    organizationId: event.organizationId,
+  };
 
   switch (event.type) {
-    case 'TaskCreated': {
-      const payload: TaskCreatedPayloadV1 = {
-        title: event.title,
-        openOrder: event.openOrder,
-        createdById: event.createdById,
-      };
-      if (event.dueDate !== undefined) payload.dueDate = event.dueDate;
-      if (event.captureId !== undefined) payload.captureId = event.captureId;
-      if (event.assigneeId !== undefined) payload.assigneeId = event.assigneeId;
-      if (event.listId !== undefined) payload.listId = event.listId;
+    case 'TaskCreated':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            event.createdAt
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskCreated',
-          hidden: false,
-          payload,
+          hidden: hiddenFor('TaskCreated'),
+          payload: taskPayloadByType.TaskCreated(event),
         },
       ];
-    }
-    case 'TaskUpdated': {
-      const payload: TaskUpdatedPayloadV1 = {};
-      if (event.title !== undefined) payload.title = event.title;
-      if (event.dueDate !== undefined) payload.dueDate = event.dueDate;
-      if (event.assigneeId !== undefined) payload.assigneeId = event.assigneeId;
-      if (event.listId !== undefined) payload.listId = event.listId;
-      if (event.openOrder !== undefined) payload.openOrder = event.openOrder;
+    case 'TaskUpdated':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            input.now
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskUpdated',
-          hidden: false,
-          payload,
+          hidden: hiddenFor('TaskUpdated'),
+          payload: taskPayloadByType.TaskUpdated(event),
         },
       ];
-    }
     case 'TaskCompleted':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            event.completedAt
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskCompleted',
-          hidden: false,
-          payload: { completedAt: event.completedAt },
+          hidden: hiddenFor('TaskCompleted'),
+          payload: taskPayloadByType.TaskCompleted(event),
         },
       ];
     case 'TaskUncompleted': {
       const records: ChangeLogRecord[] = [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            input.now
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskUncompleted',
-          hidden: false,
-          payload: { openOrder: event.openOrder },
+          hidden: hiddenFor('TaskUncompleted'),
+          payload: taskPayloadByType.TaskUncompleted(event),
         },
       ];
       if (event.siblingOrders.length > 0) {
         const listId = current?.listId ?? null;
+        const renumberPayload: OpenTasksRenumberedPayloadV1 = {
+          listId,
+          orders: event.siblingOrders,
+        };
         records.push({
           ...envelope(
             input,
@@ -141,68 +163,62 @@ export const changeLogRecordsFromTaskEvent = (
               subjectId: listId ?? UNLISTED_PILE_SUBJECT_ID,
               organizationId: event.organizationId,
             },
-            input.now
+            event.occurredAt,
+            1
           ),
           kind: 'OpenTasksRenumbered',
-          hidden: true,
-          payload: { listId, orders: event.siblingOrders },
+          hidden: hiddenFor('OpenTasksRenumbered'),
+          payload: renumberPayload,
         });
       }
       return records;
     }
-    case 'TaskDeleted': {
-      const payload: { captureId?: string } = {};
-      if (event.captureId !== undefined) payload.captureId = event.captureId;
+    case 'TaskDeleted':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            event.deletedAt
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskDeleted',
-          hidden: false,
-          payload,
+          hidden: hiddenFor('TaskDeleted'),
+          payload: taskPayloadByType.TaskDeleted(event),
         },
       ];
-    }
     case 'TaskPinned':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            event.pinnedAt
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskPinned',
-          hidden: true,
-          payload: { pinnedAt: event.pinnedAt },
+          hidden: hiddenFor('TaskPinned'),
+          payload: taskPayloadByType.TaskPinned(event),
         },
       ];
     case 'TaskUnpinned':
       return [
         {
-          ...envelope(
-            input,
-            {
-              subjectType: 'task',
-              subjectId: event.id,
-              organizationId: event.organizationId,
-            },
-            input.now
-          ),
+          ...envelope(input, subject, event.occurredAt, 0),
           kind: 'TaskUnpinned',
-          hidden: true,
-          payload: {},
+          hidden: hiddenFor('TaskUnpinned'),
+          payload: taskPayloadByType.TaskUnpinned(event),
         },
       ];
   }
+};
+
+export const listPayloadByType = {
+  NamedListCreated: (
+    event: { name: string; createdById: string }
+  ): NamedListCreatedPayloadV1 => ({
+    name: event.name,
+    createdById: event.createdById,
+  }),
+  NamedListRenamed: (event: { name: string }): NamedListRenamedPayloadV1 => ({
+    name: event.name,
+  }),
+  NamedListDeleted: (): NamedListDeletedPayloadV1 => ({}),
+  OpenTasksReordered: (event: {
+    listId: string | null;
+    orders: { id: string; openOrder: number }[];
+  }): OpenTasksReorderedPayloadV1 => ({
+    listId: event.listId,
+    orders: event.orders,
+  }),
 };

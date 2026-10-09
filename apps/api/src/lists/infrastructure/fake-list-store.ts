@@ -18,6 +18,9 @@ export type FakeListStoreOptions = {
 
 export type FakeListStore = ListStore & {
   captureSnapshot: () => () => void;
+  applyInsert: (list: NamedList) => void;
+  applyReplace: (list: NamedList) => void;
+  applyRemove: (id: string) => void;
 };
 
 export const createFakeListStore = (
@@ -32,6 +35,21 @@ export const createFakeListStore = (
         lists.length = 0;
         lists.push(...copy);
       };
+    },
+    applyInsert: (list: NamedList) => {
+      lists.push(list);
+    },
+    applyReplace: (list: NamedList) => {
+      const index = lists.findIndex((existing) => existing.id === list.id);
+      if (index !== -1) {
+        lists[index] = list;
+      }
+    },
+    applyRemove: (id: string) => {
+      const index = lists.findIndex((list) => list.id === id);
+      if (index !== -1) {
+        lists.splice(index, 1);
+      }
     },
     save: (list: NamedList): ResultAsync<void, StorageError> => {
       if (options.shouldFailOnSave) {

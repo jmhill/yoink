@@ -13,13 +13,9 @@ import { createSqliteListPersist } from './lists/infrastructure/store-backed-per
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
-import {
-  clearCompletedListIdQuery,
-  setOpenOrderQueries,
-} from './tasks/infrastructure/task-row-statements.js';
-import { silentCommandLogger } from './shared/change-log/application/silent-logger.js';
-import type { CommandLogger } from './shared/change-log/application/command-log.js';
+import { createPinoCommandLogger } from './logging/index.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
+import pino from 'pino';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
@@ -329,25 +325,18 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
-  const commandLogger: CommandLogger =
-    config.log.level === 'error' || config.log.level === 'fatal'
-      ? silentCommandLogger
-      : {
-          info: (fields) => {
-            process.stdout.write(`${JSON.stringify({ msg: 'command_outcome', ...fields })}\n`);
-          },
-        };
+  const commandLogger = createPinoCommandLogger(
+    pino({
+      level: config.log.level,
+      redact: ['req.headers.authorization', 'req.headers.cookie'],
+    })
+  );
 
   const listStore = await createSqliteListStore(database);
-  const taskStore = await createSqliteTaskStore(database, clock);
+  const taskStore = await createSqliteTaskStore(database);
   const listHandlers = createListHandlers({
     persist: createSqliteListPersist({
       db: database,
-      nextId: () => idGenerator.generate(),
-      sideQueries: {
-        clearCompletedListIdQuery,
-        setOpenOrderQueries,
-      },
     }),
     list: (organizationId) => listStore.findByOrganization(organizationId),
     pageNamedLists: (options) => listStore.pageByOrganization(options),
@@ -375,14 +364,10 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   };
   const taskService = createTaskService({
     store: taskStore,
-    clock,
-    idGenerator,
-    principalLookup,
   });
   const taskHandlers = createTaskHandlers({
     persist: createSqliteTaskPersist({
       db: database,
-      nextId: () => idGenerator.generate(),
     }),
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
@@ -402,7 +387,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   // Task create reuses the existing sandwich so listId joins open order.
   const captureProcessingService = createCaptureProcessingService({
     captureStore,
-    taskStore,
     createTask: (command) => taskHandlers.create(command).map((result) => result.view),
     clock,
   });

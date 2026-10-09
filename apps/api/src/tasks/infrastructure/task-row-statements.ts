@@ -22,9 +22,9 @@ export const insertTaskQuery = (task: Task): SqlQuery => ({
     task.assigneeId ?? null,
     task.listId ?? null,
     task.openOrder ?? null,
-    task.lastChangedAt ?? null,
-    task.lastChangedBy ?? null,
-    task.completedBy ?? null,
+    task.lastChangedAt,
+    task.lastChangedBy,
+    task.completedBy,
   ],
 });
 
@@ -42,6 +42,8 @@ export const updateTaskQuery = (task: Task): SqlQuery => ({
       last_changed_by = ?,
       completed_by = ?
     WHERE id = ?
+      AND organization_id = ?
+      AND deleted_at IS NULL
   `,
   args: [
     task.title,
@@ -51,38 +53,53 @@ export const updateTaskQuery = (task: Task): SqlQuery => ({
     task.assigneeId ?? null,
     task.listId ?? null,
     task.openOrder ?? null,
-    task.lastChangedAt ?? null,
-    task.lastChangedBy ?? null,
-    task.completedBy ?? null,
+    task.lastChangedAt,
+    task.lastChangedBy,
+    task.completedBy,
     task.id,
+    task.organizationId,
   ],
 });
 
-export const softDeleteTaskQuery = (id: string, deletedAt: string): SqlQuery => ({
+export const softDeleteTaskQuery = (
+  id: string,
+  organizationId: string,
+  deletedAt: string
+): SqlQuery => ({
   sql: `
     UPDATE tasks SET deleted_at = ?
-    WHERE id = ? AND deleted_at IS NULL
+    WHERE id = ? AND organization_id = ? AND deleted_at IS NULL
   `,
-  args: [deletedAt, id],
+  args: [deletedAt, id, organizationId],
 });
 
-export const setOpenOrderQuery = (id: string, openOrder: number): SqlQuery => ({
-  sql: `UPDATE tasks SET open_order = ? WHERE id = ?`,
-  args: [openOrder, id],
+export const setOpenOrderQuery = (
+  id: string,
+  organizationId: string,
+  openOrder: number
+): SqlQuery => ({
+  sql: `
+    UPDATE tasks SET open_order = ?
+    WHERE id = ? AND organization_id = ? AND deleted_at IS NULL
+  `,
+  args: [openOrder, id, organizationId],
 });
 
 export const setOpenOrderQueries = (
+  organizationId: string,
   updates: { id: string; openOrder: number }[]
-): SqlQuery[] => updates.map((update) => setOpenOrderQuery(update.id, update.openOrder));
+): SqlQuery[] =>
+  updates.map((update) => setOpenOrderQuery(update.id, organizationId, update.openOrder));
 
-export const clearCompletedListIdQuery = (listId: string): SqlQuery => ({
+export const clearCompletedListIdQuery = (listId: string, organizationId: string): SqlQuery => ({
   sql: `
     UPDATE tasks
     SET list_id = NULL
     WHERE list_id = ?
+      AND organization_id = ?
       AND (completed_at IS NOT NULL OR deleted_at IS NOT NULL)
   `,
-  args: [listId],
+  args: [listId, organizationId],
 });
 
 export const softDeleteCaptureQuery = (id: string, deletedAt: string): SqlQuery => ({

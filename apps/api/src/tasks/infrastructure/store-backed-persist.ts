@@ -1,13 +1,13 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { Database } from '../../database/types.js';
 import { insertChangeLogQuery } from '../../shared/change-log/infrastructure/sql.js';
 import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
-import { applyTaskEvent } from '../domain/apply-task-event.js';
-import { changeLogRecordsFromTaskEvent } from '../domain/change-log-records.js';
+import type { PersistTaskChange } from '../application/ports.js';
+import type { TaskChangePlan } from '../domain/plan-task-change.js';
 import { storageError } from '../domain/task-errors.js';
-import type { PersistTaskEvent } from '../application/ports.js';
-import type { TaskStore } from '../domain/task-store.js';
 import type { StorageError } from '../domain/task-errors.js';
+import type { FakeTaskStore } from './fake-task-store.js';
+import type { FakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import {
   insertTaskQuery,
   setOpenOrderQueries,
@@ -16,173 +16,92 @@ import {
   updateTaskQuery,
 } from './task-row-statements.js';
 
-export type PersistTaskEventInput = Parameters<PersistTaskEvent>[0];
+const queriesForPlan = (plan: TaskChangePlan) => {
+  const history = plan.records.map(insertChangeLogQuery);
 
-const queriesForEvent = (
-  input: PersistTaskEventInput,
-  nextId: () => string
-) => {
-  const { event, current, actor, now } = input;
-  const records = changeLogRecordsFromTaskEvent({
-    event,
-    current,
-    actor,
-    now,
-    nextId,
-  });
-  const history = records.map(insertChangeLogQuery);
-
-  switch (event.type) {
-    case 'TaskCreated': {
-      const view = applyTaskEvent(null, event, {
-        now,
-        actorUserId: actor?.userId ?? null,
-      });
-      return [insertTaskQuery(view), ...history];
-    }
-    case 'TaskUpdated':
-    case 'TaskCompleted':
-    case 'TaskPinned':
-    case 'TaskUnpinned': {
-      if (!current) {
-        return null;
-      }
-      const view = applyTaskEvent(current, event, {
-        now,
-        actorUserId: actor?.userId ?? null,
-      });
-      return [updateTaskQuery(view), ...history];
-    }
-    case 'TaskUncompleted': {
-      if (!current) {
-        return null;
-      }
-      const view = applyTaskEvent(current, event, {
-        now,
-        actorUserId: actor?.userId ?? null,
-      });
+  switch (plan.action) {
+    case 'insert':
+      return [insertTaskQuery(plan.view), ...history];
+    case 'update':
+      return [updateTaskQuery(plan.view), ...history];
+    case 'uncomplete':
       return [
-        updateTaskQuery(view),
-        ...setOpenOrderQueries(event.siblingOrders),
+        updateTaskQuery(plan.view),
+        ...setOpenOrderQueries(plan.organizationId, plan.siblingOrders),
         ...history,
       ];
-    }
-    case 'TaskDeleted': {
-      const queries = [
-        softDeleteTaskQuery(event.id, event.deletedAt),
-        ...history,
-      ];
-      if (event.captureId) {
-        queries.splice(1, 0, softDeleteCaptureQuery(event.captureId, event.deletedAt));
+    case 'delete': {
+      const queries = [...history, softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt)];
+      if (plan.captureId) {
+        queries.push(softDeleteCaptureQuery(plan.captureId, plan.deletedAt));
       }
       return queries;
     }
   }
 };
 
-export const createSqliteTaskPersist = (deps: {
-  db: Database;
-  nextId: () => string;
-}): PersistTaskEvent => {
-  return (input) => {
-    const queries = queriesForEvent(input, deps.nextId);
-    if (!queries) {
-      return errAsync(storageError(`Cannot persist ${input.event.type} without current state`));
-    }
-    return ResultAsync.fromPromise(
-      deps.db.batch(queries, 'write'),
+export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChange => {
+  return (plan) =>
+    ResultAsync.fromPromise(
+      deps.db.batch(queriesForPlan(plan), 'write'),
       (error) => storageError('Failed to persist task change', error)
     );
-  };
 };
 
 export type FakeTaskPersistDeps = {
-  store: TaskStore & { captureSnapshot?: () => () => void };
+  store: FakeTaskStore;
   changeLog: FakeChangeLogStore;
-  nextId: () => string;
-  cascadeCapture?: (id: string) => ResultAsync<void, StorageError>;
+  captures: FakeCaptureStore;
 };
 
 /**
- * In-memory persist: apply the row mutations and history in one snapshot
- * so a failing change-log insert leaves the task row unchanged.
+ * In-memory persist: apply the plan's row mutations and history in one snapshot
+ * so a failing change-log insert leaves the task (and capture) unchanged.
  */
-export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskEvent => {
-  const { store, changeLog, nextId, cascadeCapture } = deps;
+export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskChange => {
+  const { store, changeLog, captures } = deps;
 
-  return (input) => {
-    const { event, current, actor, now } = input;
-    const restoreTask = store.captureSnapshot?.() ?? (() => undefined);
+  return (plan) => {
+    const restoreTask = store.captureSnapshot();
     const restoreLog = changeLog.captureSnapshot();
+    const restoreCaptures = captures.captureSnapshot();
 
-    const rollback = () => {
-      restoreTask();
-      restoreLog();
-    };
-
-    const persistRecords = (): ResultAsync<void, StorageError> => {
-      const records = changeLogRecordsFromTaskEvent({
-        event,
-        current,
-        actor,
-        now,
-        nextId,
-      });
-      return records.reduce(
+    const persistRecords = (): ResultAsync<void, StorageError> =>
+      plan.records.reduce(
         (chain, record) =>
           chain.andThen(() =>
             changeLog.insert(record).mapErr((error) =>
-              error.type === 'STORAGE_ERROR'
-                ? error
-                : storageError(error.message)
+              error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
             )
           ),
         okAsync(undefined) as ResultAsync<void, StorageError>
       );
-    };
 
-    const run = (): ReturnType<PersistTaskEvent> => {
-      switch (event.type) {
-        case 'TaskCreated':
-          return store
-            .save(
-              applyTaskEvent(null, event, { now, actorUserId: actor?.userId ?? null })
-            )
-            .andThen(persistRecords);
-        case 'TaskUpdated':
-        case 'TaskCompleted':
-        case 'TaskPinned':
-        case 'TaskUnpinned':
-          if (!current) {
-            return errAsync(storageError(`Cannot persist ${event.type} without current state`));
+    const run = (): ResultAsync<void, StorageError> => {
+      switch (plan.action) {
+        case 'insert':
+          store.applyInsert(plan.view);
+          return persistRecords();
+        case 'update':
+          store.applyReplace(plan.view);
+          return persistRecords();
+        case 'uncomplete':
+          store.applyReplace(plan.view);
+          store.applySetOpenOrders(plan.siblingOrders);
+          return persistRecords();
+        case 'delete':
+          store.applySoftDelete(plan.taskId);
+          if (plan.captureId) {
+            captures.applySoftDelete(plan.captureId);
           }
-          return store
-            .update(
-              applyTaskEvent(current, event, { now, actorUserId: actor?.userId ?? null })
-            )
-            .andThen(persistRecords);
-        case 'TaskUncompleted':
-          if (!current) {
-            return errAsync(storageError(`Cannot persist ${event.type} without current state`));
-          }
-          return store
-            .update(
-              applyTaskEvent(current, event, { now, actorUserId: actor?.userId ?? null })
-            )
-            .andThen(() => store.setOpenOrders(event.siblingOrders))
-            .andThen(persistRecords);
-        case 'TaskDeleted': {
-          const cascade =
-            event.captureId && cascadeCapture
-              ? cascadeCapture(event.captureId)
-              : okAsync(undefined);
-          return store.softDelete(event.id).andThen(() => cascade).andThen(persistRecords);
-        }
+          return persistRecords();
       }
     };
 
     return run().mapErr((error) => {
-      rollback();
+      restoreTask();
+      restoreLog();
+      restoreCaptures();
       return error;
     });
   };

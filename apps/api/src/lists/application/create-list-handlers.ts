@@ -13,15 +13,16 @@ import type {
   LoadTasksByIds,
   PageNamedLists,
   PageOpenTasksOnList,
-  PersistNamedListEvent,
+  PersistNamedListChange,
 } from './ports.js';
 import {
   withCommandLog,
   type CommandLogger,
 } from '../../shared/change-log/application/command-log.js';
+import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 
 export type ListHandlerDeps = {
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
   list: ListNamedLists;
   pageNamedLists: PageNamedLists;
   load: LoadNamedList;
@@ -34,7 +35,9 @@ export type ListHandlerDeps = {
   logger: CommandLogger;
 };
 
-const eventKind = (result: { event: { type: string } }) => [result.event.type];
+const eventKind = (result: { event: { type: ChangeLogKind } }): ChangeLogKind[] => [
+  result.event.type,
+];
 
 export const createListHandlers = (deps: ListHandlerDeps) => ({
   list: (query: Parameters<typeof handleListNamedLists>[0]) =>
@@ -45,7 +48,7 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
       {
         command: 'CreateNamedList',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKind,
       () => handleCreateNamedList(command, deps)
@@ -56,7 +59,7 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
       {
         command: 'RenameNamedList',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKind,
       () => handleRenameNamedList(command, deps)
@@ -67,7 +70,7 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
       {
         command: 'DeleteNamedList',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKind,
       () => handleDeleteNamedList(command, deps)
@@ -82,7 +85,7 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
       {
         command: 'ReorderOpenTasks',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKind,
       () => handleReorderOpenTasks(command, deps)
@@ -95,7 +98,7 @@ export const createListHandlers = (deps: ListHandlerDeps) => ({
       {
         command: 'ReorderUnlistedOpenTasks',
         organizationId: command.organizationId,
-        actor: command.actor ?? null,
+        actor: command.actor,
       },
       eventKind,
       () => handleReorderOpenTasks({ ...command, listId: null }, deps)

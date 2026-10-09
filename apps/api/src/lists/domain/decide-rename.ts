@@ -15,6 +15,7 @@ export type DecideRenameNamedListInput = {
   command: RenameNamedListCommand;
   current: NamedList | null;
   existingNames: readonly string[];
+  now: string;
 };
 
 export type DecideRenameNamedListError =
@@ -26,6 +27,7 @@ export const decideRenameNamedList = ({
   command,
   current,
   existingNames,
+  now,
 }: DecideRenameNamedListInput): Result<NamedListRenamed, DecideRenameNamedListError> => {
   if (!current || current.organizationId !== command.organizationId) {
     return err(listNotFoundError(command.id));
@@ -49,5 +51,6 @@ export const decideRenameNamedList = ({
     id: current.id,
     organizationId: current.organizationId,
     name,
+    occurredAt: now,
   });
 };

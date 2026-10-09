@@ -9,6 +9,9 @@ const milk: Task = {
   createdById: '00000000-0000-4000-8000-000000000011',
   title: 'Milk',
   createdAt: '2026-01-01T00:00:00.000Z',
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
 };
 
 describe('TaskEditModal', () => {

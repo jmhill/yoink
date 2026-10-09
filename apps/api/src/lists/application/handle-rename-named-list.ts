@@ -4,13 +4,14 @@ import type { RenameNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListRenamed } from '../domain/events.js';
 import { storageError, type RenameNamedListError } from '../domain/list-errors.js';
 import { decideRenameNamedList } from '../domain/decide-rename.js';
-import { applyNamedListEvent } from '../domain/apply-named-list-event.js';
-import type { ListNamedLists, LoadNamedList, PersistNamedListEvent } from './ports.js';
+import { planListChange } from '../domain/plan-list-change.js';
+import type { ListNamedLists, LoadNamedList, PersistNamedListChange } from './ports.js';
 
 export type HandleRenameNamedListDeps = {
   load: LoadNamedList;
   list: ListNamedLists;
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -28,10 +29,12 @@ export const handleRenameNamedList = (
       loaded && loaded.organizationId === command.organizationId ? loaded : null;
 
     const persistDecision = (existingNames: readonly string[]) => {
+      const now = deps.now();
       const decision = decideRenameNamedList({
         command,
         current,
         existingNames,
+        now,
       });
 
       if (decision.isErr()) {
@@ -39,12 +42,17 @@ export const handleRenameNamedList = (
       }
 
       const event = decision.value;
-      const view = applyNamedListEvent(current, event);
-      if (!view) {
+      const plan = planListChange({
+        event,
+        current,
+        actor: command.actor,
+        ids: [deps.nextId()],
+      });
+      if (!plan || plan.action !== 'rename') {
         return errAsync(storageError('Rename did not project a list'));
       }
 
-      return deps.persist({ event, actor: command.actor ?? null, now: deps.now() }).map(() => ({ event, view }));
+      return deps.persist(plan).map(() => ({ event, view: plan.view }));
     };
 
     if (!current) {

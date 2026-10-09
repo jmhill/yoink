@@ -13,6 +13,7 @@ export type DecideDeleteNamedListInput = {
   command: DeleteNamedListCommand;
   current: NamedList | null;
   openTaskCount: number;
+  now: string;
 };
 
 export type DecideDeleteNamedListError = ListNotFoundError | ListHasOpenTasksError;
@@ -21,6 +22,7 @@ export const decideDeleteNamedList = ({
   command,
   current,
   openTaskCount,
+  now,
 }: DecideDeleteNamedListInput): Result<NamedListDeleted, DecideDeleteNamedListError> => {
   if (!current || current.organizationId !== command.organizationId) {
     return err(listNotFoundError(command.id));
@@ -34,5 +36,6 @@ export const decideDeleteNamedList = ({
     type: 'NamedListDeleted',
     id: current.id,
     organizationId: current.organizationId,
+    occurredAt: now,
   });
 };

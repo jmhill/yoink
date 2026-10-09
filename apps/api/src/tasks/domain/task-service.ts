@@ -1,204 +1,28 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { Clock, IdGenerator } from '@yoink/infrastructure';
 import type { TaskStore } from './task-store.js';
-import type {
-  CreateTaskCommand,
-  FindTaskQuery,
-  UpdateTaskCommand,
-  CompleteTaskCommand,
-  UncompleteTaskCommand,
-  PinTaskCommand,
-  UnpinTaskCommand,
-  DeleteTaskCommand,
-} from './task-commands.js';
-import type {
-  CreateTaskError,
-  FindTaskError,
-  UpdateTaskError,
-  CompleteTaskError,
-  UncompleteTaskError,
-  PinTaskError,
-  UnpinTaskError,
-  DeleteTaskError,
-} from './task-errors.js';
-import { assigneeNotInOrganizationError, taskNotFoundError } from './task-errors.js';
-import type { OrgPrincipalLookup } from './org-principal-lookup.js';
+import type { FindTaskQuery } from './task-commands.js';
+import type { FindTaskError } from './task-errors.js';
+import { taskNotFoundError } from './task-errors.js';
 
 export type TaskServiceDependencies = {
   store: TaskStore;
-  clock: Clock;
-  idGenerator: IdGenerator;
-  principalLookup?: OrgPrincipalLookup;
 };
 
 export type TaskService = {
-  create: (command: CreateTaskCommand) => ResultAsync<Task, CreateTaskError>;
   find: (query: FindTaskQuery) => ResultAsync<Task, FindTaskError>;
-  update: (command: UpdateTaskCommand) => ResultAsync<Task, UpdateTaskError>;
-  complete: (command: CompleteTaskCommand) => ResultAsync<Task, CompleteTaskError>;
-  uncomplete: (command: UncompleteTaskCommand) => ResultAsync<Task, UncompleteTaskError>;
-  pin: (command: PinTaskCommand) => ResultAsync<Task, PinTaskError>;
-  unpin: (command: UnpinTaskCommand) => ResultAsync<Task, UnpinTaskError>;
-  delete: (command: DeleteTaskCommand) => ResultAsync<void, DeleteTaskError>;
 };
 
-export const createTaskService = (
-  deps: TaskServiceDependencies
-): TaskService => {
-  const { store, clock, idGenerator, principalLookup } = deps;
-
-  const resolveAssignee = (
-    assigneeId: string | undefined,
-    organizationId: string
-  ): ResultAsync<string | undefined, CreateTaskError> => {
-    if (!assigneeId) {
-      return okAsync(undefined);
-    }
-    if (!principalLookup) {
-      return errAsync(assigneeNotInOrganizationError(assigneeId, organizationId));
-    }
-    return principalLookup.existsInOrganization(assigneeId, organizationId).andThen((exists) => {
-      if (!exists) {
-        return errAsync(assigneeNotInOrganizationError(assigneeId, organizationId));
-      }
-      return okAsync(assigneeId);
-    });
-  };
-
-  const findAndValidateOwnership = (
-    id: string,
-    organizationId: string
-  ): ResultAsync<Task, FindTaskError> => {
-    return store.findById(id).andThen((task) => {
-      if (!task || task.organizationId !== organizationId) {
-        return errAsync(taskNotFoundError(id));
-      }
-      return okAsync(task);
-    });
-  };
+export const createTaskService = (deps: TaskServiceDependencies): TaskService => {
+  const { store } = deps;
 
   return {
-    create: (command: CreateTaskCommand): ResultAsync<Task, CreateTaskError> => {
-      return resolveAssignee(command.assigneeId, command.organizationId).andThen((assigneeId) => {
-        const task: Task = {
-          id: idGenerator.generate(),
-          organizationId: command.organizationId,
-          createdById: command.createdById,
-          title: command.title,
-          captureId: command.captureId,
-          dueDate: command.dueDate,
-          createdAt: clock.now().toISOString(),
-          ...(assigneeId ? { assigneeId } : {}),
-        };
-
-        return store.save(task).map(() => task);
-      });
-    },
-
-    find: (query: FindTaskQuery): ResultAsync<Task, FindTaskError> => {
-      return findAndValidateOwnership(query.id, query.organizationId);
-    },
-
-    update: (command: UpdateTaskCommand): ResultAsync<Task, UpdateTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        const applyUpdate = (assigneeId: string | undefined): ResultAsync<Task, UpdateTaskError> => {
-          const updatedTask: Task = {
-            ...existing,
-            title: command.title ?? existing.title,
-            // Handle dueDate: undefined means "don't change", null means "clear", string means "set"
-            dueDate: command.dueDate === undefined
-              ? existing.dueDate
-              : command.dueDate === null
-                ? undefined
-                : command.dueDate,
-            assigneeId,
-          };
-          if (!updatedTask.assigneeId) {
-            delete updatedTask.assigneeId;
-          }
-
-          return store.update(updatedTask).map(() => updatedTask);
-        };
-
-        if (command.assigneeId === undefined) {
-          return applyUpdate(existing.assigneeId);
+    find: (query: FindTaskQuery): ResultAsync<Task, FindTaskError> =>
+      store.findById(query.id).andThen((task) => {
+        if (!task || task.organizationId !== query.organizationId) {
+          return errAsync(taskNotFoundError(query.id));
         }
-        if (command.assigneeId === null) {
-          return applyUpdate(undefined);
-        }
-        return resolveAssignee(command.assigneeId, command.organizationId).andThen(applyUpdate);
-      });
-    },
-
-    complete: (command: CompleteTaskCommand): ResultAsync<Task, CompleteTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if already completed, just return as-is
-        if (existing.completedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedTask: Task = {
-          ...existing,
-          completedAt: clock.now().toISOString(),
-        };
-
-        return store.update(updatedTask).map(() => updatedTask);
-      });
-    },
-
-    uncomplete: (command: UncompleteTaskCommand): ResultAsync<Task, UncompleteTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if not completed, just return as-is
-        if (!existing.completedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedTask: Task = {
-          ...existing,
-          completedAt: undefined,
-        };
-
-        return store.update(updatedTask).map(() => updatedTask);
-      });
-    },
-
-    pin: (command: PinTaskCommand): ResultAsync<Task, PinTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if already pinned, just return as-is
-        if (existing.pinnedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedTask: Task = {
-          ...existing,
-          pinnedAt: clock.now().toISOString(),
-        };
-
-        return store.update(updatedTask).map(() => updatedTask);
-      });
-    },
-
-    unpin: (command: UnpinTaskCommand): ResultAsync<Task, UnpinTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen((existing) => {
-        // Idempotent: if not pinned, just return as-is
-        if (!existing.pinnedAt) {
-          return okAsync(existing);
-        }
-
-        const updatedTask: Task = {
-          ...existing,
-          pinnedAt: undefined,
-        };
-
-        return store.update(updatedTask).map(() => updatedTask);
-      });
-    },
-
-    delete: (command: DeleteTaskCommand): ResultAsync<void, DeleteTaskError> => {
-      return findAndValidateOwnership(command.id, command.organizationId).andThen(() => {
-        return store.softDelete(command.id);
-      });
-    },
+        return okAsync(task);
+      }),
   };
 };

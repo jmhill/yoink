@@ -16,6 +16,7 @@ export type DecideReorderOpenTasksInput = {
   list: { id: string; organizationId: string } | null;
   openTasks: Task[];
   extraTasks: Task[];
+  now: string;
 };
 
 export type DecideReorderOpenTasksError =
@@ -31,6 +32,7 @@ export const decideReorderOpenTasks = ({
   list,
   openTasks,
   extraTasks,
+  now,
 }: DecideReorderOpenTasksInput): Result<
   OpenTasksReordered,
   DecideReorderOpenTasksError
@@ -66,5 +68,6 @@ export const decideReorderOpenTasks = ({
     listId: command.listId,
     organizationId: command.organizationId,
     orders: requested.map((id, openOrder) => ({ id, openOrder })),
+    occurredAt: now,
   });
 };

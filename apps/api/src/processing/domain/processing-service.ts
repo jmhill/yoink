@@ -1,8 +1,7 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { errAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Clock } from '@yoink/infrastructure';
 import type { CaptureStore } from '../../captures/domain/capture-store.js';
-import type { TaskStore } from '../../tasks/domain/task-store.js';
 import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
 import type { CreateTaskCommand } from '../../tasks/domain/task-commands.js';
 import type { CreateTaskError } from '../../tasks/domain/task-errors.js';
@@ -13,10 +12,6 @@ import {
   type CaptureNotInInboxError,
   type StorageError,
 } from '../../captures/domain/capture-errors.js';
-import {
-  taskNotFoundError,
-  type TaskNotFoundError,
-} from '../../tasks/domain/task-errors.js';
 
 export type CreateTaskFromProcess = (
   command: CreateTaskCommand
@@ -24,7 +19,6 @@ export type CreateTaskFromProcess = (
 
 export type CaptureProcessingServiceDependencies = {
   captureStore: CaptureStore;
-  taskStore: TaskStore;
   createTask: CreateTaskFromProcess;
   clock: Clock;
 };
@@ -35,30 +29,14 @@ export type ProcessCaptureToTaskError =
   | CaptureNotInInboxError
   | CreateTaskError;
 
-export type DeleteTaskWithCascadeCommand = {
-  id: string;
-  organizationId: string;
-};
-
-export type DeleteTaskWithCascadeError = StorageError | TaskNotFoundError;
-
 export type CaptureProcessingService = {
   processCaptureToTask: (
     command: ProcessCaptureToTaskCommand
   ) => ResultAsync<Task, ProcessCaptureToTaskError>;
-  deleteTaskWithCascade: (
-    command: DeleteTaskWithCascadeCommand
-  ) => ResultAsync<void, DeleteTaskWithCascadeError>;
 };
 
-/**
- * Maximum length for task titles derived from capture content
- */
 const MAX_TASK_TITLE_LENGTH = 100;
 
-/**
- * Truncates a string to the specified max length
- */
 const truncate = (str: string, maxLength: number): string => {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength);
@@ -67,7 +45,7 @@ const truncate = (str: string, maxLength: number): string => {
 export const createCaptureProcessingService = (
   deps: CaptureProcessingServiceDependencies
 ): CaptureProcessingService => {
-  const { captureStore, taskStore, createTask, clock } = deps;
+  const { captureStore, createTask, clock } = deps;
 
   return {
     processCaptureToTask: (
@@ -87,6 +65,7 @@ export const createCaptureProcessingService = (
           organizationId: command.organizationId,
           createdById: command.createdById,
           captureId: capture.id,
+          actor: null,
         };
         if (command.dueDate !== undefined) {
           createCommand.dueDate = command.dueDate;
@@ -95,7 +74,6 @@ export const createCaptureProcessingService = (
           createCommand.listId = command.listId;
         }
 
-        // Reuse create-task sandwich: decideCreateTask + list open-order join.
         return createTask(createCommand).andThen((task) => {
           return captureStore
             .markAsProcessed({
@@ -106,23 +84,6 @@ export const createCaptureProcessingService = (
               requiredStatus: 'inbox',
             })
             .map(() => task);
-        });
-      });
-    },
-
-    deleteTaskWithCascade: (
-      command: DeleteTaskWithCascadeCommand
-    ): ResultAsync<void, DeleteTaskWithCascadeError> => {
-      return taskStore.findById(command.id).andThen((task) => {
-        if (!task || task.organizationId !== command.organizationId) {
-          return errAsync(taskNotFoundError(command.id));
-        }
-
-        return taskStore.softDelete(command.id).andThen(() => {
-          if (task.captureId) {
-            return captureStore.softDelete(task.captureId);
-          }
-          return okAsync(undefined);
         });
       });
     },

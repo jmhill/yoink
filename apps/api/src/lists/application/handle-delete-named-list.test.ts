@@ -4,7 +4,7 @@ import { handleDeleteNamedList } from './handle-delete-named-list.js';
 import type {
   CountOpenTasksOnList,
   LoadNamedList,
-  PersistNamedListEvent,
+  PersistNamedListChange,
 } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
 import type { ListEvent } from '../domain/events.js';
@@ -21,17 +21,18 @@ const groceries: NamedList = {
 const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
+  actor: null,
 };
 
 const createInMemoryPersist = (): {
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
   events: ListEvent[];
 } => {
   const events: ListEvent[] = [];
   return {
     events,
-    persist: ({ event }) => {
-      events.push(event);
+    persist: (plan) => {
+      events.push({ type: plan.records[0]?.kind } as ListEvent);
       return okAsync(undefined);
     },
   };
@@ -54,6 +55,7 @@ describe('handleDeleteNamedList', () => {
       countOpenOnList,
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isOk()).toBe(true);
@@ -82,6 +84,7 @@ describe('handleDeleteNamedList', () => {
       countOpenOnList: () => okAsync(1),
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -103,6 +106,7 @@ describe('handleDeleteNamedList', () => {
       },
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -125,6 +129,7 @@ describe('handleDeleteNamedList', () => {
       },
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -143,6 +148,7 @@ describe('handleDeleteNamedList', () => {
       countOpenOnList: () => okAsync(0),
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -160,6 +166,7 @@ describe('handleDeleteNamedList', () => {
       countOpenOnList: () => errAsync(storageError('Count failed')),
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);
@@ -170,13 +177,14 @@ describe('handleDeleteNamedList', () => {
   });
 
   it('returns storage error when persist fails', async () => {
-    const persist: PersistNamedListEvent = () => errAsync(storageError('Delete failed'));
+    const persist: PersistNamedListChange = () => errAsync(storageError('Delete failed'));
 
     const result = await handleDeleteNamedList(command, {
       load: loadGroceries,
       countOpenOnList: () => okAsync(0),
       persist,
       now: () => '2025-01-15T10:00:00.000Z',
+      nextId: () => 'id-1',
     });
 
     expect(result.isErr()).toBe(true);

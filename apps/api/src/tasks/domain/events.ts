@@ -10,6 +10,7 @@ export type TaskCreated = {
   listId?: string;
   openOrder: number;
   createdAt: string;
+  occurredAt: string;
 };
 
 export type TaskUpdated = {
@@ -21,6 +22,7 @@ export type TaskUpdated = {
   assigneeId?: string | null;
   listId?: string | null; // null clears to unlisted; omit leaves unchanged
   openOrder?: number; // set when joining a pile (list or unlisted)
+  occurredAt: string;
 };
 
 export type TaskCompleted = {
@@ -28,6 +30,7 @@ export type TaskCompleted = {
   id: string;
   organizationId: string;
   completedAt: string;
+  occurredAt: string;
 };
 
 export type TaskUncompleted = {
@@ -36,6 +39,7 @@ export type TaskUncompleted = {
   organizationId: string;
   openOrder: number;
   siblingOrders: { id: string; openOrder: number }[];
+  occurredAt: string;
 };
 
 export type TaskDeleted = {
@@ -44,6 +48,7 @@ export type TaskDeleted = {
   organizationId: string;
   captureId?: string;
   deletedAt: string;
+  occurredAt: string;
 };
 
 export type TaskPinned = {
@@ -51,12 +56,14 @@ export type TaskPinned = {
   id: string;
   organizationId: string;
   pinnedAt: string;
+  occurredAt: string;
 };
 
 export type TaskUnpinned = {
   type: 'TaskUnpinned';
   id: string;
   organizationId: string;
+  occurredAt: string;
 };
 
 export type Noop = {
@@ -71,3 +78,5 @@ export type TaskEvent =
   | TaskDeleted
   | TaskPinned
   | TaskUnpinned;
+
+export type ApplyableTaskEvent = Exclude<TaskEvent, TaskDeleted>;

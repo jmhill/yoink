@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateNamedList } from './handle-create-named-list.js';
-import type { ListNamedLists, PersistNamedListEvent } from './ports.js';
+import type { ListNamedLists, PersistNamedListChange } from './ports.js';
 import { storageError } from '../domain/list-errors.js';
 import type { ListEvent } from '../domain/events.js';
 import type { NamedList } from '@yoink/api-contracts';
@@ -15,14 +15,14 @@ const groceries: NamedList = {
 };
 
 const createInMemoryPersist = (): {
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
   events: ListEvent[];
 } => {
   const events: ListEvent[] = [];
   return {
     events,
-    persist: ({ event }) => {
-      events.push(event);
+    persist: (plan) => {
+      events.push({ type: plan.records[0]?.kind } as ListEvent);
       return okAsync(undefined);
     },
   };
@@ -35,6 +35,7 @@ describe('handleCreateNamedList', () => {
     name: 'Groceries',
     organizationId: 'org-123',
     createdById: 'user-456',
+    actor: null,
   };
 
   it('persists a NamedListCreated fact and returns the projected list', async () => {
@@ -127,7 +128,7 @@ describe('handleCreateNamedList', () => {
   });
 
   it('returns storage error when persist fails', async () => {
-    const persist: PersistNamedListEvent = () => errAsync(storageError('Save failed'));
+    const persist: PersistNamedListChange = () => errAsync(storageError('Save failed'));
 
     const result = await handleCreateNamedList(command, {
       list: emptyList,

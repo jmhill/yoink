@@ -5,6 +5,7 @@ import { createSqliteTaskPersist } from './store-backed-persist.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTaskStore } from './sqlite-task-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
+import type { TaskChangeLogIds } from '../domain/change-log-records.js';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskEvent } from '../domain/events.js';
 
@@ -15,7 +16,7 @@ const persistEvent = (
   persist: ReturnType<typeof createSqliteTaskPersist>,
   event: TaskEvent,
   current: Task | null,
-  ids = { recordId: 'log-1', renumberRecordId: 'log-2' }
+  ids: TaskChangeLogIds = { recordId: 'log-1', renumberRecordId: 'log-2' }
 ) =>
   persist(
     event.type === 'TaskCreated'

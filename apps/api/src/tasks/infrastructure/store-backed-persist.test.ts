@@ -4,6 +4,7 @@ import { createStoreBackedPersist } from './store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
+import type { TaskChangeLogIds } from '../domain/change-log-records.js';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskEvent } from '../domain/events.js';
 
@@ -33,7 +34,7 @@ const persistEvent = (
   persist: ReturnType<typeof createStoreBackedPersist>,
   event: TaskEvent,
   currentTask: Task | null,
-  ids = { recordId: 'log-1', renumberRecordId: 'log-2' }
+  ids: TaskChangeLogIds = { recordId: 'log-1', renumberRecordId: 'log-2' }
 ) =>
   persist(
     event.type === 'TaskCreated'

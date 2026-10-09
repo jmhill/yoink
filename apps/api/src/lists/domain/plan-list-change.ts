@@ -84,39 +84,43 @@ export function planListChange(
 ): Extract<ListChangePlan, { action: 'reorder' }>;
 export function planListChange(input: ListChangePlanInput): ListChangePlan;
 export function planListChange(input: ListChangePlanInput): ListChangePlan {
-  const { event, actor, ids } = input;
-  const records = changeLogRecordsFromListEvent({ event, actor, ids });
+  const records = changeLogRecordsFromListEvent({
+    event: input.event,
+    actor: input.actor,
+    ids: input.ids,
+  });
 
-  switch (event.type) {
-    case 'NamedListCreated':
-      return {
-        action: 'insert',
-        organizationId: event.organizationId,
-        view: applyNamedListCreated(event),
-        records,
-      };
-    case 'NamedListRenamed':
-      return {
-        action: 'rename',
-        organizationId: event.organizationId,
-        listId: event.id,
-        name: event.name,
-        view: applyNamedListRenamed(input.current, event),
-        records,
-      };
-    case 'NamedListDeleted':
-      return {
-        action: 'delete',
-        organizationId: event.organizationId,
-        listId: event.id,
-        records,
-      };
-    case 'OpenTasksReordered':
-      return {
-        action: 'reorder',
-        organizationId: event.organizationId,
-        orders: event.orders,
-        records,
-      };
+  if (input.event.type === 'NamedListCreated') {
+    return {
+      action: 'insert',
+      organizationId: input.event.organizationId,
+      view: applyNamedListCreated(input.event),
+      records,
+    };
   }
+  if (input.event.type === 'NamedListRenamed') {
+    const current = input.current as NamedList;
+    return {
+      action: 'rename',
+      organizationId: input.event.organizationId,
+      listId: input.event.id,
+      name: input.event.name,
+      view: applyNamedListRenamed(current, input.event),
+      records,
+    };
+  }
+  if (input.event.type === 'NamedListDeleted') {
+    return {
+      action: 'delete',
+      organizationId: input.event.organizationId,
+      listId: input.event.id,
+      records,
+    };
+  }
+  return {
+    action: 'reorder',
+    organizationId: input.event.organizationId,
+    orders: input.event.orders,
+    records,
+  };
 }

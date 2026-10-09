@@ -6,8 +6,9 @@ import type { StorageError } from './task-errors.js';
 
 export type FindByOrganizationOptions = {
   organizationId: string;
-  filter?: TaskFilter;
-  today?: string;
+  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
+  today?: string; // Current date in YYYY-MM-DD format for date comparisons
+  /** Caller principal id; used when filter is 'mine' */
   assigneeId?: string;
   fetchLimit: number;
   seek?: KeysetCursor;
@@ -21,8 +22,10 @@ export type TaskStore = {
     options: FindByOrganizationOptions
   ): ResultAsync<KeysetRows<Task>, StorageError>;
   findByCaptureId(captureId: string): ResultAsync<Task | null, StorageError>;
+  // Soft delete - sets deletedAt timestamp
   softDelete(id: string): ResultAsync<void, StorageError>;
   countOpenOnList(listId: string): ResultAsync<number, StorageError>;
+  /** Unlist completed (and already-deleted) tasks still pointing at this list. */
   clearListIdOnCompleted(listId: string): ResultAsync<void, StorageError>;
   findOpenInPile(options: {
     organizationId: string;

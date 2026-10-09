@@ -9,6 +9,7 @@ export type MarkAsProcessedOptions = {
   processedAt: string;
   processedToType: ProcessedToType;
   processedToId: string;
+  /** If provided, the operation will fail if the capture is not in this status */
   requiredStatus?: CaptureStatus;
 };
 
@@ -17,8 +18,8 @@ export type MarkAsProcessedError = StorageError | CaptureNotInInboxError;
 export type FindByOrganizationOptions = {
   organizationId: string;
   status?: CaptureStatus;
-  snoozed?: boolean;
-  now?: string;
+  snoozed?: boolean; // true = only snoozed, false = exclude snoozed, undefined = no filtering
+  now?: string; // Current time for snooze comparison (ISO datetime)
   fetchLimit: number;
   seek?: KeysetCursor;
 };
@@ -30,7 +31,12 @@ export type CaptureStore = {
   findByOrganization(
     options: FindByOrganizationOptions
   ): ResultAsync<KeysetRows<Capture>, StorageError>;
+  // Soft delete - sets deletedAt timestamp
   softDelete(id: string): ResultAsync<void, StorageError>;
+  // Soft delete all trashed captures for an organization
   softDeleteTrashed(organizationId: string): ResultAsync<number, StorageError>;
+  // Mark capture as processed (converted to task/note)
+  // If requiredStatus is provided and the capture is not in that status,
+  // returns CaptureNotInInboxError (for atomic status verification within transactions)
   markAsProcessed(options: MarkAsProcessedOptions): ResultAsync<Capture, MarkAsProcessedError>;
 };

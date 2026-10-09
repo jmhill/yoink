@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { registerHealthRoutes } from './health/application/index.js';
 import { registerCaptureRoutes } from './captures/infrastructure/http-capture-routes.js';
 import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
-import { registerTaskRoutes } from './tasks/application/index.js';
+import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
 import {
   registerAdminRoutes,
   registerInvitationRoutes,

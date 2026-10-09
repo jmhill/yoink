@@ -1,5 +1,11 @@
+import { err, ok, type Result } from 'neverthrow';
 import type { KeysetCursor, KeysetValue } from '../domain/keyset-cursor.js';
 import type { KeysetDirection } from '../domain/keyset-window.js';
+
+export type SqlKeysetError = {
+  readonly type: 'STORAGE_ERROR';
+  readonly message: string;
+};
 
 const asSqlArg = (value: KeysetValue | undefined): KeysetValue | undefined => {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -12,7 +18,14 @@ export const sqlKeysetClause = (options: {
   columns: readonly string[];
   direction: KeysetDirection;
   seek: KeysetCursor;
-}): { sql: string; args: KeysetValue[] } => {
+}): Result<{ sql: string; args: KeysetValue[] }, SqlKeysetError> => {
+  if (options.seek.keys.length !== options.columns.length) {
+    return err({
+      type: 'STORAGE_ERROR',
+      message: `Keyset cursor has ${options.seek.keys.length} keys; expected ${options.columns.length} columns`,
+    });
+  }
+
   const op = options.direction === 'asc' ? '>' : '<';
   const terms: string[] = [];
   const args: KeysetValue[] = [];
@@ -40,8 +53,8 @@ export const sqlKeysetClause = (options: {
     terms.push(`(${equalities.join(' AND ')})`);
   }
 
-  return {
+  return ok({
     sql: terms.length === 0 ? '1=1' : `(${terms.join(' OR ')})`,
     args,
-  };
+  });
 };

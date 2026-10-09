@@ -4,7 +4,7 @@ import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
 import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import type { TaskHandlers } from './create-task-handlers.js';
+import type { TaskHandlers } from '../application/create-task-handlers.js';
 import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
 
 export type TaskRoutesDependencies = {

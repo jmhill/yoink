@@ -66,4 +66,25 @@ export default [
       'boundaries/no-unknown': 'warn',
     },
   },
+  {
+    // Hexagonal: domain and application must not import adapters.
+    // Tests may import fakes. `@yoink/infrastructure` (Clock, etc.) is a
+    // shared kernel, not a feature adapter, so it is not in this pattern.
+    files: ['src/**/{domain,application}/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '**/infrastructure/*'],
+              message:
+                'domain and application must not import hexagonal infrastructure adapters',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

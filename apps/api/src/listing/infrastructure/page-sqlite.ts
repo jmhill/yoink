@@ -1,4 +1,4 @@
-import { ResultAsync } from 'neverthrow';
+import { errAsync, ok, ResultAsync } from 'neverthrow';
 import type { Database } from '../../database/types.js';
 import type { KeysetCursor } from '../domain/keyset-cursor.js';
 import type { KeysetRows } from '../domain/listed-page.js';
@@ -18,13 +18,19 @@ export const pageSqlite = <T>(options: {
   mapRow: (row: Record<string, unknown>) => T;
   errorMessage: string;
 }): ResultAsync<KeysetRows<T>, { readonly type: 'STORAGE_ERROR'; readonly message: string; readonly cause?: unknown }> => {
-  const seekClause = options.seek
+  const seekClauseResult = options.seek
     ? sqlKeysetClause({
         columns: options.keyColumns,
         direction: options.direction,
         seek: options.seek,
       })
-    : undefined;
+    : ok(undefined);
+
+  if (seekClauseResult.isErr()) {
+    return errAsync(seekClauseResult.error);
+  }
+
+  const seekClause = seekClauseResult.value;
   const selectWhere = seekClause
     ? `${options.whereSql} AND ${seekClause.sql}`
     : options.whereSql;

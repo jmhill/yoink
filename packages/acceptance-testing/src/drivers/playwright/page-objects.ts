@@ -557,7 +557,7 @@ export class SettingsPage {
 
   async openOrganizationTab(): Promise<void> {
     await this.page.getByRole('tab', { name: 'Organization' }).click();
-    await this.page.getByRole('heading', { name: 'API Tokens' }).waitFor({ state: 'visible' });
+    await this.page.getByText('Current Organization').waitFor({ state: 'visible' });
   }
 
   tokenRow(name: string) {

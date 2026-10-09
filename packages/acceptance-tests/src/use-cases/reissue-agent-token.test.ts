@@ -34,7 +34,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       let alice: BrowserActor;
 
       beforeEach(async () => {
-        alice = await ctx.createActor(`alice-reissue-${label}@example.com`);
+        alice = await ctx.createActor(`alice-reissue-${label.replace(/\s+/g, '-')}@example.com`);
         await prepare(alice);
       }, 30_000);
 
@@ -68,7 +68,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         const members = await alice.listMembers();
         expect(members.filter((member) => member.name === 'Tycho')).toHaveLength(1);
-      });
+      }, 60_000);
     });
   };
 

@@ -1,24 +1,45 @@
 import * as Sentry from '@sentry/node';
 import type { Log } from '@sentry/node';
-import type { LogConfig, LogLevel } from '../config/schema.js';
+import type { LogConfig, LogLevel, SentryConfig } from '../config/schema.js';
+import { LogLevelSchema } from '../config/schema.js';
 
-const PINO_LEVELS = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
+const SENSITIVE_KEYS = new Set([
+  'authorization',
+  'cookie',
+  'set-cookie',
+  'token',
+  'apitoken',
+  'secret',
+  'password',
+  'sessionsecret',
+  'code',
+  'invitecode',
+  'credential',
+  'attestationobject',
+  'clientdatajson',
+]);
 
-const SENSITIVE_HEADER_KEYS = new Set(['authorization', 'cookie', 'set-cookie']);
+const BEARER_TOKEN = /Bearer \S+/gi;
 
 export const levelsAtOrAbove = (minLevel: LogLevel): LogLevel[] => {
-  const minIndex = PINO_LEVELS.indexOf(minLevel);
-  return PINO_LEVELS.slice(minIndex).map((level) => level);
+  const levels = [...LogLevelSchema.options].reverse();
+  return levels.slice(levels.indexOf(minLevel));
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+export const maskBearerTokens = (value: string): string =>
+  value.replace(BEARER_TOKEN, 'Bearer [Redacted]');
+
 /**
- * Recursively replace authorization / cookie values so they cannot reach Sentry
- * even if a log bypasses Pino's path-based redact.
+ * Recursively redact sensitive keys and Bearer tokens so they cannot reach
+ * Sentry even if a log bypasses Pino's path-based redact.
  */
 export const redactSensitiveLogValue = (value: unknown): unknown => {
+  if (typeof value === 'string') {
+    return maskBearerTokens(value);
+  }
   if (Array.isArray(value)) {
     return value.map(redactSensitiveLogValue);
   }
@@ -28,7 +49,7 @@ export const redactSensitiveLogValue = (value: unknown): unknown => {
 
   const redacted: Record<string, unknown> = {};
   for (const [key, nested] of Object.entries(value)) {
-    redacted[key] = SENSITIVE_HEADER_KEYS.has(key.toLowerCase())
+    redacted[key] = SENSITIVE_KEYS.has(key.toLowerCase())
       ? '[Redacted]'
       : redactSensitiveLogValue(nested);
   }
@@ -36,14 +57,16 @@ export const redactSensitiveLogValue = (value: unknown): unknown => {
 };
 
 export const scrubSentryLog = (log: Log): Log => {
+  const message =
+    typeof log.message === 'string' ? maskBearerTokens(log.message) : log.message;
   if (!log.attributes) {
-    return log;
+    return { ...log, message };
   }
   const attributes = redactSensitiveLogValue(log.attributes);
   if (!isRecord(attributes)) {
-    return log;
+    return { ...log, message };
   }
-  return { ...log, attributes };
+  return { ...log, message, attributes };
 };
 
 type SentryPinoIntegration = ReturnType<typeof Sentry.pinoIntegration>;
@@ -61,21 +84,19 @@ export type SentryInitOptions = {
 };
 
 export const createSentryInitOptions = (options: {
-  dsn: string;
-  environment: string;
+  sentry: SentryConfig & { dsn: string };
   log: LogConfig;
 }): SentryInitOptions => {
-  const sentryLogs = options.log.sentry;
-  const logsEnabled = sentryLogs?.enabled === true;
+  const logsEnabled = options.log.sentry.enabled;
 
   const integrations: SentryInitOptions['integrations'] = [
     Sentry.onUnhandledRejectionIntegration({ mode: 'warn' }),
   ];
 
-  if (logsEnabled && sentryLogs) {
+  if (logsEnabled) {
     integrations.push(
       Sentry.pinoIntegration({
-        log: { levels: levelsAtOrAbove(sentryLogs.minLevel) },
+        log: { levels: levelsAtOrAbove(options.log.sentry.minLevel) },
         // Do not turn Pino lines into Sentry issues — crash reporting stays
         // on setupFastifyErrorHandler / unhandled rejections.
         error: { levels: [] },
@@ -84,8 +105,8 @@ export const createSentryInitOptions = (options: {
   }
 
   return {
-    dsn: options.dsn,
-    environment: options.environment,
+    dsn: options.sentry.dsn,
+    environment: options.sentry.environment,
     tracesSampleRate: 0.1,
     enableLogs: logsEnabled,
     beforeSendLog: scrubSentryLog,
@@ -94,18 +115,16 @@ export const createSentryInitOptions = (options: {
 };
 
 export const initSentry = (options: {
-  dsn: string | undefined;
-  environment: string;
+  sentry: SentryConfig;
   log: LogConfig;
 }): void => {
-  if (!options.dsn) {
+  if (!options.sentry.dsn) {
     return;
   }
 
   Sentry.init(
     createSentryInitOptions({
-      dsn: options.dsn,
-      environment: options.environment,
+      sentry: { ...options.sentry, dsn: options.sentry.dsn },
       log: options.log,
     })
   );

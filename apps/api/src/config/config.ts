@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   type AppConfig,
   type DatabaseConfig,
@@ -5,11 +6,31 @@ import {
   type RateLimitConfig,
   type LogLevel,
   type LogConfig,
+  type SentryConfig,
   type WebAuthnConfig,
   type CookieConfig,
   LogLevelSchema,
   LogConfigSchema,
+  SentryConfigSchema,
 } from './schema.js';
+
+const SentryLogsEnabledEnvSchema = z.enum(['true', 'false']).optional();
+
+const parseNamedEnv = <T>(
+  schema: z.ZodType<T>,
+  value: unknown,
+  name: string
+): T => {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    throw new Error(
+      `Invalid ${name} value: ${JSON.stringify(value)}. ${result.error.issues
+        .map((issue) => issue.message)
+        .join('; ')}`
+    );
+  }
+  return result.data;
+};
 
 /**
  * Load admin configuration from environment variables.
@@ -68,28 +89,9 @@ const parseLogLevel = (value: string | undefined): LogLevel | undefined => {
 };
 
 /**
- * Parse SENTRY_LOGS_ENABLED. Unset means on in production, off in tests and local
- * dev. Explicit "true" / "false" override that default.
- */
-const parseSentryLogsEnabled = (isProduction: boolean): boolean => {
-  const raw = process.env.SENTRY_LOGS_ENABLED;
-  if (raw === undefined) {
-    return isProduction;
-  }
-  if (raw === 'true') {
-    return true;
-  }
-  if (raw === 'false') {
-    return false;
-  }
-  throw new Error(
-    `Invalid SENTRY_LOGS_ENABLED value: "${raw}". Must be "true" or "false".`
-  );
-};
-
-/**
  * Load logging configuration from environment variables.
  * - LOG_LEVEL: fatal, error, warn, info, debug, trace (default: info in prod, debug in dev)
+ *   Pino applies this first; a line below LOG_LEVEL never reaches Sentry.
  * - Pretty printing auto-enabled in development
  * - SENTRY_LOGS_ENABLED: forward Pino logs to Sentry (default: true in production)
  * - SENTRY_LOGS_LEVEL: minimum Sentry log level (default: info)
@@ -97,14 +99,38 @@ const parseSentryLogsEnabled = (isProduction: boolean): boolean => {
 export const loadLogConfig = (): LogConfig => {
   const isProduction = process.env.NODE_ENV === 'production';
   const defaultLevel: LogLevel = isProduction ? 'info' : 'debug';
+  const enabledEnv = parseNamedEnv(
+    SentryLogsEnabledEnvSchema,
+    process.env.SENTRY_LOGS_ENABLED,
+    'SENTRY_LOGS_ENABLED'
+  );
+  const rawSentryLevel = process.env.SENTRY_LOGS_LEVEL;
+  const minLevel =
+    parseNamedEnv(
+      LogLevelSchema.optional(),
+      rawSentryLevel === undefined ? undefined : rawSentryLevel.toLowerCase(),
+      'SENTRY_LOGS_LEVEL'
+    ) ?? 'info';
 
   return LogConfigSchema.parse({
     level: parseLogLevel(process.env.LOG_LEVEL) ?? defaultLevel,
     pretty: !isProduction,
     sentry: {
-      enabled: parseSentryLogsEnabled(isProduction),
-      minLevel: parseLogLevel(process.env.SENTRY_LOGS_LEVEL) ?? 'info',
+      enabled: enabledEnv === undefined ? isProduction : enabledEnv === 'true',
+      minLevel,
     },
+  });
+};
+
+/**
+ * Load Sentry SDK init config from environment variables.
+ * Unset SENTRY_DSN skips init. Invalid DSN URLs fail fast.
+ */
+export const loadSentryConfig = (): SentryConfig => {
+  const dsn = process.env.SENTRY_DSN;
+  return SentryConfigSchema.parse({
+    dsn: dsn ? dsn : undefined,
+    environment: process.env.NODE_ENV || 'development',
   });
 };
 
@@ -230,6 +256,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     admin: await loadAdminConfig(),
     rateLimit: loadRateLimitConfig(),
     log: loadLogConfig(),
+    sentry: loadSentryConfig(),
     webauthn: loadWebAuthnConfig(),
     cookie: loadCookieConfig(),
   };

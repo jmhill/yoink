@@ -6,14 +6,14 @@
 | `SEED_TOKEN` | Bootstrap token secret for dev seeding | Optional, dev/test only |
 | `ADMIN_PASSWORD` | Admin panel password | Required to enable admin panel. No minimum length enforced (use strong password). |
 | `SESSION_SECRET` | Admin session HMAC signing key | Must be at least 32 characters. Required in production if admin panel is enabled. Auto-generated in dev/test if not provided. |
-| `LOG_LEVEL` | Pino stdout log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | Optional. Default: `info` in production, `debug` otherwise. |
+| `LOG_LEVEL` | Pino stdout log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`). Applied first: a line below this level is never emitted, so it cannot reach Sentry. | Optional. Default: `info` in production, `debug` otherwise. |
 | `SENTRY_DSN` | Sentry project DSN for API crash reporting and (when enabled) logs | Fly secret, already set by `fly ext sentry create`. Skip Sentry init when unset. |
 | `SENTRY_LOGS_ENABLED` | Forward Pino logs to Sentry Logs | Optional. `true` / `false`. Default: `true` in production, `false` in tests and local dev. |
 | `SENTRY_LOGS_LEVEL` | Minimum Pino level forwarded to Sentry (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | Optional. Default: `info`. |
 
 ## Sentry Logs
 
-Production API logs still go to stdout on Fly. When `SENTRY_DSN` is set and Sentry Logs are enabled, the same Pino lines are also sent to Sentry so they outlive Fly's short log buffer.
+Production API logs still go to stdout on Fly. When `SENTRY_DSN` is set and Sentry Logs are enabled, the same Pino lines are also sent to Sentry so they outlive Fly's short log buffer. `LOG_LEVEL` is the first filter (Pino); `SENTRY_LOGS_LEVEL` then drops anything below that minimum among the lines Pino actually emitted.
 
 **No new Fly secret is required.** Logs use the existing `SENTRY_DSN`. To turn logs off in production without removing crash reporting:
 

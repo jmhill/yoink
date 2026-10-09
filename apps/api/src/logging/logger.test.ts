@@ -4,10 +4,19 @@ import Fastify from 'fastify';
 import { createLoggerOptions } from './logger.js';
 import type { LogConfig } from '../config/schema.js';
 
+const quietSentry = { enabled: false, minLevel: 'info' } as const;
+
+const logConfig = (overrides: Partial<LogConfig> = {}): LogConfig => ({
+  level: 'info',
+  pretty: false,
+  sentry: quietSentry,
+  ...overrides,
+});
+
 describe('createLoggerOptions', () => {
   describe('log level configuration', () => {
     it('sets the log level from config', () => {
-      const config: LogConfig = { level: 'debug', pretty: false };
+      const config = logConfig({ level: 'debug' });
 
       const options = createLoggerOptions(config);
 
@@ -18,7 +27,7 @@ describe('createLoggerOptions', () => {
       const levels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
 
       for (const level of levels) {
-        const options = createLoggerOptions({ level, pretty: false });
+        const options = createLoggerOptions(logConfig({ level }));
         expect(options.level).toBe(level);
       }
     });
@@ -26,7 +35,7 @@ describe('createLoggerOptions', () => {
 
   describe('pretty printing', () => {
     it('configures pino-pretty transport when pretty is true', () => {
-      const config: LogConfig = { level: 'info', pretty: true };
+      const config = logConfig({ pretty: true });
 
       const options = createLoggerOptions(config);
 
@@ -39,7 +48,7 @@ describe('createLoggerOptions', () => {
     });
 
     it('does not configure transport when pretty is false', () => {
-      const config: LogConfig = { level: 'info', pretty: false };
+      const config = logConfig();
 
       const options = createLoggerOptions(config);
 
@@ -49,17 +58,13 @@ describe('createLoggerOptions', () => {
 
   describe('sensitive field redaction', () => {
     it('redacts authorization header', () => {
-      const config: LogConfig = { level: 'info', pretty: false };
-
-      const options = createLoggerOptions(config);
+      const options = createLoggerOptions(logConfig());
 
       expect(options.redact).toContain('req.headers.authorization');
     });
 
     it('redacts cookie header', () => {
-      const config: LogConfig = { level: 'info', pretty: false };
-
-      const options = createLoggerOptions(config);
+      const options = createLoggerOptions(logConfig());
 
       expect(options.redact).toContain('req.headers.cookie');
     });
@@ -78,7 +83,7 @@ describe('createLoggerOptions', () => {
       // req serializer so Fastify does not strip headers before redact.
       const app = Fastify({
         logger: {
-          ...createLoggerOptions({ level: 'info', pretty: false }),
+          ...createLoggerOptions(logConfig()),
           stream,
           serializers: {
             req: (req) => ({
@@ -109,12 +114,14 @@ describe('createLoggerOptions', () => {
       expect(output).not.toContain('cookie-secret-value');
       expect(output).not.toContain('tokenId:super-secret-token');
       expect(output).toContain('[Redacted]');
-
-      const parsed = JSON.parse(output) as {
-        req: { headers: { authorization: string; cookie: string } };
-      };
-      expect(parsed.req.headers.authorization).toBe('[Redacted]');
-      expect(parsed.req.headers.cookie).toBe('[Redacted]');
+      expect(JSON.parse(output)).toMatchObject({
+        req: {
+          headers: {
+            authorization: '[Redacted]',
+            cookie: '[Redacted]',
+          },
+        },
+      });
     });
   });
 });

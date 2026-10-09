@@ -36,7 +36,8 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
     challengeSecret: 'a-32-character-secret-for-hmac!!',
   },
   rateLimit: defaultRateLimitConfig,
-  log: { level: 'error', pretty: false },
+  log: { level: 'error', pretty: false, sentry: { enabled: false, minLevel: 'info' } },
+  sentry: { environment: 'test' },
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
   ...overrides,
 });

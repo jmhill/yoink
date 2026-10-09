@@ -15,6 +15,8 @@ import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check } from 'lucide-rea
 import type { TokenInfo } from '@yoink/api-contracts';
 import { tsrTokens } from '@/api/client';
 
+const MAX_TOKENS = 2;
+
 const errorBodyMessage = (body: unknown): string | null => {
   if (
     typeof body === 'object' &&
@@ -60,6 +62,8 @@ export function TokensSection() {
     void listQuery.refetch();
   };
 
+  const canCreate = !!listBody && listBody.tokens.length < MAX_TOKENS;
+
   return (
     <>
       <Card>
@@ -70,6 +74,7 @@ export function TokensSection() {
           </CardTitle>
           <CardDescription>
             Manage tokens for browser extension and CLI access.
+            Maximum {MAX_TOKENS} tokens per organization.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -105,6 +110,8 @@ export function TokensSection() {
               <Button
                 onClick={() => setCreateDialogOpen(true)}
                 className="w-full"
+                disabled={!canCreate}
+                title={canCreate ? undefined : `Maximum ${MAX_TOKENS} tokens allowed`}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Token

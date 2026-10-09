@@ -12,7 +12,8 @@ const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
     idGenerator: { type: 'sequential' },
     passwordHasher: { type: 'fake' },
   },
-  log: { level: 'error', pretty: false },
+  log: { level: 'error', pretty: false, sentry: { enabled: false, minLevel: 'info' } },
+  sentry: { environment: 'test' },
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
   ...overrides,
 });

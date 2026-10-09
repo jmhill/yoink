@@ -36,7 +36,8 @@ export const testConfig: AppConfig = {
     passwordHasher: { type: 'fake' },
   },
   seedToken: TEST_TOKEN_SECRET,
-  log: { level: 'error', pretty: false }, // Quiet logs during tests
+  log: { level: 'error', pretty: false, sentry: { enabled: false, minLevel: 'info' } },
+  sentry: { environment: 'test' },
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
 };
 

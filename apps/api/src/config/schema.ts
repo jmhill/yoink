@@ -112,10 +112,26 @@ export const LogLevelSchema = z.enum([
   'trace',
 ]);
 
+// Forwarding Pino logs to Sentry Logs
+export const SentryLogsConfigSchema = z.object({
+  enabled: z.boolean(),
+  minLevel: LogLevelSchema,
+});
+
+// SDK init (DSN + environment). Logs forwarding lives on LogConfig.sentry.
+export const SentryConfigSchema = z.object({
+  dsn: z.string().url().optional(),
+  environment: z.string().min(1),
+});
+
 // Logging configuration
 export const LogConfigSchema = z.object({
   level: LogLevelSchema.default('info'),
   pretty: z.boolean().default(false),
+  sentry: SentryLogsConfigSchema.default({
+    enabled: false,
+    minLevel: 'info',
+  }),
 });
 
 // WebAuthn configuration for passkey authentication
@@ -151,6 +167,7 @@ export const AppConfigSchema = z.object({
   admin: AdminConfigSchema.optional(),
   rateLimit: RateLimitConfigSchema.optional(),
   log: LogConfigSchema,
+  sentry: SentryConfigSchema,
   webauthn: WebAuthnConfigSchema.optional(),
   cookie: CookieConfigSchema,
 });
@@ -161,6 +178,8 @@ export type ClockConfig = z.infer<typeof ClockConfigSchema>;
 export type AdminConfig = z.infer<typeof AdminConfigSchema>;
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
 export type LogLevel = z.infer<typeof LogLevelSchema>;
+export type SentryLogsConfig = z.infer<typeof SentryLogsConfigSchema>;
+export type SentryConfig = z.infer<typeof SentryConfigSchema>;
 export type LogConfig = z.infer<typeof LogConfigSchema>;
 export type WebAuthnConfig = z.infer<typeof WebAuthnConfigSchema>;
 export type CookieConfig = z.infer<typeof CookieConfigSchema>;

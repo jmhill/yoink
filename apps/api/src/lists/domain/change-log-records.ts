@@ -18,13 +18,13 @@ export type ListChangeLogIds = {
 
 export type ChangeLogRecordsFromListEventInput = {
   event: ListEvent;
-  actor: Actor | null;
+  actor: Actor;
   ids: ListChangeLogIds;
 };
 
-const actorFields = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
-  actorKind: actor?.kind ?? null,
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
 });
 
 const envelope = (

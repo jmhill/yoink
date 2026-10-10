@@ -25,7 +25,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -57,7 +57,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -82,7 +82,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: weekend.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: weekend,
@@ -110,7 +110,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -135,7 +135,7 @@ describe('decideUpdateTask', () => {
         organizationId: current.organizationId,
         title: 'Buy oat milk',
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -163,7 +163,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -191,7 +191,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: weekend.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: weekend,
@@ -219,7 +219,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,
@@ -241,7 +241,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: 'list-missing',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -263,7 +263,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: otherOrgList.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: otherOrgList,
@@ -285,7 +285,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         title: 'Buy oat milk',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -310,7 +310,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -344,7 +344,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -367,7 +367,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -390,7 +390,7 @@ describe('decideUpdateTask', () => {
         organizationId: current.organizationId,
         title: 'Buy oat milk',
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -419,7 +419,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -446,7 +446,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,
@@ -468,7 +468,7 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         assigneeId: 'outsider',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: null,

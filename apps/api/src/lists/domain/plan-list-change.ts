@@ -16,7 +16,7 @@ import type {
 export type { ListChangeLogIds };
 
 type ListPlanBase = {
-  actor: Actor | null;
+  actor: Actor;
   ids: ListChangeLogIds;
 };
 

@@ -81,6 +81,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isOk()).toBe(true);
@@ -102,6 +103,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         title: 'My custom task title',
       });
 
@@ -118,6 +120,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isOk()).toBe(true);
@@ -132,6 +135,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         dueDate: '2024-12-31',
       });
 
@@ -147,6 +151,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         listId: groceries.id,
       });
 
@@ -185,6 +190,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         listId: groceries.id,
       });
 
@@ -200,6 +206,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isOk()).toBe(true);
@@ -216,6 +223,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         listId: 'list-missing',
       });
 
@@ -234,6 +242,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
         listId: otherOrgList.id,
       });
 
@@ -249,6 +258,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isOk()).toBe(true);
@@ -268,6 +278,7 @@ describe('CaptureProcessingService', () => {
         id: 'non-existent',
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -282,6 +293,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -299,6 +311,7 @@ describe('CaptureProcessingService', () => {
         id: trashedCapture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -318,6 +331,7 @@ describe('CaptureProcessingService', () => {
         id: processedCapture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -332,6 +346,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-1',
+        actor: { kind: 'user' as const, userId: 'user-1' },
       });
       expect(firstResult.isOk()).toBe(true);
 
@@ -342,6 +357,7 @@ describe('CaptureProcessingService', () => {
         id: capture.id,
         organizationId: 'org-1',
         createdById: 'user-2',
+        actor: { kind: 'user' as const, userId: 'user-2' },
       });
       expect(secondResult.isErr()).toBe(true);
       expect(secondResult._unsafeUnwrapErr().type).toBe('CAPTURE_NOT_IN_INBOX');

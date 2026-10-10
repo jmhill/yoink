@@ -32,7 +32,7 @@ const persistList = (
   ids: ListChangeLogIds = { recordId: 'log-1' }
 ) =>
   persist(
-    planListChange({ event, current: null, actor: null, ids } as ListChangePlanInput)
+    planListChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1' }, ids } as ListChangePlanInput)
   );
 
 describe('sqlite list persist', () => {
@@ -101,7 +101,7 @@ describe('sqlite list persist', () => {
           occurredAt: later,
         },
         current,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 'log-rename' },
       })
     );
@@ -167,7 +167,7 @@ describe('sqlite list persist', () => {
           occurredAt: now,
         },
         current: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 't-a' },
       })
     );
@@ -185,7 +185,7 @@ describe('sqlite list persist', () => {
           occurredAt: now,
         },
         current: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 't-b' },
       })
     );

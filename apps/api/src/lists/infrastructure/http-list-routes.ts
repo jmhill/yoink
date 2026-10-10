@@ -56,8 +56,7 @@ export const registerListRoutes = async (
           name: body.name,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -93,8 +92,7 @@ export const registerListRoutes = async (
           id: params.id,
           name: body.name,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -167,8 +165,7 @@ export const registerListRoutes = async (
           listId: params.id,
           organizationId: request.authContext.organizationId,
           taskIds: body.taskIds,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -234,8 +231,7 @@ export const registerListRoutes = async (
         const result = await listHandlers.reorderUnlistedOpenTasks({
           organizationId: request.authContext.organizationId,
           taskIds: body.taskIds,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -267,8 +263,7 @@ export const registerListRoutes = async (
         const result = await listHandlers.delete({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(

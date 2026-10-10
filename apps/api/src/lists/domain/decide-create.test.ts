@@ -7,7 +7,7 @@ describe('decideCreateNamedList', () => {
     organizationId: 'org-123',
     createdById: 'user-456',
   
-  actor: null,
+  actor: { kind: 'user' as const, userId: 'user-1' },
   };
 
   it('decides a NamedListCreated fact with generated id and timestamp', () => {

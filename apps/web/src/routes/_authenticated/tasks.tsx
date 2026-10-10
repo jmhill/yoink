@@ -263,7 +263,7 @@ function TasksPage() {
       }
     };
     loadMembers();
-  }, []);
+  }, [editingTask?.id]);
 
   useEffect(() => {
     setIsReordering(false);

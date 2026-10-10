@@ -113,6 +113,32 @@ describe('TaskEditModal', () => {
     expect(screen.getByTestId('task-edit-completed').textContent).toContain('Completed');
   });
 
+  it('shows the bot name on last changed and completed', () => {
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{
+          ...milk,
+          lastChangedAt: '2026-01-02T00:00:00.000Z',
+          lastChangedBy: 'user-lane',
+          completedAt: '2026-01-03T00:00:00.000Z',
+          completedBy: 'user-lane',
+        }}
+        sourceCapture={null}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+        members={[
+          { userId: milk.createdById, label: 'alice@example.com' },
+          { userId: 'user-lane', label: 'Lane' },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('task-edit-last-changed').textContent).toContain('by Lane');
+    expect(screen.getByTestId('task-edit-completed').textContent).toContain('by Lane');
+  });
+
   it('shows before history started when lastChangedAt is missing', () => {
     render(
       <TaskEditModal

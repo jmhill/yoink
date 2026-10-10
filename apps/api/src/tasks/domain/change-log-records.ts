@@ -33,7 +33,7 @@ export type TaskUncompletedChangeLogIds = {
 export type UncompleteChangeLogRecordsInput = {
   event: Extract<TaskEvent, { type: 'TaskUncompleted' }>;
   current: Task;
-  actor: Actor | null;
+  actor: Actor;
   ids: TaskUncompletedChangeLogIds;
 };
 
@@ -42,7 +42,7 @@ export type ChangeLogRecordsFromTaskEventInput =
   | {
       event: Exclude<TaskEvent, { type: 'TaskUncompleted' }>;
       current: Task | null;
-      actor: Actor | null;
+      actor: Actor;
       ids: TaskChangeLogIds;
     };
 
@@ -50,9 +50,9 @@ const isUncomplete = (
   value: ChangeLogRecordsFromTaskEventInput
 ): value is UncompleteChangeLogRecordsInput => value.event.type === 'TaskUncompleted';
 
-const actorFields = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
-  actorKind: actor?.kind ?? null,
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
 });
 
 const envelope = (

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   createTestApp,
   TEST_TOKEN,
+  TEST_USER_ID,
 } from '../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { NamedList, Task } from '@yoink/api-contracts';
@@ -41,7 +42,7 @@ describe('POST /api/tasks listId', () => {
     expect(task.listId).toBe(list.id);
     expect(task.completedAt).toBeUndefined();
     expect(task.lastChangedAt).toBeTruthy();
-    expect(task.lastChangedBy).toBeNull();
+    expect(task.lastChangedBy).toBe(TEST_USER_ID);
     expect(task.completedBy).toBeNull();
   });
 

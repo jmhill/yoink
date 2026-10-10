@@ -30,14 +30,15 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T10:00:00.000Z',
       },
       current: null,
-      actor: null,
+      actor: { kind: 'user' as const, userId: 'user-1' },
       ids: { recordId: 'log-1' },
     });
 
     expect(records).toHaveLength(1);
     expect(records[0]?.kind).toBe('TaskCreated');
     expect(records[0]?.projectId).toBeNull();
-    expect(records[0]?.actorUserId).toBeNull();
+    expect(records[0]?.actorUserId).toBe('user-1');
+    expect(records[0]?.actorKind).toBe('user');
     expect(records[0]?.hidden).toBe(false);
     expect(parseChangeLogRecord(records[0]!).isOk()).toBe(true);
   });
@@ -53,7 +54,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current,
-      actor: null,
+      actor: { kind: 'user' as const, userId: 'user-1' },
       ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
@@ -81,7 +82,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current: { ...current, listId: undefined },
-      actor: null,
+      actor: { kind: 'user' as const, userId: 'user-1' },
       ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
@@ -98,11 +99,47 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T11:00:00.000Z',
       },
       current,
-      actor: null,
+      actor: { kind: 'user' as const, userId: 'user-1' },
       ids: { recordId: 'log-1' },
     });
 
     expect(records[0]?.kind).toBe('TaskPinned');
     expect(records[0]?.hidden).toBe(true);
+  });
+
+  it('attributes a session actor as user kind', () => {
+    const records = changeLogRecordsFromTaskEvent({
+      event: {
+        type: 'TaskUpdated',
+        id: 'task-1',
+        organizationId: 'org-1',
+        title: 'Oat milk',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      current,
+      actor: { kind: 'user' as const, userId: 'user-justin' },
+      ids: { recordId: 'log-upd' },
+    });
+
+    expect(records[0]?.actorUserId).toBe('user-justin');
+    expect(records[0]?.actorKind).toBe('user');
+  });
+
+  it('attributes a bot actor as bot kind', () => {
+    const records = changeLogRecordsFromTaskEvent({
+      event: {
+        type: 'TaskCompleted',
+        id: 'task-1',
+        organizationId: 'org-1',
+        completedAt: '2025-01-15T12:00:00.000Z',
+        occurredAt: '2025-01-15T12:00:00.000Z',
+      },
+      current,
+      actor: { kind: 'bot', userId: 'user-lane', tokenId: 'tok-lane', name: 'Lane' },
+      ids: { recordId: 'log-done' },
+    });
+
+    expect(records[0]?.actorUserId).toBe('user-lane');
+    expect(records[0]?.actorKind).toBe('bot');
   });
 });

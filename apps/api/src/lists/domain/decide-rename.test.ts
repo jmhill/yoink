@@ -14,7 +14,7 @@ const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
   name: 'Shopping',
-  actor: null,
+  actor: { kind: 'user' as const, userId: 'user-1' },
 };
 
 describe('decideRenameNamedList', () => {

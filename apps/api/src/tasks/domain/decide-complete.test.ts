@@ -19,7 +19,7 @@ describe('decideCompleteTask', () => {
   it('marks an open task complete and keeps the remembered open-order index', () => {
     const result = decideCompleteTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-16T10:00:00.000Z',
     });
 
@@ -38,7 +38,7 @@ describe('decideCompleteTask', () => {
   it('is a noop when the task is already completed', () => {
     const result = decideCompleteTask({
       current: { ...current, completedAt: '2025-01-16T09:00:00.000Z' },
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-16T10:00:00.000Z',
     });
 

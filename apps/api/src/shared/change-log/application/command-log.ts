@@ -18,16 +18,16 @@ export type CommandLogger = {
 export type CommandLogMeta = {
   command: string;
   organizationId: string;
-  actor: Actor | null;
+  actor: Actor;
 };
 
 type DomainError = {
   readonly type: string;
 };
 
-const actorFields = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
-  actorKind: actor?.kind ?? null,
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
 });
 
 /**

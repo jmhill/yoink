@@ -56,29 +56,31 @@ describe('createTaskHandlers command logging', () => {
         title: 'Buy milk',
         organizationId: 'org-1',
         createdById: 'user-1',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
     ['update', (h: ReturnType<typeof handlersOf>) =>
       h.update({
         id: 'task-1',
         organizationId: 'org-1',
         title: 'Oat milk',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
     ['complete', (h: ReturnType<typeof handlersOf>) =>
-      h.complete({ id: 'task-1', organizationId: 'org-1', actor: null })],
+      h.complete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
     ['uncomplete', (h: ReturnType<typeof handlersOf>) =>
-      h.uncomplete({ id: 'task-1', organizationId: 'org-1', actor: null })],
+      h.uncomplete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
     ['pin', (h: ReturnType<typeof handlersOf>) =>
-      h.pin({ id: 'task-1', organizationId: 'org-1', actor: null })],
+      h.pin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
     ['unpin', (h: ReturnType<typeof handlersOf>) =>
-      h.unpin({ id: 'task-1', organizationId: 'org-1', actor: null })],
+      h.unpin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
     ['delete', (h: ReturnType<typeof handlersOf>) =>
-      h.delete({ id: 'task-1', organizationId: 'org-1', actor: null })],
+      h.delete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
   ] as const)('logs %s exactly once', async (_name, run) => {
     const { lines, logger } = collectLogger();
     const result = await run(handlersOf(logger));
     expect(result.isOk() || result.isErr()).toBe(true);
     expect(lines).toHaveLength(1);
+    expect(lines[0]?.actorUserId).toBe('user-1');
+    expect(lines[0]?.actorKind).toBe('user');
   });
 });

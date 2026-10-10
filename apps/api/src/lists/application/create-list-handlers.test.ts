@@ -62,29 +62,29 @@ describe('createListHandlers command logging', () => {
         name: 'Weekend',
         organizationId: 'org-1',
         createdById: 'user-1',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
     ['rename', (h: ReturnType<typeof handlersOf>) =>
       h.rename({
         id: 'list-1',
         organizationId: 'org-1',
         name: 'Shopping',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
     ['delete', (h: ReturnType<typeof handlersOf>) =>
-      h.delete({ id: 'list-1', organizationId: 'org-1', actor: null })],
+      h.delete({ id: 'list-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
     ['reorderOpenTasks', (h: ReturnType<typeof handlersOf>) =>
       h.reorderOpenTasks({
         organizationId: 'org-1',
         listId: 'list-1',
         taskIds: ['task-1'],
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
     ['reorderUnlistedOpenTasks', (h: ReturnType<typeof handlersOf>) =>
       h.reorderUnlistedOpenTasks({
         organizationId: 'org-1',
         taskIds: ['task-1'],
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       })],
   ] as const)('logs %s exactly once', async (_name, run) => {
     const { lines, logger } = collectLogger();

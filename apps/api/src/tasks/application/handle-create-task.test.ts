@@ -27,7 +27,7 @@ const command = {
   title: 'Buy milk',
   organizationId: 'org-123',
   createdById: 'user-456',
-  actor: null,
+  actor: { kind: 'user' as const, userId: 'user-456' },
 };
 
 const createInMemoryPersist = (): {
@@ -68,6 +68,7 @@ describe('handleCreateTask', () => {
       expect(result.value.view.listId).toBe('list-groceries');
       expect(result.value.view.title).toBe('Buy milk');
       expect(result.value.view.completedAt).toBeUndefined();
+      expect(result.value.view.lastChangedBy).toBe('user-456');
     }
     expect(plans).toHaveLength(1);
   });

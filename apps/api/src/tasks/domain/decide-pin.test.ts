@@ -18,7 +18,7 @@ describe('decidePinTask', () => {
   it('pins an unpinned task', () => {
     const result = decidePinTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-15T11:00:00.000Z',
     });
     expect(result._unsafeUnwrap()).toEqual({
@@ -33,7 +33,7 @@ describe('decidePinTask', () => {
   it('is a noop when already pinned', () => {
     const result = decidePinTask({
       current: { ...current, pinnedAt: '2025-01-15T10:30:00.000Z' },
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-15T11:00:00.000Z',
     });
     expect(result._unsafeUnwrap()).toEqual({ type: 'Noop' });
@@ -44,7 +44,7 @@ describe('decideUnpinTask', () => {
   it('unpins a pinned task', () => {
     const result = decideUnpinTask({
       current: { ...current, pinnedAt: '2025-01-15T10:30:00.000Z' },
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-15T11:00:00.000Z',
     });
     expect(result._unsafeUnwrap()).toEqual({
@@ -58,7 +58,7 @@ describe('decideUnpinTask', () => {
   it('is a noop when not pinned', () => {
     const result = decideUnpinTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       now: '2025-01-15T11:00:00.000Z',
     });
     expect(result._unsafeUnwrap()).toEqual({ type: 'Noop' });

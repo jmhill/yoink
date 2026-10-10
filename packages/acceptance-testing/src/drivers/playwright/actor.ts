@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { type Page, expect } from '@playwright/test';
 import type {
   Actor,
@@ -48,6 +49,10 @@ import {
   SnoozedPage,
   TasksPage,
 } from './page-objects.js';
+import {
+  saveWalkthroughPng,
+  type WalkthroughViewport,
+} from './walkthrough-screenshots.js';
 
 /**
  * Playwright evaluate callbacks run in the page, but this package's
@@ -243,6 +248,7 @@ export const createPlaywrightActor = (
   const projectPage = new ProjectPage(page);
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
+  let walkthroughViewport: WalkthroughViewport = 'desktop';
 
   const expectActiveFilterTabIfVisible = async (
     filter: 'today' | 'upcoming' | 'mine' | 'completed'
@@ -1918,13 +1924,46 @@ export const createPlaywrightActor = (
     },
 
     async useMobileViewport(): Promise<void> {
+      walkthroughViewport = 'phone';
       await page.setViewportSize(MOBILE_VIEWPORT);
       await settleMobileViewportChrome();
     },
 
     async useDesktopViewport(): Promise<void> {
+      walkthroughViewport = 'desktop';
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await settleDesktopViewportChrome();
+    },
+
+    async openEditTaskProjectPicker(visibleProjectName: string): Promise<void> {
+      await tasksPage.openEditProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async openCreateTaskProjectPicker(visibleProjectName: string): Promise<void> {
+      await tasksPage.openCreateProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async openPromoteProjectPicker(visibleProjectName: string): Promise<void> {
+      await inboxPage.openPromoteProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async dismissOpenSelect(): Promise<void> {
+      const listbox = page.getByRole('listbox');
+      await expect(listbox).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(listbox).toBeHidden();
+    },
+
+    async saveWalkthroughScreenshot(step: string): Promise<void> {
+      await saveWalkthroughPng({
+        page,
+        fromDir: fileURLToPath(new URL('.', import.meta.url)),
+        viewport: walkthroughViewport,
+        step,
+      });
     },
 
     async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {

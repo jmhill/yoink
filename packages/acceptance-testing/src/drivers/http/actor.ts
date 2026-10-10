@@ -1076,6 +1076,26 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('useDesktopViewport', 'http');
     },
 
+    async openEditTaskProjectPicker(_visibleProjectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openEditTaskProjectPicker', 'http');
+    },
+
+    async openCreateTaskProjectPicker(_visibleProjectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openCreateTaskProjectPicker', 'http');
+    },
+
+    async openPromoteProjectPicker(_visibleProjectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openPromoteProjectPicker', 'http');
+    },
+
+    async dismissOpenSelect(): Promise<void> {
+      throw new UnsupportedOperationError('dismissOpenSelect', 'http');
+    },
+
+    async saveWalkthroughScreenshot(_step: string): Promise<void> {
+      throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
+    },
+
     async openMobileBottomTab(_tab: 'inbox' | 'tasks'): Promise<void> {
       throw new UnsupportedOperationError('openMobileBottomTab', 'http');
     },

@@ -225,3 +225,66 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
   });
 });
+
+const walkthroughViewports = [
+  {
+    name: 'desktop' as const,
+    apply: (actor: BrowserActor) => actor.useDesktopViewport(),
+  },
+  {
+    name: 'phone' as const,
+    apply: (actor: BrowserActor) => actor.useMobileViewport(),
+  },
+];
+
+usingDrivers(['playwright'] as const, (ctx) => {
+  describe(`#135 walkthrough screenshots [${ctx.driverName}]`, () => {
+    for (const viewport of walkthroughViewports) {
+      it(`saves ${viewport.name} shots of pickers, the project page, and remove`, async () => {
+        const alice = await ctx.createActor(
+          `alice-135-walkthrough-${viewport.name}@example.com`
+        );
+        await viewport.apply(alice);
+
+        const garden = await alice.createProject({ name: 'Garden' });
+        const soil = await alice.createTask({ title: 'Buy soil' });
+
+        await alice.openTaskEditFromRow(soil.id);
+        await alice.openEditTaskProjectPicker('Garden');
+        await alice.saveWalkthroughScreenshot('edit_project_picker');
+        await alice.dismissOpenSelect();
+        await alice.closeTaskEdit();
+
+        await alice.openToday();
+        await alice.openCreateTaskProjectPicker('Garden');
+        await alice.saveWalkthroughScreenshot('quick_add_project_picker');
+        await alice.dismissOpenSelect();
+
+        await alice.createCapture({ content: 'Plant herbs' });
+        await alice.openRailInbox();
+        await alice.openPromoteSheet('Plant herbs');
+        await alice.openPromoteProjectPicker('Garden');
+        await alice.saveWalkthroughScreenshot('promote_project_picker');
+        await alice.dismissOpenSelect();
+        await alice.cancelPromoteSheet();
+
+        const older = await alice.createTask({ title: 'Older', projectId: garden.id });
+        await alice.createTask({ title: 'Newer', projectId: garden.id });
+        await alice.goToProject(garden.id);
+        await alice.shouldSeeOpenTasksOnProjectInOrder(['Newer', 'Older']);
+        await alice.saveWalkthroughScreenshot('project_page_open_tasks');
+
+        await alice.openTaskEditFromRow(older.id);
+        await alice.openEditTaskProjectPicker('No project');
+        await alice.saveWalkthroughScreenshot('remove_task_from_project');
+        await alice.dismissOpenSelect();
+        await alice.closeTaskEdit();
+
+        await alice.updateTask(older.id, { projectId: null });
+        await alice.goToProject(garden.id);
+        await alice.shouldNotSeeOpenTaskOnProject('Older');
+        await alice.shouldSeeOpenTaskOnProject('Newer');
+      });
+    }
+  });
+});

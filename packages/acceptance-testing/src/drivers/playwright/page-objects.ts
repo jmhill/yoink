@@ -516,13 +516,21 @@ export class InboxPage {
   }
 
   async selectPromoteProjectByName(name: string): Promise<void> {
+    await this.openPromoteProjectPicker(name);
+    await this.page
+      .getByRole('listbox')
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: name })
+      .click();
+  }
+
+  async openPromoteProjectPicker(visibleName: string): Promise<void> {
     await this.promoteProject().click();
     const option = this.page
       .getByRole('listbox')
       .locator('[data-slot="select-item"]')
-      .filter({ hasText: name });
+      .filter({ hasText: visibleName });
     await option.waitFor({ state: 'visible' });
-    await option.click();
   }
 
   async confirmPromote(): Promise<void> {
@@ -984,11 +992,29 @@ export class TasksPage {
     await this.chooseProjectOption('none');
   }
 
+  async openEditProjectPicker(visibleName: string): Promise<void> {
+    await this.page.locator('#edit-task-project').click();
+    const option = this.page
+      .getByRole('listbox')
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: visibleName });
+    await option.waitFor({ state: 'visible' });
+  }
+
   private async chooseProjectOption(value: string): Promise<void> {
     await this.page.locator('#edit-task-project').click();
     const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
     await option.waitFor({ state: 'visible' });
     await option.click();
+  }
+
+  async openCreateProjectPicker(visibleName: string): Promise<void> {
+    await this.page.locator('#create-task-project').click();
+    const option = this.page
+      .getByRole('listbox')
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: visibleName });
+    await option.waitFor({ state: 'visible' });
   }
 
   async selectCreateProject(projectId: string): Promise<void> {

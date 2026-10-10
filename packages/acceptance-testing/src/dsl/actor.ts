@@ -1129,6 +1129,33 @@ export type BrowserActorOperations = {
   useDesktopViewport(): Promise<void>;
 
   /**
+   * Open the Edit Task project picker and leave the listbox open so a
+   * walkthrough screenshot can capture the options (including this name).
+   */
+  openEditTaskProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Open the quick-add project picker and leave the listbox open.
+   */
+  openCreateTaskProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Open the Promote sheet project picker and leave the listbox open.
+   */
+  openPromoteProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Close an open kit Select listbox (Escape) without saving the form.
+   */
+  dismissOpenSelect(): Promise<void>;
+
+  /**
+   * Save a viewport screenshot of the current page for PR walkthrough
+   * review. `step` is snake_case (e.g. `edit_project_picker`).
+   */
+  saveWalkthroughScreenshot(step: string): Promise<void>;
+
+  /**
    * Open Inbox or Tasks from the mobile bottom tabs.
    */
   openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void>;

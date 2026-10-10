@@ -86,6 +86,38 @@ describe('applyTaskCreated / applyTaskMutation', () => {
     expect(view.lastChangedAt).toBe('2025-01-15T11:00:00.000Z');
   });
 
+  it('sets and clears projectId without touching listId', () => {
+    const onList: Task = { ...current, listId: 'list-groceries', openOrder: 1 };
+    const added = applyTaskMutation(
+      onList,
+      {
+        type: 'TaskUpdated',
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: 'project-garden',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      meta
+    );
+    expect(added.projectId).toBe('project-garden');
+    expect(added.listId).toBe('list-groceries');
+    expect(added.openOrder).toBe(1);
+
+    const cleared = applyTaskMutation(
+      added,
+      {
+        type: 'TaskUpdated',
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: null,
+        occurredAt: '2025-01-15T12:00:00.000Z',
+      },
+      meta
+    );
+    expect(cleared.projectId).toBeUndefined();
+    expect(cleared.listId).toBe('list-groceries');
+  });
+
   it('moves the task onto another list', () => {
     const onGroceries: Task = { ...current, listId: 'list-groceries' };
 

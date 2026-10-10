@@ -20,14 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@yoink/ui-base/components/select';
-import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth } from '@/api/client';
+import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth, tsrProjects } from '@/api/client';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
   isBlockingQueryFailure,
-  mapLiveOpenTaskLists,
-  restoreQuerySnapshots,
-  snapshotLiveOpenTaskLists,
 } from '@/lib/live-query';
 import { memberLabel } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -42,6 +39,7 @@ import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { PILE_SAFETY_CAP, TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
+import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import {
   LoadMoreButton,
   isTaskHistoryData,
@@ -229,6 +227,7 @@ function TasksPage() {
   const boardFilter: TaskFilter = filter ?? 'today';
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskListId, setNewTaskListId] = useState('');
+  const [newTaskProjectId, setNewTaskProjectId] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -287,6 +286,13 @@ function TasksPage() {
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const { data: projectsData } = tsrProjects.list.useQuery({
+    queryKey: ['projects'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
+  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const pickableProjects = projects.filter((project) => project.status !== 'done');
   const namedPileList =
     allPile?.kind === 'named'
       ? namedLists.find((list) => list.id === allPile.listId)
@@ -452,6 +458,7 @@ function TasksPage() {
         completedBy: null,
         ...(body.assigneeId ? { assigneeId: body.assigneeId } : {}),
         ...(body.listId ? { listId: body.listId } : {}),
+        ...(body.projectId ? { projectId: body.projectId } : {}),
       };
 
       if (previousTasks && typeof previousTasks === 'object' && 'status' in previousTasks) {
@@ -502,36 +509,42 @@ function TasksPage() {
     },
   });
 
-  // Complete mutation
-  const completeMutation = tsrTasks.complete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      return { previous };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to complete task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task completed');
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
+  const { completeMutation, deleteMutation, updateMutation } = useOpenTaskMutations(
+    tsrQueryClient,
+    {
+      onUpdated: () => setEditingTask(null),
+      mapUpdate: (tasks, queryKey, { id, body }) =>
+        tasks.flatMap((task) => {
+          if (task.id !== id) {
+            return [task];
+          }
+          const nextListId = body?.listId === null ? undefined : body?.listId ?? task.listId;
+          const displayedKey = displayedTasksQueryKey();
+          const keyMatches =
+            queryKey.length === displayedKey.length &&
+            queryKey.every((part, index) => part === displayedKey[index]);
+          const leftNamedPile =
+            Boolean(namedPileId) && keyMatches && nextListId !== namedPileId;
+          const leftUnlisted =
+            allPile?.kind === 'unlisted' && keyMatches && Boolean(nextListId);
+          if (leftNamedPile || leftUnlisted) {
+            return [];
+          }
+          return [
+            {
+              ...task,
+              title: body?.title ?? task.title,
+              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
+              assigneeId:
+                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
+              listId: body?.listId === null ? undefined : nextListId,
+              projectId:
+                body?.projectId === null ? undefined : body?.projectId ?? task.projectId,
+            },
+          ];
+        }),
+    }
+  );
 
   // Uncomplete mutation
   const uncompleteMutation = tsrTasks.uncomplete.useMutation({
@@ -586,108 +599,6 @@ function TasksPage() {
     },
   });
 
-  // Delete mutation
-  const deleteMutation = tsrTasks.delete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      const completedKey = ['tasks', 'completed'] as const;
-      const previousCompleted = tsrQueryClient.getQueryData(completedKey);
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      if (isTaskHistoryData(previousCompleted)) {
-        tsrQueryClient.setQueryData(
-          completedKey,
-          mapTaskHistoryPageItems(previousCompleted, (items) =>
-            items.filter((task) => task.id !== params.id)
-          )
-        );
-      }
-      return { previous, previousCompleted, completedKey };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (context?.completedKey) {
-        tsrQueryClient.setQueryData(context.completedKey, context.previousCompleted);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to delete task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task deleted');
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
-  // Update mutation
-  const updateMutation = tsrTasks.update.useMutation({
-    onMutate: async ({ params, body }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      const displayedKey = displayedTasksQueryKey();
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks, queryKey) =>
-        tasks.flatMap((task) => {
-          if (task.id !== params.id) {
-            return [task];
-          }
-          const nextListId = body?.listId === null ? undefined : body?.listId ?? task.listId;
-          const keyMatches =
-            queryKey.length === displayedKey.length &&
-            queryKey.every((part, index) => part === displayedKey[index]);
-          const leftNamedPile =
-            Boolean(namedPileId) && keyMatches && nextListId !== namedPileId;
-          const leftUnlisted =
-            allPile?.kind === 'unlisted' && keyMatches && Boolean(nextListId);
-          if (leftNamedPile || leftUnlisted) {
-            return [];
-          }
-          return [
-            {
-              ...task,
-              title: body?.title ?? task.title,
-              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
-              assigneeId:
-                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
-              listId: body?.listId === null ? undefined : nextListId,
-            },
-          ];
-        })
-      );
-      return { previous };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to update task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task updated');
-      setEditingTask(null);
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -704,6 +615,7 @@ function TasksPage() {
         dueDate,
         ...(assigneeId ? { assigneeId } : {}),
         ...(listId ? { listId } : {}),
+        ...(newTaskProjectId ? { projectId: newTaskProjectId } : {}),
       },
     });
   };
@@ -733,7 +645,7 @@ function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => {
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null; projectId?: string | null }) => {
     updateMutation.mutate({
       params: { id: taskId },
       body: updates,
@@ -935,7 +847,7 @@ function TasksPage() {
 
       {boardFilter !== 'completed' && (
         <form onSubmit={handleQuickAdd} className="mb-6">
-          <div className="flex gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <Input
               id="create-task-title"
               ref={inputRef}
@@ -943,32 +855,63 @@ function TasksPage() {
               onChange={(e) => setNewTaskTitle(e.target.value)}
               placeholder={`Add task${boardFilter === 'today' && !allPile ? ' for today' : ''}...`}
               disabled={createMutation.isPending}
-              className="flex-1"
+              className="min-w-0 flex-1"
             />
-            {showsCreateTaskListPicker(allPile) ? (
+            <div className="flex min-w-0 gap-2">
+              {showsCreateTaskListPicker(allPile) ? (
+                <Select
+                  value={newTaskListId || UNLISTED_VALUE}
+                  onValueChange={(value) =>
+                    setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+                  }
+                  disabled={createMutation.isPending}
+                >
+                  <SelectTrigger
+                    id="create-task-list"
+                    className="min-w-0 flex-1 sm:w-[12rem] sm:flex-none"
+                  >
+                    <SelectValue placeholder="No list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
+                    {namedLists.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
               <Select
-                value={newTaskListId || UNLISTED_VALUE}
+                value={newTaskProjectId || 'none'}
                 onValueChange={(value) =>
-                  setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+                  setNewTaskProjectId(value === 'none' ? '' : value)
                 }
                 disabled={createMutation.isPending}
               >
-                <SelectTrigger id="create-task-list" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
-                  <SelectValue placeholder="No list" />
+                <SelectTrigger
+                  id="create-task-project"
+                  className="min-w-0 flex-1 sm:w-[12rem] sm:flex-none"
+                >
+                  <SelectValue placeholder="No project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
-                  {namedLists.map((list) => (
-                    <SelectItem key={list.id} value={list.id}>
-                      {list.name}
+                  <SelectItem value="none">No project</SelectItem>
+                  {pickableProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : null}
-            <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
-              {createMutation.isPending ? '...' : 'Add'}
-            </Button>
+              <Button
+                type="submit"
+                className="shrink-0"
+                disabled={createMutation.isPending || !newTaskTitle.trim()}
+              >
+                {createMutation.isPending ? '...' : 'Add'}
+              </Button>
+            </div>
           </div>
         </form>
       )}
@@ -1126,6 +1069,11 @@ function TasksPage() {
         isLoadingCapture={isLoadingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
         lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
+        projects={projects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          status: project.status,
+        }))}
       />
     </div>
   );

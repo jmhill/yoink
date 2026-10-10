@@ -73,6 +73,9 @@ export const createCaptureProcessingService = (
         if (command.listId !== undefined) {
           createCommand.listId = command.listId;
         }
+        if (command.projectId !== undefined) {
+          createCommand.projectId = command.projectId;
+        }
 
         return createTask(createCommand).andThen((task) => {
           return captureStore

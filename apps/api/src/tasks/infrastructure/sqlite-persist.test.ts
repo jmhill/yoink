@@ -5,9 +5,10 @@ import { createSqliteTaskPersist } from './store-backed-persist.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTaskStore } from './sqlite-task-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
-import type {
-  TaskChangeLogIds,
-  TaskUncompletedChangeLogIds,
+import {
+  changeLogIdsForTaskUpdated,
+  type TaskChangeLogIds,
+  type TaskUncompletedChangeLogIds,
 } from '../domain/change-log-records.js';
 import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
 import type { Task } from '@yoink/api-contracts';
@@ -60,6 +61,22 @@ function persistEvent(
   }
   if (current === null) {
     throw new Error(`${event.type} requires current`);
+  }
+  if (event.type === 'TaskUpdated') {
+    return persist(
+      planTaskChange({
+        event,
+        current,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+        ids: changeLogIdsForTaskUpdated(event, current, (() => {
+          let n = 0;
+          return () => {
+            n += 1;
+            return n === 1 ? ids.recordId : `${ids.recordId}-m${n}`;
+          };
+        })()),
+      })
+    );
   }
   return persist(planTaskChange({ event, current, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const }, ids }));
 }

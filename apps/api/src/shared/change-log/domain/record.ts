@@ -5,6 +5,8 @@ import {
   namedListRenamedPayloadV1Schema,
   projectCreatedPayloadV1Schema,
   projectUpdatedPayloadV1Schema,
+  taskAddedToProjectPayloadV1Schema,
+  taskRemovedFromProjectPayloadV1Schema,
   openTasksRenumberedPayloadV1Schema,
   openTasksReorderedPayloadV1Schema,
   taskCompletedPayloadV1Schema,
@@ -136,6 +138,20 @@ export const projectUpdatedRecordSchema = z.object({
   payload: projectUpdatedPayloadV1Schema,
 });
 
+export const taskAddedToProjectRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('TaskAddedToProject'),
+  ...visibleV1,
+  payload: taskAddedToProjectPayloadV1Schema,
+});
+
+export const taskRemovedFromProjectRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('TaskRemovedFromProject'),
+  ...visibleV1,
+  payload: taskRemovedFromProjectPayloadV1Schema,
+});
+
 export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   taskCreatedRecordSchema,
   taskUpdatedRecordSchema,
@@ -151,6 +167,8 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   namedListDeletedRecordSchema,
   projectCreatedRecordSchema,
   projectUpdatedRecordSchema,
+  taskAddedToProjectRecordSchema,
+  taskRemovedFromProjectRecordSchema,
 ]);
 
 export type ChangeLogRecord = z.infer<typeof changeLogRecordSchema>;
@@ -168,6 +186,10 @@ export type NamedListRenamedRecord = z.infer<typeof namedListRenamedRecordSchema
 export type NamedListDeletedRecord = z.infer<typeof namedListDeletedRecordSchema>;
 export type ProjectCreatedRecord = z.infer<typeof projectCreatedRecordSchema>;
 export type ProjectUpdatedRecord = z.infer<typeof projectUpdatedRecordSchema>;
+export type TaskAddedToProjectRecord = z.infer<typeof taskAddedToProjectRecordSchema>;
+export type TaskRemovedFromProjectRecord = z.infer<
+  typeof taskRemovedFromProjectRecordSchema
+>;
 
 export type ChangeLogParseError = {
   readonly type: 'CHANGE_LOG_PARSE_ERROR';

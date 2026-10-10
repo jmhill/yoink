@@ -32,6 +32,17 @@ describe('listed cursor payload', () => {
     }
   });
 
+  it('parses a project-task cursor with createdAt then id', () => {
+    const parsed = parseListedCursor(
+      { v: 1, view: 'tasks.project', k: ['2025-01-15T10:00:00.000Z', 'id'] },
+      'tasks.project'
+    );
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      expect(parsed.value.keys).toEqual(['2025-01-15T10:00:00.000Z', 'id']);
+    }
+  });
+
   it('rejects a view mismatch', () => {
     const parsed = parseListedCursor(
       { v: 1, view: 'tasks.completed', k: ['2025-01-15T11:00:00.000Z', 'id'] },

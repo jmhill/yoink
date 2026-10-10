@@ -2,7 +2,14 @@ import { handleCreateProject } from './handle-create-project.js';
 import { handleUpdateProject } from './handle-update-project.js';
 import { handleListProjects } from './handle-list-projects.js';
 import { handleGetProject } from './handle-get-project.js';
-import type { ListProjects, LoadProject, PageProjects, PersistProjectChange } from './ports.js';
+import { handleListOpenTasksOnProject } from './handle-list-open-tasks.js';
+import type {
+  ListProjects,
+  LoadProject,
+  PageOpenTasksOnProject,
+  PageProjects,
+  PersistProjectChange,
+} from './ports.js';
 import {
   withCommandLog,
   type CommandLogger,
@@ -14,6 +21,7 @@ export type ProjectHandlerDeps = {
   list: ListProjects;
   pageProjects: PageProjects;
   load: LoadProject;
+  pageOpenTasksOnProject: PageOpenTasksOnProject;
   nextId: () => string;
   now: () => string;
   logger: CommandLogger;
@@ -25,6 +33,8 @@ const eventKind = (result: { event?: { type: ChangeLogKind } }): ChangeLogKind[]
 export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
   list: (query: Parameters<typeof handleListProjects>[0]) => handleListProjects(query, deps),
   get: (query: Parameters<typeof handleGetProject>[0]) => handleGetProject(query, deps),
+  listOpenTasks: (query: Parameters<typeof handleListOpenTasksOnProject>[0]) =>
+    handleListOpenTasksOnProject(query, deps),
   create: (command: Parameters<typeof handleCreateProject>[0]) =>
     withCommandLog(
       deps.logger,

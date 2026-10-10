@@ -57,6 +57,7 @@ export type Task = {
   createdAt: string;
   assigneeId?: string;
   listId?: string;
+  projectId?: string;
   openOrder?: number;
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
@@ -152,6 +153,7 @@ export type CreateTaskInput = {
   dueDate?: string; // YYYY-MM-DD format
   assigneeId?: string;
   listId?: string; // create already on a named list; omit for unlisted
+  projectId?: string; // create already in a project; omit for no project
 };
 
 export type UpdateTaskInput = {
@@ -159,12 +161,14 @@ export type UpdateTaskInput = {
   dueDate?: string | null; // null to clear, undefined to keep unchanged
   assigneeId?: string | null;
   listId?: string | null; // set, replace, or null to take off; omit to leave unchanged
+  projectId?: string | null; // set, replace, or null to clear; omit to leave unchanged
 };
 
 export type ProcessCaptureToTaskInput = {
   title?: string; // Defaults to capture content
   dueDate?: string; // YYYY-MM-DD format
   listId?: string; // optional single list bucket; omit for unlisted
+  projectId?: string; // optional project; omit for no project
 };
 
 // =============================================================================

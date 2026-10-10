@@ -134,6 +134,24 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         hidden: hiddenFor('ProjectUpdated'),
         payload: { name: 'Backyard', objective: 'Plant tomatoes' },
       };
+    case 'TaskAddedToProject':
+      return {
+        ...base,
+        subjectType: 'task',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('TaskAddedToProject'),
+        payload: { projectId: 'project-1' },
+      };
+    case 'TaskRemovedFromProject':
+      return {
+        ...base,
+        subjectType: 'task',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('TaskRemovedFromProject'),
+        payload: { projectId: 'project-1' },
+      };
   }
 };
 

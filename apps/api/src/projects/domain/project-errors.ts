@@ -30,6 +30,10 @@ export type ProjectCreateRequiresPersonError = {
 
 export type ListProjectsError = StorageError | InvalidCursorError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
+export type ListOpenTasksOnProjectError =
+  | StorageError
+  | ProjectNotFoundError
+  | InvalidCursorError;
 export type CreateProjectError =
   | StorageError
   | InvalidProjectNameError

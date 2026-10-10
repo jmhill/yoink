@@ -6,8 +6,8 @@ export const insertTaskQuery = (task: Task): SqlQuery => ({
     INSERT INTO tasks (
       id, organization_id, created_by_id, title, capture_id,
       due_date, completed_at, pinned_at, created_at, assignee_id, list_id,
-      open_order, last_changed_at, last_changed_by, completed_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      project_id, open_order, last_changed_at, last_changed_by, completed_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   args: [
     task.id,
@@ -21,6 +21,7 @@ export const insertTaskQuery = (task: Task): SqlQuery => ({
     task.createdAt,
     task.assigneeId ?? null,
     task.listId ?? null,
+    task.projectId ?? null,
     task.openOrder ?? null,
     task.lastChangedAt,
     task.lastChangedBy,
@@ -37,6 +38,7 @@ export const updateTaskQuery = (task: Task): SqlQuery => ({
       pinned_at = ?,
       assignee_id = ?,
       list_id = ?,
+      project_id = ?,
       open_order = ?,
       last_changed_at = ?,
       last_changed_by = ?,
@@ -52,6 +54,7 @@ export const updateTaskQuery = (task: Task): SqlQuery => ({
     task.pinnedAt ?? null,
     task.assigneeId ?? null,
     task.listId ?? null,
+    task.projectId ?? null,
     task.openOrder ?? null,
     task.lastChangedAt,
     task.lastChangedBy,

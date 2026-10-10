@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskStore, FindByOrganizationOptions } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
@@ -9,51 +9,23 @@ import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import {
   completedTaskDirection,
   openPileTaskDirection,
+  projectTaskDirection,
   taskBoardDirection,
 } from '../../listing/domain/list-keys.js';
+import { parseTaskRow } from './parse-task-row.js';
 
-type TaskRow = {
-  id: string;
-  organization_id: string;
-  created_by_id: string;
-  title: string;
-  capture_id: string | null;
-  due_date: string | null;
-  completed_at: string | null;
-  pinned_at: string | null;
-  created_at: string;
-  assignee_id: string | null;
-  list_id: string | null;
-  open_order: number | null;
-  last_changed_at: string | null;
-  last_changed_by: string | null;
-  completed_by: string | null;
+const parseRows = (rows: Record<string, unknown>[]): Result<Task[], StorageError> =>
+  Result.combine(rows.map(parseTaskRow));
+
+const parsePage = (
+  page: KeysetRows<Record<string, unknown>>
+): ResultAsync<KeysetRows<Task>, StorageError> => {
+  const parsed = parseRows(page.rows);
+  return parsed.isOk()
+    ? okAsync({ rows: parsed.value, total: page.total })
+    : errAsync(parsed.error);
 };
 
-const rowToTask = (row: TaskRow): Task => ({
-  id: row.id,
-  organizationId: row.organization_id,
-  createdById: row.created_by_id,
-  title: row.title,
-  captureId: row.capture_id ?? undefined,
-  dueDate: row.due_date ?? undefined,
-  completedAt: row.completed_at ?? undefined,
-  pinnedAt: row.pinned_at ?? undefined,
-  createdAt: row.created_at,
-  ...(row.assignee_id ? { assigneeId: row.assignee_id } : {}),
-  ...(row.list_id ? { listId: row.list_id } : {}),
-  ...(row.open_order !== null && row.open_order !== undefined
-    ? { openOrder: Number(row.open_order) }
-    : {}),
-  lastChangedAt: row.last_changed_at ?? null,
-  lastChangedBy: row.last_changed_by ?? null,
-  completedBy: row.completed_by ?? null,
-});
-
-/**
- * Validates that the required database schema exists.
- * Throws an error if migrations have not been run.
- */
 const validateSchema = async (db: Database): Promise<void> => {
   const result = await db.execute({
     sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'`,
@@ -79,9 +51,13 @@ export const createSqliteTaskStore = async (
           args: [id],
         }),
         (error) => storageError('Failed to find task', error)
-      ).map((result) => {
-        const row = result.rows[0] as TaskRow | undefined;
-        return row ? rowToTask(row) : null;
+      ).andThen((result) => {
+        const row = result.rows[0];
+        if (!row) {
+          return okAsync(null);
+        }
+        const parsed = parseTaskRow(row);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
       });
     },
 
@@ -137,9 +113,9 @@ export const createSqliteTaskStore = async (
         direction,
         fetchLimit,
         seek,
-        mapRow: (row) => rowToTask(row as TaskRow),
+        mapRow: (row) => row,
         errorMessage: 'Failed to find tasks',
-      });
+      }).andThen(parsePage);
     },
 
     findByCaptureId: (captureId: string): ResultAsync<Task | null, StorageError> => {
@@ -152,9 +128,13 @@ export const createSqliteTaskStore = async (
           args: [captureId],
         }),
         (error) => storageError('Failed to find task by capture', error)
-      ).map((result) => {
-        const row = result.rows[0] as TaskRow | undefined;
-        return row ? rowToTask(row) : null;
+      ).andThen((result) => {
+        const row = result.rows[0];
+        if (!row) {
+          return okAsync(null);
+        }
+        const parsed = parseTaskRow(row);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
       });
     },
 
@@ -200,9 +180,35 @@ export const createSqliteTaskStore = async (
         direction: openPileTaskDirection,
         fetchLimit: options.fetchLimit,
         seek: options.seek,
-        mapRow: (row) => rowToTask(row as TaskRow),
+        mapRow: (row) => row,
         errorMessage: 'Failed to list open tasks in pile',
-      });
+      }).andThen(parsePage);
+    },
+
+    pageOpenInProject: (options: {
+      organizationId: string;
+      projectId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      return pageSqlite({
+        db,
+        from: 'tasks',
+        whereSql: `
+          organization_id = ?
+            AND project_id = ?
+            AND completed_at IS NULL
+            AND deleted_at IS NULL
+        `,
+        whereArgs: [options.organizationId, options.projectId],
+        orderSql: `ORDER BY created_at DESC, id DESC`,
+        keyColumns: ['created_at', 'id'],
+        direction: projectTaskDirection,
+        fetchLimit: options.fetchLimit,
+        seek: options.seek,
+        mapRow: (row) => row,
+        errorMessage: 'Failed to list open tasks in project',
+      }).andThen(parsePage);
     },
 
     findOpenInPile: (options: {
@@ -228,7 +234,10 @@ export const createSqliteTaskStore = async (
           args,
         }),
         (error) => storageError('Failed to list open tasks in pile', error)
-      ).map((result) => (result.rows as TaskRow[]).map(rowToTask));
+      ).andThen((result) => {
+        const parsed = parseRows(result.rows);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
     },
 
     nextOpenOrderInPile: (options: {
@@ -256,6 +265,5 @@ export const createSqliteTaskStore = async (
         (error) => storageError('Failed to load next open order', error)
       ).map((result) => Number(result.rows[0]?.next_order ?? 0));
     },
-
   };
 };

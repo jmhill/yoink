@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { Pencil, MessageSquare, X } from 'lucide-react';
-import type { Task, Capture } from '@yoink/api-contracts';
+import type { Capture, ProjectStatus, Task } from '@yoink/api-contracts';
 
 /** Radix Select forbids an empty item value; map to/from the unassigned state. */
 const UNASSIGNED_VALUE = 'unassigned';
@@ -45,12 +45,13 @@ type TaskEditModalProps = {
   onOpenChange: (open: boolean) => void;
   task: Task | null;
   sourceCapture: Capture | null;
-  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => void;
+  onSave: (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null; projectId?: string | null }) => void;
   onDelete: (taskId: string) => void;
   isLoading?: boolean;
   isLoadingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
   lists?: Array<{ id: string; name: string }>;
+  projects?: Array<{ id: string; name: string; status: ProjectStatus }>;
 };
 
 export function TaskEditModal({
@@ -64,11 +65,13 @@ export function TaskEditModal({
   isLoadingCapture = false,
   members = [],
   lists = [],
+  projects = [],
 }: TaskEditModalProps) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [listId, setListId] = useState('');
+  const [projectId, setProjectId] = useState('');
 
   const taskId = task?.id;
   // Reset only when a different task is opened. A live refresh must not
@@ -81,6 +84,7 @@ export function TaskEditModal({
     setDueDate(task.dueDate ?? '');
     setAssigneeId(task.assigneeId ?? '');
     setListId(task.listId ?? '');
+    setProjectId(task.projectId ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- task.id gates the reset
   }, [taskId]);
 
@@ -88,7 +92,7 @@ export function TaskEditModal({
     e.preventDefault();
     if (!task || !title.trim()) return;
 
-    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null } = {};
+    const updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null; projectId?: string | null } = {};
 
     // Only include changed fields
     if (title.trim() !== task.title) {
@@ -111,6 +115,12 @@ export function TaskEditModal({
     const oldListId = task.listId ?? null;
     if (newListId !== oldListId) {
       updates.listId = newListId;
+    }
+
+    const newProjectId = projectId || null;
+    const oldProjectId = task.projectId ?? null;
+    if (newProjectId !== oldProjectId) {
+      updates.projectId = newProjectId;
     }
 
     // Only save if something changed
@@ -219,6 +229,34 @@ export function TaskEditModal({
                     {list.name}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-project">Project</Label>
+            <Select
+              value={projectId || 'none'}
+              onValueChange={(value) =>
+                setProjectId(value === 'none' ? '' : value)
+              }
+              disabled={isLoading || Boolean(task?.completedAt)}
+            >
+              <SelectTrigger id="edit-task-project" className="w-full">
+                <SelectValue placeholder="No project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No project</SelectItem>
+                {projects
+                  .filter(
+                    (project) =>
+                      project.status !== 'done' || project.id === task?.projectId
+                  )
+                  .map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

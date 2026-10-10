@@ -8,3 +8,10 @@ export type GetProjectQuery = {
   id: string;
   organizationId: string;
 };
+
+export type ListOpenTasksOnProjectQuery = {
+  projectId: string;
+  organizationId: string;
+  limit?: number;
+  cursor?: string;
+};

@@ -348,6 +348,7 @@ export const registerCaptureRoutes = async (
           title: body.data.title,
           dueDate: body.data.dueDate,
           listId: body.data.listId,
+          projectId: body.data.projectId,
           actor: request.authContext.actor,
         });
 
@@ -372,6 +373,16 @@ export const registerCaptureRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'List is not in this organization' },
+                };
+              case 'PROJECT_NOT_IN_ORGANIZATION':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Project not found' },
+                };
+              case 'PROJECT_DONE':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Cannot add a task to a done project' },
                 };
               case 'ASSIGNEE_NOT_IN_ORGANIZATION':
                 return {

@@ -12,6 +12,8 @@ import {
   completedTaskKeys,
   openPileTaskDirection,
   openPileTaskKeys,
+  projectTaskDirection,
+  projectTaskKeys,
   taskBoardDirection,
   taskBoardKeys,
 } from '../../listing/domain/list-keys.js';
@@ -193,6 +195,35 @@ export const createFakeTaskStore = (
           direction: openPileTaskDirection,
           fetchLimit: pile.fetchLimit,
           seek: pile.seek,
+        })
+      );
+    },
+
+    pageOpenInProject: (project: {
+      organizationId: string;
+      projectId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const open = tasks
+        .filter((task) => task.organizationId === project.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .filter((task) => !task.completedAt)
+        .filter((task) => task.projectId === project.projectId)
+        .sort((a, b) => {
+          const cmp = compareKeyset(projectTaskKeys(a), projectTaskKeys(b));
+          return -cmp;
+        });
+      return okAsync(
+        pageOrdered({
+          ordered: open,
+          keysOf: projectTaskKeys,
+          direction: projectTaskDirection,
+          fetchLimit: project.fetchLimit,
+          seek: project.seek,
         })
       );
     },

@@ -366,6 +366,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     list: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
     load: (id) => projectStore.findById(id),
+    pageOpenTasksOnProject: (options) => taskStore.pageOpenInProject(options),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
     logger: commandLogger,
@@ -388,6 +389,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     }),
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
+    loadProject: (id) => projectStore.findById(id),
     loadNextOpenOrder: (organizationId, listId) =>
       taskStore.nextOpenOrderInPile({ organizationId, listId }),
     loadOpenInPile: (organizationId, listId) =>

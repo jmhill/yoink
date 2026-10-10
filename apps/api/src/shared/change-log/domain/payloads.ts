@@ -11,6 +11,7 @@ export const taskCreatedPayloadV1Schema = z.object({
   captureId: z.string().optional(),
   assigneeId: z.string().optional(),
   listId: z.string().optional(),
+  projectId: z.string().optional(),
   openOrder: z.number().int(),
   createdById: z.string(),
 });
@@ -20,6 +21,7 @@ export const taskUpdatedPayloadV1Schema = z.object({
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
   listId: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(),
   openOrder: z.number().int().optional(),
 });
 
@@ -74,6 +76,14 @@ export const projectUpdatedPayloadV1Schema = z.object({
   objective: z.string().nullable().optional(),
 });
 
+export const taskAddedToProjectPayloadV1Schema = z.object({
+  projectId: z.string(),
+});
+
+export const taskRemovedFromProjectPayloadV1Schema = z.object({
+  projectId: z.string(),
+});
+
 export type TaskCreatedPayloadV1 = z.infer<typeof taskCreatedPayloadV1Schema>;
 export type TaskUpdatedPayloadV1 = z.infer<typeof taskUpdatedPayloadV1Schema>;
 export type TaskCompletedPayloadV1 = z.infer<typeof taskCompletedPayloadV1Schema>;
@@ -92,3 +102,7 @@ export type NamedListRenamedPayloadV1 = z.infer<typeof namedListRenamedPayloadV1
 export type NamedListDeletedPayloadV1 = z.infer<typeof namedListDeletedPayloadV1Schema>;
 export type ProjectCreatedPayloadV1 = z.infer<typeof projectCreatedPayloadV1Schema>;
 export type ProjectUpdatedPayloadV1 = z.infer<typeof projectUpdatedPayloadV1Schema>;
+export type TaskAddedToProjectPayloadV1 = z.infer<typeof taskAddedToProjectPayloadV1Schema>;
+export type TaskRemovedFromProjectPayloadV1 = z.infer<
+  typeof taskRemovedFromProjectPayloadV1Schema
+>;

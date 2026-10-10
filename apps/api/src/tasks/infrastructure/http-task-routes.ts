@@ -30,6 +30,7 @@ export const registerTaskRoutes = async (
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
           listId: body.listId,
+          projectId: body.projectId,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
           actor: request.authContext.actor,
@@ -51,6 +52,16 @@ export const registerTaskRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'List is not in this organization' },
+                };
+              case 'PROJECT_NOT_IN_ORGANIZATION':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Project not found' },
+                };
+              case 'PROJECT_DONE':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Cannot add a task to a done project' },
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -126,6 +137,7 @@ export const registerTaskRoutes = async (
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
           listId: body.listId,
+          projectId: body.projectId,
           actor: request.authContext.actor,
         });
 
@@ -151,10 +163,25 @@ export const registerTaskRoutes = async (
                   status: 400 as const,
                   body: { message: 'List is not in this organization' },
                 };
+              case 'PROJECT_NOT_IN_ORGANIZATION':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Project not found' },
+                };
+              case 'PROJECT_DONE':
+                return {
+                  status: 400 as const,
+                  body: { message: 'Cannot add a task to a done project' },
+                };
               case 'TASK_NOT_OPEN':
                 return {
                   status: 400 as const,
-                  body: { message: 'Only open tasks can be added to or taken off a list' },
+                  body: {
+                    message:
+                      error.field === 'project'
+                        ? 'Only open tasks can be added to or taken off a project'
+                        : 'Only open tasks can be added to or taken off a list',
+                  },
                 };
               case 'STORAGE_ERROR':
                 return {

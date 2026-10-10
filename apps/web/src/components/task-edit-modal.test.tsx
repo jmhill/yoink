@@ -156,4 +156,23 @@ describe('TaskEditModal', () => {
     );
     expect(screen.queryByTestId('task-edit-completed')).toBeNull();
   });
+
+  it('offers a project picker and sends projectId only when it changed', () => {
+    const onSave = vi.fn();
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={milk}
+        sourceCapture={null}
+        onSave={onSave}
+        onDelete={vi.fn()}
+        projects={[{ id: '00000000-0000-4000-8000-000000000021', name: 'Garden', status: 'active' }]}
+      />
+    );
+
+    expect(screen.getByLabelText('Project')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });

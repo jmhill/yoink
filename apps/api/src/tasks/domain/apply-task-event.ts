@@ -39,6 +39,9 @@ export const applyTaskCreated = (event: TaskCreated, meta: ApplyTaskMeta): Task 
   if (event.listId !== undefined) {
     created.listId = event.listId;
   }
+  if (event.projectId !== undefined) {
+    created.projectId = event.projectId;
+  }
 
   return created;
 };
@@ -76,6 +79,14 @@ export const applyTaskMutation = (
           delete updated.listId;
         } else {
           updated.listId = event.listId;
+        }
+      }
+
+      if (event.projectId !== undefined) {
+        if (event.projectId === null) {
+          delete updated.projectId;
+        } else {
+          updated.projectId = event.projectId;
         }
       }
 

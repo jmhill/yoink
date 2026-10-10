@@ -97,6 +97,14 @@ describe('captureContract', () => {
     }
   });
 
+  it('accepts optional projectId on process', () => {
+    const withProject = captureContract.process.body.safeParse({
+      type: 'task',
+      data: { title: 'Buy soil', projectId: '550e8400-e29b-41d4-a716-446655440006' },
+    });
+    expect(withProject.success).toBe(true);
+  });
+
   it('rejects null listId on process — omit listId for unlisted', () => {
     const result = captureContract.process.body.safeParse({
       type: 'task',

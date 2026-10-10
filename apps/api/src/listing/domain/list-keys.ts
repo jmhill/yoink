@@ -29,6 +29,14 @@ export const openPileTaskCursor: ListedCursor<Task, 'tasks.pile'> = {
   }),
 };
 
+export const projectTaskCursor: ListedCursor<Task, 'tasks.project'> = {
+  view: 'tasks.project',
+  of: (task) => ({
+    view: 'tasks.project',
+    keys: [task.createdAt, task.id],
+  }),
+};
+
 export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
   view: 'lists',
   of: (list) => ({
@@ -64,6 +72,7 @@ export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: Task) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
+export const projectTaskKeys = (task: Task) => projectTaskCursor.of(task).keys;
 export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
 export const projectKeys = (project: Project) => projectCursor.of(project).keys;
 export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
@@ -72,6 +81,7 @@ export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
 export const openPileTaskDirection: KeysetDirection = 'asc';
+export const projectTaskDirection: KeysetDirection = 'desc';
 export const namedListDirection: KeysetDirection = 'asc';
 export const projectDirection: KeysetDirection = 'asc';
 export const captureFeedDirection: KeysetDirection = 'desc';

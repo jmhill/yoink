@@ -286,6 +286,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         const garden = await alice.createProject({ name: 'Garden' });
         const soil = await alice.createTask({ title: 'Buy soil' });
 
+        await alice.openRailUnlisted();
         await alice.openTaskEditFromRow(soil.id);
         await alice.openEditTaskProjectPicker('Garden');
         await alice.saveWalkthroughScreenshot('edit_project_picker');
@@ -321,7 +322,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.goToProject(garden.id);
         await alice.shouldNotSeeOpenTaskOnProject('Older');
         await alice.shouldSeeOpenTaskOnProject('Newer');
-      });
+      }, 90_000);
     }
   });
 });

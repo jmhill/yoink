@@ -17,6 +17,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command,
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -35,6 +36,7 @@ describe('decideCreateTask', () => {
         captureId: undefined,
         assigneeId: undefined,
         listId: undefined,
+        projectId: undefined,
         openOrder: 0,
         createdAt: '2025-01-15T10:00:00.000Z',
         occurredAt: '2025-01-15T10:00:00.000Z',
@@ -46,6 +48,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, listId: groceries.id },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 2,
       id: 'task-id-1',
@@ -64,6 +67,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command,
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 4,
       id: 'task-id-1',
@@ -81,6 +85,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, listId: groceries.id },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 3,
       id: 'task-id-1',
@@ -97,6 +102,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, listId: groceries.id },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -113,6 +119,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, listId: 'list-missing' },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -129,6 +136,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, listId: otherOrgList.id },
       list: otherOrgList,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -153,6 +161,7 @@ describe('decideCreateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: true,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -172,6 +181,7 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, assigneeId: 'outsider' },
       list: null,
+      project: null,
       assigneeInOrganization: false,
       nextOpenOrder: 0,
       id: 'task-id-1',
@@ -181,6 +191,64 @@ describe('decideCreateTask', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('ASSIGNEE_NOT_IN_ORGANIZATION');
+    }
+  });
+
+  const garden = {
+    id: 'project-garden',
+    organizationId: 'org-123',
+    status: 'active' as const,
+  };
+
+  it('creates a task already in a project', () => {
+    const result = decideCreateTask({
+      command: { ...command, projectId: garden.id },
+      list: null,
+      project: garden,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      id: 'task-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.projectId).toBe('project-garden');
+      expect(result.value.listId).toBeUndefined();
+    }
+  });
+
+  it('rejects a project from another organization', () => {
+    const result = decideCreateTask({
+      command: { ...command, projectId: 'project-other' },
+      list: null,
+      project: { id: 'project-other', organizationId: 'org-other', status: 'active' },
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      id: 'task-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_NOT_IN_ORGANIZATION');
+    }
+  });
+
+  it('rejects creating a task in a done project', () => {
+    const result = decideCreateTask({
+      command: { ...command, projectId: garden.id },
+      list: null,
+      project: { ...garden, status: 'done' },
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      id: 'task-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_DONE');
     }
   });
 });

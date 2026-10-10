@@ -40,6 +40,7 @@ const handlersOf = (logger: ReturnType<typeof collectLogger>['logger']) =>
     persist,
     load: () => okAsync(current),
     loadList: () => okAsync(null),
+    loadProject: () => okAsync(null),
     loadNextOpenOrder: () => okAsync(0),
     loadOpenInPile: () => okAsync([]),
     list: () => okAsync({ rows: [], total: 0 }),

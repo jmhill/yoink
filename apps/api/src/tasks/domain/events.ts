@@ -8,6 +8,7 @@ export type TaskCreated = {
   captureId?: string;
   assigneeId?: string;
   listId?: string;
+  projectId?: string;
   openOrder: number;
   createdAt: string;
   occurredAt: string;
@@ -21,6 +22,7 @@ export type TaskUpdated = {
   dueDate?: string | null;
   assigneeId?: string | null;
   listId?: string | null; // null clears to unlisted; omit leaves unchanged
+  projectId?: string | null; // null clears the project; omit leaves unchanged
   openOrder?: number; // set when joining a pile (list or unlisted)
   occurredAt: string;
 };

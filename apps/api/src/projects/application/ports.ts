@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+import type { Project, Task } from '@yoink/api-contracts';
 import type { DuplicateProjectNameError, StorageError } from '../domain/project-errors.js';
 import type { ProjectChangePlan } from '../domain/plan-project-change.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
@@ -18,3 +18,10 @@ export type LoadProject = (id: string) => ResultAsync<Project | null, StorageErr
 export type PersistProjectChange = (
   plan: ProjectChangePlan
 ) => ResultAsync<void, StorageError | DuplicateProjectNameError>;
+
+export type PageOpenTasksOnProject = (options: {
+  organizationId: string;
+  projectId: string;
+  fetchLimit: number;
+  seek?: KeysetCursor;
+}) => ResultAsync<KeysetRows<Task>, StorageError>;

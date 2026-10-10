@@ -16,6 +16,8 @@ export const CHANGE_LOG_KINDS = [
   'NamedListDeleted',
   'ProjectCreated',
   'ProjectUpdated',
+  'TaskAddedToProject',
+  'TaskRemovedFromProject',
 ] as const;
 
 export type ChangeLogKind = (typeof CHANGE_LOG_KINDS)[number];

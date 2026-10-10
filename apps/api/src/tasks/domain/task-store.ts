@@ -31,6 +31,12 @@ export type TaskStore = {
     fetchLimit: number;
     seek?: KeysetCursor;
   }): ResultAsync<KeysetRows<Task>, StorageError>;
+  pageOpenInProject(options: {
+    organizationId: string;
+    projectId: string;
+    fetchLimit: number;
+    seek?: KeysetCursor;
+  }): ResultAsync<KeysetRows<Task>, StorageError>;
   nextOpenOrderInPile(options: {
     organizationId: string;
     listId: string | null;

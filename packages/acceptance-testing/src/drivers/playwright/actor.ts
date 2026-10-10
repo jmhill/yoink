@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { type Page, expect } from '@playwright/test';
 import type {
   Actor,
@@ -48,6 +49,10 @@ import {
   SnoozedPage,
   TasksPage,
 } from './page-objects.js';
+import {
+  saveWalkthroughPng,
+  type WalkthroughViewport,
+} from './walkthrough-screenshots.js';
 
 /**
  * Playwright evaluate callbacks run in the page, but this package's
@@ -243,6 +248,7 @@ export const createPlaywrightActor = (
   const projectPage = new ProjectPage(page);
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
+  let walkthroughViewport: WalkthroughViewport = 'desktop';
 
   const expectActiveFilterTabIfVisible = async (
     filter: 'today' | 'upcoming' | 'mine' | 'completed'
@@ -635,6 +641,21 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to update project: ${response.status()}`);
       }
       return (await response.json()) as Project;
+    },
+
+    async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
+      const response = await page.request.get(`/api/projects/${projectId}/tasks`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list open tasks on project: ${response.status()}`);
+      }
+      const body = (await response.json()) as { tasks: Task[] };
+      return body.tasks;
     },
 
     async createNamedList(name: string): Promise<NamedList> {
@@ -1343,6 +1364,40 @@ export const createPlaywrightActor = (
       await projectPage.editObjective(objective);
     },
 
+    async goToProject(projectId: string): Promise<void> {
+      await page.goto(`/projects/${projectId}`);
+      await projectPage.waitForVisible();
+    },
+
+    async shouldSeeOpenTaskOnProject(title: string): Promise<void> {
+      await expect(projectPage.openTaskByTitle(title)).toBeVisible();
+    },
+
+    async shouldNotSeeOpenTaskOnProject(title: string): Promise<void> {
+      await expect(projectPage.openTaskByTitle(title)).toHaveCount(0);
+    },
+
+    async shouldSeeOpenTasksOnProjectInOrder(titles: string[]): Promise<void> {
+      await expect.poll(async () => projectPage.getOpenTaskTitles()).toEqual(titles);
+    },
+
+    async confirmPromoteOnProject(projectName: string): Promise<Task> {
+      await inboxPage.selectPromoteProjectByName(projectName);
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/captures/') &&
+          response.url().includes('/process') &&
+          response.request().method() === 'POST'
+      );
+      await inboxPage.confirmPromote();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to promote capture: ${response.status()}`);
+      }
+      await expect(inboxPage.promoteSheet()).toBeHidden();
+      return response.json();
+    },
+
     async shouldSeeNamedListOverflowOnRail(name: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.overflowByLabel(name)).toBeVisible();
@@ -1869,13 +1924,46 @@ export const createPlaywrightActor = (
     },
 
     async useMobileViewport(): Promise<void> {
+      walkthroughViewport = 'phone';
       await page.setViewportSize(MOBILE_VIEWPORT);
       await settleMobileViewportChrome();
     },
 
     async useDesktopViewport(): Promise<void> {
+      walkthroughViewport = 'desktop';
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await settleDesktopViewportChrome();
+    },
+
+    async openEditTaskProjectPicker(visibleProjectName: string): Promise<void> {
+      await tasksPage.openEditProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async openCreateTaskProjectPicker(visibleProjectName: string): Promise<void> {
+      await tasksPage.openCreateProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async openPromoteProjectPicker(visibleProjectName: string): Promise<void> {
+      await inboxPage.openPromoteProjectPicker(visibleProjectName);
+      await expect(page.getByRole('listbox')).toBeVisible();
+    },
+
+    async dismissOpenSelect(): Promise<void> {
+      const listbox = page.getByRole('listbox');
+      await expect(listbox).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(listbox).toBeHidden();
+    },
+
+    async saveWalkthroughScreenshot(step: string): Promise<void> {
+      await saveWalkthroughPng({
+        page,
+        fromDir: fileURLToPath(new URL('.', import.meta.url)),
+        viewport: walkthroughViewport,
+        step,
+      });
     },
 
     async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {
@@ -2413,10 +2501,21 @@ export const createPlaywrightActor = (
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
-      // Quick-add can pick a list, but has no assignee or due-date controls.
+      // Quick-add can pick a list and project, but has no assignee or due-date controls.
       // Use the session API when those fields are present so setup is exact.
-      if (input.listId !== undefined && input.assigneeId === undefined && input.dueDate === undefined) {
-        await tasksPage.gotoNamedPile(input.listId);
+      const usesQuickAdd =
+        input.assigneeId === undefined &&
+        input.dueDate === undefined &&
+        (input.listId !== undefined || input.projectId !== undefined);
+      if (usesQuickAdd) {
+        if (input.listId !== undefined) {
+          await tasksPage.gotoNamedPile(input.listId);
+        } else {
+          await tasksPage.goto('today');
+        }
+        if (input.projectId !== undefined) {
+          await tasksPage.selectCreateProject(input.projectId);
+        }
 
         const responsePromise = page.waitForResponse(
           (response) =>
@@ -2434,6 +2533,9 @@ export const createPlaywrightActor = (
           const body = await response.json();
           throw new ValidationError(body.message ?? 'Invalid request');
         }
+        if (response.status() === 404) {
+          throw new NotFoundError('Project', input.projectId ?? 'unknown');
+        }
         if (response.status() !== 201) {
           throw new Error(`Failed to create task: ${response.status()}`);
         }
@@ -2450,6 +2552,9 @@ export const createPlaywrightActor = (
         const body = await response.json();
         throw new ValidationError(body.message ?? 'Invalid request');
       }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', input.projectId ?? 'unknown');
+      }
       if (response.status() !== 201) {
         throw new Error(`Failed to create task: ${response.status()}`);
       }
@@ -2460,11 +2565,43 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('listTasks', 'playwright');
     },
 
-    async getTask(_id: string): Promise<Task> {
-      throw new UnsupportedOperationError('getTask', 'playwright');
+    async getTask(id: string): Promise<Task> {
+      const response = await page.request.get(`/api/tasks/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to read task: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+      const existing = await page.request.get(`/api/tasks/${id}`);
+      if (!existing.ok()) {
+        throw new Error(`Failed to read task before edit: ${existing.status()}`);
+      }
+      const current = (await existing.json()) as Task;
+      // Edit pickers are disabled on finished tasks; the API still refuses
+      // membership changes so the driver can assert TASK_NOT_OPEN.
+      if (
+        current.completedAt &&
+        (input.projectId !== undefined || input.listId !== undefined)
+      ) {
+        const response = await page.request.patch(`/api/tasks/${id}`, { data: input });
+        if (response.status() === 400) {
+          const body = (await response.json()) as { message?: string };
+          throw new ValidationError(body.message ?? 'Invalid request');
+        }
+        if (response.status() !== 200) {
+          throw new Error(`Failed to update task: ${response.status()}`);
+        }
+        return response.json();
+      }
+
       await openTaskOnItsPile(id);
       await tasksPage.openEdit(id);
 
@@ -2490,6 +2627,13 @@ export const createPlaywrightActor = (
           await tasksPage.clearList();
         } else {
           await tasksPage.selectList(input.listId);
+        }
+      }
+      if (input.projectId !== undefined) {
+        if (input.projectId === null) {
+          await tasksPage.clearProject();
+        } else {
+          await tasksPage.selectProject(input.projectId);
         }
       }
 
@@ -3219,6 +3363,11 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async listOpenTasksOnList(_listId: string): Promise<Task[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listOpenTasksOnProject(_projectId: string): Promise<Task[]> {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

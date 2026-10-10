@@ -60,6 +60,7 @@ export type CoreActor = {
     id: string,
     input: { name?: string; objective?: string | null }
   ): Promise<Project>;
+  listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
@@ -732,6 +733,31 @@ export type BrowserActorOperations = {
   editProjectObjective(objective: string): Promise<void>;
 
   /**
+   * Open the project page for this id.
+   */
+  goToProject(projectId: string): Promise<void>;
+
+  /**
+   * Assert the open project page lists this open task title.
+   */
+  shouldSeeOpenTaskOnProject(title: string): Promise<void>;
+
+  /**
+   * Assert the open project page does not list this open task title.
+   */
+  shouldNotSeeOpenTaskOnProject(title: string): Promise<void>;
+
+  /**
+   * Assert the open project page lists these open task titles newest first.
+   */
+  shouldSeeOpenTasksOnProjectInOrder(titles: string[]): Promise<void>;
+
+  /**
+   * Promote the open capture onto this project (sheet project picker).
+   */
+  confirmPromoteOnProject(projectName: string): Promise<Task>;
+
+  /**
    * Assert this named-list rail row has a kit overflow whose menu includes
    * Rename next to Delete. Unlisted and smart views do not have this overflow.
    */
@@ -1103,6 +1129,33 @@ export type BrowserActorOperations = {
   useDesktopViewport(): Promise<void>;
 
   /**
+   * Open the Edit Task project picker and leave the listbox open so a
+   * walkthrough screenshot can capture the options (including this name).
+   */
+  openEditTaskProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Open the quick-add project picker and leave the listbox open.
+   */
+  openCreateTaskProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Open the Promote sheet project picker and leave the listbox open.
+   */
+  openPromoteProjectPicker(visibleProjectName: string): Promise<void>;
+
+  /**
+   * Close an open kit Select listbox (Escape) without saving the form.
+   */
+  dismissOpenSelect(): Promise<void>;
+
+  /**
+   * Save a viewport screenshot of the current page for PR walkthrough
+   * review. `step` is snake_case (e.g. `edit_project_picker`).
+   */
+  saveWalkthroughScreenshot(step: string): Promise<void>;
+
+  /**
    * Open Inbox or Tasks from the mobile bottom tabs.
    */
   openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void>;
@@ -1449,6 +1502,7 @@ export type AnonymousActor = {
   renameNamedList(id: string, name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
+  listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
   reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]>;

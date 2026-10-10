@@ -54,6 +54,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: groceries.id },
       {
         loadList,
+        loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
@@ -78,6 +79,7 @@ describe('handleCreateTask', () => {
 
     const result = await handleCreateTask(command, {
       loadList: () => okAsync(null),
+      loadProject: () => okAsync(null),
       loadNextOpenOrder: () => okAsync(0),
       persist,
       nextId: () => 'task-id-1',
@@ -99,6 +101,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: 'list-missing' },
       {
         loadList: () => okAsync(null),
+        loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
@@ -120,6 +123,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: otherOrgList.id },
       {
         loadList: () => okAsync(otherOrgList),
+        loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
@@ -141,6 +145,7 @@ describe('handleCreateTask', () => {
       { ...command, listId: groceries.id },
       {
         loadList: () => okAsync(groceries),
+        loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
@@ -164,6 +169,7 @@ describe('handleCreateTask', () => {
       { ...command, assigneeId: 'outsider' },
       {
         loadList: () => okAsync(null),
+        loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         principalLookup,

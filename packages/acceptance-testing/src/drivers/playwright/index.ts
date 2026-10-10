@@ -360,6 +360,10 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).listOpenTasksOnList(listId);
         },
+        async listOpenTasksOnProject(projectId) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listOpenTasksOnProject(projectId);
+        },
         async reorderOpenTasksOnList(listId, taskIds) {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).reorderOpenTasksOnList(listId, taskIds);

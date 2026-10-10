@@ -6,6 +6,7 @@ import {
   changeLogRecordsFromTaskEvent,
   type TaskChangeLogIds,
   type TaskUncompletedChangeLogIds,
+  type TaskUpdatedChangeLogIds,
 } from './change-log-records.js';
 import type {
   TaskCompleted,
@@ -18,7 +19,7 @@ import type {
   TaskUpdated,
 } from './events.js';
 
-export type { TaskChangeLogIds, TaskUncompletedChangeLogIds };
+export type { TaskChangeLogIds, TaskUncompletedChangeLogIds, TaskUpdatedChangeLogIds };
 
 export type CreateTaskChangeInput = {
   event: TaskCreated;
@@ -34,8 +35,15 @@ export type UncompleteTaskChangeInput = {
   ids: TaskUncompletedChangeLogIds;
 };
 
+export type UpdateTaskChangeInput = {
+  event: TaskUpdated;
+  current: Task;
+  actor: Actor;
+  ids: TaskUpdatedChangeLogIds;
+};
+
 export type MutateTaskChangeInput = {
-  event: Exclude<TaskEvent, TaskCreated | TaskUncompleted>;
+  event: Exclude<TaskEvent, TaskCreated | TaskUncompleted | TaskUpdated>;
   current: Task;
   actor: Actor;
   ids: TaskChangeLogIds;
@@ -44,6 +52,7 @@ export type MutateTaskChangeInput = {
 export type TaskChangePlanInput =
   | CreateTaskChangeInput
   | UncompleteTaskChangeInput
+  | UpdateTaskChangeInput
   | MutateTaskChangeInput;
 
 export type TaskChangePlan =
@@ -111,8 +120,11 @@ export function planTaskChange(
   input: UncompleteTaskChangeInput
 ): Extract<TaskChangePlan, { action: 'uncomplete' }>;
 export function planTaskChange(
+  input: UpdateTaskChangeInput
+): Extract<TaskChangePlan, { action: 'update' }>;
+export function planTaskChange(
   input: {
-    event: TaskUpdated | TaskCompleted | TaskPinned | TaskUnpinned;
+    event: TaskCompleted | TaskPinned | TaskUnpinned;
   } & Omit<MutateTaskChangeInput, 'event'>
 ): Extract<TaskChangePlan, { action: 'update' }>;
 export function planTaskChange(input: TaskChangePlanInput): TaskChangePlan;

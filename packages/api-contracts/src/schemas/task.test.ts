@@ -45,6 +45,14 @@ describe('TaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates with projectId', () => {
+    const result = TaskSchema.safeParse({
+      ...validTask,
+      projectId: '550e8400-e29b-41d4-a716-446655440006',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('validates with listId', () => {
     const result = TaskSchema.safeParse({
       ...validTask,
@@ -158,6 +166,14 @@ describe('CreateTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates create with projectId', () => {
+    const result = CreateTaskSchema.safeParse({
+      title: 'Buy groceries',
+      projectId: '550e8400-e29b-41d4-a716-446655440006',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects null listId on create — omit listId for unlisted', () => {
     const result = CreateTaskSchema.safeParse({
       title: 'Buy groceries',
@@ -224,6 +240,20 @@ describe('UpdateTaskSchema', () => {
   it('validates update with listId', () => {
     const result = UpdateTaskSchema.safeParse({
       listId: '550e8400-e29b-41d4-a716-446655440005',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('validates update with projectId', () => {
+    const result = UpdateTaskSchema.safeParse({
+      projectId: '550e8400-e29b-41d4-a716-446655440006',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows null projectId to take the task out of a project', () => {
+    const result = UpdateTaskSchema.safeParse({
+      projectId: null,
     });
     expect(result.success).toBe(true);
   });

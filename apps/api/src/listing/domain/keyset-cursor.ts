@@ -8,6 +8,7 @@ export const CursorViewSchema = z.enum([
   'tasks.board',
   'tasks.completed',
   'tasks.pile',
+  'tasks.project',
   'lists',
   'projects',
   'captures.feed',
@@ -19,6 +20,7 @@ export type CursorView = z.infer<typeof CursorViewSchema>;
 const taskBoardKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const completedTaskKeysSchema = z.tuple([z.string(), z.string()]);
 const pileTaskKeysSchema = z.tuple([z.number().int(), z.string(), z.string()]);
+const projectTaskKeysSchema = z.tuple([z.string(), z.string()]);
 const namedListKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const projectKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const captureFeedKeysSchema = z.tuple([z.string(), z.string()]);
@@ -34,6 +36,7 @@ export type KeysetCursor =
   | { view: 'tasks.board'; keys: z.infer<typeof taskBoardKeysSchema> }
   | { view: 'tasks.completed'; keys: z.infer<typeof completedTaskKeysSchema> }
   | { view: 'tasks.pile'; keys: z.infer<typeof pileTaskKeysSchema> }
+  | { view: 'tasks.project'; keys: z.infer<typeof projectTaskKeysSchema> }
   | { view: 'lists'; keys: z.infer<typeof namedListKeysSchema> }
   | { view: 'projects'; keys: z.infer<typeof projectKeysSchema> }
   | { view: 'captures.feed'; keys: z.infer<typeof captureFeedKeysSchema> }
@@ -81,6 +84,12 @@ const parseKeys = (
       const keys = pileTaskKeysSchema.safeParse(rawKeys);
       return keys.success
         ? ok({ view: 'tasks.pile', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'tasks.project': {
+      const keys = projectTaskKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'tasks.project', keys: keys.data })
         : err(invalidCursorError());
     }
     case 'lists': {

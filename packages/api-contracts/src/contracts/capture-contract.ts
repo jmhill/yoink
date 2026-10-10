@@ -14,6 +14,8 @@ export const ProcessCaptureToTaskSchema = z.object({
     dueDate: z.string().date().optional(), // YYYY-MM-DD format, validates actual date
     // Optional single list bucket. Omit for unlisted — same as create-task.
     listId: z.string().uuid().optional(),
+    // Optional project. Omit for no project — same as create-task.
+    projectId: z.string().uuid().optional(),
   }),
 });
 

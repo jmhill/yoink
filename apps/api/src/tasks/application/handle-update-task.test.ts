@@ -63,7 +63,7 @@ describe('handleUpdateTask', () => {
         listId: groceries.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: loadCurrent, loadList, loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: loadCurrent, loadList, loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -87,7 +87,7 @@ describe('handleUpdateTask', () => {
         listId: 'list-missing',
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: loadCurrent, loadList: () => okAsync(null), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -107,7 +107,7 @@ describe('handleUpdateTask', () => {
         listId: otherOrgList.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -127,7 +127,7 @@ describe('handleUpdateTask', () => {
         listId: groceries.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: () => okAsync(null), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: () => okAsync(null), loadList: () => okAsync(groceries), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -148,7 +148,7 @@ describe('handleUpdateTask', () => {
         listId: groceries.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -173,7 +173,7 @@ describe('handleUpdateTask', () => {
         listId: groceries.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -194,7 +194,7 @@ describe('handleUpdateTask', () => {
         listId: null,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -218,7 +218,7 @@ describe('handleUpdateTask', () => {
         listId: null,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: loadCurrent, loadList: () => okAsync(null), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isOk()).toBe(true);
@@ -247,7 +247,7 @@ describe('handleUpdateTask', () => {
       {
         load: () => okAsync(completedOnGroceries),
         loadList: () => okAsync(groceries),
-        loadNextOpenOrder: () => okAsync(0),
+        loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0),
         persist,
         now: () => '2025-01-15T10:00:00.000Z',
         nextId: () => 'id-1',
@@ -271,7 +271,7 @@ describe('handleUpdateTask', () => {
         listId: groceries.id,
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
-      { load: loadCurrent, loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
+      { load: loadCurrent, loadList: () => okAsync(groceries), loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
 
     expect(result.isErr()).toBe(true);
@@ -296,7 +296,7 @@ describe('handleUpdateTask', () => {
       {
         load: loadCurrent,
         loadList: () => okAsync(null),
-        loadNextOpenOrder: () => okAsync(0),
+        loadProject: () => okAsync(null), loadNextOpenOrder: () => okAsync(0),
         persist,
         principalLookup,
         now: () => '2025-01-15T10:00:00.000Z',

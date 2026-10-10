@@ -4,7 +4,7 @@ import { Button } from '@yoink/ui-base/components/button';
 import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { tsr, tsrLists } from '@/api/client';
+import { tsr, tsrLists, tsrProjects } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
@@ -45,6 +45,12 @@ function InboxPage() {
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const { data: projectsData } = tsrProjects.list.useQuery({
+    queryKey: ['projects'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
+  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
@@ -415,7 +421,7 @@ function InboxPage() {
 
   const handleConfirmPromote = (captureId: string, input: PromoteConfirmInput) => {
     setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
-    const data: { title: string; dueDate?: string; listId?: string } = {
+    const data: { title: string; dueDate?: string; listId?: string; projectId?: string } = {
       title: input.title,
     };
     if (input.dueDate) {
@@ -423,6 +429,9 @@ function InboxPage() {
     }
     if (input.listId) {
       data.listId = input.listId;
+    }
+    if (input.projectId) {
+      data.projectId = input.projectId;
     }
     processMutation.mutate({
       params: { id: captureId },
@@ -488,6 +497,7 @@ function InboxPage() {
         onOpenChange={setTaskModalOpen}
         capture={taskModalCapture}
         lists={namedLists}
+        projects={projects}
         onConfirm={handleConfirmPromote}
         isLoading={processMutation.isPending}
       />

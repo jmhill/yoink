@@ -5,7 +5,7 @@ import {
   ProjectSchema,
   UpdateProjectSchema,
 } from '../schemas/project.js';
-import { ListPageQuerySchema, ProjectListPageSchema } from '../schemas/list-page.js';
+import { ListPageQuerySchema, ProjectListPageSchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -71,6 +71,23 @@ export const projectContract = c.router(
         500: ErrorSchema,
       },
       summary: "Edit a project's name or objective",
+    },
+
+    listOpenTasks: {
+      method: 'GET',
+      path: '/api/projects/:id/tasks',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      query: ListPageQuerySchema,
+      responses: {
+        200: TaskListPageSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: "List a project's open tasks, newest created first",
     },
   },
   {

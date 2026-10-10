@@ -8,11 +8,17 @@ import {
   toProjectListBody,
   toTaskListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
+import { projectRequestValidationError } from './project-http-errors.js';
 
 export type ProjectRoutesDependencies = {
   projectHandlers: ProjectHandlers;
   authMiddleware: AuthMiddleware;
 };
+
+const projectErrorBody = (error: { type: string; message: string }) => ({
+  message: error.message,
+  code: error.type,
+});
 
 export const registerProjectRoutes = async (
   app: FastifyInstance,
@@ -67,20 +73,21 @@ export const registerProjectRoutes = async (
           }),
           (error) => {
             switch (error.type) {
+              case 'PROJECT_NAME_BLANK':
               case 'INVALID_PROJECT_NAME':
                 return {
                   status: 400 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'DUPLICATE_PROJECT_NAME':
                 return {
                   status: 409 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'PROJECT_CREATE_REQUIRES_PERSON':
                 return {
                   status: 403 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -108,7 +115,7 @@ export const registerProjectRoutes = async (
               case 'PROJECT_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -140,7 +147,7 @@ export const registerProjectRoutes = async (
               case 'PROJECT_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -168,20 +175,78 @@ export const registerProjectRoutes = async (
           }),
           (error) => {
             switch (error.type) {
+              case 'PROJECT_NAME_BLANK':
               case 'INVALID_PROJECT_NAME':
                 return {
                   status: 400 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'DUPLICATE_PROJECT_NAME':
                 return {
                   status: 409 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
                 };
               case 'PROJECT_NOT_FOUND':
                 return {
                   status: 404 as const,
-                  body: { message: error.message },
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      changeStatus: async ({ params, body, request }) => {
+        const result = await projectHandlers.changeStatus({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          status: body.status,
+          waitingOn: body.waitingOn,
+          waitingSince: body.waitingSince,
+          openTasks: body.openTasks,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          ({ view, completedTaskCount, removedTaskCount }) => ({
+            status: 200 as const,
+            body: {
+              project: view,
+              completedTaskCount,
+              removedTaskCount,
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_PROJECT_STATUS':
+              case 'PROJECT_WAITING_ON_REQUIRED':
+              case 'PROJECT_WAITING_ON_BLANK':
+              case 'PROJECT_WAITING_ON_TOO_LONG':
+              case 'INVALID_WAITING_SINCE':
+                return {
+                  status: 400 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_DONE_REQUIRES_PERSON':
+              case 'PROJECT_REOPEN_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_HAS_OPEN_TASKS':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
                 };
               case 'STORAGE_ERROR':
                 return {
@@ -198,7 +263,7 @@ export const registerProjectRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(projectRequestValidationError(err));
       },
     });
   });

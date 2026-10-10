@@ -3,12 +3,14 @@ import { handleUpdateProject } from './handle-update-project.js';
 import { handleListProjects } from './handle-list-projects.js';
 import { handleGetProject } from './handle-get-project.js';
 import { handleListOpenTasksOnProject } from './handle-list-open-tasks.js';
+import { handleChangeProjectStatus } from './handle-change-project-status.js';
 import type {
   ListProjects,
   LoadProject,
   PageOpenTasksOnProject,
   PageProjects,
   PersistProjectChange,
+  PersistProjectStatusChange,
 } from './ports.js';
 import {
   withCommandLog,
@@ -18,6 +20,7 @@ import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 
 export type ProjectHandlerDeps = {
   persist: PersistProjectChange;
+  persistStatus: PersistProjectStatusChange;
   list: ListProjects;
   pageProjects: PageProjects;
   load: LoadProject;
@@ -56,6 +59,17 @@ export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
       },
       eventKind,
       () => handleUpdateProject(command, deps)
+    ),
+  changeStatus: (command: Parameters<typeof handleChangeProjectStatus>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'ChangeProjectStatus',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => result.eventKinds,
+      () => handleChangeProjectStatus(command, deps)
     ),
 });
 

@@ -104,8 +104,37 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID"
 ```
 
-Responses include `status` (always `active` on create), optional `objective`,
-and `lastChangedAt` / `lastChangedBy` (user ids; resolve names from members).
+Responses include `status` (`active` on create; later `waiting`, `someday`,
+or `done`), `waitingOn` / `waitingSince` (both `null` unless status is
+waiting), optional `objective`, and `lastChangedAt` / `lastChangedBy`
+(user ids; resolve names from members).
+
+Change status with `PUT /api/projects/:id/status`. Waiting needs a trimmed
+non-blank `waitingOn` and optional `waitingSince` (`YYYY-MM-DD`; omit or
+`null` means unknown). Leaving waiting clears both. The same values again
+is a no-op (`200`, no change-log record). Only a person can mark a project
+done or reopen a done project (`403` for bots). Bots may set `active`,
+`waiting`, or `someday`, and may edit waiting on an already-waiting
+project. Marking done while the project still has open tasks is `409`
+`PROJECT_HAS_OPEN_TASKS` unless the body includes `openTasks` of
+`complete` (finish them, keep `projectId`) or `remove` (clear `projectId`,
+leave them open). Finished tasks stay on the project.
+
+```bash
+# Set waiting (since omitted = unknown)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"status":"waiting","waitingOn":"Contractor"}' \
+  "$API/api/projects/$PROJECT_ID/status"
+
+# Mark done and complete open tasks (person only)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"status":"done","openTasks":"complete"}' \
+  "$API/api/projects/$PROJECT_ID/status"
+```
 
 A task is in 0 or 1 projects, independently of its list. `POST /api/tasks` and
 `POST /api/captures/:id/process` accept optional `projectId`. `PATCH /api/tasks/:id`
@@ -227,3 +256,49 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
   | if .kind == "agent" then (.name // "Agent") else .email end
 '
 ```
+
+## Error codes
+
+Error bodies are `{ "message": "…", "code": "…" }`. `code` is stable;
+`message` is for humans. Request validation never returns a generic
+`[ts-rest] request validation failed`.
+
+| Code | When |
+| --- | --- |
+| `PROJECT_NAME_BLANK` | Create/update name is blank after trim (`400`) |
+| `INVALID_PROJECT_NAME` | Name is too long (`400`) |
+| `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name (`409`) |
+| `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project (`403`) |
+| `PROJECT_NOT_FOUND` | No project with that id in this org (`404`) |
+| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done` (`400`) |
+| `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted (`400`) |
+| `PROJECT_WAITING_ON_BLANK` | Status is waiting and `waitingOn` is blank after trim (`400`) |
+| `PROJECT_WAITING_ON_TOO_LONG` | `waitingOn` is longer than 200 characters (`400`) |
+| `INVALID_WAITING_SINCE` | `waitingSince` is not `YYYY-MM-DD` or null (`400`) |
+| `PROJECT_DONE_REQUIRES_PERSON` | A bot tried to mark a project done (`403`) |
+| `PROJECT_REOPEN_REQUIRES_PERSON` | A bot tried to reopen a done project (`403`) |
+| `PROJECT_HAS_OPEN_TASKS` | Marking done with open tasks and no `openTasks` choice (`409`) |
+| `PROJECT_DONE` | Moving an open task onto a done project (`400`) |
+| `PROJECT_NOT_IN_ORGANIZATION` | Task project id is in another org (`404`) |
+| `TASK_NOT_OPEN` | Moving a finished task in or out of a list or project (`400`) |
+| `TASK_NOT_FOUND` | No task with that id in this org (`404`) |
+| `ASSIGNEE_NOT_IN_ORGANIZATION` | Assignee is not a member of this org (`400`) |
+| `LIST_NOT_IN_ORGANIZATION` | List id is in another org (`404`) |
+| `INVALID_LIST_NAME` | Named-list name is blank or too long (`400`) |
+| `DUPLICATE_LIST_NAME` | Another list in the org already has that name (`409`) |
+| `LIST_NOT_FOUND` | No named list with that id in this org (`404`) |
+| `LIST_HAS_OPEN_TASKS` | Deleting a list that still has open tasks (`409`) |
+| `INVALID_OPEN_ORDER` | Reorder body is the wrong length or has unknown ids (`400`) |
+| `CAPTURE_NOT_FOUND` | No capture with that id in this org (`404`) |
+| `CAPTURE_ALREADY_TRASHED` | Trash on an already-trashed capture (`400`) |
+| `CAPTURE_NOT_IN_TRASH` | Restore / delete a capture that is not trashed (`400`) |
+| `CAPTURE_NOT_IN_INBOX` | Process a capture that is not in Inbox (`400`) |
+| `INVALID_SNOOZE_TIME` | Snooze until is missing or in the past (`400`) |
+| `invalid_cursor` | List cursor is malformed, wrong view, or wrong shape (`400`) |
+| `VALIDATION_FAILED` | Other request-body validation (`400`) |
+| `BOT_CANNOT_MANAGE_TOKENS` | Agent token tried to mint, create, reissue, or revoke (`403`) |
+| `TOKEN_LIMIT_REACHED` | Person already has the max tokens in this org (`400`) |
+| `TOKEN_NOT_FOUND` | Token id does not exist or is not yours (`404`) |
+| `NOT_A_MEMBER` | Session/token is not a member of the target org (`403`) |
+| `INSUFFICIENT_PERMISSIONS` | Role cannot perform that org action (`403`) |
+

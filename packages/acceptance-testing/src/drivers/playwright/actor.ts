@@ -51,6 +51,7 @@ import {
 } from './page-objects.js';
 import {
   saveWalkthroughPng,
+  waitForSettledOpenDialog,
   waitForSettledOpenSelect,
   type WalkthroughViewport,
 } from './walkthrough-screenshots.js';
@@ -642,6 +643,48 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to update project: ${response.status()}`);
       }
       return (await response.json()) as Project;
+    },
+
+    async changeProjectStatus(
+      id: string,
+      input: {
+        status: 'active' | 'waiting' | 'someday' | 'done';
+        waitingOn?: string | null;
+        waitingSince?: string | null;
+        openTasks?: 'complete' | 'remove';
+      }
+    ): Promise<{
+      project: Project;
+      completedTaskCount: number;
+      removedTaskCount: number;
+    }> {
+      const response = await page.request.put(`/api/projects/${id}/status`, { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        const body = (await response.json()) as { message?: string };
+        throw new ForbiddenError(body.message ?? 'Permission denied');
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'Conflict');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to change project status: ${response.status()}`);
+      }
+      return (await response.json()) as {
+        project: Project;
+        completedTaskCount: number;
+        removedTaskCount: number;
+      };
     },
 
     async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
@@ -1370,6 +1413,150 @@ export const createPlaywrightActor = (
       await projectPage.waitForVisible();
     },
 
+    async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {
+      await projectPage.waitForVisible();
+      await projectPage.statusTrigger().click();
+      await waitForSettledOpenSelect(
+        visibleOptionName ? { page, visibleOptionName } : { page }
+      );
+    },
+
+    async pageClickWaitingOption(): Promise<void> {
+      await page.locator('[data-project-status-option="waiting"]').click();
+    },
+
+    async pageClickDoneOption(): Promise<void> {
+      await page.locator('[data-project-status-option="done"]').click();
+    },
+
+    async setProjectStatusFromPage(status: 'active' | 'someday' | 'done'): Promise<void> {
+      const labels = { active: 'Active', someday: 'Someday', done: 'Done' };
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/projects/') &&
+          response.url().includes('/status') &&
+          response.request().method() === 'PUT'
+      );
+      await this.openProjectStatusSelect(labels[status]);
+      await page.locator(`[data-project-status-option="${status}"]`).click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to set project status: ${response.status()}`);
+      }
+    },
+
+    async setProjectWaitingFromPage(input: {
+      waitingOn: string;
+      waitingSince?: string;
+    }): Promise<void> {
+      await projectPage.waitForVisible();
+      const current = await projectPage.statusTrigger().textContent();
+      if (!current?.includes('Waiting')) {
+        await this.openProjectStatusSelect('Waiting');
+        await page.locator('[data-project-status-option="waiting"]').click();
+      }
+      await projectPage.waitingOnInput().fill(input.waitingOn);
+      if (input.waitingSince !== undefined) {
+        await projectPage.waitingSinceInput().fill(input.waitingSince);
+      }
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/projects/') &&
+          response.url().includes('/status') &&
+          response.request().method() === 'PUT'
+      );
+      await projectPage.waitingSave().click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to set project waiting: ${response.status()}`);
+      }
+    },
+
+    async confirmDoneComplete(): Promise<void> {
+      await waitForSettledOpenDialog({ page });
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/projects/') &&
+          response.url().includes('/status') &&
+          response.request().method() === 'PUT'
+      );
+      await page.locator('[data-project-done-complete]').click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to complete open tasks: ${response.status()}`);
+      }
+    },
+
+    async confirmDoneRemove(): Promise<void> {
+      await waitForSettledOpenDialog({ page });
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/projects/') &&
+          response.url().includes('/status') &&
+          response.request().method() === 'PUT'
+      );
+      await page.locator('[data-project-done-remove]').click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to remove open tasks: ${response.status()}`);
+      }
+    },
+
+    async shouldSeeWaitingSummary(text: string): Promise<void> {
+      await expect(projectPage.waitingSummary()).toContainText(text);
+    },
+
+    async shouldSeeProjectOnRail(name: string): Promise<void> {
+      await expect(
+        page.locator(`[data-app-rail]:visible [data-rail-item="project"][data-rail-label="${name}"]`)
+      ).toBeVisible();
+    },
+
+    async shouldSeeProjectInSomedayGroup(name: string): Promise<void> {
+      const group = page.locator('[data-app-rail]:visible [data-rail-someday-group]');
+      await expect(group).toBeVisible();
+      await expect(
+        group.locator(`[data-rail-item="someday-project"][data-rail-label="${name}"]`)
+      ).toBeVisible();
+    },
+
+    async shouldNotSeeProjectOnRail(name: string): Promise<void> {
+      await expect(
+        page.locator(`[data-app-rail]:visible [data-rail-label="${name}"]`)
+      ).toHaveCount(0);
+    },
+
+    async openSomedayGroup(): Promise<void> {
+      const summary = page.locator('[data-app-rail]:visible [data-rail-someday-summary]');
+      await expect(summary).toBeVisible();
+      const group = page.locator('[data-app-rail]:visible [data-rail-someday-group]');
+      const open = await group.getAttribute('open');
+      if (open === null) {
+        await summary.click();
+      }
+    },
+
+    async goToAllProjects(): Promise<void> {
+      await page.goto('/projects');
+      await expect(page.locator('[data-projects-index]')).toBeVisible();
+    },
+
+    async shouldSeeProjectOnAllProjects(input: {
+      name: string;
+      status: string;
+    }): Promise<void> {
+      const item = page.locator('[data-projects-index] a').filter({ hasText: input.name });
+      await expect(item).toBeVisible();
+      await expect(item.locator('[data-project-index-status]')).toHaveAttribute(
+        'data-project-index-status',
+        input.status
+      );
+    },
+
+    async shouldSeeEditTaskDialogSubtitle(text: string): Promise<void> {
+      await expect(page.getByText(text)).toBeVisible();
+    },
+
     async shouldSeeOpenTaskOnProject(title: string): Promise<void> {
       await expect(projectPage.openTaskByTitle(title)).toBeVisible();
     },
@@ -1962,6 +2149,10 @@ export const createPlaywrightActor = (
       const listbox = page.getByRole('listbox');
       if (await listbox.isVisible()) {
         await waitForSettledOpenSelect({ page });
+      }
+      const dialog = page.locator('[data-slot="dialog-content"]');
+      if (await dialog.isVisible()) {
+        await waitForSettledOpenDialog({ page });
       }
       await saveWalkthroughPng({
         page,

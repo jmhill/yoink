@@ -1,6 +1,8 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import {
+  ChangeProjectStatusResponseSchema,
+  ChangeProjectStatusSchema,
   CreateProjectSchema,
   ProjectSchema,
   UpdateProjectSchema,
@@ -88,6 +90,25 @@ export const projectContract = c.router(
         500: ErrorSchema,
       },
       summary: "List a project's open tasks, newest created first",
+    },
+
+    changeStatus: {
+      method: 'PUT',
+      path: '/api/projects/:id/status',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: ChangeProjectStatusSchema,
+      responses: {
+        200: ChangeProjectStatusResponseSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: "Change a project's status, including waiting on / since",
     },
   },
   {

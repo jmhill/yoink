@@ -15,3 +15,13 @@ export type UpdateProjectCommand = {
   objective?: string | null;
   actor: Actor;
 };
+
+export type ChangeProjectStatusCommand = {
+  id: string;
+  organizationId: string;
+  status: 'active' | 'waiting' | 'someday' | 'done';
+  waitingOn?: string | null;
+  waitingSince?: string | null;
+  openTasks?: 'complete' | 'remove';
+  actor: Actor;
+};

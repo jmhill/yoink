@@ -42,6 +42,7 @@ import { migration as addTokenRevokedAt } from './027-add-token-revoked-at.js';
 import { migration as createChangeLog } from './028-create-change-log.js';
 import { migration as createProjects } from './029-create-projects.js';
 import { migration as addTaskProjectId } from './030-add-task-project-id.js';
+import { migration as addProjectWaiting } from './031-add-project-waiting.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -74,6 +75,7 @@ export const migrations: Migration[] = [
   createChangeLog,
   createProjects,
   addTaskProjectId,
+  addProjectWaiting,
 ];
 
 export type { Migration };

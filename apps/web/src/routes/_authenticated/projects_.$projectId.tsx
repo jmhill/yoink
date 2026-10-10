@@ -27,8 +27,10 @@ import { memberLabel } from '@/api/auth';
 import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contracts';
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
+import { ProjectStatusControl } from '@/components/project-status-control';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
+import type { AssignableProjectStatus } from '@yoink/api-contracts';
 
 export const Route = createFileRoute('/_authenticated/projects_/$projectId')({
   component: ProjectPage,
@@ -87,6 +89,7 @@ function ProjectPage() {
   const [name, setName] = useState('');
   const [objective, setObjective] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -111,6 +114,33 @@ function ProjectPage() {
       void membersQuery.refetch();
     }
   }, [editingTask, membersQuery.refetch]);
+
+  const statusMutation = tsrProjects.changeStatus.useMutation({
+    onSuccess: async (result) => {
+      if (result.status !== 200) return;
+      setStatusError(null);
+      toast.success('Project status saved');
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
+        const status = err.status;
+        if (status === 400 || status === 403 || status === 409) {
+          const parsed = projectContract.changeStatus.responses[status].safeParse(err.body);
+          if (parsed.success) {
+            setStatusError(parsed.data.message);
+            return;
+          }
+        }
+      }
+      toast.error('Failed to change project status');
+    },
+  });
 
   const updateMutation = tsrProjects.update.useMutation({
     onSuccess: async (result) => {
@@ -241,55 +271,72 @@ function ProjectPage() {
   return (
     <div className="container mx-auto max-w-2xl p-4">
       <Header />
-      <form data-project-page="" onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="project-page-name">Name</Label>
-          <Input
-            id="project-page-name"
-            data-project-name-input=""
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setFormError(null);
-            }}
-            maxLength={200}
-            disabled={updateMutation.isPending}
-          />
-        </div>
+      <div data-project-page="" className="space-y-4">
+        <ProjectStatusControl
+          project={project}
+          openTaskCount={openTasks.length}
+          isPending={statusMutation.isPending}
+          error={statusError}
+          onChangeStatus={(input: {
+            status: AssignableProjectStatus;
+            waitingOn?: string | null;
+            waitingSince?: string | null;
+            openTasks?: 'complete' | 'remove';
+          }) => {
+            setStatusError(null);
+            statusMutation.mutate({
+              params: { id: projectId },
+              body: input,
+            });
+          }}
+        />
 
-        <p data-project-status={project.status} className="text-sm capitalize text-muted-foreground">
-          Status: {project.status}
-        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="project-page-name">Name</Label>
+            <Input
+              id="project-page-name"
+              data-project-name-input=""
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setFormError(null);
+              }}
+              maxLength={200}
+              disabled={updateMutation.isPending}
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="project-page-objective">Objective</Label>
-          <textarea
-            id="project-page-objective"
-            data-project-objective-input=""
-            value={objective}
-            onChange={(event) => setObjective(event.target.value)}
-            maxLength={2000}
-            rows={5}
-            disabled={updateMutation.isPending}
-            className="border-input dark:bg-input/30 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-          />
-        </div>
+          <div className="space-y-2">
+            <Label htmlFor="project-page-objective">Objective</Label>
+            <textarea
+              id="project-page-objective"
+              data-project-objective-input=""
+              value={objective}
+              onChange={(event) => setObjective(event.target.value)}
+              maxLength={2000}
+              rows={5}
+              disabled={updateMutation.isPending}
+              className="border-input dark:bg-input/30 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+            />
+          </div>
 
-        {formError ? (
-          <p role="alert" data-project-save-error="" className="text-sm text-destructive">
-            {formError}
-          </p>
-        ) : null}
+          {formError ? (
+            <p role="alert" data-project-save-error="" className="text-sm text-destructive">
+              {formError}
+            </p>
+          ) : null}
 
-        <div className="flex items-center gap-3">
-          <Button type="submit" data-project-save="" disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? 'Saving…' : 'Save'}
-          </Button>
-          <Button type="button" variant="ghost" asChild>
-            <Link to="/projects">All projects</Link>
-          </Button>
-        </div>
-      </form>
+          <div className="flex items-center gap-3">
+            <Button type="submit" data-project-save="" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Saving…' : 'Save'}
+            </Button>
+            <Button type="button" variant="ghost" asChild>
+              <Link to="/projects">All projects</Link>
+            </Button>
+          </div>
+        </form>
+      </div>
 
       <section className="mt-8 space-y-3" data-project-open-tasks="">
         <h2 className="text-lg font-semibold">Open tasks</h2>

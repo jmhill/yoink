@@ -25,6 +25,8 @@ describe('parseProjectRow', () => {
         name: 'Garden',
         objective: 'Grow tomatoes',
         status: 'active',
+        waitingOn: null,
+        waitingSince: null,
         createdAt: '2025-01-15T10:00:00.000Z',
         lastChangedAt: '2025-01-15T10:00:00.000Z',
         lastChangedBy: 'user-1',
@@ -44,6 +46,20 @@ describe('parseProjectRow', () => {
       expect(result.value.objective).toBeUndefined();
       expect(result.value.lastChangedAt).toBeNull();
       expect(result.value.lastChangedBy).toBeNull();
+    }
+  });
+
+  it('maps waiting on and since', () => {
+    const result = parseProjectRow({
+      ...garden,
+      status: 'waiting',
+      waiting_on: 'Mike',
+      waiting_since: '2026-10-01',
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.waitingOn).toBe('Mike');
+      expect(result.value.waitingSince).toBe('2026-10-01');
     }
   });
 

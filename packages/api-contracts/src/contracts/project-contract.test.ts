@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { projectContract } from './project-contract.js';
 
 describe('projectContract', () => {
-  it('defines list, create, get, update, and listOpenTasks endpoints', () => {
+  it('defines list, create, get, update, listOpenTasks, and changeStatus endpoints', () => {
     expect(projectContract.list.method).toBe('GET');
     expect(projectContract.list.path).toBe('/api/projects');
     expect(projectContract.create.method).toBe('POST');
@@ -13,6 +13,8 @@ describe('projectContract', () => {
     expect(projectContract.update.path).toBe('/api/projects/:id');
     expect(projectContract.listOpenTasks.method).toBe('GET');
     expect(projectContract.listOpenTasks.path).toBe('/api/projects/:id/tasks');
+    expect(projectContract.changeStatus.method).toBe('PUT');
+    expect(projectContract.changeStatus.path).toBe('/api/projects/:id/status');
   });
 
   it('requires hasMore and an explicit nextCursor on list', () => {

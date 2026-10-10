@@ -11,6 +11,8 @@ const garden: Project = {
   createdById: 'user-1',
   name: 'Garden',
   status: 'active',
+  waitingOn: null,
+  waitingSince: null,
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-1',
@@ -33,6 +35,7 @@ const persist: PersistProjectChange = () => okAsync(undefined);
 const handlersOf = (logger: ReturnType<typeof collectLogger>['logger']) =>
   createProjectHandlers({
     persist,
+    persistStatus: () => okAsync(undefined),
     list: () => okAsync([garden]),
     pageProjects: () => okAsync({ rows: [garden], total: 1 }),
     load: () => okAsync(garden),

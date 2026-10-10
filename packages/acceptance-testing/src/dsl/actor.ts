@@ -60,6 +60,19 @@ export type CoreActor = {
     id: string,
     input: { name?: string; objective?: string | null }
   ): Promise<Project>;
+  changeProjectStatus(
+    id: string,
+    input: {
+      status: 'active' | 'waiting' | 'someday' | 'done';
+      waitingOn?: string | null;
+      waitingSince?: string | null;
+      openTasks?: 'complete' | 'remove';
+    }
+  ): Promise<{
+    project: Project;
+    completedTaskCount: number;
+    removedTaskCount: number;
+  }>;
   listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
@@ -736,6 +749,81 @@ export type BrowserActorOperations = {
    * Open the project page for this id.
    */
   goToProject(projectId: string): Promise<void>;
+
+  /**
+   * Open the status select on the project page and wait for it to settle.
+   */
+  openProjectStatusSelect(visibleOptionName?: string): Promise<void>;
+
+  /**
+   * Click Waiting in the open project-status select (leaves waiting fields visible).
+   */
+  pageClickWaitingOption(): Promise<void>;
+
+  /**
+   * Click Done in the open project-status select (opens the open-tasks dialog when needed).
+   */
+  pageClickDoneOption(): Promise<void>;
+
+  /**
+   * Change status from the project-page control (not waiting / not done-with-tasks).
+   */
+  setProjectStatusFromPage(status: 'active' | 'someday' | 'done'): Promise<void>;
+
+  /**
+   * Set waiting from the project-page fields. Since defaults to today when omitted.
+   */
+  setProjectWaitingFromPage(input: { waitingOn: string; waitingSince?: string }): Promise<void>;
+
+  /**
+   * Confirm completing open tasks when marking the project done.
+   */
+  confirmDoneComplete(): Promise<void>;
+
+  /**
+   * Confirm taking open tasks out of the project when marking it done.
+   */
+  confirmDoneRemove(): Promise<void>;
+
+  /**
+   * Assert the waiting summary line on the project page.
+   */
+  shouldSeeWaitingSummary(text: string): Promise<void>;
+
+  /**
+   * Assert a project is in the rail's open (active/waiting) section.
+   */
+  shouldSeeProjectOnRail(name: string): Promise<void>;
+
+  /**
+   * Assert a project is listed under the rail's collapsed Someday group.
+   */
+  shouldSeeProjectInSomedayGroup(name: string): Promise<void>;
+
+  /**
+   * Assert a project is not on the rail (done leaves the rail).
+   */
+  shouldNotSeeProjectOnRail(name: string): Promise<void>;
+
+  /**
+   * Open the rail Someday group.
+   */
+  openSomedayGroup(): Promise<void>;
+
+  /**
+   * Open the All projects page.
+   */
+  goToAllProjects(): Promise<void>;
+
+  /**
+   * Assert the All projects page lists this project and status.
+   */
+  shouldSeeProjectOnAllProjects(input: { name: string; status: string }): Promise<void>;
+
+  /**
+   * Assert the edit-task dialog subtitle.
+   */
+  shouldSeeEditTaskDialogSubtitle(text: string): Promise<void>;
 
   /**
    * Assert the open project page lists this open task title.

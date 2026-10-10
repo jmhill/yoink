@@ -2811,6 +2811,30 @@ export class ProjectPage {
     return this.page.locator(`[data-project-open-tasks] [data-task-title="${title}"]`);
   }
 
+  statusTrigger() {
+    return this.page.locator('[data-project-status-trigger]');
+  }
+
+  waitingOnInput() {
+    return this.page.locator('[data-project-waiting-on]');
+  }
+
+  waitingSinceInput() {
+    return this.page.locator('[data-project-waiting-since]');
+  }
+
+  waitingSummary() {
+    return this.page.locator('[data-project-waiting-summary]');
+  }
+
+  waitingSave() {
+    return this.page.locator('[data-project-waiting-save]');
+  }
+
+  doneConfirm() {
+    return this.page.locator('[data-project-done-confirm]');
+  }
+
   async getOpenTaskTitles(): Promise<string[]> {
     const cards = this.page.locator('[data-project-open-tasks] [data-task-title]');
     const count = await cards.count();

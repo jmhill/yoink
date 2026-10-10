@@ -3,7 +3,9 @@ import { hiddenFor } from '../../shared/change-log/domain/kinds.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import type {
   ProjectCreatedPayloadV1,
+  ProjectStatusChangedPayloadV1,
   ProjectUpdatedPayloadV1,
+  ProjectWaitingChangedPayloadV1,
 } from '../../shared/change-log/domain/payloads.js';
 import type { ProjectEvent } from './events.js';
 
@@ -64,6 +66,20 @@ const projectPayloadByType = {
     }
     return payload;
   },
+  ProjectStatusChanged: (
+    event: Extract<ProjectEvent, { type: 'ProjectStatusChanged' }>
+  ): ProjectStatusChangedPayloadV1 => ({
+    from: event.from,
+    to: event.to,
+    waitingOn: event.waitingOn,
+    waitingSince: event.waitingSince,
+  }),
+  ProjectWaitingChanged: (
+    event: Extract<ProjectEvent, { type: 'ProjectWaitingChanged' }>
+  ): ProjectWaitingChangedPayloadV1 => ({
+    waitingOn: event.waitingOn,
+    waitingSince: event.waitingSince,
+  }),
 } satisfies {
   [K in ProjectEvent['type']]: (event: Extract<ProjectEvent, { type: K }>) => unknown;
 };
@@ -90,6 +106,24 @@ export const changeLogRecordsFromProjectEvent = (
           kind: 'ProjectUpdated',
           hidden: hiddenFor('ProjectUpdated'),
           payload: projectPayloadByType.ProjectUpdated(event),
+        },
+      ];
+    case 'ProjectStatusChanged':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectStatusChanged',
+          hidden: hiddenFor('ProjectStatusChanged'),
+          payload: projectPayloadByType.ProjectStatusChanged(event),
+        },
+      ];
+    case 'ProjectWaitingChanged':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectWaitingChanged',
+          hidden: hiddenFor('ProjectWaitingChanged'),
+          payload: projectPayloadByType.ProjectWaitingChanged(event),
         },
       ];
   }

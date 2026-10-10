@@ -1,12 +1,22 @@
 import type { Project } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/auth-context.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
-import { applyProjectCreated, applyProjectUpdated } from './apply-project-event.js';
+import {
+  applyProjectCreated,
+  applyProjectStatusChanged,
+  applyProjectUpdated,
+  applyProjectWaitingChanged,
+} from './apply-project-event.js';
 import {
   changeLogRecordsFromProjectEvent,
   type ProjectChangeLogIds,
 } from './change-log-records.js';
-import type { ProjectCreated, ProjectUpdated } from './events.js';
+import type {
+  ProjectCreated,
+  ProjectStatusChanged,
+  ProjectUpdated,
+  ProjectWaitingChanged,
+} from './events.js';
 
 export type { ProjectChangeLogIds };
 
@@ -21,7 +31,7 @@ export type ProjectChangePlanInput =
       current: null;
     } & ProjectPlanBase
   | {
-      event: ProjectUpdated;
+      event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged;
       current: Project;
     } & ProjectPlanBase;
 
@@ -48,7 +58,7 @@ export function planProjectChange(
   input: Extract<ProjectChangePlanInput, { event: ProjectCreated }>
 ): Extract<ProjectChangePlan, { action: 'insert' }>;
 export function planProjectChange(
-  input: Extract<ProjectChangePlanInput, { event: ProjectUpdated }>
+  input: Extract<ProjectChangePlanInput, { event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged }>
 ): Extract<ProjectChangePlan, { action: 'update' }>;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan {
@@ -72,13 +82,24 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
     };
   }
 
+  const view =
+    input.event.type === 'ProjectUpdated'
+      ? applyProjectUpdated(input.current, input.event, {
+          actorUserId: input.actor.userId,
+        })
+      : input.event.type === 'ProjectStatusChanged'
+        ? applyProjectStatusChanged(input.current, input.event, {
+            actorUserId: input.actor.userId,
+          })
+        : applyProjectWaitingChanged(input.current, input.event, {
+            actorUserId: input.actor.userId,
+          });
+
   return {
     action: 'update',
     organizationId: input.event.organizationId,
     projectId: input.event.id,
-    view: applyProjectUpdated(input.current, input.event, {
-      actorUserId: input.actor.userId,
-    }),
+    view,
     records,
   };
 }

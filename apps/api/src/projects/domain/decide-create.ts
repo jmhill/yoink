@@ -8,6 +8,7 @@ import {
   type DuplicateProjectNameError,
   type InvalidProjectNameError,
   type ProjectCreateRequiresPersonError,
+  type ProjectNameBlankError,
 } from './project-errors.js';
 import { parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
@@ -21,6 +22,7 @@ export type DecideCreateProjectInput = {
 
 export type DecideCreateProjectError =
   | InvalidProjectNameError
+  | ProjectNameBlankError
   | DuplicateProjectNameError
   | ProjectCreateRequiresPersonError;
 

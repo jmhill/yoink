@@ -309,6 +309,48 @@ export const createHttpActor = (
       return response.json<Project>();
     },
 
+    async changeProjectStatus(
+      id: string,
+      input: {
+        status: 'active' | 'waiting' | 'someday' | 'done';
+        waitingOn?: string | null;
+        waitingSince?: string | null;
+        openTasks?: 'complete' | 'remove';
+      }
+    ): Promise<{
+      project: Project;
+      completedTaskCount: number;
+      removedTaskCount: number;
+    }> {
+      const response = await client.put(`/api/projects/${id}/status`, input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Permission denied');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'Conflict');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to change project status: ${response.body}`);
+      }
+      return response.json<{
+        project: Project;
+        completedTaskCount: number;
+        removedTaskCount: number;
+      }>();
+    },
+
     async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
       const response = await client.get(`/api/projects/${projectId}/tasks`, authHeaders());
       if (response.statusCode === 401) {
@@ -786,6 +828,72 @@ export const createHttpActor = (
 
     async goToProject(_projectId: string): Promise<void> {
       throw new UnsupportedOperationError('goToProject', 'http');
+    },
+
+    async openProjectStatusSelect(_visibleOptionName?: string): Promise<void> {
+      throw new UnsupportedOperationError('openProjectStatusSelect', 'http');
+    },
+
+    async pageClickWaitingOption(): Promise<void> {
+      throw new UnsupportedOperationError('pageClickWaitingOption', 'http');
+    },
+
+    async pageClickDoneOption(): Promise<void> {
+      throw new UnsupportedOperationError('pageClickDoneOption', 'http');
+    },
+
+    async setProjectStatusFromPage(_status: 'active' | 'someday' | 'done'): Promise<void> {
+      throw new UnsupportedOperationError('setProjectStatusFromPage', 'http');
+    },
+
+    async setProjectWaitingFromPage(_input: {
+      waitingOn: string;
+      waitingSince?: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('setProjectWaitingFromPage', 'http');
+    },
+
+    async confirmDoneComplete(): Promise<void> {
+      throw new UnsupportedOperationError('confirmDoneComplete', 'http');
+    },
+
+    async confirmDoneRemove(): Promise<void> {
+      throw new UnsupportedOperationError('confirmDoneRemove', 'http');
+    },
+
+    async shouldSeeWaitingSummary(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWaitingSummary', 'http');
+    },
+
+    async shouldSeeProjectOnRail(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectOnRail', 'http');
+    },
+
+    async shouldSeeProjectInSomedayGroup(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectInSomedayGroup', 'http');
+    },
+
+    async shouldNotSeeProjectOnRail(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeProjectOnRail', 'http');
+    },
+
+    async openSomedayGroup(): Promise<void> {
+      throw new UnsupportedOperationError('openSomedayGroup', 'http');
+    },
+
+    async goToAllProjects(): Promise<void> {
+      throw new UnsupportedOperationError('goToAllProjects', 'http');
+    },
+
+    async shouldSeeProjectOnAllProjects(_input: {
+      name: string;
+      status: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectOnAllProjects', 'http');
+    },
+
+    async shouldSeeEditTaskDialogSubtitle(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeEditTaskDialogSubtitle', 'http');
     },
 
     async shouldSeeOpenTaskOnProject(_title: string): Promise<void> {

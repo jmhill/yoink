@@ -9,6 +9,8 @@ const garden: Project = {
   createdById: 'user-456',
   name: 'garden',
   status: 'active',
+  waitingOn: null,
+  waitingSince: null,
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-456',
@@ -151,7 +153,7 @@ describe('decideUpdateProject', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('INVALID_PROJECT_NAME');
+      expect(result.error.type).toBe('PROJECT_NAME_BLANK');
     }
   });
 });

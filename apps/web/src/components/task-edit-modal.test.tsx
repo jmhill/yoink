@@ -30,6 +30,7 @@ describe('TaskEditModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onDelete).toHaveBeenCalledWith(milk.id);
+    expect(screen.getByText('Edit this task.')).toBeTruthy();
   });
 
   it('keeps in-progress typing when the same task is refreshed underneath', () => {

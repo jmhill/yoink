@@ -1,3 +1,5 @@
+import type { AssignableProjectStatus, ProjectStatus } from '@yoink/api-contracts';
+
 export type ProjectCreated = {
   type: 'ProjectCreated';
   id: string;
@@ -19,4 +21,28 @@ export type ProjectUpdated = {
   occurredAt: string;
 };
 
-export type ProjectEvent = ProjectCreated | ProjectUpdated;
+export type ProjectStatusChanged = {
+  type: 'ProjectStatusChanged';
+  id: string;
+  organizationId: string;
+  from: ProjectStatus;
+  to: AssignableProjectStatus;
+  waitingOn: string | null;
+  waitingSince: string | null;
+  occurredAt: string;
+};
+
+export type ProjectWaitingChanged = {
+  type: 'ProjectWaitingChanged';
+  id: string;
+  organizationId: string;
+  waitingOn: string;
+  waitingSince: string | null;
+  occurredAt: string;
+};
+
+export type ProjectEvent =
+  | ProjectCreated
+  | ProjectUpdated
+  | ProjectStatusChanged
+  | ProjectWaitingChanged;

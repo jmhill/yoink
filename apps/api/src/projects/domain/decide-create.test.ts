@@ -92,7 +92,7 @@ describe('decideCreateProject', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('INVALID_PROJECT_NAME');
+      expect(result.error.type).toBe('PROJECT_NAME_BLANK');
     }
   });
 
@@ -106,7 +106,7 @@ describe('decideCreateProject', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('INVALID_PROJECT_NAME');
+      expect(result.error.type).toBe('PROJECT_NAME_BLANK');
     }
   });
 

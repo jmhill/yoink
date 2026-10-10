@@ -5,20 +5,26 @@ import {
   normalizeEntityName,
   parseEntityName,
 } from '../../shared/name.js';
-import { invalidProjectNameError, type InvalidProjectNameError } from './project-errors.js';
+import {
+  invalidProjectNameError,
+  projectNameBlankError,
+  type InvalidProjectNameError,
+  type ProjectNameBlankError,
+} from './project-errors.js';
 
 export const PROJECT_NAME_MAX_LENGTH = ENTITY_NAME_MAX_LENGTH;
 
 export const normalizeProjectName = normalizeEntityName;
 
-export const parseProjectName = (raw: string): Result<string, InvalidProjectNameError> => {
+export type ParseProjectNameError = InvalidProjectNameError | ProjectNameBlankError;
+
+export const parseProjectName = (raw: string): Result<string, ParseProjectNameError> => {
   const parsed = parseEntityName(raw);
   if (parsed.isErr()) {
-    return err(
-      invalidProjectNameError(
-        parsed.error === 'empty' ? 'Name is required' : 'Name must be 200 characters or fewer'
-      )
-    );
+    if (parsed.error === 'empty') {
+      return err(projectNameBlankError());
+    }
+    return err(invalidProjectNameError('Name must be 200 characters or fewer'));
   }
 
   return ok(parsed.value);

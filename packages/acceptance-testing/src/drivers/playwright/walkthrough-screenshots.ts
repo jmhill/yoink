@@ -112,6 +112,49 @@ export const waitForSettledOpenSelect = async (input: {
   await option.waitFor({ state: 'visible' });
 };
 
+export const waitForSettledOpenDialog = async (input: {
+  page: {
+    locator: (selector: string) => {
+      last: () => {
+        waitFor: (options: { state: 'visible' }) => Promise<unknown>;
+        evaluate: (
+          fn: (el: {
+            getAnimations: (options: { subtree: boolean }) => Array<{
+              finished: Promise<unknown>;
+            }>;
+            ownerDocument: {
+              defaultView: {
+                getComputedStyle: (element: unknown) => { opacity: string };
+              } | null;
+            };
+          }) => Promise<void>
+        ) => Promise<unknown>;
+      };
+    };
+  };
+}): Promise<void> => {
+  const dialog = input.page.locator('[data-slot="dialog-content"]').last();
+  await dialog.waitFor({ state: 'visible' });
+  await dialog.evaluate(async (el) => {
+    const view = el.ownerDocument.defaultView;
+    if (view === null) {
+      throw new Error('expected a window for computed style');
+    }
+    const finish = () =>
+      Promise.all(
+        el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined))
+      );
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      await finish();
+      if (view.getComputedStyle(el).opacity === '1') {
+        return;
+      }
+    }
+    throw new Error(`Dialog opacity settled at ${view.getComputedStyle(el).opacity}, expected 1`);
+  });
+};
+
 export const saveWalkthroughPng = async (input: {
   page: { screenshot: (options: { path: string; animations?: 'disabled' }) => Promise<unknown> };
   fromDir: string;

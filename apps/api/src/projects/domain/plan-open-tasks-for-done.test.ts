@@ -94,7 +94,11 @@ describe('planOpenTasksForProjectDone', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toHaveLength(1);
-      expect(result.value[0]?.view.id).toBe(soil.id);
+      const plan = result.value[0];
+      expect(plan?.action).toBe('update');
+      if (plan && plan.action !== 'delete') {
+        expect(plan.view.id).toBe(soil.id);
+      }
     }
   });
 

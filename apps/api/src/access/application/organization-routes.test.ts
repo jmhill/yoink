@@ -500,7 +500,7 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Bot tokens cannot');
+      expect(response.json().message).toContain('API tokens cannot');
     });
 
     it('cannot mint an agent with a human-owned bot token', async () => {
@@ -514,7 +514,7 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Bot tokens cannot');
+      expect(response.json().message).toContain('API tokens cannot');
 
       const membersAfter = await membershipStore.findByOrganizationId(personalOrg.id);
       expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
@@ -579,7 +579,7 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Bot tokens cannot');
+      expect(response.json().message).toContain('API tokens cannot');
     });
 
     it('returns 403 when a non-owner human tries', async () => {

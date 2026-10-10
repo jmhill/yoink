@@ -40,7 +40,7 @@ export const invalidTokenNameError = (message: string): InvalidTokenNameError =>
 
 export const botCannotManageTokensError = (): BotCannotManageTokensError => ({
   type: 'BOT_CANNOT_MANAGE_TOKENS',
-  message: 'Bot tokens cannot create, reissue, or revoke tokens',
+  message: 'API tokens cannot create, reissue, or revoke tokens; sign in to the web app.',
 });
 
 export {

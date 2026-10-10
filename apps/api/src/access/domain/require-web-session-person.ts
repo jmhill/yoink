@@ -9,7 +9,7 @@ import { botCannotManageTokensError, type BotCannotManageTokensError } from './t
 export const requireWebSessionPerson = (
   actor: Actor
 ): Result<UserActor, BotCannotManageTokensError> => {
-  if (actor.kind !== 'user' || actor.via !== 'session') {
+  if (actor.via !== 'session') {
     return err(botCannotManageTokensError());
   }
 

@@ -255,7 +255,7 @@ describe('token routes', () => {
         name: 'Charlie',
       });
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Bot tokens cannot');
+      expect(response.json().message).toContain('API tokens cannot');
     });
 
     it('returns 403 when an agent token tries to create', async () => {
@@ -293,7 +293,7 @@ describe('token routes', () => {
         { name: 'Nope' }
       );
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Bot tokens cannot');
+      expect(response.json().message).toContain('API tokens cannot');
     });
 
     it('returns 401 when not authenticated', async () => {
@@ -327,6 +327,7 @@ describe('token routes', () => {
 
       const response = await bearerRequest('DELETE', `/api/auth/tokens/${token.id}`, rawToken);
       expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('API tokens cannot');
     });
 
     it('returns 404 when the token does not exist', async () => {

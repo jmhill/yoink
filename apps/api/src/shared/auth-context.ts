@@ -13,7 +13,7 @@ export type BotActor = {
   readonly tokenId: string;
   readonly userId: string;
   readonly name: string;
-  readonly via: ActorVia;
+  readonly via: 'token';
 };
 
 export type Actor = UserActor | BotActor;

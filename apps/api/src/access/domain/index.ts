@@ -44,8 +44,8 @@ export type {
 } from './organization-membership.js';
 export type { Invitation, InvitationRole } from './invitation.js';
 export type { ApiToken } from './api-token.js';
-export type { Actor, UserActor, BotActor } from './actor.js';
-export { actorFromSession, actorFromToken } from './actor.js';
+export type { Actor, UserActor, BotActor } from '../../shared/auth-context.js';
+export { actorFromSession, actorFromToken } from '../../shared/auth-context.js';
 export type { PasskeyCredential } from './passkey-credential.js';
 export type { UserSession } from './user-session.js';
 

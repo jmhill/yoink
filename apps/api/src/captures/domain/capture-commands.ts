@@ -1,4 +1,4 @@
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 
 export type CreateCaptureCommand = {
   content: string;

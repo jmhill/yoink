@@ -1,5 +1,5 @@
 import type { TaskFilter } from '@yoink/api-contracts';
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 
 export type CreateTaskCommand = {
   title: string;

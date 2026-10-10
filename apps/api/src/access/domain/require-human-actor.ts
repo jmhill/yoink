@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { Actor, UserActor } from './actor.js';
+import type { Actor, UserActor } from '../../shared/auth-context.js';
 import { botCannotManageTokensError, type BotCannotManageTokensError } from './token-errors.js';
 
 export const requireHumanActor = (

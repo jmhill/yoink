@@ -209,6 +209,85 @@ describe('sqlite list persist', () => {
     expect(reorder[0]?.hidden).toBe(true);
   });
 
+  it('records a bot actor on list create, rename, and delete', async () => {
+    const persist = listPersistOf(db);
+    const bot = {
+      kind: 'bot' as const,
+      userId: 'user-lane',
+      tokenId: 'tok-lane',
+      name: 'Lane',
+    };
+
+    const created = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListCreated',
+          id: 'list-1',
+          organizationId: 'org-1',
+          createdById: 'user-lane',
+          name: 'Groceries',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor: bot,
+        ids: { recordId: 'log-create' },
+      })
+    );
+    expect(created.isOk()).toBe(true);
+
+    const listStore = await createSqliteListStore(db);
+    const current = (await listStore.findById('list-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected list');
+    }
+
+    const renamed = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListRenamed',
+          id: 'list-1',
+          organizationId: 'org-1',
+          name: 'Shopping',
+          occurredAt: later,
+        },
+        current,
+        actor: bot,
+        ids: { recordId: 'log-rename' },
+      })
+    );
+    expect(renamed.isOk()).toBe(true);
+
+    const deleted = await persist(
+      planListChange({
+        event: {
+          type: 'NamedListDeleted',
+          id: 'list-1',
+          organizationId: 'org-1',
+          occurredAt: '2025-01-15T12:00:00.000Z',
+        },
+        current,
+        actor: bot,
+        ids: { recordId: 'log-del' },
+      })
+    );
+    expect(deleted.isOk()).toBe(true);
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('list', 'list-1'))._unsafeUnwrap();
+    expect(records).toHaveLength(3);
+    expect(records.map((record) => record.kind)).toEqual([
+      'NamedListCreated',
+      'NamedListRenamed',
+      'NamedListDeleted',
+    ]);
+    for (const record of records) {
+      expect(record.actorKind).toBe('bot');
+      expect(record.actorUserId).toBe('user-lane');
+    }
+  });
+
   it('rolls back list delete when history insert fails', async () => {
     const persist = listPersistOf(db);
     await persistList(persist, {

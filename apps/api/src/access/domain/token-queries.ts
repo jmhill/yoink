@@ -1,4 +1,4 @@
-import type { Actor } from './actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 
 export type ValidateTokenQuery = {
   plaintext: string;

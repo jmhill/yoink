@@ -1423,10 +1423,13 @@ export const createPlaywrightActor = (
 
     async pageClickWaitingOption(): Promise<void> {
       await page.locator('[data-project-status-option="waiting"]').click();
+      await expect(page.getByRole('listbox')).toBeHidden();
+      await expect(page.locator('[data-project-waiting-fields]')).toBeVisible();
     },
 
     async pageClickDoneOption(): Promise<void> {
       await page.locator('[data-project-status-option="done"]').click();
+      await expect(page.getByRole('listbox')).toBeHidden();
     },
 
     async setProjectStatusFromPage(status: 'active' | 'someday' | 'done'): Promise<void> {

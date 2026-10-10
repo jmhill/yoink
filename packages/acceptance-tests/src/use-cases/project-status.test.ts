@@ -236,6 +236,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
 
         await alice.setProjectStatusFromPage('someday');
+        if (viewport.name === 'phone') {
+          await alice.openMobileBottomTab('tasks');
+          await alice.openMobileTasksRail();
+        }
         await alice.openSomedayGroup();
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
@@ -279,7 +283,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'edit_task_subtitle',
         });
-      });
+      }, 90_000);
     }
   });
 });

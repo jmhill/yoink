@@ -91,9 +91,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.dragOpenTaskOnto('Milk', 'Eggs');
       await alice.shouldSeeOpenTasksInOrder(['Eggs', 'Milk', 'Bread']);
 
+      const pileSettled = alice.awaitLiveOpenListTasks(
+        groceries.id,
+        (tasks) =>
+          tasks.length === 2 &&
+          tasks[0]?.title === 'Milk' &&
+          tasks[1]?.title === 'Bread' &&
+          tasks.every((task) => task.id !== eggs.id)
+      );
       await alice.completeOpenTaskFromRow(eggs.id);
       await alice.shouldNotSeeTask(eggs.id);
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Bread']);
+      await pileSettled;
 
       await alice.deleteOpenTaskFromRow(bread.id);
       await alice.shouldNotSeeTask(bread.id);

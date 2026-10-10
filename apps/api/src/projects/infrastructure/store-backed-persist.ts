@@ -24,15 +24,7 @@ const queriesForPlan = (plan: ProjectChangePlan): SqlQuery[] => {
 
 const uniqueNameConstraintFailed = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
-  const code =
-    typeof error === 'object' && error !== null && 'code' in error
-      ? String(error.code)
-      : '';
-  return (
-    /idx_projects_org_name_ci/i.test(message) ||
-    (/unique constraint failed/i.test(message) && /projects/i.test(message)) ||
-    /SQLITE_CONSTRAINT_UNIQUE/i.test(code)
-  );
+  return /idx_projects_org_name_ci/i.test(message);
 };
 
 const persistFailure = (

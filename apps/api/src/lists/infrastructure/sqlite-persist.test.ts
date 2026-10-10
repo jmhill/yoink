@@ -211,6 +211,10 @@ describe('sqlite list persist', () => {
 
   it('records a bot actor on list create, rename, and delete', async () => {
     const persist = listPersistOf(db);
+    await db.execute({
+      sql: `INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)`,
+      args: ['user-lane', 'lane@yoink.invalid', now],
+    });
     const bot = {
       kind: 'bot' as const,
       userId: 'user-lane',

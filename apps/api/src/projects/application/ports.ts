@@ -2,6 +2,7 @@ import type { ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
 import type { DuplicateProjectNameError, StorageError } from '../domain/project-errors.js';
 import type { ProjectChangePlan } from '../domain/plan-project-change.js';
+import type { TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
@@ -25,3 +26,8 @@ export type PageOpenTasksOnProject = (options: {
   fetchLimit: number;
   seek?: KeysetCursor;
 }) => ResultAsync<KeysetRows<Task>, StorageError>;
+
+export type PersistProjectStatusChange = (input: {
+  project: ProjectChangePlan;
+  tasks: readonly TaskChangePlan[];
+}) => ResultAsync<void, StorageError>;

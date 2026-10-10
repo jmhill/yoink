@@ -25,7 +25,7 @@ const historyQueries = (plan: TaskChangePlan) =>
       )
     : plan.records.map((record) => insertChangeLogQuery(record));
 
-const queriesForPlan = (plan: TaskChangePlan) => {
+export const queriesForTaskPlan = (plan: TaskChangePlan) => {
   const history = historyQueries(plan);
 
   switch (plan.action) {
@@ -76,7 +76,7 @@ const mutationMissed = (plan: TaskChangePlan, results: QueryResult[]): boolean =
 export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChange => {
   return (plan) =>
     ResultAsync.fromPromise(
-      deps.db.batch(queriesForPlan(plan), 'write'),
+      deps.db.batch(queriesForTaskPlan(plan), 'write'),
       (error) => storageError('Failed to persist task change', error)
     ).andThen((results) =>
       mutationMissed(plan, results)

@@ -118,7 +118,10 @@ describe('project HTTP routes', () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ message: 'Creating a project requires a person' });
+    expect(response.json()).toEqual({
+      message: 'Creating a project requires a person',
+      code: 'PROJECT_CREATE_REQUIRES_PERSON',
+    });
   });
 
   it('lets an agent token edit a project', async () => {
@@ -162,6 +165,7 @@ describe('project HTTP routes', () => {
     expect(duplicate.statusCode).toBe(409);
     expect(duplicate.json()).toEqual({
       message: 'A project with this name already exists',
+      code: 'DUPLICATE_PROJECT_NAME',
     });
   });
 
@@ -173,7 +177,56 @@ describe('project HTTP routes', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ message: 'Project not found' });
+    expect(response.json()).toEqual({
+      message: 'Project not found',
+      code: 'PROJECT_NOT_FOUND',
+    });
+  });
+
+  it('returns VALIDATION_FAILED when the create name is the wrong type', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      cookies: session.cookies,
+      payload: { name: 12 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Request validation failed',
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('returns a clear code when the create name is blank', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      cookies: session.cookies,
+      payload: { name: '   ' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: "Name can't be blank",
+      code: 'PROJECT_NAME_BLANK',
+    });
+  });
+
+  it('returns a clear code when the update name is blank', async () => {
+    const created = await createProject({ name: 'Garden' });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/projects/${created.body.id}`,
+      cookies: session.cookies,
+      payload: { name: '   ' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: "Name can't be blank",
+      code: 'PROJECT_NAME_BLANK',
+    });
   });
 
   it('returns 401 without authentication', async () => {

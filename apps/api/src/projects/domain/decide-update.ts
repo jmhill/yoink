@@ -6,6 +6,7 @@ import {
   duplicateProjectNameError,
   type DuplicateProjectNameError,
   type InvalidProjectNameError,
+  type ProjectNameBlankError,
 } from './project-errors.js';
 import { normalizeProjectName, parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
@@ -17,7 +18,10 @@ export type DecideUpdateProjectInput = {
   now: string;
 };
 
-export type DecideUpdateProjectError = InvalidProjectNameError | DuplicateProjectNameError;
+export type DecideUpdateProjectError =
+  | InvalidProjectNameError
+  | ProjectNameBlankError
+  | DuplicateProjectNameError;
 
 export type DecideUpdateProjectResult =
   | { type: 'changed'; event: ProjectUpdated }

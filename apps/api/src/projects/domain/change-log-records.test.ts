@@ -65,4 +65,57 @@ describe('changeLogRecordsFromProjectEvent', () => {
       payload: { name: 'Backyard', objective: 'Plant herbs' },
     });
   });
+
+  it('writes a ProjectStatusChanged record with who and when', () => {
+    const [record] = changeLogRecordsFromProjectEvent({
+      event: {
+        type: 'ProjectStatusChanged',
+        id: 'project-1',
+        organizationId: 'org-1',
+        from: 'active',
+        to: 'waiting',
+        waitingOn: 'Mike',
+        waitingSince: '2026-10-01',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      actor: person,
+      ids: { recordId: 'log-3' },
+    });
+
+    expect(record).toMatchObject({
+      projectId: 'project-1',
+      subjectType: 'project',
+      kind: 'ProjectStatusChanged',
+      hidden: false,
+      actorUserId: 'user-456',
+      actorKind: 'user',
+      payload: {
+        from: 'active',
+        to: 'waiting',
+        waitingOn: 'Mike',
+        waitingSince: '2026-10-01',
+      },
+    });
+  });
+
+  it('writes a ProjectWaitingChanged record', () => {
+    const [record] = changeLogRecordsFromProjectEvent({
+      event: {
+        type: 'ProjectWaitingChanged',
+        id: 'project-1',
+        organizationId: 'org-1',
+        waitingOn: 'Trident',
+        waitingSince: null,
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      actor: bot,
+      ids: { recordId: 'log-4' },
+    });
+
+    expect(record).toMatchObject({
+      kind: 'ProjectWaitingChanged',
+      actorKind: 'bot',
+      payload: { waitingOn: 'Trident', waitingSince: null },
+    });
+  });
 });

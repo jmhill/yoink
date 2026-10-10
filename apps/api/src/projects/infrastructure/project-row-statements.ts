@@ -4,9 +4,9 @@ import type { SqlQuery } from '../../shared/change-log/infrastructure/sql.js';
 export const insertProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     INSERT INTO projects (
-      id, organization_id, created_by_id, name, objective, status, created_at,
-      last_changed_at, last_changed_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      id, organization_id, created_by_id, name, objective, status,
+      waiting_on, waiting_since, created_at, last_changed_at, last_changed_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   args: [
     project.id,
@@ -15,6 +15,8 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
     project.name,
     project.objective ?? null,
     project.status,
+    project.waitingOn,
+    project.waitingSince,
     project.createdAt,
     project.lastChangedAt,
     project.lastChangedBy,
@@ -24,12 +26,16 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
 export const updateProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     UPDATE projects
-    SET name = ?, objective = ?, last_changed_at = ?, last_changed_by = ?
+    SET name = ?, objective = ?, status = ?, waiting_on = ?, waiting_since = ?,
+        last_changed_at = ?, last_changed_by = ?
     WHERE id = ? AND organization_id = ?
   `,
   args: [
     project.name,
     project.objective ?? null,
+    project.status,
+    project.waitingOn,
+    project.waitingSince,
     project.lastChangedAt,
     project.lastChangedBy,
     project.id,

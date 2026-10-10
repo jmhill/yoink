@@ -1,5 +1,10 @@
 import type { Project } from '@yoink/api-contracts';
-import type { ProjectCreated, ProjectUpdated } from './events.js';
+import type {
+  ProjectCreated,
+  ProjectStatusChanged,
+  ProjectUpdated,
+  ProjectWaitingChanged,
+} from './events.js';
 
 export type ApplyProjectMeta = {
   actorUserId: string | null;
@@ -25,6 +30,8 @@ export const applyProjectCreated = (
     createdById: event.createdById,
     name: event.name,
     status: event.status,
+    waitingOn: null,
+    waitingSince: null,
     createdAt: event.createdAt,
     lastChangedAt: event.occurredAt,
     lastChangedBy: meta.actorUserId,
@@ -60,3 +67,25 @@ export const applyProjectUpdated = (
   next.objective = event.objective;
   return next;
 };
+
+export const applyProjectStatusChanged = (
+  current: Project,
+  event: ProjectStatusChanged,
+  meta: ApplyProjectMeta
+): Project => ({
+  ...withLastChanged(current, event.occurredAt, meta),
+  status: event.to,
+  waitingOn: event.waitingOn,
+  waitingSince: event.waitingSince,
+});
+
+export const applyProjectWaitingChanged = (
+  current: Project,
+  event: ProjectWaitingChanged,
+  meta: ApplyProjectMeta
+): Project => ({
+  ...withLastChanged(current, event.occurredAt, meta),
+  status: 'waiting',
+  waitingOn: event.waitingOn,
+  waitingSince: event.waitingSince,
+});

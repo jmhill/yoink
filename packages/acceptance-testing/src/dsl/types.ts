@@ -41,6 +41,8 @@ export type Project = {
   createdAt: string;
   objective?: string;
   status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  waitingOn?: string | null;
+  waitingSince?: string | null;
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
 };

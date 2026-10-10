@@ -39,7 +39,12 @@ function ProjectsPage() {
               className="flex min-w-0 flex-col rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
             >
               <span className="font-medium">{project.name}</span>
-              <span className="text-xs capitalize text-muted-foreground">{project.status}</span>
+              <span
+                className="text-xs capitalize text-muted-foreground"
+                data-project-index-status={project.status}
+              >
+                {project.status}
+              </span>
             </Link>
           </li>
         ))}

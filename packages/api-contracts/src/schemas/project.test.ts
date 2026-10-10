@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ChangeProjectStatusSchema,
   CreateProjectSchema,
   ProjectSchema,
   UpdateProjectSchema,
@@ -10,6 +11,8 @@ const garden = {
   organizationId: '550e8400-e29b-41d4-a716-446655440001',
   name: 'Garden',
   status: 'active' as const,
+  waitingOn: null,
+  waitingSince: null,
   createdById: '550e8400-e29b-41d4-a716-446655440002',
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
@@ -35,6 +38,25 @@ describe('ProjectSchema', () => {
     for (const status of ['active', 'waiting', 'someday', 'done', 'proposed'] as const) {
       expect(ProjectSchema.safeParse({ ...garden, status }).success).toBe(true);
     }
+  });
+
+  it('accepts waiting on and a date or unknown since', () => {
+    expect(
+      ProjectSchema.safeParse({
+        ...garden,
+        status: 'waiting',
+        waitingOn: 'Mike',
+        waitingSince: '2026-10-01',
+      }).success
+    ).toBe(true);
+    expect(
+      ProjectSchema.safeParse({
+        ...garden,
+        status: 'waiting',
+        waitingOn: 'Trident',
+        waitingSince: null,
+      }).success
+    ).toBe(true);
   });
 });
 
@@ -62,5 +84,35 @@ describe('UpdateProjectSchema', () => {
 
   it('rejects an empty body', () => {
     expect(UpdateProjectSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('ChangeProjectStatusSchema', () => {
+  it('accepts assignable statuses and optional waiting fields', () => {
+    expect(ChangeProjectStatusSchema.safeParse({ status: 'active' }).success).toBe(true);
+    expect(
+      ChangeProjectStatusSchema.safeParse({
+        status: 'waiting',
+        waitingOn: 'Mike',
+        waitingSince: '2026-10-10',
+      }).success
+    ).toBe(true);
+    expect(
+      ChangeProjectStatusSchema.safeParse({
+        status: 'waiting',
+        waitingOn: 'Trident',
+        waitingSince: null,
+      }).success
+    ).toBe(true);
+    expect(
+      ChangeProjectStatusSchema.safeParse({
+        status: 'done',
+        openTasks: 'complete',
+      }).success
+    ).toBe(true);
+  });
+
+  it('refuses proposed as a target status', () => {
+    expect(ChangeProjectStatusSchema.safeParse({ status: 'proposed' }).success).toBe(false);
   });
 });

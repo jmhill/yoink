@@ -16,6 +16,8 @@ export const CHANGE_LOG_KINDS = [
   'NamedListDeleted',
   'ProjectCreated',
   'ProjectUpdated',
+  'ProjectStatusChanged',
+  'ProjectWaitingChanged',
   'TaskAddedToProject',
   'TaskRemovedFromProject',
 ] as const;

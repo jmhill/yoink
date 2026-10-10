@@ -144,7 +144,7 @@ export function TaskEditModal({
             Edit Task
           </DialogTitle>
           <DialogDescription>
-            Update the task title and due date.
+            Edit this task.
           </DialogDescription>
         </DialogHeader>
 

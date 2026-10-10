@@ -4,7 +4,9 @@ import {
   namedListDeletedPayloadV1Schema,
   namedListRenamedPayloadV1Schema,
   projectCreatedPayloadV1Schema,
+  projectStatusChangedPayloadV1Schema,
   projectUpdatedPayloadV1Schema,
+  projectWaitingChangedPayloadV1Schema,
   taskAddedToProjectPayloadV1Schema,
   taskRemovedFromProjectPayloadV1Schema,
   openTasksRenumberedPayloadV1Schema,
@@ -138,6 +140,20 @@ export const projectUpdatedRecordSchema = z.object({
   payload: projectUpdatedPayloadV1Schema,
 });
 
+export const projectStatusChangedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('ProjectStatusChanged'),
+  ...visibleV1,
+  payload: projectStatusChangedPayloadV1Schema,
+});
+
+export const projectWaitingChangedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('ProjectWaitingChanged'),
+  ...visibleV1,
+  payload: projectWaitingChangedPayloadV1Schema,
+});
+
 export const taskAddedToProjectRecordSchema = z.object({
   ...envelope,
   kind: z.literal('TaskAddedToProject'),
@@ -167,6 +183,8 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   namedListDeletedRecordSchema,
   projectCreatedRecordSchema,
   projectUpdatedRecordSchema,
+  projectStatusChangedRecordSchema,
+  projectWaitingChangedRecordSchema,
   taskAddedToProjectRecordSchema,
   taskRemovedFromProjectRecordSchema,
 ]);
@@ -186,6 +204,10 @@ export type NamedListRenamedRecord = z.infer<typeof namedListRenamedRecordSchema
 export type NamedListDeletedRecord = z.infer<typeof namedListDeletedRecordSchema>;
 export type ProjectCreatedRecord = z.infer<typeof projectCreatedRecordSchema>;
 export type ProjectUpdatedRecord = z.infer<typeof projectUpdatedRecordSchema>;
+export type ProjectStatusChangedRecord = z.infer<typeof projectStatusChangedRecordSchema>;
+export type ProjectWaitingChangedRecord = z.infer<
+  typeof projectWaitingChangedRecordSchema
+>;
 export type TaskAddedToProjectRecord = z.infer<typeof taskAddedToProjectRecordSchema>;
 export type TaskRemovedFromProjectRecord = z.infer<
   typeof taskRemovedFromProjectRecordSchema

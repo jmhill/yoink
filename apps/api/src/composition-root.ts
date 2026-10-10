@@ -12,7 +12,10 @@ import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.
 import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
 import { createProjectHandlers } from './projects/application/create-project-handlers.js';
 import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
-import { createSqliteProjectPersist } from './projects/infrastructure/store-backed-persist.js';
+import {
+  createSqliteProjectPersist,
+  createSqliteProjectStatusPersist,
+} from './projects/infrastructure/store-backed-persist.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
@@ -363,6 +366,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const projectStore = await createSqliteProjectStore(database);
   const projectHandlers = createProjectHandlers({
     persist: createSqliteProjectPersist({ db: database }),
+    persistStatus: createSqliteProjectStatusPersist({ db: database }),
     list: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
     load: (id) => projectStore.findById(id),

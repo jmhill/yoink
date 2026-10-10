@@ -7,11 +7,12 @@ import {
   type DuplicateProjectNameError,
   type StorageError,
 } from '../domain/project-errors.js';
-import type { PersistProjectChange } from '../application/ports.js';
+import type { PersistProjectChange, PersistProjectStatusChange } from '../application/ports.js';
 import type { ProjectChangePlan } from '../domain/plan-project-change.js';
+import { queriesForTaskPlan } from '../../tasks/infrastructure/store-backed-persist.js';
 import { insertProjectQuery, updateProjectQuery } from './project-row-statements.js';
 
-const queriesForPlan = (plan: ProjectChangePlan): SqlQuery[] => {
+export const queriesForProjectPlan = (plan: ProjectChangePlan): SqlQuery[] => {
   const history = plan.records.map((record) => insertChangeLogQuery(record));
 
   switch (plan.action) {
@@ -42,7 +43,23 @@ export const createSqliteProjectPersist = (deps: {
 }): PersistProjectChange => {
   return (plan) =>
     ResultAsync.fromPromise(
-      deps.db.batch(queriesForPlan(plan), 'write'),
+      deps.db.batch(queriesForProjectPlan(plan), 'write'),
       (error) => persistFailure(plan, error)
+    ).map(() => undefined);
+};
+
+export const createSqliteProjectStatusPersist = (deps: {
+  db: Database;
+}): PersistProjectStatusChange => {
+  return (input) =>
+    ResultAsync.fromPromise(
+      deps.db.batch(
+        [
+          ...input.tasks.flatMap((plan) => queriesForTaskPlan(plan)),
+          ...queriesForProjectPlan(input.project),
+        ],
+        'write'
+      ),
+      (error) => storageError('Failed to persist project status change', error)
     ).map(() => undefined);
 };

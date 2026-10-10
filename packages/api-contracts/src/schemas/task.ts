@@ -12,6 +12,8 @@ export const TaskSchema = z.object({
   createdAt: z.string().datetime(),
   assigneeId: z.string().uuid().optional(),
   listId: z.string().uuid().optional(),
+  // Optional single project. Independent of listId — a task may have either, both, or neither.
+  projectId: z.string().uuid().optional(),
   // Position among open tasks in the current pile (that list, or unlisted).
   // Completed tasks keep this remembered index; they are not in the open sequence.
   openOrder: z.number().int().optional(),
@@ -21,9 +23,8 @@ export const TaskSchema = z.object({
    * Reorder and sibling renumber do not update these.
    */
   lastChangedAt: z.string().datetime().nullable(),
-  /** Null until typed actors (#132 / PR 151) land. */
   lastChangedBy: z.string().uuid().nullable(),
-  /** Set on complete; cleared on uncomplete. Null until actors land. */
+  /** Set on complete; cleared on uncomplete. */
   completedBy: z.string().uuid().nullable(),
 });
 
@@ -35,6 +36,8 @@ export const CreateTaskSchema = z.object({
   assigneeId: z.string().uuid().optional(),
   // Optional single list bucket. New tasks are open; unknown/other-org lists are rejected in the write.
   listId: z.string().uuid().optional(),
+  // Optional project. Omit for no project — same as listId.
+  projectId: z.string().uuid().optional(),
 });
 
 export type CreateTask = z.infer<typeof CreateTaskSchema>;
@@ -45,6 +48,8 @@ export const UpdateTaskSchema = z.object({
   assigneeId: z.string().uuid().nullable().optional(), // null to clear
   // Set, replace, or clear (null) the single list bucket. Omit to leave unchanged.
   listId: z.string().uuid().nullable().optional(),
+  // Set, replace, or clear (null) the project. Omit to leave unchanged.
+  projectId: z.string().uuid().nullable().optional(),
 });
 
 export type UpdateTask = z.infer<typeof UpdateTaskSchema>;

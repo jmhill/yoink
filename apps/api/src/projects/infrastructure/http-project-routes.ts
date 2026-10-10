@@ -6,6 +6,7 @@ import type { ProjectHandlers } from '../application/create-project-handlers.js'
 import {
   invalidCursorHttp,
   toProjectListBody,
+  toTaskListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
 
 export type ProjectRoutesDependencies = {
@@ -104,6 +105,38 @@ export const registerProjectRoutes = async (
           }),
           (error) => {
             switch (error.type) {
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: error.message },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      listOpenTasks: async ({ params, query, request }) => {
+        const result = await projectHandlers.listOpenTasks({
+          projectId: params.id,
+          organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
+        });
+
+        return result.match(
+          (page) => ({
+            status: 200 as const,
+            body: toTaskListBody(page),
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
               case 'PROJECT_NOT_FOUND':
                 return {
                   status: 404 as const,

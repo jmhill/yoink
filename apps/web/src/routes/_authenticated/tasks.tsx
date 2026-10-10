@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@yoink/ui-base/components/select';
-import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth } from '@/api/client';
+import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth, tsrProjects } from '@/api/client';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
@@ -229,6 +229,7 @@ function TasksPage() {
   const boardFilter: TaskFilter = filter ?? 'today';
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskListId, setNewTaskListId] = useState('');
+  const [newTaskProjectId, setNewTaskProjectId] = useState('');
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -287,6 +288,13 @@ function TasksPage() {
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const { data: projectsData } = tsrProjects.list.useQuery({
+    queryKey: ['projects'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
+  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const pickableProjects = projects.filter((project) => project.status !== 'done');
   const namedPileList =
     allPile?.kind === 'named'
       ? namedLists.find((list) => list.id === allPile.listId)
@@ -452,6 +460,7 @@ function TasksPage() {
         completedBy: null,
         ...(body.assigneeId ? { assigneeId: body.assigneeId } : {}),
         ...(body.listId ? { listId: body.listId } : {}),
+        ...(body.projectId ? { projectId: body.projectId } : {}),
       };
 
       if (previousTasks && typeof previousTasks === 'object' && 'status' in previousTasks) {
@@ -660,6 +669,8 @@ function TasksPage() {
               assigneeId:
                 body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
               listId: body?.listId === null ? undefined : nextListId,
+              projectId:
+                body?.projectId === null ? undefined : body?.projectId ?? task.projectId,
             },
           ];
         })
@@ -704,6 +715,7 @@ function TasksPage() {
         dueDate,
         ...(assigneeId ? { assigneeId } : {}),
         ...(listId ? { listId } : {}),
+        ...(newTaskProjectId ? { projectId: newTaskProjectId } : {}),
       },
     });
   };
@@ -733,7 +745,7 @@ function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null }) => {
+  const handleSaveEdit = (taskId: string, updates: { title?: string; dueDate?: string | null; assigneeId?: string | null; listId?: string | null; projectId?: string | null }) => {
     updateMutation.mutate({
       params: { id: taskId },
       body: updates,
@@ -966,6 +978,25 @@ function TasksPage() {
                 </SelectContent>
               </Select>
             ) : null}
+            <Select
+              value={newTaskProjectId || 'none'}
+              onValueChange={(value) =>
+                setNewTaskProjectId(value === 'none' ? '' : value)
+              }
+              disabled={createMutation.isPending}
+            >
+              <SelectTrigger id="create-task-project" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
+                <SelectValue placeholder="No project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No project</SelectItem>
+                {pickableProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
               {createMutation.isPending ? '...' : 'Add'}
             </Button>
@@ -1126,6 +1157,11 @@ function TasksPage() {
         isLoadingCapture={isLoadingCapture}
         members={members.map((m) => ({ userId: m.userId, label: memberLabel(m) }))}
         lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
+        projects={projects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          status: project.status,
+        }))}
       />
     </div>
   );

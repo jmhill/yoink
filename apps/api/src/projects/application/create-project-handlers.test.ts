@@ -36,6 +36,7 @@ const handlersOf = (logger: ReturnType<typeof collectLogger>['logger']) =>
     list: () => okAsync([garden]),
     pageProjects: () => okAsync({ rows: [garden], total: 1 }),
     load: () => okAsync(garden),
+    pageOpenTasksOnProject: () => okAsync({ rows: [], total: 0 }),
     nextId: () => 'id-1',
     now: () => '2025-01-15T11:00:00.000Z',
     logger,

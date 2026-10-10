@@ -25,6 +25,7 @@ export type PromoteConfirmInput = {
   title: string;
   dueDate?: string;
   listId?: string;
+  projectId?: string;
 };
 
 type NamedListOption = {
@@ -32,11 +33,18 @@ type NamedListOption = {
   name: string;
 };
 
+type ProjectOption = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 type PromoteSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   capture: { id: string; content: string } | null;
   lists: NamedListOption[];
+  projects: ProjectOption[];
   onConfirm: (captureId: string, input: PromoteConfirmInput) => void;
   isLoading?: boolean;
 };
@@ -46,12 +54,14 @@ export function PromoteSheet({
   onOpenChange,
   capture,
   lists,
+  projects,
   onConfirm,
   isLoading = false,
 }: PromoteSheetProps) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [listId, setListId] = useState('');
+  const [projectId, setProjectId] = useState('');
 
   // Reset when a new capture is selected. 100 char limit matches processing.
   useEffect(() => {
@@ -59,6 +69,7 @@ export function PromoteSheet({
       setTitle(capture.content.slice(0, 100).trim());
       setDueDate('');
       setListId('');
+      setProjectId('');
     }
   }, [capture]);
 
@@ -69,6 +80,7 @@ export function PromoteSheet({
       title: title.trim(),
       dueDate: dueDate || undefined,
       listId: listId || undefined,
+      projectId: projectId || undefined,
     });
   };
 
@@ -120,6 +132,31 @@ export function PromoteSheet({
                       {list.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promote-project">Project</Label>
+              <Select
+                value={projectId || 'none'}
+                onValueChange={(value) =>
+                  setProjectId(value === 'none' ? '' : value)
+                }
+                disabled={isLoading}
+              >
+                <SelectTrigger id="promote-project" className="w-full">
+                  <SelectValue placeholder="No project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No project</SelectItem>
+                  {projects
+                    .filter((project) => project.status !== 'done')
+                    .map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

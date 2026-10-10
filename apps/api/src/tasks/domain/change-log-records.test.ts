@@ -142,4 +142,80 @@ describe('changeLogRecordsFromTaskEvent', () => {
     expect(records[0]?.actorUserId).toBe('user-lane');
     expect(records[0]?.actorKind).toBe('bot');
   });
+
+  it('writes TaskCreated with projectId and no extra Added record', () => {
+    const records = changeLogRecordsFromTaskEvent({
+      event: {
+        type: 'TaskCreated',
+        id: 'task-1',
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        title: 'Buy soil',
+        projectId: 'project-garden',
+        openOrder: 0,
+        createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
+      },
+      current: null,
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      ids: { recordId: 'log-1' },
+    });
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.kind).toBe('TaskCreated');
+    expect(records[0]?.projectId).toBe('project-garden');
+    expect(records[0]?.kind === 'TaskCreated' && records[0].payload.projectId).toBe(
+      'project-garden'
+    );
+    expect(parseChangeLogRecord(records[0]!).isOk()).toBe(true);
+  });
+
+  it('writes removed(A) + added(B) when moving A to B', () => {
+    const inGarden: Task = { ...current, projectId: 'project-garden' };
+    const records = changeLogRecordsFromTaskEvent({
+      event: {
+        type: 'TaskUpdated',
+        id: 'task-1',
+        organizationId: 'org-1',
+        projectId: 'project-cabin',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      current: inGarden,
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      ids: {
+        recordId: 'log-upd',
+        removedFromProjectRecordId: 'log-rm',
+        addedToProjectRecordId: 'log-add',
+      },
+    });
+
+    expect(records.map((record) => record.kind)).toEqual([
+      'TaskUpdated',
+      'TaskRemovedFromProject',
+      'TaskAddedToProject',
+    ]);
+    expect(records[1]?.projectId).toBe('project-garden');
+    expect(records[2]?.projectId).toBe('project-cabin');
+    expect(records[0]?.projectId).toBe('project-cabin');
+    expect(parseChangeLogRecord(records[1]!).isOk()).toBe(true);
+    expect(parseChangeLogRecord(records[2]!).isOk()).toBe(true);
+  });
+
+  it('carries the task projectId on complete instead of null', () => {
+    const inGarden: Task = { ...current, projectId: 'project-garden' };
+    const records = changeLogRecordsFromTaskEvent({
+      event: {
+        type: 'TaskCompleted',
+        id: 'task-1',
+        organizationId: 'org-1',
+        completedAt: '2025-01-15T12:00:00.000Z',
+        occurredAt: '2025-01-15T12:00:00.000Z',
+      },
+      current: inGarden,
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      ids: { recordId: 'log-done' },
+    });
+
+    expect(records[0]?.projectId).toBe('project-garden');
+  });
 });

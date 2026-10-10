@@ -511,6 +511,20 @@ export class InboxPage {
     await option.click();
   }
 
+  promoteProject() {
+    return this.page.locator('#promote-project');
+  }
+
+  async selectPromoteProjectByName(name: string): Promise<void> {
+    await this.promoteProject().click();
+    const option = this.page
+      .getByRole('listbox')
+      .locator('[data-slot="select-item"]')
+      .filter({ hasText: name });
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
   async confirmPromote(): Promise<void> {
     await this.promoteSheet().getByRole('button', { name: 'Promote' }).click();
   }
@@ -960,6 +974,30 @@ export class TasksPage {
 
   async clearList(): Promise<void> {
     await this.chooseListOption('unlisted');
+  }
+
+  async selectProject(projectId: string): Promise<void> {
+    await this.chooseProjectOption(projectId);
+  }
+
+  async clearProject(): Promise<void> {
+    await this.chooseProjectOption('none');
+  }
+
+  private async chooseProjectOption(value: string): Promise<void> {
+    await this.page.locator('#edit-task-project').click();
+    const option = this.page.locator(`[data-slot="select-item"][data-value="${value}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
+  }
+
+  async selectCreateProject(projectId: string): Promise<void> {
+    await this.page.locator('#create-task-project').click();
+    const option = this.page
+      .getByRole('listbox')
+      .locator(`[data-slot="select-item"][data-value="${projectId}"]`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
   }
 
   private async chooseListOption(value: string): Promise<void> {
@@ -2741,5 +2779,22 @@ export class ProjectPage {
       throw new Error(`Failed to edit project objective: ${response.status()}`);
     }
     await expect(input).toHaveValue(objective);
+  }
+
+  openTaskByTitle(title: string) {
+    return this.page.locator(`[data-project-open-tasks] [data-task-title="${title}"]`);
+  }
+
+  async getOpenTaskTitles(): Promise<string[]> {
+    const cards = this.page.locator('[data-project-open-tasks] [data-task-title]');
+    const count = await cards.count();
+    const titles: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const title = await cards.nth(i).getAttribute('data-task-title');
+      if (title) {
+        titles.push(title);
+      }
+    }
+    return titles;
   }
 }

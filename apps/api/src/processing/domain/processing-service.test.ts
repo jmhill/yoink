@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { okAsync } from 'neverthrow';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import type { Capture, NamedList, Task } from '@yoink/api-contracts';
 import { createCaptureProcessingService, type CaptureProcessingService } from './processing-service.js';
@@ -62,6 +63,7 @@ describe('CaptureProcessingService', () => {
       createTask: (command) =>
         handleCreateTask(command, {
           loadList: (id) => listStore.findById(id),
+          loadProject: () => okAsync(null),
           loadNextOpenOrder: (organizationId, listId) =>
             taskStore.nextOpenOrderInPile({ organizationId, listId }),
           persist,

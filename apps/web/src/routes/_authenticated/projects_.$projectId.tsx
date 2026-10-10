@@ -3,11 +3,36 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@yoink/ui-base/components/dialog';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
-import { tsrProjects } from '@/api/client';
-import { projectContract } from '@yoink/api-contracts';
-import { isBlockingQueryFailure } from '@/lib/live-query';
+import { TaskCard } from '@/components/task-card';
+import { TaskEditModal } from '@/components/task-edit-modal';
+import {
+  tsr,
+  tsrAuth,
+  tsrLists,
+  tsrOrganizations,
+  tsrProjects,
+  tsrTasks,
+} from '@/api/client';
+import { memberLabel } from '@/api/auth';
+import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contracts';
+import {
+  cancelLiveQueries,
+  invalidateLiveQueries,
+  isBlockingQueryFailure,
+  mapLiveOpenTaskLists,
+  restoreQuerySnapshots,
+  snapshotLiveOpenTaskLists,
+} from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
@@ -24,10 +49,60 @@ function ProjectPage() {
     refetchInterval: false,
   });
 
+  const {
+    data: openTasksData,
+    error: openTasksError,
+    isPending: openTasksPending,
+    refetch: refetchOpenTasks,
+  } = tsrProjects.listOpenTasks.useQuery({
+    queryKey: ['tasks', 'project', projectId],
+    queryData: { params: { id: projectId }, query: { limit: PILE_SAFETY_CAP } },
+  });
+
+  const { data: listsData } = tsrLists.list.useQuery({
+    queryKey: ['lists'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
+  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+
+  const { data: projectsData } = tsrProjects.list.useQuery({
+    queryKey: ['projects'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
+  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+
+  const { data: sessionData } = tsrAuth.session.useQuery({
+    queryKey: ['session'],
+    queryData: {},
+    refetchInterval: false,
+  });
+  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
+
+  const membersQuery = tsrOrganizations.listMembers.useQuery({
+    queryKey: ['organization-members', organizationId ?? ''],
+    queryData: { params: { organizationId: organizationId ?? '' } },
+    enabled: Boolean(organizationId),
+    refetchInterval: false,
+  });
+  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+
   const project = data?.status === 200 ? data.body : undefined;
+  const openTasks = openTasksData?.status === 200 ? openTasksData.body.tasks : [];
   const [name, setName] = useState('');
   const [objective, setObjective] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
+    queryKey: ['capture', editingTask?.captureId ?? ''],
+    queryData: { params: { id: editingTask?.captureId ?? '' } },
+    enabled: !!editingTask?.captureId,
+    refetchInterval: false,
+  });
+  const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
 
   useEffect(() => {
     if (!project) {
@@ -36,6 +111,12 @@ function ProjectPage() {
     setName(project.name);
     setObjective(project.objective ?? '');
   }, [project]);
+
+  useEffect(() => {
+    if (editingTask) {
+      void membersQuery.refetch();
+    }
+  }, [editingTask, membersQuery.refetch]);
 
   const updateMutation = tsrProjects.update.useMutation({
     onSuccess: async (result) => {
@@ -60,6 +141,116 @@ function ProjectPage() {
         }
       }
       toast.error('Failed to save project');
+    },
+  });
+
+  const completeMutation = tsrTasks.complete.useMutation({
+    onMutate: async ({ params }) => {
+      await cancelLiveQueries(queryClient);
+      const previous = snapshotLiveOpenTaskLists(queryClient);
+      mapLiveOpenTaskLists(queryClient, (tasks) =>
+        tasks.filter((task) => task.id !== params.id)
+      );
+      return { previous };
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previous) {
+        restoreQuerySnapshots(queryClient, context.previous);
+      }
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to complete task');
+      }
+    },
+    onSuccess: () => {
+      toast.success('Task completed');
+    },
+    onSettled: () => {
+      void invalidateLiveQueries(queryClient);
+    },
+  });
+
+  const uncompleteMutation = tsrTasks.uncomplete.useMutation({
+    onSettled: () => {
+      void invalidateLiveQueries(queryClient);
+    },
+  });
+
+  const deleteMutation = tsrTasks.delete.useMutation({
+    onMutate: async ({ params }) => {
+      await cancelLiveQueries(queryClient);
+      const previous = snapshotLiveOpenTaskLists(queryClient);
+      mapLiveOpenTaskLists(queryClient, (tasks) =>
+        tasks.filter((task) => task.id !== params.id)
+      );
+      return { previous };
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previous) {
+        restoreQuerySnapshots(queryClient, context.previous);
+      }
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to delete task');
+      }
+    },
+    onSuccess: () => {
+      toast.success('Task deleted');
+    },
+    onSettled: () => {
+      void invalidateLiveQueries(queryClient);
+    },
+  });
+
+  const updateTaskMutation = tsrTasks.update.useMutation({
+    onMutate: async ({ params, body }) => {
+      await cancelLiveQueries(queryClient);
+      const previous = snapshotLiveOpenTaskLists(queryClient);
+      mapLiveOpenTaskLists(queryClient, (tasks, queryKey) =>
+        tasks.flatMap((task) => {
+          if (task.id !== params.id) {
+            return [task];
+          }
+          const nextProjectId =
+            body?.projectId === null ? undefined : body?.projectId ?? task.projectId;
+          const isThisProjectList =
+            queryKey[0] === 'tasks' && queryKey[1] === 'project' && queryKey[2] === projectId;
+          if (isThisProjectList && nextProjectId !== projectId) {
+            return [];
+          }
+          return [
+            {
+              ...task,
+              title: body?.title ?? task.title,
+              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
+              assigneeId:
+                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
+              listId: body?.listId === null ? undefined : body?.listId ?? task.listId,
+              projectId: nextProjectId,
+            },
+          ];
+        })
+      );
+      return { previous };
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previous) {
+        restoreQuerySnapshots(queryClient, context.previous);
+      }
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to update task');
+      }
+    },
+    onSuccess: () => {
+      toast.success('Task updated');
+      setEditingTask(null);
+    },
+    onSettled: () => {
+      void invalidateLiveQueries(queryClient);
     },
   });
 
@@ -93,6 +284,40 @@ function ProjectPage() {
       },
     });
   };
+
+  const assigneeLabelFor = (task: Task): string | undefined => {
+    if (!task.assigneeId) return undefined;
+    const member = members.find((item) => item.userId === task.assigneeId);
+    return member ? memberLabel(member) : task.assigneeId;
+  };
+
+  const listLabelFor = (task: Task): string | undefined => {
+    if (!task.listId) return undefined;
+    return namedLists.find((list) => list.id === task.listId)?.name;
+  };
+
+  const handleSaveEdit = (
+    taskId: string,
+    updates: {
+      title?: string;
+      dueDate?: string | null;
+      assigneeId?: string | null;
+      listId?: string | null;
+      projectId?: string | null;
+    }
+  ) => {
+    updateTaskMutation.mutate({
+      params: { id: taskId },
+      body: updates,
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate({ params: { id } });
+    setDeleteConfirmId(null);
+  };
+
+  const tasksBlocking = isBlockingQueryFailure(openTasksError, openTasksData) && openTasksError;
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
@@ -146,6 +371,88 @@ function ProjectPage() {
           </Button>
         </div>
       </form>
+
+      <section className="mt-8 space-y-3" data-project-open-tasks="">
+        <h2 className="text-lg font-semibold">Open tasks</h2>
+        <p className="text-sm text-muted-foreground" data-project-open-task-count="">
+          {openTasksPending
+            ? 'Loading…'
+            : `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}`}
+        </p>
+        {tasksBlocking ? (
+          <ErrorState error={openTasksError} onRetry={() => refetchOpenTasks()} />
+        ) : openTasks.length === 0 && !openTasksPending ? (
+          <p data-project-open-tasks-empty="" className="text-sm text-muted-foreground">
+            No open tasks
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {openTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+                onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+                onEdit={setEditingTask}
+                isLoading={
+                  completeMutation.isPending ||
+                  updateTaskMutation.isPending ||
+                  deleteMutation.isPending
+                }
+                assigneeLabel={assigneeLabelFor(task)}
+                listLabel={listLabelFor(task)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete task?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This task will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <TaskEditModal
+        open={editingTask !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingTask(null);
+          }
+        }}
+        task={editingTask}
+        sourceCapture={sourceCapture}
+        onSave={handleSaveEdit}
+        onDelete={(id) => {
+          setEditingTask(null);
+          setDeleteConfirmId(id);
+        }}
+        isLoading={updateTaskMutation.isPending}
+        isLoadingCapture={isLoadingCapture}
+        members={members.map((member) => ({ userId: member.userId, label: memberLabel(member) }))}
+        lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
+        projects={projects.map((item) => ({
+          id: item.id,
+          name: item.name,
+          status: item.status,
+        }))}
+      />
     </div>
   );
 }

@@ -309,6 +309,20 @@ export const createHttpActor = (
       return response.json<Project>();
     },
 
+    async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
+      const response = await client.get(`/api/projects/${projectId}/tasks`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list open tasks on project: ${response.body}`);
+      }
+      return response.json<{ tasks: Task[] }>().tasks;
+    },
+
     async createNamedList(name: string): Promise<NamedList> {
       const response = await client.post('/api/lists', { name }, authHeaders());
       if (response.statusCode === 401) {
@@ -768,6 +782,26 @@ export const createHttpActor = (
 
     async editProjectObjective(_objective: string): Promise<void> {
       throw new UnsupportedOperationError('editProjectObjective', 'http');
+    },
+
+    async goToProject(_projectId: string): Promise<void> {
+      throw new UnsupportedOperationError('goToProject', 'http');
+    },
+
+    async shouldSeeOpenTaskOnProject(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOpenTaskOnProject', 'http');
+    },
+
+    async shouldNotSeeOpenTaskOnProject(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeOpenTaskOnProject', 'http');
+    },
+
+    async shouldSeeOpenTasksOnProjectInOrder(_titles: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOpenTasksOnProjectInOrder', 'http');
+    },
+
+    async confirmPromoteOnProject(_projectName: string): Promise<Task> {
+      throw new UnsupportedOperationError('confirmPromoteOnProject', 'http');
     },
 
     async shouldSeeNamedListOverflowOnRail(_name: string): Promise<void> {
@@ -1249,6 +1283,9 @@ export const createHttpActor = (
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', input.projectId ?? 'unknown');
+      }
       if (response.statusCode === 400) {
         const error = response.json<{ message?: string }>();
         throw new ValidationError(error.message ?? 'Invalid request');
@@ -1724,6 +1761,14 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
     throw new Error(`Failed to list open tasks on list: ${response.body}`);
   },
 
+  async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
+    const response = await client.get(`/api/projects/${projectId}/tasks`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list open tasks on project: ${response.body}`);
+  },
+
   async reorderOpenTasksOnList(listId: string, _taskIds: string[]): Promise<Task[]> {
     const response = await client.put(`/api/lists/${listId}/tasks/order`, {
       taskIds: _taskIds,
@@ -1756,6 +1801,9 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
     const response = await client.post('/api/tasks', input);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Project', input.projectId ?? 'unknown');
     }
     if (response.statusCode === 400) {
       const error = response.json<{ message?: string }>();

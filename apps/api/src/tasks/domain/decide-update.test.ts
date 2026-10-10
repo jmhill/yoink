@@ -29,6 +29,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -44,6 +45,7 @@ describe('decideUpdateTask', () => {
         dueDate: undefined,
         assigneeId: undefined,
         listId: 'list-groceries',
+        projectId: undefined,
         openOrder: 0,
         occurredAt: '2025-01-15T10:00:00.000Z',
       });
@@ -61,6 +63,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 4,
     now: '2025-01-15T10:00:00.000Z',
@@ -86,6 +89,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: weekend,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -114,6 +118,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -139,6 +144,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -167,6 +173,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -195,6 +202,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: weekend,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -223,6 +231,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: groceries,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -245,6 +254,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -267,6 +277,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: otherOrgList,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -289,6 +300,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -314,6 +326,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -329,6 +342,7 @@ describe('decideUpdateTask', () => {
         dueDate: undefined,
         assigneeId: undefined,
         listId: null,
+        projectId: undefined,
         openOrder: 0,
         occurredAt: '2025-01-15T10:00:00.000Z',
       });
@@ -348,6 +362,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 5,
     now: '2025-01-15T10:00:00.000Z',
@@ -371,6 +386,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -394,6 +410,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -423,6 +440,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -450,6 +468,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -472,6 +491,7 @@ describe('decideUpdateTask', () => {
 
       },
       list: null,
+      project: null,
       assigneeInOrganization: false,
       nextOpenOrder: 0,
     now: '2025-01-15T10:00:00.000Z',
@@ -480,6 +500,180 @@ describe('decideUpdateTask', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('ASSIGNEE_NOT_IN_ORGANIZATION');
+    }
+  });
+
+  const garden = {
+    id: 'project-garden',
+    organizationId: 'org-123',
+    status: 'active' as const,
+  };
+  const cabin = {
+    id: 'project-cabin',
+    organizationId: 'org-123',
+    status: 'active' as const,
+  };
+
+  it('sets a project on an open task without touching list or order', () => {
+    const onList: Task = { ...current, listId: groceries.id, openOrder: 3 };
+    const result = decideUpdateTask({
+      current: onList,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: garden.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: garden,
+      assigneeInOrganization: null,
+      nextOpenOrder: 99,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.projectId).toBe('project-garden');
+      expect(result.value.listId).toBeUndefined();
+      expect(result.value.openOrder).toBeUndefined();
+    }
+  });
+
+  it('moves a task from one project to another', () => {
+    const inGarden: Task = { ...current, projectId: garden.id };
+    const result = decideUpdateTask({
+      current: inGarden,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: cabin.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: cabin,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.projectId).toBe('project-cabin');
+    }
+  });
+
+  it('clears a project without touching list or order', () => {
+    const inGarden: Task = { ...current, projectId: garden.id, listId: groceries.id, openOrder: 2 };
+    const result = decideUpdateTask({
+      current: inGarden,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: null,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 7,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.projectId).toBeNull();
+      expect(result.value.listId).toBeUndefined();
+      expect(result.value.openOrder).toBeUndefined();
+    }
+  });
+
+  it('is a noop when putting the task in the same project again', () => {
+    const inGarden: Task = { ...current, projectId: garden.id };
+    const result = decideUpdateTask({
+      current: inGarden,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: garden.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: garden,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'Noop' });
+    }
+  });
+
+  it('rejects a project from another organization', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: 'project-other',
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: { id: 'project-other', organizationId: 'org-other', status: 'active' },
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_NOT_IN_ORGANIZATION');
+    }
+  });
+
+  it('rejects adding a task to a done project', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: garden.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: { ...garden, status: 'done' },
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_DONE');
+    }
+  });
+
+  it('rejects moving a finished task into a project', () => {
+    const finished: Task = { ...current, completedAt: '2025-01-16T10:00:00.000Z' };
+    const result = decideUpdateTask({
+      current: finished,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: garden.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: garden,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
     }
   });
 });

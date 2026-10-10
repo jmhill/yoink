@@ -60,6 +60,7 @@ export type CoreActor = {
     id: string,
     input: { name?: string; objective?: string | null }
   ): Promise<Project>;
+  listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
@@ -730,6 +731,31 @@ export type BrowserActorOperations = {
    * Edit the open project page's objective and save.
    */
   editProjectObjective(objective: string): Promise<void>;
+
+  /**
+   * Open the project page for this id.
+   */
+  goToProject(projectId: string): Promise<void>;
+
+  /**
+   * Assert the open project page lists this open task title.
+   */
+  shouldSeeOpenTaskOnProject(title: string): Promise<void>;
+
+  /**
+   * Assert the open project page does not list this open task title.
+   */
+  shouldNotSeeOpenTaskOnProject(title: string): Promise<void>;
+
+  /**
+   * Assert the open project page lists these open task titles newest first.
+   */
+  shouldSeeOpenTasksOnProjectInOrder(titles: string[]): Promise<void>;
+
+  /**
+   * Promote the open capture onto this project (sheet project picker).
+   */
+  confirmPromoteOnProject(projectName: string): Promise<Task>;
 
   /**
    * Assert this named-list rail row has a kit overflow whose menu includes
@@ -1449,6 +1475,7 @@ export type AnonymousActor = {
   renameNamedList(id: string, name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
+  listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
   reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]>;

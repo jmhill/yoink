@@ -107,6 +107,33 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 Responses include `status` (always `active` on create), optional `objective`,
 and `lastChangedAt` / `lastChangedBy` (user ids; resolve names from members).
 
+A task is in 0 or 1 projects, independently of its list. `POST /api/tasks` and
+`POST /api/captures/:id/process` accept optional `projectId`. `PATCH /api/tasks/:id`
+with `projectId` sets or replaces; `null` clears; omit leaves it unchanged. Only
+open tasks move in or out. A done project is `400`; a project in another org is
+`404`. Bots may set or clear a project.
+
+Open tasks on a project are a working set, newest created first:
+
+```bash
+# Create already in a project
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Buy soil","projectId":"'"$PROJECT_ID"'"}' \
+  "$API/api/tasks"
+
+# Set, move, or clear (null)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PATCH \
+  -d '{"projectId":"'"$PROJECT_ID"'"}' \
+  "$API/api/tasks/$TASK_ID"
+
+# Open tasks, newest created first
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects/$PROJECT_ID/tasks"
+```
+
 ## History: loop while `hasMore` is true
 
 Completed tasks and trashed captures are open-ended. Page with `nextCursor`.

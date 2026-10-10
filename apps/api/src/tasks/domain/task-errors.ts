@@ -28,11 +28,24 @@ export type TaskNotOpenError = {
   readonly taskId: string;
 };
 
+export type ProjectNotInOrganizationError = {
+  readonly type: 'PROJECT_NOT_IN_ORGANIZATION';
+  readonly projectId: string;
+  readonly organizationId: string;
+};
+
+export type ProjectDoneError = {
+  readonly type: 'PROJECT_DONE';
+  readonly projectId: string;
+};
+
 // Composite error types for each operation
 export type CreateTaskError =
   | StorageError
   | AssigneeNotInOrganizationError
-  | ListNotInOrganizationError;
+  | ListNotInOrganizationError
+  | ProjectNotInOrganizationError
+  | ProjectDoneError;
 export type ListTasksError = StorageError | InvalidCursorError;
 export type FindTaskError = StorageError | TaskNotFoundError;
 export type UpdateTaskError =
@@ -40,6 +53,8 @@ export type UpdateTaskError =
   | TaskNotFoundError
   | AssigneeNotInOrganizationError
   | ListNotInOrganizationError
+  | ProjectNotInOrganizationError
+  | ProjectDoneError
   | TaskNotOpenError;
 export type CompleteTaskError = StorageError | TaskNotFoundError;
 export type UncompleteTaskError = StorageError | TaskNotFoundError;
@@ -80,4 +95,18 @@ export const listNotInOrganizationError = (
 export const taskNotOpenError = (taskId: string): TaskNotOpenError => ({
   type: 'TASK_NOT_OPEN',
   taskId,
+});
+
+export const projectNotInOrganizationError = (
+  projectId: string,
+  organizationId: string
+): ProjectNotInOrganizationError => ({
+  type: 'PROJECT_NOT_IN_ORGANIZATION',
+  projectId,
+  organizationId,
+});
+
+export const projectDoneError = (projectId: string): ProjectDoneError => ({
+  type: 'PROJECT_DONE',
+  projectId,
 });

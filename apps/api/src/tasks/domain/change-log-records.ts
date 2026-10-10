@@ -142,8 +142,15 @@ const taskPayloadByType = {
   [K in TaskEvent['type']]: (event: Extract<TaskEvent, { type: K }>) => unknown;
 };
 
+type TaskUpdatedChangeLogInput = {
+  event: TaskUpdated;
+  current: Task | null;
+  actor: Actor;
+  ids: TaskChangeLogIds;
+};
+
 const membershipRecords = (
-  input: Extract<ChangeLogRecordsFromTaskEventInput, { event: TaskUpdated }>,
+  input: TaskUpdatedChangeLogInput,
   subject: { subjectType: 'task'; subjectId: string; organizationId: string }
 ): ChangeLogRecord[] => {
   const { event, current, ids } = input;

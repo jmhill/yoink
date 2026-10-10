@@ -16,6 +16,7 @@ export const taskContract = c.router({
       400: ErrorSchema,
       401: ErrorSchema,
       403: ErrorSchema,
+      404: ErrorSchema,
       500: ErrorSchema,
     },
     summary: 'Create a new task',

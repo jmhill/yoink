@@ -199,7 +199,7 @@ export const createFakeTaskStore = (
       );
     },
 
-    pageOpenInProject: (options: {
+    pageOpenInProject: (project: {
       organizationId: string;
       projectId: string;
       fetchLimit: number;
@@ -209,10 +209,10 @@ export const createFakeTaskStore = (
         return errAsync(storageError('Find failed'));
       }
       const open = tasks
-        .filter((task) => task.organizationId === options.organizationId)
+        .filter((task) => task.organizationId === project.organizationId)
         .filter((task) => !deletedIds.has(task.id))
         .filter((task) => !task.completedAt)
-        .filter((task) => task.projectId === options.projectId)
+        .filter((task) => task.projectId === project.projectId)
         .sort((a, b) => {
           const cmp = compareKeyset(projectTaskKeys(a), projectTaskKeys(b));
           return -cmp;
@@ -222,8 +222,8 @@ export const createFakeTaskStore = (
           ordered: open,
           keysOf: projectTaskKeys,
           direction: projectTaskDirection,
-          fetchLimit: options.fetchLimit,
-          seek: options.seek,
+          fetchLimit: project.fetchLimit,
+          seek: project.seek,
         })
       );
     },

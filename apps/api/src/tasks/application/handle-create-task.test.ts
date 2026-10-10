@@ -102,7 +102,6 @@ describe('handleCreateTask', () => {
       {
         loadList: () => okAsync(null),
         loadProject: () => okAsync(null),
-      loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         nextId: () => 'task-id-1',
@@ -171,7 +170,6 @@ describe('handleCreateTask', () => {
       {
         loadList: () => okAsync(null),
         loadProject: () => okAsync(null),
-      loadProject: () => okAsync(null),
         loadNextOpenOrder: () => okAsync(0),
         persist,
         principalLookup,

@@ -38,8 +38,8 @@ const persistEvent = (
 ) =>
   persist(
     event.type === 'TaskCreated'
-      ? planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1' }, ids })
-      : planTaskChange({ event, current: currentTask as Task, actor: { kind: 'user' as const, userId: 'user-1' }, ids })
+      ? planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' }, ids })
+      : planTaskChange({ event, current: currentTask as Task, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' }, ids })
   );
 
 describe('createStoreBackedPersist', () => {

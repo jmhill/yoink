@@ -38,7 +38,7 @@ const deps = (
 
 describe('handleCreateToken', () => {
   const command = {
-    actor: { kind: 'user' as const, userId: 'user-1' },
+    actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
     userId: 'user-1',
     organizationId: 'org-1',
     name: 'Lane',
@@ -68,7 +68,22 @@ describe('handleCreateToken', () => {
     const { persistCreate, events } = persistEvents();
 
     const result = await handleCreateToken(
-      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' } },
+      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' } },
+      deps({ persistCreate })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+    expect(events).toHaveLength(0);
+  });
+
+  it('does not persist when a person token calls', async () => {
+    const { persistCreate, events } = persistEvents();
+
+    const result = await handleCreateToken(
+      { ...command, actor: { kind: 'user' as const, userId: 'user-1', via: 'token' as const } },
       deps({ persistCreate })
     );
 

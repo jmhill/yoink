@@ -2,7 +2,7 @@ import { err, ok, type Result } from 'neverthrow';
 import type { ApiToken } from './api-token.js';
 import type { RevokeTokenCommand } from './token-commands.js';
 import type { TokenRevoked } from './token-events.js';
-import { requireHumanActor } from './require-human-actor.js';
+import { requireWebSessionPerson } from './require-web-session-person.js';
 import {
   tokenOwnershipError,
   userTokenNotFoundError,
@@ -22,7 +22,7 @@ export const decideRevokeToken = ({
   current,
   now,
 }: DecideRevokeTokenInput): Result<TokenRevoked, DecideRevokeTokenError> => {
-  const actor = requireHumanActor(command.actor);
+  const actor = requireWebSessionPerson(command.actor);
   if (actor.isErr()) {
     return err(actor.error);
   }

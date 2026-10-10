@@ -13,7 +13,7 @@ const token: ApiToken = {
 };
 
 const command = (overrides: Partial<RevokeTokenCommand> = {}): RevokeTokenCommand => ({
-  actor: { kind: 'user', userId: 'user-1' },
+  actor: { kind: 'user', userId: 'user-1', via: 'session' },
   tokenId: 'token-1',
   userId: 'user-1',
   organizationId: 'org-1',
@@ -79,7 +79,7 @@ describe('decideRevokeToken', () => {
 
   it('refuses an owner revoking an agent token', () => {
     const result = decide({
-      command: command({ actor: { kind: 'user', userId: 'owner-1' } }),
+      command: command({ actor: { kind: 'user', userId: 'owner-1', via: 'session' } }),
       current: { ...token, userId: 'agent-1' },
     });
 
@@ -92,7 +92,20 @@ describe('decideRevokeToken', () => {
   it('refuses a bot actor', () => {
     const result = decide({
       command: command({
-        actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane' },
+        actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' },
+      }),
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+  });
+
+  it('refuses a person token', () => {
+    const result = decide({
+      command: command({
+        actor: { kind: 'user', userId: 'user-1', via: 'token' },
       }),
     });
 

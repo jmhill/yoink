@@ -13,7 +13,7 @@ const groceries: NamedList = {
 const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
-  actor: { kind: 'user' as const, userId: 'user-1' },
+  actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
 };
 
 describe('decideDeleteNamedList', () => {

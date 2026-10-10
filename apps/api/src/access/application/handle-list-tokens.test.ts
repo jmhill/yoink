@@ -19,7 +19,7 @@ describe('handleListTokens', () => {
 
     const result = await handleListTokens(
       {
-        actor: { kind: 'user', userId: 'user-1' },
+        actor: { kind: 'user', userId: 'user-1', via: 'session' },
         userId: 'user-1',
         organizationId: 'org-1',
       },

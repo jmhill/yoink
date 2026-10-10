@@ -208,7 +208,7 @@ describe('token routes', () => {
       expect(body.tokens[0].lastUsedAt).toBeUndefined();
     });
 
-    it('lets a bot token list', async () => {
+    it('lets a personal token list', async () => {
       const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
       const rawToken = created.json().rawToken;
 
@@ -247,13 +247,51 @@ describe('token routes', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('returns 403 when a bot token tries to create', async () => {
+    it('returns 403 when a personal token tries to create', async () => {
       const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
       const rawToken = created.json().rawToken;
 
       const response = await bearerRequest('POST', '/api/auth/tokens', rawToken, {
         name: 'Charlie',
       });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Bot tokens cannot');
+    });
+
+    it('returns 403 when an agent token tries to create', async () => {
+      const agent: User = {
+        id: '550e8400-e29b-41d4-a716-446655440091',
+        email: 'agent-lane@yoink.invalid',
+        name: 'Lane',
+        kind: 'agent',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      };
+      const secret = 'agent-secret';
+      const agentTokenId = '550e8400-e29b-41d4-a716-446655440092';
+      await userStore.save(agent);
+      await membershipStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440093',
+        userId: agent.id,
+        organizationId: testOrg.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await tokenStore.save({
+        id: agentTokenId,
+        userId: agent.id,
+        organizationId: testOrg.id,
+        tokenHash: await passwordHasher.hash(secret),
+        name: 'Lane',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+
+      const response = await bearerRequest(
+        'POST',
+        '/api/auth/tokens',
+        `${agentTokenId}:${secret}`,
+        { name: 'Nope' }
+      );
       expect(response.statusCode).toBe(403);
       expect(response.json().message).toContain('Bot tokens cannot');
     });
@@ -283,7 +321,7 @@ describe('token routes', () => {
       expect(after.statusCode).toBe(401);
     });
 
-    it('returns 403 when a bot token tries to revoke', async () => {
+    it('returns 403 when a personal token tries to revoke', async () => {
       const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
       const { token, rawToken } = created.json();
 

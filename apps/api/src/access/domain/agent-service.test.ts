@@ -143,7 +143,7 @@ describe('AgentService', () => {
 
   it('mints an agent member with its own token', async () => {
     const result = await service.mintAgent({
-      actor: { kind: 'user', userId: OWNER_ID },
+      actor: { kind: 'user', userId: OWNER_ID, via: 'session' },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -173,7 +173,7 @@ describe('AgentService', () => {
 
   it('rejects minting when the actor is a regular member', async () => {
     const result = await service.mintAgent({
-      actor: { kind: 'user', userId: MEMBER_ID },
+      actor: { kind: 'user', userId: MEMBER_ID, via: 'session' },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -186,7 +186,7 @@ describe('AgentService', () => {
 
   it('rejects minting when the actor is not a member', async () => {
     const result = await service.mintAgent({
-      actor: { kind: 'user', userId: '550e8400-e29b-41d4-a716-446655440099' },
+      actor: { kind: 'user', userId: '550e8400-e29b-41d4-a716-446655440099', via: 'session' },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -199,7 +199,7 @@ describe('AgentService', () => {
 
   it('refuses a bot actor before validating the name', async () => {
     const result = await service.mintAgent({
-      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane' },
+      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane', via: 'token' },
       organizationId: ORG_ID,
       name: '   ',
     });
@@ -210,11 +210,29 @@ describe('AgentService', () => {
     }
   });
 
+  it('refuses a person token before creating a member', async () => {
+    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
+
+    const result = await service.mintAgent({
+      actor: { kind: 'user', userId: OWNER_ID, via: 'token' },
+      organizationId: ORG_ID,
+      name: 'Vault bot',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+
+    const membersAfter = await membershipStore.findByOrganizationId(ORG_ID);
+    expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+  });
+
   it('refuses a bot actor before creating a member', async () => {
     const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
 
     const result = await service.mintAgent({
-      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane' },
+      actor: { kind: 'bot', tokenId: AGENT_TOKEN_ID, userId: OWNER_ID, name: 'Lane', via: 'token' },
       organizationId: ORG_ID,
       name: 'Vault bot',
     });
@@ -231,7 +249,7 @@ describe('AgentService', () => {
 
   it('reissues an agent token without creating a new member', async () => {
     const minted = await service.mintAgent({
-      actor: { kind: 'user', userId: OWNER_ID },
+      actor: { kind: 'user', userId: OWNER_ID, via: 'session' },
       organizationId: ORG_ID,
       name: 'Tycho',
     });
@@ -241,7 +259,7 @@ describe('AgentService', () => {
     const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
     const result = await handleReissueAgentToken(
       {
-        actor: { kind: 'user', userId: OWNER_ID },
+        actor: { kind: 'user', userId: OWNER_ID, via: 'session' },
         organizationId: ORG_ID,
         memberUserId: minted.value.user.id,
       },

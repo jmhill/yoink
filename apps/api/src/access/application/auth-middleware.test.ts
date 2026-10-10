@@ -35,17 +35,34 @@ describe('authMiddleware', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const agentUser: User = {
+    id: '550e8400-e29b-41d4-a716-446655440004',
+    email: 'agent-550e8400-e29b-41d4-a716-446655440004@yoink.invalid',
+    name: 'Lane',
+    kind: 'agent',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const agentToken: ApiToken = {
+    id: '550e8400-e29b-41d4-a716-446655440005',
+    userId: agentUser.id,
+    organizationId: testOrg.id,
+    tokenHash: 'fake-hash:agent-token',
+    name: 'Lane',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
   beforeEach(async () => {
     const organizationStore = createFakeOrganizationStore({
       initialOrganizations: [testOrg],
     });
 
     const userStore = createFakeUserStore({
-      initialUsers: [testUser],
+      initialUsers: [testUser, agentUser],
     });
 
     const tokenStore = createFakeTokenStore({
-      initialTokens: [testToken],
+      initialTokens: [testToken, agentToken],
     });
 
     const tokenService = createTokenService({
@@ -68,7 +85,7 @@ describe('authMiddleware', () => {
     await app.ready();
   });
 
-  it('attaches auth context for valid token', async () => {
+  it('attaches a user actor for a person token', async () => {
     // Token format: tokenId:secret
     const validToken = `${testToken.id}:valid-token`;
     const response = await app.inject({
@@ -82,7 +99,30 @@ describe('authMiddleware', () => {
       organizationId: testOrg.id,
       userId: testUser.id,
       principalKind: 'human',
-      actor: { kind: 'bot', tokenId: testToken.id, userId: testUser.id, name: 'test-token' },
+      actor: { kind: 'user', userId: testUser.id, via: 'token' },
+    });
+  });
+
+  it('attaches a bot actor for an agent token', async () => {
+    const validToken = `${agentToken.id}:agent-token`;
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: { authorization: `Bearer ${validToken}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().authContext).toEqual({
+      organizationId: testOrg.id,
+      userId: agentUser.id,
+      principalKind: 'agent',
+      actor: {
+        kind: 'bot',
+        tokenId: agentToken.id,
+        userId: agentUser.id,
+        name: 'Lane',
+        via: 'token',
+      },
     });
   });
 

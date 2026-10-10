@@ -43,7 +43,7 @@ function persistEvent(
   ids: TaskChangeLogIds | TaskUncompletedChangeLogIds = { recordId: 'log-1' }
 ) {
   if (event.type === 'TaskCreated') {
-    return persist(planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1' }, ids }));
+    return persist(planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' }, ids }));
   }
   if (event.type === 'TaskUncompleted') {
     if (current === null || !('renumberRecordId' in ids)) {
@@ -53,7 +53,7 @@ function persistEvent(
       planTaskChange({
         event,
         current,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
         ids: { recordId: ids.recordId, renumberRecordId: ids.renumberRecordId },
       })
     );
@@ -61,7 +61,7 @@ function persistEvent(
   if (current === null) {
     throw new Error(`${event.type} requires current`);
   }
-  return persist(planTaskChange({ event, current, actor: { kind: 'user' as const, userId: 'user-1' }, ids }));
+  return persist(planTaskChange({ event, current, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' }, ids }));
 }
 
 describe('sqlite task persist', () => {
@@ -504,7 +504,7 @@ describe('sqlite task persist', () => {
 
   it('writes session and bot actors onto the task row and change log', async () => {
     const persist = createSqliteTaskPersist({ db });
-    const session = { kind: 'user' as const, userId: 'user-1' };
+    const session = { kind: 'user' as const, userId: 'user-1', via: 'session' };
     const created = await persist(
       planTaskChange({
         event: {
@@ -533,6 +533,7 @@ describe('sqlite task persist', () => {
       userId: 'user-lane',
       tokenId: 'tok-lane',
       name: 'Lane',
+      via: 'token',
     };
     const completed = await persist(
       planTaskChange({

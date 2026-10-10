@@ -135,7 +135,7 @@ const seedTestUserSession = async (database: {
   });
 };
 
-export const createTestAppWithWebAuthn = async () => {
+export const createTestAppWithWebAuthnAndDatabase = async () => {
   const infrastructure = createInfrastructure(testConfigWithWebAuthn);
   await runMigrations(infrastructure.database, migrations);
 
@@ -145,6 +145,11 @@ export const createTestAppWithWebAuthn = async () => {
     silent: true,
   });
   await seedTestUserSession(infrastructure.database);
+  return { app, database: infrastructure.database };
+};
+
+export const createTestAppWithWebAuthn = async () => {
+  const { app } = await createTestAppWithWebAuthnAndDatabase();
   return app;
 };
 

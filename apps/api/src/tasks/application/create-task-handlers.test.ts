@@ -56,25 +56,25 @@ describe('createTaskHandlers command logging', () => {
         title: 'Buy milk',
         organizationId: 'org-1',
         createdById: 'user-1',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
       })],
     ['update', (h: ReturnType<typeof handlersOf>) =>
       h.update({
         id: 'task-1',
         organizationId: 'org-1',
         title: 'Oat milk',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
       })],
     ['complete', (h: ReturnType<typeof handlersOf>) =>
-      h.complete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.complete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' } })],
     ['uncomplete', (h: ReturnType<typeof handlersOf>) =>
-      h.uncomplete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.uncomplete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' } })],
     ['pin', (h: ReturnType<typeof handlersOf>) =>
-      h.pin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.pin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' } })],
     ['unpin', (h: ReturnType<typeof handlersOf>) =>
-      h.unpin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.unpin({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' } })],
     ['delete', (h: ReturnType<typeof handlersOf>) =>
-      h.delete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.delete({ id: 'task-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' } })],
   ] as const)('logs %s exactly once', async (_name, run) => {
     const { lines, logger } = collectLogger();
     const result = await run(handlersOf(logger));

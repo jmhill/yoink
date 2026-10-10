@@ -4,7 +4,10 @@ import { createStoreBackedPersist } from './store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
-import type { TaskChangeLogIds } from '../domain/change-log-records.js';
+import {
+  changeLogIdsForTaskUpdated,
+  type TaskChangeLogIds,
+} from '../domain/change-log-records.js';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskEvent } from '../domain/events.js';
 
@@ -35,12 +38,29 @@ const persistEvent = (
   event: Exclude<TaskEvent, { type: 'TaskUncompleted' }>,
   currentTask: Task | null,
   ids: TaskChangeLogIds = { recordId: 'log-1' }
-) =>
-  persist(
-    event.type === 'TaskCreated'
-      ? planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const }, ids })
-      : planTaskChange({ event, current: currentTask as Task, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const }, ids })
+) => {
+  const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+  if (event.type === 'TaskCreated') {
+    return persist(planTaskChange({ event, current: null, actor, ids }));
+  }
+  if (event.type === 'TaskUpdated') {
+    let n = 0;
+    return persist(
+      planTaskChange({
+        event,
+        current: currentTask as Task,
+        actor,
+        ids: changeLogIdsForTaskUpdated(event, currentTask, () => {
+          n += 1;
+          return n === 1 ? ids.recordId : `${ids.recordId}-m${n}`;
+        }),
+      })
+    );
+  }
+  return persist(
+    planTaskChange({ event, current: currentTask as Task, actor, ids })
   );
+};
 
 describe('createStoreBackedPersist', () => {
   it('projects TaskCreated onto the store including listId', async () => {

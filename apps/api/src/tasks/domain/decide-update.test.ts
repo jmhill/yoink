@@ -182,6 +182,9 @@ describe('decideUpdateTask', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('TASK_NOT_OPEN');
+      if (result.error.type === 'TASK_NOT_OPEN') {
+        expect(result.error.field).toBe('list');
+      }
     }
   });
 
@@ -674,6 +677,70 @@ describe('decideUpdateTask', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('TASK_NOT_OPEN');
+      if (result.error.type === 'TASK_NOT_OPEN') {
+        expect(result.error.field).toBe('project');
+      }
+    }
+  });
+
+  it('rejects taking a finished task off a project', () => {
+    const finished: Task = {
+      ...current,
+      projectId: garden.id,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+    const result = decideUpdateTask({
+      current: finished,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: null,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
+      if (result.error.type === 'TASK_NOT_OPEN') {
+        expect(result.error.field).toBe('project');
+      }
+    }
+  });
+
+  it('names the list refusal when both list and project would change on a finished task', () => {
+    const finished: Task = {
+      ...current,
+      listId: groceries.id,
+      completedAt: '2025-01-16T10:00:00.000Z',
+    };
+    const result = decideUpdateTask({
+      current: finished,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        listId: weekend.id,
+        projectId: garden.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: weekend,
+      project: garden,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TASK_NOT_OPEN');
+      if (result.error.type === 'TASK_NOT_OPEN') {
+        expect(result.error.field).toBe('list');
+      }
     }
   });
 });

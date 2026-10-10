@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { Pencil, MessageSquare, X } from 'lucide-react';
-import type { Task, Capture } from '@yoink/api-contracts';
+import type { Capture, ProjectStatus, Task } from '@yoink/api-contracts';
 
 /** Radix Select forbids an empty item value; map to/from the unassigned state. */
 const UNASSIGNED_VALUE = 'unassigned';
@@ -51,7 +51,7 @@ type TaskEditModalProps = {
   isLoadingCapture?: boolean;
   members?: Array<{ userId: string; label: string }>;
   lists?: Array<{ id: string; name: string }>;
-  projects?: Array<{ id: string; name: string; status: string }>;
+  projects?: Array<{ id: string; name: string; status: ProjectStatus }>;
 };
 
 export function TaskEditModal({

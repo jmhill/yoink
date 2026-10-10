@@ -25,9 +25,6 @@ import {
   cancelLiveQueries,
   invalidateLiveQueries,
   isBlockingQueryFailure,
-  mapLiveOpenTaskLists,
-  restoreQuerySnapshots,
-  snapshotLiveOpenTaskLists,
 } from '@/lib/live-query';
 import { memberLabel } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -42,6 +39,7 @@ import { TaskEditModal } from '@/components/task-edit-modal';
 import { AnimatedList, AnimatedListItem, type ExitDirection } from '@/components/animated-list';
 import { toast } from 'sonner';
 import { PILE_SAFETY_CAP, TaskFilterSchema, type TaskFilter, type Task } from '@yoink/api-contracts';
+import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import {
   LoadMoreButton,
   isTaskHistoryData,
@@ -511,36 +509,42 @@ function TasksPage() {
     },
   });
 
-  // Complete mutation
-  const completeMutation = tsrTasks.complete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      return { previous };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to complete task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task completed');
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
+  const { completeMutation, deleteMutation, updateMutation } = useOpenTaskMutations(
+    tsrQueryClient,
+    {
+      onUpdated: () => setEditingTask(null),
+      mapUpdate: (tasks, queryKey, { id, body }) =>
+        tasks.flatMap((task) => {
+          if (task.id !== id) {
+            return [task];
+          }
+          const nextListId = body?.listId === null ? undefined : body?.listId ?? task.listId;
+          const displayedKey = displayedTasksQueryKey();
+          const keyMatches =
+            queryKey.length === displayedKey.length &&
+            queryKey.every((part, index) => part === displayedKey[index]);
+          const leftNamedPile =
+            Boolean(namedPileId) && keyMatches && nextListId !== namedPileId;
+          const leftUnlisted =
+            allPile?.kind === 'unlisted' && keyMatches && Boolean(nextListId);
+          if (leftNamedPile || leftUnlisted) {
+            return [];
+          }
+          return [
+            {
+              ...task,
+              title: body?.title ?? task.title,
+              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
+              assigneeId:
+                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
+              listId: body?.listId === null ? undefined : nextListId,
+              projectId:
+                body?.projectId === null ? undefined : body?.projectId ?? task.projectId,
+            },
+          ];
+        }),
+    }
+  );
 
   // Uncomplete mutation
   const uncompleteMutation = tsrTasks.uncomplete.useMutation({
@@ -588,110 +592,6 @@ function TasksPage() {
       } else {
         toast.error('Failed to uncomplete task');
       }
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
-  // Delete mutation
-  const deleteMutation = tsrTasks.delete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      const completedKey = ['tasks', 'completed'] as const;
-      const previousCompleted = tsrQueryClient.getQueryData(completedKey);
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      if (isTaskHistoryData(previousCompleted)) {
-        tsrQueryClient.setQueryData(
-          completedKey,
-          mapTaskHistoryPageItems(previousCompleted, (items) =>
-            items.filter((task) => task.id !== params.id)
-          )
-        );
-      }
-      return { previous, previousCompleted, completedKey };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (context?.completedKey) {
-        tsrQueryClient.setQueryData(context.completedKey, context.previousCompleted);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to delete task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task deleted');
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
-  // Update mutation
-  const updateMutation = tsrTasks.update.useMutation({
-    onMutate: async ({ params, body }) => {
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = snapshotLiveOpenTaskLists(tsrQueryClient);
-      const displayedKey = displayedTasksQueryKey();
-      mapLiveOpenTaskLists(tsrQueryClient, (tasks, queryKey) =>
-        tasks.flatMap((task) => {
-          if (task.id !== params.id) {
-            return [task];
-          }
-          const nextListId = body?.listId === null ? undefined : body?.listId ?? task.listId;
-          const keyMatches =
-            queryKey.length === displayedKey.length &&
-            queryKey.every((part, index) => part === displayedKey[index]);
-          const leftNamedPile =
-            Boolean(namedPileId) && keyMatches && nextListId !== namedPileId;
-          const leftUnlisted =
-            allPile?.kind === 'unlisted' && keyMatches && Boolean(nextListId);
-          if (leftNamedPile || leftUnlisted) {
-            return [];
-          }
-          return [
-            {
-              ...task,
-              title: body?.title ?? task.title,
-              dueDate: body?.dueDate === null ? undefined : body?.dueDate ?? task.dueDate,
-              assigneeId:
-                body?.assigneeId === null ? undefined : body?.assigneeId ?? task.assigneeId,
-              listId: body?.listId === null ? undefined : nextListId,
-              projectId:
-                body?.projectId === null ? undefined : body?.projectId ?? task.projectId,
-            },
-          ];
-        })
-      );
-      return { previous };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(tsrQueryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to update task');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task updated');
-      setEditingTask(null);
     },
 
     onSettled: () => {

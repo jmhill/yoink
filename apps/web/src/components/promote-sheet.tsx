@@ -17,6 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@yoink/ui-base/components/sheet';
+import type { ProjectStatus } from '@yoink/api-contracts';
 import { ArrowRight } from 'lucide-react';
 
 const UNLISTED_VALUE = 'unlisted';
@@ -36,7 +37,7 @@ type NamedListOption = {
 type ProjectOption = {
   id: string;
   name: string;
-  status: string;
+  status: ProjectStatus;
 };
 
 type PromoteSheetProps = {

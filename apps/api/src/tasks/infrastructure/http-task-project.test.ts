@@ -252,6 +252,87 @@ describe('task project membership HTTP', () => {
       payload: { projectId: garden.id },
     });
     expect(refused.statusCode).toBe(400);
-    expect(refused.json<{ message: string }>().message).toContain('open tasks');
+    expect(refused.json<{ message: string }>().message).toBe(
+      'Only open tasks can be added to or taken off a project'
+    );
+  });
+
+  it('refuses clearing a finished task project and leaves membership', async () => {
+    const garden = await createProject('Garden');
+    const task = await createTask({ title: 'Finished in garden', projectId: garden.id });
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(completed.statusCode).toBe(200);
+    expect(completed.json<Task>().projectId).toBe(garden.id);
+
+    const refused = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { projectId: null },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json<{ message: string }>().message).toBe(
+      'Only open tasks can be added to or taken off a project'
+    );
+
+    const still = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+    });
+    expect(still.json<Task>().projectId).toBe(garden.id);
+    expect(still.json<Task>().completedAt).toBeDefined();
+  });
+
+  it('names the list refusal when a finished task PATCH includes both list and project', async () => {
+    const garden = await createProject('Garden');
+    const list = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: auth,
+      payload: { name: 'Groceries' },
+    });
+    expect(list.statusCode).toBe(201);
+    const other = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      headers: auth,
+      payload: { name: 'Weekend' },
+    });
+    expect(other.statusCode).toBe(201);
+    const task = await createTask({ title: 'On groceries' });
+    const onList = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: { listId: list.json<{ id: string }>().id },
+    });
+    expect(onList.statusCode).toBe(200);
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/complete`,
+      headers: auth,
+      payload: {},
+    });
+    expect(completed.statusCode).toBe(200);
+
+    const refused = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${task.id}`,
+      headers: auth,
+      payload: {
+        listId: other.json<{ id: string }>().id,
+        projectId: garden.id,
+      },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json<{ message: string }>().message).toBe(
+      'Only open tasks can be added to or taken off a list'
+    );
   });
 });

@@ -178,7 +178,7 @@ export const registerTaskRoutes = async (
                   status: 400 as const,
                   body: {
                     message:
-                      body.projectId !== undefined
+                      error.field === 'project'
                         ? 'Only open tasks can be added to or taken off a project'
                         : 'Only open tasks can be added to or taken off a list',
                   },

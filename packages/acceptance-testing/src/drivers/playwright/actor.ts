@@ -2565,11 +2565,43 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('listTasks', 'playwright');
     },
 
-    async getTask(_id: string): Promise<Task> {
-      throw new UnsupportedOperationError('getTask', 'playwright');
+    async getTask(id: string): Promise<Task> {
+      const response = await page.request.get(`/api/tasks/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to read task: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+      const existing = await page.request.get(`/api/tasks/${id}`);
+      if (!existing.ok()) {
+        throw new Error(`Failed to read task before edit: ${existing.status()}`);
+      }
+      const current = (await existing.json()) as Task;
+      // Edit pickers are disabled on finished tasks; the API still refuses
+      // membership changes so the driver can assert TASK_NOT_OPEN.
+      if (
+        current.completedAt &&
+        (input.projectId !== undefined || input.listId !== undefined)
+      ) {
+        const response = await page.request.patch(`/api/tasks/${id}`, { data: input });
+        if (response.status() === 400) {
+          const body = (await response.json()) as { message?: string };
+          throw new ValidationError(body.message ?? 'Invalid request');
+        }
+        if (response.status() !== 200) {
+          throw new Error(`Failed to update task: ${response.status()}`);
+        }
+        return response.json();
+      }
+
       await openTaskOnItsPile(id);
       await tasksPage.openEdit(id);
 

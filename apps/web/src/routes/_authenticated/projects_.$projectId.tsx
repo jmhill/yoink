@@ -25,14 +25,8 @@ import {
 } from '@/api/client';
 import { memberLabel } from '@/api/auth';
 import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contracts';
-import {
-  cancelLiveQueries,
-  invalidateLiveQueries,
-  isBlockingQueryFailure,
-  mapLiveOpenTaskLists,
-  restoreQuerySnapshots,
-  snapshotLiveOpenTaskLists,
-} from '@/lib/live-query';
+import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
+import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
@@ -144,73 +138,18 @@ function ProjectPage() {
     },
   });
 
-  const completeMutation = tsrTasks.complete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(queryClient);
-      const previous = snapshotLiveOpenTaskLists(queryClient);
-      mapLiveOpenTaskLists(queryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      return { previous };
-    },
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(queryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to complete task');
-      }
-    },
-    onSuccess: () => {
-      toast.success('Task completed');
-    },
-    onSettled: () => {
-      void invalidateLiveQueries(queryClient);
-    },
-  });
-
   const uncompleteMutation = tsrTasks.uncomplete.useMutation({
     onSettled: () => {
       void invalidateLiveQueries(queryClient);
     },
   });
 
-  const deleteMutation = tsrTasks.delete.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(queryClient);
-      const previous = snapshotLiveOpenTaskLists(queryClient);
-      mapLiveOpenTaskLists(queryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
-      );
-      return { previous };
-    },
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(queryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to delete task');
-      }
-    },
-    onSuccess: () => {
-      toast.success('Task deleted');
-    },
-    onSettled: () => {
-      void invalidateLiveQueries(queryClient);
-    },
-  });
-
-  const updateTaskMutation = tsrTasks.update.useMutation({
-    onMutate: async ({ params, body }) => {
-      await cancelLiveQueries(queryClient);
-      const previous = snapshotLiveOpenTaskLists(queryClient);
-      mapLiveOpenTaskLists(queryClient, (tasks, queryKey) =>
+  const { completeMutation, deleteMutation, updateMutation: updateTaskMutation } =
+    useOpenTaskMutations(queryClient, {
+      onUpdated: () => setEditingTask(null),
+      mapUpdate: (tasks, queryKey, { id, body }) =>
         tasks.flatMap((task) => {
-          if (task.id !== params.id) {
+          if (task.id !== id) {
             return [task];
           }
           const nextProjectId =
@@ -231,28 +170,8 @@ function ProjectPage() {
               projectId: nextProjectId,
             },
           ];
-        })
-      );
-      return { previous };
-    },
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        restoreQuerySnapshots(queryClient, context.previous);
-      }
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to update task');
-      }
-    },
-    onSuccess: () => {
-      toast.success('Task updated');
-      setEditingTask(null);
-    },
-    onSettled: () => {
-      void invalidateLiveQueries(queryClient);
-    },
-  });
+        }),
+    });
 
   if (isBlockingQueryFailure(error, data) && error) {
     return <ErrorState error={error} onRetry={() => refetch()} />;

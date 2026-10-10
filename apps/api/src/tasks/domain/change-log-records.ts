@@ -25,8 +25,102 @@ import type { TaskEvent, TaskUpdated } from './events.js';
 
 export type TaskChangeLogIds = {
   recordId: string;
-  addedToProjectRecordId?: string;
-  removedFromProjectRecordId?: string;
+};
+
+/**
+ * One membership change, derived from the event + current task.
+ * Added/Removed records are built from this — never from optional ids.
+ */
+export type ProjectMembershipChange =
+  | { type: 'unchanged' }
+  | { type: 'added'; projectId: string }
+  | { type: 'removed'; projectId: string }
+  | { type: 'moved'; fromProjectId: string; toProjectId: string };
+
+export type TaskUpdatedMembershipIds =
+  | { type: 'unchanged' }
+  | { type: 'added'; addedToProjectRecordId: string; projectId: string }
+  | { type: 'removed'; removedFromProjectRecordId: string; projectId: string }
+  | {
+      type: 'moved';
+      addedToProjectRecordId: string;
+      removedFromProjectRecordId: string;
+      fromProjectId: string;
+      toProjectId: string;
+    };
+
+export type TaskUpdatedChangeLogIds = {
+  recordId: string;
+  membership: TaskUpdatedMembershipIds;
+};
+
+export const projectMembershipChange = (
+  event: TaskUpdated,
+  current: Task | null
+): ProjectMembershipChange => {
+  if (event.projectId === undefined) {
+    return { type: 'unchanged' };
+  }
+  const previous = current?.projectId ?? null;
+  if (previous === event.projectId) {
+    return { type: 'unchanged' };
+  }
+  if (previous === null) {
+    if (event.projectId === null) {
+      return { type: 'unchanged' };
+    }
+    return { type: 'added', projectId: event.projectId };
+  }
+  if (event.projectId === null) {
+    return { type: 'removed', projectId: previous };
+  }
+  return {
+    type: 'moved',
+    fromProjectId: previous,
+    toProjectId: event.projectId,
+  };
+};
+
+export const changeLogIdsForTaskUpdated = (
+  event: TaskUpdated,
+  current: Task | null,
+  nextId: () => string
+): TaskUpdatedChangeLogIds => {
+  const change = projectMembershipChange(event, current);
+  const recordId = nextId();
+  switch (change.type) {
+    case 'unchanged':
+      return { recordId, membership: { type: 'unchanged' } };
+    case 'added':
+      return {
+        recordId,
+        membership: {
+          type: 'added',
+          addedToProjectRecordId: nextId(),
+          projectId: change.projectId,
+        },
+      };
+    case 'removed':
+      return {
+        recordId,
+        membership: {
+          type: 'removed',
+          removedFromProjectRecordId: nextId(),
+          projectId: change.projectId,
+        },
+      };
+    case 'moved':
+      return {
+        recordId,
+        membership: {
+          type: 'moved',
+          removedFromProjectRecordId: nextId(),
+          addedToProjectRecordId: nextId(),
+          fromProjectId: change.fromProjectId,
+          toProjectId: change.toProjectId,
+        },
+      };
+  }
 };
 
 export type TaskUncompletedChangeLogIds = {
@@ -41,10 +135,18 @@ export type UncompleteChangeLogRecordsInput = {
   ids: TaskUncompletedChangeLogIds;
 };
 
+export type TaskUpdatedChangeLogInput = {
+  event: TaskUpdated;
+  current: Task | null;
+  actor: Actor;
+  ids: TaskUpdatedChangeLogIds;
+};
+
 export type ChangeLogRecordsFromTaskEventInput =
   | UncompleteChangeLogRecordsInput
+  | TaskUpdatedChangeLogInput
   | {
-      event: Exclude<TaskEvent, { type: 'TaskUncompleted' }>;
+      event: Exclude<TaskEvent, { type: 'TaskUncompleted' } | { type: 'TaskUpdated' }>;
       current: Task | null;
       actor: Actor;
       ids: TaskChangeLogIds;
@@ -53,6 +155,10 @@ export type ChangeLogRecordsFromTaskEventInput =
 const isUncomplete = (
   value: ChangeLogRecordsFromTaskEventInput
 ): value is UncompleteChangeLogRecordsInput => value.event.type === 'TaskUncompleted';
+
+const isTaskUpdatedInput = (
+  value: ChangeLogRecordsFromTaskEventInput
+): value is TaskUpdatedChangeLogInput => value.event.type === 'TaskUpdated';
 
 const actorFields = (actor: Actor) => ({
   actorUserId: actor.userId,
@@ -142,42 +248,82 @@ const taskPayloadByType = {
   [K in TaskEvent['type']]: (event: Extract<TaskEvent, { type: K }>) => unknown;
 };
 
-type TaskUpdatedChangeLogInput = {
-  event: TaskUpdated;
-  current: Task | null;
-  actor: Actor;
-  ids: TaskChangeLogIds;
-};
-
 const membershipRecords = (
   input: TaskUpdatedChangeLogInput,
   subject: { subjectType: 'task'; subjectId: string; organizationId: string }
 ): ChangeLogRecord[] => {
-  const { event, current, ids } = input;
-  if (event.projectId === undefined) {
-    return [];
+  const { event, ids } = input;
+  const membership = ids.membership;
+  switch (membership.type) {
+    case 'unchanged':
+      return [];
+    case 'removed': {
+      const payload: TaskRemovedFromProjectPayloadV1 = { projectId: membership.projectId };
+      return [
+        {
+          ...envelope(
+            input,
+            subject,
+            event.occurredAt,
+            membership.removedFromProjectRecordId,
+            membership.projectId
+          ),
+          kind: 'TaskRemovedFromProject',
+          hidden: hiddenFor('TaskRemovedFromProject'),
+          payload,
+        },
+      ];
+    }
+    case 'added': {
+      const payload: TaskAddedToProjectPayloadV1 = { projectId: membership.projectId };
+      return [
+        {
+          ...envelope(
+            input,
+            subject,
+            event.occurredAt,
+            membership.addedToProjectRecordId,
+            membership.projectId
+          ),
+          kind: 'TaskAddedToProject',
+          hidden: hiddenFor('TaskAddedToProject'),
+          payload,
+        },
+      ];
+    }
+    case 'moved': {
+      const removedPayload: TaskRemovedFromProjectPayloadV1 = {
+        projectId: membership.fromProjectId,
+      };
+      const addedPayload: TaskAddedToProjectPayloadV1 = { projectId: membership.toProjectId };
+      return [
+        {
+          ...envelope(
+            input,
+            subject,
+            event.occurredAt,
+            membership.removedFromProjectRecordId,
+            membership.fromProjectId
+          ),
+          kind: 'TaskRemovedFromProject',
+          hidden: hiddenFor('TaskRemovedFromProject'),
+          payload: removedPayload,
+        },
+        {
+          ...envelope(
+            input,
+            subject,
+            event.occurredAt,
+            membership.addedToProjectRecordId,
+            membership.toProjectId
+          ),
+          kind: 'TaskAddedToProject',
+          hidden: hiddenFor('TaskAddedToProject'),
+          payload: addedPayload,
+        },
+      ];
+    }
   }
-  const previousProjectId = current?.projectId ?? null;
-  const records: ChangeLogRecord[] = [];
-  if (previousProjectId !== null && ids.removedFromProjectRecordId) {
-    const payload: TaskRemovedFromProjectPayloadV1 = { projectId: previousProjectId };
-    records.push({
-      ...envelope(input, subject, event.occurredAt, ids.removedFromProjectRecordId, previousProjectId),
-      kind: 'TaskRemovedFromProject',
-      hidden: hiddenFor('TaskRemovedFromProject'),
-      payload,
-    });
-  }
-  if (event.projectId !== null && ids.addedToProjectRecordId) {
-    const payload: TaskAddedToProjectPayloadV1 = { projectId: event.projectId };
-    records.push({
-      ...envelope(input, subject, event.occurredAt, ids.addedToProjectRecordId, event.projectId),
-      kind: 'TaskAddedToProject',
-      hidden: hiddenFor('TaskAddedToProject'),
-      payload,
-    });
-  }
-  return records;
 };
 
 const recordsForUncomplete = (
@@ -239,6 +385,23 @@ export const changeLogRecordsFromTaskEvent = (
   if (isUncomplete(input)) {
     return recordsForUncomplete(input);
   }
+  if (isTaskUpdatedInput(input)) {
+    const subject = {
+      subjectType: 'task' as const,
+      subjectId: input.event.id,
+      organizationId: input.event.organizationId,
+    };
+    const projectId = projectIdAfterEvent(input.event, input.current);
+    return [
+      {
+        ...envelope(input, subject, input.event.occurredAt, input.ids.recordId, projectId),
+        kind: 'TaskUpdated',
+        hidden: hiddenFor('TaskUpdated'),
+        payload: taskPayloadByType.TaskUpdated(input.event),
+      },
+      ...membershipRecords(input, subject),
+    ];
+  }
 
   const { event } = input;
   const subject = {
@@ -257,19 +420,6 @@ export const changeLogRecordsFromTaskEvent = (
           hidden: hiddenFor('TaskCreated'),
           payload: taskPayloadByType.TaskCreated(event),
         },
-      ];
-    case 'TaskUpdated':
-      return [
-        {
-          ...envelope(input, subject, event.occurredAt, input.ids.recordId, projectId),
-          kind: 'TaskUpdated',
-          hidden: hiddenFor('TaskUpdated'),
-          payload: taskPayloadByType.TaskUpdated(event),
-        },
-        ...membershipRecords(
-          { ...input, event },
-          subject
-        ),
       ];
     case 'TaskCompleted':
       return [

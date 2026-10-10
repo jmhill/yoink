@@ -61,7 +61,7 @@ const listForUpdate = (
     return ok({});
   }
   if (current.completedAt) {
-    return err(taskNotOpenError(command.id));
+    return err(taskNotOpenError(command.id, 'list'));
   }
   if (command.listId === null) {
     return ok({ listId: null, openOrder: nextOpenOrder });
@@ -92,7 +92,7 @@ const projectForUpdate = (
     return ok({});
   }
   if (current.completedAt) {
-    return err(taskNotOpenError(command.id));
+    return err(taskNotOpenError(command.id, 'project'));
   }
   if (command.projectId === null) {
     return ok({ projectId: null });

@@ -14,9 +14,7 @@ import type {
 } from './ports.js';
 import { kindsFromRecords, type WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
-import type { TaskChangeLogIds } from '../domain/change-log-records.js';
-import type { Task } from '@yoink/api-contracts';
-
+import { changeLogIdsForTaskUpdated } from '../domain/change-log-records.js';
 export type HandleUpdateTaskDeps = {
   load: LoadTask;
   loadList: LoadNamedList;
@@ -26,25 +24,6 @@ export type HandleUpdateTaskDeps = {
   principalLookup?: OrgPrincipalLookup;
   nextId: () => string;
   now: () => string;
-};
-
-const changeLogIdsForUpdate = (
-  event: TaskUpdated,
-  current: Task,
-  nextId: () => string
-): TaskChangeLogIds => {
-  const ids: TaskChangeLogIds = { recordId: nextId() };
-  if (event.projectId === undefined) {
-    return ids;
-  }
-  const previousProjectId = current.projectId ?? null;
-  if (previousProjectId !== null) {
-    ids.removedFromProjectRecordId = nextId();
-  }
-  if (event.projectId !== null) {
-    ids.addedToProjectRecordId = nextId();
-  }
-  return ids;
 };
 
 export const handleUpdateTask = (
@@ -123,7 +102,7 @@ export const handleUpdateTask = (
               event,
               current,
               actor: command.actor,
-              ids: changeLogIdsForUpdate(event, current, deps.nextId),
+              ids: changeLogIdsForTaskUpdated(event, current, deps.nextId),
             });
             return deps.persist(plan).map(() => ({
               event,

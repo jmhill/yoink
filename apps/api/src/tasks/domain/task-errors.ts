@@ -23,9 +23,12 @@ export type ListNotInOrganizationError = {
   readonly organizationId: string;
 };
 
+export type TaskNotOpenField = 'list' | 'project';
+
 export type TaskNotOpenError = {
   readonly type: 'TASK_NOT_OPEN';
   readonly taskId: string;
+  readonly field: TaskNotOpenField;
 };
 
 export type ProjectNotInOrganizationError = {
@@ -92,9 +95,13 @@ export const listNotInOrganizationError = (
   organizationId,
 });
 
-export const taskNotOpenError = (taskId: string): TaskNotOpenError => ({
+export const taskNotOpenError = (
+  taskId: string,
+  field: TaskNotOpenField
+): TaskNotOpenError => ({
   type: 'TASK_NOT_OPEN',
   taskId,
+  field,
 });
 
 export const projectNotInOrganizationError = (

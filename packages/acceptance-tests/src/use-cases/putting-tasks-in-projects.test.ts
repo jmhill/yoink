@@ -72,6 +72,32 @@ usingDrivers(['http', 'playwright'] as const, (ctx) => {
       expect(task.projectId).toBe(garden.id);
       expect(task.completedAt).toBeUndefined();
     });
+
+    it('keeps projectId on complete and drops the task from the project open list', async () => {
+      const garden = await alice.createProject({ name: 'Garden' });
+      const task = await alice.createTask({ title: 'Buy soil', projectId: garden.id });
+
+      const completed = await alice.completeTask(task.id);
+
+      expect(completed.projectId).toBe(garden.id);
+      expect(completed.completedAt).toBeDefined();
+      const remaining = await alice.listOpenTasksOnProject(garden.id);
+      expect(remaining.map((item) => item.id)).not.toContain(task.id);
+    });
+
+    it('refuses taking a finished task off a project', async () => {
+      const garden = await alice.createProject({ name: 'Garden' });
+      const task = await alice.createTask({ title: 'Buy soil', projectId: garden.id });
+      await alice.completeTask(task.id);
+
+      await expect(alice.updateTask(task.id, { projectId: null })).rejects.toThrow(
+        ValidationError
+      );
+
+      const still = await alice.getTask(task.id);
+      expect(still.projectId).toBe(garden.id);
+      expect(still.completedAt).toBeDefined();
+    });
   });
 });
 
@@ -162,6 +188,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     beforeEach(async () => {
       alice = await ctx.createActor('alice-task-project-board@example.com');
+    });
+
+    it('completing a project task keeps it in the project and leaves the open list', async () => {
+      const garden = await alice.createProject({ name: 'Garden' });
+      const task = await alice.createTask({ title: 'Buy soil', projectId: garden.id });
+
+      const completed = await alice.completeTask(task.id);
+      expect(completed.projectId).toBe(garden.id);
+
+      await alice.goToProject(garden.id);
+      await alice.shouldNotSeeOpenTaskOnProject('Buy soil');
     });
 
     it('puts a task in a project from edit and shows it on the project page', async () => {

@@ -81,7 +81,7 @@ const deps = (
 };
 
 const command = {
-  actor: { kind: 'user' as const, userId: 'owner-1', via: 'session' },
+  actor: { kind: 'user' as const, userId: 'owner-1', via: 'session' as const },
   organizationId: 'org-1',
   memberUserId: 'agent-1',
 };
@@ -125,7 +125,7 @@ describe('handleReissueAgentToken', () => {
     const result = await handleReissueAgentToken(
       {
         ...command,
-        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane', via: 'token' },
+        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane', via: 'token' as const },
       },
       deps({
         loadMembership: () => {

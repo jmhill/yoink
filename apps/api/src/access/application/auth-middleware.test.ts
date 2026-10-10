@@ -99,7 +99,7 @@ describe('authMiddleware', () => {
       organizationId: testOrg.id,
       userId: testUser.id,
       principalKind: 'human',
-      actor: { kind: 'user', userId: testUser.id, via: 'token' },
+      actor: { kind: 'user', userId: testUser.id, via: 'token' as const },
     });
   });
 
@@ -121,7 +121,7 @@ describe('authMiddleware', () => {
         tokenId: agentToken.id,
         userId: agentUser.id,
         name: 'Lane',
-        via: 'token',
+        via: 'token' as const,
       },
     });
   });

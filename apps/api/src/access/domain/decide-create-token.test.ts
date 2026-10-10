@@ -3,7 +3,7 @@ import { decideCreateToken } from './decide-create-token.js';
 import type { CreateTokenCommand } from './token-commands.js';
 
 const humanCommand = (overrides: Partial<CreateTokenCommand> = {}): CreateTokenCommand => ({
-  actor: { kind: 'user', userId: 'user-1', via: 'session' },
+  actor: { kind: 'user', userId: 'user-1', via: 'session' as const },
   userId: 'user-1',
   organizationId: 'org-1',
   name: 'Lane',
@@ -101,7 +101,7 @@ describe('decideCreateToken', () => {
     const result = decideCreateToken(
       input({
         command: humanCommand({
-          actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' },
+          actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' as const },
         }),
       })
     );
@@ -116,7 +116,7 @@ describe('decideCreateToken', () => {
     const result = decideCreateToken(
       input({
         command: humanCommand({
-          actor: { kind: 'user', userId: 'user-1', via: 'token' },
+          actor: { kind: 'user', userId: 'user-1', via: 'token' as const },
         }),
       })
     );

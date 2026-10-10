@@ -35,7 +35,7 @@ describe('handleCreateNamedList', () => {
     name: 'Groceries',
     organizationId: 'org-123',
     createdById: 'user-456',
-    actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+    actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
   };
 
   it('persists a NamedListCreated fact and returns the projected list', async () => {

@@ -156,7 +156,7 @@ describe('UserSessionMiddleware', () => {
         userId: testUser.id,
         organizationId: 'org-1',
         principalKind: 'human',
-        actor: { kind: 'user', userId: testUser.id, via: 'session' },
+        actor: { kind: 'user', userId: testUser.id, via: 'session' as const },
       });
       expect(reply.status).not.toHaveBeenCalled();
     });

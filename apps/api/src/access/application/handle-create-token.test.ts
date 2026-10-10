@@ -38,7 +38,7 @@ const deps = (
 
 describe('handleCreateToken', () => {
   const command = {
-    actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+    actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
     userId: 'user-1',
     organizationId: 'org-1',
     name: 'Lane',
@@ -68,7 +68,7 @@ describe('handleCreateToken', () => {
     const { persistCreate, events } = persistEvents();
 
     const result = await handleCreateToken(
-      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' } },
+      { ...command, actor: { kind: 'bot', tokenId: 'token-bot', userId: 'user-1', name: 'Lane', via: 'token' as const } },
       deps({ persistCreate })
     );
 

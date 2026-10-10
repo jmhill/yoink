@@ -30,7 +30,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T10:00:00.000Z',
       },
       current: null,
-      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       ids: { recordId: 'log-1' },
     });
 
@@ -54,7 +54,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current,
-      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
@@ -82,7 +82,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-16T10:00:00.000Z',
       },
       current: { ...current, listId: undefined },
-      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       ids: { recordId: 'log-1', renumberRecordId: 'log-2' },
     });
 
@@ -99,7 +99,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T11:00:00.000Z',
       },
       current,
-      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+      actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       ids: { recordId: 'log-1' },
     });
 
@@ -117,7 +117,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T11:00:00.000Z',
       },
       current,
-      actor: { kind: 'user' as const, userId: 'user-justin', via: 'session' },
+      actor: { kind: 'user' as const, userId: 'user-justin', via: 'session' as const },
       ids: { recordId: 'log-upd' },
     });
 
@@ -135,7 +135,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
         occurredAt: '2025-01-15T12:00:00.000Z',
       },
       current,
-      actor: { kind: 'bot', userId: 'user-lane', tokenId: 'tok-lane', name: 'Lane', via: 'token' },
+      actor: { kind: 'bot', userId: 'user-lane', tokenId: 'tok-lane', name: 'Lane', via: 'token' as const },
       ids: { recordId: 'log-done' },
     });
 

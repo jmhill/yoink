@@ -26,7 +26,7 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [eggs.id, milk.id, bread.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: groceries,
@@ -53,7 +53,7 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [milk.id, done.id, bread.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: groceries,
@@ -74,7 +74,7 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: 'org-123',
         taskIds: [milk.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: null,
@@ -95,7 +95,7 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [milk.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: groceries,
@@ -122,7 +122,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [errand.id, notes.id, call.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: null,
@@ -150,7 +150,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [notes.id, done.id, call.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: null,
@@ -173,7 +173,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [errand.id, pinned.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: null,
@@ -203,7 +203,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [notes.id, milk.id],
-        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
 
       },
       list: null,

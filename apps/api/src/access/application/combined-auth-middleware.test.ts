@@ -168,7 +168,7 @@ describe('combinedAuthMiddleware', () => {
         organizationId: testOrg.id,
         userId: testUser.id,
         principalKind: 'human',
-        actor: { kind: 'user', userId: testUser.id, via: 'session' },
+        actor: { kind: 'user', userId: testUser.id, via: 'session' as const },
       });
       expect(response.json().hasSession).toBe(true);
     });
@@ -217,7 +217,7 @@ describe('combinedAuthMiddleware', () => {
         organizationId: testOrg.id,
         userId: testUser.id,
         principalKind: 'human',
-        actor: { kind: 'user', userId: testUser.id, via: 'token' },
+        actor: { kind: 'user', userId: testUser.id, via: 'token' as const },
       });
       expect(response.json().hasSession).toBe(false);
     });
@@ -240,7 +240,7 @@ describe('combinedAuthMiddleware', () => {
           tokenId: agentToken.id,
           userId: agentUser.id,
           name: 'Lane',
-          via: 'token',
+          via: 'token' as const,
         },
       });
       expect(response.json().hasSession).toBe(false);

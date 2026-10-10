@@ -12,7 +12,7 @@ describe('actorFromToken', () => {
     expect(actorFromToken(token, 'human')).toEqual({
       kind: 'user',
       userId: 'user-1',
-      via: 'token',
+      via: 'token' as const,
     });
   });
 
@@ -22,7 +22,7 @@ describe('actorFromToken', () => {
       tokenId: 'token-1',
       userId: 'user-1',
       name: 'test-token',
-      via: 'token',
+      via: 'token' as const,
     });
   });
 });
@@ -32,7 +32,7 @@ describe('actorFromSession', () => {
     expect(actorFromSession('user-1')).toEqual({
       kind: 'user',
       userId: 'user-1',
-      via: 'session',
+      via: 'session' as const,
     });
   });
 });

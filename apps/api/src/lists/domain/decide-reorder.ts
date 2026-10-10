@@ -1,6 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { ReorderOpenTasksCommand } from './list-commands.js';
+import type { OpenTasksReordered } from './events.js';
 import {
   invalidOpenOrderError,
   listNotFoundError,
@@ -10,18 +11,12 @@ import {
   type TaskNotOpenError,
 } from './list-errors.js';
 
-export type OpenTasksReordered = {
-  type: 'OpenTasksReordered';
-  listId: string | null;
-  organizationId: string;
-  orders: { id: string; openOrder: number }[];
-};
-
 export type DecideReorderOpenTasksInput = {
   command: ReorderOpenTasksCommand;
   list: { id: string; organizationId: string } | null;
   openTasks: Task[];
   extraTasks: Task[];
+  now: string;
 };
 
 export type DecideReorderOpenTasksError =
@@ -37,6 +32,7 @@ export const decideReorderOpenTasks = ({
   list,
   openTasks,
   extraTasks,
+  now,
 }: DecideReorderOpenTasksInput): Result<
   OpenTasksReordered,
   DecideReorderOpenTasksError
@@ -72,5 +68,6 @@ export const decideReorderOpenTasks = ({
     listId: command.listId,
     organizationId: command.organizationId,
     orders: requested.map((id, openOrder) => ({ id, openOrder })),
+    occurredAt: now,
   });
 };

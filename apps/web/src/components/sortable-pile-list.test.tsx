@@ -14,6 +14,9 @@ const openTask = (title: string, openOrder: number): Task => ({
   title,
   createdAt: '2026-01-01T00:00:00.000Z',
   openOrder,
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
 });
 
 const nativeSetPointerCapture = Element.prototype.setPointerCapture;

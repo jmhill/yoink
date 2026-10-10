@@ -22,12 +22,30 @@ export type FakeCaptureStoreOptions = {
   initialCaptures?: Capture[];
 };
 
+export type FakeCaptureStore = CaptureStore & {
+  captureSnapshot: () => () => void;
+  applySoftDelete: (id: string) => void;
+};
+
 export const createFakeCaptureStore = (
   options: FakeCaptureStoreOptions = {}
-): CaptureStore => {
+): FakeCaptureStore => {
   const captures: Capture[] = [...(options.initialCaptures ?? [])];
 
   return {
+    captureSnapshot: () => {
+      const copy = captures.map((capture) => ({ ...capture }));
+      return () => {
+        captures.length = 0;
+        captures.push(...copy);
+      };
+    },
+    applySoftDelete: (id: string) => {
+      const index = captures.findIndex((capture) => capture.id === id);
+      if (index !== -1) {
+        captures.splice(index, 1);
+      }
+    },
     save: (capture: Capture): ResultAsync<void, StorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(storageError('Save failed'));

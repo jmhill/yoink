@@ -9,11 +9,13 @@ export type DecideUncompleteTaskInput = {
   command: UncompleteTaskCommand;
   /** Currently open tasks in the same pile, excluding this task. */
   openSiblings: Task[];
+  now: string;
 };
 
 export const decideUncompleteTask = ({
   current,
   openSiblings,
+  now,
 }: DecideUncompleteTaskInput): Result<TaskUncompleted | Noop, never> => {
   if (!current.completedAt) {
     return ok({ type: 'Noop' });
@@ -27,7 +29,9 @@ export const decideUncompleteTask = ({
   return ok({
     type: 'TaskUncompleted',
     id: current.id,
+    organizationId: current.organizationId,
     openOrder,
     siblingOrders,
+    occurredAt: now,
   });
 };

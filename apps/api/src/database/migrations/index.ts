@@ -39,6 +39,7 @@ import { migration as uniqueListNamePerOrg } from './024-unique-list-name-per-or
 import { migration as addTaskListId } from './025-add-task-list-id.js';
 import { migration as addTaskOpenOrder } from './026-add-task-open-order.js';
 import { migration as addTokenRevokedAt } from './027-add-token-revoked-at.js';
+import { migration as createChangeLog } from './028-create-change-log.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -68,6 +69,7 @@ export const migrations: Migration[] = [
   addTaskListId,
   addTaskOpenOrder,
   addTokenRevokedAt,
+  createChangeLog,
 ];
 
 export type { Migration };

@@ -12,6 +12,7 @@ describe('applyNamedListEvent', () => {
       createdById: 'user-456',
       name: 'Groceries',
       createdAt: '2025-01-15T10:00:00.000Z',
+      occurredAt: '2025-01-15T10:00:00.000Z',
     };
 
     it('projects a named list from the fact', () => {
@@ -41,6 +42,7 @@ describe('applyNamedListEvent', () => {
           id: 'list-id-1',
           organizationId: 'org-123',
           name: 'Groceries',
+          occurredAt: '2025-01-15T10:00:00.000Z',
         })
       ).toEqual({
         ...current,
@@ -64,6 +66,7 @@ describe('applyNamedListEvent', () => {
           type: 'NamedListDeleted',
           id: 'list-id-1',
           organizationId: 'org-123',
+          occurredAt: '2025-01-15T10:00:00.000Z',
         })
       ).toBeNull();
     });

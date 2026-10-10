@@ -9,6 +9,9 @@ const milk: Task = {
   createdById: '00000000-0000-4000-8000-000000000011',
   title: 'Milk',
   createdAt: '2026-01-01T00:00:00.000Z',
+  lastChangedAt: null,
+  lastChangedBy: null,
+  completedBy: null,
 };
 
 describe('TaskEditModal', () => {
@@ -83,5 +86,48 @@ describe('TaskEditModal', () => {
 
     expect(screen.getByText('Grab milk')).toBeTruthy();
     expect(screen.queryByText('Loading...')).toBeNull();
+  });
+
+  it('shows added, last changed, and completed on the edit screen', () => {
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{
+          ...milk,
+          lastChangedAt: '2026-01-02T00:00:00.000Z',
+          lastChangedBy: null,
+          completedAt: '2026-01-03T00:00:00.000Z',
+          completedBy: null,
+        }}
+        sourceCapture={null}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+        members={[{ userId: milk.createdById, label: 'alice@example.com' }]}
+      />
+    );
+
+    expect(screen.getByTestId('task-edit-added').textContent).toContain('Added');
+    expect(screen.getByTestId('task-edit-added').textContent).toContain('alice@example.com');
+    expect(screen.getByTestId('task-edit-last-changed').textContent).toContain('Last changed');
+    expect(screen.getByTestId('task-edit-completed').textContent).toContain('Completed');
+  });
+
+  it('shows before history started when lastChangedAt is missing', () => {
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{ ...milk, lastChangedAt: null }}
+        sourceCapture={null}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('task-edit-last-changed').textContent).toBe(
+      'Last changed before history started'
+    );
+    expect(screen.queryByTestId('task-edit-completed')).toBeNull();
   });
 });

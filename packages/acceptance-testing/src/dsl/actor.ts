@@ -1214,6 +1214,15 @@ export type BrowserActorOperations = {
   openTaskEditFromRow(taskId: string): Promise<void>;
 
   /**
+   * Assert the open Edit Task dialog shows added, last changed, and
+   * (when completed) completed timestamps.
+   */
+  shouldSeeTaskEditChangeHistory(options?: {
+    lastChangedBeforeHistory?: boolean;
+    completed?: boolean;
+  }): Promise<void>;
+
+  /**
    * Normal-mode one-pile row: complete + title only. No grip, ⋯,
    * pencil, trash, or pin.
    */

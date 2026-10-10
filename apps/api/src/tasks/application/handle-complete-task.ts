@@ -3,14 +3,15 @@ import type { CompleteTaskCommand } from '../domain/task-commands.js';
 import type { CompleteTaskError } from '../domain/task-errors.js';
 import type { TaskCompleted } from '../domain/events.js';
 import { decideCompleteTask } from '../domain/decide-complete.js';
-import { applyTaskEvent } from '../domain/apply-task-event.js';
+import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
-import type { LoadTask, PersistTaskEvent } from './ports.js';
-import type { WriteResult } from './write-result.js';
+import type { LoadTask, PersistTaskChange } from './ports.js';
+import { kindsFromRecords, type WriteResult } from './write-result.js';
 
 export type HandleCompleteTaskDeps = {
   load: LoadTask;
-  persist: PersistTaskEvent;
+  persist: PersistTaskChange;
+  nextId: () => string;
   now: () => string;
 };
 
@@ -23,10 +24,11 @@ export const handleCompleteTask = (
     organizationId: command.organizationId,
     load: deps.load,
   }).andThen((current) => {
+    const now = deps.now();
     const decision = decideCompleteTask({
       current,
       command,
-      now: deps.now(),
+      now,
     });
 
     if (decision.isErr()) {
@@ -34,13 +36,20 @@ export const handleCompleteTask = (
     }
 
     if (decision.value.type === 'Noop') {
-      return okAsync({ event: null, view: current });
+      return okAsync({ event: null, view: current, eventKinds: [] });
     }
 
     const event = decision.value;
-    return deps.persist({ event, current }).map(() => ({
+    const plan = planTaskChange({
       event,
-      view: applyTaskEvent(current, event),
+      current,
+      actor: command.actor,
+      ids: { recordId: deps.nextId() },
+    });
+    return deps.persist(plan).map(() => ({
+      event,
+      view: plan.view,
+      eventKinds: kindsFromRecords(plan.records),
     }));
   });
 };

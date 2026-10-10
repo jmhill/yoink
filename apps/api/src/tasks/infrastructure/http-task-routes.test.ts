@@ -40,6 +40,9 @@ describe('POST /api/tasks listId', () => {
     const task = response.json<Task>();
     expect(task.listId).toBe(list.id);
     expect(task.completedAt).toBeUndefined();
+    expect(task.lastChangedAt).toBeTruthy();
+    expect(task.lastChangedBy).toBeNull();
+    expect(task.completedBy).toBeNull();
   });
 
   it('creates a task without a list as unlisted', async () => {

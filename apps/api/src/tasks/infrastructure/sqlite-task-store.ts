@@ -1,7 +1,6 @@
 import type { Database } from '../../database/types.js';
-import { okAsync, ResultAsync } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { Clock } from '@yoink/infrastructure';
 import type { TaskStore, FindByOrganizationOptions } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
@@ -26,6 +25,9 @@ type TaskRow = {
   assignee_id: string | null;
   list_id: string | null;
   open_order: number | null;
+  last_changed_at: string | null;
+  last_changed_by: string | null;
+  completed_by: string | null;
 };
 
 const rowToTask = (row: TaskRow): Task => ({
@@ -43,6 +45,9 @@ const rowToTask = (row: TaskRow): Task => ({
   ...(row.open_order !== null && row.open_order !== undefined
     ? { openOrder: Number(row.open_order) }
     : {}),
+  lastChangedAt: row.last_changed_at ?? null,
+  lastChangedBy: row.last_changed_by ?? null,
+  completedBy: row.completed_by ?? null,
 });
 
 /**
@@ -62,41 +67,11 @@ const validateSchema = async (db: Database): Promise<void> => {
 };
 
 export const createSqliteTaskStore = async (
-  db: Database,
-  clock: Clock
+  db: Database
 ): Promise<TaskStore> => {
   await validateSchema(db);
 
   return {
-    save: (task: Task): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db.execute({
-          sql: `
-            INSERT INTO tasks (
-              id, organization_id, created_by_id, title, capture_id,
-              due_date, completed_at, pinned_at, created_at, assignee_id, list_id,
-              open_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          args: [
-            task.id,
-            task.organizationId,
-            task.createdById,
-            task.title,
-            task.captureId ?? null,
-            task.dueDate ?? null,
-            task.completedAt ?? null,
-            task.pinnedAt ?? null,
-            task.createdAt,
-            task.assigneeId ?? null,
-            task.listId ?? null,
-            task.openOrder ?? null,
-          ],
-        }),
-        (error) => storageError('Failed to save task', error)
-      ).map(() => undefined);
-    },
-
     findById: (id: string): ResultAsync<Task | null, StorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
@@ -108,35 +83,6 @@ export const createSqliteTaskStore = async (
         const row = result.rows[0] as TaskRow | undefined;
         return row ? rowToTask(row) : null;
       });
-    },
-
-    update: (task: Task): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db.execute({
-          sql: `
-            UPDATE tasks SET
-              title = ?,
-              due_date = ?,
-              completed_at = ?,
-              pinned_at = ?,
-              assignee_id = ?,
-              list_id = ?,
-              open_order = ?
-            WHERE id = ?
-          `,
-          args: [
-            task.title,
-            task.dueDate ?? null,
-            task.completedAt ?? null,
-            task.pinnedAt ?? null,
-            task.assigneeId ?? null,
-            task.listId ?? null,
-            task.openOrder ?? null,
-            task.id,
-          ],
-        }),
-        (error) => storageError('Failed to update task', error)
-      ).map(() => undefined);
     },
 
     findByOrganization: (
@@ -210,19 +156,6 @@ export const createSqliteTaskStore = async (
         const row = result.rows[0] as TaskRow | undefined;
         return row ? rowToTask(row) : null;
       });
-    },
-
-    softDelete: (id: string): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db.execute({
-          sql: `
-            UPDATE tasks SET deleted_at = ?
-            WHERE id = ? AND deleted_at IS NULL
-          `,
-          args: [clock.now().toISOString(), id],
-        }),
-        (error) => storageError('Failed to delete task', error)
-      ).map(() => undefined);
     },
 
     countOpenOnList: (listId: string): ResultAsync<number, StorageError> => {
@@ -324,38 +257,5 @@ export const createSqliteTaskStore = async (
       ).map((result) => Number(result.rows[0]?.next_order ?? 0));
     },
 
-    setOpenOrders: (
-      updates: { id: string; openOrder: number }[]
-    ): ResultAsync<void, StorageError> => {
-      if (updates.length === 0) {
-        return okAsync(undefined);
-      }
-
-      return ResultAsync.fromPromise(
-        db.batch(
-          updates.map((update) => ({
-            sql: `UPDATE tasks SET open_order = ? WHERE id = ?`,
-            args: [update.openOrder, update.id],
-          })),
-          'write'
-        ),
-        (error) => storageError('Failed to set open order', error)
-      ).map(() => undefined);
-    },
-
-    clearListIdOnCompleted: (listId: string): ResultAsync<void, StorageError> => {
-      return ResultAsync.fromPromise(
-        db.execute({
-          sql: `
-            UPDATE tasks
-            SET list_id = NULL
-            WHERE list_id = ?
-              AND (completed_at IS NOT NULL OR deleted_at IS NOT NULL)
-          `,
-          args: [listId],
-        }),
-        (error) => storageError('Failed to clear list on completed tasks', error)
-      ).map(() => undefined);
-    },
   };
 };

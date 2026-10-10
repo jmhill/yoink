@@ -1,7 +1,7 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { Database } from './database/types.js';
-import { createApp, type AdminConfig, type SignupConfig } from './app.js';
+import { createApp, createFastifyInstance, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './config/schema.js';
 import { createDatabase } from './database/database.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
@@ -9,10 +9,15 @@ import { createStoreBackedPersist } from './captures/infrastructure/store-backed
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
 import { createListHandlers } from './lists/application/create-list-handlers.js';
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
-import { createStoreBackedPersist as createListStoreBackedPersist } from './lists/infrastructure/store-backed-persist.js';
+import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
-import { createStoreBackedPersist as createTaskStoreBackedPersist } from './tasks/infrastructure/store-backed-persist.js';
+import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
+import {
+  clearCompletedListIdQuery,
+  setOpenOrderQueries,
+} from './tasks/infrastructure/task-row-statements.js';
+import { createPinoCommandLogger } from './logging/index.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
@@ -323,12 +328,18 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now().toISOString(),
   });
 
+  const app = createFastifyInstance(config.log);
+  const commandLogger = createPinoCommandLogger(app.log);
+
   const listStore = await createSqliteListStore(database);
-  const taskStore = await createSqliteTaskStore(database, clock);
+  const taskStore = await createSqliteTaskStore(database);
   const listHandlers = createListHandlers({
-    persist: createListStoreBackedPersist({
-      store: listStore,
-      clearCompletedListIds: (listId) => taskStore.clearListIdOnCompleted(listId),
+    persist: createSqliteListPersist({
+      db: database,
+      taskSql: {
+        clearCompletedListId: clearCompletedListIdQuery,
+        setOpenOrders: setOpenOrderQueries,
+      },
     }),
     list: (organizationId) => listStore.findByOrganization(organizationId),
     pageNamedLists: (options) => listStore.pageByOrganization(options),
@@ -341,9 +352,9 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
         tasks.filter((task): task is Task => task !== null)
       ),
-    persistOpenTaskOrders: (updates) => taskStore.setOpenOrders(updates),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
+    logger: commandLogger,
   });
 
   // Create task store and service (async initialization)
@@ -356,12 +367,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   };
   const taskService = createTaskService({
     store: taskStore,
-    clock,
-    idGenerator,
-    principalLookup,
   });
   const taskHandlers = createTaskHandlers({
-    persist: createTaskStoreBackedPersist(taskStore),
+    persist: createSqliteTaskPersist({
+      db: database,
+    }),
     load: (id) => taskStore.findById(id),
     loadList: (id) => listStore.findById(id),
     loadNextOpenOrder: (organizationId, listId) =>
@@ -373,13 +383,13 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     principalLookup,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
+    logger: commandLogger,
   });
 
   // Create capture processing service (cross-entity operations).
   // Task create reuses the existing sandwich so listId joins open order.
   const captureProcessingService = createCaptureProcessingService({
     captureStore,
-    taskStore,
     createTask: (command) => taskHandlers.create(command).map((result) => result.view),
     clock,
   });
@@ -408,6 +418,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   }
 
   return createApp({
+    app,
     captureHandlers,
     listHandlers,
     taskService,

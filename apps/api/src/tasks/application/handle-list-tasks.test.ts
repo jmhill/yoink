@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { Task } from '@yoink/api-contracts';
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
 import { completedTaskCursor } from '../../listing/domain/list-keys.js';
@@ -6,18 +7,20 @@ import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
 
 const today = () => '2025-01-15';
 
+const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
+  organizationId: 'org-123',
+  createdById: 'user-456',
+  createdAt: '2025-01-15T10:00:00.000Z',
+  ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
+});
+
 describe('handleListTasks', () => {
   it('returns tasks from the store as a listed page', async () => {
     const store = createFakeTaskStore({
-      initialTasks: [
-        {
-          id: 'task-id-1',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Test task',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
-      ],
+      initialTasks: [task({ id: 'task-id-1', title: 'Test task' })],
     });
 
     const result = await handleListTasks(
@@ -38,30 +41,14 @@ describe('handleListTasks', () => {
   it('filters by today including overdue', async () => {
     const store = createFakeTaskStore({
       initialTasks: [
-        {
+        task({
           id: 'overdue-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
           title: 'Overdue task',
           dueDate: '2025-01-14',
           createdAt: '2025-01-14T10:00:00.000Z',
-        },
-        {
-          id: 'today-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Today task',
-          dueDate: '2025-01-15',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
-        {
-          id: 'tomorrow-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Tomorrow task',
-          dueDate: '2025-01-16',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
+        }),
+        task({ id: 'today-task', title: 'Today task', dueDate: '2025-01-15' }),
+        task({ id: 'tomorrow-task', title: 'Tomorrow task', dueDate: '2025-01-16' }),
       ],
     });
 
@@ -82,22 +69,8 @@ describe('handleListTasks', () => {
   it('filters by upcoming', async () => {
     const store = createFakeTaskStore({
       initialTasks: [
-        {
-          id: 'today-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Today task',
-          dueDate: '2025-01-15',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
-        {
-          id: 'tomorrow-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Tomorrow task',
-          dueDate: '2025-01-16',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
+        task({ id: 'today-task', title: 'Today task', dueDate: '2025-01-15' }),
+        task({ id: 'tomorrow-task', title: 'Tomorrow task', dueDate: '2025-01-16' }),
       ],
     });
 
@@ -114,24 +87,14 @@ describe('handleListTasks', () => {
   });
 
   it('filters by completed', async () => {
-    const completedTask = {
-      id: 'completed-task',
-      organizationId: 'org-123',
-      createdById: 'user-456',
-      title: 'Completed task',
-      completedAt: '2025-01-15T11:00:00.000Z',
-      createdAt: '2025-01-15T10:00:00.000Z',
-    };
     const store = createFakeTaskStore({
       initialTasks: [
-        {
-          id: 'incomplete-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Incomplete task',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
-        completedTask,
+        task({ id: 'incomplete-task', title: 'Incomplete task' }),
+        task({
+          id: 'completed-task',
+          title: 'Completed task',
+          completedAt: '2025-01-15T11:00:00.000Z',
+        }),
       ],
     });
 
@@ -150,38 +113,15 @@ describe('handleListTasks', () => {
   it('filters by mine — only incomplete tasks assigned to the caller', async () => {
     const store = createFakeTaskStore({
       initialTasks: [
-        {
-          id: 'mine-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'UAT checkout',
-          createdAt: '2025-01-15T10:00:00.000Z',
-          assigneeId: 'user-456',
-        },
-        {
-          id: 'theirs-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Buy milk',
-          createdAt: '2025-01-15T10:00:00.000Z',
-          assigneeId: 'agent-789',
-        },
-        {
-          id: 'unassigned-task',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          title: 'Unowned chore',
-          createdAt: '2025-01-15T10:00:00.000Z',
-        },
-        {
+        task({ id: 'mine-task', title: 'UAT checkout', assigneeId: 'user-456' }),
+        task({ id: 'theirs-task', title: 'Buy milk', assigneeId: 'agent-789' }),
+        task({ id: 'unassigned-task', title: 'Unowned chore' }),
+        task({
           id: 'completed-mine',
-          organizationId: 'org-123',
-          createdById: 'user-456',
           title: 'Done UAT',
-          createdAt: '2025-01-15T10:00:00.000Z',
           completedAt: '2025-01-15T11:00:00.000Z',
           assigneeId: 'user-456',
-        },
+        }),
       ],
     });
 
@@ -198,30 +138,21 @@ describe('handleListTasks', () => {
   });
 
   it('returns remaining completed tasks after the cursor item is uncompleted', async () => {
-    const first = {
+    const first = task({
       id: 'done-1',
-      organizationId: 'org-123',
-      createdById: 'user-456',
       title: 'First done',
       completedAt: '2025-01-15T12:00:00.000Z',
-      createdAt: '2025-01-15T10:00:00.000Z',
-    };
-    const second = {
+    });
+    const second = task({
       id: 'done-2',
-      organizationId: 'org-123',
-      createdById: 'user-456',
       title: 'Second done',
       completedAt: '2025-01-15T11:00:00.000Z',
-      createdAt: '2025-01-15T10:00:00.000Z',
-    };
-    const third = {
+    });
+    const third = task({
       id: 'done-3',
-      organizationId: 'org-123',
-      createdById: 'user-456',
       title: 'Third done',
       completedAt: '2025-01-15T10:00:00.000Z',
-      createdAt: '2025-01-15T10:00:00.000Z',
-    };
+    });
     const store = createFakeTaskStore({ initialTasks: [first, second, third] });
     const deps = { list: store.findByOrganization, today };
 
@@ -235,7 +166,7 @@ describe('handleListTasks', () => {
     const cursor = page1.value.nextCursor;
     expect(cursor).toBe(encodeKeysetCursor(completedTaskCursor.of(first)));
 
-    await store.update({ ...first, completedAt: undefined });
+    store.applyReplace({ ...first, completedAt: undefined });
 
     const page2 = await handleListTasks(
       { organizationId: 'org-123', filter: 'completed', limit: 10, cursor: cursor ?? undefined },

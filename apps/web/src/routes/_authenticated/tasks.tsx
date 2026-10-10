@@ -440,6 +440,9 @@ function TasksPage() {
         title: body.title,
         dueDate: body.dueDate,
         createdAt: new Date().toISOString(),
+        lastChangedAt: new Date().toISOString(),
+        lastChangedBy: null,
+        completedBy: null,
         ...(body.assigneeId ? { assigneeId: body.assigneeId } : {}),
         ...(body.listId ? { listId: body.listId } : {}),
       };

@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NamedList, Task } from '@yoink/api-contracts';
 import type { StorageError } from '../domain/list-errors.js';
-import type { NamedListEvent } from '../domain/events.js';
+import type { ListChangePlan } from '../domain/plan-list-change.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
@@ -23,13 +23,9 @@ export type CountOpenTasksOnList = (
   listId: string
 ) => ResultAsync<number, StorageError>;
 
-export type ClearCompletedListIds = (
-  listId: string
+export type PersistNamedListChange = (
+  plan: ListChangePlan
 ) => ResultAsync<void, StorageError>;
-
-export type PersistNamedListEvent = (input: {
-  event: NamedListEvent;
-}) => ResultAsync<void, StorageError>;
 
 export type LoadOpenTasksOnList = (
   organizationId: string,
@@ -44,7 +40,3 @@ export type PageOpenTasksOnList = (options: {
 }) => ResultAsync<KeysetRows<Task>, StorageError>;
 
 export type LoadTasksByIds = (ids: string[]) => ResultAsync<Task[], StorageError>;
-
-export type PersistOpenTaskOrders = (
-  updates: { id: string; openOrder: number }[]
-) => ResultAsync<void, StorageError>;

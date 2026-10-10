@@ -15,18 +15,12 @@ export type FindByOrganizationOptions = {
 };
 
 export type TaskStore = {
-  save(task: Task): ResultAsync<void, StorageError>;
   findById(id: string): ResultAsync<Task | null, StorageError>;
-  update(task: Task): ResultAsync<void, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
   ): ResultAsync<KeysetRows<Task>, StorageError>;
   findByCaptureId(captureId: string): ResultAsync<Task | null, StorageError>;
-  // Soft delete - sets deletedAt timestamp
-  softDelete(id: string): ResultAsync<void, StorageError>;
   countOpenOnList(listId: string): ResultAsync<number, StorageError>;
-  /** Unlist completed (and already-deleted) tasks still pointing at this list. */
-  clearListIdOnCompleted(listId: string): ResultAsync<void, StorageError>;
   findOpenInPile(options: {
     organizationId: string;
     listId: string | null;
@@ -41,7 +35,4 @@ export type TaskStore = {
     organizationId: string;
     listId: string | null;
   }): ResultAsync<number, StorageError>;
-  setOpenOrders(
-    updates: { id: string; openOrder: number }[]
-  ): ResultAsync<void, StorageError>;
 };

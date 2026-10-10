@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -84,7 +84,11 @@ export type AppDependencies = {
   rateLimit?: RateLimitConfig;
   log: LogConfig;
   cookie: CookieConfig;
+  app?: FastifyInstance;
 };
+
+export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
+  Fastify({ logger: createLoggerOptions(log) });
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {
@@ -100,8 +104,7 @@ const defaultRateLimitConfig: RateLimitConfig = {
 };
 
 export const createApp = async (deps: AppDependencies) => {
-  const loggerOptions = createLoggerOptions(deps.log);
-  const app = Fastify({ logger: loggerOptions });
+  const app = deps.app ?? createFastifyInstance(deps.log);
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
 
   // Register security plugins
@@ -136,7 +139,6 @@ export const createApp = async (deps: AppDependencies) => {
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
-    captureProcessingService: deps.captureProcessingService,
     authMiddleware: deps.authMiddleware,
   });
 

@@ -65,5 +65,6 @@ export const decideCreateTask = ({
     listId: command.listId,
     openOrder: nextOpenOrder,
     createdAt: now,
+    occurredAt: now,
   });
 };

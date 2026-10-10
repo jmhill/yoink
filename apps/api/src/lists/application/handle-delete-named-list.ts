@@ -1,18 +1,21 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { DeleteNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListDeleted } from '../domain/events.js';
-import type { DeleteNamedListError } from '../domain/list-errors.js';
+import { type DeleteNamedListError } from '../domain/list-errors.js';
 import { decideDeleteNamedList } from '../domain/decide-delete.js';
+import { planListChange } from '../domain/plan-list-change.js';
 import type {
   CountOpenTasksOnList,
   LoadNamedList,
-  PersistNamedListEvent,
+  PersistNamedListChange,
 } from './ports.js';
 
 export type HandleDeleteNamedListDeps = {
   load: LoadNamedList;
   countOpenOnList: CountOpenTasksOnList;
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
+  nextId: () => string;
+  now: () => string;
 };
 
 export type DeleteNamedListResult = {
@@ -28,10 +31,12 @@ export const handleDeleteNamedList = (
       loaded && loaded.organizationId === command.organizationId ? loaded : null;
 
     const persistDecision = (openTaskCount: number) => {
+      const now = deps.now();
       const decision = decideDeleteNamedList({
         command,
         current,
         openTaskCount,
+        now,
       });
 
       if (decision.isErr()) {
@@ -39,7 +44,14 @@ export const handleDeleteNamedList = (
       }
 
       const event = decision.value;
-      return deps.persist({ event }).map(() => ({ event }));
+      const plan = planListChange({
+        event,
+        current,
+        actor: command.actor,
+        ids: { recordId: deps.nextId() },
+      });
+
+      return deps.persist(plan).map(() => ({ event }));
     };
 
     if (!current) {

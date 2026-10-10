@@ -14,6 +14,7 @@ const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
   name: 'Shopping',
+  actor: null,
 };
 
 describe('decideRenameNamedList', () => {
@@ -22,6 +23,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: '  Shopping  ' },
       current: groceries,
       existingNames: [groceries.name, 'Weekend'],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -31,6 +33,7 @@ describe('decideRenameNamedList', () => {
         id: 'list-groceries',
         organizationId: 'org-123',
         name: 'Shopping',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -40,6 +43,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: '' },
       current: groceries,
       existingNames: [groceries.name],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -53,6 +57,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: '   ' },
       current: groceries,
       existingNames: [groceries.name],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -66,6 +71,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: 'a'.repeat(201) },
       current: groceries,
       existingNames: [groceries.name],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -80,6 +86,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name },
       current: groceries,
       existingNames: [groceries.name],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -93,6 +100,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: 'weekend' },
       current: groceries,
       existingNames: [groceries.name, 'Weekend'],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -106,6 +114,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: 'groceries' },
       current: groceries,
       existingNames: [groceries.name, 'Weekend'],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -119,6 +128,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: 'Groceries' },
       current: groceries,
       existingNames: [groceries.name, 'Weekend'],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -132,6 +142,7 @@ describe('decideRenameNamedList', () => {
       command: { ...command, name: '  WEEKEND  ' },
       current: groceries,
       existingNames: [groceries.name, 'Weekend'],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -145,6 +156,7 @@ describe('decideRenameNamedList', () => {
       command,
       current: null,
       existingNames: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -158,6 +170,7 @@ describe('decideRenameNamedList', () => {
       command,
       current: { ...groceries, organizationId: 'org-other' },
       existingNames: [groceries.name],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);

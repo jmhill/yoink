@@ -1,14 +1,13 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NamedList, Task } from '@yoink/api-contracts';
-import type { TaskEvent } from '../domain/events.js';
-import type { StorageError } from '../domain/task-errors.js';
+import type { StorageError, TaskNotFoundError } from '../domain/task-errors.js';
 import type { FindByOrganizationOptions } from '../domain/task-store.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { TaskChangePlan } from '../domain/plan-task-change.js';
 
-export type PersistTaskEvent = (input: {
-  event: TaskEvent;
-  current: Task | null;
-}) => ResultAsync<void, StorageError>;
+export type PersistTaskChange = (
+  plan: TaskChangePlan
+) => ResultAsync<void, StorageError | TaskNotFoundError>;
 
 export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
 

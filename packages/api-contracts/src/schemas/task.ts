@@ -15,6 +15,16 @@ export const TaskSchema = z.object({
   // Position among open tasks in the current pile (that list, or unlisted).
   // Completed tasks keep this remembered index; they are not in the open sequence.
   openOrder: z.number().int().optional(),
+  /**
+   * Denormalized from the change log (source of truth). Null on tasks created
+   * before history started — the edit screen shows "before history started".
+   * Reorder and sibling renumber do not update these.
+   */
+  lastChangedAt: z.string().datetime().nullable(),
+  /** Null until typed actors (#132 / PR 151) land. */
+  lastChangedBy: z.string().uuid().nullable(),
+  /** Set on complete; cleared on uncomplete. Null until actors land. */
+  completedBy: z.string().uuid().nullable(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;

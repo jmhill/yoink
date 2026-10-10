@@ -29,6 +29,9 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   createdById: userId,
   createdAt: '2026-09-01T00:00:00.000Z',
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
 });
 
 describe('parseAllPile', () => {

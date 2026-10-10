@@ -2,14 +2,14 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { CreateNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListCreated } from '../domain/events.js';
-import { storageError, type CreateNamedListError } from '../domain/list-errors.js';
+import { type CreateNamedListError } from '../domain/list-errors.js';
 import { decideCreateNamedList } from '../domain/decide-create.js';
-import { applyNamedListEvent } from '../domain/apply-named-list-event.js';
-import type { ListNamedLists, PersistNamedListEvent } from './ports.js';
+import { planListChange } from '../domain/plan-list-change.js';
+import type { ListNamedLists, PersistNamedListChange } from './ports.js';
 
 export type HandleCreateNamedListDeps = {
   list: ListNamedLists;
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
   nextId: () => string;
   now: () => string;
 };
@@ -24,11 +24,12 @@ export const handleCreateNamedList = (
   deps: HandleCreateNamedListDeps
 ): ResultAsync<CreateNamedListResult, CreateNamedListError> => {
   return deps.list(command.organizationId).andThen((existing) => {
+    const now = deps.now();
     const decision = decideCreateNamedList({
       command,
       existingNames: existing.map((list) => list.name),
       id: deps.nextId(),
-      now: deps.now(),
+      now,
     });
 
     if (decision.isErr()) {
@@ -36,14 +37,16 @@ export const handleCreateNamedList = (
     }
 
     const event = decision.value;
-    const view = applyNamedListEvent(null, event);
-    if (!view) {
-      return errAsync(storageError('Create did not project a list'));
-    }
-
-    return deps.persist({ event }).map(() => ({
+    const plan = planListChange({
       event,
-      view,
+      current: null,
+      actor: command.actor,
+      ids: { recordId: deps.nextId() },
+    });
+
+    return deps.persist(plan).map(() => ({
+      event,
+      view: plan.view,
     }));
   });
 };

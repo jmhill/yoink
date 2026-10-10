@@ -2,15 +2,17 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { RenameNamedListCommand } from '../domain/list-commands.js';
 import type { NamedListRenamed } from '../domain/events.js';
-import { storageError, type RenameNamedListError } from '../domain/list-errors.js';
+import { listNotFoundError, type RenameNamedListError } from '../domain/list-errors.js';
 import { decideRenameNamedList } from '../domain/decide-rename.js';
-import { applyNamedListEvent } from '../domain/apply-named-list-event.js';
-import type { ListNamedLists, LoadNamedList, PersistNamedListEvent } from './ports.js';
+import { planListChange } from '../domain/plan-list-change.js';
+import type { ListNamedLists, LoadNamedList, PersistNamedListChange } from './ports.js';
 
 export type HandleRenameNamedListDeps = {
   load: LoadNamedList;
   list: ListNamedLists;
-  persist: PersistNamedListEvent;
+  persist: PersistNamedListChange;
+  nextId: () => string;
+  now: () => string;
 };
 
 export type RenameNamedListResult = {
@@ -27,23 +29,31 @@ export const handleRenameNamedList = (
       loaded && loaded.organizationId === command.organizationId ? loaded : null;
 
     const persistDecision = (existingNames: readonly string[]) => {
+      const now = deps.now();
       const decision = decideRenameNamedList({
         command,
         current,
         existingNames,
+        now,
       });
 
       if (decision.isErr()) {
         return errAsync(decision.error);
       }
 
-      const event = decision.value;
-      const view = applyNamedListEvent(current, event);
-      if (!view) {
-        return errAsync(storageError('Rename did not project a list'));
+      if (current === null) {
+        return errAsync(listNotFoundError(command.id));
       }
 
-      return deps.persist({ event }).map(() => ({ event, view }));
+      const event = decision.value;
+      const plan = planListChange({
+        event,
+        current,
+        actor: command.actor,
+        ids: { recordId: deps.nextId() },
+      });
+
+      return deps.persist(plan).map(() => ({ event, view: plan.view }));
     };
 
     if (!current) {

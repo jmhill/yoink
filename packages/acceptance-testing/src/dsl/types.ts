@@ -46,6 +46,9 @@ export type Task = {
   assigneeId?: string;
   listId?: string;
   openOrder?: number;
+  lastChangedAt?: string | null;
+  lastChangedBy?: string | null;
+  completedBy?: string | null;
 };
 
 export type Organization = {

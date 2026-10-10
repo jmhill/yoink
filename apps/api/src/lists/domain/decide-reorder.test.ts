@@ -10,6 +10,9 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: groceries.id,
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
 });
 
 const milk = task({ id: 'task-milk', title: 'Milk', openOrder: 0 });
@@ -23,10 +26,13 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [eggs.id, milk.id, bread.id],
+        actor: null,
+
       },
       list: groceries,
       openTasks: [milk, eggs, bread],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -47,10 +53,13 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [milk.id, done.id, bread.id],
+        actor: null,
+
       },
       list: groceries,
       openTasks: [milk, bread],
       extraTasks: [done],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -65,10 +74,13 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: 'org-123',
         taskIds: [milk.id],
+        actor: null,
+
       },
       list: null,
       openTasks: [],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -83,10 +95,13 @@ describe('decideReorderOpenTasks', () => {
         listId: groceries.id,
         organizationId: groceries.organizationId,
         taskIds: [milk.id],
+        actor: null,
+
       },
       list: groceries,
       openTasks: [milk, eggs],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -107,10 +122,13 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [errand.id, notes.id, call.id],
+        actor: null,
+
       },
       list: null,
       openTasks: [notes, errand, call],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -132,10 +150,13 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [notes.id, done.id, call.id],
+        actor: null,
+
       },
       list: null,
       openTasks: [notes, call],
       extraTasks: [done],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -152,10 +173,13 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [errand.id, pinned.id],
+        actor: null,
+
       },
       list: null,
       openTasks: [pinned, errand],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -168,6 +192,7 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
           { id: 'task-errand', openOrder: 0 },
           { id: 'task-notes', openOrder: 1 },
         ],
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -178,10 +203,13 @@ describe('decideReorderOpenTasks — unlisted pile', () => {
         listId: null,
         organizationId: 'org-123',
         taskIds: [notes.id, milk.id],
+        actor: null,
+
       },
       list: null,
       openTasks: [notes, errand],
       extraTasks: [],
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);

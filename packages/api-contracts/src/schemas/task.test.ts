@@ -8,6 +8,9 @@ describe('TaskSchema', () => {
     createdById: '550e8400-e29b-41d4-a716-446655440002',
     title: 'Complete the TPS report',
     createdAt: '2025-01-15T10:00:00.000Z',
+    lastChangedAt: null,
+    lastChangedBy: null,
+    completedBy: null,
   };
 
   it('validates a minimal task', () => {
@@ -25,6 +28,19 @@ describe('TaskSchema', () => {
       assigneeId: '550e8400-e29b-41d4-a716-446655440004',
       listId: '550e8400-e29b-41d4-a716-446655440005',
       openOrder: 2,
+      lastChangedAt: '2025-01-16T10:00:00.000Z',
+      lastChangedBy: null,
+      completedBy: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts lastChangedAt/By and completedBy as null for pre-history tasks', () => {
+    const result = TaskSchema.safeParse({
+      ...validTask,
+      lastChangedAt: null,
+      lastChangedBy: null,
+      completedBy: null,
     });
     expect(result.success).toBe(true);
   });

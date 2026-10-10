@@ -6,6 +6,8 @@ describe('decideCreateNamedList', () => {
     name: 'Groceries',
     organizationId: 'org-123',
     createdById: 'user-456',
+  
+  actor: null,
   };
 
   it('decides a NamedListCreated fact with generated id and timestamp', () => {
@@ -25,6 +27,7 @@ describe('decideCreateNamedList', () => {
         createdById: 'user-456',
         name: 'Groceries',
         createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });

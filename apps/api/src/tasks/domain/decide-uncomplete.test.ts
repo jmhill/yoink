@@ -8,6 +8,9 @@ const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: 'list-groceries',
   ...overrides,
+  lastChangedAt: overrides.lastChangedAt ?? null,
+  lastChangedBy: overrides.lastChangedBy ?? null,
+  completedBy: overrides.completedBy ?? null,
 });
 
 const current = task({
@@ -21,11 +24,12 @@ describe('decideUncompleteTask', () => {
   it('restores a completed task at its remembered open-order index', () => {
     const result = decideUncompleteTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId },
+      command: { id: current.id, organizationId: current.organizationId, actor: null },
       openSiblings: [
         task({ id: 'task-a', title: 'Milk', openOrder: 0 }),
         task({ id: 'task-c', title: 'Bread', openOrder: 2 }),
       ],
+      now: '2025-01-16T11:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -41,8 +45,9 @@ describe('decideUncompleteTask', () => {
   it('clamps to the end when the open list is now shorter', () => {
     const result = decideUncompleteTask({
       current: { ...current, openOrder: 4 },
-      command: { id: current.id, organizationId: current.organizationId },
+      command: { id: current.id, organizationId: current.organizationId, actor: null },
       openSiblings: [task({ id: 'task-a', title: 'Milk', openOrder: 0 })],
+    now: '2025-01-16T11:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -55,8 +60,9 @@ describe('decideUncompleteTask', () => {
   it('is a noop when the task is already open', () => {
     const result = decideUncompleteTask({
       current: task({ id: 'task-b', title: 'Eggs', openOrder: 1 }),
-      command: { id: current.id, organizationId: current.organizationId },
+      command: { id: current.id, organizationId: current.organizationId, actor: null },
       openSiblings: [],
+    now: '2025-01-16T11:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);

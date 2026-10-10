@@ -13,6 +13,7 @@ const groceries: NamedList = {
 const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
+  actor: null,
 };
 
 describe('decideDeleteNamedList', () => {
@@ -20,6 +21,7 @@ describe('decideDeleteNamedList', () => {
     const result = decideDeleteNamedList({
       command,
       current: groceries,
+      now: '2025-01-15T10:00:00.000Z',
       openTaskCount: 0,
     });
 
@@ -29,6 +31,7 @@ describe('decideDeleteNamedList', () => {
         type: 'NamedListDeleted',
         id: 'list-groceries',
         organizationId: 'org-123',
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -37,6 +40,7 @@ describe('decideDeleteNamedList', () => {
     const result = decideDeleteNamedList({
       command,
       current: groceries,
+      now: '2025-01-15T10:00:00.000Z',
       openTaskCount: 0,
     });
 
@@ -47,6 +51,7 @@ describe('decideDeleteNamedList', () => {
     const result = decideDeleteNamedList({
       command,
       current: groceries,
+      now: '2025-01-15T10:00:00.000Z',
       openTaskCount: 2,
     });
 
@@ -64,6 +69,7 @@ describe('decideDeleteNamedList', () => {
     const result = decideDeleteNamedList({
       command,
       current: null,
+      now: '2025-01-15T10:00:00.000Z',
       openTaskCount: 0,
     });
 
@@ -77,6 +83,7 @@ describe('decideDeleteNamedList', () => {
     const result = decideDeleteNamedList({
       command,
       current: { ...groceries, organizationId: 'org-other' },
+      now: '2025-01-15T10:00:00.000Z',
       openTaskCount: 0,
     });
 

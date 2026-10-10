@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
-import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { TaskHandlers } from '../application/create-task-handlers.js';
 import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
@@ -10,7 +9,6 @@ import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/
 export type TaskRoutesDependencies = {
   taskService: TaskService;
   taskHandlers: TaskHandlers;
-  captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
 
@@ -18,7 +16,7 @@ export const registerTaskRoutes = async (
   app: FastifyInstance,
   deps: TaskRoutesDependencies
 ) => {
-  const { taskService, taskHandlers, captureProcessingService, authMiddleware } = deps;
+  const { taskService, taskHandlers, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
@@ -34,6 +32,8 @@ export const registerTaskRoutes = async (
           listId: body.listId,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
@@ -127,6 +127,8 @@ export const registerTaskRoutes = async (
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
           listId: body.listId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
@@ -170,6 +172,8 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.complete({
           id: params.id,
           organizationId: request.authContext.organizationId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
@@ -198,6 +202,8 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.uncomplete({
           id: params.id,
           organizationId: request.authContext.organizationId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
@@ -223,15 +229,17 @@ export const registerTaskRoutes = async (
       },
 
       pin: async ({ params, request }) => {
-        const result = await taskService.pin({
+        const result = await taskHandlers.pin({
           id: params.id,
           organizationId: request.authContext.organizationId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -251,15 +259,17 @@ export const registerTaskRoutes = async (
       },
 
       unpin: async ({ params, request }) => {
-        const result = await taskService.unpin({
+        const result = await taskHandlers.unpin({
           id: params.id,
           organizationId: request.authContext.organizationId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(
-          (task) => ({
+          ({ view }) => ({
             status: 200 as const,
-            body: task,
+            body: view,
           }),
           (error) => {
             switch (error.type) {
@@ -279,10 +289,11 @@ export const registerTaskRoutes = async (
       },
 
       delete: async ({ params, request }) => {
-        // Use captureProcessingService for cascade delete (deletes source capture too)
-        const result = await captureProcessingService.deleteTaskWithCascade({
+        const result = await taskHandlers.delete({
           id: params.id,
           organizationId: request.authContext.organizationId,
+          // TODO(#132): pass request.authContext.actor once PR 151 merges
+          actor: null,
         });
 
         return result.match(

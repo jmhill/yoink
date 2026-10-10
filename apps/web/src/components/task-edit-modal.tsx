@@ -26,6 +26,20 @@ const UNASSIGNED_VALUE = 'unassigned';
 /** Same sentinel as the quick-add list picker. */
 const UNLISTED_VALUE = 'unlisted';
 
+const formatTaskWhen = (iso: string): string =>
+  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+const whoLabel = (
+  userId: string | null | undefined,
+  members: Array<{ userId: string; label: string }>
+): string => {
+  if (!userId) {
+    return '';
+  }
+  const member = members.find((item) => item.userId === userId);
+  return member ? ` by ${member.label}` : '';
+};
+
 type TaskEditModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -208,6 +222,26 @@ export function TaskEditModal({
               </SelectContent>
             </Select>
           </div>
+
+          {task && (
+            <div className="space-y-1 text-sm text-muted-foreground" data-testid="task-edit-history">
+              <p data-testid="task-edit-added">
+                Added {formatTaskWhen(task.createdAt)}
+                {whoLabel(task.createdById, members)}
+              </p>
+              <p data-testid="task-edit-last-changed">
+                {task.lastChangedAt
+                  ? `Last changed ${formatTaskWhen(task.lastChangedAt)}${whoLabel(task.lastChangedBy, members)}`
+                  : 'Last changed before history started'}
+              </p>
+              {task.completedAt && (
+                <p data-testid="task-edit-completed">
+                  Completed {formatTaskWhen(task.completedAt)}
+                  {whoLabel(task.completedBy, members)}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Source capture section */}
           {task?.captureId && (

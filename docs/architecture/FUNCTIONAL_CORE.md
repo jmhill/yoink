@@ -1,9 +1,9 @@
 # Functional Core (Captures Pilot)
 
-**Status:** Pilot — `captures/` plus `lists/` view/create/rename/delete/list-open-tasks/reorder (named list or unlisted pile) plus task create/PATCH/complete/uncomplete  
+**Status:** Pilot — `captures/` plus `lists/` view/create/rename/delete/list-open-tasks/reorder (named list or unlisted pile) plus task create/PATCH/complete/uncomplete/pin/unpin/delete  
 **Created:** 2026-08-19
 
-The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create/rename/delete/reorder (decide → persist → apply). Task create, PATCH (set or clear `listId`), complete, and uncomplete use the same sandwich; pin/delete still live on `TaskService`. Do not copy this shape into access until the pilot is judged a success.
+The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create/rename/delete/reorder (decide → `planListChange` → persist). Task create, PATCH (set or clear `listId`), complete, uncomplete, pin, unpin, and delete use the same sandwich (`decide` → `planTaskChange` → persist). The handler plans once (pre-generated ids, `occurredAt` on the event) and returns that view. Persist only turns the plan into SQL statements in one `db.batch`. Do not copy this shape into access until the pilot is judged a success.
 
 ## Layers
 

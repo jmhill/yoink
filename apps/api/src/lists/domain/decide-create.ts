@@ -40,5 +40,6 @@ export const decideCreateNamedList = ({
     createdById: command.createdById,
     name,
     createdAt: now,
+    occurredAt: now,
   });
 };

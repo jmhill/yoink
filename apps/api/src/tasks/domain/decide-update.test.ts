@@ -8,6 +8,9 @@ const current: Task = {
   createdById: 'user-456',
   title: 'Buy milk',
   createdAt: '2025-01-15T10:00:00.000Z',
+lastChangedAt: null,
+lastChangedBy: null,
+completedBy: null,
 };
 
 const groceries = { id: 'list-groceries', organizationId: 'org-123' };
@@ -22,10 +25,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -39,6 +45,7 @@ describe('decideUpdateTask', () => {
         assigneeId: undefined,
         listId: 'list-groceries',
         openOrder: 0,
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -50,10 +57,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 4,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -72,10 +82,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: weekend.id,
+        actor: null,
+
       },
       list: weekend,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -97,10 +110,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -119,10 +135,13 @@ describe('decideUpdateTask', () => {
         organizationId: current.organizationId,
         title: 'Buy oat milk',
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -144,10 +163,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -169,10 +191,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: weekend.id,
+        actor: null,
+
       },
       list: weekend,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -194,10 +219,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
+        actor: null,
+
       },
       list: groceries,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -213,10 +241,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: 'list-missing',
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -232,10 +263,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: otherOrgList.id,
+        actor: null,
+
       },
       list: otherOrgList,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -251,10 +285,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         title: 'Buy oat milk',
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -273,10 +310,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -290,6 +330,7 @@ describe('decideUpdateTask', () => {
         assigneeId: undefined,
         listId: null,
         openOrder: 0,
+        occurredAt: '2025-01-15T10:00:00.000Z',
       });
     }
   });
@@ -303,10 +344,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 5,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -323,10 +367,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -343,10 +390,13 @@ describe('decideUpdateTask', () => {
         organizationId: current.organizationId,
         title: 'Buy oat milk',
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -369,10 +419,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);
@@ -393,10 +446,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: null,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isOk()).toBe(true);
@@ -412,10 +468,13 @@ describe('decideUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         assigneeId: 'outsider',
+        actor: null,
+
       },
       list: null,
       assigneeInOrganization: false,
       nextOpenOrder: 0,
+    now: '2025-01-15T10:00:00.000Z',
     });
 
     expect(result.isErr()).toBe(true);

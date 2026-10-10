@@ -10,13 +10,16 @@ const current: Task = {
   createdAt: '2025-01-15T10:00:00.000Z',
   listId: 'list-groceries',
   openOrder: 1,
+lastChangedAt: null,
+lastChangedBy: null,
+completedBy: null,
 };
 
 describe('decideCompleteTask', () => {
   it('marks an open task complete and keeps the remembered open-order index', () => {
     const result = decideCompleteTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId },
+      command: { id: current.id, organizationId: current.organizationId, actor: null },
       now: '2025-01-16T10:00:00.000Z',
     });
 
@@ -25,7 +28,9 @@ describe('decideCompleteTask', () => {
       expect(result.value).toEqual({
         type: 'TaskCompleted',
         id: 'task-123',
+        organizationId: 'org-123',
         completedAt: '2025-01-16T10:00:00.000Z',
+        occurredAt: '2025-01-16T10:00:00.000Z',
       });
     }
   });
@@ -33,7 +38,7 @@ describe('decideCompleteTask', () => {
   it('is a noop when the task is already completed', () => {
     const result = decideCompleteTask({
       current: { ...current, completedAt: '2025-01-16T09:00:00.000Z' },
-      command: { id: current.id, organizationId: current.organizationId },
+      command: { id: current.id, organizationId: current.organizationId, actor: null },
       now: '2025-01-16T10:00:00.000Z',
     });
 

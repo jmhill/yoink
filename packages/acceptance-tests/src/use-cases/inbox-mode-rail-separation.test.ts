@@ -15,7 +15,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list'];
+  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Inbox mode rail separation [${ctx.driverName}]`, () => {

@@ -7,12 +7,21 @@ export type RailNamedList = {
   name: string;
 };
 
+export type RailProject = {
+  id: string;
+  name: string;
+  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+};
+
 export type RailItem =
   | { kind: 'inbox'; label: 'Inbox'; count: number }
   | { kind: 'smart'; key: RailSmartView; label: string }
   | { kind: 'named'; listId: string; label: string }
   | { kind: 'unlisted'; label: 'Unlisted' }
-  | { kind: 'new-list'; label: 'New list' };
+  | { kind: 'new-list'; label: 'New list' }
+  | { kind: 'project'; projectId: string; label: string }
+  | { kind: 'someday-project'; projectId: string; label: string }
+  | { kind: 'new-project'; label: 'New project' };
 
 export type RailLocation = {
   pathname: string;
@@ -36,16 +45,42 @@ export const RAIL_TASK_FAMILY_HEADING = 'Task family';
 /** Section label above named lists / Unlisted / New list. Not a rail item. */
 export const RAIL_LISTS_HEADING = 'Lists';
 
+/** Section label above projects / New project. Not a rail item. */
+export const RAIL_PROJECTS_HEADING = 'Projects';
+
+/** Collapsed group label for someday projects. Not a rail item. */
+export const RAIL_SOMEDAY_HEADING = 'Someday';
+
+const byName = (left: { name: string }, right: { name: string }): number =>
+  left.name.localeCompare(right.name);
+
+export function partitionRailProjects(projects: RailProject[]): {
+  open: RailProject[];
+  someday: RailProject[];
+} {
+  return {
+    open: projects
+      .filter((project) => project.status === 'active' || project.status === 'waiting')
+      .slice()
+      .sort(byName),
+    someday: projects
+      .filter((project) => project.status === 'someday')
+      .slice()
+      .sort(byName),
+  };
+}
+
 /**
  * One rail: Inbox as a capture/triage **mode**, then the task family
- * (Today → Done), then named lists, Unlisted last, then New list.
- * Smart views and lists stay the same destinations — no nesting, no
- * new rows. Headings and the mode cue are chrome, not rail items.
+ * (Today → Done), then named lists, Unlisted last, then New list,
+ * then Projects (active/waiting, collapsed Someday, New project).
  */
 export function buildAppRailItems(input: {
   inboxCount: number;
   namedLists: RailNamedList[];
+  projects?: RailProject[];
 }): RailItem[] {
+  const { open, someday } = partitionRailProjects(input.projects ?? []);
   return [
     { kind: 'inbox', label: 'Inbox', count: input.inboxCount },
     { kind: 'smart', key: 'today', label: 'Today' },
@@ -59,6 +94,17 @@ export function buildAppRailItems(input: {
     })),
     { kind: 'unlisted', label: 'Unlisted' },
     { kind: 'new-list', label: 'New list' },
+    ...open.map((project) => ({
+      kind: 'project' as const,
+      projectId: project.id,
+      label: project.name,
+    })),
+    ...someday.map((project) => ({
+      kind: 'someday-project' as const,
+      projectId: project.id,
+      label: project.name,
+    })),
+    { kind: 'new-project', label: 'New project' },
   ];
 }
 
@@ -71,6 +117,9 @@ const isTaskFamilyItem = (item: RailItem): boolean => item.kind === 'smart';
 
 const isListsSectionItem = (item: RailItem): boolean =>
   item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list';
+
+const isProjectsSectionItem = (item: RailItem): boolean =>
+  item.kind === 'project' || item.kind === 'someday-project' || item.kind === 'new-project';
 
 /**
  * Insert the Task family heading once, above Today (the first smart view),
@@ -94,6 +143,15 @@ export function shouldShowListsHeadingBefore(
   return isListsSectionItem(item) && (previous === undefined || !isListsSectionItem(previous));
 }
 
+export function shouldShowProjectsHeadingBefore(
+  item: RailItem,
+  previous: RailItem | undefined
+): boolean {
+  return (
+    isProjectsSectionItem(item) && (previous === undefined || !isProjectsSectionItem(previous))
+  );
+}
+
 export function railItemLabels(items: RailItem[]): string[] {
   return items.map((item) => item.label);
 }
@@ -107,7 +165,15 @@ export function isRailItemActive(item: RailItem, location: RailLocation): boolea
     );
   }
 
-  if (item.kind === 'new-list' || location.pathname !== '/tasks') {
+  if (item.kind === 'new-list' || item.kind === 'new-project') {
+    return false;
+  }
+
+  if (item.kind === 'project' || item.kind === 'someday-project') {
+    return location.pathname === `/projects/${item.projectId}`;
+  }
+
+  if (location.pathname !== '/tasks') {
     return false;
   }
 
@@ -128,6 +194,9 @@ export function railItemKey(item: RailItem): string {
   }
   if (item.kind === 'named') {
     return item.listId;
+  }
+  if (item.kind === 'project' || item.kind === 'someday-project') {
+    return item.projectId;
   }
   return item.kind;
 }

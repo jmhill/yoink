@@ -11,7 +11,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWithout = (...names: string[]): string[] =>
-  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list'];
+  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Deleting a named list from the rail [${ctx.driverName}]`, () => {

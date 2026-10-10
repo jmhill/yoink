@@ -1,3 +1,5 @@
+import { err, ok, type Result } from 'neverthrow';
+
 export type PrincipalKind = 'human' | 'agent';
 
 export type ActorVia = 'session' | 'token';
@@ -17,6 +19,25 @@ export type BotActor = {
 };
 
 export type Actor = UserActor | BotActor;
+
+export type NotAPersonError = {
+  readonly type: 'NOT_A_PERSON';
+  readonly message: string;
+};
+
+export const notAPersonError = (): NotAPersonError => ({
+  type: 'NOT_A_PERSON',
+  message: 'This action requires a person',
+});
+
+/** A person (session or their own API token). Agents are refused. */
+export const requirePerson = (actor: Actor): Result<UserActor, NotAPersonError> => {
+  if (actor.kind !== 'user') {
+    return err(notAPersonError());
+  }
+
+  return ok(actor);
+};
 
 export const actorFromSession = (userId: string): UserActor => ({
   kind: 'user',

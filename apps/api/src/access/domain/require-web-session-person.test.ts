@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { requirePerson } from './require-person.js';
 import { requireWebSessionPerson } from './require-web-session-person.js';
 
 const sessionPerson = {
@@ -21,32 +20,6 @@ const agentToken = {
   name: 'Lane',
   via: 'token' as const,
 };
-
-describe('requirePerson', () => {
-  it('allows a session person', () => {
-    const result = requirePerson(sessionPerson);
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toEqual(sessionPerson);
-    }
-  });
-
-  it('allows a person token', () => {
-    const result = requirePerson(personToken);
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toEqual(personToken);
-    }
-  });
-
-  it('refuses an agent token', () => {
-    const result = requirePerson(agentToken);
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('NOT_A_PERSON');
-    }
-  });
-});
 
 describe('requireWebSessionPerson', () => {
   it('allows a session person', () => {

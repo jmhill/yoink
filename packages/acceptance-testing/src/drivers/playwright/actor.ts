@@ -4,6 +4,7 @@ import type {
   AnonymousActor,
   Capture,
   NamedList,
+  Project,
   Task,
   Token,
   CreateTokenResult,
@@ -41,6 +42,7 @@ import {
   MOBILE_VIEWPORT,
   MobileNav,
   OrganizationSwitcherChrome,
+  ProjectPage,
   TrashPage,
   SettingsPage,
   SnoozedPage,
@@ -238,6 +240,7 @@ export const createPlaywrightActor = (
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
   const appRail = new AppRail(page);
+  const projectPage = new ProjectPage(page);
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
 
@@ -555,6 +558,83 @@ export const createPlaywrightActor = (
         createdById: credentials.userId,
         createdAt: new Date().toISOString(),
       }));
+    },
+
+    async createProject(input: { name: string; objective?: string }): Promise<Project> {
+      const response = await page.request.post('/api/projects', { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Creating a project requires a person');
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        const message =
+          typeof body === 'object' && body !== null && 'message' in body
+            ? String(body.message)
+            : 'Invalid request';
+        throw new ValidationError(message);
+      }
+      if (response.status() === 409) {
+        throw new ConflictError('A project with this name already exists');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create project: ${response.status()}`);
+      }
+      return (await response.json()) as Project;
+    },
+
+    async listProjects(): Promise<Project[]> {
+      const response = await page.request.get('/api/projects');
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list projects: ${response.status()}`);
+      }
+      const body = await response.json();
+      if (typeof body !== 'object' || body === null || !('projects' in body)) {
+        throw new Error('Failed to list projects: unexpected body');
+      }
+      return body.projects as Project[];
+    },
+
+    async getProject(id: string): Promise<Project> {
+      const response = await page.request.get(`/api/projects/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to get project: ${response.status()}`);
+      }
+      return (await response.json()) as Project;
+    },
+
+    async updateProject(
+      id: string,
+      input: { name?: string; objective?: string | null }
+    ): Promise<Project> {
+      const response = await page.request.patch(`/api/projects/${id}`, { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() === 409) {
+        throw new ConflictError('A project with this name already exists');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to update project: ${response.status()}`);
+      }
+      return (await response.json()) as Project;
     },
 
     async createNamedList(name: string): Promise<NamedList> {
@@ -1225,6 +1305,42 @@ export const createPlaywrightActor = (
         createdById: credentials.userId,
         createdAt: new Date().toISOString(),
       };
+    },
+
+    async createProjectFromRail(input: {
+      name: string;
+      objective?: string;
+    }): Promise<Project> {
+      const created = await appRail.createProject(input);
+      if (created.status === 'empty') {
+        throw new ValidationError('Name is required');
+      }
+      await projectPage.waitForVisible();
+      return {
+        id: created.id,
+        name: created.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+        objective: input.objective,
+        status: 'active',
+      };
+    },
+
+    async shouldSeeProjectPage(input: {
+      name: string;
+      objective?: string;
+      status: string;
+    }): Promise<void> {
+      await projectPage.shouldShow(input);
+    },
+
+    async editProjectName(name: string): Promise<void> {
+      await projectPage.editName(name);
+    },
+
+    async editProjectObjective(objective: string): Promise<void> {
+      await projectPage.editObjective(objective);
     },
 
     async shouldSeeNamedListOverflowOnRail(name: string): Promise<void> {

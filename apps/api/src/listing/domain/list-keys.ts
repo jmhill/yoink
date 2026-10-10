@@ -1,4 +1,4 @@
-import type { Capture, NamedList, Task } from '@yoink/api-contracts';
+import type { Capture, NamedList, Project, Task } from '@yoink/api-contracts';
 import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
@@ -37,6 +37,14 @@ export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
   }),
 };
 
+export const projectCursor: ListedCursor<Project, 'projects'> = {
+  view: 'projects',
+  of: (project) => ({
+    view: 'projects',
+    keys: [project.name, project.createdAt, project.id],
+  }),
+};
+
 export const captureFeedCursor: ListedCursor<Capture, 'captures.feed'> = {
   view: 'captures.feed',
   of: (capture) => ({
@@ -57,6 +65,7 @@ export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: Task) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
 export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
+export const projectKeys = (project: Project) => projectCursor.of(project).keys;
 export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
 export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(capture).keys;
 
@@ -64,5 +73,6 @@ export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
 export const openPileTaskDirection: KeysetDirection = 'asc';
 export const namedListDirection: KeysetDirection = 'asc';
+export const projectDirection: KeysetDirection = 'asc';
 export const captureFeedDirection: KeysetDirection = 'desc';
 export const snoozedCaptureDirection: KeysetDirection = 'asc';

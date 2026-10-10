@@ -15,7 +15,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list'];
+  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 const tomorrow = (): string => new Date(Date.now() + 86_400_000).toISOString();
 

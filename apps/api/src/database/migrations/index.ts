@@ -40,6 +40,7 @@ import { migration as addTaskListId } from './025-add-task-list-id.js';
 import { migration as addTaskOpenOrder } from './026-add-task-open-order.js';
 import { migration as addTokenRevokedAt } from './027-add-token-revoked-at.js';
 import { migration as createChangeLog } from './028-create-change-log.js';
+import { migration as createProjects } from './029-create-projects.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -70,6 +71,7 @@ export const migrations: Migration[] = [
   addTaskOpenOrder,
   addTokenRevokedAt,
   createChangeLog,
+  createProjects,
 ];
 
 export type { Migration };

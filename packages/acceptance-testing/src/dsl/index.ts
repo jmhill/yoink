@@ -2,6 +2,7 @@
 export type {
   Capture,
   NamedList,
+  Project,
   Task,
   Organization,
   User,

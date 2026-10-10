@@ -13,7 +13,7 @@ import type { BrowserActor, CoreActor, PlaywrightContext } from '@yoink/acceptan
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list'];
+  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 const titlesAre =
   (expected: string[]) =>

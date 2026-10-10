@@ -1,4 +1,4 @@
-import type { Capture, NamedList, Task } from '@yoink/api-contracts';
+import type { Capture, NamedList, Project, Task } from '@yoink/api-contracts';
 import type { InvalidCursorError } from '../domain/invalid-cursor.js';
 import type { ListedPage } from '../domain/listed-page.js';
 
@@ -18,6 +18,13 @@ export const toCaptureListBody = (page: ListedPage<Capture>) => ({
 
 export const toNamedListListBody = (page: ListedPage<NamedList>) => ({
   lists: page.items,
+  hasMore: page.hasMore,
+  nextCursor: page.nextCursor,
+  total: page.total,
+});
+
+export const toProjectListBody = (page: ListedPage<Project>) => ({
+  projects: page.items,
   hasMore: page.hasMore,
   nextCursor: page.nextCursor,
   total: page.total,

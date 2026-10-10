@@ -1,11 +1,11 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Actor } from '../../actor.js';
+import type { Actor } from '../../auth-context.js';
 import type { ChangeLogKind } from '../domain/kinds.js';
 
 export type CommandLogFields = {
   command: string;
-  actorUserId: string | null;
-  actorKind: 'user' | 'bot' | null;
+  actorUserId: string;
+  actorKind: 'user' | 'bot';
   organizationId: string;
   eventKinds?: ChangeLogKind[];
   errorType?: string;
@@ -18,16 +18,16 @@ export type CommandLogger = {
 export type CommandLogMeta = {
   command: string;
   organizationId: string;
-  actor: Actor | null;
+  actor: Actor;
 };
 
 type DomainError = {
   readonly type: string;
 };
 
-const actorFields = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
-  actorKind: actor?.kind ?? null,
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
 });
 
 /**

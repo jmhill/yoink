@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@yoink/ui-base/components/select';
-import { tsrTasks, tsr, tsrLists } from '@/api/client';
+import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth } from '@/api/client';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
@@ -29,7 +29,7 @@ import {
   restoreQuerySnapshots,
   snapshotLiveOpenTaskLists,
 } from '@/lib/live-query';
-import { getSession, listMembers, memberLabel, type Member } from '@/api/auth';
+import { memberLabel } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
@@ -233,8 +233,6 @@ function TasksPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isReordering, setIsReordering] = useState(false);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsrTasks.useQueryClient();
   const tsrListsQueryClient = tsrLists.useQueryClient();
@@ -252,18 +250,27 @@ function TasksPage() {
   });
   const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
 
+  const { data: sessionData } = tsrAuth.session.useQuery({
+    queryKey: ['session'],
+    queryData: {},
+    refetchInterval: false,
+  });
+  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
+  const currentUserId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
+
+  const membersQuery = tsrOrganizations.listMembers.useQuery({
+    queryKey: ['organization-members', organizationId ?? ''],
+    queryData: { params: { organizationId: organizationId ?? '' } },
+    enabled: Boolean(organizationId),
+    refetchInterval: false,
+  });
+  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+
   useEffect(() => {
-    const loadMembers = async () => {
-      const session = await getSession();
-      if (!session.ok) return;
-      setCurrentUserId(session.data.user.id);
-      const result = await listMembers(session.data.organizationId);
-      if (result.ok) {
-        setMembers(result.data.members);
-      }
-    };
-    loadMembers();
-  }, []);
+    if (editingTask) {
+      void membersQuery.refetch();
+    }
+  }, [editingTask, membersQuery.refetch]);
 
   useEffect(() => {
     setIsReordering(false);

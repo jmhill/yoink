@@ -41,7 +41,7 @@ describe('createStoreBackedPersist', () => {
           occurredAt: groceriesList.createdAt,
         },
         current: null,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 'log-1' },
       })
     );
@@ -73,7 +73,7 @@ describe('createStoreBackedPersist', () => {
           occurredAt: '2025-01-15T10:00:00.000Z',
         },
         current: groceriesList,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 'log-1' },
       })
     );
@@ -129,7 +129,7 @@ describe('createStoreBackedPersist', () => {
           occurredAt: '2025-01-15T10:00:00.000Z',
         },
         current: groceriesList,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: 'log-1' },
       })
     );

@@ -1078,6 +1078,7 @@ export const createHttpActor = (
     async shouldSeeTaskEditChangeHistory(_options?: {
       lastChangedBeforeHistory?: boolean;
       completed?: boolean;
+      changedBy?: string;
     }): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeTaskEditChangeHistory', 'http');
     },

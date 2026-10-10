@@ -2,17 +2,17 @@ import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptanc
 import type { BrowserActor, CoreActor } from '@yoink/acceptance-testing';
 
 /**
- * Issue #133 part 1: every task/list change is recorded.
+ * Issue #133: every task/list change is recorded, with who did it.
  *
  * Case map:
- * 1. Create/edit/complete/uncomplete/move/delete persist (lastChangedAt / 204)
+ * 1. Create/edit/complete/uncomplete/move/delete persist (lastChangedAt / By)
  * 2. List create/rename/delete still work (existing list tests + rename here)
- * 3. Edit screen shows added / last changed / completed [playwright]
- * 4. Bots get the same dates in the API (http)
+ * 3. Edit screen shows added / last changed / completed, including bot names [playwright]
+ * 4. Bots get the same dates and names in the API (http)
  * 5. Pre-history lastChangedAt is null [api sqlite test]
  * 6. Existing write behaviour unchanged aside from new fields
  * 7. Typed records [domain parse tests]
- * 8. Command log line [withCommandLog unit test]
+ * 8. Command log line includes the actor [withCommandLog unit test]
  */
 
 usingDrivers(['http'] as const, (ctx) => {
@@ -23,7 +23,7 @@ usingDrivers(['http'] as const, (ctx) => {
       alice = await ctx.createActor('alice-change-log@example.com');
     });
 
-    it('adds lastChangedAt on create and keeps lastChangedBy null until actors land', async () => {
+    it('attributes create to the session actor', async () => {
       const task = await alice.createTask({ title: 'Buy milk' });
 
       expect(task.title).toBe('Buy milk');
@@ -31,7 +31,7 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(task.createdById).toBe(alice.userId);
       expect(task.lastChangedAt).toBeDefined();
       expect(task.lastChangedAt).not.toBeNull();
-      expect(task.lastChangedBy).toBeNull();
+      expect(task.lastChangedBy).toBe(alice.userId);
       expect(task.completedBy ?? null).toBeNull();
     });
 
@@ -48,7 +48,8 @@ usingDrivers(['http'] as const, (ctx) => {
       const afterEdit = edited.lastChangedAt;
       const completed = await alice.completeTask(milk.id);
       expect(completed.completedAt).toBeDefined();
-      expect(completed.completedBy ?? null).toBeNull();
+      expect(completed.completedBy).toBe(alice.userId);
+      expect(completed.lastChangedBy).toBe(alice.userId);
       expect(completed.lastChangedAt).not.toBe(afterEdit);
 
       const afterComplete = completed.lastChangedAt;
@@ -77,6 +78,27 @@ usingDrivers(['http'] as const, (ctx) => {
       await alice.deleteTask(task.id);
       await expect(alice.getTask(task.id)).rejects.toThrow();
     });
+
+    it('attributes a bot edit and complete to the agent member', async () => {
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+
+      const created = await bot.createTask({ title: 'Triage' });
+      expect(created.createdById).toBe(minted.agent.userId);
+      expect(created.lastChangedBy).toBe(minted.agent.userId);
+
+      const edited = await bot.updateTask(created.id, { title: 'Triage inbox' });
+      expect(edited.lastChangedBy).toBe(minted.agent.userId);
+
+      const completed = await bot.completeTask(created.id);
+      expect(completed.completedBy).toBe(minted.agent.userId);
+      expect(completed.lastChangedBy).toBe(minted.agent.userId);
+    });
   });
 });
 
@@ -101,6 +123,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailSmartView('done');
       await alice.openTaskEditFromRow(task.id);
       await alice.shouldSeeTaskEditChangeHistory({ completed: true });
+      await alice.closeTaskEdit();
+    });
+
+    it("shows a bot's name on last changed after the bot edits", async () => {
+      const task = await alice.createTask({ title: 'Milk' });
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+      await bot.updateTask(task.id, { title: 'Oat milk' });
+
+      await alice.useDesktopViewport();
+      await alice.openRailUnlisted();
+      await alice.openTaskEditFromRow(task.id);
+      await alice.shouldSeeTaskEditChangeHistory({ changedBy: 'Lane' });
       await alice.closeTaskEdit();
     });
   });

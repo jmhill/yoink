@@ -32,8 +32,7 @@ export const registerTaskRoutes = async (
           listId: body.listId,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -127,8 +126,7 @@ export const registerTaskRoutes = async (
           dueDate: body.dueDate,
           assigneeId: body.assigneeId,
           listId: body.listId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -172,8 +170,7 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.complete({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -202,8 +199,7 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.uncomplete({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -232,8 +228,7 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.pin({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -262,8 +257,7 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.unpin({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -292,8 +286,7 @@ export const registerTaskRoutes = async (
         const result = await taskHandlers.delete({
           id: params.id,
           organizationId: request.authContext.organizationId,
-          // TODO(#132): pass request.authContext.actor once PR 151 merges
-          actor: null,
+          actor: request.authContext.actor,
         });
 
         return result.match(

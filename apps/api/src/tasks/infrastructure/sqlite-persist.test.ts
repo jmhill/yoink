@@ -43,7 +43,7 @@ function persistEvent(
   ids: TaskChangeLogIds | TaskUncompletedChangeLogIds = { recordId: 'log-1' }
 ) {
   if (event.type === 'TaskCreated') {
-    return persist(planTaskChange({ event, current: null, actor: null, ids }));
+    return persist(planTaskChange({ event, current: null, actor: { kind: 'user' as const, userId: 'user-1' }, ids }));
   }
   if (event.type === 'TaskUncompleted') {
     if (current === null || !('renumberRecordId' in ids)) {
@@ -53,7 +53,7 @@ function persistEvent(
       planTaskChange({
         event,
         current,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
         ids: { recordId: ids.recordId, renumberRecordId: ids.renumberRecordId },
       })
     );
@@ -61,7 +61,7 @@ function persistEvent(
   if (current === null) {
     throw new Error(`${event.type} requires current`);
   }
-  return persist(planTaskChange({ event, current, actor: null, ids }));
+  return persist(planTaskChange({ event, current, actor: { kind: 'user' as const, userId: 'user-1' }, ids }));
 }
 
 describe('sqlite task persist', () => {
@@ -500,5 +500,65 @@ describe('sqlite task persist', () => {
     const log = createSqliteChangeLogStore(db);
     const records = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();
     expect(records.filter((record) => record.kind === 'TaskUpdated')).toHaveLength(0);
+  });
+
+  it('writes session and bot actors onto the task row and change log', async () => {
+    const persist = createSqliteTaskPersist({ db });
+    const session = { kind: 'user' as const, userId: 'user-1' };
+    const created = await persist(
+      planTaskChange({
+        event: {
+          type: 'TaskCreated',
+          id: 'task-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          title: 'Buy milk',
+          openOrder: 0,
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor: session,
+        ids: { recordId: 'log-create' },
+      })
+    );
+    expect(created.isOk()).toBe(true);
+
+    const store = await createSqliteTaskStore(db);
+    const afterCreate = (await store.findById('task-1'))._unsafeUnwrap();
+    expect(afterCreate?.lastChangedBy).toBe('user-1');
+
+    const bot = {
+      kind: 'bot' as const,
+      userId: 'user-lane',
+      tokenId: 'tok-lane',
+      name: 'Lane',
+    };
+    const completed = await persist(
+      planTaskChange({
+        event: {
+          type: 'TaskCompleted',
+          id: 'task-1',
+          organizationId: 'org-1',
+          completedAt: later,
+          occurredAt: later,
+        },
+        current: afterCreate!,
+        actor: bot,
+        ids: { recordId: 'log-done' },
+      })
+    );
+    expect(completed.isOk()).toBe(true);
+
+    const afterComplete = (await store.findById('task-1'))._unsafeUnwrap();
+    expect(afterComplete?.lastChangedBy).toBe('user-lane');
+    expect(afterComplete?.completedBy).toBe('user-lane');
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();
+    expect(records[0]?.actorUserId).toBe('user-1');
+    expect(records[0]?.actorKind).toBe('user');
+    expect(records[1]?.actorUserId).toBe('user-lane');
+    expect(records[1]?.actorKind).toBe('bot');
   });
 });

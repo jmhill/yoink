@@ -109,3 +109,54 @@ curl -fsS -o /tmp/bad.json -w "%{http_code}\n" \
   "$API/api/tasks?filter=completed&cursor=not-a-cursor"
 # curl: (22) The requested URL returned error: 400
 ```
+
+## Who changed a task
+
+Task responses keep `lastChangedBy` and `completedBy` as user ids (UUIDs), or
+`null`. They do not include display names. Resolve a name with the organization
+members list. Session and bot Bearer tokens both work.
+
+```bash
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/organizations/$ORGANIZATION_ID/members"
+```
+
+`$ORGANIZATION_ID` is the current org on `GET /api/auth/session`
+(`.organizationId`) if the bot does not already have it.
+
+Response:
+
+```json
+{
+  "members": [
+    {
+      "userId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "email": "justin@example.com",
+      "kind": "human",
+      "role": "owner",
+      "joinedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "userId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "email": "agent-bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb@yoink.invalid",
+      "name": "Lane",
+      "kind": "agent",
+      "role": "member",
+      "joinedAt": "2026-01-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+Match the id to `userId`. Agents use `name`; humans use `email`.
+
+```bash
+# lastChangedBy on one task → display name
+id=$(printf '%s' "$task" | jq -r .lastChangedBy)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/organizations/$ORGANIZATION_ID/members" \
+| jq -r --arg id "$id" '
+  .members[] | select(.userId == $id)
+  | if .kind == "agent" then (.name // "Agent") else .email end
+'
+```

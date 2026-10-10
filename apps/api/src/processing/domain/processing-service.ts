@@ -65,7 +65,7 @@ export const createCaptureProcessingService = (
           organizationId: command.organizationId,
           createdById: command.createdById,
           captureId: capture.id,
-          actor: null,
+          actor: command.actor,
         };
         if (command.dueDate !== undefined) {
           createCommand.dueDate = command.dueDate;

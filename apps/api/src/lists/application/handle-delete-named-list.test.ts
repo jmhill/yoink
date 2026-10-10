@@ -21,7 +21,7 @@ const groceries: NamedList = {
 const command = {
   id: groceries.id,
   organizationId: groceries.organizationId,
-  actor: null,
+  actor: { kind: 'user' as const, userId: 'user-1' },
 };
 
 const createInMemoryPersist = (): {

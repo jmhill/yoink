@@ -1,5 +1,5 @@
 import type { Task } from '@yoink/api-contracts';
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import { applyTaskCreated, applyTaskMutation } from './apply-task-event.js';
 import {
@@ -23,21 +23,21 @@ export type { TaskChangeLogIds, TaskUncompletedChangeLogIds };
 export type CreateTaskChangeInput = {
   event: TaskCreated;
   current: null;
-  actor: Actor | null;
+  actor: Actor;
   ids: TaskChangeLogIds;
 };
 
 export type UncompleteTaskChangeInput = {
   event: TaskUncompleted;
   current: Task;
-  actor: Actor | null;
+  actor: Actor;
   ids: TaskUncompletedChangeLogIds;
 };
 
 export type MutateTaskChangeInput = {
   event: Exclude<TaskEvent, TaskCreated | TaskUncompleted>;
   current: Task;
-  actor: Actor | null;
+  actor: Actor;
   ids: TaskChangeLogIds;
 };
 
@@ -78,8 +78,8 @@ export type TaskChangePlan =
 const recordsOf = (input: TaskChangePlanInput): ChangeLogRecord[] =>
   changeLogRecordsFromTaskEvent(input);
 
-const meta = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
+const meta = (actor: Actor) => ({
+  actorUserId: actor.userId,
 });
 
 const deletePlan = (event: TaskDeleted, records: ChangeLogRecord[]): TaskChangePlan => {

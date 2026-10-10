@@ -1220,6 +1220,7 @@ export type BrowserActorOperations = {
   shouldSeeTaskEditChangeHistory(options?: {
     lastChangedBeforeHistory?: boolean;
     completed?: boolean;
+    changedBy?: string;
   }): Promise<void>;
 
   /**

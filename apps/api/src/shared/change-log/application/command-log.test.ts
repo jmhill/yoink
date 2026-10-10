@@ -15,7 +15,7 @@ const collectLogger = () => {
 };
 
 describe('withCommandLog', () => {
-  it('logs command, actor (null), org, and event kinds on success — never payload values', async () => {
+  it('logs command, actor, org, and event kinds on success — never payload values', async () => {
     const { lines, logger } = collectLogger();
 
     const result = await withCommandLog(
@@ -23,7 +23,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       },
       (value) => value.events.map((event) => event.type as 'NamedListCreated'),
       () =>
@@ -38,8 +38,8 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actorUserId: null,
-        actorKind: null,
+        actorUserId: 'user-1',
+        actorKind: 'user',
         eventKinds: ['NamedListCreated'],
       },
     ]);
@@ -54,7 +54,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
       },
       () => [],
       () =>
@@ -70,8 +70,8 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actorUserId: null,
-        actorKind: null,
+        actorUserId: 'user-1',
+        actorKind: 'user',
         errorType: 'DUPLICATE_LIST_NAME',
       },
     ]);
@@ -86,7 +86,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateTask',
         organizationId: 'org-1',
-        actor: { kind: 'bot', userId: 'user-bot' },
+        actor: { kind: 'bot', userId: 'user-bot', tokenId: 'tok-1', name: 'Lane' },
       },
       () => ['TaskCreated'] as const,
       () => okAsync({ events: [{ type: 'TaskCreated' }] })

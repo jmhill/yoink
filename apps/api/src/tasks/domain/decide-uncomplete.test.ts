@@ -24,7 +24,7 @@ describe('decideUncompleteTask', () => {
   it('restores a completed task at its remembered open-order index', () => {
     const result = decideUncompleteTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       openSiblings: [
         task({ id: 'task-a', title: 'Milk', openOrder: 0 }),
         task({ id: 'task-c', title: 'Bread', openOrder: 2 }),
@@ -45,7 +45,7 @@ describe('decideUncompleteTask', () => {
   it('clamps to the end when the open list is now shorter', () => {
     const result = decideUncompleteTask({
       current: { ...current, openOrder: 4 },
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       openSiblings: [task({ id: 'task-a', title: 'Milk', openOrder: 0 })],
     now: '2025-01-16T11:00:00.000Z',
     });
@@ -60,7 +60,7 @@ describe('decideUncompleteTask', () => {
   it('is a noop when the task is already open', () => {
     const result = decideUncompleteTask({
       current: task({ id: 'task-b', title: 'Eggs', openOrder: 1 }),
-      command: { id: current.id, organizationId: current.organizationId, actor: null },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
       openSiblings: [],
     now: '2025-01-16T11:00:00.000Z',
     });

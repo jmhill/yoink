@@ -348,6 +348,7 @@ export const registerCaptureRoutes = async (
           title: body.data.title,
           dueDate: body.data.dueDate,
           listId: body.data.listId,
+          actor: request.authContext.actor,
         });
 
         return result.match(

@@ -6,7 +6,7 @@ const command = {
   organizationId: 'org-123',
   createdById: 'user-456',
 
-  actor: null,
+  actor: { kind: 'user' as const, userId: 'user-1' },
   };
 
 const groceries = { id: 'list-groceries', organizationId: 'org-123' };
@@ -149,7 +149,7 @@ describe('decideCreateTask', () => {
         assigneeId: 'user-456',
         captureId: 'capture-789',
         listId: groceries.id,
-        actor: null,
+        actor: { kind: 'user' as const, userId: 'user-1' },
 
       },
       list: groceries,

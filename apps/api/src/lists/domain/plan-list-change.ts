@@ -1,5 +1,5 @@
 import type { NamedList } from '@yoink/api-contracts';
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import { applyNamedListCreated, applyNamedListRenamed } from './apply-named-list-event.js';
 import {
@@ -16,7 +16,7 @@ import type {
 export type { ListChangeLogIds };
 
 type ListPlanBase = {
-  actor: Actor | null;
+  actor: Actor;
   ids: ListChangeLogIds;
 };
 

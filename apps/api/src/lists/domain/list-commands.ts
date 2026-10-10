@@ -1,26 +1,23 @@
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 
 export type CreateNamedListCommand = {
   name: string;
   organizationId: string;
   createdById: string;
-  /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor: Actor | null;
+  actor: Actor;
 };
 
 export type DeleteNamedListCommand = {
   id: string;
   organizationId: string;
-  /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor: Actor | null;
+  actor: Actor;
 };
 
 export type RenameNamedListCommand = {
   id: string;
   organizationId: string;
   name: string;
-  /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor: Actor | null;
+  actor: Actor;
 };
 
 export type ReorderOpenTasksCommand = {
@@ -28,6 +25,5 @@ export type ReorderOpenTasksCommand = {
   listId: string | null;
   organizationId: string;
   taskIds: string[];
-  /** TODO(#132): PR 151 Actor. Routes pass null until that merges. */
-  actor: Actor | null;
+  actor: Actor;
 };

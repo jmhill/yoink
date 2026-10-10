@@ -1,4 +1,4 @@
-import type { Actor } from '../../shared/actor.js';
+import type { Actor } from '../../shared/auth-context.js';
 import {
   UNLISTED_PILE_SUBJECT_ID,
   hiddenFor,
@@ -18,13 +18,13 @@ export type ListChangeLogIds = {
 
 export type ChangeLogRecordsFromListEventInput = {
   event: ListEvent;
-  actor: Actor | null;
+  actor: Actor;
   ids: ListChangeLogIds;
 };
 
-const actorFields = (actor: Actor | null) => ({
-  actorUserId: actor?.userId ?? null,
-  actorKind: actor?.kind ?? null,
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
 });
 
 const envelope = (

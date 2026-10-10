@@ -2114,6 +2114,7 @@ export const createPlaywrightActor = (
     async shouldSeeTaskEditChangeHistory(options?: {
       lastChangedBeforeHistory?: boolean;
       completed?: boolean;
+      changedBy?: string;
     }): Promise<void> {
       const dialog = page.getByRole('dialog', { name: 'Edit Task' });
       await expect(dialog.getByTestId('task-edit-added')).toBeVisible();
@@ -2127,6 +2128,9 @@ export const createPlaywrightActor = (
       }
       if (options?.completed) {
         await expect(dialog.getByTestId('task-edit-completed')).toContainText('Completed');
+      }
+      if (options?.changedBy) {
+        await expect(lastChanged).toContainText(`by ${options.changedBy}`);
       }
     },
 

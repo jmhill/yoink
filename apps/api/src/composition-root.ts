@@ -10,6 +10,9 @@ import { createCaptureHandlers } from './captures/application/create-capture-han
 import { createListHandlers } from './lists/application/create-list-handlers.js';
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
 import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
+import { createProjectHandlers } from './projects/application/create-project-handlers.js';
+import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
+import { createSqliteProjectPersist } from './projects/infrastructure/store-backed-persist.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
@@ -357,6 +360,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     logger: commandLogger,
   });
 
+  const projectStore = await createSqliteProjectStore(database);
+  const projectHandlers = createProjectHandlers({
+    persist: createSqliteProjectPersist({ db: database }),
+    list: (organizationId) => projectStore.findByOrganization(organizationId),
+    pageProjects: (options) => projectStore.pageByOrganization(options),
+    load: (id) => projectStore.findById(id),
+    nextId: () => idGenerator.generate(),
+    now: () => clock.now().toISOString(),
+    logger: commandLogger,
+  });
+
   // Create task store and service (async initialization)
   const principalLookup = {
     existsInOrganization: (principalId: string, organizationId: string) =>
@@ -421,6 +435,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     app,
     captureHandlers,
     listHandlers,
+    projectHandlers,
     taskService,
     taskHandlers,
     captureProcessingService,

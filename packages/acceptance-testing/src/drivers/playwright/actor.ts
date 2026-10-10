@@ -4,6 +4,7 @@ import type {
   AnonymousActor,
   Capture,
   NamedList,
+  Project,
   Task,
   Token,
   CreateTokenResult,
@@ -41,6 +42,7 @@ import {
   MOBILE_VIEWPORT,
   MobileNav,
   OrganizationSwitcherChrome,
+  ProjectPage,
   TrashPage,
   SettingsPage,
   SnoozedPage,
@@ -238,6 +240,7 @@ export const createPlaywrightActor = (
   const snoozedPage = new SnoozedPage(page);
   const tasksPage = new TasksPage(page);
   const appRail = new AppRail(page);
+  const projectPage = new ProjectPage(page);
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
 
@@ -1225,6 +1228,42 @@ export const createPlaywrightActor = (
         createdById: credentials.userId,
         createdAt: new Date().toISOString(),
       };
+    },
+
+    async createProjectFromRail(input: {
+      name: string;
+      objective?: string;
+    }): Promise<Project> {
+      const created = await appRail.createProject(input);
+      if (created.status === 'empty') {
+        throw new ValidationError('Name is required');
+      }
+      await projectPage.waitForVisible();
+      return {
+        id: created.id,
+        name: created.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+        objective: input.objective,
+        status: 'active',
+      };
+    },
+
+    async shouldSeeProjectPage(input: {
+      name: string;
+      objective?: string;
+      status: string;
+    }): Promise<void> {
+      await projectPage.shouldShow(input);
+    },
+
+    async editProjectName(name: string): Promise<void> {
+      await projectPage.editName(name);
+    },
+
+    async editProjectObjective(objective: string): Promise<void> {
+      await projectPage.editObjective(objective);
     },
 
     async shouldSeeNamedListOverflowOnRail(name: string): Promise<void> {

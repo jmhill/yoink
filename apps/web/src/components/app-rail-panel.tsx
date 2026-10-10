@@ -7,14 +7,16 @@ import {
   Calendar,
   CalendarClock,
   CheckCheck,
+  FolderKanban,
   Inbox,
   List,
   Plus,
   User,
 } from 'lucide-react';
-import { tsr, tsrLists } from '@/api/client';
+import { tsr, tsrLists, tsrProjects } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
+import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
 import { NamedListRenameField } from '@/components/named-list-rename-field';
@@ -22,6 +24,8 @@ import {
   INBOX_MODE_CUE,
   RAIL_LABEL_WRAP_CLASS,
   RAIL_LISTS_HEADING,
+  RAIL_PROJECTS_HEADING,
+  RAIL_SOMEDAY_HEADING,
   RAIL_TASK_FAMILY_HEADING,
   buildAppRailItems,
   isRailItemActive,
@@ -29,6 +33,7 @@ import {
   railItemKey,
   shouldShowInboxCount,
   shouldShowListsHeadingBefore,
+  shouldShowProjectsHeadingBefore,
   shouldShowTaskFamilyHeadingBefore,
   type RailItem,
   type RailLocation,
@@ -52,7 +57,8 @@ const SMART_VIEW_FILTER: Record<
 const railIcon = (item: RailItem) => {
   if (item.kind === 'inbox') return Inbox;
   if (item.kind === 'unlisted' || item.kind === 'named') return List;
-  if (item.kind === 'new-list') return Plus;
+  if (item.kind === 'new-list' || item.kind === 'new-project') return Plus;
+  if (item.kind === 'project' || item.kind === 'someday-project') return FolderKanban;
   if (item.key === 'today') return Calendar;
   if (item.key === 'upcoming') return CalendarClock;
   if (item.key === 'mine') return User;
@@ -99,12 +105,19 @@ export function AppRailPanel({
   const searchRecord = search && typeof search === 'object' ? search : {};
   const [createListOpen, setCreateListOpen] = useState(false);
   const [createListKey, setCreateListKey] = useState(0);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [createProjectKey, setCreateProjectKey] = useState(0);
   const [deletingList, setDeletingList] = useState<{ id: string; name: string } | null>(null);
   const [renamingListId, setRenamingListId] = useState<string | null>(null);
 
   const openCreateList = () => {
     setCreateListKey((key) => key + 1);
     setCreateListOpen(true);
+  };
+
+  const openCreateProject = () => {
+    setCreateProjectKey((key) => key + 1);
+    setCreateProjectOpen(true);
   };
 
   const { data: inboxData } = tsr.list.useQuery({
@@ -115,10 +128,16 @@ export function AppRailPanel({
     queryKey: ['lists'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
+  const { data: projectsData } = tsrProjects.list.useQuery({
+    queryKey: ['projects'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    refetchInterval: false,
+  });
 
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
-  const railItems = buildAppRailItems({ inboxCount, namedLists });
+  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const railItems = buildAppRailItems({ inboxCount, namedLists, projects });
   const location: RailLocation = {
     pathname,
     filter:
@@ -179,6 +198,20 @@ export function AppRailPanel({
                 />
                 <div data-rail-heading="lists" className={RAIL_SECTION_HEADING_CLASS}>
                   {RAIL_LISTS_HEADING}
+                </div>
+              </>
+            ) : null;
+            const projectsHeading = shouldShowProjectsHeadingBefore(
+              item,
+              railItems[index - 1]
+            ) ? (
+              <>
+                <Separator
+                  data-rail-separator="lists-to-projects"
+                  className="mx-1 my-3 bg-border"
+                />
+                <div data-rail-heading="projects" className={RAIL_SECTION_HEADING_CLASS}>
+                  {RAIL_PROJECTS_HEADING}
                 </div>
               </>
             ) : null;
@@ -246,6 +279,101 @@ export function AppRailPanel({
                     {INBOX_MODE_CUE}
                   </span>
                 </Link>
+              );
+            }
+
+            if (item.kind === 'new-project') {
+              return (
+                <Fragment key={key}>
+                  {projectsHeading}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-rail-item="new-project"
+                    data-rail-label={item.label}
+                    className={cn(
+                      railClassName(false),
+                      'mt-1 h-auto w-full justify-start whitespace-normal border border-dashed border-border font-normal'
+                    )}
+                    onClick={openCreateProject}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      + {item.label}
+                    </span>
+                  </Button>
+                </Fragment>
+              );
+            }
+
+            if (item.kind === 'project') {
+              return (
+                <Fragment key={key}>
+                  {projectsHeading}
+                  <Link
+                    to="/projects/$projectId"
+                    params={{ projectId: item.projectId }}
+                    data-rail-item="project"
+                    data-rail-label={item.label}
+                    data-rail-project-id={item.projectId}
+                    data-rail-active={active ? 'true' : undefined}
+                    className={railClassName(active)}
+                    onClick={active ? onDestinationChosen : undefined}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      {item.label}
+                    </span>
+                  </Link>
+                </Fragment>
+              );
+            }
+
+            if (item.kind === 'someday-project') {
+              const firstSomeday = railItems.find(
+                (candidate) => candidate.kind === 'someday-project'
+              );
+              if (firstSomeday !== item) {
+                return null;
+              }
+              const somedayItems = railItems.filter(
+                (candidate): candidate is Extract<RailItem, { kind: 'someday-project' }> =>
+                  candidate.kind === 'someday-project'
+              );
+              return (
+                <Fragment key="someday-projects">
+                  {projectsHeading}
+                  <details data-rail-someday-group="" className="min-w-0">
+                    <summary
+                      data-rail-someday-summary=""
+                      className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                    >
+                      {RAIL_SOMEDAY_HEADING}
+                    </summary>
+                    {somedayItems.map((someday) => {
+                      const somedayActive = isRailItemActive(someday, location);
+                      const SomedayIcon = railIcon(someday);
+                      return (
+                        <Link
+                          key={someday.projectId}
+                          to="/projects/$projectId"
+                          params={{ projectId: someday.projectId }}
+                          data-rail-item="someday-project"
+                          data-rail-label={someday.label}
+                          data-rail-project-id={someday.projectId}
+                          data-rail-active={somedayActive ? 'true' : undefined}
+                          className={railClassName(somedayActive)}
+                          onClick={somedayActive ? onDestinationChosen : undefined}
+                        >
+                          <SomedayIcon className="h-5 w-5 shrink-0" />
+                          <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                            {someday.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </details>
+                </Fragment>
               );
             }
 
@@ -349,6 +477,18 @@ export function AppRailPanel({
           void navigate({
             to: '/tasks',
             search: namedPileSearch(list.id),
+          });
+        }}
+      />
+
+      <CreateProjectDialog
+        key={`${surface}-project-${createProjectKey}`}
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        onCreated={(project) => {
+          void navigate({
+            to: '/projects/$projectId',
+            params: { projectId: project.id },
           });
         }}
       />

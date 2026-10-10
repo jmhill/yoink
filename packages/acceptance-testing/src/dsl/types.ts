@@ -33,6 +33,18 @@ export type NamedList = {
   createdAt: string;
 };
 
+export type Project = {
+  id: string;
+  name: string;
+  organizationId: string;
+  createdById: string;
+  createdAt: string;
+  objective?: string;
+  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  lastChangedAt?: string | null;
+  lastChangedBy?: string | null;
+};
+
 export type Task = {
   id: string;
   title: string;

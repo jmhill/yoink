@@ -3,6 +3,7 @@ import type {
   AnonymousActor,
   Capture,
   NamedList,
+  Project,
   Task,
   Token,
   CreateTokenResult,
@@ -672,6 +673,29 @@ export const createHttpActor = (
 
     async createNamedListFromRail(_name: string): Promise<NamedList> {
       throw new UnsupportedOperationError('createNamedListFromRail', 'http');
+    },
+
+    async createProjectFromRail(_input: {
+      name: string;
+      objective?: string;
+    }): Promise<Project> {
+      throw new UnsupportedOperationError('createProjectFromRail', 'http');
+    },
+
+    async shouldSeeProjectPage(_input: {
+      name: string;
+      objective?: string;
+      status: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectPage', 'http');
+    },
+
+    async editProjectName(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('editProjectName', 'http');
+    },
+
+    async editProjectObjective(_objective: string): Promise<void> {
+      throw new UnsupportedOperationError('editProjectObjective', 'http');
     },
 
     async shouldSeeNamedListOverflowOnRail(_name: string): Promise<void> {

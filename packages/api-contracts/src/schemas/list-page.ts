@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CaptureSchema } from './capture.js';
 import { NamedListSchema } from './list.js';
+import { ProjectSchema } from './project.js';
 import { TaskSchema } from './task.js';
 
 /** Working-set reads (piles, Today, Upcoming, Mine, Inbox, lists) stop here. */
@@ -50,3 +51,9 @@ export const NamedListListPageSchema = ListPageMetaSchema.extend({
 });
 
 export type NamedListListPage = z.infer<typeof NamedListListPageSchema>;
+
+export const ProjectListPageSchema = ListPageMetaSchema.extend({
+  projects: z.array(ProjectSchema),
+});
+
+export type ProjectListPage = z.infer<typeof ProjectListPageSchema>;

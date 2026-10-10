@@ -12,7 +12,7 @@ whole pile in **one request**, up to a safety cap of 1000. If that cap is hit,
 (completed/Done tasks, trashed captures) stays paged (default 50).
 
 Cursors are opaque keysets tagged with the list view (board, completed, pile,
-lists, capture feed, snoozed) plus the sort keys for that view. Resume with
+lists, projects, capture feed, snoozed) plus the sort keys for that view. Resume with
 the previous page’s `nextCursor` on the **same** list. A malformed cursor,
 a cursor from another view, or the wrong key shape is `400` with
 `code: "invalid_cursor"` — never an empty page that looks done. Completing,
@@ -52,6 +52,10 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 # Inbox (exclude snoozed)
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/captures?status=inbox&snoozed=false"
+
+# Projects
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects"
 ```
 
 Example complete response (small board):
@@ -67,6 +71,41 @@ Example complete response (small board):
 
 If `hasMore` is `true`, keep going with `cursor` set to `nextCursor`. Never
 treat a truncated page as the full pile.
+
+## Projects
+
+Projects are a working set: `GET /api/projects` returns the full org set in
+one request, up to the 1000-item safety cap, with `hasMore` / `nextCursor` /
+`total` like named lists. Read one with `GET /api/projects/:id`. Edit name or
+objective with `PATCH /api/projects/:id`. Creating a project needs a person
+(session or that person's own token) via the shared `requirePerson` guard.
+An agent token gets `403` (`PROJECT_CREATE_REQUIRES_PERSON`).
+
+```bash
+# Create (person session or the person's own token)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Garden","objective":"Grow tomatoes"}' \
+  "$API/api/projects"
+
+# Full set
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects"
+
+# Read one
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects/$PROJECT_ID"
+
+# Edit name and objective (bots allowed)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PATCH \
+  -d '{"name":"Backyard","objective":"Plant herbs"}' \
+  "$API/api/projects/$PROJECT_ID"
+```
+
+Responses include `status` (always `active` on create), optional `objective`,
+and `lastChangedAt` / `lastChangedBy` (user ids; resolve names from members).
 
 ## History: loop while `hasMore` is true
 

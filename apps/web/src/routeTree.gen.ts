@@ -15,6 +15,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedListsRouteImport } from './routes/_authenticated/lists'
+import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
@@ -22,6 +23,7 @@ import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AuthenticatedListsListIdRouteImport } from './routes/_authenticated/lists_.$listId'
 import { Route as AuthenticatedListsUnlistedRouteImport } from './routes/_authenticated/lists_.unlisted'
+import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects_.$projectId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -50,6 +52,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedListsRoute = AuthenticatedListsRouteImport.update({
   id: '/lists',
   path: '/lists',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProjectsRoute = AuthenticatedProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -89,6 +96,12 @@ const AuthenticatedListsUnlistedRoute =
     path: '/lists/unlisted',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedProjectsProjectIdRoute =
+  AuthenticatedProjectsProjectIdRouteImport.update({
+    id: '/projects_/$projectId',
+    path: '/projects/$projectId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -96,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -103,12 +117,14 @@ export interface FileRoutesByFullPath {
   '/join/$code': typeof JoinCodeRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
   '/lists/unlisted': typeof AuthenticatedListsUnlistedRoute
+  '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
@@ -117,6 +133,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
   '/lists/unlisted': typeof AuthenticatedListsUnlistedRoute
+  '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +142,7 @@ export interface FileRoutesById {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/_authenticated/lists': typeof AuthenticatedListsRoute
+  '/_authenticated/projects': typeof AuthenticatedProjectsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
@@ -133,6 +151,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/lists_/$listId': typeof AuthenticatedListsListIdRoute
   '/_authenticated/lists_/unlisted': typeof AuthenticatedListsUnlistedRoute
+  '/_authenticated/projects_/$projectId': typeof AuthenticatedProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +161,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/lists'
+    | '/projects'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -149,12 +169,14 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/lists/$listId'
     | '/lists/unlisted'
+    | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/share'
     | '/signup'
     | '/lists'
+    | '/projects'
     | '/settings'
     | '/snoozed'
     | '/tasks'
@@ -163,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/lists/$listId'
     | '/lists/unlisted'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -170,6 +193,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/_authenticated/lists'
+    | '/_authenticated/projects'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
     | '/_authenticated/tasks'
@@ -178,6 +202,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/lists_/$listId'
     | '/_authenticated/lists_/unlisted'
+    | '/_authenticated/projects_/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -232,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/projects': {
+      id: '/_authenticated/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AuthenticatedProjectsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -281,11 +313,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListsUnlistedRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/projects_/$projectId': {
+      id: '/_authenticated/projects_/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AuthenticatedProjectsProjectIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedListsRoute: typeof AuthenticatedListsRoute
+  AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
@@ -293,10 +333,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedListsListIdRoute: typeof AuthenticatedListsListIdRoute
   AuthenticatedListsUnlistedRoute: typeof AuthenticatedListsUnlistedRoute
+  AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedListsRoute: AuthenticatedListsRoute,
+  AuthenticatedProjectsRoute: AuthenticatedProjectsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
@@ -304,6 +346,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedListsListIdRoute: AuthenticatedListsListIdRoute,
   AuthenticatedListsUnlistedRoute: AuthenticatedListsUnlistedRoute,
+  AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

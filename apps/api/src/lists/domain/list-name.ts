@@ -1,28 +1,27 @@
 import { err, ok, type Result } from 'neverthrow';
+import {
+  ENTITY_NAME_MAX_LENGTH,
+  entityNameIsTaken,
+  normalizeEntityName,
+  parseEntityName,
+} from '../../shared/name.js';
 import { invalidListNameError, type InvalidListNameError } from './list-errors.js';
 
-export const NAMED_LIST_NAME_MAX_LENGTH = 200;
+export const NAMED_LIST_NAME_MAX_LENGTH = ENTITY_NAME_MAX_LENGTH;
 
-export const normalizeListName = (name: string): string => name.trim().toLowerCase();
+export const normalizeListName = normalizeEntityName;
 
 export const parseListName = (raw: string): Result<string, InvalidListNameError> => {
-  const name = raw.trim();
-
-  if (name.length < 1) {
-    return err(invalidListNameError('Name is required'));
+  const parsed = parseEntityName(raw);
+  if (parsed.isErr()) {
+    return err(
+      invalidListNameError(
+        parsed.error === 'empty' ? 'Name is required' : 'Name must be 200 characters or fewer'
+      )
+    );
   }
 
-  if (name.length > NAMED_LIST_NAME_MAX_LENGTH) {
-    return err(invalidListNameError('Name must be 200 characters or fewer'));
-  }
-
-  return ok(name);
+  return ok(parsed.value);
 };
 
-export const listNameIsTaken = (
-  name: string,
-  existingNames: readonly string[]
-): boolean => {
-  const normalized = normalizeListName(name);
-  return existingNames.some((existing) => normalizeListName(existing) === normalized);
-};
+export const listNameIsTaken = entityNameIsTaken;

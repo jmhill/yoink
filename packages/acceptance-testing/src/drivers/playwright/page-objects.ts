@@ -2326,6 +2326,82 @@ export class AppRail {
     return dialog;
   }
 
+  async createProject(
+    input: { name: string; objective?: string }
+  ): Promise<{ status: 'created'; id: string; name: string } | { status: 'empty' }> {
+    const dialog = await this.openNewProjectDialog();
+    const nameInput = dialog.locator('[data-project-create-name]');
+    await nameInput.waitFor({ state: 'visible' });
+    await nameInput.fill(input.name);
+    if (input.objective !== undefined) {
+      await dialog.locator('[data-project-create-objective]').fill(input.objective);
+    }
+
+    const createButton = dialog.getByRole('button', { name: 'Create project' });
+    if (await createButton.isDisabled()) {
+      await this.dismissNewProjectDialog();
+      return { status: 'empty' };
+    }
+
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/projects') &&
+        response.request().method() === 'POST'
+    );
+    await createButton.click();
+    const response = await responsePromise;
+    if (response.status() !== 201) {
+      throw new Error(`Failed to create project from the rail: ${response.status()}`);
+    }
+
+    await dialog.waitFor({ state: 'hidden' });
+    await this.page.waitForURL(/\/projects\/[0-9a-f-]{36}$/i);
+    const match = new URL(this.page.url()).pathname.match(/\/projects\/([0-9a-f-]{36})$/i);
+    if (!match?.[1]) {
+      throw new Error(`Created project "${input.name}" did not land on its page`);
+    }
+    return { status: 'created', id: match[1], name: input.name };
+  }
+
+  private newProjectDialog() {
+    return this.page.getByRole('dialog', { name: 'New project' });
+  }
+
+  private async openNewProjectDialog() {
+    await this.waitForVisible();
+    const dialog = this.newProjectDialog();
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.dismissNewProjectDialog();
+      const rail = await this.railForInteraction();
+      const button = rail.locator('[data-rail-item="new-project"]');
+      await this.clickRailControl(button);
+      try {
+        await dialog.waitFor({ state: 'visible', timeout: 2_500 });
+        return dialog;
+      } catch {
+        // Overlay from the previous create ate the click. Retry.
+      }
+    }
+
+    await dialog.waitFor({ state: 'visible' });
+    return dialog;
+  }
+
+  private async dismissNewProjectDialog(): Promise<void> {
+    const dialog = this.newProjectDialog();
+    if (!(await dialog.isVisible().catch(() => false))) {
+      return;
+    }
+    const cancel = dialog.getByRole('button', { name: 'Cancel' });
+    if (await cancel.isVisible().catch(() => false)) {
+      await cancel.click();
+    } else {
+      await this.page.keyboard.press('Escape');
+    }
+    await dialog.waitFor({ state: 'hidden' });
+  }
+
   /** Close a leftover New list dialog only — never the mobile rail drawer. */
   private async dismissNewListDialog(): Promise<void> {
     const dialog = this.newListDialog();
@@ -2604,5 +2680,65 @@ export class AppRail {
 
     await input.waitFor({ state: 'hidden' });
     await this.itemByLabel(currentName).waitFor({ state: 'visible' });
+  }
+}
+
+export class ProjectPage {
+  constructor(private readonly page: Page) {}
+
+  root() {
+    return this.page.locator('[data-project-page]');
+  }
+
+  async waitForVisible(): Promise<void> {
+    await this.root().waitFor({ state: 'visible' });
+  }
+
+  async shouldShow(input: { name: string; objective?: string; status: string }): Promise<void> {
+    await this.waitForVisible();
+    await expect(this.page.locator('[data-project-name-input]')).toHaveValue(input.name);
+    await expect(this.page.locator('[data-project-status]')).toHaveAttribute(
+      'data-project-status',
+      input.status
+    );
+    if (input.objective !== undefined) {
+      await expect(this.page.locator('[data-project-objective-input]')).toHaveValue(
+        input.objective
+      );
+    }
+  }
+
+  async editName(name: string): Promise<void> {
+    await this.waitForVisible();
+    const input = this.page.locator('[data-project-name-input]');
+    await input.fill(name);
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/projects/') &&
+        response.request().method() === 'PATCH'
+    );
+    await this.page.locator('[data-project-save]').click();
+    const response = await responsePromise;
+    if (response.status() !== 200) {
+      throw new Error(`Failed to edit project name: ${response.status()}`);
+    }
+    await expect(input).toHaveValue(name);
+  }
+
+  async editObjective(objective: string): Promise<void> {
+    await this.waitForVisible();
+    const input = this.page.locator('[data-project-objective-input]');
+    await input.fill(objective);
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/projects/') &&
+        response.request().method() === 'PATCH'
+    );
+    await this.page.locator('[data-project-save]').click();
+    const response = await responsePromise;
+    if (response.status() !== 200) {
+      throw new Error(`Failed to edit project objective: ${response.status()}`);
+    }
+    await expect(input).toHaveValue(objective);
   }
 }

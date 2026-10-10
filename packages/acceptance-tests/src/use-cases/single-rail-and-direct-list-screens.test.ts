@@ -43,6 +43,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         'Weekend',
         'Unlisted',
         'New list',
+        'New project',
       ]);
       await alice.shouldSeeInboxCountOnRail(2);
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
@@ -57,6 +58,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         'Done',
         'Unlisted',
         'New list',
+        'New project',
       ]);
       await alice.shouldNotSeeInboxCountOnRail();
     });
@@ -177,6 +179,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         'Groceries',
         'Unlisted',
         'New list',
+        'New project',
       ]);
     });
   });

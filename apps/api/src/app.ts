@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { registerHealthRoutes } from './health/application/index.js';
 import { registerCaptureRoutes } from './captures/infrastructure/http-capture-routes.js';
 import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
+import { registerProjectRoutes } from './projects/infrastructure/http-project-routes.js';
 import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
 import {
   registerAdminRoutes,
@@ -25,6 +26,7 @@ import {
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
+import type { ProjectHandlers } from './projects/application/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
@@ -70,6 +72,7 @@ export type SignupConfig = {
 export type AppDependencies = {
   captureHandlers: CaptureHandlers;
   listHandlers: ListHandlers;
+  projectHandlers: ProjectHandlers;
   taskService: TaskService;
   taskHandlers: TaskHandlers;
   captureProcessingService: CaptureProcessingService;
@@ -134,6 +137,10 @@ export const createApp = async (deps: AppDependencies) => {
   });
   await registerListRoutes(app, {
     listHandlers: deps.listHandlers,
+    authMiddleware: deps.authMiddleware,
+  });
+  await registerProjectRoutes(app, {
+    projectHandlers: deps.projectHandlers,
     authMiddleware: deps.authMiddleware,
   });
   await registerTaskRoutes(app, {

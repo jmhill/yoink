@@ -15,6 +15,12 @@ const existsClause = (
       args: [record.subjectId, record.organizationId],
     };
   }
+  if (record.subjectType === 'project') {
+    return {
+      sql: `SELECT 1 FROM projects WHERE id = ? AND organization_id = ?`,
+      args: [record.subjectId, record.organizationId],
+    };
+  }
   if (record.subjectId === UNLISTED_PILE_SUBJECT_ID) {
     return {
       sql: `SELECT 1 FROM organizations WHERE id = ?`,

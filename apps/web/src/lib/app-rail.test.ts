@@ -11,7 +11,11 @@ import {
   shouldShowTaskFamilyHeadingBefore,
   INBOX_MODE_CUE,
   RAIL_LISTS_HEADING,
+  RAIL_PROJECTS_HEADING,
+  RAIL_SOMEDAY_HEADING,
   RAIL_TASK_FAMILY_HEADING,
+  partitionRailProjects,
+  shouldShowProjectsHeadingBefore,
 } from './app-rail';
 
 const groceriesId = '00000000-0000-0000-0000-000000000010';
@@ -36,6 +40,7 @@ describe('buildAppRailItems', () => {
       'Weekend',
       'Unlisted',
       'New list',
+      'New project',
     ]);
     expect(items[0]).toEqual({ kind: 'inbox', label: 'Inbox', count: 3 });
   });
@@ -86,7 +91,7 @@ describe('shouldShowTaskFamilyHeadingBefore', () => {
     );
 
     expect(railItemLabels(items)).not.toContain('Task family');
-    expect(flags).toEqual([false, true, false, false, false, false, false, false, false]);
+    expect(flags).toEqual([false, true, false, false, false, false, false, false, false, false]);
     expect(items[0]).toMatchObject({ kind: 'inbox' });
     expect(items[1]).toMatchObject({ kind: 'smart', key: 'today' });
   });
@@ -98,7 +103,7 @@ describe('shouldShowListsHeadingBefore', () => {
     const flags = items.map((item, index) => shouldShowListsHeadingBefore(item, items[index - 1]));
 
     expect(railItemLabels(items)).not.toContain('Lists');
-    expect(flags).toEqual([false, false, false, false, false, true, false, false, false]);
+    expect(flags).toEqual([false, false, false, false, false, true, false, false, false, false]);
     expect(items[5]).toMatchObject({ kind: 'named', label: 'Groceries' });
   });
 
@@ -169,6 +174,39 @@ describe('RAIL_LABEL_WRAP_CLASS', () => {
     expect(RAIL_LABEL_WRAP_CLASS).not.toMatch(/\btruncate\b/);
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bbreak-words\b/);
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bwhitespace-normal\b/);
+  });
+});
+
+describe('partitionRailProjects', () => {
+  it('lists active and waiting, and parks someday separately', () => {
+    const cabinId = '00000000-0000-0000-0000-000000000021';
+    const gardenId = '00000000-0000-0000-0000-000000000020';
+    const laterId = '00000000-0000-0000-0000-000000000022';
+    const doneId = '00000000-0000-0000-0000-000000000023';
+
+    const partitioned = partitionRailProjects([
+      { id: laterId, name: 'Later', status: 'someday' },
+      { id: gardenId, name: 'Garden', status: 'active' },
+      { id: cabinId, name: 'Cabin', status: 'waiting' },
+      { id: doneId, name: 'Old', status: 'done' },
+    ]);
+
+    expect(partitioned.open.map((project) => project.name)).toEqual(['Cabin', 'Garden']);
+    expect(partitioned.someday.map((project) => project.name)).toEqual(['Later']);
+  });
+});
+
+describe('shouldShowProjectsHeadingBefore', () => {
+  it('places Projects above the first project or New project, after New list', () => {
+    const items = buildAppRailItems({ inboxCount: 0, namedLists });
+    const flags = items.map((item, index) =>
+      shouldShowProjectsHeadingBefore(item, items[index - 1])
+    );
+
+    expect(RAIL_PROJECTS_HEADING).toBe('Projects');
+    expect(RAIL_SOMEDAY_HEADING).toBe('Someday');
+    expect(items[items.length - 1]).toMatchObject({ kind: 'new-project' });
+    expect(flags[flags.length - 1]).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
 import type {
   Capture,
   NamedList,
+  Project,
   Task,
   PasskeyCredentialInfo,
   Member,
@@ -695,6 +696,31 @@ export type BrowserActorOperations = {
    * On success, lands on that list’s pile screen.
    */
   createNamedListFromRail(name: string): Promise<NamedList>;
+
+  /**
+   * Create a project from the rail New project control (kit dialog).
+   * On success, lands on that project's page.
+   */
+  createProjectFromRail(input: { name: string; objective?: string }): Promise<Project>;
+
+  /**
+   * Assert the open project page shows this name, optional objective, and status.
+   */
+  shouldSeeProjectPage(input: {
+    name: string;
+    objective?: string;
+    status: string;
+  }): Promise<void>;
+
+  /**
+   * Edit the open project page's name and save.
+   */
+  editProjectName(name: string): Promise<void>;
+
+  /**
+   * Edit the open project page's objective and save.
+   */
+  editProjectObjective(objective: string): Promise<void>;
 
   /**
    * Assert this named-list rail row has a kit overflow whose menu includes

@@ -847,7 +847,7 @@ function TasksPage() {
 
       {boardFilter !== 'completed' && (
         <form onSubmit={handleQuickAdd} className="mb-6">
-          <div className="flex gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <Input
               id="create-task-title"
               ref={inputRef}
@@ -855,51 +855,63 @@ function TasksPage() {
               onChange={(e) => setNewTaskTitle(e.target.value)}
               placeholder={`Add task${boardFilter === 'today' && !allPile ? ' for today' : ''}...`}
               disabled={createMutation.isPending}
-              className="flex-1"
+              className="min-w-0 flex-1"
             />
-            {showsCreateTaskListPicker(allPile) ? (
+            <div className="flex min-w-0 gap-2">
+              {showsCreateTaskListPicker(allPile) ? (
+                <Select
+                  value={newTaskListId || UNLISTED_VALUE}
+                  onValueChange={(value) =>
+                    setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+                  }
+                  disabled={createMutation.isPending}
+                >
+                  <SelectTrigger
+                    id="create-task-list"
+                    className="min-w-0 flex-1 sm:w-[12rem] sm:flex-none"
+                  >
+                    <SelectValue placeholder="No list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
+                    {namedLists.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
               <Select
-                value={newTaskListId || UNLISTED_VALUE}
+                value={newTaskProjectId || 'none'}
                 onValueChange={(value) =>
-                  setNewTaskListId(value === UNLISTED_VALUE ? '' : value)
+                  setNewTaskProjectId(value === 'none' ? '' : value)
                 }
                 disabled={createMutation.isPending}
               >
-                <SelectTrigger id="create-task-list" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
-                  <SelectValue placeholder="No list" />
+                <SelectTrigger
+                  id="create-task-project"
+                  className="min-w-0 flex-1 sm:w-[12rem] sm:flex-none"
+                >
+                  <SelectValue placeholder="No project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UNLISTED_VALUE}>No list</SelectItem>
-                  {namedLists.map((list) => (
-                    <SelectItem key={list.id} value={list.id}>
-                      {list.name}
+                  <SelectItem value="none">No project</SelectItem>
+                  {pickableProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : null}
-            <Select
-              value={newTaskProjectId || 'none'}
-              onValueChange={(value) =>
-                setNewTaskProjectId(value === 'none' ? '' : value)
-              }
-              disabled={createMutation.isPending}
-            >
-              <SelectTrigger id="create-task-project" className="w-[9.5rem] shrink-0 sm:w-[12rem]">
-                <SelectValue placeholder="No project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No project</SelectItem>
-                {pickableProjects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={createMutation.isPending || !newTaskTitle.trim()}>
-              {createMutation.isPending ? '...' : 'Add'}
-            </Button>
+              <Button
+                type="submit"
+                className="shrink-0"
+                disabled={createMutation.isPending || !newTaskTitle.trim()}
+              >
+                {createMutation.isPending ? '...' : 'Add'}
+              </Button>
+            </div>
           </div>
         </form>
       )}

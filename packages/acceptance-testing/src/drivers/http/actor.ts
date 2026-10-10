@@ -1092,7 +1092,7 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('dismissOpenSelect', 'http');
     },
 
-    async saveWalkthroughScreenshot(_step: string): Promise<void> {
+    async saveWalkthroughScreenshot(_input: { story: string; step: string }): Promise<void> {
       throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
     },
 

@@ -1151,9 +1151,11 @@ export type BrowserActorOperations = {
 
   /**
    * Save a viewport screenshot of the current page for PR walkthrough
-   * review. `step` is snake_case (e.g. `edit_project_picker`).
+   * review. `story` is the kebab-case artifacts folder (e.g.
+   * `135-tasks-in-projects`). `step` is snake_case (e.g.
+   * `edit_project_picker`).
    */
-  saveWalkthroughScreenshot(step: string): Promise<void>;
+  saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
 
   /**
    * Open Inbox or Tasks from the mobile bottom tabs.

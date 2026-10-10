@@ -263,6 +263,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
   });
 });
 
+const WALKTHROUGH_STORY = '135-tasks-in-projects';
+
 const walkthroughViewports = [
   {
     name: 'desktop' as const,
@@ -289,20 +291,29 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.openRailUnlisted();
         await alice.openTaskEditFromRow(soil.id);
         await alice.openEditTaskProjectPicker('Garden');
-        await alice.saveWalkthroughScreenshot('edit_project_picker');
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'edit_project_picker',
+        });
         await alice.dismissOpenSelect();
         await alice.closeTaskEdit();
 
         await alice.openToday();
         await alice.openCreateTaskProjectPicker('Garden');
-        await alice.saveWalkthroughScreenshot('quick_add_project_picker');
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'quick_add_project_picker',
+        });
         await alice.dismissOpenSelect();
 
         await alice.createCapture({ content: 'Plant herbs' });
         await alice.openRailInbox();
         await alice.openPromoteSheet('Plant herbs');
         await alice.openPromoteProjectPicker('Garden');
-        await alice.saveWalkthroughScreenshot('promote_project_picker');
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'promote_project_picker',
+        });
         await alice.dismissOpenSelect();
         await alice.cancelPromoteSheet();
 
@@ -310,18 +321,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.createTask({ title: 'Newer', projectId: garden.id });
         await alice.goToProject(garden.id);
         await alice.shouldSeeOpenTasksOnProjectInOrder(['Newer', 'Older']);
-        await alice.saveWalkthroughScreenshot('project_page_open_tasks');
-
-        await alice.openTaskEditFromRow(older.id);
-        await alice.openEditTaskProjectPicker('No project');
-        await alice.saveWalkthroughScreenshot('remove_task_from_project');
-        await alice.dismissOpenSelect();
-        await alice.closeTaskEdit();
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'project_page_open_tasks',
+        });
 
         await alice.updateTask(older.id, { projectId: null });
         await alice.goToProject(garden.id);
         await alice.shouldNotSeeOpenTaskOnProject('Older');
         await alice.shouldSeeOpenTaskOnProject('Newer');
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'remove_task_from_project',
+        });
       }, 90_000);
     }
   });

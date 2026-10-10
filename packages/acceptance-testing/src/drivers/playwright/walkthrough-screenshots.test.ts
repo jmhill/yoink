@@ -8,10 +8,11 @@ import {
 } from './walkthrough-screenshots.js';
 
 describe('walkthroughScreenshotPath', () => {
-  it('writes snake_case phone and desktop files under the story artifacts folder', () => {
+  it('writes snake_case phone and desktop files under the given story folder', () => {
     expect(
       walkthroughScreenshotPath({
         repoRoot: '/repo',
+        story: '135-tasks-in-projects',
         viewport: 'desktop',
         step: 'edit_project_picker',
       })
@@ -19,20 +20,33 @@ describe('walkthroughScreenshotPath', () => {
     expect(
       walkthroughScreenshotPath({
         repoRoot: '/repo',
+        story: '136-other-story',
         viewport: 'phone',
         step: 'remove_task_from_project',
       })
-    ).toBe('/repo/docs/pr-artifacts/135-tasks-in-projects/phone_remove_task_from_project.png');
+    ).toBe('/repo/docs/pr-artifacts/136-other-story/phone_remove_task_from_project.png');
   });
 
   it('rejects a step that is not snake_case', () => {
     expect(() =>
       walkthroughScreenshotPath({
         repoRoot: '/repo',
+        story: '135-tasks-in-projects',
         viewport: 'desktop',
         step: '../escape',
       })
     ).toThrow(/snake_case/);
+  });
+
+  it('rejects a story folder that is not a kebab-case slug', () => {
+    expect(() =>
+      walkthroughScreenshotPath({
+        repoRoot: '/repo',
+        story: '../escape',
+        viewport: 'desktop',
+        step: 'edit_project_picker',
+      })
+    ).toThrow(/kebab-case/);
   });
 });
 

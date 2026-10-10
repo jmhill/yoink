@@ -51,6 +51,7 @@ import {
 } from './page-objects.js';
 import {
   saveWalkthroughPng,
+  waitForSettledOpenSelect,
   type WalkthroughViewport,
 } from './walkthrough-screenshots.js';
 
@@ -1937,17 +1938,17 @@ export const createPlaywrightActor = (
 
     async openEditTaskProjectPicker(visibleProjectName: string): Promise<void> {
       await tasksPage.openEditProjectPicker(visibleProjectName);
-      await expect(page.getByRole('listbox')).toBeVisible();
+      await waitForSettledOpenSelect({ page, visibleOptionName: visibleProjectName });
     },
 
     async openCreateTaskProjectPicker(visibleProjectName: string): Promise<void> {
       await tasksPage.openCreateProjectPicker(visibleProjectName);
-      await expect(page.getByRole('listbox')).toBeVisible();
+      await waitForSettledOpenSelect({ page, visibleOptionName: visibleProjectName });
     },
 
     async openPromoteProjectPicker(visibleProjectName: string): Promise<void> {
       await inboxPage.openPromoteProjectPicker(visibleProjectName);
-      await expect(page.getByRole('listbox')).toBeVisible();
+      await waitForSettledOpenSelect({ page, visibleOptionName: visibleProjectName });
     },
 
     async dismissOpenSelect(): Promise<void> {
@@ -1957,12 +1958,17 @@ export const createPlaywrightActor = (
       await expect(listbox).toBeHidden();
     },
 
-    async saveWalkthroughScreenshot(step: string): Promise<void> {
+    async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
+      const listbox = page.getByRole('listbox');
+      if (await listbox.isVisible()) {
+        await waitForSettledOpenSelect({ page });
+      }
       await saveWalkthroughPng({
         page,
         fromDir: fileURLToPath(new URL('.', import.meta.url)),
+        story: input.story,
         viewport: walkthroughViewport,
-        step,
+        step: input.step,
       });
     },
 

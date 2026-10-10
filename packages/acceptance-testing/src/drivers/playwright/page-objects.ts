@@ -1,6 +1,7 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
 import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
+import { isTasksThumbLandingUrl } from './tasks-board-url.js';
 
 /**
  * Page object for the login page (/login).
@@ -1892,7 +1893,10 @@ export class MobileNav {
       });
       return;
     }
-    await this.page.waitForURL(/\/tasks/);
+    // Already on /tasks?pile=… is a match for /\/tasks/. The thumb Link
+    // has no search, so beforeLoad still redirects to Today — wait for
+    // that href, not the pile we are leaving.
+    await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
   }
 }
 
@@ -1938,13 +1942,9 @@ export class AppRail {
   }
 
   private async waitForMobileDrawerInteractable(): Promise<void> {
-    for (let attempt = 0; attempt < 80; attempt++) {
-      if (await this.mobileDrawerIsInteractable()) {
-        return;
-      }
-      await this.page.waitForTimeout(50);
-    }
-    throw new Error('Mobile Tasks rail drawer opened but no rail item was on screen');
+    await expect
+      .poll(async () => this.mobileDrawerIsInteractable(), { timeout: 4_000 })
+      .toBe(true);
   }
 
   /**
@@ -1995,7 +1995,7 @@ export class AppRail {
     if (await tasksTab.isVisible().catch(() => false)) {
       if (!/\/tasks(?:\?|$)/.test(new URL(this.page.url()).pathname)) {
         await tasksTab.click();
-        await this.page.waitForURL(/\/tasks/);
+        await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
       }
       await this.openMobileDrawer();
       return;
@@ -2014,12 +2014,13 @@ export class AppRail {
       if (await this.mobileDrawerIsInteractable()) {
         return;
       }
+      const surfaceAttached = (await this.mobileTasks().count()) > 0;
       const expanded = await trigger.getAttribute('aria-expanded');
-      if (expanded !== 'true') {
+      if (!surfaceAttached || expanded !== 'true') {
         await trigger.click({ force: attempt > 0 });
       }
-      await this.mobileTasks().waitFor({ state: 'attached' });
       try {
+        await this.mobileTasks().waitFor({ state: 'attached', timeout: 4_000 });
         await this.waitForMobileDrawerInteractable();
         return;
       } catch (error) {

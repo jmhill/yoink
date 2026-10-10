@@ -81,7 +81,7 @@ const deps = (
 };
 
 const command = {
-  actor: { kind: 'user' as const, userId: 'owner-1' },
+  actor: { kind: 'user' as const, userId: 'owner-1', via: 'session' as const },
   organizationId: 'org-1',
   memberUserId: 'agent-1',
 };
@@ -125,7 +125,7 @@ describe('handleReissueAgentToken', () => {
     const result = await handleReissueAgentToken(
       {
         ...command,
-        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane' },
+        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane', via: 'token' as const },
       },
       deps({
         loadMembership: () => {
@@ -146,6 +146,32 @@ describe('handleReissueAgentToken', () => {
     }
     expect(loadMembershipCalls).toBe(0);
     expect(loadUserCalls).toBe(0);
+    expect(events).toHaveLength(0);
+  });
+
+  it('refuses a person token before any reads', async () => {
+    let loadMembershipCalls = 0;
+    const { persistReissue, events } = persistEvents();
+
+    const result = await handleReissueAgentToken(
+      {
+        ...command,
+        actor: { kind: 'user' as const, userId: 'owner-1', via: 'token' as const },
+      },
+      deps({
+        loadMembership: () => {
+          loadMembershipCalls += 1;
+          return errAsync(membershipStorageError('should not load'));
+        },
+        persistReissue,
+      })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+    expect(loadMembershipCalls).toBe(0);
     expect(events).toHaveLength(0);
   });
 

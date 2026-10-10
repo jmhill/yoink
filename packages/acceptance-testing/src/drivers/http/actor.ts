@@ -41,9 +41,10 @@ type ActorCredentials = {
  */
 export type HttpActorOptions = {
   /**
-   * HTTP actors authenticate as bots. Minting is human-session only, so the
-   * HTTP driver provisions agents through admin for tenant-admin actors.
-   * Bot actors omit this and POST /agents, which returns 403.
+   * HTTP actors authenticate with a person's API token (user actor, via token).
+   * Minting is web-session only, so the HTTP driver provisions agents through
+   * admin for tenant-admin actors. Personal and agent tokens both get 403 on
+   * POST /agents.
    */
   provisionAgent?: (name: string) => Promise<MintedAgent>;
 };

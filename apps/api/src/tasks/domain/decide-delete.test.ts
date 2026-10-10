@@ -17,7 +17,7 @@ describe('decideDeleteTask', () => {
   it('records a delete for the task only', () => {
     const result = decideDeleteTask({
       current,
-      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const } },
       now: '2025-01-15T12:00:00.000Z',
     });
     expect(result._unsafeUnwrap()).toEqual({
@@ -32,7 +32,7 @@ describe('decideDeleteTask', () => {
   it('includes the source capture id so persist can cascade without logging it', () => {
     const result = decideDeleteTask({
       current: { ...current, captureId: 'cap-1' },
-      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1' } },
+      command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const } },
       now: '2025-01-15T12:00:00.000Z',
     });
     expect(result._unsafeUnwrap().captureId).toBe('cap-1');

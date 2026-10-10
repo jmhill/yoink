@@ -27,7 +27,7 @@ const command = {
   title: 'Buy milk',
   organizationId: 'org-123',
   createdById: 'user-456',
-  actor: { kind: 'user' as const, userId: 'user-456' },
+  actor: { kind: 'user' as const, userId: 'user-456', via: 'session' as const },
 };
 
 const createInMemoryPersist = (): {

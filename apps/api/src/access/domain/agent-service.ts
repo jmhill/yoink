@@ -8,7 +8,7 @@ import type { MembershipService } from './membership-service.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { CreateToken } from './create-token.js';
 import type { TokenInfo } from './token-info.js';
-import { requireHumanActor } from './require-human-actor.js';
+import { requireWebSessionPerson } from './require-web-session-person.js';
 import type { CreateTokenError } from './token-errors.js';
 import {
   membershipNotFoundError,
@@ -35,7 +35,8 @@ export type AgentServiceError = MembershipServiceError | UserServiceError | Crea
 export type AgentService = {
   /**
    * Mint a token-only agent member in the organization.
-   * Caller must be a human owner or admin. Returns the agent's API token once.
+   * Caller must be a web-session person who is an owner or admin.
+   * Returns the agent's API token once.
    */
   mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError>;
 };
@@ -54,7 +55,7 @@ export const createAgentService = (deps: AgentServiceDependencies): AgentService
   return {
     mintAgent(command: MintAgentCommand): ResultAsync<MintedAgent, AgentServiceError> {
       const { actor, organizationId, name } = command;
-      const human = requireHumanActor(actor);
+      const human = requireWebSessionPerson(actor);
       if (human.isErr()) {
         return errAsync(human.error);
       }

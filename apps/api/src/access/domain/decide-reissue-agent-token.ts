@@ -1,7 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { MembershipRole } from './organization-membership.js';
 import type { PrincipalKind } from './user.js';
-import { requireHumanActor } from './require-human-actor.js';
+import { requireWebSessionPerson } from './require-web-session-person.js';
 import type { ReissueAgentTokenCommand } from './token-commands.js';
 import type { TokenCreated } from './token-events.js';
 import {
@@ -52,7 +52,7 @@ export const decideReissueAgentToken = ({
   newTokenId,
   now,
 }: DecideReissueAgentTokenInput): Result<ReissueAgentTokenDecision, DecideReissueAgentTokenError> => {
-  const human = requireHumanActor(command.actor);
+  const human = requireWebSessionPerson(command.actor);
   if (human.isErr()) {
     return err(human.error);
   }

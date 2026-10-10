@@ -62,29 +62,29 @@ describe('createListHandlers command logging', () => {
         name: 'Weekend',
         organizationId: 'org-1',
         createdById: 'user-1',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       })],
     ['rename', (h: ReturnType<typeof handlersOf>) =>
       h.rename({
         id: 'list-1',
         organizationId: 'org-1',
         name: 'Shopping',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       })],
     ['delete', (h: ReturnType<typeof handlersOf>) =>
-      h.delete({ id: 'list-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1' } })],
+      h.delete({ id: 'list-1', organizationId: 'org-1', actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const } })],
     ['reorderOpenTasks', (h: ReturnType<typeof handlersOf>) =>
       h.reorderOpenTasks({
         organizationId: 'org-1',
         listId: 'list-1',
         taskIds: ['task-1'],
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       })],
     ['reorderUnlistedOpenTasks', (h: ReturnType<typeof handlersOf>) =>
       h.reorderUnlistedOpenTasks({
         organizationId: 'org-1',
         taskIds: ['task-1'],
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       })],
   ] as const)('logs %s exactly once', async (_name, run) => {
     const { lines, logger } = collectLogger();

@@ -4,7 +4,7 @@ import type { PrincipalKind } from './user.js';
 import type { CreateTokenCommand } from './token-commands.js';
 import type { TokenCreated } from './token-events.js';
 import { canManageOrgToken } from './can-manage-token.js';
-import { requireHumanActor } from './require-human-actor.js';
+import { requireWebSessionPerson } from './require-web-session-person.js';
 import {
   invalidTokenNameError,
   tokenLimitReachedError,
@@ -33,7 +33,7 @@ export const decideCreateToken = ({
   id,
   now,
 }: DecideCreateTokenInput): Result<TokenCreated, DecideCreateTokenError> => {
-  const actor = requireHumanActor(command.actor);
+  const actor = requireWebSessionPerson(command.actor);
   if (actor.isErr()) {
     return err(actor.error);
   }

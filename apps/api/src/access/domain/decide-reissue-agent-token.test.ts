@@ -5,7 +5,7 @@ import type { ReissueAgentTokenCommand } from './token-commands.js';
 const command = (
   overrides: Partial<ReissueAgentTokenCommand> = {}
 ): ReissueAgentTokenCommand => ({
-  actor: { kind: 'user', userId: 'owner-1' },
+  actor: { kind: 'user', userId: 'owner-1', via: 'session' as const },
   organizationId: 'org-1',
   memberUserId: 'agent-1',
   ...overrides,
@@ -59,7 +59,20 @@ describe('decideReissueAgentToken', () => {
   it('refuses a bot actor', () => {
     const result = input({
       command: command({
-        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane' },
+        actor: { kind: 'bot', tokenId: 'tok', userId: 'owner-1', name: 'Lane', via: 'token' as const },
+      }),
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('BOT_CANNOT_MANAGE_TOKENS');
+    }
+  });
+
+  it('refuses a person token', () => {
+    const result = input({
+      command: command({
+        actor: { kind: 'user', userId: 'owner-1', via: 'token' as const },
       }),
     });
 

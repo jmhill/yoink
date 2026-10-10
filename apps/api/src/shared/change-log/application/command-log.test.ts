@@ -23,7 +23,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       (value) => value.events.map((event) => event.type as 'NamedListCreated'),
       () =>
@@ -54,7 +54,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateNamedList',
         organizationId: 'org-1',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       () => [],
       () =>
@@ -86,7 +86,7 @@ describe('withCommandLog', () => {
       {
         command: 'CreateTask',
         organizationId: 'org-1',
-        actor: { kind: 'bot', userId: 'user-bot', tokenId: 'tok-1', name: 'Lane' },
+        actor: { kind: 'bot', userId: 'user-bot', tokenId: 'tok-1', name: 'Lane', via: 'token' as const },
       },
       () => ['TaskCreated'] as const,
       () => okAsync({ events: [{ type: 'TaskCreated' }] })

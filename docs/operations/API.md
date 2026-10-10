@@ -114,7 +114,8 @@ curl -fsS -o /tmp/bad.json -w "%{http_code}\n" \
 
 Task responses keep `lastChangedBy` and `completedBy` as user ids (UUIDs), or
 `null`. They do not include display names. Resolve a name with the organization
-members list. Session and bot Bearer tokens both work.
+members list. Session, a person's API token, and an agent token all work.
+A person's own token is a `user` actor; only agent tokens are `bot`.
 
 ```bash
 curl -sS -H "Authorization: Bearer $TOKEN" \

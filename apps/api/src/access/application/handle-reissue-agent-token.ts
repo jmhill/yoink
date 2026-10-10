@@ -6,7 +6,7 @@ import type { ReissueAgentTokenCommand } from '../domain/token-commands.js';
 import { decideReissueAgentToken } from '../domain/decide-reissue-agent-token.js';
 import type { DecideReissueAgentTokenError } from '../domain/decide-reissue-agent-token.js';
 import { applyTokenEvent } from '../domain/apply-token-event.js';
-import { requireHumanActor } from '../domain/require-human-actor.js';
+import { requireWebSessionPerson } from '../domain/require-web-session-person.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import type { TokenWriteError } from '../domain/token-store.js';
 import type { TokenInfo } from '../domain/token-info.js';
@@ -50,7 +50,7 @@ export const handleReissueAgentToken = (
   command: ReissueAgentTokenCommand,
   deps: HandleReissueAgentTokenDeps
 ): ResultAsync<ReissueAgentTokenResult, ReissueAgentTokenError> => {
-  const human = requireHumanActor(command.actor);
+  const human = requireWebSessionPerson(command.actor);
   if (human.isErr()) {
     return errAsync(human.error);
   }

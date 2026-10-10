@@ -61,7 +61,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: loadCurrent, loadList, loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -85,7 +85,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: 'list-missing',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -105,7 +105,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: otherOrgList.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: loadCurrent, loadList: () => okAsync(otherOrgList), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -125,7 +125,7 @@ describe('handleUpdateTask', () => {
         id: 'missing',
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: () => okAsync(null), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -146,7 +146,7 @@ describe('handleUpdateTask', () => {
         id: onGroceries.id,
         organizationId: onGroceries.organizationId,
         listId: groceries.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -171,7 +171,7 @@ describe('handleUpdateTask', () => {
         id: completed.id,
         organizationId: completed.organizationId,
         listId: groceries.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: () => okAsync(completed), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -192,7 +192,7 @@ describe('handleUpdateTask', () => {
         id: onGroceries.id,
         organizationId: onGroceries.organizationId,
         listId: null,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: () => okAsync(onGroceries), loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -216,7 +216,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: null,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: loadCurrent, loadList: () => okAsync(null), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -242,7 +242,7 @@ describe('handleUpdateTask', () => {
         id: completedOnGroceries.id,
         organizationId: completedOnGroceries.organizationId,
         listId: null,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       {
         load: () => okAsync(completedOnGroceries),
@@ -269,7 +269,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         listId: groceries.id,
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       { load: loadCurrent, loadList: () => okAsync(groceries), loadNextOpenOrder: () => okAsync(0), persist, now: () => '2025-01-15T10:00:00.000Z', nextId: () => 'id-1' }
     );
@@ -291,7 +291,7 @@ describe('handleUpdateTask', () => {
         id: current.id,
         organizationId: current.organizationId,
         assigneeId: 'outsider',
-        actor: { kind: 'user' as const, userId: 'user-1' },
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       {
         load: loadCurrent,

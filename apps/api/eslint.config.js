@@ -60,7 +60,7 @@ export default [
             { from: 'health', allow: ['health'] },
             { from: 'lists', allow: ['lists'] },
             { from: 'processing', allow: ['processing'] },
-            { from: 'projects', allow: ['projects', 'access'] },
+            { from: 'projects', allow: ['projects'] },
             { from: 'tasks', allow: ['tasks'] },
           ],
         },

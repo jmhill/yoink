@@ -1,75 +1,18 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
-import type { Project, ProjectStatus } from '@yoink/api-contracts';
+import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
+import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import { projectDirection } from '../../listing/domain/list-keys.js';
+import { parseProjectRow } from './parse-project-row.js';
 
-type ProjectRow = {
-  id: string;
-  organization_id: string;
-  created_by_id: string;
-  name: string;
-  objective: string | null;
-  status: string;
-  created_at: string;
-  last_changed_at: string | null;
-  last_changed_by: string | null;
-};
-
-const STATUSES: readonly ProjectStatus[] = [
-  'active',
-  'waiting',
-  'someday',
-  'done',
-  'proposed',
-];
-
-const isProjectStatus = (value: string): value is ProjectStatus =>
-  STATUSES.some((status) => status === value);
-
-const rowToProject = (row: ProjectRow): Project | null => {
-  if (!isProjectStatus(row.status)) {
-    return null;
-  }
-
-  const project: Project = {
-    id: row.id,
-    organizationId: row.organization_id,
-    createdById: row.created_by_id,
-    name: row.name,
-    status: row.status,
-    createdAt: row.created_at,
-    lastChangedAt: row.last_changed_at,
-    lastChangedBy: row.last_changed_by,
-  };
-
-  if (row.objective) {
-    project.objective = row.objective;
-  }
-
-  return project;
-};
-
-const mapRow = (row: Record<string, unknown>): Project => {
-  const mapped = rowToProject(row as ProjectRow);
-  if (!mapped) {
-    return {
-      id: String(row.id ?? ''),
-      organizationId: String(row.organization_id ?? ''),
-      createdById: String(row.created_by_id ?? ''),
-      name: String(row.name ?? ''),
-      status: 'active',
-      createdAt: String(row.created_at ?? ''),
-      lastChangedAt: null,
-      lastChangedBy: null,
-    };
-  }
-  return mapped;
-};
+const PROJECT_COLUMNS = `
+  id, organization_id, created_by_id, name, objective, status,
+  created_at, last_changed_at, last_changed_by
+`;
 
 const validateSchema = async (db: Database): Promise<void> => {
   const result = await db.execute({
@@ -83,53 +26,48 @@ const validateSchema = async (db: Database): Promise<void> => {
   }
 };
 
+const parseRows = (rows: Record<string, unknown>[]): Result<Project[], StorageError> =>
+  Result.combine(rows.map(parseProjectRow));
+
 export const createSqliteProjectStore = async (db: Database): Promise<ProjectStore> => {
   await validateSchema(db);
 
   return {
     findById: (id: string): ResultAsync<Project | null, StorageError> => {
       return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `
-              SELECT id, organization_id, created_by_id, name, objective, status,
-                     created_at, last_changed_at, last_changed_by
-              FROM projects
-              WHERE id = ?
-            `,
-            args: [id],
-          })
-          .then((result) => {
-            const row = result.rows[0] as ProjectRow | undefined;
-            return row ? rowToProject(row) : null;
-          }),
+        db.execute({
+          sql: `SELECT ${PROJECT_COLUMNS} FROM projects WHERE id = ?`,
+          args: [id],
+        }),
         (cause) => storageError('Failed to find project', cause)
-      );
+      ).andThen((result) => {
+        const row = result.rows[0];
+        if (!row) {
+          return okAsync(null);
+        }
+        const parsed = parseProjectRow(row);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
     },
 
     findByOrganization: (
       organizationId: string
     ): ResultAsync<Project[], StorageError> => {
       return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `
-              SELECT id, organization_id, created_by_id, name, objective, status,
-                     created_at, last_changed_at, last_changed_by
-              FROM projects
-              WHERE organization_id = ?
-              ORDER BY name ASC, created_at ASC, id ASC
-            `,
-            args: [organizationId],
-          })
-          .then((result) =>
-            result.rows.flatMap((row) => {
-              const project = rowToProject(row as ProjectRow);
-              return project ? [project] : [];
-            })
-          ),
+        db.execute({
+          sql: `
+            SELECT ${PROJECT_COLUMNS}
+            FROM projects
+            WHERE organization_id = ?
+            ORDER BY name ASC, created_at ASC, id ASC
+          `,
+          args: [organizationId],
+        }),
         (cause) => storageError('Failed to list projects', cause)
-      );
+      ).andThen((result) => {
+        const parsed = parseRows(result.rows);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
     },
 
     pageByOrganization: (options: {
@@ -147,8 +85,13 @@ export const createSqliteProjectStore = async (db: Database): Promise<ProjectSto
         direction: projectDirection,
         fetchLimit: options.fetchLimit,
         seek: options.seek,
-        mapRow,
+        mapRow: (row) => row,
         errorMessage: 'Failed to list projects',
+      }).andThen((page) => {
+        const parsed = parseRows(page.rows);
+        return parsed.isOk()
+          ? okAsync({ rows: parsed.value, total: page.total })
+          : errAsync(parsed.error);
       });
     },
   };

@@ -1,4 +1,4 @@
-import { errAsync, type ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { UpdateProjectCommand } from '../domain/project-commands.js';
 import type { ProjectUpdated } from '../domain/events.js';
@@ -16,7 +16,7 @@ export type HandleUpdateProjectDeps = {
 };
 
 export type UpdateProjectResult = {
-  event: ProjectUpdated;
+  event?: ProjectUpdated;
   view: Project;
 };
 
@@ -25,43 +25,35 @@ export const handleUpdateProject = (
   deps: HandleUpdateProjectDeps
 ): ResultAsync<UpdateProjectResult, UpdateProjectError> => {
   return deps.load(command.id).andThen((loaded) => {
-    const current =
-      loaded && loaded.organizationId === command.organizationId ? loaded : null;
+    if (!loaded || loaded.organizationId !== command.organizationId) {
+      return errAsync(projectNotFoundError(command.id));
+    }
 
-    const persistDecision = (existingNames: readonly string[]) => {
-      const now = deps.now();
+    return deps.list(command.organizationId).andThen((existing) => {
       const decision = decideUpdateProject({
         command,
-        current,
-        existingNames,
-        now,
+        current: loaded,
+        existingNames: existing.map((project) => project.name),
+        now: deps.now(),
       });
 
       if (decision.isErr()) {
         return errAsync(decision.error);
       }
 
-      if (current === null) {
-        return errAsync(projectNotFoundError(command.id));
+      if (decision.value.type === 'unchanged') {
+        return okAsync({ view: loaded });
       }
 
-      const event = decision.value;
+      const event = decision.value.event;
       const plan = planProjectChange({
         event,
-        current,
+        current: loaded,
         actor: command.actor,
         ids: { recordId: deps.nextId() },
       });
 
       return deps.persist(plan).map(() => ({ event, view: plan.view }));
-    };
-
-    if (!current) {
-      return persistDecision([]);
-    }
-
-    return deps
-      .list(command.organizationId)
-      .andThen((existing) => persistDecision(existing.map((project) => project.name)));
+    });
   });
 };

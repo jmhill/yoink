@@ -19,9 +19,8 @@ export type ProjectHandlerDeps = {
   logger: CommandLogger;
 };
 
-const eventKind = (result: { event: { type: ChangeLogKind } }): ChangeLogKind[] => [
-  result.event.type,
-];
+const eventKind = (result: { event?: { type: ChangeLogKind } }): ChangeLogKind[] =>
+  result.event ? [result.event.type] : [];
 
 export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
   list: (query: Parameters<typeof handleListProjects>[0]) => handleListProjects(query, deps),

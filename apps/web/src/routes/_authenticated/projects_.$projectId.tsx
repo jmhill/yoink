@@ -6,6 +6,7 @@ import { Label } from '@yoink/ui-base/components/label';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { tsrProjects } from '@/api/client';
+import { projectContract } from '@yoink/api-contracts';
 import { isBlockingQueryFailure } from '@/lib/live-query';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
@@ -48,16 +49,15 @@ function ProjectPage() {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        (err.status === 409 || err.status === 400) &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
-        setFormError(body?.message ?? 'Could not save this project');
-        return;
+      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
+        const status = err.status;
+        if (status === 400 || status === 409) {
+          const parsed = projectContract.update.responses[status].safeParse(err.body);
+          if (parsed.success) {
+            setFormError(parsed.data.message);
+            return;
+          }
+        }
       }
       toast.error('Failed to save project');
     },

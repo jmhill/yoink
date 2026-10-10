@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import { requirePerson } from '../../access/domain/index.js';
+import { requirePerson } from '../../shared/auth-context.js';
 import type { CreateProjectCommand } from './project-commands.js';
 import type { ProjectCreated } from './events.js';
 import {

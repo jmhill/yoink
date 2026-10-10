@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { tsrProjects } from '@/api/client';
+import { projectContract } from '@yoink/api-contracts';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
@@ -47,16 +48,15 @@ export function CreateProjectDialog({
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        (err.status === 409 || err.status === 403) &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
-        setFormError(body?.message ?? 'Could not create this project');
-        return;
+      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
+        const status = err.status;
+        if (status === 403 || status === 409) {
+          const parsed = projectContract.create.responses[status].safeParse(err.body);
+          if (parsed.success) {
+            setFormError(parsed.data.message);
+            return;
+          }
+        }
       }
       toast.error('Failed to create project');
     },

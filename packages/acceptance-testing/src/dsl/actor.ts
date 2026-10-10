@@ -51,6 +51,15 @@ export type CoreActor = {
   createNamedList(name: string): Promise<NamedList>;
   renameNamedList(id: string, name: string): Promise<NamedList>;
   deleteNamedList(id: string): Promise<void>;
+
+  // Projects. Creating requires a person; agents may list, read, and edit.
+  createProject(input: { name: string; objective?: string }): Promise<Project>;
+  listProjects(): Promise<Project[]>;
+  getProject(id: string): Promise<Project>;
+  updateProject(
+    id: string,
+    input: { name?: string; objective?: string | null }
+  ): Promise<Project>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;

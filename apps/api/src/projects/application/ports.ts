@@ -1,6 +1,6 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
-import type { StorageError } from '../domain/project-errors.js';
+import type { DuplicateProjectNameError, StorageError } from '../domain/project-errors.js';
 import type { ProjectChangePlan } from '../domain/plan-project-change.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
@@ -15,4 +15,6 @@ export type PageProjects = (options: {
 
 export type LoadProject = (id: string) => ResultAsync<Project | null, StorageError>;
 
-export type PersistProjectChange = (plan: ProjectChangePlan) => ResultAsync<void, StorageError>;
+export type PersistProjectChange = (
+  plan: ProjectChangePlan
+) => ResultAsync<void, StorageError | DuplicateProjectNameError>;

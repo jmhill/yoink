@@ -237,6 +237,78 @@ export const createHttpActor = (
       return response.json<{ lists: NamedList[] }>().lists;
     },
 
+    async createProject(input: { name: string; objective?: string }): Promise<Project> {
+      const response = await client.post('/api/projects', input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Creating a project requires a person');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A project with this name already exists');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to create project: ${response.body}`);
+      }
+      return response.json<Project>();
+    },
+
+    async listProjects(): Promise<Project[]> {
+      const response = await client.get('/api/projects', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list projects: ${response.body}`);
+      }
+      return response.json<{ projects: Project[] }>().projects;
+    },
+
+    async getProject(id: string): Promise<Project> {
+      const response = await client.get(`/api/projects/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to get project: ${response.body}`);
+      }
+      return response.json<Project>();
+    },
+
+    async updateProject(
+      id: string,
+      input: { name?: string; objective?: string | null }
+    ): Promise<Project> {
+      const response = await client.patch(`/api/projects/${id}`, input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A project with this name already exists');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to update project: ${response.body}`);
+      }
+      return response.json<Project>();
+    },
+
     async createNamedList(name: string): Promise<NamedList> {
       const response = await client.post('/api/lists', { name }, authHeaders());
       if (response.statusCode === 401) {

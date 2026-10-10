@@ -42,11 +42,14 @@ describe('decideUpdateProject', () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toEqual({
-        type: 'ProjectUpdated',
-        id: 'project-garden',
-        organizationId: 'org-123',
-        name: 'Backyard',
-        occurredAt: '2025-01-15T11:00:00.000Z',
+        type: 'changed',
+        event: {
+          type: 'ProjectUpdated',
+          id: 'project-garden',
+          organizationId: 'org-123',
+          name: 'Backyard',
+          occurredAt: '2025-01-15T11:00:00.000Z',
+        },
       });
     }
   });
@@ -60,9 +63,9 @@ describe('decideUpdateProject', () => {
     });
 
     expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.name).toBe('Backyard');
-      expect(result.value.objective).toBe('Plant herbs');
+    if (result.isOk() && result.value.type === 'changed') {
+      expect(result.value.event.name).toBe('Backyard');
+      expect(result.value.event.objective).toBe('Plant herbs');
     }
   });
 
@@ -75,9 +78,38 @@ describe('decideUpdateProject', () => {
     });
 
     expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'changed') {
+      expect(result.value.event.objective).toBeNull();
+      expect(result.value.event.name).toBeUndefined();
+    }
+  });
+
+  it('includes only the fields that actually changed', () => {
+    const result = decideUpdateProject({
+      command: person({ name: garden.name, objective: 'Plant herbs' }),
+      current: garden,
+      existingNames: [garden.name],
+      now: '2025-01-15T11:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'changed') {
+      expect(result.value.event.name).toBeUndefined();
+      expect(result.value.event.objective).toBe('Plant herbs');
+    }
+  });
+
+  it('returns unchanged when nothing changed', () => {
+    const result = decideUpdateProject({
+      command: person({ name: garden.name, objective: garden.objective ?? null }),
+      current: garden,
+      existingNames: [garden.name],
+      now: '2025-01-15T11:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.objective).toBeNull();
-      expect(result.value.name).toBeUndefined();
+      expect(result.value).toEqual({ type: 'unchanged' });
     }
   });
 
@@ -90,8 +122,8 @@ describe('decideUpdateProject', () => {
     });
 
     expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.name).toBe('Garden');
+    if (result.isOk() && result.value.type === 'changed') {
+      expect(result.value.event.name).toBe('Garden');
     }
   });
 
@@ -120,34 +152,6 @@ describe('decideUpdateProject', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('INVALID_PROJECT_NAME');
-    }
-  });
-
-  it('returns PROJECT_NOT_FOUND when the project is missing', () => {
-    const result = decideUpdateProject({
-      command: person(),
-      current: null,
-      existingNames: [],
-      now: '2025-01-15T11:00:00.000Z',
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('PROJECT_NOT_FOUND');
-    }
-  });
-
-  it('returns PROJECT_NOT_FOUND when the project is in another organization', () => {
-    const result = decideUpdateProject({
-      command: person(),
-      current: { ...garden, organizationId: 'org-other' },
-      existingNames: [garden.name],
-      now: '2025-01-15T11:00:00.000Z',
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe('PROJECT_NOT_FOUND');
     }
   });
 });

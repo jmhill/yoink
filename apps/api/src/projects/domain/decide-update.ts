@@ -4,36 +4,31 @@ import type { UpdateProjectCommand } from './project-commands.js';
 import type { ProjectUpdated } from './events.js';
 import {
   duplicateProjectNameError,
-  projectNotFoundError,
   type DuplicateProjectNameError,
   type InvalidProjectNameError,
-  type ProjectNotFoundError,
 } from './project-errors.js';
 import { normalizeProjectName, parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
 
 export type DecideUpdateProjectInput = {
   command: UpdateProjectCommand;
-  current: Project | null;
+  current: Project;
   existingNames: readonly string[];
   now: string;
 };
 
-export type DecideUpdateProjectError =
-  | InvalidProjectNameError
-  | DuplicateProjectNameError
-  | ProjectNotFoundError;
+export type DecideUpdateProjectError = InvalidProjectNameError | DuplicateProjectNameError;
+
+export type DecideUpdateProjectResult =
+  | { type: 'changed'; event: ProjectUpdated }
+  | { type: 'unchanged' };
 
 export const decideUpdateProject = ({
   command,
   current,
   existingNames,
   now,
-}: DecideUpdateProjectInput): Result<ProjectUpdated, DecideUpdateProjectError> => {
-  if (!current || current.organizationId !== command.organizationId) {
-    return err(projectNotFoundError(command.id));
-  }
-
+}: DecideUpdateProjectInput): Result<DecideUpdateProjectResult, DecideUpdateProjectError> => {
   const event: ProjectUpdated = {
     type: 'ProjectUpdated',
     id: current.id,
@@ -48,20 +43,27 @@ export const decideUpdateProject = ({
     }
 
     const name = parsed.value;
-    const others = existingNames.filter(
-      (existing) => normalizeProjectName(existing) !== normalizeProjectName(current.name)
-    );
-    if (projectNameIsTaken(name, others)) {
-      return err(duplicateProjectNameError(name));
+    if (name !== current.name) {
+      const others = existingNames.filter(
+        (existing) => normalizeProjectName(existing) !== normalizeProjectName(current.name)
+      );
+      if (projectNameIsTaken(name, others)) {
+        return err(duplicateProjectNameError(name));
+      }
+      event.name = name;
     }
-
-    event.name = name;
   }
 
   if (command.objective !== undefined) {
     const objective = parseProjectObjective(command.objective);
-    event.objective = objective ?? null;
+    if (objective !== current.objective) {
+      event.objective = objective ?? null;
+    }
   }
 
-  return ok(event);
+  if (event.name === undefined && event.objective === undefined) {
+    return ok({ type: 'unchanged' });
+  }
+
+  return ok({ type: 'changed', event });
 };

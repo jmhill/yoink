@@ -47,21 +47,9 @@ export const decideChangeProjectStatus = ({
     return err(invalidProjectStatusError());
   }
 
-  const waiting = waitingFieldsFor(project, command);
-  if (waiting.isErr()) {
-    return err(waiting.error);
-  }
+  const statusChanging = command.status !== project.status;
 
-  const { waitingOn, waitingSince } = waiting.value;
-  const sameStatus = command.status === project.status;
-  const sameWaiting =
-    (project.waitingOn ?? null) === waitingOn && (project.waitingSince ?? null) === waitingSince;
-
-  if (sameStatus && sameWaiting) {
-    return ok({ type: 'unchanged' });
-  }
-
-  if (command.status === 'done') {
+  if (statusChanging && command.status === 'done') {
     const person = requirePerson(command.actor);
     if (person.isErr()) {
       return err(projectDoneRequiresPersonError());
@@ -71,14 +59,27 @@ export const decideChangeProjectStatus = ({
     }
   }
 
-  if (project.status === 'done' && command.status !== 'done') {
+  if (statusChanging && project.status === 'done') {
     const person = requirePerson(command.actor);
     if (person.isErr()) {
       return err(projectReopenRequiresPersonError());
     }
   }
 
-  if (sameStatus) {
+  const waiting = waitingFieldsFor(project, command);
+  if (waiting.isErr()) {
+    return err(waiting.error);
+  }
+
+  const { waitingOn, waitingSince } = waiting.value;
+  const sameWaiting =
+    (project.waitingOn ?? null) === waitingOn && (project.waitingSince ?? null) === waitingSince;
+
+  if (!statusChanging && sameWaiting) {
+    return ok({ type: 'unchanged' });
+  }
+
+  if (!statusChanging) {
     if (waitingOn === null) {
       return err(projectWaitingOnRequiredError());
     }

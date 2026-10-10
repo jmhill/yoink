@@ -183,6 +183,21 @@ describe('project HTTP routes', () => {
     });
   });
 
+  it('returns VALIDATION_FAILED when the create name is the wrong type', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      cookies: session.cookies,
+      payload: { name: 12 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      message: 'Request validation failed',
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
   it('returns a clear code when the create name is blank', async () => {
     const response = await app.inject({
       method: 'POST',

@@ -261,6 +261,30 @@ describe('decideChangeProjectStatus', () => {
     }
   });
 
+  it('refuses a bot reopening as waiting before checking waiting fields', () => {
+    const missingWho = decideChangeProjectStatus({
+      project: doneGarden,
+      openTaskCount: 0,
+      command: bot({ status: 'waiting' }),
+      now,
+    });
+    expect(missingWho.isErr()).toBe(true);
+    if (missingWho.isErr()) {
+      expect(missingWho.error.type).toBe('PROJECT_REOPEN_REQUIRES_PERSON');
+    }
+
+    const withWho = decideChangeProjectStatus({
+      project: doneGarden,
+      openTaskCount: 0,
+      command: bot({ status: 'waiting', waitingOn: 'Mike' }),
+      now,
+    });
+    expect(withWho.isErr()).toBe(true);
+    if (withWho.isErr()) {
+      expect(withWho.error.type).toBe('PROJECT_REOPEN_REQUIRES_PERSON');
+    }
+  });
+
   it('lets a bot set active, waiting, and someday, and edit waiting', () => {
     const toWaiting = decideChangeProjectStatus({
       project: garden,

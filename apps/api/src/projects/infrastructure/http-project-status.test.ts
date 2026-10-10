@@ -174,6 +174,18 @@ describe('project status HTTP', () => {
       message: 'Reopening a done project requires a person',
       code: 'PROJECT_REOPEN_REQUIRES_PERSON',
     });
+
+    const reopenWaiting = await app.inject({
+      method: 'PUT',
+      url: `/api/projects/${garden.id}/status`,
+      headers: { authorization: `Bearer ${bot.rawToken}` },
+      payload: { status: 'waiting' },
+    });
+    expect(reopenWaiting.statusCode).toBe(403);
+    expect(reopenWaiting.json()).toEqual({
+      message: 'Reopening a done project requires a person',
+      code: 'PROJECT_REOPEN_REQUIRES_PERSON',
+    });
   });
 
   it('lets a bot set waiting and someday', async () => {
@@ -210,6 +222,20 @@ describe('project status HTTP', () => {
     expect(response.json()).toEqual({
       message: 'This project has 2 open tasks',
       code: 'PROJECT_HAS_OPEN_TASKS',
+      openTaskCount: 2,
+    });
+  });
+
+  it('uses the singular when one open task blocks done', async () => {
+    const garden = await createProject('Garden');
+    await createTask({ title: 'Buy soil', projectId: garden.id });
+
+    const response = await changeStatus(garden.id, { status: 'done' });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      message: 'This project has 1 open task',
+      code: 'PROJECT_HAS_OPEN_TASKS',
+      openTaskCount: 1,
     });
   });
 

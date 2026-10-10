@@ -228,8 +228,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'waiting_form_default_today',
         });
-        await alice.setProjectWaitingFromPage({ waitingOn: 'Mike' });
+        await alice.setProjectWaitingFromPage({
+          waitingOn: 'Mike',
+          waitingSince: '2026-09-28',
+        });
         await alice.shouldSeeWaitingSummary('Waiting on Mike');
+        await alice.shouldSeeWaitingSummary('days');
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'waiting_on_days',
@@ -260,6 +264,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
           step: 'done_complete',
         });
 
+        await alice.goToAllProjects();
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'all_projects_statuses',
+        });
+
         await alice.goToProject(cabin.id);
         await alice.openProjectStatusSelect('Done');
         await alice.pageClickDoneOption();
@@ -267,12 +277,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'done_take_out',
-        });
-
-        await alice.goToAllProjects();
-        await alice.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'all_projects_statuses',
         });
 
         const soil = await alice.createTask({ title: 'Mulch' });

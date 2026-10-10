@@ -1,25 +1,24 @@
-import { err, errAsync, ok, okAsync, type Result, type ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
 import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 import type { ChangeProjectStatusCommand } from '../domain/project-commands.js';
 import {
   projectNotFoundError,
-  storageError,
   type ChangeProjectStatusError,
 } from '../domain/project-errors.js';
 import { decideChangeProjectStatus } from '../domain/decide-change-status.js';
 import { planProjectChange } from '../domain/plan-project-change.js';
-import { decideCompleteTask } from '../../tasks/domain/decide-complete.js';
-import { decideUpdateTask } from '../../tasks/domain/decide-update.js';
-import { changeLogIdsForTaskUpdated } from '../../tasks/domain/change-log-records.js';
-import { planTaskChange, type TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
+import { planOpenTasksForProjectDone } from '../domain/plan-open-tasks-for-done.js';
 import type {
   LoadProject,
   PageOpenTasksOnProject,
   PersistProjectStatusChange,
 } from './ports.js';
+import { collectAllOpenTasksOnProject } from './collect-open-tasks-on-project.js';
 
-const OPEN_TASKS_FETCH_LIMIT = 1000;
+export const OPEN_TASKS_FETCH_LIMIT = 1000;
+
+const EMPTY_TASKS: Task[] = [];
 
 export type HandleChangeProjectStatusDeps = {
   load: LoadProject;
@@ -27,6 +26,7 @@ export type HandleChangeProjectStatusDeps = {
   persistStatus: PersistProjectStatusChange;
   nextId: () => string;
   now: () => string;
+  openTasksFetchLimit?: number;
 };
 
 export type ChangeProjectStatusResult = {
@@ -47,18 +47,19 @@ export const handleChangeProjectStatus = (
 
     const openTasks =
       command.status === 'done'
-        ? deps.pageOpenTasksOnProject({
+        ? collectAllOpenTasksOnProject({
+            page: deps.pageOpenTasksOnProject,
             organizationId: command.organizationId,
             projectId: command.id,
-            fetchLimit: OPEN_TASKS_FETCH_LIMIT,
+            fetchLimit: deps.openTasksFetchLimit ?? OPEN_TASKS_FETCH_LIMIT,
           })
-        : okAsync({ rows: [] as Task[], total: 0 });
+        : okAsync(EMPTY_TASKS);
 
-    return openTasks.andThen((page) => {
+    return openTasks.andThen((tasks) => {
       const now = deps.now();
       const decision = decideChangeProjectStatus({
         project: loaded,
-        openTaskCount: page.total,
+        openTaskCount: tasks.length,
         command,
         now,
       });
@@ -83,9 +84,9 @@ export const handleChangeProjectStatus = (
         ids: { recordId: deps.nextId() },
       });
 
-      const taskPlans = taskPlansForOpenTasks({
+      const taskPlans = planOpenTasksForProjectDone({
         choice: command.status === 'done' ? command.openTasks : undefined,
-        tasks: page.rows,
+        tasks,
         command,
         now,
         nextId: deps.nextId,
@@ -101,83 +102,14 @@ export const handleChangeProjectStatus = (
           ...taskPlans.value.flatMap((plan) => plan.records.map((record) => record.kind)),
           ...projectPlan.records.map((record) => record.kind),
         ],
-        completedTaskCount: command.openTasks === 'complete' ? page.rows.length : 0,
-        removedTaskCount: command.openTasks === 'remove' ? page.rows.length : 0,
+        completedTaskCount: countPlansByKind(taskPlans.value, 'TaskCompleted'),
+        removedTaskCount: countPlansByKind(taskPlans.value, 'TaskRemovedFromProject'),
       }));
     });
   });
 };
 
-const taskPlansForOpenTasks = (input: {
-  choice: 'complete' | 'remove' | undefined;
-  tasks: readonly Task[];
-  command: ChangeProjectStatusCommand;
-  now: string;
-  nextId: () => string;
-}): Result<TaskChangePlan[], ChangeProjectStatusError> => {
-  if (input.choice === undefined || input.tasks.length === 0) {
-    return ok([]);
-  }
-
-  const plans: TaskChangePlan[] = [];
-
-  for (const task of input.tasks) {
-    if (input.choice === 'complete') {
-      const decision = decideCompleteTask({
-        current: task,
-        command: {
-          id: task.id,
-          organizationId: input.command.organizationId,
-          actor: input.command.actor,
-        },
-        now: input.now,
-      });
-      if (decision.isErr()) {
-        return err(storageError('Failed to plan task completion', decision.error));
-      }
-      if (decision.value.type === 'Noop') {
-        continue;
-      }
-      plans.push(
-        planTaskChange({
-          event: decision.value,
-          current: task,
-          actor: input.command.actor,
-          ids: { recordId: input.nextId() },
-        })
-      );
-      continue;
-    }
-
-    const decision = decideUpdateTask({
-      current: task,
-      command: {
-        id: task.id,
-        organizationId: input.command.organizationId,
-        projectId: null,
-        actor: input.command.actor,
-      },
-      list: null,
-      project: null,
-      assigneeInOrganization: null,
-      nextOpenOrder: task.openOrder ?? 0,
-      now: input.now,
-    });
-    if (decision.isErr()) {
-      return err(storageError('Failed to plan task removal from project', decision.error));
-    }
-    if (decision.value.type === 'Noop') {
-      continue;
-    }
-    plans.push(
-      planTaskChange({
-        event: decision.value,
-        current: task,
-        actor: input.command.actor,
-        ids: changeLogIdsForTaskUpdated(decision.value, task, input.nextId),
-      })
-    );
-  }
-
-  return ok(plans);
-};
+const countPlansByKind = (
+  plans: readonly { records: readonly { kind: string }[] }[],
+  kind: string
+): number => plans.filter((plan) => plan.records.some((record) => record.kind === kind)).length;

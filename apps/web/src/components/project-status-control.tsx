@@ -224,7 +224,9 @@ export function ProjectStatusControl({
       <Dialog open={doneOpen} onOpenChange={setDoneOpen}>
         <DialogContent data-project-done-confirm="" showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>This project has {openTaskCount} open tasks</DialogTitle>
+            <DialogTitle>
+              This project has {openTaskCount} open task{openTaskCount === 1 ? '' : 's'}
+            </DialogTitle>
             <DialogDescription>
               Complete them, take them out of the project, or cancel.
             </DialogDescription>

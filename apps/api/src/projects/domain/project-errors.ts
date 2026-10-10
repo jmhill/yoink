@@ -74,6 +74,20 @@ export type ProjectHasOpenTasksError = {
   readonly message: string;
 };
 
+export type OpenTasksUnreadError = {
+  readonly type: 'OPEN_TASKS_UNREAD';
+  readonly openTaskCount: number;
+  readonly readCount: number;
+  readonly message: string;
+};
+
+export type OpenTaskPlanFailedError = {
+  readonly type: 'OPEN_TASK_PLAN_FAILED';
+  readonly taskId: string;
+  readonly message: string;
+  readonly cause?: unknown;
+};
+
 export type ListProjectsError = StorageError | InvalidCursorError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
 export type ListOpenTasksOnProjectError =
@@ -102,7 +116,9 @@ export type ChangeProjectStatusError =
   | InvalidWaitingSinceError
   | ProjectDoneRequiresPersonError
   | ProjectReopenRequiresPersonError
-  | ProjectHasOpenTasksError;
+  | ProjectHasOpenTasksError
+  | OpenTasksUnreadError
+  | OpenTaskPlanFailedError;
 
 export const storageError = (message: string, cause?: unknown): StorageError => ({
   type: 'STORAGE_ERROR',
@@ -176,4 +192,24 @@ export const projectHasOpenTasksError = (openTaskCount: number): ProjectHasOpenT
   type: 'PROJECT_HAS_OPEN_TASKS',
   openTaskCount,
   message: `This project has ${openTaskCount} open task${openTaskCount === 1 ? '' : 's'}`,
+});
+
+export const openTasksUnreadError = (
+  openTaskCount: number,
+  readCount: number
+): OpenTasksUnreadError => ({
+  type: 'OPEN_TASKS_UNREAD',
+  openTaskCount,
+  readCount,
+  message: `This project has ${openTaskCount} open task${openTaskCount === 1 ? '' : 's'} and only ${readCount} could be loaded`,
+});
+
+export const openTaskPlanFailedError = (
+  taskId: string,
+  cause?: unknown
+): OpenTaskPlanFailedError => ({
+  type: 'OPEN_TASK_PLAN_FAILED',
+  taskId,
+  message: 'Failed to plan an open-task change for this project',
+  cause,
 });

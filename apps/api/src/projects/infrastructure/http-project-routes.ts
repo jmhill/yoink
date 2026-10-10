@@ -244,11 +244,16 @@ export const registerProjectRoutes = async (
                   body: projectErrorBody(error),
                 };
               case 'PROJECT_HAS_OPEN_TASKS':
+              case 'OPEN_TASKS_UNREAD':
                 return {
                   status: 409 as const,
-                  body: projectErrorBody(error),
+                  body: {
+                    ...projectErrorBody(error),
+                    openTaskCount: error.openTaskCount,
+                  },
                 };
               case 'STORAGE_ERROR':
+              case 'OPEN_TASK_PLAN_FAILED':
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },

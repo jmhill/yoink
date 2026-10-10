@@ -8,7 +8,7 @@ import {
   UpdateProjectSchema,
 } from '../schemas/project.js';
 import { ListPageQuerySchema, ProjectListPageSchema, TaskListPageSchema } from '../schemas/list-page.js';
-import { ErrorSchema } from '../schemas/error.js';
+import { ErrorSchema, ProjectHasOpenTasksErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
 
@@ -105,7 +105,7 @@ export const projectContract = c.router(
         401: ErrorSchema,
         403: ErrorSchema,
         404: ErrorSchema,
-        409: ErrorSchema,
+        409: ProjectHasOpenTasksErrorSchema,
         500: ErrorSchema,
       },
       summary: "Change a project's status, including waiting on / since",

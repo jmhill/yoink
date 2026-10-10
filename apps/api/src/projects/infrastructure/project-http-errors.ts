@@ -37,8 +37,9 @@ const isBlankStringIssue = (issue: ValidationIssue): boolean =>
  * Map ts-rest / Zod request failures on project routes to a clear
  * message and a stable code. Blank name is PROJECT_NAME_BLANK (not
  * INVALID_PROJECT_NAME) so clients can show "Name can't be blank"
- * without parsing the message. Other field problems keep a specific
- * code when we know the field; everything else is VALIDATION_FAILED.
+ * without parsing the message. A wrong-type name is VALIDATION_FAILED.
+ * Other field problems keep a specific code when we know the field;
+ * everything else is VALIDATION_FAILED.
  */
 export const projectRequestValidationError = (
   err: RequestValidationErr
@@ -48,7 +49,7 @@ export const projectRequestValidationError = (
     return { message: 'Request validation failed', code: 'VALIDATION_FAILED' };
   }
 
-  if (issue.path === 'name' && isBlankStringIssue(issue)) {
+  if (issue.path === 'name' && issue.code === 'too_small') {
     return { message: "Name can't be blank", code: 'PROJECT_NAME_BLANK' };
   }
   if (issue.path === 'name' && issue.code === 'too_big') {

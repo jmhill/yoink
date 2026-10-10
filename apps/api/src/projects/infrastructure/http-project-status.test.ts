@@ -105,6 +105,9 @@ describe('project status HTTP', () => {
       headers: bearer,
     });
     const before = first.json<Project>();
+    expect(before.status).toBe('waiting');
+    expect(before.waitingOn).toBe('Mike');
+    expect(before.waitingSince).toBe('2026-10-01');
 
     const again = await changeStatus(garden.id, {
       status: 'waiting',

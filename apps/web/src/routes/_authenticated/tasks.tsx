@@ -253,6 +253,7 @@ function TasksPage() {
   const { data: sessionData } = tsrAuth.session.useQuery({
     queryKey: ['session'],
     queryData: {},
+    refetchInterval: false,
   });
   const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
   const currentUserId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
@@ -261,6 +262,7 @@ function TasksPage() {
     queryKey: ['organization-members', organizationId ?? ''],
     queryData: { params: { organizationId: organizationId ?? '' } },
     enabled: Boolean(organizationId),
+    refetchInterval: false,
   });
   const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
 

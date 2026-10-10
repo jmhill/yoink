@@ -138,7 +138,7 @@ Response:
     },
     {
       "userId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-      "email": "lane@yoink.invalid",
+      "email": "agent-bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb@yoink.invalid",
       "name": "Lane",
       "kind": "agent",
       "role": "member",

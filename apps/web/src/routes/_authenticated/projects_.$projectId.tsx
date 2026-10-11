@@ -408,7 +408,6 @@ function ProjectPage() {
                   >
                     {page.path}
                   </a>
-                  <p className="text-muted-foreground">{page.path}</p>
                 </li>
               ))}
             </ul>

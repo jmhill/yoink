@@ -202,6 +202,7 @@ describe('createStoreBackedPersist', () => {
       waitingOn: null,
       waitingSince: null,
       nextActionTaskId: current.id,
+      notebookPages: [],
       createdAt: current.createdAt,
       lastChangedAt: current.createdAt,
       lastChangedBy: 'user-456',

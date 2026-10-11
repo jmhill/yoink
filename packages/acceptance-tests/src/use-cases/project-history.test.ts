@@ -637,7 +637,7 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(bob.listFinishedTasksOnProject(kitchen.id)).rejects.toThrow();
     });
 
-    it('keeps pre-import task history on the task; project timeline starts at Moved in', async () => {
+    it('keeps earlier task history on the task after a later add-to-project (not the #139 import write path)', async () => {
       const existing = await alice.createTask({ title: 'Existing note' });
       await alice.updateTask(existing.id, { title: 'Existing note edited' });
 

@@ -12,3 +12,20 @@ export const ProjectHasOpenTasksErrorSchema = ErrorSchema.extend({
 });
 
 export type ProjectHasOpenTasksError = z.infer<typeof ProjectHasOpenTasksErrorSchema>;
+
+export const ImportEntryErrorSchema = z.object({
+  index: z.number().int(),
+  name: z.string(),
+  field: z.string(),
+  code: z.string(),
+  message: z.string(),
+});
+
+export type ImportEntryError = z.infer<typeof ImportEntryErrorSchema>;
+
+export const ImportInvalidErrorSchema = ErrorSchema.extend({
+  code: z.literal('IMPORT_INVALID'),
+  errors: z.array(ImportEntryErrorSchema),
+});
+
+export type ImportInvalidError = z.infer<typeof ImportInvalidErrorSchema>;

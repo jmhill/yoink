@@ -66,6 +66,9 @@ const projectPayloadByType = {
     if (event.objective !== undefined) {
       payload.objective = event.objective;
     }
+    if (event.notebookPages !== undefined) {
+      payload.notebookPages = event.notebookPages;
+    }
     return payload;
   },
   ProjectStatusChanged: (

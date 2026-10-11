@@ -9,6 +9,7 @@ export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
   ['lists'],
   ['unlisted'],
   ['projects'],
+  ['project-imports'],
 ];
 
 type TaskListResult = {

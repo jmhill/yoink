@@ -97,18 +97,64 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID"
 
-# Edit name and objective (bots allowed)
+# Edit name, objective, or notebook pages (bots allowed)
 curl -sS -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -X PATCH \
-  -d '{"name":"Backyard","objective":"Plant herbs"}' \
+  -d '{"name":"Backyard","objective":"Plant herbs","notebookPages":["notes/Harbor shed.md"]}' \
   "$API/api/projects/$PROJECT_ID"
 ```
 
 Responses include `status` (`active` on create; later `waiting`, `someday`,
 or `done`), `waitingOn` / `waitingSince` (both `null` unless status is
-waiting), optional `objective`, and `lastChangedAt` / `lastChangedBy`
-(user ids; resolve names from members).
+waiting), optional `objective`, `notebookPages` (`{ path, url }[]`, vault
+`jmhill-personal`), and `lastChangedAt` / `lastChangedBy` (user ids; resolve
+names from members).
+
+## Import projects
+
+Lane (or any bot or person) stages a batch. Staging runs the full
+all-or-nothing checks and stores a pending import. Invalid batches are
+`400 IMPORT_INVALID` with every per-entry, per-field error and store
+nothing. Applying and discarding are person-only (`403
+IMPORT_REQUIRES_PERSON` for bots). Apply re-validates against current
+data; if anything drifted it returns `400 IMPORT_INVALID` and writes
+nothing. Applying or discarding a non-pending import is `409
+IMPORT_NOT_PENDING`.
+
+Task-level records written by the import (`via: "import"`) appear on
+`GET /api/tasks/:id/history` only. The project timeline is one
+`ProjectImported` line: `{who} · Moved in · N tasks` (existing plus new).
+
+```bash
+# Stage (bots and people). The response is the id plus the preview.
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"projects":[{"name":"Harbor shed","status":"active","notebookPages":["notes/Harbor shed (dock).md"],"existingTaskIds":["'"$TASK_ID"'"],"nextAction":{"existingTaskId":"'"$TASK_ID"'"}}]}' \
+  "$API/api/projects/imports"
+
+# List pending
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/projects/imports"
+
+# Read one (recomputes the preview against current data)
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/projects/imports/$IMPORT_ID"
+
+# Apply (person session or that person's own token)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{}' \
+  "$API/api/projects/imports/$IMPORT_ID/apply"
+
+# Discard (person only)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{}' \
+  "$API/api/projects/imports/$IMPORT_ID/discard"
+```
 
 Change status with `PUT /api/projects/:id/status`. Waiting needs a trimmed
 non-blank `waitingOn` and optional `waitingSince` (`YYYY-MM-DD`; omit or
@@ -381,4 +427,15 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation (`400`) |
+| `IMPORT_INVALID` | Staging or apply failed all-or-nothing checks; body includes `errors` (`400`) |
+| `IMPORT_REQUIRES_PERSON` | A bot tried to apply or discard (`403`) |
+| `IMPORT_NOT_FOUND` | No staged import with that id in this org (`404`) |
+| `IMPORT_NOT_PENDING` | Apply or discard on an already applied or discarded import (`409`) |
+| `INVALID_NOTEBOOK_PATH` | A notebook path is blank, absolute, has `..`, has a scheme, or is not `.md` (`400`) |
+| `NOTEBOOK_PAGE_DUPLICATE` | The same notebook path is listed twice on one project (`400`) |
+| `NOTEBOOK_PAGES_TOO_MANY` | More than 20 notebook pages (`400`) |
+| `TASK_LISTED_TWICE` | The same existing task is listed more than once in the import (`400`) |
+| `TASK_ALREADY_IN_PROJECT` | An existing task already belongs to a project (`400`) |
+| `NEXT_ACTION_NOT_IN_ENTRY` | `nextAction` is not one of that entry's tasks (`400`) |
+| `IMPORT_WAITING_FIELDS_NOT_ALLOWED` | `waitingOn` / `waitingSince` sent when status is not waiting (`400`) |
 

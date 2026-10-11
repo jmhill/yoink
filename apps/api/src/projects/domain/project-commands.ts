@@ -13,6 +13,7 @@ export type UpdateProjectCommand = {
   organizationId: string;
   name?: string;
   objective?: string | null;
+  notebookPages?: string[];
   actor: Actor;
 };
 

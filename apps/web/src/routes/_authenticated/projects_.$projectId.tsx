@@ -394,6 +394,27 @@ function ProjectPage() {
           </Button>
         )}
 
+        {project.notebookPages.length > 0 ? (
+          <section data-project-notebook="" className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Notebook
+            </h2>
+            <ul className="space-y-2">
+              {project.notebookPages.map((page, index) => (
+                <li key={page.path} data-project-notebook-page={index} className="text-sm">
+                  <a
+                    href={page.url}
+                    className="font-medium underline underline-offset-2"
+                  >
+                    {page.path}
+                  </a>
+                  <p className="text-muted-foreground">{page.path}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         {waitingParts ? (
           <button
             type="button"

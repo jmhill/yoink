@@ -19,6 +19,16 @@ describe('projectContract', () => {
     expect(projectContract.setNextAction.path).toBe('/api/projects/:id/next-action');
     expect(projectContract.listHistory.method).toBe('GET');
     expect(projectContract.listHistory.path).toBe('/api/projects/:id/history');
+    expect(projectContract.stageImport.method).toBe('POST');
+    expect(projectContract.stageImport.path).toBe('/api/projects/imports');
+    expect(projectContract.listImports.method).toBe('GET');
+    expect(projectContract.listImports.path).toBe('/api/projects/imports');
+    expect(projectContract.getImport.method).toBe('GET');
+    expect(projectContract.getImport.path).toBe('/api/projects/imports/:id');
+    expect(projectContract.applyImport.method).toBe('POST');
+    expect(projectContract.applyImport.path).toBe('/api/projects/imports/:id/apply');
+    expect(projectContract.discardImport.method).toBe('POST');
+    expect(projectContract.discardImport.path).toBe('/api/projects/imports/:id/discard');
   });
 
   it('requires hasMore and an explicit nextCursor on list', () => {

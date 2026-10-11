@@ -442,6 +442,7 @@ describe('AdminService', () => {
         waitingOn: null,
         waitingSince: null,
         nextActionTaskId: null,
+        notebookPages: [],
         createdAt: '2026-10-11T12:00:00.000Z',
         lastChangedAt: '2026-10-11T12:00:00.000Z',
         lastChangedBy: '550e8400-e29b-41d4-a716-446655440002',

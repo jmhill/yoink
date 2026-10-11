@@ -8,7 +8,7 @@ import type {
   ChangeLogStorageError,
   HistoryPageItem,
 } from '../domain/history-page-item.js';
-import { VISIBLE_TIMELINE_SQL } from './sql.js';
+import { PROJECT_TIMELINE_SQL, VISIBLE_TIMELINE_SQL } from './sql.js';
 import type { KeysetCursor } from '../../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../listing/domain/listed-page.js';
 import { pageSqlite } from '../../../listing/infrastructure/page-sqlite.js';
@@ -180,7 +180,7 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
       whereSql: `
         organization_id = ?
           AND project_id = ?
-          AND ${VISIBLE_TIMELINE_SQL}
+          AND ${PROJECT_TIMELINE_SQL}
       `,
       whereArgs: [options.organizationId, options.projectId],
       orderSql: `ORDER BY occurred_at DESC, seq DESC`,

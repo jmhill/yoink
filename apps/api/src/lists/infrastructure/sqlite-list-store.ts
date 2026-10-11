@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
@@ -56,6 +56,26 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
             return row ? rowToNamedList(row) : null;
           }),
         (cause) => storageError('Failed to find named list', cause)
+      );
+    },
+
+    findByIds: (ids: readonly string[]): ResultAsync<NamedList[], StorageError> => {
+      if (ids.length === 0) {
+        return okAsync([]);
+      }
+      const placeholders = ids.map(() => '?').join(', ');
+      return ResultAsync.fromPromise(
+        db
+          .execute({
+            sql: `
+              SELECT id, organization_id, created_by_id, name, created_at
+              FROM lists
+              WHERE id IN (${placeholders})
+            `,
+            args: [...ids],
+          })
+          .then((result) => result.rows.map((row) => rowToNamedList(row as ListRow))),
+        (cause) => storageError('Failed to find named lists', cause)
       );
     },
 

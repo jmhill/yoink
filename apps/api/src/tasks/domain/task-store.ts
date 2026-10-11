@@ -16,6 +16,7 @@ export type FindByOrganizationOptions = {
 
 export type TaskStore = {
   findById(id: string): ResultAsync<Task | null, StorageError>;
+  findByIds(ids: readonly string[]): ResultAsync<Task[], StorageError>;
   findByIdIncludingDeleted(id: string): ResultAsync<Task | null, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions

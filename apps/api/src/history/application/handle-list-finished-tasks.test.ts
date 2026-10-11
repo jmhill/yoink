@@ -15,6 +15,7 @@ const project: Project = {
   waitingOn: null,
   waitingSince: null,
   nextActionTaskId: null,
+  notebookPages: [],
   createdAt: now,
   lastChangedAt: now,
   lastChangedBy: 'user-alice',

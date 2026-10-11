@@ -33,7 +33,11 @@ const projectStatusFromSchema = z.enum(['active', 'waiting', 'someday', 'done', 
 
 export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('Unknown') }),
-  z.object({ kind: z.literal('TaskCreated') }),
+  z.object({
+    kind: z.literal('TaskCreated'),
+    via: z.literal('import').optional(),
+    projectName: z.string().nullable().optional(),
+  }),
   z.object({
     kind: z.literal('TaskUpdated'),
     title: z.string().optional(),
@@ -55,6 +59,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
     kind: z.literal('ProjectUpdated'),
     name: z.string().optional(),
     objective: z.string().nullable().optional(),
+    notebookPages: z.array(z.string()).optional(),
   }),
   z.object({
     kind: z.literal('ProjectStatusChanged'),
@@ -84,6 +89,8 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('TaskAddedToProject'),
     projectId: z.string(),
+    projectName: z.string().nullable().optional(),
+    via: z.literal('import').optional(),
   }),
   z.object({
     kind: z.literal('TaskRemovedFromProject'),

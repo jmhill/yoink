@@ -9,6 +9,7 @@ import {
   requestQuickCaptureFocus,
 } from '@/lib/quick-capture-shortcut';
 import { WhatsNextHost } from '@/components/whats-next-prompt';
+import { PendingImportBanner } from '@/components/pending-import-banner';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
@@ -54,6 +55,7 @@ function AuthenticatedLayout() {
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-48">
+      <PendingImportBanner />
       <Outlet />
       <WhatsNextHost />
       <AppNav />

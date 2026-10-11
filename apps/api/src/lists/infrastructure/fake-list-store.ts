@@ -48,6 +48,14 @@ export const createFakeListStore = (
       }
     },
 
+    findByIds: (ids: readonly string[]): ResultAsync<NamedList[], StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const wanted = new Set(ids);
+      return okAsync(lists.filter((list) => wanted.has(list.id)));
+    },
+
     findById: (id: string): ResultAsync<NamedList | null, StorageError> => {
       if (options.shouldFailOnFind) {
         return errAsync(storageError('Find failed'));

@@ -124,8 +124,17 @@ export const toTimelineEntry = (
     case 'NamedListRenamed':
     case 'NamedListDeleted':
       return null;
-    case 'TaskCreated':
-      return entry(record, lookups, 'TaskCreated', { kind: 'TaskCreated' });
+    case 'TaskCreated': {
+      const projectName =
+        record.payload.via === 'import' && record.payload.projectId
+          ? lookups.subjectOf('project', record.payload.projectId).title
+          : null;
+      return entry(record, lookups, 'TaskCreated', {
+        kind: 'TaskCreated',
+        ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
+        ...(projectName ? { projectName } : {}),
+      });
+    }
     case 'TaskUpdated': {
       const details = taskUpdatedDetails(record.payload);
       return details ? entry(record, lookups, 'TaskUpdated', details) : null;
@@ -150,6 +159,9 @@ export const toTimelineEntry = (
         ...(record.payload.name !== undefined ? { name: record.payload.name } : {}),
         ...(record.payload.objective !== undefined
           ? { objective: record.payload.objective }
+          : {}),
+        ...(record.payload.notebookPages !== undefined
+          ? { notebookPages: record.payload.notebookPages }
           : {}),
       });
     case 'ProjectStatusChanged':
@@ -191,6 +203,8 @@ export const toTimelineEntry = (
       return entry(record, lookups, 'TaskAddedToProject', {
         kind: 'TaskAddedToProject',
         projectId: record.payload.projectId,
+        projectName: lookups.subjectOf('project', record.payload.projectId).title,
+        ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
       });
     case 'TaskRemovedFromProject': {
       const moved =

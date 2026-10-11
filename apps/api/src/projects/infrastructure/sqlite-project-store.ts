@@ -11,7 +11,8 @@ import { parseProjectRow } from './parse-project-row.js';
 
 const PROJECT_COLUMNS = `
   id, organization_id, created_by_id, name, objective, status,
-  waiting_on, waiting_since, next_action_task_id, created_at, last_changed_at, last_changed_by
+  waiting_on, waiting_since, next_action_task_id, notebook_pages,
+  created_at, last_changed_at, last_changed_by
 `;
 
 const validateSchema = async (db: Database): Promise<void> => {

@@ -12,6 +12,7 @@ const garden: Project = {
   waitingOn: null,
   waitingSince: null,
   nextActionTaskId: null,
+  notebookPages: [],
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-456',

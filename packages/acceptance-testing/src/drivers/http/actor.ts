@@ -1,9 +1,13 @@
 import type {
   Actor,
   AnonymousActor,
+  AppliedImport,
   Capture,
+  DiscardedImport,
+  ImportProject,
   NamedList,
   Project,
+  StagedImport,
   Task,
   Token,
   CreateTokenResult,
@@ -21,6 +25,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ImportInvalidError,
   UnsupportedOperationError,
   ConflictError,
   ForbiddenError,
@@ -286,7 +291,7 @@ export const createHttpActor = (
 
     async updateProject(
       id: string,
-      input: { name?: string; objective?: string | null }
+      input: { name?: string; objective?: string | null; notebookPages?: string[] }
     ): Promise<Project> {
       const response = await client.patch(`/api/projects/${id}`, input, authHeaders());
       if (response.statusCode === 401) {
@@ -307,6 +312,118 @@ export const createHttpActor = (
         throw new Error(`Failed to update project: ${response.body}`);
       }
       return response.json<Project>();
+    },
+
+    async stageProjectImport(projects: ImportProject[]) {
+      const response = await client.post('/api/projects/imports', { projects }, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        }>();
+        if (error.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(error.message ?? 'The import batch is invalid', error.errors ?? []);
+        }
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to stage import: ${response.body}`);
+      }
+      return response.json<StagedImport>();
+    },
+
+    async listPendingProjectImports() {
+      const response = await client.get('/api/projects/imports', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list imports: ${response.body}`);
+      }
+      return response.json<{ imports: StagedImport[] }>().imports;
+    },
+
+    async getProjectImport(id: string) {
+      const response = await client.get(`/api/projects/imports/${id}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to get import: ${response.body}`);
+      }
+      return response.json<StagedImport>();
+    },
+
+    async applyProjectImport(id: string) {
+      const response = await client.post(`/api/projects/imports/${id}/apply`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'This import is no longer pending');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        }>();
+        if (error.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(error.message ?? 'The import batch is invalid', error.errors ?? []);
+        }
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to apply import: ${response.body}`);
+      }
+      return response.json<AppliedImport>();
+    },
+
+    async discardProjectImport(id: string) {
+      const response = await client.post(`/api/projects/imports/${id}/discard`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'This import is no longer pending');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to discard import: ${response.body}`);
+      }
+      return response.json<DiscardedImport>();
     },
 
     async changeProjectStatus(
@@ -983,6 +1100,46 @@ export const createHttpActor = (
 
     async goToProject(_projectId: string): Promise<void> {
       throw new UnsupportedOperationError('goToProject', 'http');
+    },
+
+    async goToImportPreview(_importId: string): Promise<void> {
+      throw new UnsupportedOperationError('goToImportPreview', 'http');
+    },
+
+    async reviewPendingImport(): Promise<void> {
+      throw new UnsupportedOperationError('reviewPendingImport', 'http');
+    },
+
+    async shouldSeePendingImportBanner(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePendingImportBanner', 'http');
+    },
+
+    async shouldNotSeePendingImportBanner(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeePendingImportBanner', 'http');
+    },
+
+    async shouldSeeImportPreviewProject(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportPreviewProject', 'http');
+    },
+
+    async shouldSeeImportWarning(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportWarning', 'http');
+    },
+
+    async shouldSeeImportError(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportError', 'http');
+    },
+
+    async applyImportOnPreview(): Promise<void> {
+      throw new UnsupportedOperationError('applyImportOnPreview', 'http');
+    },
+
+    async discardImportOnPreview(): Promise<void> {
+      throw new UnsupportedOperationError('discardImportOnPreview', 'http');
+    },
+
+    async shouldSeeNotebookPage(_path: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotebookPage', 'http');
     },
 
     async openProjectStatusSelect(_visibleOptionName?: string): Promise<void> {

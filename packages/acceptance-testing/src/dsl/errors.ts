@@ -43,6 +43,31 @@ export class ValidationError extends DslError {
   }
 }
 
+export class ImportInvalidError extends ValidationError {
+  readonly code = 'IMPORT_INVALID';
+  readonly errors: ReadonlyArray<{
+    index: number;
+    name: string;
+    field: string;
+    code: string;
+    message: string;
+  }>;
+
+  constructor(
+    message: string,
+    errors: ReadonlyArray<{
+      index: number;
+      name: string;
+      field: string;
+      code: string;
+      message: string;
+    }>
+  ) {
+    super(message);
+    this.errors = errors;
+  }
+}
+
 /**
  * Thrown when an operation is not supported by the current driver.
  */

@@ -3,9 +3,13 @@ import { type Page, expect } from '@playwright/test';
 import type {
   Actor,
   AnonymousActor,
+  AppliedImport,
   Capture,
+  DiscardedImport,
+  ImportProject,
   NamedList,
   Project,
+  StagedImport,
   Task,
   Token,
   CreateTokenResult,
@@ -26,6 +30,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ImportInvalidError,
   ConflictError,
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
@@ -626,7 +631,7 @@ export const createPlaywrightActor = (
 
     async updateProject(
       id: string,
-      input: { name?: string; objective?: string | null }
+      input: { name?: string; objective?: string | null; notebookPages?: string[] }
     ): Promise<Project> {
       const response = await page.request.patch(`/api/projects/${id}`, { data: input });
       if (response.status() === 401) {
@@ -645,6 +650,119 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to update project: ${response.status()}`);
       }
       return (await response.json()) as Project;
+    },
+
+    async stageProjectImport(projects: ImportProject[]) {
+      const response = await page.request.post('/api/projects/imports', { data: { projects } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as {
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        };
+        if (body.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(body.message ?? 'The import batch is invalid', body.errors ?? []);
+        }
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to stage import: ${response.status()}`);
+      }
+      return (await response.json()) as StagedImport;
+    },
+
+    async listPendingProjectImports() {
+      const response = await page.request.get('/api/projects/imports');
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list imports: ${response.status()}`);
+      }
+      const body = (await response.json()) as { imports: StagedImport[] };
+      return body.imports;
+    },
+
+    async getProjectImport(id: string) {
+      const response = await page.request.get(`/api/projects/imports/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to get import: ${response.status()}`);
+      }
+      return (await response.json()) as StagedImport;
+    },
+
+    async applyProjectImport(id: string) {
+      const response = await page.request.post(`/api/projects/imports/${id}/apply`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'This import is no longer pending');
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as {
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        };
+        if (body.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(body.message ?? 'The import batch is invalid', body.errors ?? []);
+        }
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to apply import: ${response.status()}`);
+      }
+      return (await response.json()) as AppliedImport;
+    },
+
+    async discardProjectImport(id: string) {
+      const response = await page.request.post(`/api/projects/imports/${id}/discard`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'This import is no longer pending');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to discard import: ${response.status()}`);
+      }
+      return (await response.json()) as DiscardedImport;
     },
 
     async changeProjectStatus(
@@ -1551,6 +1669,50 @@ export const createPlaywrightActor = (
     async goToProject(projectId: string): Promise<void> {
       await page.goto(`/projects/${projectId}`);
       await projectPage.waitForVisible();
+    },
+
+    async goToImportPreview(importId: string): Promise<void> {
+      await page.goto(`/projects/imports/${importId}`);
+      await expect(page.locator('[data-import-preview], [data-import-errors]')).toBeVisible();
+    },
+
+    async reviewPendingImport(): Promise<void> {
+      await page.locator('[data-import-review]').click();
+      await expect(page.locator('[data-import-preview], [data-import-errors]')).toBeVisible();
+    },
+
+    async shouldSeePendingImportBanner(text: string): Promise<void> {
+      await expect(page.locator('[data-pending-import-banner]')).toContainText(text);
+    },
+
+    async shouldNotSeePendingImportBanner(): Promise<void> {
+      await expect(page.locator('[data-pending-import-banner]')).toHaveCount(0);
+    },
+
+    async shouldSeeImportPreviewProject(name: string): Promise<void> {
+      await expect(page.locator('[data-import-preview-project]').filter({ hasText: name })).toBeVisible();
+    },
+
+    async shouldSeeImportWarning(text: string): Promise<void> {
+      await expect(page.locator('[data-import-warning]').filter({ hasText: text })).toBeVisible();
+    },
+
+    async shouldSeeImportError(text: string): Promise<void> {
+      await expect(page.locator('[data-import-error]').filter({ hasText: text })).toBeVisible();
+    },
+
+    async applyImportOnPreview(): Promise<void> {
+      await page.locator('[data-import-submit]').click();
+      await page.waitForURL(/\/projects$/);
+    },
+
+    async discardImportOnPreview(): Promise<void> {
+      await page.locator('[data-import-discard]').click();
+      await page.waitForURL(/\/projects$/);
+    },
+
+    async shouldSeeNotebookPage(path: string): Promise<void> {
+      await expect(page.locator('[data-project-notebook]')).toContainText(path);
     },
 
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {

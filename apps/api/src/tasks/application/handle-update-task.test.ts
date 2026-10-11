@@ -321,6 +321,7 @@ describe('handleUpdateTask', () => {
       waitingOn: null,
       waitingSince: null,
       nextActionTaskId: null,
+      notebookPages: [],
       createdAt: current.createdAt,
       lastChangedAt: current.createdAt,
       lastChangedBy: current.createdById,

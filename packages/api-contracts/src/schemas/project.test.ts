@@ -15,6 +15,7 @@ const garden = {
   waitingOn: null,
   waitingSince: null,
   nextActionTaskId: null,
+  notebookPages: [],
   createdById: '550e8400-e29b-41d4-a716-446655440002',
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
@@ -88,10 +89,13 @@ describe('CreateProjectSchema', () => {
 });
 
 describe('UpdateProjectSchema', () => {
-  it('accepts name, objective, or both', () => {
+  it('accepts name, objective, notebook pages, or any combination', () => {
     expect(UpdateProjectSchema.safeParse({ name: 'Backyard' }).success).toBe(true);
     expect(UpdateProjectSchema.safeParse({ objective: 'Plant herbs' }).success).toBe(true);
     expect(UpdateProjectSchema.safeParse({ objective: null }).success).toBe(true);
+    expect(
+      UpdateProjectSchema.safeParse({ notebookPages: ['notes/Harbor shed.md'] }).success
+    ).toBe(true);
   });
 
   it('rejects an empty body', () => {

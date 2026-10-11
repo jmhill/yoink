@@ -1,4 +1,9 @@
 import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
+import type {
+  InvalidNotebookPathError,
+  NotebookPageDuplicateError,
+  NotebookPagesTooManyError,
+} from './notebook-pages.js';
 
 export type StorageError = {
   readonly type: 'STORAGE_ERROR';
@@ -137,6 +142,36 @@ export type AssigneeNotInOrganizationError = {
   readonly message: string;
 };
 
+export type ImportEntryError = {
+  readonly index: number;
+  readonly name: string;
+  readonly field: string;
+  readonly code: string;
+  readonly message: string;
+};
+
+export type ImportRequiresPersonError = {
+  readonly type: 'IMPORT_REQUIRES_PERSON';
+  readonly message: string;
+};
+
+export type ImportNotPendingError = {
+  readonly type: 'IMPORT_NOT_PENDING';
+  readonly message: string;
+};
+
+export type ImportNotFoundError = {
+  readonly type: 'IMPORT_NOT_FOUND';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type ImportInvalidError = {
+  readonly type: 'IMPORT_INVALID';
+  readonly message: string;
+  readonly errors: readonly ImportEntryError[];
+};
+
 export type ListProjectsError = StorageError | InvalidCursorError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
 export type ListOpenTasksOnProjectError =
@@ -154,7 +189,25 @@ export type UpdateProjectError =
   | InvalidProjectNameError
   | ProjectNameBlankError
   | DuplicateProjectNameError
-  | ProjectNotFoundError;
+  | ProjectNotFoundError
+  | InvalidNotebookPathError
+  | NotebookPageDuplicateError
+  | NotebookPagesTooManyError;
+export type StageImportError = StorageError | ImportInvalidError;
+export type ListImportsError = StorageError;
+export type GetImportError = StorageError | ImportNotFoundError;
+export type ApplyImportError =
+  | StorageError
+  | ImportNotFoundError
+  | ImportRequiresPersonError
+  | ImportNotPendingError
+  | ImportInvalidError
+  | DuplicateProjectNameError;
+export type DiscardImportError =
+  | StorageError
+  | ImportNotFoundError
+  | ImportRequiresPersonError
+  | ImportNotPendingError;
 export type ChangeProjectStatusError =
   | StorageError
   | ProjectNotFoundError
@@ -332,3 +385,27 @@ export const assigneeNotInOrganizationError = (
   organizationId,
   message: 'Assignee is not a member of this organization',
 });
+
+export const importRequiresPersonError = (): ImportRequiresPersonError => ({
+  type: 'IMPORT_REQUIRES_PERSON',
+  message: 'Applying or discarding an import requires a person',
+});
+
+export const importNotPendingError = (): ImportNotPendingError => ({
+  type: 'IMPORT_NOT_PENDING',
+  message: 'This import is no longer pending',
+});
+
+export const importNotFoundError = (id: string): ImportNotFoundError => ({
+  type: 'IMPORT_NOT_FOUND',
+  id,
+  message: 'Import not found',
+});
+
+export const importInvalidError = (errors: readonly ImportEntryError[]): ImportInvalidError => ({
+  type: 'IMPORT_INVALID',
+  message: 'The import batch is invalid',
+  errors,
+});
+
+export const importEntryError = (input: ImportEntryError): ImportEntryError => input;

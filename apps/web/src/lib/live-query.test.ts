@@ -64,6 +64,7 @@ describe('live query interval', () => {
 
   it('includes projects in the live collection keys', () => {
     expect(LIVE_QUERY_COLLECTION_KEYS).toContainEqual(['projects']);
+    expect(LIVE_QUERY_COLLECTION_KEYS).toContainEqual(['project-imports']);
   });
 
   it('treats named-pile and unlisted caches as live open-task lists', () => {

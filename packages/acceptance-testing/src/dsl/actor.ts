@@ -1,9 +1,13 @@
 import type {
+  AppliedImport,
   Capture,
+  DiscardedImport,
   NamedList,
   Project,
   HistoryPage,
   FinishedTaskPage,
+  ImportProject,
+  StagedImport,
   Task,
   PasskeyCredentialInfo,
   Member,
@@ -60,8 +64,13 @@ export type CoreActor = {
   getProject(id: string): Promise<Project>;
   updateProject(
     id: string,
-    input: { name?: string; objective?: string | null }
+    input: { name?: string; objective?: string | null; notebookPages?: string[] }
   ): Promise<Project>;
+  stageProjectImport(projects: ImportProject[]): Promise<StagedImport>;
+  listPendingProjectImports(): Promise<StagedImport[]>;
+  getProjectImport(id: string): Promise<StagedImport>;
+  applyProjectImport(id: string): Promise<AppliedImport>;
+  discardProjectImport(id: string): Promise<DiscardedImport>;
   changeProjectStatus(
     id: string,
     input: {
@@ -774,6 +783,16 @@ export type BrowserActorOperations = {
    * Open the project page for this id.
    */
   goToProject(projectId: string): Promise<void>;
+  goToImportPreview(importId: string): Promise<void>;
+  reviewPendingImport(): Promise<void>;
+  shouldSeePendingImportBanner(text: string): Promise<void>;
+  shouldNotSeePendingImportBanner(): Promise<void>;
+  shouldSeeImportPreviewProject(name: string): Promise<void>;
+  shouldSeeImportWarning(text: string): Promise<void>;
+  shouldSeeImportError(text: string): Promise<void>;
+  applyImportOnPreview(): Promise<void>;
+  discardImportOnPreview(): Promise<void>;
+  shouldSeeNotebookPage(path: string): Promise<void>;
 
   /**
    * Open the status select on the project page and wait for it to settle.

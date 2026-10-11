@@ -17,6 +17,7 @@ export {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ImportInvalidError,
   UnsupportedOperationError,
   ConflictError,
   CannotDeleteLastPasskeyError,

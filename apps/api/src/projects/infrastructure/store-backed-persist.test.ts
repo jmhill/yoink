@@ -20,6 +20,7 @@ const garden: Project = {
   waitingOn: null,
   waitingSince: null,
   nextActionTaskId: 'task-1',
+  notebookPages: [],
   createdAt: now,
   lastChangedAt: now,
   lastChangedBy: 'user-1',

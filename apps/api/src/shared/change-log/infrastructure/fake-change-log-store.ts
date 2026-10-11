@@ -43,6 +43,16 @@ export const createFakeChangeLogStore = (
         .filter((record) =>
           record.kind === 'TaskUpdated' ? taskUpdatedShowsOnTimeline(record.payload) : true
         )
+        .filter((record) => {
+          if (
+            record.kind === 'TaskCreated' ||
+            record.kind === 'TaskUpdated' ||
+            record.kind === 'TaskAddedToProject'
+          ) {
+            return record.payload.via !== 'import';
+          }
+          return true;
+        })
         .map((record) => ({
           occurredAt: record.occurredAt,
           seq: records.indexOf(record) + 1,

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import type { Project } from '@yoink/api-contracts';
+import { NOTEBOOK_PAGES_MAX } from '@yoink/api-contracts';
 
 type EditProjectDialogProps = {
   open: boolean;
@@ -18,7 +19,7 @@ type EditProjectDialogProps = {
   project: Project;
   isPending: boolean;
   error: string | null;
-  onSave: (input: { name: string; objective: string | null }) => void;
+  onSave: (input: { name: string; objective: string | null; notebookPages: string[] }) => void;
   onClearError: () => void;
 };
 
@@ -33,6 +34,8 @@ export function EditProjectDialog({
 }: EditProjectDialogProps) {
   const [name, setName] = useState(project.name);
   const [objective, setObjective] = useState(project.objective ?? '');
+  const [pages, setPages] = useState(project.notebookPages.map((page) => page.path));
+  const [newPage, setNewPage] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,6 +44,8 @@ export function EditProjectDialog({
     }
     setName(project.name);
     setObjective(project.objective ?? '');
+    setPages(project.notebookPages.map((page) => page.path));
+    setNewPage('');
     setLocalError(null);
   }, [open, project]);
 
@@ -56,6 +61,7 @@ export function EditProjectDialog({
     onSave({
       name: trimmedName,
       objective: objective.trim() === '' ? null : objective.trim(),
+      notebookPages: pages,
     });
   };
 
@@ -96,6 +102,59 @@ export function EditProjectDialog({
               disabled={isPending}
               className="border-input dark:bg-input/30 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Notebook pages</Label>
+            <ul className="space-y-2">
+              {pages.map((path, index) => (
+                <li key={`${path}-${index}`} className="flex items-center gap-2">
+                  <Input
+                    data-notebook-page-input={index}
+                    value={path}
+                    onChange={(event) => {
+                      const next = [...pages];
+                      next[index] = event.target.value;
+                      setPages(next);
+                    }}
+                    disabled={isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPages(pages.filter((_, pageIndex) => pageIndex !== index))}
+                    disabled={isPending}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            {pages.length < NOTEBOOK_PAGES_MAX ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  data-notebook-page-input="new"
+                  value={newPage}
+                  placeholder="notes/Page.md"
+                  onChange={(event) => setNewPage(event.target.value)}
+                  disabled={isPending}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const trimmed = newPage.trim();
+                    if (!trimmed) {
+                      return;
+                    }
+                    setPages([...pages, trimmed]);
+                    setNewPage('');
+                  }}
+                  disabled={isPending}
+                >
+                  Add
+                </Button>
+              </div>
+            ) : null}
           </div>
           {formError ? (
             <p role="alert" data-project-save-error="" className="text-sm text-destructive">

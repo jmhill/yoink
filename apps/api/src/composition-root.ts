@@ -13,9 +13,12 @@ import { createSqliteListPersist } from './lists/infrastructure/store-backed-per
 import { createProjectHandlers } from './projects/application/create-project-handlers.js';
 import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
 import {
+  createSqliteImportDiscard,
+  createSqliteImportPersist,
   createSqliteProjectPersist,
   createSqliteProjectStatusPersist,
 } from './projects/infrastructure/store-backed-persist.js';
+import { createSqliteImportStore } from './projects/infrastructure/sqlite-import-store.js';
 import { storageError } from './projects/domain/project-errors.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
@@ -377,6 +380,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         .orElse(() => okAsync(false)),
   };
   const persistProjectBatch = createSqliteProjectStatusPersist({ db: database });
+  const importStore = createSqliteImportStore(database);
   const projectHandlers = createProjectHandlers({
     persist: createSqliteProjectPersist({ db: database }),
     persistStatus: (input) =>
@@ -384,6 +388,30 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         error.type === 'PROJECT_DONE' ? storageError(error.message) : error
       ),
     persistSetNextAction: persistProjectBatch,
+    persistStage: (record) => importStore.insert(record),
+    persistApply: createSqliteImportPersist({ db: database }),
+    persistDiscard: createSqliteImportDiscard({ db: database }),
+    loadImport: (id) => importStore.findById(id),
+    listPendingImports: (organizationId) => importStore.listPending(organizationId),
+    loadTasksByIds: (ids) => taskStore.findByIds(ids),
+    loadListsByIds: (ids) =>
+      listStore
+        .findByIds(ids)
+        .map((lists) => lists.map((list) => ({ id: list.id, organizationId: list.organizationId }))),
+    loadMemberIds: (organizationId) =>
+      membershipService
+        .listMemberships({ organizationId })
+        .map((memberships) => new Set(memberships.map((membership) => membership.userId)))
+        .mapErr((error) =>
+          storageError(
+            'message' in error && typeof error.message === 'string' ? error.message : error.type
+          )
+        ),
+    loadUserName: (userId) =>
+      userStore
+        .findById(userId)
+        .map((user) => user?.name ?? user?.email ?? 'Unknown')
+        .mapErr((error) => storageError(error.message)),
     list: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
     load: (id) => projectStore.findById(id),

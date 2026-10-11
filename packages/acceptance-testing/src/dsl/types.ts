@@ -70,6 +70,11 @@ export type FinishedTaskPage = {
   total: number;
 };
 
+export type NotebookPage = {
+  path: string;
+  url: string;
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -80,8 +85,90 @@ export type Project = {
   status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
   waitingOn?: string | null;
   waitingSince?: string | null;
+  nextActionTaskId?: string | null;
+  notebookPages?: NotebookPage[];
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
+};
+
+export type ImportNewTask = {
+  key: string;
+  title: string;
+  dueDate?: string;
+  assigneeId?: string;
+  listId?: string;
+};
+
+export type ImportProject = {
+  name: string;
+  objective?: string;
+  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  waitingOn?: string;
+  waitingSince?: string | null;
+  notebookPages?: string[];
+  existingTaskIds?: string[];
+  newTasks?: ImportNewTask[];
+  nextAction?: { existingTaskId: string } | { newTaskKey: string } | null;
+};
+
+export type ImportPreviewWarning = {
+  field: string;
+  code: string;
+  message: string;
+};
+
+export type ImportPreviewProject = {
+  name: string;
+  objective?: string;
+  status: 'active' | 'waiting' | 'someday';
+  waitingOn?: string | null;
+  waitingSince?: string | null;
+  nextActionTitle: string | null;
+  tasks: Array<{ title: string; source: 'existing' | 'new' }>;
+  notebookPages: NotebookPage[];
+  warnings: ImportPreviewWarning[];
+};
+
+export type ImportPreview = {
+  projects: ImportPreviewProject[];
+  totals: {
+    projectCount: number;
+    existingTaskCount: number;
+    newTaskCount: number;
+    projectsWithNoNextAction: number;
+  };
+};
+
+export type StagedImport = {
+  id: string;
+  status: 'pending' | 'applied' | 'discarded';
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  decidedById: string | null;
+  decidedAt: string | null;
+  preview: ImportPreview | null;
+  errors: Array<{
+    index: number;
+    name: string;
+    field: string;
+    code: string;
+    message: string;
+  }>;
+};
+
+export type AppliedImport = {
+  id: string;
+  status: 'applied';
+  preview: ImportPreview;
+  projects: Project[];
+};
+
+export type DiscardedImport = {
+  id: string;
+  status: 'discarded';
+  decidedById: string;
+  decidedAt: string;
 };
 
 export type Task = {

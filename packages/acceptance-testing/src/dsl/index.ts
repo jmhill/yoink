@@ -1,10 +1,15 @@
 // Types
 export type {
+  AppliedImport,
   Capture,
+  DiscardedImport,
   NamedList,
   Project,
   HistoryPage,
   FinishedTaskPage,
+  ImportPreview,
+  ImportProject,
+  StagedImport,
   TimelineEntry,
   Task,
   Organization,
@@ -33,6 +38,7 @@ export {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ImportInvalidError,
   UnsupportedOperationError,
   ConflictError,
   CannotDeleteLastPasskeyError,

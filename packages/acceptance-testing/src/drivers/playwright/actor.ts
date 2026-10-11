@@ -3522,10 +3522,10 @@ export const createPlaywrightActor = (
     },
 
     async pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void> {
-      await page.evaluate((pressed) => {
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: pressed, bubbles: true }));
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: pressed, bubbles: true }));
-      }, key);
+      await page.evaluate(`(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
+      })()`);
     },
 
     async shouldSeeProcessKeyHints(): Promise<void> {

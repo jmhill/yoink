@@ -226,25 +226,6 @@ export const registerAdminRoutes = async (
         );
       },
 
-      updateUser: async ({ params, body }: { params: { id: string }; body: { name: string } }) => {
-        const result = await adminService.updateUser(params.id, body.name);
-        return result.match(
-          (user) => ({
-            status: 200 as const,
-            body: user,
-          }),
-          (error) => {
-            if (error.type === 'USER_NOT_FOUND') {
-              return {
-                status: 404 as const,
-                body: { message: 'User not found' },
-              };
-            }
-            return storageErrorResponse('Failed to update user');
-          }
-        );
-      },
-
       listTokens: async ({ params }: { params: { organizationId: string } }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);

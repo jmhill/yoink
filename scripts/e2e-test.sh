@@ -58,6 +58,9 @@ done
 echo "==> Running acceptance tests (HTTP + Playwright drivers)..."
 TEST_BASE_URL="$TEST_BASE_URL" \
 TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
+TEST_DB_COMPOSE_FILE="$(pwd)/docker-compose.test.yml" \
+TEST_DB_COMPOSE_SERVICE="api" \
+TEST_DB_CONTAINER_PATH="/app/apps/api/data/captures.db" \
 pnpm turbo run test --filter=@yoink/acceptance-tests
 
 echo "==> E2E tests complete!"

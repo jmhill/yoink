@@ -64,11 +64,6 @@ export const CreateUserSchema = z.object({
 });
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 
-export const UpdateUserSchema = z.object({
-  name: z.string().min(1).max(100),
-});
-export type UpdateUser = z.infer<typeof UpdateUserSchema>;
-
 // Invitation schemas (admin can create invitations without being org member)
 // organizationId comes from URL path params, not body
 export const AdminCreateInvitationSchema = z.object({

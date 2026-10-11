@@ -34,7 +34,6 @@ export type Admin = {
   ): Promise<User>;
   listUsers(organizationId: string): Promise<User[]>;
   getUser(id: string): Promise<User>;
-  updateUser(id: string, options: { name: string }): Promise<User>;
 
   // Token management
   createToken(organizationId: string, userId: string, name: string): Promise<CreateTokenResult>;

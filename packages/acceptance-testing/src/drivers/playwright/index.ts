@@ -6,6 +6,7 @@ import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
 import { displayNameFromEmail } from '../../dsl/display-name.js';
+import { setUserDisplayName } from '../../test-db.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
 
 /**
@@ -116,7 +117,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
       
-      // Fill email and device name. Display name is set through admin after signup.
+      // Fill email and device name. Display name is a test-only DB write after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
       await signupPage.enterDeviceName('Test Device');
@@ -184,8 +185,8 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       
       const userId = (sessionResponse as { user: { id: string } }).user.id;
       debug(`Session validated, user: ${userId}`);
-      await admin.updateUser(userId, { name: displayNameFromEmail(email) });
-      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
+      await setUserDisplayName(userId, displayNameFromEmail(email));
+      debug(`Set display name via test DB: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
@@ -243,7 +244,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
 
-      // Fill email and device name. Display name is set through admin after signup.
+      // Fill email and device name. Display name is a test-only DB write after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
       await signupPage.enterDeviceName('Test Device');
@@ -300,8 +301,8 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
       const typedSession = sessionResponse as { user: { id: string }; organizationId: string };
       debug(`Session validated, user: ${typedSession.user.id}, org: ${typedSession.organizationId}`);
-      await admin.updateUser(typedSession.user.id, { name: displayNameFromEmail(email) });
-      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
+      await setUserDisplayName(typedSession.user.id, displayNameFromEmail(email));
+      debug(`Set display name via test DB: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,

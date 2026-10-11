@@ -18,6 +18,7 @@ export const taskCreatedPayloadV1Schema = z.object({
 
 export const taskUpdatedPayloadV1Schema = z.object({
   title: z.string().optional(),
+  /** Optional, backward-compatible addition to v1. Older records lack it. */
   previousTitle: z.string().optional(),
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),

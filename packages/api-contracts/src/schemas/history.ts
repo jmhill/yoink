@@ -37,6 +37,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('TaskUpdated'),
     title: z.string().optional(),
+    /** Optional, backward-compatible addition to v1. Older records lack it. */
     previousTitle: z.string().optional(),
     dueDate: z.string().nullable().optional(),
     assigneeId: z.string().nullable().optional(),

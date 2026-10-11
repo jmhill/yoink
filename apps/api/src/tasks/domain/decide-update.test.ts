@@ -127,6 +127,82 @@ describe('decideUpdateTask', () => {
     }
   });
 
+  it('omits an unchanged title when the due date changes', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        title: current.title,
+        dueDate: '2025-02-01',
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.title).toBeUndefined();
+      expect(result.value.dueDate).toBe('2025-02-01');
+      expect(result.value.assigneeId).toBeUndefined();
+    }
+  });
+
+  it('omits an unchanged due date when the owner changes', () => {
+    const dated: Task = { ...current, dueDate: '2025-01-20' };
+    const result = decideUpdateTask({
+      current: dated,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        dueDate: '2025-01-20',
+        assigneeId: 'user-2',
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: true,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'TaskUpdated') {
+      expect(result.value.dueDate).toBeUndefined();
+      expect(result.value.assigneeId).toBe('user-2');
+      expect(result.value.title).toBeUndefined();
+    }
+  });
+
+  it('is a noop when title, due date, and owner are unchanged', () => {
+    const existing: Task = { ...current, dueDate: '2025-01-20', assigneeId: 'user-2' };
+    const result = decideUpdateTask({
+      current: existing,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        title: existing.title,
+        dueDate: '2025-01-20',
+        assigneeId: 'user-2',
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: true,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'Noop' });
+    }
+  });
+
   it('is a noop when putting the task on the same list again', () => {
     const onGroceries: Task = { ...current, listId: groceries.id };
 

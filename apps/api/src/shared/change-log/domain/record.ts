@@ -52,6 +52,7 @@ export const taskCreatedRecordSchema = z.object({
   payload: taskCreatedPayloadV1Schema,
 });
 
+/** previousTitle on the v1 payload is an optional, backward-compatible addition; older records lack it. */
 export const taskUpdatedRecordSchema = z.object({
   ...envelope,
   kind: z.literal('TaskUpdated'),

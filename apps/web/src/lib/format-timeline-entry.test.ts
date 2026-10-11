@@ -24,6 +24,18 @@ describe('formatTimelineLine', () => {
     expect(line.startsWith("Lane completed 'Call Trident' ·")).toBe(true);
   });
 
+  it('shows older title edits without previousTitle as changed title', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskUpdated',
+          details: { kind: 'TaskUpdated', title: 'Pick paint colour' },
+          subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
+        })
+      )
+    ).toContain("Lane changed title on 'Pick paint colour'");
+  });
+
   it('names a title-only edit as a rename from the payload', () => {
     expect(
       formatTimelineLine(

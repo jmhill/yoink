@@ -1307,7 +1307,7 @@ export const createPlaywrightActor = (
     },
 
     async openRailWork(): Promise<void> {
-      const desktop = await appRail.desktop().isVisible().catch(() => false);
+      const desktop = await appRail.isDesktopSurface();
       await openRailDestination(desktop ? 'Work' : 'Now', async () => {
         await expect(page.locator('[data-now-ready][data-now-owner]')).toBeVisible();
       });
@@ -2896,7 +2896,7 @@ export const createPlaywrightActor = (
     },
 
     async openRailCapture(): Promise<void> {
-      const desktop = await appRail.desktop().isVisible().catch(() => false);
+      const desktop = await appRail.isDesktopSurface();
       await openRailDestination(desktop ? 'Capture' : 'Inbox', async () => {
         await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: 4_000 });
         await inboxPage.waitForCapturesOrEmpty();
@@ -2950,7 +2950,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeRailCaptureHighlighted(): Promise<void> {
-      const desktop = await appRail.desktop().isVisible().catch(() => false);
+      const desktop = await appRail.isDesktopSurface();
       await expect.poll(async () => appRail.isItemActive(desktop ? 'Capture' : 'Inbox')).toBe(true);
     },
 

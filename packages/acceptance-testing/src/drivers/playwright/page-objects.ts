@@ -2260,14 +2260,22 @@ export class AppRail {
     return this.root().locator('[data-rail-heading="task-family"]');
   }
 
+  async isDesktopSurface(): Promise<boolean> {
+    await this.ensureAvailable();
+    return this.desktop().isVisible().catch(() => false);
+  }
+
   async openItem(label: string): Promise<void> {
     const rail = await this.railForInteraction();
+    const desktop = await this.desktop().isVisible().catch(() => false);
+    const resolved =
+      desktop && label === 'Now' ? 'Work' : desktop && label === 'Inbox' ? 'Capture' : label;
     const item =
-      label === 'Now'
+      !desktop && resolved === 'Now'
         ? rail.locator('[data-rail-item="now"]')
-        : rail.locator(`[data-rail-label="${label}"]`);
+        : rail.locator(`[data-rail-label="${resolved}"]`);
     await item.waitFor({ state: 'attached', timeout: 10_000 });
-    if (!(await this.desktop().isVisible().catch(() => false))) {
+    if (!desktop) {
       await this.waitForItemGeometry(item);
     }
     await this.clickRailControl(item);

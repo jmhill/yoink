@@ -403,7 +403,7 @@ export function AppRailPanel({
                   {listsHeading}
                   <div
                     className={cn(
-                      'flex min-w-0 items-start rounded-md',
+                      'flex min-w-0 items-center rounded-md',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -447,7 +447,7 @@ export function AppRailPanel({
                         {listOpenCounts.has(item.listId) ? (
                           <span
                             data-rail-list-count={item.listId}
-                            className="mt-2 shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
+                            className="shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
                           >
                             {listOpenCounts.get(item.listId)}
                           </span>
@@ -497,7 +497,7 @@ export function AppRailPanel({
               <Fragment key={key}>
                 {taskFamilyHeading}
                 {listsHeading}
-                <div className="flex min-w-0 items-start">
+                <div className="flex min-w-0 items-center">
                   <Link
                     to="/tasks"
                     search={railTaskSearch(item)}
@@ -515,7 +515,7 @@ export function AppRailPanel({
                   {item.kind === 'unlisted' && unlistedOpenCount !== undefined ? (
                     <span
                       data-rail-list-count="unlisted"
-                      className="mt-2 shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
+                      className="shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
                     >
                       {unlistedOpenCount}
                     </span>

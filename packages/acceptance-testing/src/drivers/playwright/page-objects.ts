@@ -2240,7 +2240,10 @@ export class AppRail {
 
   async openItem(label: string): Promise<void> {
     const rail = await this.railForInteraction();
-    const item = rail.locator(`[data-rail-label="${label}"]`);
+    const item =
+      label === 'Now'
+        ? rail.locator('[data-rail-item="now"]')
+        : rail.locator(`[data-rail-label="${label}"]`);
     await item.waitFor({ state: 'attached', timeout: 10_000 });
     if (!(await this.desktop().isVisible().catch(() => false))) {
       await this.waitForItemGeometry(item);

@@ -494,11 +494,10 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 
 ## Error codes
 
-Project routes return `{ "message": "…", "code": "…" }`. `code` is
-stable; `message` is for humans. On those routes, request validation
-uses a specific code instead of the generic
-`[ts-rest] request validation failed` text. Other routes may still
-return `{ "message": "…" }` only, or that generic validation text.
+Project, task, and work list routes return `{ "message": "…", "code": "…" }`.
+`code` is stable; `message` is for humans. On those routes, request
+validation uses a specific code instead of the generic
+`[ts-rest] request validation failed` text.
 
 `PROJECT_HAS_OPEN_TASKS` and `OPEN_TASKS_UNREAD` also include
 `openTaskCount`.
@@ -533,7 +532,8 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `IMPORT_DUPLICATE_NAME_IN_BATCH` | Two entries in the same batch share a name (`400`) |
 | `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
-| `VALIDATION_FAILED` | Other project request-body validation (`400`) |
+| `INVALID_TIME_ZONE` | bad timeZone on /api/tasks and /api/work/due (`400`) |
+| `VALIDATION_FAILED` | Other project request-body validation, and task and work list query validation (`400`) |
 | `IMPORT_INVALID` | Staging or apply failed all-or-nothing checks; body includes `errors` (`400`) |
 | `IMPORT_REQUIRES_PERSON` | A bot tried to apply or discard (`403`) |
 | `IMPORT_NOT_FOUND` | No staged import with that id in this org (`404`) |

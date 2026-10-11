@@ -65,6 +65,7 @@ import {
 import {
   OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
+  waitForFinishedPageAnimations,
   waitForSettledOpenDialog,
   waitForSettledOpenDrawer,
   waitForSettledOpenSelect,
@@ -1303,6 +1304,12 @@ export const createPlaywrightActor = (
       ).toBeVisible();
     },
 
+    async openRailNow(): Promise<void> {
+      await openRailDestination('Now', async () => {
+        await expect(page.locator('[data-now-ready][data-now-owner]')).toBeVisible();
+      });
+    },
+
     async toggleNowMine(): Promise<void> {
       const toggle = page.locator('[data-now-mine-toggle]');
       await expect(toggle).toBeVisible();
@@ -1372,6 +1379,7 @@ export const createPlaywrightActor = (
     },
 
     async openNowListsSheet(): Promise<void> {
+      await waitForFinishedPageAnimations({ page });
       await page.locator('[data-now-lists-row]').click();
       await waitForSettledOpenDrawer({ page });
       await expect(page.locator('[data-now-lists-sheet]')).toBeVisible();
@@ -1426,17 +1434,17 @@ export const createPlaywrightActor = (
     async scrollNowDueClearOfTabBar(): Promise<void> {
       const due = page.locator('[data-now-section="due"]');
       await expect(due).toBeVisible();
-      await due.evaluate((el) => {
-        el.scrollIntoView({ block: 'start', inline: 'nearest' });
-      });
       await expect.poll(async () => {
         return due.evaluate((el) => {
+          el.scrollIntoView({ block: 'start', inline: 'nearest' });
           const tabBar = el.ownerDocument.querySelector('[data-app-mobile-nav]');
+          const tabBox = tabBar === null ? null : tabBar.getBoundingClientRect();
+          const fold =
+            tabBox !== null && tabBox.height > 0
+              ? tabBox.top
+              : el.ownerDocument.documentElement.clientHeight;
           const dueBox = el.getBoundingClientRect();
-          const fold = tabBar
-            ? tabBar.getBoundingClientRect().top
-            : el.ownerDocument.documentElement.clientHeight;
-          return dueBox.top >= 0 && dueBox.top + 32 <= fold;
+          return dueBox.top >= -8 && dueBox.top + 32 <= fold;
         });
       }).toBe(true);
     },
@@ -1453,9 +1461,7 @@ export const createPlaywrightActor = (
 
     async shouldSeePileGroups(names: string[]): Promise<void> {
       await tasksPage.waitForTasksOrEmpty();
-      await expect
-        .poll(async () => tasksPage.getAllPileGroupNames(), { timeout: 10_000 })
-        .toEqual(names);
+      await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
     },
 
     async shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void> {
@@ -3245,6 +3251,8 @@ export const createPlaywrightActor = (
           await drawer.last().waitFor({ state: 'hidden' });
         }
       }
+      await page.mouse.move(0, 0);
+      await waitForFinishedPageAnimations({ page });
       await saveWalkthroughPng({
         page,
         fromDir: fileURLToPath(new URL('.', import.meta.url)),

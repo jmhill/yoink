@@ -899,6 +899,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openWork', 'http');
     },
 
+    async openRailNow(): Promise<void> {
+      throw new UnsupportedOperationError('openRailNow', 'http');
+    },
+
     async toggleNowMine(): Promise<void> {
       throw new UnsupportedOperationError('toggleNowMine', 'http');
     },

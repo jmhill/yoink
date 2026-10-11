@@ -532,6 +532,12 @@ export type BrowserActorOperations = {
   openWork(options?: { mine?: boolean }): Promise<void>;
 
   /**
+   * Open Now from the desktop/phone rail (`[data-rail-item="now"]`).
+   * Waits for `[data-now-ready][data-now-owner]`.
+   */
+  openRailNow(): Promise<void>;
+
+  /**
    * Flip the Now Mine toggle and wait until the matching owner is ready.
    */
   toggleNowMine(): Promise<void>;

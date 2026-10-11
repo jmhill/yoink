@@ -360,41 +360,38 @@ export const runWorkStoreContractTests = (options: {
         fetchLimit: 1,
       });
       expect(first.isOk()).toBe(true);
-      if (!first.isOk() || !first.value.rows[0]) {
-        return;
-      }
-      expect(first.value.total).toBe(4);
-      expect(first.value.rows.map((row) => row.task.id)).toEqual([WORK_TASK.alphaNa]);
+      const firstPage = first._unsafeUnwrap();
+      expect(firstPage.rows[0]?.task.id).toBe(WORK_TASK.alphaNa);
+      expect(firstPage.total).toBe(4);
+      expect(firstPage.rows.map((row) => row.task.id)).toEqual([WORK_TASK.alphaNa]);
 
       const second = await store.pageNextActions({
         organizationId: WORK_ORG,
         owner: 'all',
         callerId: WORK_ALICE,
         fetchLimit: 1,
-        seek: workNextActionCursor.of(first.value.rows[0]),
+        seek: workNextActionCursor.of(firstPage.rows[0]!),
       });
       expect(second.isOk()).toBe(true);
-      if (!second.isOk() || !second.value.rows[0]) {
-        return;
-      }
-      expect(second.value.total).toBe(4);
-      expect(second.value.rows.map((row) => row.task.id)).toEqual([WORK_TASK.bravoNa]);
+      const secondPage = second._unsafeUnwrap();
+      expect(secondPage.rows[0]?.task.id).toBe(WORK_TASK.bravoNa);
+      expect(secondPage.total).toBe(4);
+      expect(secondPage.rows.map((row) => row.task.id)).toEqual([WORK_TASK.bravoNa]);
 
       const rest = await store.pageNextActions({
         organizationId: WORK_ORG,
         owner: 'all',
         callerId: WORK_ALICE,
         fetchLimit: 10,
-        seek: workNextActionCursor.of(second.value.rows[0]),
+        seek: workNextActionCursor.of(secondPage.rows[0]!),
       });
       expect(rest.isOk()).toBe(true);
-      if (rest.isOk()) {
-        expect(rest.value.rows.map((row) => row.task.id)).toEqual([
-          WORK_TASK.charlieNa,
-          WORK_TASK.deltaNa,
-        ]);
-        expect(rest.value.total).toBe(4);
-      }
+      const restPage = rest._unsafeUnwrap();
+      expect(restPage.rows.map((row) => row.task.id)).toEqual([
+        WORK_TASK.charlieNa,
+        WORK_TASK.deltaNa,
+      ]);
+      expect(restPage.total).toBe(4);
     });
 
     it('lists named lists with open counts that ignore Mine and include project tasks', async () => {
@@ -403,21 +400,17 @@ export const runWorkStoreContractTests = (options: {
         fetchLimit: 20,
       });
       expect(result.isOk()).toBe(true);
-      if (!result.isOk()) {
-        return;
-      }
-      expect(result.value.rows.map((list) => [list.id, list.name, list.openTaskCount])).toEqual([
+      const listsPage = result._unsafeUnwrap();
+      expect(listsPage.rows.map((list) => [list.id, list.name, list.openTaskCount])).toEqual([
         [WORK_LIST_CHORES, 'Chores', 3],
         [WORK_LIST_EMPTY, 'Empty', 0],
         [WORK_LIST_WEEKEND, 'Weekend', 2],
       ]);
-      expect(result.value.total).toBe(3);
+      expect(listsPage.total).toBe(3);
 
       const unlisted = await store.countUnlistedOpen(WORK_ORG);
       expect(unlisted.isOk()).toBe(true);
-      if (unlisted.isOk()) {
-        expect(unlisted.value).toBe(6);
-      }
+      expect(unlisted._unsafeUnwrap()).toBe(6);
     });
 
     it('pages due one row at a time with a stable total', async () => {
@@ -429,11 +422,10 @@ export const runWorkStoreContractTests = (options: {
         fetchLimit: 1,
       });
       expect(first.isOk()).toBe(true);
-      if (!first.isOk() || !first.value.rows[0]) {
-        return;
-      }
-      expect(first.value.total).toBe(3);
-      expect(first.value.rows.map((task) => task.id)).toEqual([WORK_TASK.aliceLoose]);
+      const firstPage = first._unsafeUnwrap();
+      expect(firstPage.rows[0]).toEqual(expect.objectContaining({ id: WORK_TASK.aliceLoose }));
+      expect(firstPage.total).toBe(3);
+      expect(firstPage.rows.map((task) => task.id)).toEqual([WORK_TASK.aliceLoose]);
 
       const second = await store.pageDue({
         organizationId: WORK_ORG,
@@ -441,14 +433,13 @@ export const runWorkStoreContractTests = (options: {
         callerId: WORK_ALICE,
         today: WORK_TODAY,
         fetchLimit: 1,
-        seek: workDueCursor.of(first.value.rows[0]),
+        seek: workDueCursor.of(firstPage.rows[0]!),
       });
       expect(second.isOk()).toBe(true);
-      if (!second.isOk() || !second.value.rows[0]) {
-        return;
-      }
-      expect(second.value.total).toBe(3);
-      expect(second.value.rows.map((task) => task.id)).toEqual([WORK_TASK.echoNa]);
+      const secondPage = second._unsafeUnwrap();
+      expect(secondPage.rows[0]).toEqual(expect.objectContaining({ id: WORK_TASK.echoNa }));
+      expect(secondPage.total).toBe(3);
+      expect(secondPage.rows.map((task) => task.id)).toEqual([WORK_TASK.echoNa]);
 
       const last = await store.pageDue({
         organizationId: WORK_ORG,
@@ -456,13 +447,12 @@ export const runWorkStoreContractTests = (options: {
         callerId: WORK_ALICE,
         today: WORK_TODAY,
         fetchLimit: 1,
-        seek: workDueCursor.of(second.value.rows[0]),
+        seek: workDueCursor.of(secondPage.rows[0]!),
       });
       expect(last.isOk()).toBe(true);
-      if (last.isOk()) {
-        expect(last.value.rows.map((task) => task.id)).toEqual([WORK_TASK.inProject]);
-        expect(last.value.total).toBe(3);
-      }
+      const lastPage = last._unsafeUnwrap();
+      expect(lastPage.rows.map((task) => task.id)).toEqual([WORK_TASK.inProject]);
+      expect(lastPage.total).toBe(3);
     });
 
     it('pages lists one row at a time with a stable total', async () => {
@@ -471,34 +461,31 @@ export const runWorkStoreContractTests = (options: {
         fetchLimit: 1,
       });
       expect(first.isOk()).toBe(true);
-      if (!first.isOk() || !first.value.rows[0]) {
-        return;
-      }
-      expect(first.value.total).toBe(3);
-      expect(first.value.rows.map((list) => list.id)).toEqual([WORK_LIST_CHORES]);
+      const firstPage = first._unsafeUnwrap();
+      expect(firstPage.rows[0]).toEqual(expect.objectContaining({ id: WORK_LIST_CHORES }));
+      expect(firstPage.total).toBe(3);
+      expect(firstPage.rows.map((list) => list.id)).toEqual([WORK_LIST_CHORES]);
 
       const second = await store.pageLists({
         organizationId: WORK_ORG,
         fetchLimit: 1,
-        seek: workListCursor.of(first.value.rows[0]),
+        seek: workListCursor.of(firstPage.rows[0]!),
       });
       expect(second.isOk()).toBe(true);
-      if (!second.isOk() || !second.value.rows[0]) {
-        return;
-      }
-      expect(second.value.total).toBe(3);
-      expect(second.value.rows.map((list) => list.id)).toEqual([WORK_LIST_EMPTY]);
+      const secondPage = second._unsafeUnwrap();
+      expect(secondPage.rows[0]).toEqual(expect.objectContaining({ id: WORK_LIST_EMPTY }));
+      expect(secondPage.total).toBe(3);
+      expect(secondPage.rows.map((list) => list.id)).toEqual([WORK_LIST_EMPTY]);
 
       const last = await store.pageLists({
         organizationId: WORK_ORG,
         fetchLimit: 1,
-        seek: workListCursor.of(second.value.rows[0]),
+        seek: workListCursor.of(secondPage.rows[0]!),
       });
       expect(last.isOk()).toBe(true);
-      if (last.isOk()) {
-        expect(last.value.rows.map((list) => list.id)).toEqual([WORK_LIST_WEEKEND]);
-        expect(last.value.total).toBe(3);
-      }
+      const lastPage = last._unsafeUnwrap();
+      expect(lastPage.rows.map((list) => list.id)).toEqual([WORK_LIST_WEEKEND]);
+      expect(lastPage.total).toBe(3);
     });
   });
 };

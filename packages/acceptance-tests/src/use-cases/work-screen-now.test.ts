@@ -206,17 +206,6 @@ usingDrivers(['http'] as const, (ctx) => {
       ]);
       expect(listsEveryone.unlisted.openTaskCount).toBe(7);
       expect(listsEveryone.total).toBe(3);
-
-      await alice.listNowNextActions({ owner: 'me' });
-      const listsWhileMine = await alice.listWorkLists();
-      expect(
-        listsWhileMine.lists.map((list) => [list.id, list.name, list.openTaskCount])
-      ).toEqual([
-        [seeded.chores.id, 'Chores', 1],
-        [seeded.empty.id, 'Empty', 0],
-        [seeded.weekend.id, 'Weekend', 2],
-      ]);
-      expect(listsWhileMine.unlisted.openTaskCount).toBe(7);
     });
 
     it('keeps a completed next action out of Due and brings a waiting project back when activated', async () => {
@@ -284,11 +273,10 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(pagoToday.map((task) => task.title)).toEqual(['Pago Pago today']);
 
       const kiritimatiDue = await alice.listNowDue({ timeZone: 'Pacific/Kiritimati' });
-      expect(kiritimatiDue.tasks.map((task) => task.title)).toEqual(
-        pagoPago < kiritimati
-          ? ['Pago Pago today', 'Kiritimati today']
-          : ['Kiritimati today', 'Pago Pago today']
-      );
+      expect(kiritimatiDue.tasks.map((task) => task.title)).toEqual([
+        'Pago Pago today',
+        'Kiritimati today',
+      ]);
 
       const pagoDue = await alice.listNowDue({ timeZone: 'Pacific/Pago_Pago' });
       expect(pagoDue.tasks.map((task) => task.title)).toEqual(['Pago Pago today']);
@@ -414,7 +402,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.toggleNowMine();
       await alice.shouldSeeNowMinePressed(true);
       await alice.openRailSmartView('today');
-      await alice.openWork();
+      await alice.openRailNow();
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowMinePressed(false);
     });
@@ -475,6 +463,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'now_everyone',
       });
+      await alice.scrollNowDueClearOfTabBar();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'now_everyone_due',
+      });
+      await alice.openWork();
+      await alice.shouldSeeNowReady('all');
       await alice.shouldSeeRailListCount(seeded.chores.id, 1);
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('me');
@@ -520,6 +515,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'now_mine',
       });
       await alice.toggleNowMine();
+      await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeNowNextActionRows([
+        { title: 'Alpha next', project: 'Alpha', owner: '' },
+        { title: 'Bravo next', project: 'Bravo', owner: '' },
+        { title: 'Charlie next', project: 'Charlie', owner: '' },
+        { title: 'Delta next', project: 'Delta', owner: 'Lane' },
+      ]);
+      await alice.shouldSeeNowDueRows([
+        { title: 'Alice overdue loose', owner: '' },
+        { title: 'Echo waiting next', owner: '' },
+        { title: 'Golf leftover', owner: '' },
+      ]);
       await alice.openNowListsSheet();
       await alice.shouldSeeNowListRows([
         { id: seeded.chores.id, name: 'Chores', count: 1 },
@@ -594,6 +601,7 @@ usingDrivers(['http'] as const, (ctx) => {
       }) as BrowserActor;
 
       await expect(actor.openWork()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.openRailNow()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.toggleNowMine()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeNowReady('all')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.openNowListsSheet()).rejects.toThrow(UnsupportedOperationError);

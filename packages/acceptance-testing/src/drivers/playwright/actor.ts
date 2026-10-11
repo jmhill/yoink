@@ -1484,6 +1484,10 @@ export const createPlaywrightActor = (
       if (response.status() !== 200) {
         throw new Error(`Failed to set project status: ${response.status()}`);
       }
+      const listbox = page.getByRole('listbox');
+      if ((await listbox.count()) > 0) {
+        await expect(listbox).toBeHidden();
+      }
     },
 
     async setProjectWaitingFromPage(input: {

@@ -35,7 +35,7 @@ describe('shouldListenForProcessKeys', () => {
 });
 
 describe('shouldReleaseProcessKeyLock', () => {
-  it('releases only after the save finishes and the current card changed', () => {
+  it('releases when saving finishes, even if the same card came back after an error', () => {
     expect(
       shouldReleaseProcessKeyLock({
         actionPending: true,
@@ -48,13 +48,6 @@ describe('shouldReleaseProcessKeyLock', () => {
         actionPending: false,
         lockedId: 'first',
         currentId: 'first',
-      })
-    ).toBe(false);
-    expect(
-      shouldReleaseProcessKeyLock({
-        actionPending: false,
-        lockedId: 'first',
-        currentId: 'second',
       })
     ).toBe(true);
   });

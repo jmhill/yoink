@@ -1695,6 +1695,12 @@ export type BrowserActorOperations = {
   pressProcessDeleteWhileTrashHeld(): Promise<void>;
 
   /**
+   * Press Delete against a 500 trash POST, wait for the card to come
+   * back, press Delete again, and assert the second trash POST happens.
+   */
+  pressProcessDeleteAfterTrashError(): Promise<void>;
+
+  /**
    * Assert desktop Process key hints are showing.
    */
   shouldSeeProcessKeyHints(): Promise<void>;

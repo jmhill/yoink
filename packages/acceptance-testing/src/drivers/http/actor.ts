@@ -1959,6 +1959,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('pressProcessDeleteWhileTrashHeld', 'http');
     },
 
+    async pressProcessDeleteAfterTrashError(): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessDeleteAfterTrashError', 'http');
+    },
+
     async shouldSeeProcessKeyHints(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeProcessKeyHints', 'http');
     },

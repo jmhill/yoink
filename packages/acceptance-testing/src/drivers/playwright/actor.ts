@@ -83,6 +83,15 @@ const isProcessToTaskPost = (url: string): boolean =>
 const isProcessToProjectPost = (url: string): boolean =>
   /\/api\/captures\/[^/]+\/process-to-project$/.test(new URL(url).pathname);
 
+const isCaptureTrashPost = (url: URL): boolean => {
+  const path = url.pathname;
+  return (
+    path.startsWith('/api/captures/') &&
+    path.endsWith('/trash') &&
+    !path.includes('/trash/empty')
+  );
+};
+
 /**
  * Playwright evaluate callbacks run in the page, but this package's
  * tsconfig has no DOM lib — read computed style from the element's
@@ -3537,14 +3546,6 @@ export const createPlaywrightActor = (
       const trashGate = new Promise<void>((resolve) => {
         releaseTrash = resolve;
       });
-      const isTrashPost = (url: URL): boolean => {
-        const path = url.pathname;
-        return (
-          path.startsWith('/api/captures/') &&
-          path.endsWith('/trash') &&
-          !path.includes('/trash/empty')
-        );
-      };
       const trashRoute = async (route: {
         request: () => { method: () => string };
         continue: () => Promise<void>;
@@ -3561,7 +3562,7 @@ export const createPlaywrightActor = (
       if (!firstId) {
         throw new Error('Process should show a current capture before Delete');
       }
-      await page.route(isTrashPost, trashRoute);
+      await page.route(isCaptureTrashPost, trashRoute);
       try {
         await page.keyboard.press('Delete');
         await expect(page.locator('[data-process-ready]')).not.toHaveAttribute(
@@ -3570,13 +3571,66 @@ export const createPlaywrightActor = (
         );
         await page.keyboard.press('Delete');
         const settled = page.waitForResponse(
-          (response) => isTrashPost(new URL(response.url())) && response.request().method() === 'POST'
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) && response.request().method() === 'POST'
         );
         releaseTrash();
         await settled;
       } finally {
         releaseTrash();
-        await page.unroute(isTrashPost, trashRoute);
+        await page.unroute(isCaptureTrashPost, trashRoute);
+      }
+    },
+
+    async pressProcessDeleteAfterTrashError(): Promise<void> {
+      let trashPosts = 0;
+      const trashRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+        fulfill: (response: {
+          status: number;
+          contentType: string;
+          body: string;
+        }) => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        trashPosts += 1;
+        if (trashPosts === 1) {
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({ message: 'Failed to trash' }),
+          });
+          return;
+        }
+        await route.continue();
+      };
+
+      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      if (!firstId) {
+        throw new Error('Process should show a current capture before Delete');
+      }
+      await page.route(isCaptureTrashPost, trashRoute);
+      try {
+        await page.keyboard.press('Delete');
+        await expect(page.locator('[data-process-ready]')).toHaveAttribute(
+          'data-process-current',
+          firstId
+        );
+        const second = page.waitForResponse(
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) &&
+            response.request().method() === 'POST' &&
+            response.status() !== 500
+        );
+        await page.keyboard.press('Delete');
+        await second;
+        expect(trashPosts).toBe(2);
+      } finally {
+        await page.unroute(isCaptureTrashPost, trashRoute);
       }
     },
 

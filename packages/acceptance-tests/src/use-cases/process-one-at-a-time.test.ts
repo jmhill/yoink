@@ -288,6 +288,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(trash.map((capture) => capture.content)).toEqual(['First desk']);
     }, 60_000);
 
+    it('retries Delete after trash returns 500', async () => {
+      await alice.createCapture({ content: 'Sticky clip' });
+
+      await alice.useDesktopViewport(DESKTOP);
+      await alice.openProcess();
+      await alice.shouldSeeProcessCurrent('Sticky clip');
+      await alice.pressProcessDeleteAfterTrashError();
+      await alice.shouldSeeProcessEmpty();
+    }, 60_000);
+
     it('keeps all five process actions inside the card on desktop widths', async () => {
       await alice.createCapture({ content: 'Fit the buttons' });
       for (const viewport of [
@@ -542,6 +552,9 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.pressProcessDeleteWhileTrashHeld()).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.pressProcessDeleteAfterTrashError()).rejects.toThrow(
         UnsupportedOperationError
       );
       await expect(actor.shouldSeeProcessActionsFitCard()).rejects.toThrow(UnsupportedOperationError);

@@ -45,7 +45,7 @@ export function shouldReleaseProcessKeyLock(input: {
   lockedId: string | null;
   currentId: string | null;
 }): boolean {
-  return !input.actionPending && input.lockedId !== null && input.currentId !== input.lockedId;
+  return !input.actionPending && input.lockedId !== null;
 }
 
 export function processKeyAction(event: KeyboardEvent): ProcessKeyAction | null {

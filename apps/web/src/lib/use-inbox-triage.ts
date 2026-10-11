@@ -43,11 +43,16 @@ type ProcessCapture = {
   sourceUrl?: string | null;
 };
 
+type InboxTriageOptions = {
+  announceTaskCreated?: boolean;
+};
+
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
  * Optimistic updates and rollback stay on the shared inbox query key.
  */
-export function useInboxTriage() {
+export function useInboxTriage(options: InboxTriageOptions = {}) {
+  const announceTaskCreated = options.announceTaskCreated ?? true;
   const navigate = useNavigate();
   const tsrQueryClient = tsr.useQueryClient();
   const projectsClient = tsrProjects.useQueryClient();
@@ -252,12 +257,14 @@ export function useInboxTriage() {
     },
 
     onSuccess: () => {
-      toast.success('Task created', {
-        action: {
-          label: 'View',
-          onClick: () => navigate({ to: '/tasks' }),
-        },
-      });
+      if (announceTaskCreated) {
+        toast.success('Task created', {
+          action: {
+            label: 'View',
+            onClick: () => navigate({ to: '/tasks' }),
+          },
+        });
+      }
       setTaskModalOpen(false);
       setTaskModalCapture(null);
     },

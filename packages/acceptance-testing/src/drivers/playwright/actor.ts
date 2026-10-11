@@ -3498,7 +3498,9 @@ export const createPlaywrightActor = (
     },
 
     async pickProcessSnooze(option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
-      await page.locator(`[data-process-snooze-option="${option}"]`).click();
+      const item = page.locator(`[data-process-snooze-option="${option}"]`);
+      await expect(item).toBeVisible();
+      await item.click();
     },
 
     async trashProcessCurrent(): Promise<void> {

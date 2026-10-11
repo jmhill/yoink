@@ -86,18 +86,20 @@ export function ProcessItem({
 
   const closeSnoozeMenu = () => {
     onSnoozeOpenChange(false);
-    setSnoozeCoords(null);
   };
 
-  const openSnoozeMenu = () => {
+  useEffect(() => {
+    if (!snoozeOpen) {
+      setSnoozeCoords(null);
+      return;
+    }
     const trigger = snoozeTriggerRef.current?.getBoundingClientRect();
     setSnoozeCoords(
       trigger
         ? captureSnoozeMenuCoords({ trigger, viewport: viewportBox() })
         : { top: 8, left: 8 }
     );
-    onSnoozeOpenChange(true);
-  };
+  }, [snoozeOpen]);
 
   useEffect(() => {
     if (!snoozeOpen) {
@@ -184,7 +186,7 @@ export function ProcessItem({
                 closeSnoozeMenu();
                 return;
               }
-              openSnoozeMenu();
+              onSnoozeOpenChange(true);
             }}
           >
             Snooze

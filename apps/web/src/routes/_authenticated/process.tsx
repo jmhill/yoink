@@ -41,7 +41,7 @@ function ProcessPage() {
     handleConfirmPromote,
     handleOpenProjectSheet,
     handleConfirmProject,
-  } = useInboxTriage();
+  } = useInboxTriage({ announceTaskCreated: false });
   const desktop = useDesktopLayout();
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const previousCurrentId = useRef<string | null>(null);

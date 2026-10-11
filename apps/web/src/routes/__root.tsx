@@ -25,7 +25,7 @@ function RootLayout() {
         </div>
       )}
       <Outlet />
-      <Toaster />
+      <Toaster mobileOffset={{ bottom: 80 }} />
     </>
   );
 }

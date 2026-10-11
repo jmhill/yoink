@@ -1714,8 +1714,10 @@ export const createPlaywrightActor = (
 
     async scrollImportPreviewProject(name: string): Promise<void> {
       const card = page.locator('[data-import-preview-project]').filter({ hasText: name });
-      await card.scrollIntoViewIfNeeded();
       await expect(card).toBeVisible();
+      await card.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
     },
 
     async scrollImportActionsIntoView(): Promise<void> {

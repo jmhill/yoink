@@ -21,7 +21,7 @@ export const migration: Migration = {
               organization_id TEXT NOT NULL REFERENCES organizations(id),
               created_by TEXT NOT NULL REFERENCES users(id),
               created_at TEXT NOT NULL,
-              status TEXT NOT NULL CHECK (status IN ('pending', 'applied', 'discarded')),
+              status TEXT NOT NULL CONSTRAINT project_imports_status CHECK (status IN ('pending', 'applied', 'discarded')),
               payload_json TEXT NOT NULL,
               decided_by TEXT REFERENCES users(id),
               decided_at TEXT

@@ -107,7 +107,7 @@ describe('Migration 34: add_notebook_pages_and_project_imports', () => {
           '{"projects":[]}',
         ],
       })
-    ).rejects.toThrow(/CHECK constraint failed/i);
+    ).rejects.toThrow(/project_imports_status/);
   });
 
   it('indexes pending imports by organization and status', async () => {

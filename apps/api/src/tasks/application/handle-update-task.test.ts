@@ -311,6 +311,58 @@ describe('handleUpdateTask', () => {
     expect(events).toHaveLength(0);
   });
 
+  it('writes TaskAddedToProject with only projectId on a first-time add', async () => {
+    const cabin = {
+      id: 'project-cabin',
+      organizationId: current.organizationId,
+      createdById: current.createdById,
+      name: 'Cabin',
+      status: 'active' as const,
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: null,
+      notebookPages: [],
+      createdAt: current.createdAt,
+      lastChangedAt: current.createdAt,
+      lastChangedBy: current.createdById,
+    };
+    const membership: Array<{ kind: string; payload: unknown }> = [];
+    const persist: PersistTaskChange = (plan) => {
+      for (const record of plan.records) {
+        if (record.kind === 'TaskAddedToProject') {
+          membership.push({ kind: record.kind, payload: record.payload });
+        }
+      }
+      return okAsync(undefined);
+    };
+
+    const result = await handleUpdateTask(
+      {
+        id: current.id,
+        organizationId: current.organizationId,
+        projectId: cabin.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      {
+        load: loadCurrent,
+        loadList: () => okAsync(null),
+        loadProject: () => okAsync(cabin),
+        loadNextOpenOrder: () => okAsync(0),
+        persist,
+        now: () => '2025-01-15T10:00:00.000Z',
+        nextId: () => 'id-1',
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(membership).toEqual([
+      {
+        kind: 'TaskAddedToProject',
+        payload: { projectId: cabin.id },
+      },
+    ]);
+  });
+
   it('clears the next action when the task moves to another project', async () => {
     const cabin = {
       id: 'project-cabin',

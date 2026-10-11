@@ -326,6 +326,60 @@ describe('store-backed import persist', () => {
     expect((await imports.findById('import-1'))._unsafeUnwrap()?.status).toBe('pending');
   });
 
+  it('rolls back projects, tasks, history, and the staged import when the last changeLog.insert fails', async () => {
+    const projects = createFakeProjectStore();
+    const tasks = createFakeTaskStore({ initialTasks: [paint] });
+    const changeLog = createFakeChangeLogStore();
+    const imports = createFakeImportStore([
+      {
+        id: 'import-1',
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        createdAt: now,
+        status: 'pending',
+        projects: batch,
+        decidedById: null,
+        decidedAt: null,
+      },
+    ]);
+
+    const write = writePlan();
+    const recordCount =
+      write.tasks.reduce((sum, plan) => sum + plan.records.length, 0) + write.importRecords.length;
+    expect(recordCount).toBeGreaterThan(1);
+    const originalInsert = changeLog.insert.bind(changeLog);
+    let inserted = 0;
+    changeLog.insert = (record) => {
+      inserted += 1;
+      if (inserted === recordCount) {
+        return errAsync({ type: 'STORAGE_ERROR', message: 'last changeLog.insert failed' });
+      }
+      return originalInsert(record);
+    };
+
+    const persist = createStoreBackedImportPersist({
+      projects,
+      tasks,
+      changeLog,
+      imports,
+    });
+    const result = await persist({
+      write,
+      stagedImportId: 'import-1',
+      decidedById: 'user-1',
+      decidedAt: now,
+    });
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() ? result.error : null).toEqual({
+      type: 'STORAGE_ERROR',
+      message: 'last changeLog.insert failed',
+    });
+    expect((await projects.findByOrganization('org-1'))._unsafeUnwrap()).toEqual([]);
+    expect((await tasks.findById(paint.id))._unsafeUnwrap()?.projectId).toBeUndefined();
+    expect(changeLog.records).toEqual([]);
+    expect((await imports.findById('import-1'))._unsafeUnwrap()?.status).toBe('pending');
+  });
+
   it('writes nothing when the import is already discarded', async () => {
     const projects = createFakeProjectStore();
     const tasks = createFakeTaskStore({ initialTasks: [paint] });

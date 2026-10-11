@@ -71,25 +71,17 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
       organizationId: string
     ): ResultAsync<NamedList[], StorageError> => {
       return ResultAsync.fromPromise(
-        db
-          .execute({
-            sql: `
+        db.execute({
+          sql: `
               SELECT id, organization_id, created_by_id, name, created_at
               FROM lists
               WHERE organization_id = ?
               ORDER BY name ASC, created_at ASC, id ASC
             `,
-            args: [organizationId],
-          })
-          .then((result) => {
-            const parsed = Result.combine(result.rows.map(parseListRow));
-            if (parsed.isErr()) {
-              throw parsed.error;
-            }
-            return parsed.value;
-          }),
+          args: [organizationId],
+        }),
         (cause) => storageError('Failed to list named lists', cause)
-      );
+      ).andThen((result) => Result.combine(result.rows.map(parseListRow)));
     },
 
     pageByOrganization: (options: {
@@ -107,14 +99,13 @@ export const createSqliteListStore = async (db: Database): Promise<ListStore> =>
         direction: namedListDirection,
         fetchLimit: options.fetchLimit,
         seek: options.seek,
-        mapRow: (row) => {
-          const parsed = parseListRow(row);
-          if (parsed.isErr()) {
-            throw parsed.error;
-          }
-          return parsed.value;
-        },
+        mapRow: (row) => row,
         errorMessage: 'Failed to list named lists',
+      }).andThen((page) => {
+        const parsed = Result.combine(page.rows.map(parseListRow));
+        return parsed.isOk()
+          ? okAsync({ rows: parsed.value, total: page.total })
+          : errAsync(parsed.error);
       });
     },
   };

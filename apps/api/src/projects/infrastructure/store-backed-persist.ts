@@ -94,7 +94,7 @@ const persistFailure = (
 
 const importNotPendingAborted = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
-  return /CHECK constraint failed/i.test(message);
+  return message.includes('project_imports_status');
 };
 
 const persistImportFailure = (

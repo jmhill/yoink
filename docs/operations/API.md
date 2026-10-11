@@ -120,7 +120,10 @@ nothing. Applying and discarding are person-only (`403
 IMPORT_REQUIRES_PERSON` for bots). Apply re-validates against current
 data; if anything drifted it returns `400 IMPORT_INVALID` and writes
 nothing. Applying or discarding a non-pending import is `409
-IMPORT_NOT_PENDING`.
+IMPORT_NOT_PENDING`. `GET /api/projects/imports` returns a lightweight
+summary: `preview.projects` is `[]`, `errors` is `[]`, and `preview.totals`
+comes from the stored payload (no re-validate). Use `GET …/imports/:id`
+for the full preview.
 
 Task-level records written by the import (`via: "import"`) appear on
 `GET /api/tasks/:id/history` only. The project timeline is one
@@ -165,7 +168,7 @@ curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
   }' \
   "$API/api/projects/imports"
 
-# List pending
+# List pending — summary only (preview.projects [] and errors []; totals from the payload)
 curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
   "$API/api/projects/imports"
 

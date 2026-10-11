@@ -72,7 +72,7 @@ export function EditProjectDialog({
       <DialogContent data-project-edit-dialog="">
         <DialogHeader>
           <DialogTitle>Edit project</DialogTitle>
-          <DialogDescription>Change the name or objective.</DialogDescription>
+          <DialogDescription>Change the name, objective, or notebook pages.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

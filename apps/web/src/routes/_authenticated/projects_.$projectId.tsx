@@ -324,7 +324,7 @@ function ProjectPage() {
     completeMutation.isPending || updateTaskMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
+    <div className="container mx-auto max-w-2xl p-4 pb-12 md:pb-4">
       <Header />
       <div data-project-page="" className="space-y-4">
         <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
@@ -384,7 +384,7 @@ function ProjectPage() {
             type="button"
             variant="link"
             data-part="objective-empty"
-            className="h-auto px-0 text-muted-foreground"
+            className="flex h-auto w-fit px-0 text-muted-foreground"
             onClick={() => {
               setFormError(null);
               setEditOpen(true);
@@ -494,7 +494,7 @@ function ProjectPage() {
           <Button
             type="button"
             variant="link"
-            className="h-auto px-0 text-muted-foreground"
+            className="flex h-auto w-fit px-0 text-muted-foreground"
             data-set-next-action=""
             data-someday-set-next-action=""
             onClick={() => {

@@ -801,6 +801,7 @@ export type BrowserActorOperations = {
   shouldSeeNotebookHref(path: string, href: string): Promise<void>;
   shouldSeeNotebookPageInputs(paths: string[]): Promise<void>;
   scrollProjectHeadingIntoView(): Promise<void>;
+  scrollProjectHistoryIntoView(): Promise<void>;
 
   /**
    * Open the status select on the project page and wait for it to settle.

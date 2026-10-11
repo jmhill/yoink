@@ -1174,6 +1174,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('scrollProjectHeadingIntoView', 'http');
     },
 
+    async scrollProjectHistoryIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollProjectHistoryIntoView', 'http');
+    },
+
     async openProjectStatusSelect(_visibleOptionName?: string): Promise<void> {
       throw new UnsupportedOperationError('openProjectStatusSelect', 'http');
     },

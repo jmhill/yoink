@@ -1809,6 +1809,31 @@ export const createPlaywrightActor = (
       });
     },
 
+    async scrollProjectHistoryIntoView(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      const section = page.locator('[data-project-history]');
+      await expect(section).toBeVisible();
+      await section.evaluate((el) => {
+        el.scrollIntoView({ block: 'end', inline: 'nearest' });
+        const bar = el.ownerDocument.querySelector('[data-app-mobile-nav]');
+        if (bar === null) {
+          return;
+        }
+        const extra = 8;
+        const overlap = Math.max(
+          0,
+          el.getBoundingClientRect().bottom - bar.getBoundingClientRect().top + extra
+        );
+        if (overlap > 0) {
+          el.ownerDocument.defaultView?.scrollBy(0, overlap);
+        }
+      });
+    },
+
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {
       await projectPage.waitForVisible();
       await projectPage.statusTrigger().click();

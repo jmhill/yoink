@@ -494,7 +494,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
           highlight: false,
         });
         await alice.shouldNotSeeHistoryStart();
-        await alice.scrollProjectHeadingIntoView();
+        if (viewport.name === 'phone') {
+          await alice.scrollProjectHistoryIntoView();
+        } else {
+          await alice.scrollProjectHeadingIntoView();
+        }
         await alice.saveWalkthroughScreenshot({
           story: '139-project-import',
           step: 'imported_project_history',

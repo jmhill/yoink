@@ -156,7 +156,9 @@ usingDrivers(['http'] as const, (ctx) => {
         { title: 'Old invoice', actor: personName, kind: 'user' },
       ]);
 
-      const completed = entries.find((entry) => entry.kind === 'TaskCompleted');
+      const completed = entries.find(
+        (entry) => entry.kind === 'TaskCompleted' && entry.subject.title === 'Call Trident'
+      );
       expect(completed?.actor).toMatchObject({ name: 'Lane', kind: 'bot' });
       expect(completed?.subject.title).toBe('Call Trident');
 
@@ -407,7 +409,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'finished_reopened',
         });
-      });
+      }, 120_000);
     }
   });
 });

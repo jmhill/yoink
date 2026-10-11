@@ -18,6 +18,8 @@ export const CHANGE_LOG_KINDS = [
   'ProjectUpdated',
   'ProjectStatusChanged',
   'ProjectWaitingChanged',
+  'ProjectNextActionSet',
+  'ProjectNextActionCleared',
   'TaskAddedToProject',
   'TaskRemovedFromProject',
 ] as const;

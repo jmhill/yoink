@@ -31,3 +31,14 @@ export type PersistProjectStatusChange = (input: {
   project: ProjectChangePlan;
   tasks: readonly TaskChangePlan[];
 }) => ResultAsync<void, StorageError>;
+
+export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
+
+export type LoadNamedList = (
+  id: string
+) => ResultAsync<{ id: string; organizationId: string } | null, StorageError>;
+
+export type LoadNextOpenOrder = (
+  organizationId: string,
+  listId: string | null
+) => ResultAsync<number, StorageError>;

@@ -88,6 +88,36 @@ export type OpenTaskPlanFailedError = {
   readonly cause?: unknown;
 };
 
+export type TaskNotFoundError = {
+  readonly type: 'TASK_NOT_FOUND';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type TaskNotOpenError = {
+  readonly type: 'TASK_NOT_OPEN';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type TaskNotInProjectError = {
+  readonly type: 'TASK_NOT_IN_PROJECT';
+  readonly taskId: string;
+  readonly projectId: string;
+  readonly message: string;
+};
+
+export type ProjectDoneError = {
+  readonly type: 'PROJECT_DONE';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type TaskTitleBlankError = {
+  readonly type: 'TASK_TITLE_BLANK';
+  readonly message: string;
+};
+
 export type ListProjectsError = StorageError | InvalidCursorError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
 export type ListOpenTasksOnProjectError =
@@ -118,6 +148,15 @@ export type ChangeProjectStatusError =
   | ProjectReopenRequiresPersonError
   | ProjectHasOpenTasksError
   | OpenTasksUnreadError
+  | OpenTaskPlanFailedError;
+export type SetProjectNextActionError =
+  | StorageError
+  | ProjectNotFoundError
+  | TaskNotFoundError
+  | TaskNotOpenError
+  | TaskNotInProjectError
+  | ProjectDoneError
+  | TaskTitleBlankError
   | OpenTaskPlanFailedError;
 
 export const storageError = (message: string, cause?: unknown): StorageError => ({
@@ -212,4 +251,37 @@ export const openTaskPlanFailedError = (
   taskId,
   message: 'Failed to plan an open-task change for this project',
   cause,
+});
+
+export const taskNotFoundError = (id: string): TaskNotFoundError => ({
+  type: 'TASK_NOT_FOUND',
+  id,
+  message: 'Task not found',
+});
+
+export const taskNotOpenError = (id: string): TaskNotOpenError => ({
+  type: 'TASK_NOT_OPEN',
+  id,
+  message: 'Only an open task can be the next action',
+});
+
+export const taskNotInProjectError = (
+  taskId: string,
+  projectId: string
+): TaskNotInProjectError => ({
+  type: 'TASK_NOT_IN_PROJECT',
+  taskId,
+  projectId,
+  message: 'That task is not in this project',
+});
+
+export const projectDoneError = (id: string): ProjectDoneError => ({
+  type: 'PROJECT_DONE',
+  id,
+  message: 'A done project cannot have a next action',
+});
+
+export const taskTitleBlankError = (): TaskTitleBlankError => ({
+  type: 'TASK_TITLE_BLANK',
+  message: "Title can't be blank",
 });

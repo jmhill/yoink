@@ -41,8 +41,35 @@ export type ProjectWaitingChanged = {
   occurredAt: string;
 };
 
+export type ProjectNextActionClearReason =
+  | 'cleared'
+  | 'completed'
+  | 'deleted'
+  | 'removedFromProject'
+  | 'projectDone';
+
+export type ProjectNextActionSet = {
+  type: 'ProjectNextActionSet';
+  id: string;
+  organizationId: string;
+  taskId: string;
+  previousTaskId: string | null;
+  occurredAt: string;
+};
+
+export type ProjectNextActionCleared = {
+  type: 'ProjectNextActionCleared';
+  id: string;
+  organizationId: string;
+  taskId: string;
+  reason: ProjectNextActionClearReason;
+  occurredAt: string;
+};
+
 export type ProjectEvent =
   | ProjectCreated
   | ProjectUpdated
   | ProjectStatusChanged
-  | ProjectWaitingChanged;
+  | ProjectWaitingChanged
+  | ProjectNextActionSet
+  | ProjectNextActionCleared;

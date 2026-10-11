@@ -324,6 +324,13 @@ export function AppRailPanel({
                     <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
                       {item.label}
                     </span>
+                    {item.missingNextAction ? (
+                      <span
+                        data-rail-no-next-action=""
+                        aria-label="No next action"
+                        className="ml-auto mt-1.5 size-1.5 shrink-0 rounded-full bg-warning"
+                      />
+                    ) : null}
                   </Link>
                 </Fragment>
               );

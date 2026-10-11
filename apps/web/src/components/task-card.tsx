@@ -26,6 +26,7 @@ type TaskCardProps = {
   listLabel?: string;
   dragHandle?: SortablePileDragHandle;
   reorderMode?: boolean;
+  emphasis?: 'default' | 'next-action';
 };
 
 export function TaskCard({
@@ -38,6 +39,7 @@ export function TaskCard({
   listLabel,
   dragHandle,
   reorderMode = false,
+  emphasis = 'default',
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const completingEnabled = !isLoading && !reorderMode;
@@ -217,7 +219,11 @@ export function TaskCard({
         <div className="min-w-0 flex-1">
           <p
             data-slot="task-title"
-            className={`break-words leading-6 ${isCompleted ? 'line-through text-muted-foreground' : ''}`}
+            className={cn(
+              'break-words leading-6',
+              emphasis === 'next-action' && 'text-lg font-semibold',
+              isCompleted ? 'line-through text-muted-foreground' : ''
+            )}
           >
             {task.title}
           </p>

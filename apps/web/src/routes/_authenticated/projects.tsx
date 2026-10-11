@@ -4,6 +4,7 @@ import { tsrProjects } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { ErrorState } from '@/components/error-state';
 import { isBlockingQueryFailure } from '@/lib/live-query';
+import { showsNoNextActionWarning } from '@/lib/project-next-action';
 
 export const Route = createFileRoute('/_authenticated/projects')({
   component: ProjectsPage,
@@ -38,7 +39,17 @@ function ProjectsPage() {
               data-project-index-item={project.id}
               className="flex min-w-0 flex-col rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
             >
-              <span className="font-medium">{project.name}</span>
+              <span className="flex items-center gap-2">
+                <span className="font-medium">{project.name}</span>
+                {showsNoNextActionWarning(project) ? (
+                  <span
+                    data-project-no-next-action=""
+                    className="rounded-full border border-warning-border bg-warning-muted px-2 py-0.5 text-[11px] font-semibold text-warning"
+                  >
+                    No next action
+                  </span>
+                ) : null}
+              </span>
               <span
                 className="text-xs capitalize text-muted-foreground"
                 data-project-index-status={project.status}

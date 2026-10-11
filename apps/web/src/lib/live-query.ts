@@ -1,5 +1,5 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
-import type { Task } from '@yoink/api-contracts';
+import type { Project, Task } from '@yoink/api-contracts';
 
 /** Collection prefixes the 10s live poll refreshes. Partial-match so pile keys cancel too. */
 export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
@@ -7,11 +7,22 @@ export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
   ['tasks'],
   ['lists'],
   ['unlisted'],
+  ['projects'],
 ];
 
 type TaskListResult = {
   status: number;
   body: { tasks: Task[]; total?: number };
+};
+
+type ProjectListResult = {
+  status: number;
+  body: { projects: Project[] };
+};
+
+type ProjectGetResult = {
+  status: number;
+  body: Project;
 };
 
 const isTaskListResult = (data: unknown): data is TaskListResult => {
@@ -62,6 +73,78 @@ export const restoreQuerySnapshots = (
   for (const [queryKey, data] of snapshots) {
     queryClient.setQueryData(queryKey, data);
   }
+};
+
+const isProjectListResult = (data: unknown): data is ProjectListResult => {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+  const result = data as { status?: unknown; body?: { projects?: unknown } };
+  return result.status === 200 && Array.isArray(result.body?.projects);
+};
+
+const isProjectGetResult = (data: unknown): data is ProjectGetResult => {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+  const result = data as { status?: unknown; body?: { id?: unknown; nextActionTaskId?: unknown } };
+  return (
+    result.status === 200 &&
+    typeof result.body === 'object' &&
+    result.body !== null &&
+    typeof result.body.id === 'string' &&
+    'nextActionTaskId' in result.body
+  );
+};
+
+export const snapshotLiveProjects = (
+  queryClient: QueryClient
+): ReturnType<QueryClient['getQueriesData']> => queryClient.getQueriesData({ queryKey: ['projects'] });
+
+export const mapLiveProjects = (
+  queryClient: QueryClient,
+  mapProject: (project: Project) => Project
+): void => {
+  const entries = queryClient.getQueriesData({ queryKey: ['projects'] });
+  for (const [queryKey, data] of entries) {
+    if (isProjectListResult(data)) {
+      queryClient.setQueryData(queryKey, {
+        ...data,
+        body: {
+          ...data.body,
+          projects: data.body.projects.map(mapProject),
+        },
+      });
+      continue;
+    }
+    if (isProjectGetResult(data)) {
+      queryClient.setQueryData(queryKey, {
+        ...data,
+        body: mapProject(data.body),
+      });
+    }
+  }
+};
+
+export const projectsWithNextAction = (
+  queryClient: QueryClient,
+  taskId: string
+): Project[] => {
+  const found = new Map<string, Project>();
+  const entries = queryClient.getQueriesData({ queryKey: ['projects'] });
+  for (const [, data] of entries) {
+    const projects = isProjectListResult(data)
+      ? data.body.projects
+      : isProjectGetResult(data)
+        ? [data.body]
+        : [];
+    for (const project of projects) {
+      if (project.nextActionTaskId === taskId) {
+        found.set(project.id, project);
+      }
+    }
+  }
+  return [...found.values()];
 };
 
 export const mapLiveOpenTaskLists = (

@@ -118,4 +118,51 @@ describe('changeLogRecordsFromProjectEvent', () => {
       payload: { waitingOn: 'Trident', waitingSince: null },
     });
   });
+
+  it('writes a visible ProjectNextActionSet replace with previousTaskId', () => {
+    const [record] = changeLogRecordsFromProjectEvent({
+      event: {
+        type: 'ProjectNextActionSet',
+        id: 'project-1',
+        organizationId: 'org-1',
+        taskId: 'task-2',
+        previousTaskId: 'task-1',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      actor: person,
+      ids: { recordId: 'log-5' },
+    });
+
+    expect(record).toMatchObject({
+      kind: 'ProjectNextActionSet',
+      hidden: false,
+      projectId: 'project-1',
+      subjectId: 'project-1',
+      actorUserId: 'user-456',
+      payload: { taskId: 'task-2', previousTaskId: 'task-1' },
+    });
+  });
+
+  it('writes a ProjectNextActionCleared record with who and when', () => {
+    const [record] = changeLogRecordsFromProjectEvent({
+      event: {
+        type: 'ProjectNextActionCleared',
+        id: 'project-1',
+        organizationId: 'org-1',
+        taskId: 'task-1',
+        reason: 'completed',
+        occurredAt: '2025-01-15T11:00:00.000Z',
+      },
+      actor: bot,
+      ids: { recordId: 'log-6' },
+    });
+
+    expect(record).toMatchObject({
+      kind: 'ProjectNextActionCleared',
+      hidden: false,
+      actorUserId: 'user-lane',
+      actorKind: 'bot',
+      payload: { taskId: 'task-1', reason: 'completed' },
+    });
+  });
 });

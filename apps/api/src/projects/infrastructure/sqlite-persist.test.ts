@@ -424,4 +424,235 @@ describe('sqlite project persist', () => {
     expect(herbsLog.map((record) => record.kind)).toEqual(['TaskCreated']);
     expect(projectLog.map((record) => record.kind)).toEqual(['ProjectCreated']);
   });
+
+  it('writes and clears next_action_task_id', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const persistTask = createSqliteTaskPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+    await persistTask(
+      planTaskChange({
+        event: {
+          type: 'TaskCreated',
+          id: 'task-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          title: 'Buy soil',
+          projectId: 'project-1',
+          openOrder: 0,
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-task-1' },
+      })
+    );
+
+    const store = await createSqliteProjectStore(db);
+    const current = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected project');
+    }
+
+    const set = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-1',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current,
+        actor,
+        ids: { recordId: 'log-set' },
+      }),
+      tasks: [],
+    });
+    expect(set.isOk()).toBe(true);
+    const afterSet = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(afterSet?.nextActionTaskId).toBe('task-1');
+
+    if (!afterSet) {
+      throw new Error('expected project after set');
+    }
+    const cleared = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionCleared',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-1',
+          reason: 'cleared',
+          occurredAt: later,
+        },
+        current: afterSet,
+        actor,
+        ids: { recordId: 'log-clear' },
+      }),
+      tasks: [],
+    });
+    expect(cleared.isOk()).toBe(true);
+    expect((await store.findById('project-1'))._unsafeUnwrap()?.nextActionTaskId).toBeNull();
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('project', 'project-1'))._unsafeUnwrap();
+    expect(records.map((record) => record.kind)).toEqual([
+      'ProjectCreated',
+      'ProjectNextActionSet',
+      'ProjectNextActionCleared',
+    ]);
+    expect(records[1]?.actorUserId).toBe('user-1');
+    expect(records[1]?.projectId).toBe('project-1');
+  });
+
+  it('does not change the task or project when the complete+clear batch fails', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistTask = createSqliteTaskPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+    await persistTask(
+      planTaskChange({
+        event: {
+          type: 'TaskCreated',
+          id: 'task-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          title: 'Buy soil',
+          projectId: 'project-1',
+          openOrder: 0,
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-task-1' },
+      })
+    );
+
+    const projectStore = await createSqliteProjectStore(db);
+    const current = (await projectStore.findById('project-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected project');
+    }
+    await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-1',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current,
+        actor,
+        ids: { recordId: 'log-set' },
+      }),
+      tasks: [],
+    });
+
+    await db.execute({
+      sql: `
+        CREATE TRIGGER fail_next_action_log BEFORE INSERT ON change_log
+        BEGIN
+          SELECT RAISE(ABORT, 'history failed');
+        END
+      `,
+    });
+
+    const taskStore = await createSqliteTaskStore(db);
+    const soil = (await taskStore.findById('task-1'))._unsafeUnwrap();
+    expect(soil).not.toBeNull();
+    if (!soil) {
+      throw new Error('expected task');
+    }
+    const withNext = (await projectStore.findById('project-1'))._unsafeUnwrap();
+    expect(withNext?.nextActionTaskId).toBe('task-1');
+
+    const completePlan = planTaskChange({
+      event: {
+        type: 'TaskCompleted',
+        id: 'task-1',
+        organizationId: 'org-1',
+        completedAt: later,
+        occurredAt: later,
+      },
+      current: soil,
+      actor,
+      ids: { recordId: 'log-complete' },
+    });
+    if (!withNext) {
+      throw new Error('expected project with next action');
+    }
+    const clearPlan = planProjectChange({
+      event: {
+        type: 'ProjectNextActionCleared',
+        id: 'project-1',
+        organizationId: 'org-1',
+        taskId: 'task-1',
+        reason: 'completed',
+        occurredAt: later,
+      },
+      current: withNext,
+      actor,
+      ids: { recordId: 'log-clear' },
+    });
+
+    const result = await persistTask(completePlan, { project: clearPlan });
+    expect(result.isErr()).toBe(true);
+
+    const afterProject = (await projectStore.findById('project-1'))._unsafeUnwrap();
+    const afterTask = (await taskStore.findById('task-1'))._unsafeUnwrap();
+    expect(afterProject?.nextActionTaskId).toBe('task-1');
+    expect(afterTask?.completedAt).toBeUndefined();
+
+    await db.execute({ sql: `DROP TRIGGER fail_next_action_log` });
+    const log = createSqliteChangeLogStore(db);
+    const projectLog = (await log.findBySubject('project', 'project-1'))._unsafeUnwrap();
+    expect(projectLog.map((record) => record.kind)).toEqual([
+      'ProjectCreated',
+      'ProjectNextActionSet',
+    ]);
+  });
 });

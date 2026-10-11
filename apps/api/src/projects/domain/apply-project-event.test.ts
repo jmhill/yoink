@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Project } from '@yoink/api-contracts';
 import {
   applyProjectCreated,
+  applyProjectNextActionCleared,
+  applyProjectNextActionSet,
   applyProjectStatusChanged,
   applyProjectUpdated,
   applyProjectWaitingChanged,
@@ -31,6 +33,7 @@ describe('applyProjectCreated', () => {
       status: 'active',
       waitingOn: null,
       waitingSince: null,
+      nextActionTaskId: null,
       createdAt: '2025-01-15T10:00:00.000Z',
       lastChangedAt: '2025-01-15T10:00:00.000Z',
       lastChangedBy: 'user-456',
@@ -54,6 +57,7 @@ describe('applyProjectUpdated', () => {
     status: 'active',
     waitingOn: null,
     waitingSince: null,
+    nextActionTaskId: null,
     createdAt: '2025-01-15T10:00:00.000Z',
     lastChangedAt: '2025-01-15T10:00:00.000Z',
     lastChangedBy: 'user-456',
@@ -107,6 +111,7 @@ describe('applyProjectStatusChanged', () => {
     status: 'active',
     waitingOn: null,
     waitingSince: null,
+    nextActionTaskId: null,
     createdAt: '2025-01-15T10:00:00.000Z',
     lastChangedAt: '2025-01-15T10:00:00.000Z',
     lastChangedBy: 'user-456',
@@ -173,6 +178,7 @@ describe('applyProjectWaitingChanged', () => {
       status: 'waiting',
       waitingOn: 'Mike',
       waitingSince: '2026-09-28',
+      nextActionTaskId: null,
       createdAt: '2025-01-15T10:00:00.000Z',
       lastChangedAt: '2025-01-15T10:00:00.000Z',
       lastChangedBy: 'user-456',
@@ -196,5 +202,72 @@ describe('applyProjectWaitingChanged', () => {
       waitingOn: 'Trident',
       waitingSince: null,
     });
+  });
+});
+
+describe('applyProjectNextActionSet', () => {
+  it('sets the next action and last-changed', () => {
+    const current: Project = {
+      id: 'project-id-1',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      name: 'Garden',
+      status: 'active',
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: null,
+      createdAt: '2025-01-15T10:00:00.000Z',
+      lastChangedAt: '2025-01-15T10:00:00.000Z',
+      lastChangedBy: 'user-456',
+    };
+    expect(
+      applyProjectNextActionSet(
+        current,
+        {
+          type: 'ProjectNextActionSet',
+          id: current.id,
+          organizationId: current.organizationId,
+          taskId: 'task-soil',
+          previousTaskId: null,
+          occurredAt: '2025-01-15T11:00:00.000Z',
+        },
+        meta
+      )
+    ).toMatchObject({
+      nextActionTaskId: 'task-soil',
+      lastChangedAt: '2025-01-15T11:00:00.000Z',
+    });
+  });
+});
+
+describe('applyProjectNextActionCleared', () => {
+  it('clears the next action', () => {
+    const current: Project = {
+      id: 'project-id-1',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      name: 'Garden',
+      status: 'active',
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: 'task-soil',
+      createdAt: '2025-01-15T10:00:00.000Z',
+      lastChangedAt: '2025-01-15T10:00:00.000Z',
+      lastChangedBy: 'user-456',
+    };
+    expect(
+      applyProjectNextActionCleared(
+        current,
+        {
+          type: 'ProjectNextActionCleared',
+          id: current.id,
+          organizationId: current.organizationId,
+          taskId: 'task-soil',
+          reason: 'completed',
+          occurredAt: '2025-01-15T11:00:00.000Z',
+        },
+        meta
+      ).nextActionTaskId
+    ).toBeNull();
   });
 });

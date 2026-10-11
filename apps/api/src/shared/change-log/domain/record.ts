@@ -4,6 +4,8 @@ import {
   namedListDeletedPayloadV1Schema,
   namedListRenamedPayloadV1Schema,
   projectCreatedPayloadV1Schema,
+  projectNextActionClearedPayloadV1Schema,
+  projectNextActionSetPayloadV1Schema,
   projectStatusChangedPayloadV1Schema,
   projectUpdatedPayloadV1Schema,
   projectWaitingChangedPayloadV1Schema,
@@ -154,6 +156,20 @@ export const projectWaitingChangedRecordSchema = z.object({
   payload: projectWaitingChangedPayloadV1Schema,
 });
 
+export const projectNextActionSetRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('ProjectNextActionSet'),
+  ...visibleV1,
+  payload: projectNextActionSetPayloadV1Schema,
+});
+
+export const projectNextActionClearedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('ProjectNextActionCleared'),
+  ...visibleV1,
+  payload: projectNextActionClearedPayloadV1Schema,
+});
+
 export const taskAddedToProjectRecordSchema = z.object({
   ...envelope,
   kind: z.literal('TaskAddedToProject'),
@@ -185,6 +201,8 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   projectUpdatedRecordSchema,
   projectStatusChangedRecordSchema,
   projectWaitingChangedRecordSchema,
+  projectNextActionSetRecordSchema,
+  projectNextActionClearedRecordSchema,
   taskAddedToProjectRecordSchema,
   taskRemovedFromProjectRecordSchema,
 ]);
@@ -207,6 +225,10 @@ export type ProjectUpdatedRecord = z.infer<typeof projectUpdatedRecordSchema>;
 export type ProjectStatusChangedRecord = z.infer<typeof projectStatusChangedRecordSchema>;
 export type ProjectWaitingChangedRecord = z.infer<
   typeof projectWaitingChangedRecordSchema
+>;
+export type ProjectNextActionSetRecord = z.infer<typeof projectNextActionSetRecordSchema>;
+export type ProjectNextActionClearedRecord = z.infer<
+  typeof projectNextActionClearedRecordSchema
 >;
 export type TaskAddedToProjectRecord = z.infer<typeof taskAddedToProjectRecordSchema>;
 export type TaskRemovedFromProjectRecord = z.infer<

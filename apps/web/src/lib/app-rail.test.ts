@@ -177,6 +177,30 @@ describe('RAIL_LABEL_WRAP_CLASS', () => {
   });
 });
 
+describe('next-action rail marker', () => {
+  it('flags active and waiting projects that have no next action', () => {
+    const gardenId = '00000000-0000-0000-0000-000000000030';
+    const cabinId = '00000000-0000-0000-0000-000000000031';
+    const items = buildAppRailItems({
+      inboxCount: 0,
+      namedLists: [],
+      projects: [
+        { id: gardenId, name: 'Garden', status: 'active', nextActionTaskId: null },
+        {
+          id: cabinId,
+          name: 'Cabin',
+          status: 'waiting',
+          nextActionTaskId: '00000000-0000-0000-0000-000000000099',
+        },
+      ],
+    });
+    const garden = items.find((item) => item.kind === 'project' && item.label === 'Garden');
+    const cabin = items.find((item) => item.kind === 'project' && item.label === 'Cabin');
+    expect(garden).toMatchObject({ missingNextAction: true });
+    expect(cabin).toMatchObject({ missingNextAction: false });
+  });
+});
+
 describe('partitionRailProjects', () => {
   it('lists active and waiting, and parks someday separately', () => {
     const cabinId = '00000000-0000-0000-0000-000000000021';

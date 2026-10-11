@@ -2,8 +2,9 @@ import type { ReactNode } from 'react';
 
 type PlaceHeadingProps = {
   title: string;
-  subcopy: string;
-  subcopyTestId: string;
+  subcopy?: string;
+  subcopyTestId?: string;
+  meta?: ReactNode;
   action?: ReactNode;
 };
 
@@ -16,6 +17,7 @@ export function PlaceHeading({
   title,
   subcopy,
   subcopyTestId,
+  meta,
   action,
 }: PlaceHeadingProps) {
   return (
@@ -27,9 +29,12 @@ export function PlaceHeading({
         >
           {title}
         </h1>
-        <p data-testid={subcopyTestId} className="mt-1 text-muted-foreground">
-          {subcopy}
-        </p>
+        {meta}
+        {subcopy !== undefined && subcopyTestId !== undefined ? (
+          <p data-testid={subcopyTestId} className="mt-1 text-muted-foreground">
+            {subcopy}
+          </p>
+        ) : null}
       </div>
       {action}
     </div>

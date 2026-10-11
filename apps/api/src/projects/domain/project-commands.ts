@@ -25,3 +25,10 @@ export type ChangeProjectStatusCommand = {
   openTasks?: 'complete' | 'remove';
   actor: Actor;
 };
+
+export type SetProjectNextActionCommand = {
+  id: string;
+  organizationId: string;
+  taskId: string | null;
+  actor: Actor;
+};

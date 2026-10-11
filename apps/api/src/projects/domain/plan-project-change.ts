@@ -3,6 +3,8 @@ import type { Actor } from '../../shared/auth-context.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import {
   applyProjectCreated,
+  applyProjectNextActionCleared,
+  applyProjectNextActionSet,
   applyProjectStatusChanged,
   applyProjectUpdated,
   applyProjectWaitingChanged,
@@ -13,6 +15,8 @@ import {
 } from './change-log-records.js';
 import type {
   ProjectCreated,
+  ProjectNextActionCleared,
+  ProjectNextActionSet,
   ProjectStatusChanged,
   ProjectUpdated,
   ProjectWaitingChanged,
@@ -31,7 +35,12 @@ export type ProjectChangePlanInput =
       current: null;
     } & ProjectPlanBase
   | {
-      event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged;
+      event:
+        | ProjectUpdated
+        | ProjectStatusChanged
+        | ProjectWaitingChanged
+        | ProjectNextActionSet
+        | ProjectNextActionCleared;
       current: Project;
     } & ProjectPlanBase;
 
@@ -58,7 +67,17 @@ export function planProjectChange(
   input: Extract<ProjectChangePlanInput, { event: ProjectCreated }>
 ): Extract<ProjectChangePlan, { action: 'insert' }>;
 export function planProjectChange(
-  input: Extract<ProjectChangePlanInput, { event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged }>
+  input: Extract<
+    ProjectChangePlanInput,
+    {
+      event:
+        | ProjectUpdated
+        | ProjectStatusChanged
+        | ProjectWaitingChanged
+        | ProjectNextActionSet
+        | ProjectNextActionCleared;
+    }
+  >
 ): Extract<ProjectChangePlan, { action: 'update' }>;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan {
@@ -82,18 +101,17 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
     };
   }
 
+  const applyMeta = { actorUserId: input.actor.userId };
   const view =
     input.event.type === 'ProjectUpdated'
-      ? applyProjectUpdated(input.current, input.event, {
-          actorUserId: input.actor.userId,
-        })
+      ? applyProjectUpdated(input.current, input.event, applyMeta)
       : input.event.type === 'ProjectStatusChanged'
-        ? applyProjectStatusChanged(input.current, input.event, {
-            actorUserId: input.actor.userId,
-          })
-        : applyProjectWaitingChanged(input.current, input.event, {
-            actorUserId: input.actor.userId,
-          });
+        ? applyProjectStatusChanged(input.current, input.event, applyMeta)
+        : input.event.type === 'ProjectWaitingChanged'
+          ? applyProjectWaitingChanged(input.current, input.event, applyMeta)
+          : input.event.type === 'ProjectNextActionSet'
+            ? applyProjectNextActionSet(input.current, input.event, applyMeta)
+            : applyProjectNextActionCleared(input.current, input.event, applyMeta);
 
   return {
     action: 'update',
@@ -103,3 +121,14 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
     records,
   };
 }
+
+export const mergeProjectUpdatePlans = (
+  first: Extract<ProjectChangePlan, { action: 'update' }>,
+  second: Extract<ProjectChangePlan, { action: 'update' }>
+): Extract<ProjectChangePlan, { action: 'update' }> => ({
+  action: 'update',
+  organizationId: second.organizationId,
+  projectId: second.projectId,
+  view: second.view,
+  records: [...first.records, ...second.records],
+});

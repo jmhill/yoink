@@ -262,6 +262,50 @@ export const registerProjectRoutes = async (
           }
         );
       },
+
+      setNextAction: async ({ params, body, request }) => {
+        const result = await projectHandlers.setNextAction({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          taskId: 'taskId' in body ? body.taskId : null,
+          newTask: 'newTask' in body ? body.newTask : undefined,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          ({ view, task }) => ({
+            status: 200 as const,
+            body: {
+              project: view,
+              ...(task ? { task: { id: task.id, title: task.title } } : {}),
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'TASK_NOT_OPEN':
+              case 'TASK_NOT_IN_PROJECT':
+              case 'PROJECT_DONE':
+              case 'TASK_TITLE_BLANK':
+                return {
+                  status: 400 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+              case 'OPEN_TASK_PLAN_FAILED':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(projectContract, projectRouter, authedApp, {

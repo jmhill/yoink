@@ -162,7 +162,37 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 # Open tasks, newest created first
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID/tasks"
+
+# Set, replace, or clear the next action (bots allowed)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"taskId":"'"$TASK_ID"'"}' \
+  "$API/api/projects/$PROJECT_ID/next-action"
+
+# Create a task in this project and make it the next action
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"newTask":{"title":"Pick the countertop"}}' \
+  "$API/api/projects/$PROJECT_ID/next-action"
+
+# Clear
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X PUT \
+  -d '{"taskId":null}' \
+  "$API/api/projects/$PROJECT_ID/next-action"
 ```
+
+`PUT /api/projects/:id/next-action` is one route for set, replace, clear, and
+create-and-set. Clearing is a state update (`nextActionTaskId` becomes `null`),
+not a resource delete, so it stays on PUT with `{ "taskId": null }` rather than
+a separate DELETE. The response is `{ "project", "task"? }`. A project has at
+most one next action; setting another replaces it in one
+`ProjectNextActionSet` record (`previousTaskId` is the one it replaced).
+Setting the same task again, or clearing when there is none, is a no-op
+(200, no record). GET project includes `nextActionTaskId`.
 
 ## History: loop while `hasMore` is true
 
@@ -286,5 +316,10 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `PROJECT_HAS_OPEN_TASKS` | Marking done with open tasks and no `openTasks` choice (`409`) |
 | `OPEN_TASKS_UNREAD` | Marking done could not load every open task (`409`) |
 | `invalid_cursor` | Project list cursor is malformed, wrong view, or wrong shape (`400`) |
+| `TASK_NOT_OPEN` | Next action is a finished task (`400`) |
+| `TASK_NOT_IN_PROJECT` | Next-action task is not in this project (`400`) |
+| `TASK_NOT_FOUND` | Next-action task is missing, deleted, or in another org (`404`) |
+| `PROJECT_DONE` | Setting a next action on a done project (`400`) |
+| `TASK_TITLE_BLANK` | New-task title is blank after trim (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation (`400`) |
 

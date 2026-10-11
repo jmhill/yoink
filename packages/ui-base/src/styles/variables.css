@@ -54,6 +54,11 @@
      * not a cream hex that only works in light mode.
      */
     --inbox-surface: color-mix(in oklch, var(--background) 40%, var(--muted) 60%);
+    /* Warning (waiting chip, no-next-action card). Amber, not destructive. */
+    --warning: oklch(0.55 0.15 70);
+    --warning-foreground: oklch(0.4 0.12 55);
+    --warning-muted: oklch(0.98 0.03 90);
+    --warning-border: oklch(0.84 0.1 80);
     /* Swipe action colors (default light theme) */
     --swipe-trash: #16a34a;
     --swipe-snooze: #d97706;
@@ -94,6 +99,10 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
     --inbox-surface: color-mix(in oklch, var(--background) 40%, var(--muted) 60%);
+    --warning: oklch(0.82 0.14 80);
+    --warning-foreground: oklch(0.88 0.1 85);
+    --warning-muted: oklch(0.28 0.05 75);
+    --warning-border: oklch(0.55 0.1 80);
     /* Swipe action colors (default dark theme) */
     --swipe-trash: #22c55e;
     --swipe-snooze: #f59e0b;
@@ -145,6 +154,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-inbox-surface: var(--inbox-surface);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-warning-border: var(--warning-border);
 }
 
 /* ============================================
@@ -191,6 +204,10 @@
   --sidebar-border: #b4b5bd;
   --sidebar-ring: #2959aa;
   --inbox-surface: color-mix(in oklch, var(--background) 40%, var(--muted) 60%);
+  --warning: #8f5e15;
+  --warning-foreground: #6b430c;
+  --warning-muted: #f3e6c8;
+  --warning-border: #d4a54a;
   /* Swipe action colors */
   --swipe-trash: #385f0d;
   --swipe-snooze: #8f5e15;
@@ -232,6 +249,10 @@
   --sidebar-border: #414868;
   --sidebar-ring: #7aa2f7;
   --inbox-surface: color-mix(in oklch, var(--background) 40%, var(--muted) 60%);
+  --warning: #e0af68;
+  --warning-foreground: #e0af68;
+  --warning-muted: #2a2416;
+  --warning-border: #8f5e15;
   /* Swipe action colors */
   --swipe-trash: #9ece6a;
   --swipe-snooze: #e0af68;

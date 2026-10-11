@@ -157,6 +157,24 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         hidden: hiddenFor('ProjectWaitingChanged'),
         payload: { waitingOn: 'Trident', waitingSince: null },
       };
+    case 'ProjectNextActionSet':
+      return {
+        ...base,
+        subjectType: 'project',
+        projectId: 'subject-1',
+        kind,
+        hidden: hiddenFor('ProjectNextActionSet'),
+        payload: { taskId: 'task-1', previousTaskId: null },
+      };
+    case 'ProjectNextActionCleared':
+      return {
+        ...base,
+        subjectType: 'project',
+        projectId: 'subject-1',
+        kind,
+        hidden: hiddenFor('ProjectNextActionCleared'),
+        payload: { taskId: 'task-1', reason: 'cleared' },
+      };
     case 'TaskAddedToProject':
       return {
         ...base,

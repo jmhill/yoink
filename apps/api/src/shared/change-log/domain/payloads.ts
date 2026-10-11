@@ -88,6 +88,16 @@ export const projectWaitingChangedPayloadV1Schema = z.object({
   waitingSince: z.string().nullable(),
 });
 
+export const projectNextActionSetPayloadV1Schema = z.object({
+  taskId: z.string(),
+  previousTaskId: z.string().nullable(),
+});
+
+export const projectNextActionClearedPayloadV1Schema = z.object({
+  taskId: z.string(),
+  reason: z.enum(['cleared', 'completed', 'deleted', 'removedFromProject', 'projectDone']),
+});
+
 export const taskAddedToProjectPayloadV1Schema = z.object({
   projectId: z.string(),
 });
@@ -119,6 +129,12 @@ export type ProjectStatusChangedPayloadV1 = z.infer<
 >;
 export type ProjectWaitingChangedPayloadV1 = z.infer<
   typeof projectWaitingChangedPayloadV1Schema
+>;
+export type ProjectNextActionSetPayloadV1 = z.infer<
+  typeof projectNextActionSetPayloadV1Schema
+>;
+export type ProjectNextActionClearedPayloadV1 = z.infer<
+  typeof projectNextActionClearedPayloadV1Schema
 >;
 export type TaskAddedToProjectPayloadV1 = z.infer<typeof taskAddedToProjectPayloadV1Schema>;
 export type TaskRemovedFromProjectPayloadV1 = z.infer<

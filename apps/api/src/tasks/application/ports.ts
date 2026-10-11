@@ -1,13 +1,14 @@
 import type { ResultAsync } from 'neverthrow';
-import type { NamedList, Task } from '@yoink/api-contracts';
+import type { NamedList, Project, Task } from '@yoink/api-contracts';
 import type { StorageError, TaskNotFoundError } from '../domain/task-errors.js';
 import type { FindByOrganizationOptions } from '../domain/task-store.js';
-import type { LoadedProject } from '../domain/task-commands.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type { TaskChangePlan } from '../domain/plan-task-change.js';
+import type { ProjectChangePlan } from '../../projects/domain/plan-project-change.js';
 
 export type PersistTaskChange = (
-  plan: TaskChangePlan
+  plan: TaskChangePlan,
+  extras?: { project?: ProjectChangePlan }
 ) => ResultAsync<void, StorageError | TaskNotFoundError>;
 
 export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
@@ -18,7 +19,7 @@ export type LoadNamedList = (
 
 export type LoadProject = (
   id: string
-) => ResultAsync<LoadedProject | null, StorageError>;
+) => ResultAsync<Project | null, StorageError>;
 
 export type LoadNextOpenOrder = (
   organizationId: string,

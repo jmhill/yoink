@@ -3,7 +3,9 @@ import type { TaskFilter } from '../../dsl/types.js';
 import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
 import {
   isSettledTasksBoardUrl,
-  isTasksThumbLandingUrl,
+  isMobileTabLandingUrl,
+  isWorkTabLandingUrl,
+  type MobileTabKey,
   tasksBoardCopyForUrl,
 } from './tasks-board-url.js';
 
@@ -1936,8 +1938,15 @@ export class OrganizationSwitcherChrome {
 export const MOBILE_VIEWPORT = { width: 390, height: 844 } as const;
 export const DESKTOP_VIEWPORT = { width: 1280, height: 720 } as const;
 
+const MOBILE_TAB_LABEL: Record<MobileTabKey, string> = {
+  capture: 'Capture',
+  process: 'Process',
+  work: 'Work',
+  review: 'Review',
+};
+
 /**
- * Mobile Inbox | Tasks bottom tabs. Visible below the md breakpoint.
+ * Mobile Capture | Process | Work | Review bottom tabs. Visible below md.
  */
 export class MobileNav {
   constructor(private readonly page: Page) {}
@@ -1963,19 +1972,14 @@ export class MobileNav {
     return labels;
   }
 
-  async open(label: 'Inbox' | 'Tasks'): Promise<void> {
+  async litTabLabel(): Promise<string | null> {
+    return this.root().locator('[data-mobile-nav-active="true"]').getAttribute('data-mobile-nav-item');
+  }
+
+  async open(tab: MobileTabKey): Promise<void> {
     await this.root().waitFor({ state: 'visible' });
-    await this.item(label).click();
-    if (label === 'Inbox') {
-      await this.page.waitForURL((url) => {
-        const path = new URL(url).pathname;
-        return path === '/' || path === '/snoozed' || path === '/trash';
-      });
-      return;
-    }
-    // Already on /tasks?pile=… is a match for /\/tasks/. The thumb Link
-    // goes to /work (Now) — wait for that href, not the pile we are leaving.
-    await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
+    await this.item(MOBILE_TAB_LABEL[tab]).click();
+    await this.page.waitForURL((url) => isMobileTabLandingUrl(tab, url));
   }
 }
 
@@ -2070,12 +2074,12 @@ export class AppRail {
     if (await this.desktop().isVisible().catch(() => false)) {
       return;
     }
-    const tasksTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Tasks"]');
-    if (await tasksTab.isVisible().catch(() => false)) {
+    const workTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Work"]');
+    if (await workTab.isVisible().catch(() => false)) {
       const path = new URL(this.page.url()).pathname;
       if (path !== '/work' && path !== '/tasks') {
-        await tasksTab.click();
-        await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
+        await workTab.click();
+        await this.page.waitForURL((url) => isWorkTabLandingUrl(url));
       }
       await this.openMobileDrawer();
       return;

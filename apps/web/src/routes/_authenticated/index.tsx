@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
@@ -7,14 +7,14 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { tsr, tsrLists, tsrProjects } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
-import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
+import { useInboxTriage } from '@/lib/use-inbox-triage';
 import { useNetworkStatus } from '@/lib/use-network-status';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
-import { CaptureCard, type SnoozeOption, type ExitDirection } from '@/components/capture-card';
+import { CaptureCard } from '@/components/capture-card';
 import { InboxPaneShell } from '@/components/inbox-pane-shell';
-import { PromoteSheet, type PromoteConfirmInput } from '@/components/promote-sheet';
+import { PromoteSheet } from '@/components/promote-sheet';
 import { AnimatedList, AnimatedListItem } from '@/components/animated-list';
 import { toast } from 'sonner';
 
@@ -24,13 +24,22 @@ export const Route = createFileRoute('/_authenticated/')({
 
 function InboxPage() {
   const isOnline = useNetworkStatus();
-  const navigate = useNavigate();
   const [newContent, setNewContent] = useState('');
-  const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [taskModalCapture, setTaskModalCapture] = useState<{ id: string; content: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tsrQueryClient = tsr.useQueryClient();
+  const {
+    exitDirections,
+    taskModalOpen,
+    setTaskModalOpen,
+    taskModalCapture,
+    isTrashing,
+    isSnoozing,
+    isProcessing,
+    handleTrash,
+    handleSnooze,
+    handleProcessToTask,
+    handleConfirmPromote,
+  } = useInboxTriage();
 
   useEffect(() => {
     if (!consumeQuickCaptureFocus()) {
@@ -134,308 +143,12 @@ function InboxPage() {
     },
   });
 
-  const trashMutation = tsr.trash.useMutation({
-    onMutate: async ({ params }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await cancelLiveQueries(tsrQueryClient);
-
-      // Snapshot current state for rollback
-      const previousInbox = tsrQueryClient.list.getQueryData([
-        'captures',
-        'inbox',
-      ]);
-      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
-
-      // Find the capture being trashed
-      if (previousInbox?.status === 200) {
-        const captureToTrash = previousInbox.body.captures.find(
-          (c) => c.id === params.id
-        );
-
-        // Remove from inbox
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter(
-              (c) => c.id !== params.id
-            ),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
-
-        if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
-          tsrQueryClient.setQueryData(
-            ['captures', 'trashed'],
-            prependCaptureHistoryPageItem(previousTrashed, {
-              ...captureToTrash,
-              status: 'trashed',
-            })
-          );
-        }
-      }
-
-      return { previousInbox, previousTrashed };
-    },
-
-    onError: (err, _variables, context) => {
-      // Rollback on error
-      if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'inbox'],
-          context.previousInbox
-        );
-      }
-      if (context?.previousTrashed) {
-        tsrQueryClient.setQueryData(
-          ['captures', 'trashed'],
-          context.previousTrashed
-        );
-      }
-
-      // Show error toast
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to trash');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Moved to trash');
-    },
-
-    onSettled: () => {
-      // Refetch to ensure consistency with server
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
-  // Snooze mutation
-  const snoozeMutation = tsr.snooze.useMutation({
-    onMutate: async ({ params }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await cancelLiveQueries(tsrQueryClient);
-
-      // Snapshot current state for rollback
-      const previousInbox = tsrQueryClient.list.getQueryData([
-        'captures',
-        'inbox',
-      ]);
-      const previousSnoozed = tsrQueryClient.list.getQueryData([
-        'captures',
-        'snoozed',
-      ]);
-
-      // Find the capture being snoozed
-      if (previousInbox?.status === 200) {
-        const captureToSnooze = previousInbox.body.captures.find(
-          (c) => c.id === params.id
-        );
-
-        // Remove from inbox
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter(
-              (c) => c.id !== params.id
-            ),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
-
-        // Add to snoozed (if cache exists)
-        if (captureToSnooze && previousSnoozed?.status === 200) {
-          tsrQueryClient.list.setQueryData(['captures', 'snoozed'], {
-            ...previousSnoozed,
-            body: {
-              ...previousSnoozed.body,
-              captures: [captureToSnooze, ...previousSnoozed.body.captures],
-              total: previousSnoozed.body.total + 1,
-            },
-          });
-        }
-      }
-
-      return { previousInbox, previousSnoozed };
-    },
-
-    onError: (err, _variables, context) => {
-      // Rollback on error
-      if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'inbox'],
-          context.previousInbox
-        );
-      }
-      if (context?.previousSnoozed) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'snoozed'],
-          context.previousSnoozed
-        );
-      }
-
-      // Show error toast
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to snooze');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Snoozed');
-    },
-
-    onSettled: () => {
-      // Refetch to ensure consistency with server
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
-  // Process capture to task mutation
-  const processMutation = tsr.process.useMutation({
-    onMutate: async ({ params }) => {
-      await cancelLiveQueries(tsrQueryClient);
-
-      const previousInbox = tsrQueryClient.list.getQueryData([
-        'captures',
-        'inbox',
-      ]);
-
-      // Optimistically remove from inbox
-      if (previousInbox?.status === 200) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter(
-              (c) => c.id !== params.id
-            ),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
-      }
-
-      return { previousInbox };
-    },
-
-    onError: (err, _variables, context) => {
-      if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'inbox'],
-          context.previousInbox
-        );
-      }
-
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        // ts-rest throws the response object for non-2xx statuses
-        const errorResponse = err as { status?: number; body?: { message?: string } };
-        const message = errorResponse.body?.message ?? 'Failed to create task';
-        toast.error(message);
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Task created', {
-        action: {
-          label: 'View',
-          onClick: () => navigate({ to: '/tasks' }),
-        },
-      });
-      setTaskModalOpen(false);
-      setTaskModalCapture(null);
-    },
-
-    onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
-    },
-  });
-
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContent.trim()) return;
 
     createMutation.mutate({
       body: { content: newContent.trim(), sourceApp: 'web' },
-    });
-  };
-
-  const handleTrash = (id: string, direction: ExitDirection) => {
-    setExitDirections((prev) => ({ ...prev, [id]: direction }));
-    trashMutation.mutate({
-      params: { id },
-      body: {},
-    });
-  };
-
-  // Snooze time helpers
-  const getSnoozeTime = (option: 'later-today' | 'tomorrow' | 'next-week'): string => {
-    const now = new Date();
-
-    switch (option) {
-      case 'later-today': {
-        // 6 PM today, or 2 hours from now if past 4 PM
-        const sixPm = new Date(now);
-        sixPm.setHours(18, 0, 0, 0);
-        if (now.getHours() >= 16) {
-          // If past 4 PM, snooze for 2 hours
-          return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-        }
-        return sixPm.toISOString();
-      }
-      case 'tomorrow': {
-        // 9 AM tomorrow
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0);
-        return tomorrow.toISOString();
-      }
-      case 'next-week': {
-        // 9 AM next Monday
-        const nextMonday = new Date(now);
-        const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-        nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
-        nextMonday.setHours(9, 0, 0, 0);
-        return nextMonday.toISOString();
-      }
-    }
-  };
-
-  const handleSnooze = (id: string, option: SnoozeOption, direction: ExitDirection) => {
-    setExitDirections((prev) => ({ ...prev, [id]: direction }));
-    const until = getSnoozeTime(option);
-    snoozeMutation.mutate({
-      params: { id },
-      body: { until },
-    });
-  };
-
-  const handleProcessToTask = (capture: { id: string; content: string }) => {
-    setTaskModalCapture(capture);
-    setTaskModalOpen(true);
-  };
-
-  const handleConfirmPromote = (captureId: string, input: PromoteConfirmInput) => {
-    setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
-    const data: { title: string; dueDate?: string; listId?: string; projectId?: string } = {
-      title: input.title,
-    };
-    if (input.dueDate) {
-      data.dueDate = input.dueDate;
-    }
-    if (input.listId) {
-      data.listId = input.listId;
-    }
-    if (input.projectId) {
-      data.projectId = input.projectId;
-    }
-    processMutation.mutate({
-      params: { id: captureId },
-      body: { type: 'task', data },
     });
   };
 
@@ -483,9 +196,9 @@ function InboxPage() {
                 onTrash={handleTrash}
                 onSnooze={handleSnooze}
                 onProcessToTask={handleProcessToTask}
-                isTrashing={trashMutation.isPending}
-                isSnoozing={snoozeMutation.isPending}
-                isProcessing={processMutation.isPending}
+                isTrashing={isTrashing}
+                isSnoozing={isSnoozing}
+                isProcessing={isProcessing}
               />
             </AnimatedListItem>
           ))}
@@ -499,7 +212,7 @@ function InboxPage() {
         lists={namedLists}
         projects={projects}
         onConfirm={handleConfirmPromote}
-        isLoading={processMutation.isPending}
+        isLoading={isProcessing}
       />
     </InboxPaneShell>
   );

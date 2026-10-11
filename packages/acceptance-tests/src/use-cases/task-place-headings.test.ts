@@ -6,8 +6,9 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Issue #110: You-are-here headings on Inbox and task views.
  *
  * Product lock (Justin 2026-09-17): fix headings across the app for
- * consistent wayfinding. Mobile Inbox | Tasks bottom bar stays. Tasks
- * landing is Now (`/work`, #144). Pin chrome stays gone (#111).
+ * consistent wayfinding. Mobile Capture | Process | Work | Review
+ * bottom bar stays. Tasks landing is Now (`/work`, #144). Pin chrome
+ * stays gone (#111).
  *
  * Every task view/pile gets Inbox-grade place chrome: the view or list
  * name as the primary heading, plus a short count cue. Inbox heading
@@ -39,8 +40,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createTask({ title: 'Loose' });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openMobileBottomTab('work');
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTasksContentWithoutMobileRail();
       await alice.shouldSeeNowReady('all');
@@ -50,12 +51,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTaskPlace('Groceries', '2 open');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
 
       await alice.openRailUnlisted();
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTaskPlace('Unlisted', '1 open');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
     });
 
     it('shows Upcoming, Mine, and Done place headings on desktop', async () => {
@@ -79,24 +80,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeTaskPlace('Today', '0 open');
     });
 
-    it('keeps Inbox heading language and the Inbox | Tasks bottom bar', async () => {
+    it('keeps Inbox heading language and the four-tab phone bar', async () => {
       await alice.createCapture({ content: 'Triage me' });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldSeeInboxTriageSurface(1);
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
 
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeNowReady('all');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
       await alice.openRailSmartView('today');
       await alice.shouldSeeTaskPlace('Today', '0 open');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
 
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldSeeInboxTriageSurface(1);
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
     });
 
     it('keeps place headings readable in light, dark, and tokyo-night', async () => {

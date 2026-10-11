@@ -241,7 +241,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await alice.setProjectStatusFromPage('someday');
         if (viewport.name === 'phone') {
-          await alice.openMobileBottomTab('tasks');
+          await alice.openMobileBottomTab('work');
           await alice.openMobileTasksRail();
         }
         await alice.openSomedayGroup();

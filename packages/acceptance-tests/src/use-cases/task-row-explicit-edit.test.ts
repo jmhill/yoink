@@ -65,7 +65,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const notes = await alice.createTask({ title: 'Notes' });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await shouldEditFromRowNotCircle(alice, milk.id);
 
@@ -109,7 +109,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await shouldEditFromRowNotCircle(alice, milk.id);
       await alice.completeOpenTaskBySwipe(milk.id);

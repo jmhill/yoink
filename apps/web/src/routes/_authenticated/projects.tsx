@@ -1,5 +1,8 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Button } from '@yoink/ui-base/components/button';
 import { Header } from '@/components/header';
+import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { tsrProjects } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { ErrorState } from '@/components/error-state';
@@ -11,6 +14,8 @@ export const Route = createFileRoute('/_authenticated/projects')({
 });
 
 function ProjectsPage() {
+  const navigate = useNavigate();
+  const [createOpen, setCreateOpen] = useState(false);
   const { data, error, isPending, refetch } = tsrProjects.list.useQuery({
     queryKey: ['projects'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
@@ -22,14 +27,31 @@ function ProjectsPage() {
   }
 
   const projects = data?.status === 200 ? data.body.projects : [];
+  const ready = data?.status === 200;
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
+    <div
+      data-review-ready={ready ? '' : undefined}
+      className="container mx-auto max-w-2xl p-4"
+    >
       <Header />
-      <h1 className="text-2xl font-bold">Projects</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {isPending ? 'Loading…' : `${projects.length} project${projects.length === 1 ? '' : 's'}`}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Projects</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isPending ? 'Loading…' : `${projects.length} project${projects.length === 1 ? '' : 's'}`}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          data-review-new-project=""
+          className="md:hidden"
+          onClick={() => setCreateOpen(true)}
+        >
+          + New project
+        </Button>
+      </div>
       <ul className="mt-6 space-y-2" data-projects-index="">
         {projects.map((project) => (
           <li key={project.id}>
@@ -60,6 +82,16 @@ function ProjectsPage() {
           </li>
         ))}
       </ul>
+      <CreateProjectDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(project) => {
+          void navigate({
+            to: '/projects/$projectId',
+            params: { projectId: project.id },
+          });
+        }}
+      />
     </div>
   );
 }

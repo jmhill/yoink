@@ -74,13 +74,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('leaves mobile capture as the on-pane field with no shortcut', async () => {
       await alice.useMobileViewport();
 
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldSeeQuickAddCapture();
       await alice.shouldNotSeeQuickCaptureShortcutHint();
       await alice.createCapture({ content: 'Typed on the phone field' });
       await alice.shouldSeeCaptureOnCurrentPane('Typed on the phone field');
 
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeTaskSurface();
       await alice.shouldNotSeeQuickCaptureField();
       await alice.pressQuickCaptureShortcut();

@@ -96,7 +96,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReorderControls();
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeReorderControls();
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs']);
@@ -117,7 +117,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createTask({ title: 'Butter', listId: groceries.id });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeReorderControls();
 

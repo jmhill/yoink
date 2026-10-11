@@ -28,14 +28,31 @@ export function isSettledTasksBoardUrl(url: string | URL): boolean {
   return false;
 }
 
+export type MobileTabKey = 'capture' | 'process' | 'work' | 'review';
+
 /**
- * The Inbox | Tasks thumb opens `/work` (Now). From a named-list pile that
+ * The Work thumb opens `/work` (Now). From a named-list pile that
  * is already `/tasks?pile=…`, `waitForURL(/\/tasks/)` is already true and
  * must not return — wait for `/work` so the href change closes the drawer.
  */
-export function isTasksThumbLandingUrl(url: string | URL): boolean {
+export function isWorkTabLandingUrl(url: string | URL): boolean {
   const parsed = typeof url === 'string' ? new URL(url, 'http://localhost') : url;
   return parsed.pathname === '/work';
+}
+
+export function isMobileTabLandingUrl(tab: MobileTabKey, url: string | URL): boolean {
+  const parsed = typeof url === 'string' ? new URL(url, 'http://localhost') : url;
+  const path = parsed.pathname;
+  if (tab === 'capture') {
+    return path === '/' || path === '/snoozed' || path === '/trash';
+  }
+  if (tab === 'process') {
+    return path === '/process';
+  }
+  if (tab === 'work') {
+    return isWorkTabLandingUrl(parsed);
+  }
+  return path === '/projects';
 }
 
 /**

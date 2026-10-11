@@ -1779,7 +1779,7 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('useMobileViewport', 'http');
     },
 
-    async useDesktopViewport(): Promise<void> {
+    async useDesktopViewport(_size?: { width: number; height: number }): Promise<void> {
       throw new UnsupportedOperationError('useDesktopViewport', 'http');
     },
 
@@ -1803,8 +1803,91 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
     },
 
-    async openMobileBottomTab(_tab: 'inbox' | 'tasks'): Promise<void> {
+    async openMobileBottomTab(_tab: 'capture' | 'process' | 'work' | 'review'): Promise<void> {
       throw new UnsupportedOperationError('openMobileBottomTab', 'http');
+    },
+
+    async shouldSeeLitMobileTab(_tab: 'capture' | 'process' | 'work' | 'review' | null): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeLitMobileTab', 'http');
+    },
+
+    async shouldSeeProcessReady(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessReady', 'http');
+    },
+
+    async shouldSeeProcessQueue(_contents: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessQueue', 'http');
+    },
+
+    async shouldSeeProcessSubcopy(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessSubcopy', 'http');
+    },
+
+    async shouldSeeProcessEmpty(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessEmpty', 'http');
+    },
+
+    async shouldSeeProcessBadge(_count: number | null): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessBadge', 'http');
+    },
+
+    async shouldSeeBackToWork(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeBackToWork', 'http');
+    },
+
+    async shouldNotSeeBackToWork(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeBackToWork', 'http');
+    },
+
+    async openBackToWork(): Promise<void> {
+      throw new UnsupportedOperationError('openBackToWork', 'http');
+    },
+
+    async shouldSeeReviewNewProject(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewNewProject', 'http');
+    },
+
+    async createProjectFromReview(_input: { name: string; objective?: string }): Promise<Project> {
+      throw new UnsupportedOperationError('createProjectFromReview', 'http');
+    },
+
+    async openProjectFromIndex(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openProjectFromIndex', 'http');
+    },
+
+    async openAllProjectsBackLink(): Promise<void> {
+      throw new UnsupportedOperationError('openAllProjectsBackLink', 'http');
+    },
+
+    async openProcess(): Promise<void> {
+      throw new UnsupportedOperationError('openProcess', 'http');
+    },
+
+    async shouldSeeNoRailItemHighlighted(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoRailItemHighlighted', 'http');
+    },
+
+    async openRailProject(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openRailProject', 'http');
+    },
+
+    async confirmPromoteOnListAndProject(_input: {
+      listName: string;
+      projectName: string;
+    }): Promise<Task> {
+      throw new UnsupportedOperationError('confirmPromoteOnListAndProject', 'http');
+    },
+
+    async shouldSeeClearOfMobileTabBar(_selector: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeClearOfMobileTabBar', 'http');
+    },
+
+    async snoozeCaptureOnCurrentPane(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('snoozeCaptureOnCurrentPane', 'http');
+    },
+
+    async trashCaptureOnCurrentPane(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('trashCaptureOnCurrentPane', 'http');
     },
 
     async shouldSeeMobileBottomTabs(_labels: string[]): Promise<void> {

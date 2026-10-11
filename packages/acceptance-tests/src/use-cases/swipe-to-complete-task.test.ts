@@ -26,7 +26,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
@@ -42,7 +42,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeLargeCompleteControlOnTask(eggs.id);
 
@@ -66,7 +66,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       }
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailUnlisted();
       await alice.shouldSeeOpenTasksInOrder(titles);
 

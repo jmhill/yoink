@@ -60,7 +60,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Groceries');
       await alice.shouldSeeLargeCompleteControlOnTask(milk.id);
       await alice.shouldNotSeePinControls();

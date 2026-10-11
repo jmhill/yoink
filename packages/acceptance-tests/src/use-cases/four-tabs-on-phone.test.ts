@@ -272,21 +272,21 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailInbox();
       await alice.shouldSeeRailInboxHighlighted();
       await alice.shouldSeeQuickAddCapture();
-      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'desktop_inbox' });
+      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'inbox' });
 
       await alice.openWork();
       await alice.shouldSeeNowReady('all');
-      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'desktop_now' });
+      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'now' });
 
       await alice.openProcess();
       await alice.shouldSeeProcessReady();
       await alice.shouldSeeNoRailItemHighlighted();
       await alice.shouldNotSeeMobileBottomNav();
-      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'desktop_process' });
+      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process' });
 
       await alice.goToAllProjects();
       await alice.shouldSeeProjectOnAllProjects({ name: 'Garden', status: 'active' });
-      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'desktop_projects' });
+      await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'projects' });
 
       await alice.openWork();
       await alice.pressQuickCaptureShortcut();

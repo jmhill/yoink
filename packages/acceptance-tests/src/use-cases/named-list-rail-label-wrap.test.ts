@@ -57,7 +57,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const list = await alice.createNamedList(LONG_LIST_NAME);
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openMobileTasksRail();
       await alice.shouldSeeMobileTasksRail();
       await alice.shouldSeeWrappedRailNamedList(LONG_LIST_NAME);

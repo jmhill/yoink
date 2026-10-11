@@ -31,7 +31,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createNamedList('Groceries');
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openMobileTasksRail();
       await alice.shouldSeeMobileTasksRail();
       await alice.shouldSeeNamedListOverflowAboveMobileDrawer('Groceries');
@@ -46,7 +46,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.completeTask(laundry.id);
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Weekend');
       await alice.shouldBeOnAllNamedPile(weekend.id);
 
@@ -68,7 +68,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const groceries = await alice.createNamedList('Groceries');
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeNowReady('all');
 
       await alice.openMobileTasksRail();

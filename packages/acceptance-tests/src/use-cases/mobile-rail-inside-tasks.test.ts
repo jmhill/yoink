@@ -29,9 +29,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useMobileViewport();
     });
 
-    it('keeps only Inbox and Tasks bottom tabs — no Lists, All, or third tab', async () => {
-      await alice.openMobileBottomTab('inbox');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+    it('keeps only Capture, Process, Work, and Review bottom tabs — no rail destinations', async () => {
+      await alice.openMobileBottomTab('capture');
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
+      await alice.shouldNotSeeMobileBottomTab('Inbox');
+      await alice.shouldNotSeeMobileBottomTab('Tasks');
       await alice.shouldNotSeeMobileBottomTab('Lists');
       await alice.shouldNotSeeMobileBottomTab('All');
       await alice.shouldNotSeeMobileBottomTab('Today');
@@ -41,8 +43,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileBottomTab('Unlisted');
       await alice.shouldNotSeeMobileBottomTab('New list');
 
-      await alice.openMobileBottomTab('tasks');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openMobileBottomTab('work');
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
+      await alice.shouldNotSeeMobileBottomTab('Inbox');
+      await alice.shouldNotSeeMobileBottomTab('Tasks');
       await alice.shouldNotSeeMobileBottomTab('Lists');
       await alice.shouldNotSeeMobileBottomTab('All');
       await alice.shouldNotSeeMobileBottomTab('Today');
@@ -54,7 +58,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('shows task content first — the rail does not occupy the screen by default', async () => {
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeTasksContentWithoutMobileRail();
     });
 
@@ -62,7 +66,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const groceries = await alice.createNamedList('Groceries');
       await alice.createTask({ title: 'Milk', listId: groceries.id });
 
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openMobileTasksRail();
@@ -99,8 +103,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('opens the Inbox capture pane from the mobile Inbox bottom tab', async () => {
       await alice.createCapture({ content: 'Note one' });
 
-      await alice.openMobileBottomTab('tasks');
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('work');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldBeOnInboxPane();
       await alice.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash']);
       await alice.shouldSeeCaptureOnCurrentPane('Note one');
@@ -155,7 +159,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailItems(railWith('Groceries'));
 
       await alice.createCapture({ content: 'Promote me' });
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldBeOnInboxPane();
       await alice.openPromoteSheet('Promote me');
       await alice.shouldSeePromoteSheet();
@@ -199,8 +203,8 @@ usingDrivers(['http'] as const, (ctx) => {
       }) as BrowserActor;
 
       await expect(actor.useMobileViewport()).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.openMobileBottomTab('tasks')).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.shouldSeeMobileBottomTabs(['Inbox', 'Tasks'])).rejects.toThrow(
+      await expect(actor.openMobileBottomTab('work')).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review'])).rejects.toThrow(
         UnsupportedOperationError
       );
       await expect(actor.shouldSeeDesktopAppRail()).rejects.toThrow(UnsupportedOperationError);

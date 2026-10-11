@@ -33,6 +33,7 @@ import type {
   ProcessCaptureToTaskInput,
   CreateInvitationInput,
   MintedAgent,
+  MobileTabKey,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -299,7 +300,8 @@ export const createPlaywrightActor = (
     await announceViewportResize();
     await expect(mobileNav.root()).toBeVisible();
     await expect(appRail.desktop()).toBeHidden();
-    if (new URL(page.url()).pathname === '/tasks') {
+    const path = new URL(page.url()).pathname;
+    if (path === '/tasks' || path === '/work') {
       await expect(appRail.mobileTrigger()).toBeVisible();
     }
   };
@@ -3196,9 +3198,9 @@ export const createPlaywrightActor = (
       await settleMobileViewportChrome();
     },
 
-    async useDesktopViewport(): Promise<void> {
+    async useDesktopViewport(size?: { width: number; height: number }): Promise<void> {
       walkthroughViewport = 'desktop';
-      await page.setViewportSize(DESKTOP_VIEWPORT);
+      await page.setViewportSize(size ?? DESKTOP_VIEWPORT);
       await settleDesktopViewportChrome();
     },
 
@@ -3262,15 +3264,208 @@ export const createPlaywrightActor = (
       });
     },
 
-    async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {
-      const label = tab === 'inbox' ? 'Inbox' : 'Tasks';
-      await mobileNav.open(label);
-      if (tab === 'inbox') {
+    async openMobileBottomTab(tab: MobileTabKey): Promise<void> {
+      await mobileNav.open(tab);
+      if (tab === 'capture') {
         await inboxPage.waitForCapturesOrEmpty();
+        return;
+      }
+      if (tab === 'process') {
+        await expect(page.locator('[data-process-ready]')).toBeVisible();
+        return;
+      }
+      if (tab === 'review') {
+        await expect(page.locator('[data-review-ready], [data-projects-index]')).toBeVisible();
         return;
       }
       await expect(page.locator('[data-now-ready]')).toBeVisible();
       await expect(appRail.mobileTrigger()).toBeVisible();
+    },
+
+    async shouldSeeLitMobileTab(tab: MobileTabKey | null): Promise<void> {
+      await expect(mobileNav.root()).toBeVisible();
+      if (tab === null) {
+        await expect(mobileNav.root().locator('[data-mobile-nav-active="true"]')).toHaveCount(0);
+        return;
+      }
+      const labels: Record<MobileTabKey, string> = {
+        capture: 'Capture',
+        process: 'Process',
+        work: 'Work',
+        review: 'Review',
+      };
+      await expect.poll(async () => mobileNav.litTabLabel()).toBe(labels[tab]);
+    },
+
+    async shouldSeeProcessReady(): Promise<void> {
+      await expect(page.locator('[data-process-ready]')).toBeVisible();
+    },
+
+    async shouldSeeProcessQueue(contents: string[]): Promise<void> {
+      await expect.poll(async () => {
+        const cards = page.locator('[data-capture-id]');
+        const count = await cards.count();
+        const found: string[] = [];
+        for (let index = 0; index < count; index += 1) {
+          found.push(((await cards.nth(index).getByTestId('capture-content').textContent()) ?? '').trim());
+        }
+        return found;
+      }).toEqual(contents);
+    },
+
+    async shouldSeeProcessSubcopy(text: string): Promise<void> {
+      await expect(page.getByTestId('process-subcopy')).toHaveText(text);
+    },
+
+    async shouldSeeProcessEmpty(): Promise<void> {
+      await expect(page.getByText('Nothing to process', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-process-empty-capture]')).toBeVisible();
+    },
+
+    async shouldSeeProcessBadge(count: number | null): Promise<void> {
+      const badge = page.locator('[data-app-mobile-nav] [data-process-badge]');
+      if (count === null) {
+        await expect(badge).toHaveCount(0);
+        return;
+      }
+      await expect(badge).toHaveAttribute('data-process-badge', String(count));
+      await expect(badge).toHaveText(String(count));
+    },
+
+    async shouldSeeBackToWork(): Promise<void> {
+      await expect(page.locator('[data-back-to-work]')).toBeVisible();
+    },
+
+    async shouldNotSeeBackToWork(): Promise<void> {
+      await expect(page.locator('[data-back-to-work]')).toHaveCount(0);
+    },
+
+    async openBackToWork(): Promise<void> {
+      await page.locator('[data-back-to-work]').click();
+      await page.waitForURL((url) => new URL(url).pathname === '/work');
+      await expect(page.locator('[data-now-ready]')).toBeVisible();
+    },
+
+    async shouldSeeReviewNewProject(): Promise<void> {
+      await expect(page.locator('[data-review-new-project]')).toBeVisible();
+    },
+
+    async createProjectFromReview(input: {
+      name: string;
+      objective?: string;
+    }): Promise<Project> {
+      await page.locator('[data-review-new-project]').click();
+      const dialog = page.getByRole('dialog', { name: 'New project' });
+      await waitForSettledOpenDialog({ page });
+      await dialog.locator('[data-project-create-name]').fill(input.name);
+      if (input.objective !== undefined) {
+        await dialog.locator('[data-project-create-objective]').fill(input.objective);
+      }
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/projects') && response.request().method() === 'POST'
+      );
+      await dialog.getByRole('button', { name: 'Create project' }).click();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create project from Review: ${response.status()}`);
+      }
+      await dialog.waitFor({ state: 'hidden' });
+      await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/i);
+      const match = new URL(page.url()).pathname.match(/\/projects\/([0-9a-f-]{36})$/i);
+      if (!match?.[1]) {
+        throw new Error(`Created project "${input.name}" did not land on its page`);
+      }
+      return {
+        id: match[1],
+        name: input.name,
+        organizationId: credentials.organizationId,
+        createdById: credentials.userId,
+        createdAt: new Date().toISOString(),
+        objective: input.objective,
+        status: 'active',
+      };
+    },
+
+    async openProjectFromIndex(name: string): Promise<void> {
+      await page.locator('[data-projects-index] a').filter({ hasText: name }).click();
+      await projectPage.waitForVisible();
+    },
+
+    async openAllProjectsBackLink(): Promise<void> {
+      await page.locator('[data-part="back-link"]').click();
+      await page.waitForURL((url) => new URL(url).pathname === '/projects');
+      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+    },
+
+    async openProcess(): Promise<void> {
+      await page.goto('/process');
+      await expect(page.locator('[data-process-ready]')).toBeVisible();
+    },
+
+    async shouldSeeNoRailItemHighlighted(): Promise<void> {
+      await expect(page.locator('[data-app-rail]:visible [data-rail-active]')).toHaveCount(0);
+    },
+
+    async openRailProject(name: string): Promise<void> {
+      await openRailDestination(name, async () => {
+        await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/i, { timeout: 4_000 });
+        await projectPage.waitForVisible();
+      });
+    },
+
+    async confirmPromoteOnListAndProject(input: {
+      listName: string;
+      projectName: string;
+    }): Promise<Task> {
+      await inboxPage.selectPromoteListByName(input.listName);
+      await inboxPage.selectPromoteProjectByName(input.projectName);
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/captures/') &&
+          response.url().includes('/process') &&
+          response.request().method() === 'POST'
+      );
+      await inboxPage.confirmPromote();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to promote capture: ${response.status()}`);
+      }
+      await expect(inboxPage.promoteSheet()).toBeHidden();
+      return response.json();
+    },
+
+    async snoozeCaptureOnCurrentPane(content: string): Promise<void> {
+      await inboxPage.snoozeCapture(content, 'tomorrow');
+      await expect(inboxPage.captureCard(content)).toHaveCount(0);
+    },
+
+    async trashCaptureOnCurrentPane(content: string): Promise<void> {
+      await inboxPage.trashCapture(content);
+      await expect(inboxPage.captureCard(content)).toHaveCount(0);
+    },
+
+    async shouldSeeClearOfMobileTabBar(selector: string): Promise<void> {
+      const el = page.locator(selector).last();
+      await expect(el).toBeVisible();
+      await expect.poll(async () => {
+        return el.evaluate((node) => {
+          node.scrollIntoView({ block: 'end', inline: 'nearest' });
+          const bar = node.ownerDocument.querySelector('[data-app-mobile-nav]');
+          if (bar === null) {
+            return true;
+          }
+          const extra = 1;
+          const overlap =
+            node.getBoundingClientRect().bottom - bar.getBoundingClientRect().top + extra;
+          if (overlap > 0) {
+            node.ownerDocument.defaultView?.scrollBy(0, overlap);
+          }
+          return (
+            node.getBoundingClientRect().bottom <= bar.getBoundingClientRect().top + extra
+          );
+        });
+      }).toBe(true);
     },
 
     async shouldSeeMobileBottomTabs(labels: string[]): Promise<void> {

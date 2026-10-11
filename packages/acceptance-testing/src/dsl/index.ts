@@ -64,6 +64,13 @@ export {
 export { displayNameFromEmail } from './display-name.js';
 
 // Interfaces
-export type { Actor, CoreActor, BrowserActor, BrowserActorOperations, AnonymousActor } from './actor.js';
+export type {
+  Actor,
+  CoreActor,
+  BrowserActor,
+  BrowserActorOperations,
+  AnonymousActor,
+  MobileTabKey,
+} from './actor.js';
 export type { Admin } from './admin.js';
 export type { Health } from './health.js';

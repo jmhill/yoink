@@ -94,7 +94,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createCapture({ content: 'Swipe me out' });
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('capture');
       await alice.shouldSeeDenseCaptureSnippet('Keep me', typedSource);
       await alice.shouldSeeUsableCaptureActionTargets('Keep me');
 

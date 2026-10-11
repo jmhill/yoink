@@ -36,6 +36,7 @@ export type {
   BrowserActor,
   BrowserActorOperations,
   AnonymousActor,
+  MobileTabKey,
 } from './dsl/index.js';
 
 export type { Admin } from './dsl/index.js';

@@ -370,11 +370,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       ]);
     }, 90_000);
 
-    it('opens Work from the phone Tasks tab and lists named lists then Unlisted', async () => {
+    it('opens Work from the phone Work tab and lists named lists then Unlisted', async () => {
       const seeded = await seedNow(alice, bot);
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowNextActionRows([
         { title: 'Alpha next', project: 'Alpha', owner: '' },
@@ -407,14 +407,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNowMinePressed(false);
     });
 
-    it('resets Mine on every phone visit: Inbox then Tasks', async () => {
+    it('resets Mine on every phone visit: Capture then Work', async () => {
       await seedNow(alice, bot);
       await alice.useMobileViewport();
       await alice.openWork();
       await alice.toggleNowMine();
       await alice.shouldSeeNowMinePressed(true);
-      await alice.openMobileBottomTab('inbox');
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('capture');
+      await alice.openMobileBottomTab('work');
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowMinePressed(false);
     });

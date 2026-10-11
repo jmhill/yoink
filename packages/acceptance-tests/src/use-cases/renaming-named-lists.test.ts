@@ -174,7 +174,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
       await alice.useMobileViewport();
-      await alice.openMobileBottomTab('tasks');
+      await alice.openMobileBottomTab('work');
       await alice.openRailNamedList('Shopping');
       await alice.shouldSeeNamedListOverflowOnRail('Shopping');
       await alice.renameNamedListFromRail('Shopping', 'Errands', { submit: 'done' });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isMobileTabLandingUrl,
   isSettledTasksBoardUrl,
-  isTasksThumbLandingUrl,
+  isWorkTabLandingUrl,
   tasksBoardCopyForUrl,
 } from './tasks-board-url.js';
 
@@ -73,15 +74,26 @@ describe('tasksBoardCopyForUrl', () => {
   });
 });
 
-describe('isTasksThumbLandingUrl', () => {
-  it('is /work — the Tasks thumb landing (Now)', () => {
-    expect(isTasksThumbLandingUrl('http://localhost/work')).toBe(true);
-    expect(isTasksThumbLandingUrl('http://localhost/work?mine=true')).toBe(true);
-    expect(isTasksThumbLandingUrl('http://localhost/tasks?filter=today')).toBe(false);
-    expect(isTasksThumbLandingUrl('http://localhost/tasks?filter=upcoming')).toBe(false);
+describe('isWorkTabLandingUrl', () => {
+  it('is /work — the Work tab landing (Now)', () => {
+    expect(isWorkTabLandingUrl('http://localhost/work')).toBe(true);
+    expect(isWorkTabLandingUrl('http://localhost/work?mine=true')).toBe(true);
+    expect(isWorkTabLandingUrl('http://localhost/tasks?filter=today')).toBe(false);
+    expect(isWorkTabLandingUrl('http://localhost/tasks?filter=upcoming')).toBe(false);
     expect(
-      isTasksThumbLandingUrl('http://localhost/tasks?pile=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+      isWorkTabLandingUrl('http://localhost/tasks?pile=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
     ).toBe(false);
-    expect(isTasksThumbLandingUrl('http://localhost/tasks')).toBe(false);
+    expect(isWorkTabLandingUrl('http://localhost/tasks')).toBe(false);
+  });
+});
+
+describe('isMobileTabLandingUrl', () => {
+  it('waits on each tab’s own landing path', () => {
+    expect(isMobileTabLandingUrl('capture', 'http://localhost/')).toBe(true);
+    expect(isMobileTabLandingUrl('capture', 'http://localhost/snoozed')).toBe(true);
+    expect(isMobileTabLandingUrl('process', 'http://localhost/process')).toBe(true);
+    expect(isMobileTabLandingUrl('work', 'http://localhost/work')).toBe(true);
+    expect(isMobileTabLandingUrl('review', 'http://localhost/projects')).toBe(true);
+    expect(isMobileTabLandingUrl('review', 'http://localhost/projects/abc')).toBe(false);
   });
 });

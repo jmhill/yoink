@@ -39,18 +39,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileBottomNav();
     });
 
-    it('shows the same separated structure in the mobile Tasks drawer; thumb bar stays Inbox | Tasks', async () => {
+    it('shows the same separated structure in the mobile Tasks drawer; thumb bar is Capture | Process | Work | Review', async () => {
       await alice.createNamedList('Groceries');
       await alice.useMobileViewport();
 
-      await alice.openMobileBottomTab('inbox');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openMobileBottomTab('capture');
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
+      await alice.shouldNotSeeMobileBottomTab('Inbox');
+      await alice.shouldNotSeeMobileBottomTab('Tasks');
       await alice.shouldNotSeeMobileBottomTab('Today');
       await alice.shouldNotSeeMobileBottomTab('Unlisted');
       await alice.shouldNotSeeMobileBottomTab('New list');
 
-      await alice.openMobileBottomTab('tasks');
-      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openMobileBottomTab('work');
+      await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
       await alice.shouldNotSeeMobileTasksRail();
 
       await alice.openMobileTasksRail();

@@ -15,6 +15,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedListsRouteImport } from './routes/_authenticated/lists'
+import { Route as AuthenticatedProcessRouteImport } from './routes/_authenticated/process'
 import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
@@ -54,6 +55,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedListsRoute = AuthenticatedListsRouteImport.update({
   id: '/lists',
   path: '/lists',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProcessRoute = AuthenticatedProcessRouteImport.update({
+  id: '/process',
+  path: '/process',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedProjectsRoute = AuthenticatedProjectsRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/process': typeof AuthenticatedProcessRoute
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/lists': typeof AuthenticatedListsRoute
+  '/process': typeof AuthenticatedProcessRoute
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/snoozed': typeof AuthenticatedSnoozedRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/share': typeof ShareRoute
   '/signup': typeof SignupRoute
   '/_authenticated/lists': typeof AuthenticatedListsRoute
+  '/_authenticated/process': typeof AuthenticatedProcessRoute
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/lists'
+    | '/process'
     | '/projects'
     | '/settings'
     | '/snoozed'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/lists'
+    | '/process'
     | '/projects'
     | '/settings'
     | '/snoozed'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/share'
     | '/signup'
     | '/_authenticated/lists'
+    | '/_authenticated/process'
     | '/_authenticated/projects'
     | '/_authenticated/settings'
     | '/_authenticated/snoozed'
@@ -280,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists'
       preLoaderRoute: typeof AuthenticatedListsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/process': {
+      id: '/_authenticated/process'
+      path: '/process'
+      fullPath: '/process'
+      preLoaderRoute: typeof AuthenticatedProcessRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/projects': {
@@ -364,6 +383,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedListsRoute: typeof AuthenticatedListsRoute
+  AuthenticatedProcessRoute: typeof AuthenticatedProcessRoute
   AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
@@ -379,6 +399,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedListsRoute: AuthenticatedListsRoute,
+  AuthenticatedProcessRoute: AuthenticatedProcessRoute,
   AuthenticatedProjectsRoute: AuthenticatedProjectsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,

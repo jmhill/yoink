@@ -216,6 +216,8 @@ export type CoreActor = {
   listMembers(): Promise<Member[]>;
 };
 
+export type MobileTabKey = 'capture' | 'process' | 'work' | 'review';
+
 /**
  * Browser-specific operations only available in Playwright driver.
  * These require a real browser context to function.
@@ -1504,8 +1506,9 @@ export type BrowserActorOperations = {
 
   /**
    * Restore a wide desktop viewport (sidebar rail, no bottom tabs).
+   * Optional size defaults to 1280×720.
    */
-  useDesktopViewport(): Promise<void>;
+  useDesktopViewport(size?: { width: number; height: number }): Promise<void>;
 
   /**
    * Open the Edit Task project picker and leave the listbox open so a
@@ -1537,9 +1540,112 @@ export type BrowserActorOperations = {
   saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
 
   /**
-   * Open Inbox or Tasks from the mobile bottom tabs.
+   * Open Capture, Process, Work, or Review from the mobile bottom tabs.
    */
-  openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void>;
+  openMobileBottomTab(tab: MobileTabKey): Promise<void>;
+
+  /**
+   * Assert which phone tab is lit, or that none is.
+   */
+  shouldSeeLitMobileTab(tab: MobileTabKey | null): Promise<void>;
+
+  /**
+   * Assert Process has settled (`data-process-ready`).
+   */
+  shouldSeeProcessReady(): Promise<void>;
+
+  /**
+   * Assert Process lists these capture contents oldest first.
+   */
+  shouldSeeProcessQueue(contents: string[]): Promise<void>;
+
+  /**
+   * Assert the Process subcopy.
+   */
+  shouldSeeProcessSubcopy(text: string): Promise<void>;
+
+  /**
+   * Assert the Process empty state and its Capture link.
+   */
+  shouldSeeProcessEmpty(): Promise<void>;
+
+  /**
+   * Assert the Process tab badge shows this count, or is hidden.
+   */
+  shouldSeeProcessBadge(count: number | null): Promise<void>;
+
+  /**
+   * Assert the phone pile-screen back link is showing.
+   */
+  shouldSeeBackToWork(): Promise<void>;
+
+  /**
+   * Assert the phone pile-screen back link is not showing.
+   */
+  shouldNotSeeBackToWork(): Promise<void>;
+
+  /**
+   * Tap ‹ Work and wait for Now to settle.
+   */
+  openBackToWork(): Promise<void>;
+
+  /**
+   * Assert Review shows the + New project button.
+   */
+  shouldSeeReviewNewProject(): Promise<void>;
+
+  /**
+   * Create a project from Review's + New project button.
+   */
+  createProjectFromReview(input: { name: string; objective?: string }): Promise<Project>;
+
+  /**
+   * Open a project from the Review / All projects list.
+   */
+  openProjectFromIndex(name: string): Promise<void>;
+
+  /**
+   * Follow the project page "All projects" back link.
+   */
+  openAllProjectsBackLink(): Promise<void>;
+
+  /**
+   * Open Process by URL and wait until it is ready.
+   */
+  openProcess(): Promise<void>;
+
+  /**
+   * Assert no desktop rail item is highlighted.
+   */
+  shouldSeeNoRailItemHighlighted(): Promise<void>;
+
+  /**
+   * Open a project from the rail / phone drawer.
+   */
+  openRailProject(name: string): Promise<void>;
+
+  /**
+   * Confirm Promote onto this named list and project.
+   */
+  confirmPromoteOnListAndProject(input: {
+    listName: string;
+    projectName: string;
+  }): Promise<Task>;
+
+  /**
+   * Assert the last matching node sits above the phone tab bar.
+   */
+  shouldSeeClearOfMobileTabBar(selector: string): Promise<void>;
+
+  /**
+   * Snooze this capture on the current pane (Capture or Process).
+   */
+  snoozeCaptureOnCurrentPane(content: string): Promise<void>;
+
+  /**
+   * Trash this capture with the card Trash button on the current pane.
+   */
+  trashCaptureOnCurrentPane(content: string): Promise<void>;
 
   /**
    * Assert the mobile bottom nav shows exactly these tabs, in order.

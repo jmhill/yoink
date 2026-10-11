@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useSearch, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect, useSearch, useNavigate } from '@tanstack/react-router';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
@@ -796,7 +796,22 @@ function TasksPage() {
       data-task-surface=""
       className="container mx-auto max-w-2xl bg-background p-4"
     >
-      <Header leading={<MobileTasksRailDrawer />} />
+      <Header
+        leading={
+          <>
+            <MobileTasksRailDrawer />
+            {allPile !== null ? (
+              <Link
+                to="/work"
+                data-back-to-work=""
+                className="text-sm text-muted-foreground md:hidden"
+              >
+                ‹ Work
+              </Link>
+            ) : null}
+          </>
+        }
+      />
       <PlaceHeading
         title={isReordering ? 'Reorder' : taskPlaceHeading(place)}
         subcopy={taskPlaceSubcopy(place, displayedCount)}

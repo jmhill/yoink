@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
 import {
   captureUrlDomain,
   projectNameFromCapture,
@@ -16,26 +17,54 @@ describe('projectNameFromCapture', () => {
 });
 
 describe('projectObjectiveFromCapture', () => {
-  it('is the full content when there is no URL', () => {
-    expect(projectObjectiveFromCapture({ content: 'Harbor shed' })).toBe('Harbor shed');
-  });
-
-  it('appends the URL once on its own line', () => {
+  it('is just the URL for a one-line capture', () => {
     expect(
       projectObjectiveFromCapture({
-        content: 'NOLA Brewing',
-        sourceUrl: 'https://nolabrewing.com/events',
+        content: 'Harbor shed',
+        sourceUrl: 'https://example.com/harbor',
       })
-    ).toBe('NOLA Brewing\nhttps://nolabrewing.com/events');
+    ).toBe('https://example.com/harbor');
   });
 
-  it('does not append a URL that is already in the content', () => {
+  it('is empty for a one-line capture with no URL', () => {
+    expect(projectObjectiveFromCapture({ content: 'Desktop clip' })).toBe('');
+  });
+
+  it('uses the rest of a longer capture, then the URL', () => {
     expect(
       projectObjectiveFromCapture({
-        content: 'See https://nolabrewing.com/events tonight',
-        sourceUrl: 'https://nolabrewing.com/events',
+        content: 'Harbor shed\nPaint the door',
+        sourceUrl: 'https://example.com/harbor',
       })
-    ).toBe('See https://nolabrewing.com/events tonight');
+    ).toBe('Paint the door\nhttps://example.com/harbor');
+  });
+
+  it('does not append a URL that is already in the text', () => {
+    expect(
+      projectObjectiveFromCapture({
+        content: 'Harbor shed\nSee https://example.com/harbor tonight',
+        sourceUrl: 'https://example.com/harbor',
+      })
+    ).toBe('See https://example.com/harbor tonight');
+  });
+
+  it('splits on CRLF the same way as LF', () => {
+    expect(
+      projectObjectiveFromCapture({
+        content: 'Harbor shed\r\nPaint the door',
+        sourceUrl: 'https://example.com/harbor',
+      })
+    ).toBe('Paint the door\nhttps://example.com/harbor');
+  });
+
+  it('caps a long rest-plus-URL at the shared objective max', () => {
+    const rest = 'B'.repeat(PROJECT_OBJECTIVE_MAX_LENGTH);
+    expect(
+      projectObjectiveFromCapture({
+        content: `Harbor shed\n${rest}`,
+        sourceUrl: 'https://example.com/harbor',
+      })
+    ).toBe(rest);
   });
 });
 

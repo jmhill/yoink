@@ -10,12 +10,18 @@ const keyEvent = (key: string, target?: EventTarget | null): KeyboardEvent => {
 };
 
 describe('processKeyAction', () => {
-  it('maps T P S Z and Delete', () => {
+  it('maps T P S Z, Delete, and Backspace', () => {
     expect(processKeyAction(keyEvent('t'))).toBe('make-task');
     expect(processKeyAction(keyEvent('P'))).toBe('new-project');
     expect(processKeyAction(keyEvent('s'))).toBe('someday-project');
     expect(processKeyAction(keyEvent('Z'))).toBe('snooze');
     expect(processKeyAction(keyEvent('Delete'))).toBe('trash');
+    expect(processKeyAction(keyEvent('Backspace'))).toBe('trash');
+  });
+
+  it('ignores key-repeat so a held Delete cannot trash two captures', () => {
+    const held = new KeyboardEvent('keydown', { key: 'Delete', repeat: true });
+    expect(processKeyAction(held)).toBeNull();
   });
 
   it('ignores chords and unknown keys', () => {

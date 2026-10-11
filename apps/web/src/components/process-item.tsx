@@ -10,6 +10,7 @@ import {
 } from '@/lib/capture-snooze-menu';
 import { captureUrlDomain } from '@/lib/process-prefill';
 import { PROCESS_KEY_HINTS } from '@/lib/process-keys';
+import { cn } from '@yoink/ui-base/lib/utils';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
 
 const SNOOZE_OPTIONS: Array<{ option: SnoozeOption; label: string }> = [
@@ -102,6 +103,15 @@ export function ProcessItem({
   }, [snoozeOpen]);
 
   useEffect(() => {
+    if (!snoozeOpen || snoozeCoords === null) {
+      return;
+    }
+    snoozeMenuRef.current
+      ?.querySelector<HTMLElement>('[data-process-snooze-option]')
+      ?.focus();
+  }, [snoozeOpen, snoozeCoords]);
+
+  useEffect(() => {
     if (!snoozeOpen) {
       return;
     }
@@ -142,7 +152,7 @@ export function ProcessItem({
         sourceApp={capture.sourceApp}
         capturedAt={capture.capturedAt}
       />
-      <div className="flex flex-wrap gap-2 px-3 pb-3">
+      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap')}>
         <Button
           type="button"
           variant="outline"

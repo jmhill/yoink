@@ -43,16 +43,11 @@ type ProcessCapture = {
   sourceUrl?: string | null;
 };
 
-type InboxTriageOptions = {
-  announceTaskCreated?: boolean;
-};
-
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
  * Optimistic updates and rollback stay on the shared inbox query key.
  */
-export function useInboxTriage(options: InboxTriageOptions = {}) {
-  const announceTaskCreated = options.announceTaskCreated ?? true;
+export function useInboxTriage() {
   const navigate = useNavigate();
   const tsrQueryClient = tsr.useQueryClient();
   const projectsClient = tsrProjects.useQueryClient();
@@ -257,14 +252,12 @@ export function useInboxTriage(options: InboxTriageOptions = {}) {
     },
 
     onSuccess: () => {
-      if (announceTaskCreated) {
-        toast.success('Task created', {
-          action: {
-            label: 'View',
-            onClick: () => navigate({ to: '/tasks' }),
-          },
-        });
-      }
+      toast.success('Task created', {
+        action: {
+          label: 'View',
+          onClick: () => navigate({ to: '/tasks' }),
+        },
+      });
       setTaskModalOpen(false);
       setTaskModalCapture(null);
     },
@@ -335,7 +328,18 @@ export function useInboxTriage(options: InboxTriageOptions = {}) {
           projectId: result.body.project.id,
           projectName: result.body.project.name,
         });
+        return;
       }
+      toast.success('Project created', {
+        action: {
+          label: 'View',
+          onClick: () =>
+            navigate({
+              to: '/projects/$projectId',
+              params: { projectId: result.body.project.id },
+            }),
+        },
+      });
     },
     onSettled: () => {
       void invalidateLiveQueries(tsrQueryClient);

@@ -41,10 +41,11 @@ function ProcessPage() {
     handleConfirmPromote,
     handleOpenProjectSheet,
     handleConfirmProject,
-  } = useInboxTriage({ announceTaskCreated: false });
+  } = useInboxTriage();
   const desktop = useDesktopLayout();
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const previousCurrentId = useRef<string | null>(null);
+  const keyLock = useRef(false);
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -75,26 +76,41 @@ function ProcessPage() {
   const ready = data?.status === 200;
   const snoozedCopy = processEmptySnoozedCopy(snoozedCount);
   const sheetOpen = taskModalOpen || projectSheetOpen || snoozeOpen;
+  const actionPending = isTrashing || isSnoozing || isProcessing;
+  const inboxIdKey = captures.map((capture) => capture.id).join(',');
+
+  useEffect(() => {
+    if (!actionPending) {
+      keyLock.current = false;
+    }
+  }, [actionPending]);
 
   useEffect(() => {
     const previous = previousCurrentId.current;
     const next = current?.id ?? null;
-    if (previous !== null && previous !== next && !wasActed(previous)) {
+    const inboxIds = inboxIdKey === '' ? [] : inboxIdKey.split(',');
+    if (previous !== null && !inboxIds.includes(previous) && !wasActed(previous)) {
       toast('That capture was already processed');
     }
     previousCurrentId.current = next;
-  }, [current?.id, wasActed]);
+  }, [current?.id, inboxIdKey, wasActed]);
 
   useEffect(() => {
-    if (!desktop || !current || sheetOpen) {
+    if (!desktop || !current || sheetOpen || actionPending) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
+      if (keyLock.current) {
+        return;
+      }
       const action = processKeyAction(event);
       if (action === null) {
         return;
       }
       event.preventDefault();
+      if (action === 'trash') {
+        keyLock.current = true;
+      }
       switch (action) {
         case 'make-task':
           handleProcessToTask({ id: current.id, content: current.content });
@@ -114,7 +130,15 @@ function ProcessPage() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [desktop, current, sheetOpen, handleProcessToTask, handleOpenProjectSheet, handleTrash]);
+  }, [
+    desktop,
+    current,
+    sheetOpen,
+    actionPending,
+    handleProcessToTask,
+    handleOpenProjectSheet,
+    handleTrash,
+  ]);
 
   return (
     <div
@@ -126,7 +150,7 @@ function ProcessPage() {
       <Header />
       <PlaceHeading
         title="Process"
-        subcopy={ready ? processQueueSubcopy(left) : undefined}
+        subcopy={ready && current !== null ? processQueueSubcopy(left) : undefined}
         subcopyTestId="process-subcopy"
       />
 

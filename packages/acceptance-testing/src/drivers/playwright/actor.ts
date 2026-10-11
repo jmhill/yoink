@@ -3517,8 +3517,15 @@ export const createPlaywrightActor = (
       );
     },
 
-    async pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete'): Promise<void> {
+    async pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void> {
       await page.keyboard.press(key);
+    },
+
+    async pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void> {
+      await page.evaluate((pressed) => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: pressed, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: pressed, bubbles: true }));
+      }, key);
     },
 
     async shouldSeeProcessKeyHints(): Promise<void> {
@@ -3526,7 +3533,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-process-key-hint="P"]')).toBeVisible();
       await expect(page.locator('[data-process-key-hint="S"]')).toBeVisible();
       await expect(page.locator('[data-process-key-hint="Z"]')).toBeVisible();
-      await expect(page.locator('[data-process-key-hint="Del"]')).toBeVisible();
+      await expect(page.locator('[data-process-key-hint="⌫"]')).toBeVisible();
     },
 
     async shouldSeeUndoToast(): Promise<void> {
@@ -3541,9 +3548,28 @@ export const createPlaywrightActor = (
       await expect(page.getByText('That capture was already processed')).toBeVisible();
     },
 
+    async shouldNotSeeAlreadyProcessedNotice(): Promise<void> {
+      await expect(page.getByText('That capture was already processed')).toHaveCount(0);
+    },
+
+    async shouldNotSeeWhatsNext(): Promise<void> {
+      await expect(page.locator('[data-whats-next-prompt]')).toHaveCount(0);
+    },
+
+    async shouldSeeTaskCreatedToast(): Promise<void> {
+      await expect(page.getByText('Task created', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'View' })).toBeVisible();
+    },
+
+    async shouldSeeProjectCreatedToast(): Promise<void> {
+      await expect(page.getByText('Project created', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'View' })).toBeVisible();
+    },
+
     async shouldSeeProcessEmpty(): Promise<void> {
       await expect(page.getByText('Nothing to process', { exact: true })).toBeVisible();
       await expect(page.locator('[data-process-empty-capture]')).toBeVisible();
+      await expect(page.getByTestId('process-subcopy')).toHaveCount(0);
     },
 
     async shouldSeeProcessBadge(count: number | null): Promise<void> {

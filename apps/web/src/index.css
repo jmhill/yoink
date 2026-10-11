@@ -17,6 +17,12 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+@media (max-width: 767px) {
+  [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+  }
+}
+
 /* Vaul sets a 500ms transform via inline style. Honor reduced motion so
    the left Tasks rail drawer is immediately at rest (also keeps Playwright
    from treating rail controls as never-stable). */

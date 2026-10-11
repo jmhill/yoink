@@ -8,6 +8,7 @@ import {
   invalidCursorHttp,
   toCaptureListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
+import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
 
 export type CaptureRoutesDependencies = {
   captureHandlers: CaptureHandlers;
@@ -461,7 +462,10 @@ export const registerCaptureRoutes = async (
     s.registerRouter(captureContract, captureRouter, authedApp, {
       jsonQuery: true,
       responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
+      requestValidationErrorHandler: (err, request, reply) => {
+        if (request.url.includes('/process-to-project')) {
+          return reply.status(400).send(projectRequestValidationError(err));
+        }
         return reply.status(400).send({ message: err.message });
       },
     });

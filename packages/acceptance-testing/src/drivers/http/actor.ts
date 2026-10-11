@@ -1951,8 +1951,12 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeProcessSourceUrl', 'http');
     },
 
-    async pressProcessKey(_key: 't' | 'p' | 's' | 'z' | 'Delete'): Promise<void> {
+    async pressProcessKey(_key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void> {
       throw new UnsupportedOperationError('pressProcessKey', 'http');
+    },
+
+    async pressProcessKeyTwice(_key: 'Delete' | 'Backspace'): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessKeyTwice', 'http');
     },
 
     async shouldSeeProcessKeyHints(): Promise<void> {
@@ -1969,6 +1973,22 @@ export const createHttpActor = (
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeAlreadyProcessedNotice', 'http');
+    },
+
+    async shouldNotSeeAlreadyProcessedNotice(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAlreadyProcessedNotice', 'http');
+    },
+
+    async shouldNotSeeWhatsNext(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeWhatsNext', 'http');
+    },
+
+    async shouldSeeTaskCreatedToast(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskCreatedToast', 'http');
+    },
+
+    async shouldSeeProjectCreatedToast(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectCreatedToast', 'http');
     },
 
     async shouldSeeProcessEmpty(): Promise<void> {

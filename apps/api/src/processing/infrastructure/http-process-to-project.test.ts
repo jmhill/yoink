@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import type { Capture, Project, Task } from '@yoink/api-contracts';
+import {
+  PROJECT_NAME_MAX_LENGTH,
+  PROJECT_OBJECTIVE_MAX_LENGTH,
+  type Capture,
+  type Project,
+  type Task,
+} from '@yoink/api-contracts';
 import {
   createTestAppWithWebAuthn,
   TEST_TOKEN,
@@ -152,6 +158,64 @@ describe('POST /api/captures/:id/process-to-project', () => {
       headers: bearer,
     });
     expect(projects.json<{ projects: Project[] }>().projects).toHaveLength(0);
+  });
+
+  const expectStillInboxAndNoProject = async (captureId: string) => {
+    const still = await app.inject({
+      method: 'GET',
+      url: `/api/captures/${captureId}`,
+      headers: bearer,
+    });
+    expect(still.json<Capture>().status).toBe('inbox');
+    const projects = await app.inject({
+      method: 'GET',
+      url: '/api/projects',
+      headers: bearer,
+    });
+    expect(projects.json<{ projects: Project[] }>().projects).toHaveLength(0);
+  };
+
+  it('returns PROJECT_NAME_BLANK for a blank name and writes nothing', async () => {
+    const capture = await createCapture({ content: 'Blank name' });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${capture.id}/process-to-project`,
+      headers: bearer,
+      payload: { name: '   ', status: 'active' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'PROJECT_NAME_BLANK' });
+    await expectStillInboxAndNoProject(capture.id);
+  });
+
+  it('returns INVALID_PROJECT_NAME for a 201-character name and writes nothing', async () => {
+    const capture = await createCapture({ content: 'Long name' });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${capture.id}/process-to-project`,
+      headers: bearer,
+      payload: { name: 'A'.repeat(PROJECT_NAME_MAX_LENGTH + 1), status: 'active' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'INVALID_PROJECT_NAME' });
+    await expectStillInboxAndNoProject(capture.id);
+  });
+
+  it('returns VALIDATION_FAILED for a 2001-character objective and writes nothing', async () => {
+    const capture = await createCapture({ content: 'Long objective' });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${capture.id}/process-to-project`,
+      headers: bearer,
+      payload: {
+        name: 'Harbor',
+        objective: 'O'.repeat(PROJECT_OBJECTIVE_MAX_LENGTH + 1),
+        status: 'active',
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expectStillInboxAndNoProject(capture.id);
   });
 
   it('keeps process-to-task byte-identical for a bot token', async () => {

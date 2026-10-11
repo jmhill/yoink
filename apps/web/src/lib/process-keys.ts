@@ -10,7 +10,7 @@ export const PROCESS_KEY_HINTS: Record<ProcessKeyAction, string> = {
   'new-project': 'P',
   'someday-project': 'S',
   snooze: 'Z',
-  trash: 'Del',
+  trash: '⌫',
 };
 
 export function isTypingTarget(target: EventTarget | null): boolean {
@@ -25,6 +25,9 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function processKeyAction(event: KeyboardEvent): ProcessKeyAction | null {
+  if (event.repeat) {
+    return null;
+  }
   if (event.metaKey || event.ctrlKey || event.altKey) {
     return null;
   }
@@ -45,6 +48,7 @@ export function processKeyAction(event: KeyboardEvent): ProcessKeyAction | null 
     case 'Z':
       return 'snooze';
     case 'Delete':
+    case 'Backspace':
       return 'trash';
     default:
       return null;

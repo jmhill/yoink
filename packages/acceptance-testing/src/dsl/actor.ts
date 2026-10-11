@@ -1684,9 +1684,15 @@ export type BrowserActorOperations = {
   shouldSeeProcessSourceUrl(label: string): Promise<void>;
 
   /**
-   * Press a Process desktop key (T, P, S, Z, Delete).
+   * Press a Process desktop key (T, P, S, Z, Delete, Backspace).
    */
-  pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete'): Promise<void>;
+  pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void>;
+
+  /**
+   * Fire the same Process key twice in one tick so a held or double
+   * Delete cannot trash two captures.
+   */
+  pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void>;
 
   /**
    * Assert desktop Process key hints are showing.
@@ -1707,6 +1713,26 @@ export type BrowserActorOperations = {
    * Assert Process moved on because the current capture was processed elsewhere.
    */
   shouldSeeAlreadyProcessedNotice(): Promise<void>;
+
+  /**
+   * Assert the out-of-band processed toast is not showing.
+   */
+  shouldNotSeeAlreadyProcessedNotice(): Promise<void>;
+
+  /**
+   * Assert What’s next is not showing.
+   */
+  shouldNotSeeWhatsNext(): Promise<void>;
+
+  /**
+   * Assert the Task created toast with View is showing.
+   */
+  shouldSeeTaskCreatedToast(): Promise<void>;
+
+  /**
+   * Assert the Project created toast with View is showing.
+   */
+  shouldSeeProjectCreatedToast(): Promise<void>;
 
   /**
    * Assert the Process empty state and its Capture link.

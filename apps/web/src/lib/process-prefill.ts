@@ -1,6 +1,4 @@
-import { PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
-
-const PROJECT_NAME_MAX_LENGTH = 200;
+import { PROJECT_NAME_MAX_LENGTH, PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
 
 export function projectNameFromCapture(content: string): string {
   const firstLine = content.split(/\r?\n/, 1)[0] ?? '';
@@ -12,9 +10,14 @@ export function projectObjectiveFromCapture(input: {
   sourceUrl?: string | null;
 }): string {
   const url = input.sourceUrl?.trim() ?? '';
+  const lines = input.content.split(/\r?\n/);
+  const rest = lines.slice(1).join('\n').trim();
+  if (rest.length === 0) {
+    return url.slice(0, PROJECT_OBJECTIVE_MAX_LENGTH);
+  }
   const alreadyHasUrl = url.length > 0 && input.content.includes(url);
-  const combined = url.length > 0 && !alreadyHasUrl ? `${input.content}\n${url}` : input.content;
-  return combined.slice(0, PROJECT_OBJECTIVE_MAX_LENGTH);
+  const body = url.length > 0 && !alreadyHasUrl ? `${rest}\n${url}` : rest;
+  return body.slice(0, PROJECT_OBJECTIVE_MAX_LENGTH);
 }
 
 export function captureUrlDomain(url: string): string {

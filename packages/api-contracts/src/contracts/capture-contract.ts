@@ -2,7 +2,7 @@ import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { CaptureSchema, CaptureStatusSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
 import { CaptureListPageSchema, ListPageQuerySchema } from '../schemas/list-page.js';
-import { ProjectSchema } from '../schemas/project.js';
+import { CreateProjectSchema, ProjectSchema } from '../schemas/project.js';
 import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -28,9 +28,7 @@ export const ProcessCaptureBodySchema = ProcessCaptureToTaskSchema;
 
 export type ProcessCaptureBody = z.infer<typeof ProcessCaptureBodySchema>;
 
-export const ProcessCaptureToProjectSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  objective: z.string().max(2000).optional(),
+export const ProcessCaptureToProjectSchema = CreateProjectSchema.extend({
   status: z.enum(['active', 'someday']),
 });
 

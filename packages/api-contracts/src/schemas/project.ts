@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ImportEntryErrorSchema } from './error.js';
 
+export const PROJECT_NAME_MAX_LENGTH = 200;
 export const PROJECT_OBJECTIVE_MAX_LENGTH = 2000;
 export const PROJECT_WAITING_ON_MAX_LENGTH = 200;
 export const NOTEBOOK_PAGE_PATH_MAX_LENGTH = 500;
@@ -37,7 +38,7 @@ export type NotebookPage = z.infer<typeof NotebookPageSchema>;
 export const ProjectSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
-  name: z.string().min(1).max(200),
+  name: z.string().min(1).max(PROJECT_NAME_MAX_LENGTH),
   objective: z.string().max(PROJECT_OBJECTIVE_MAX_LENGTH).optional(),
   status: ProjectStatusSchema,
   waitingOn: z.string().max(PROJECT_WAITING_ON_MAX_LENGTH).nullable(),
@@ -52,7 +53,7 @@ export const ProjectSchema = z.object({
 
 export type Project = z.infer<typeof ProjectSchema>;
 
-const ProjectNameSchema = z.string().trim().min(1).max(200);
+const ProjectNameSchema = z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH);
 
 export const CreateProjectSchema = z.object({
   name: ProjectNameSchema,

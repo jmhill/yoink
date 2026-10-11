@@ -1,11 +1,10 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync, errAsync, okAsync } from 'neverthrow';
+import { ResultAsync, err, errAsync, ok, okAsync, type Result } from 'neverthrow';
 import { z } from 'zod';
 import {
   CaptureStatusSchema,
   ProcessedToTypeSchema,
   type Capture,
-  type CaptureStatus,
   type ProcessedToType,
 } from '@yoink/api-contracts';
 import type { Clock } from '@yoink/infrastructure';
@@ -31,7 +30,7 @@ const CaptureRowSchema = z.object({
   title: z.string().nullish(),
   source_url: z.string().nullish(),
   source_app: z.string().nullish(),
-  status: z.string(),
+  status: CaptureStatusSchema,
   captured_at: z.string(),
   trashed_at: z.string().nullish(),
   snoozed_until: z.string().nullish(),
@@ -42,14 +41,12 @@ const CaptureRowSchema = z.object({
 
 type CaptureRow = z.infer<typeof CaptureRowSchema>;
 
-const captureRowFromUnknown = (row: unknown): CaptureRow | undefined => {
+const captureFromUnknown = (row: unknown): Result<Capture, StorageError> => {
   const parsed = CaptureRowSchema.safeParse(row);
-  return parsed.success ? parsed.data : undefined;
-};
-
-const captureStatusFromRow = (status: string): CaptureStatus => {
-  const parsed = CaptureStatusSchema.safeParse(status);
-  return parsed.success ? parsed.data : 'inbox';
+  if (!parsed.success) {
+    return err(storageError('Invalid capture row'));
+  }
+  return ok(rowToCapture(parsed.data));
 };
 
 const processedToTypeFromRow = (value: string | null): ProcessedToType | undefined => {
@@ -68,7 +65,7 @@ const rowToCapture = (row: CaptureRow): Capture => ({
   title: row.title ?? undefined,
   sourceUrl: row.source_url ?? undefined,
   sourceApp: row.source_app ?? undefined,
-  status: captureStatusFromRow(row.status),
+  status: row.status,
   capturedAt: row.captured_at,
   trashedAt: row.trashed_at ?? undefined,
   snoozedUntil: row.snoozed_until ?? undefined,
@@ -134,9 +131,16 @@ export const createSqliteCaptureStore = async (
           args: [id],
         }),
         (error) => storageError('Failed to find capture', error)
-      ).map((result) => {
-        const row = captureRowFromUnknown(result.rows[0]);
-        return row ? rowToCapture(row) : null;
+      ).andThen((result) => {
+        const raw = result.rows[0];
+        if (raw === undefined) {
+          return okAsync(null);
+        }
+        const parsed = captureFromUnknown(raw);
+        if (parsed.isErr()) {
+          return errAsync(parsed.error);
+        }
+        return okAsync(parsed.value);
       });
     },
 
@@ -212,20 +216,18 @@ export const createSqliteCaptureStore = async (
         direction: snoozedView ? snoozedCaptureDirection : captureFeedDirection,
         fetchLimit,
         seek,
-        mapRow: (row) => {
-          const parsed = captureRowFromUnknown(row);
-          return parsed
-            ? rowToCapture(parsed)
-            : {
-                id: '',
-                organizationId: '',
-                createdById: '',
-                content: '',
-                status: 'inbox',
-                capturedAt: '',
-              };
-        },
+        mapRow: (row) => row,
         errorMessage: 'Failed to find captures',
+      }).andThen((page) => {
+        const rows: Capture[] = [];
+        for (const row of page.rows) {
+          const parsed = captureFromUnknown(row);
+          if (parsed.isErr()) {
+            return errAsync(parsed.error);
+          }
+          rows.push(parsed.value);
+        }
+        return okAsync({ ...page, rows });
       });
     },
 
@@ -319,13 +321,13 @@ export const createSqliteCaptureStore = async (
           }),
           (error) => storageError('Failed to fetch updated capture', error)
         ).andThen((selectResult) => {
-          const row = captureRowFromUnknown(selectResult.rows[0]);
-
-          if (!row) {
-            return errAsync<Capture, MarkAsProcessedError>(storageError('Capture not found after update'));
+          const parsed = captureFromUnknown(selectResult.rows[0]);
+          if (parsed.isErr()) {
+            return errAsync<Capture, MarkAsProcessedError>(
+              storageError('Capture not found after update')
+            );
           }
-
-          return okAsync<Capture, MarkAsProcessedError>(rowToCapture(row));
+          return okAsync<Capture, MarkAsProcessedError>(parsed.value);
         });
       });
     },

@@ -75,6 +75,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.undoFromToast();
       await alice.shouldSeeProcessCurrent('Oldest clip');
       await alice.shouldSeeProcessLeft(2);
+      await alice.shouldNotSeeAlreadyProcessedNotice();
+    }, 60_000);
+
+    it('snoozes the current card, then Undo brings it back', async () => {
+      await alice.createCapture({ content: 'Snooze first' });
+      await alice.createCapture({ content: 'Stay next' });
+
+      await alice.useMobileViewport();
+      await alice.openMobileBottomTab('process');
+      await alice.shouldSeeProcessCurrent('Snooze first');
+      await alice.openProcessSnoozeMenu();
+      await alice.pickProcessSnooze('tomorrow');
+      await alice.shouldSeeProcessCurrent('Stay next');
+      await alice.shouldSeeUndoToast();
+      await alice.undoFromToast();
+      await alice.shouldSeeProcessCurrent('Snooze first');
+      await alice.shouldSeeProcessLeft(2);
+      await alice.shouldNotSeeAlreadyProcessedNotice();
     }, 60_000);
 
     it('makes the current capture a task on a list and project', async () => {
@@ -96,6 +114,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(task.projectId).toBe(shed.id);
       expect(task.dueDate).toBe('2026-10-20');
 
+      await alice.shouldSeeTaskCreatedToast();
       await alice.shouldSeeProcessCurrent('Still in the queue');
       await alice.shouldSeeProcessLeft(1);
 
@@ -110,6 +129,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         content: 'Harbor shed',
         sourceUrl: 'https://example.com/harbor',
       });
+      await alice.createCapture({ content: LONG_CLIP });
       await alice.createCapture({ content: 'Still waiting' });
 
       await alice.useMobileViewport();
@@ -117,7 +137,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openProcessProjectSheet('active');
       await alice.shouldSeeProcessProjectPrefill({
         name: 'Harbor shed',
-        objective: 'Harbor shed\nhttps://example.com/harbor',
+        objective: 'https://example.com/harbor',
       });
       await alice.fillProcessProject({ name: 'Harbor' });
       const created = await alice.confirmProcessProject();
@@ -127,8 +147,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.shouldSeeWhatsNext();
       await alice.skipWhatsNext();
-      await alice.shouldSeeProcessCurrent('Still waiting');
-      await alice.shouldSeeProcessLeft(1);
+      await alice.shouldSeeProcessCurrent(LONG_CLIP);
+      await alice.openProcessProjectSheet('active');
+      await alice.shouldSeeProcessProjectPrefill({
+        name: 'Yoink ideas - forward text message, image/photo capture',
+        objective: 'Need a way to send a photo from the phone and have it land in the inbox.',
+      });
+      await alice.cancelProcessProjectSheet();
+      await alice.shouldSeeProcessLeft(2);
 
       await alice.openMobileBottomTab('review');
       await alice.openProjectFromIndex('Harbor');
@@ -146,6 +172,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const created = await alice.confirmProcessProject();
       expect(created.project.status).toBe('someday');
 
+      await alice.shouldNotSeeWhatsNext();
+      await alice.shouldSeeProjectCreatedToast();
       await alice.shouldSeeProcessCurrent('Keep processing');
       await alice.shouldSeeProcessLeft(1);
 
@@ -204,13 +232,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.pressProcessKey('p');
       await alice.shouldSeeProcessProjectPrefill({
         name: 'Desktop clip',
-        objective: 'Desktop clip',
+        objective: '',
       });
       await alice.fillProcessProject({ name: 'Typed name' });
       await alice.pressProcessKey('t');
       await alice.shouldSeeProcessProjectPrefill({
         name: 'Typed namet',
-        objective: 'Desktop clip',
+        objective: '',
       });
       await alice.fillProcessProject({ name: 'Garden' });
       await alice.shouldSeeProcessProjectError('A project with this name already exists');
@@ -219,13 +247,42 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.pressProcessKey('s');
       await alice.fillProcessProject({ name: 'Someday desk' });
       await alice.confirmProcessProject();
+      await alice.shouldNotSeeWhatsNext();
+      await alice.shouldSeeProjectCreatedToast();
       await alice.shouldSeeProcessCurrent('Second desktop');
       await alice.shouldSeeProcessLeft(1);
+
+      await alice.pressProcessKey('Delete');
+      await alice.shouldSeeProcessEmpty();
+      await alice.shouldSeeUndoToast();
+      await alice.undoFromToast();
+      await alice.shouldSeeProcessCurrent('Second desktop');
+      await alice.shouldNotSeeAlreadyProcessedNotice();
 
       await alice.pressProcessKey('z');
       await alice.pickProcessSnooze('tomorrow');
       await alice.shouldSeeProcessEmpty();
+      await alice.shouldSeeUndoToast();
+      await alice.undoFromToast();
+      await alice.shouldSeeProcessCurrent('Second desktop');
+      await alice.shouldNotSeeAlreadyProcessedNotice();
+      await alice.pressProcessKey('z');
+      await alice.pickProcessSnooze('tomorrow');
+      await alice.shouldSeeProcessEmpty();
     }, 90_000);
+
+    it('ignores a second Delete while the first trash is pending', async () => {
+      await alice.createCapture({ content: 'First desk' });
+      await alice.createCapture({ content: 'Second desk' });
+
+      await alice.useDesktopViewport(DESKTOP);
+      await alice.openProcess();
+      await alice.shouldSeeProcessCurrent('First desk');
+      await alice.pressProcessKeyTwice('Delete');
+      await alice.shouldSeeProcessCurrent('Second desk');
+      await alice.shouldSeeProcessLeft(1);
+      await alice.shouldSeeUndoToast();
+    }, 60_000);
 
     it('moves on when another device processes the current capture', async () => {
       const first = await alice.createCapture({ content: 'Taken elsewhere' });
@@ -355,21 +412,62 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
 
       await alice.useDesktopViewport(DESKTOP);
+      await alice.createCapture({
+        content: 'NOLA Brewing - Live Music / Events',
+        sourceUrl: 'https://www.nolabrewing.com/events',
+        sourceApp: 'browser-extension',
+      });
+      await alice.createCapture({ content: 'Harbor shed' });
+      await alice.createCapture({ content: LONG_CLIP });
       await alice.createCapture({ content: 'Desktop leftover' });
       await alice.openProcess();
       await alice.shouldSeeRailSectionHighlighted('process');
       await alice.shouldSeeProcessKeyHints();
+      await alice.shouldSeeProcessCurrent('NOLA Brewing - Live Music / Events');
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_card' });
+
       await alice.openProcessProjectSheet('active');
+      await alice.shouldSeeProcessProjectPrefill({
+        name: 'NOLA Brewing - Live Music / Events',
+        objective: 'https://www.nolabrewing.com/events',
+      });
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_project_sheet',
       });
       await alice.cancelProcessProjectSheet();
+
+      await alice.trashProcessCurrent();
+      await alice.shouldSeeUndoToast();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'process_undo_toast',
+        includeToasts: true,
+      });
+
+      await alice.shouldSeeProcessCurrent('Harbor shed');
+      await alice.openProcessProjectSheet('active');
+      await alice.fillProcessProject({ name: 'Harbor desk' });
+      await alice.confirmProcessProject();
+      await alice.shouldSeeWhatsNext();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'process_whats_next',
+      });
+      await alice.skipWhatsNext();
+
+      await alice.shouldSeeProcessCurrent(LONG_CLIP);
+      await alice.openProcessProjectSheet('active');
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'process_project_sheet_long',
+      });
+      await alice.cancelProcessProjectSheet();
+      await alice.trashProcessCurrent();
       await alice.trashProcessCurrent();
       await alice.shouldSeeProcessEmpty();
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_empty' });
-    }, 90_000);
+    }, 120_000);
   });
 });
 
@@ -416,6 +514,12 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.shouldSeeProcessCurrent('Nope')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeProcessLeft(1)).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.openProcessProjectSheet('active')).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.pressProcessKeyTwice('Delete')).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeTaskCreatedToast()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeProjectCreatedToast()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldNotSeeAlreadyProcessedNotice()).rejects.toThrow(
         UnsupportedOperationError
       );
     });

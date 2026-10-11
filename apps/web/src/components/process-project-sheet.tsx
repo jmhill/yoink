@@ -10,6 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@yoink/ui-base/components/sheet';
+import { PROJECT_NAME_MAX_LENGTH, PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
 import { projectNameFromCapture, projectObjectiveFromCapture } from '@/lib/process-prefill';
 
 export type ProcessProjectConfirmInput = {
@@ -85,10 +86,15 @@ export function ProcessProjectSheet({
                 data-process-project-name=""
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                maxLength={200}
+                maxLength={PROJECT_NAME_MAX_LENGTH}
                 disabled={isLoading}
                 autoFocus
               />
+              {error ? (
+                <p role="alert" data-process-project-error="" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="process-project-objective">Objective</Label>
@@ -97,16 +103,11 @@ export function ProcessProjectSheet({
                 data-process-project-objective=""
                 value={objective}
                 onChange={(event) => setObjective(event.target.value)}
-                maxLength={2000}
+                maxLength={PROJECT_OBJECTIVE_MAX_LENGTH}
                 disabled={isLoading}
-                rows={5}
-                className="border-input dark:bg-input/30 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                rows={Math.max(3, objective.split(/\r?\n/).length)}
+                className="border-input dark:bg-input/30 field-sizing-content w-full min-h-24 min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               />
-              {error ? (
-                <p role="alert" data-process-project-error="" className="text-sm text-destructive">
-                  {error}
-                </p>
-              ) : null}
             </div>
           </div>
           <SheetFooter>
@@ -118,7 +119,7 @@ export function ProcessProjectSheet({
               data-process-project-submit=""
               disabled={isLoading || !trimmedName}
             >
-              {isLoading ? 'Creating...' : title}
+              {isLoading ? 'Creating...' : 'Create project'}
             </Button>
           </SheetFooter>
         </form>

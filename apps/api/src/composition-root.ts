@@ -465,6 +465,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     pageNextActions: (options) => workStore.pageNextActions(options),
     pageDue: (options) => workStore.pageDue(options),
     pageLists: (options) => workStore.pageLists(options),
+    countUnlistedOpen: (organizationId) => workStore.countUnlistedOpen(organizationId),
     now: () => clock.now(),
   });
 

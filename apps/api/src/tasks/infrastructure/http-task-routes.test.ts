@@ -309,3 +309,70 @@ describe('PATCH /api/tasks/:id listId', () => {
     expect(stillListed.json<Task>().listId).toBe(list.id);
   });
 });
+
+describe('GET /api/tasks viewer today', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await createTestApp();
+  });
+
+  const auth = { authorization: `Bearer ${TEST_TOKEN}` };
+
+  it('uses America/Chicago when timeZone is omitted and UTC when timeZone=UTC', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'Chicago today', dueDate: '2026-10-11' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/api/tasks',
+      headers: auth,
+      payload: { title: 'UTC tomorrow', dueDate: '2026-10-12' },
+    });
+
+    const chicago = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=today',
+      headers: auth,
+    });
+    expect(chicago.statusCode).toBe(200);
+    expect(chicago.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'Chicago today',
+    ]);
+
+    const utc = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=today&timeZone=UTC',
+      headers: auth,
+    });
+    expect(utc.statusCode).toBe(200);
+    expect(utc.json<{ tasks: Task[] }>().tasks.map((task) => task.title)).toEqual([
+      'UTC tomorrow',
+      'Chicago today',
+    ]);
+  });
+
+  it('returns INVALID_TIME_ZONE for a bad zone and VALIDATION_FAILED for a bad filter', async () => {
+    const mars = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=today&timeZone=Mars/Base',
+      headers: auth,
+    });
+    expect(mars.statusCode).toBe(400);
+    expect(mars.json<{ code?: string; message?: string }>()).toEqual({
+      message: 'Invalid IANA time zone',
+      code: 'INVALID_TIME_ZONE',
+    });
+
+    const bogus = await app.inject({
+      method: 'GET',
+      url: '/api/tasks?filter=bogus',
+      headers: auth,
+    });
+    expect(bogus.statusCode).toBe(400);
+    expect(bogus.json<{ code?: string }>().code).toBe('VALIDATION_FAILED');
+  });
+});

@@ -245,7 +245,7 @@ describe('handleListTasks', () => {
     });
 
     const chicago = await handleListTasks(
-      { organizationId: 'org-123', filter: 'today', timeZone: 'America/Chicago' },
+      { organizationId: 'org-123', filter: 'today' },
       { list: (options) => store.findByOrganization(options), viewerNow: eightPmCt }
     );
     expect(chicago.isOk()).toBe(true);

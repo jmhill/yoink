@@ -1328,7 +1328,7 @@ export const createPlaywrightActor = (
         await expect(page).toHaveURL(/[?&]mine=true/);
         return;
       }
-      await expect(page).not.toHaveURL(/[?&]mine=true/);
+      await expect(page).not.toHaveURL(/[?&]mine=/);
     },
 
     async shouldSeeNowNextActionRows(rows: NowNextActionRow[]): Promise<void> {
@@ -1402,6 +1402,43 @@ export const createPlaywrightActor = (
 
     async shouldSeeRailListCount(listId: string, count: number): Promise<void> {
       await expect(page.locator(`[data-rail-list-count="${listId}"]`)).toHaveText(String(count));
+    },
+
+    async shouldSeeRailLabelOnOneLine(label: string): Promise<void> {
+      const text = page.locator(`[data-rail-label="${label}"] [data-rail-label-text]`).first();
+      await expect(text).toBeVisible();
+      const metrics = await text.evaluate((el) => {
+        const view = el.ownerDocument.defaultView;
+        if (view === null) {
+          throw new Error('expected a window for computed style');
+        }
+        const styles = view.getComputedStyle(el);
+        return {
+          height: el.getBoundingClientRect().height,
+          lineHeight: Number.parseFloat(styles.lineHeight),
+          text: (el.textContent ?? '').replace(/\s+/g, ''),
+        };
+      });
+      expect(metrics.text).toBe(label.replace(/\s+/g, ''));
+      expect(metrics.height).toBeLessThanOrEqual(metrics.lineHeight + 1);
+    },
+
+    async scrollNowDueClearOfTabBar(): Promise<void> {
+      const due = page.locator('[data-now-section="due"]');
+      await expect(due).toBeVisible();
+      await due.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      await expect.poll(async () => {
+        return due.evaluate((el) => {
+          const tabBar = el.ownerDocument.querySelector('[data-app-mobile-nav]');
+          const dueBox = el.getBoundingClientRect();
+          const fold = tabBar
+            ? tabBar.getBoundingClientRect().top
+            : el.ownerDocument.documentElement.clientHeight;
+          return dueBox.top >= 0 && dueBox.top + 32 <= fold;
+        });
+      }).toBe(true);
     },
 
     async openToday(): Promise<void> {
@@ -1660,6 +1697,7 @@ export const createPlaywrightActor = (
         return {
           inbox: order.indexOf('Inbox'),
           family: order.indexOf('Task family'),
+          now: order.indexOf('Now'),
           today: order.indexOf('Today'),
           done: order.indexOf('Done'),
           lists: order.indexOf('Lists'),
@@ -1667,6 +1705,7 @@ export const createPlaywrightActor = (
       }).toEqual({
         inbox: 0,
         family: 1,
+        now: 2,
         today: 3,
         done: 6,
         lists: 7,
@@ -3840,7 +3879,7 @@ export const createPlaywrightActor = (
 
     async listTasks(
       _filter?: TaskFilter,
-      _viewer?: { timeZone?: string; today?: string }
+      _viewer?: { timeZone?: string }
     ): Promise<Task[]> {
       throw new UnsupportedOperationError('listTasks', 'playwright');
     },
@@ -3852,9 +3891,6 @@ export const createPlaywrightActor = (
       }
       if (query?.timeZone) {
         params.set('timeZone', query.timeZone);
-      }
-      if (query?.today) {
-        params.set('today', query.today);
       }
       if (query?.limit !== undefined) {
         params.set('limit', String(query.limit));
@@ -3884,9 +3920,6 @@ export const createPlaywrightActor = (
       }
       if (query?.timeZone) {
         params.set('timeZone', query.timeZone);
-      }
-      if (query?.today) {
-        params.set('today', query.today);
       }
       if (query?.limit !== undefined) {
         params.set('limit', String(query.limit));

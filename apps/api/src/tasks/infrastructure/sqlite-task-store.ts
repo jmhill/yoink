@@ -110,11 +110,11 @@ export const createSqliteTaskStore = async (
       switch (filter) {
         case 'today':
           whereSql += ` AND due_date <= ? AND completed_at IS NULL`;
-          whereArgs.push(today ?? '');
+          whereArgs.push(today);
           break;
         case 'upcoming':
           whereSql += ` AND due_date > ? AND completed_at IS NULL`;
-          whereArgs.push(today ?? '');
+          whereArgs.push(today);
           break;
         case 'completed':
           whereSql += ` AND completed_at IS NOT NULL`;

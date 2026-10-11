@@ -21,7 +21,6 @@ export const handleListNowDue = (
   const today = resolveViewerToday({
     now: deps.now(),
     timeZone: query.timeZone,
-    today: query.today,
   });
   return runListedQuery({
     cursor: query.cursor,

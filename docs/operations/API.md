@@ -91,9 +91,16 @@ request. `owner` is `all` (default) or `me`. `me` keeps only tasks assigned to
 the caller (`callerId`, the same rule as `GET /api/tasks?filter=mine`);
 unowned rows are left out. A bad `owner` is `400` from query validation.
 
-Viewer today is a pure input: send `timeZone` (IANA) and/or `today`
-(`YYYY-MM-DD`). When neither is sent, today is `(now, America/Chicago)`.
-The same query parameters apply to `GET /api/tasks?filter=today|upcoming`.
+Viewer today is a pure function of `(now, timeZone)`. Send `timeZone`
+(IANA). When it is omitted, today is `(now, America/Chicago)`. There is
+no `today=` override. The same `timeZone` query parameter applies to
+`GET /api/tasks?filter=today|upcoming`. `GET /api/work/next-actions` does
+not take a time zone.
+
+A bad `timeZone` is `400` with `code: "INVALID_TIME_ZONE"`. Other query
+validation failures (including a bad `owner`) are `400` with
+`code: "VALIDATION_FAILED"`. A cursor from another view is `400` with
+`code: "invalid_cursor"`.
 
 `GET /api/work/next-actions` returns `{ items: { task, project: { id, name } }[], hasMore, nextCursor, total }`.
 Each row is an **active** project whose `next_action_task_id` points at an

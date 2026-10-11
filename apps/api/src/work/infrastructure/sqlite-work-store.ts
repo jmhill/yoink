@@ -1,7 +1,8 @@
-import { errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
 import type { Database } from '../../database/types.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
 import {
   UNDATED_DUE_SENTINEL,
   workDueDirection,
@@ -9,14 +10,12 @@ import {
   workNextActionDirection,
 } from '../../listing/domain/list-keys.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
-import { sqlKeysetClause } from '../../listing/infrastructure/sql-keyset.js';
 import { parseTaskRow } from '../../tasks/infrastructure/parse-task-row.js';
 import { storageError, type StorageError } from '../domain/work-errors.js';
 import type {
   PageNowDueOptions,
   PageNowNextActionsOptions,
   PageWorkListsOptions,
-  WorkListsPageRows,
   WorkStore,
 } from '../domain/work-store.js';
 import { parseNowNextActionRow } from './parse-now-next-action-row.js';
@@ -135,78 +134,57 @@ export const createSqliteWorkStore = (db: Database): WorkStore => ({
     }).andThen(parseTaskPage);
   },
 
-  pageLists: (options: PageWorkListsOptions): ResultAsync<WorkListsPageRows, StorageError> => {
-    const from = `
-      (
-        SELECT
-          l.id AS id,
-          l.name AS name,
-          l.created_at AS created_at,
-          COUNT(t.id) AS open_task_count
-        FROM lists l
-        LEFT JOIN tasks t
-          ON t.list_id = l.id
-         AND t.organization_id = l.organization_id
-         AND t.completed_at IS NULL
-         AND t.deleted_at IS NULL
-        WHERE l.organization_id = ?
-        GROUP BY l.id, l.name, l.created_at
-      )
-    `;
-    const seekClauseResult = options.seek
-      ? sqlKeysetClause({
-          columns: ['name', 'created_at', 'id'],
-          direction: workListDirection,
-          seek: options.seek,
-        })
-      : ok(undefined);
-    if (seekClauseResult.isErr()) {
-      return errAsync(seekClauseResult.error);
-    }
-    const seekClause = seekClauseResult.value;
-    const selectWhere = seekClause ? `1=1 AND ${seekClause.sql}` : '1=1';
-    const selectArgs = seekClause
-      ? [options.organizationId, ...seekClause.args, options.fetchLimit]
-      : [options.organizationId, options.fetchLimit];
+  pageLists: (
+    options: PageWorkListsOptions
+  ): ResultAsync<KeysetRows<WorkListCursorRow>, StorageError> =>
+    pageSqlite({
+      db,
+      from: `
+        (
+          SELECT
+            l.id AS id,
+            l.name AS name,
+            l.created_at AS created_at,
+            l.organization_id AS organization_id,
+            COUNT(t.id) AS open_task_count
+          FROM lists l
+          LEFT JOIN tasks t
+            ON t.list_id = l.id
+           AND t.organization_id = l.organization_id
+           AND t.completed_at IS NULL
+           AND t.deleted_at IS NULL
+          GROUP BY l.id, l.name, l.created_at, l.organization_id
+        )
+      `,
+      whereSql: 'organization_id = ?',
+      whereArgs: [options.organizationId],
+      orderSql: 'ORDER BY name ASC, created_at ASC, id ASC',
+      keyColumns: ['name', 'created_at', 'id'],
+      direction: workListDirection,
+      fetchLimit: options.fetchLimit,
+      seek: options.seek,
+      mapRow: (row) => row,
+      errorMessage: 'Failed to list work lists',
+    }).andThen((page) => {
+      const parsed = Result.combine(page.rows.map(parseWorkListRow));
+      return parsed.isOk()
+        ? okAsync({ rows: parsed.value, total: page.total })
+        : errAsync(parsed.error);
+    }),
 
-    return ResultAsync.fromPromise(
-      db.batch(
-        [
-          {
-            sql: `SELECT COUNT(*) AS count FROM ${from}`,
-            args: [options.organizationId],
-          },
-          {
-            sql: `SELECT * FROM ${from} WHERE ${selectWhere} ORDER BY name ASC, created_at ASC, id ASC LIMIT ?`,
-            args: selectArgs,
-          },
-          {
-            sql: `
-              SELECT COUNT(*) AS count
-              FROM tasks
-              WHERE organization_id = ?
-                AND list_id IS NULL
-                AND completed_at IS NULL
-                AND deleted_at IS NULL
-            `,
-            args: [options.organizationId],
-          },
-        ],
-        'read'
-      ),
-      (cause) => storageError('Failed to list work lists', cause)
-    ).andThen(([countResult, pageResult, unlistedResult]) => {
-      const parsed = Result.combine((pageResult?.rows ?? []).map(parseWorkListRow));
-      if (parsed.isErr()) {
-        return errAsync(parsed.error);
-      }
-      return okAsync({
-        lists: {
-          rows: parsed.value,
-          total: Number(countResult?.rows[0]?.count ?? 0),
-        },
-        unlistedOpenCount: Number(unlistedResult?.rows[0]?.count ?? 0),
-      });
-    });
-  },
+  countUnlistedOpen: (organizationId: string): ResultAsync<number, StorageError> =>
+    ResultAsync.fromPromise(
+      db.execute({
+        sql: `
+          SELECT COUNT(*) AS count
+          FROM tasks
+          WHERE organization_id = ?
+            AND list_id IS NULL
+            AND completed_at IS NULL
+            AND deleted_at IS NULL
+        `,
+        args: [organizationId],
+      }),
+      (cause) => storageError('Failed to count unlisted open tasks', cause)
+    ).map((result) => Number(result.rows[0]?.count ?? 0)),
 });

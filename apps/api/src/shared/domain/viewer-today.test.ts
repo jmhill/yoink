@@ -21,16 +21,6 @@ describe('viewerToday', () => {
 });
 
 describe('resolveViewerToday', () => {
-  it('prefers an explicit today over now and time zone', () => {
-    expect(
-      resolveViewerToday({
-        now: new Date('2026-10-12T01:00:00.000Z'),
-        timeZone: 'UTC',
-        today: '2026-10-11',
-      })
-    ).toBe('2026-10-11');
-  });
-
   it('defaults a missing time zone to America/Chicago', () => {
     expect(DEFAULT_VIEWER_TIME_ZONE).toBe('America/Chicago');
     expect(
@@ -38,5 +28,14 @@ describe('resolveViewerToday', () => {
         now: new Date('2026-10-12T01:00:00.000Z'),
       })
     ).toBe('2026-10-11');
+  });
+
+  it('uses the supplied IANA zone', () => {
+    expect(
+      resolveViewerToday({
+        now: new Date('2026-10-12T01:00:00.000Z'),
+        timeZone: 'UTC',
+      })
+    ).toBe('2026-10-12');
   });
 });

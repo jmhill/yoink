@@ -8,6 +8,7 @@ import {
   toWorkListsBody,
   toWorkNextActionsBody,
 } from '../../listing/infrastructure/http-listed-page.js';
+import { listedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
 import type { WorkHandlers } from '../application/create-work-handlers.js';
 
 export type WorkRoutesDependencies = {
@@ -61,7 +62,6 @@ export const registerWorkRoutes = async (
           limit: query.limit,
           cursor: query.cursor,
           timeZone: query.timeZone,
-          today: query.today,
         });
         return result.match(
           (page) => ({
@@ -112,7 +112,7 @@ export const registerWorkRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(listedRequestValidationError(err));
       },
     });
   });

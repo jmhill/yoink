@@ -27,7 +27,6 @@ export const handleListTasks = (
   const today = resolveViewerToday({
     now: deps.viewerNow(),
     timeZone: query.timeZone,
-    today: query.today,
   });
   const completed = query.filter === 'completed';
   if (completed) {

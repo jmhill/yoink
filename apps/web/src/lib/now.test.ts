@@ -46,11 +46,12 @@ describe('ownerLabelFor', () => {
     expect(ownerLabelFor({ assigneeId: 'viewer' }, 'viewer', members)).toBeUndefined();
   });
 
-  it('shows a bot name and a person email, or the id when the member is gone', () => {
+  it('shows a bot name and a person email, and hides a raw id until members load', () => {
     expect(ownerLabelFor({ assigneeId: 'bot' }, 'viewer', members)).toBe('Lane');
     expect(ownerLabelFor({ assigneeId: 'other' }, 'viewer', members)).toBe(
       'polly@example.com'
     );
-    expect(ownerLabelFor({ assigneeId: 'gone' }, 'viewer', members)).toBe('gone');
+    expect(ownerLabelFor({ assigneeId: 'gone' }, 'viewer', members)).toBeUndefined();
+    expect(ownerLabelFor({ assigneeId: 'bot' }, 'viewer', [])).toBeUndefined();
   });
 });

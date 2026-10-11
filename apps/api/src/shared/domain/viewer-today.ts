@@ -25,13 +25,8 @@ export const viewerToday = (input: ViewerTodayInput): string => {
 export const resolveViewerToday = (input: {
   readonly now: Date;
   readonly timeZone?: string;
-  readonly today?: string;
-}): string => {
-  if (input.today !== undefined) {
-    return input.today;
-  }
-  return viewerToday({
+}): string =>
+  viewerToday({
     now: input.now,
     timeZone: input.timeZone ?? DEFAULT_VIEWER_TIME_ZONE,
   });
-};

@@ -29,7 +29,6 @@ export type ListTasksQuery = {
   /** Authenticated principal; used when filter is 'mine' */
   callerId?: string;
   timeZone?: string;
-  today?: string;
 };
 
 export type FindTaskQuery = {

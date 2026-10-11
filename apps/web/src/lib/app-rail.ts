@@ -228,4 +228,5 @@ export function railItemHasOverflow(item: RailItem): boolean {
  * Named lists are the pain point; short smart-view / Inbox labels stay
  * one line because they already fit.
  */
-export const RAIL_LABEL_WRAP_CLASS = 'min-w-0 whitespace-normal break-words';
+export const RAIL_LABEL_WRAP_CLASS =
+  'min-w-0 flex-1 whitespace-normal break-normal [overflow-wrap:normal]';

@@ -202,8 +202,11 @@ describe('railItemKey', () => {
 describe('RAIL_LABEL_WRAP_CLASS', () => {
   it('wraps instead of truncating to one ellipsis line', () => {
     expect(RAIL_LABEL_WRAP_CLASS).not.toMatch(/\btruncate\b/);
-    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bbreak-words\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).not.toMatch(/\bbreak-words\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bbreak-normal\b/);
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bwhitespace-normal\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bmin-w-0\b/);
+    expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bflex-1\b/);
   });
 });
 

@@ -15,7 +15,6 @@ export type ListNowDueQuery = {
   limit?: number;
   cursor?: string;
   timeZone?: string;
-  today?: string;
 };
 
 export type ListWorkListsQuery = {

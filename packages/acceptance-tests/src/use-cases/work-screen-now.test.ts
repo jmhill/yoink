@@ -207,6 +207,7 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(listsEveryone.unlisted.openTaskCount).toBe(7);
       expect(listsEveryone.total).toBe(3);
 
+      await alice.listNowNextActions({ owner: 'me' });
       const listsWhileMine = await alice.listWorkLists();
       expect(
         listsWhileMine.lists.map((list) => [list.id, list.name, list.openTaskCount])
@@ -251,27 +252,46 @@ usingDrivers(['http'] as const, (ctx) => {
       ]);
     });
 
-    it('uses an explicit viewer today so 8pm CT stays on the Chicago calendar day', async () => {
-      await alice.createTask({ title: 'Chicago today', dueDate: '2026-10-11' });
-      await alice.createTask({ title: 'UTC tomorrow', dueDate: '2026-10-12' });
+    it('uses Pacific/Kiritimati and Pacific/Pago_Pago so the two zones disagree by a day', async () => {
+      const calendarToday = (timeZone: string): string => {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).formatToParts(new Date());
+        const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+        const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+        const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+        return `${year}-${month}-${day}`;
+      };
+      const kiritimati = calendarToday('Pacific/Kiritimati');
+      const pagoPago = calendarToday('Pacific/Pago_Pago');
+      expect(kiritimati).not.toBe(pagoPago);
 
-      const todayChicago = await alice.listTasks('today', {
-        today: '2026-10-11',
-        timeZone: 'America/Chicago',
-      });
-      expect(todayChicago.map((task) => task.title)).toEqual(['Chicago today']);
+      await alice.createTask({ title: 'Kiritimati today', dueDate: kiritimati });
+      await alice.createTask({ title: 'Pago Pago today', dueDate: pagoPago });
 
-      const todayUtc = await alice.listTasks('today', {
-        today: '2026-10-12',
-        timeZone: 'UTC',
+      const kiritimatiToday = await alice.listTasks('today', {
+        timeZone: 'Pacific/Kiritimati',
       });
-      expect(todayUtc.map((task) => task.title)).toEqual(['UTC tomorrow', 'Chicago today']);
+      expect(kiritimatiToday.map((task) => task.title)).toEqual([
+        'Pago Pago today',
+        'Kiritimati today',
+      ]);
 
-      const dueChicago = await alice.listNowDue({
-        today: '2026-10-11',
-        timeZone: 'America/Chicago',
-      });
-      expect(dueChicago.tasks.map((task) => task.title)).toEqual(['Chicago today']);
+      const pagoToday = await alice.listTasks('today', { timeZone: 'Pacific/Pago_Pago' });
+      expect(pagoToday.map((task) => task.title)).toEqual(['Pago Pago today']);
+
+      const kiritimatiDue = await alice.listNowDue({ timeZone: 'Pacific/Kiritimati' });
+      expect(kiritimatiDue.tasks.map((task) => task.title)).toEqual(
+        pagoPago < kiritimati
+          ? ['Pago Pago today', 'Kiritimati today']
+          : ['Kiritimati today', 'Pago Pago today']
+      );
+
+      const pagoDue = await alice.listNowDue({ timeZone: 'Pacific/Pago_Pago' });
+      expect(pagoDue.tasks.map((task) => task.title)).toEqual(['Pago Pago today']);
     });
   });
 });
@@ -329,6 +349,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailListCount(seeded.empty.id, 0);
       await alice.shouldSeeRailListCount(seeded.weekend.id, 2);
       await alice.shouldSeeRailListCount('unlisted', 7);
+      await alice.shouldSeeRailLabelOnOneLine('Weekend');
 
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('me');
@@ -386,6 +407,30 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeOpenTasksInOrder(['Alpha next']);
     }, 90_000);
 
+    it('resets Mine on every desktop visit: Today then back to Now', async () => {
+      await seedNow(alice, bot);
+      await alice.useDesktopViewport();
+      await alice.openWork();
+      await alice.toggleNowMine();
+      await alice.shouldSeeNowMinePressed(true);
+      await alice.openRailSmartView('today');
+      await alice.openWork();
+      await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeNowMinePressed(false);
+    });
+
+    it('resets Mine on every phone visit: Inbox then Tasks', async () => {
+      await seedNow(alice, bot);
+      await alice.useMobileViewport();
+      await alice.openWork();
+      await alice.toggleNowMine();
+      await alice.shouldSeeNowMinePressed(true);
+      await alice.openMobileBottomTab('inbox');
+      await alice.openMobileBottomTab('tasks');
+      await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeNowMinePressed(false);
+    });
+
     it('shows an empty Now card when there is nothing due or next', async () => {
       await alice.useDesktopViewport();
       await alice.openWork();
@@ -431,10 +476,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'now_everyone',
       });
       await alice.shouldSeeRailListCount(seeded.chores.id, 1);
-      await alice.saveWalkthroughScreenshot({
-        story: WALKTHROUGH_STORY,
-        step: 'desktop_rail_counts',
-      });
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('me');
       await alice.saveWalkthroughScreenshot({
@@ -467,6 +508,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'now_everyone',
       });
+      await alice.scrollNowDueClearOfTabBar();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'now_everyone_due',
+      });
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('me');
       await alice.saveWalkthroughScreenshot({
@@ -475,6 +521,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
       await alice.toggleNowMine();
       await alice.openNowListsSheet();
+      await alice.shouldSeeNowListRows([
+        { id: seeded.chores.id, name: 'Chores', count: 1 },
+        { id: seeded.empty.id, name: 'Empty', count: 0 },
+        { id: seeded.weekend.id, name: 'Weekend', count: 2 },
+        { id: 'unlisted', name: 'Unlisted', count: 7 },
+      ]);
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'lists_sheet_open',
@@ -505,11 +557,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'now_empty',
       });
 
-      await alice.useMobileViewport();
-      await alice.openWork();
-      await alice.completeOpenTaskFromRow(seeded.alphaNa.id);
-      await alice.shouldSeeWhatsNext();
-      await alice.saveWalkthroughScreenshot({
+      const phoneWhatsNext = await ctx.createActor('alice-144-work-whats-next-phone@example.com');
+      const phoneBot = await mintBot(phoneWhatsNext, ctx, 'Lane');
+      const phoneSeed = await seedNow(phoneWhatsNext, phoneBot);
+      await phoneWhatsNext.useMobileViewport();
+      await phoneWhatsNext.openWork();
+      await phoneWhatsNext.shouldSeeNowReady('all');
+      await phoneWhatsNext.completeOpenTaskFromRow(phoneSeed.alphaNa.id);
+      await phoneWhatsNext.shouldSeeWhatsNext();
+      await phoneWhatsNext.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'now_completed_whats_next',
       });
@@ -541,6 +597,10 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.toggleNowMine()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeNowReady('all')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.openNowListsSheet()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeRailLabelOnOneLine('Weekend')).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.scrollNowDueClearOfTabBar()).rejects.toThrow(UnsupportedOperationError);
     });
   });
 });

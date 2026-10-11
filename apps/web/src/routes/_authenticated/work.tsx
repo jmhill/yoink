@@ -56,7 +56,7 @@ function WorkPage() {
 
   const nextActionsQuery = tsrWork.listNextActions.useQuery({
     queryKey: ['work', 'next-actions', owner],
-    queryData: { query: { owner, limit: PILE_SAFETY_CAP, timeZone } },
+    queryData: { query: { owner, limit: PILE_SAFETY_CAP } },
   });
   const dueQuery = tsrWork.listDue.useQuery({
     queryKey: ['work', 'due', owner],
@@ -152,9 +152,10 @@ function WorkPage() {
         action={
           <Button
             type="button"
-            variant={mine ? 'secondary' : 'outline'}
+            variant={mine ? 'default' : 'outline'}
             aria-pressed={mine}
             data-now-mine-toggle=""
+            className={mine ? 'shadow-sm' : undefined}
             onClick={() => {
               void navigate({
                 to: '/work',

@@ -943,6 +943,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeRailListCount', 'http');
     },
 
+    async shouldSeeRailLabelOnOneLine(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailLabelOnOneLine', 'http');
+    },
+
+    async scrollNowDueClearOfTabBar(): Promise<void> {
+      throw new UnsupportedOperationError('scrollNowDueClearOfTabBar', 'http');
+    },
+
     async openToday(): Promise<void> {
       throw new UnsupportedOperationError('openToday', 'http');
     },
@@ -2019,7 +2027,7 @@ export const createHttpActor = (
 
     async listTasks(
       filter?: TaskFilter,
-      viewer?: { timeZone?: string; today?: string }
+      viewer?: { timeZone?: string }
     ): Promise<Task[]> {
       const params = new URLSearchParams();
       if (filter) {
@@ -2027,9 +2035,6 @@ export const createHttpActor = (
       }
       if (viewer?.timeZone) {
         params.set('timeZone', viewer.timeZone);
-      }
-      if (viewer?.today) {
-        params.set('today', viewer.today);
       }
       const query = params.toString() ? `?${params.toString()}` : '';
       const response = await client.get(`/api/tasks${query}`, authHeaders());
@@ -2046,9 +2051,6 @@ export const createHttpActor = (
       }
       if (query?.timeZone) {
         params.set('timeZone', query.timeZone);
-      }
-      if (query?.today) {
-        params.set('today', query.today);
       }
       if (query?.limit !== undefined) {
         params.set('limit', String(query.limit));
@@ -2078,9 +2080,6 @@ export const createHttpActor = (
       }
       if (query?.timeZone) {
         params.set('timeZone', query.timeZone);
-      }
-      if (query?.today) {
-        params.set('today', query.today);
       }
       if (query?.limit !== undefined) {
         params.set('limit', String(query.limit));

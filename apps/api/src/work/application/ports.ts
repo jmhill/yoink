@@ -1,11 +1,11 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
 import type {
   PageNowDueOptions,
   PageNowNextActionsOptions,
   PageWorkListsOptions,
-  WorkListsPageRows,
 } from '../domain/work-store.js';
 import type { StorageError } from '../domain/work-errors.js';
 
@@ -19,4 +19,8 @@ export type PageNowDue = (
 
 export type PageWorkLists = (
   options: PageWorkListsOptions
-) => ResultAsync<WorkListsPageRows, StorageError>;
+) => ResultAsync<KeysetRows<WorkListCursorRow>, StorageError>;
+
+export type CountUnlistedOpen = (
+  organizationId: string
+) => ResultAsync<number, StorageError>;

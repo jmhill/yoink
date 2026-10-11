@@ -24,7 +24,6 @@ export type TimeZone = z.infer<typeof TimeZoneSchema>;
 
 export const ViewerTodayQuerySchema = z.object({
   timeZone: TimeZoneSchema.optional(),
-  today: z.string().date().optional(),
 });
 
 export type ViewerTodayQuery = z.infer<typeof ViewerTodayQuerySchema>;
@@ -62,8 +61,15 @@ export const WorkListsPageSchema = ListPageMetaSchema.extend({
 
 export type WorkListsPage = z.infer<typeof WorkListsPageSchema>;
 
-export const WorkNowQuerySchema = ListPageQuerySchema.extend({
+export const WorkOwnerQuerySchema = ListPageQuerySchema.extend({
   owner: NowOwnerSchema.optional().default('all'),
-}).merge(ViewerTodayQuerySchema);
+});
 
-export type WorkNowQuery = z.infer<typeof WorkNowQuerySchema>;
+export type WorkOwnerQuery = z.infer<typeof WorkOwnerQuerySchema>;
+
+/** Next actions do not depend on viewer today. */
+export const WorkNextActionsQuerySchema = WorkOwnerQuerySchema;
+export type WorkNextActionsQuery = z.infer<typeof WorkNextActionsQuerySchema>;
+
+export const WorkDueQuerySchema = WorkOwnerQuerySchema.merge(ViewerTodayQuerySchema);
+export type WorkDueQuery = z.infer<typeof WorkDueQuerySchema>;

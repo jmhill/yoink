@@ -222,7 +222,7 @@ describe('GET /api/captures list completeness', () => {
         method: 'POST',
         url: `/api/captures/${capture.id}/snooze`,
         headers: auth,
-        payload: { until: '2025-12-31T00:00:00.000Z' },
+        payload: { until: '2027-12-31T00:00:00.000Z' },
       });
       expect(snoozed.statusCode).toBe(200);
     }

@@ -38,7 +38,7 @@ export const ownerLabelFor = (
   }
   const member = members.find((item) => item.userId === task.assigneeId);
   if (!member) {
-    return task.assigneeId;
+    return undefined;
   }
   return memberLabel(member);
 };

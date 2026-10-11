@@ -129,7 +129,7 @@ export const createFakeTaskStore = (
         .filter((t) => t.organizationId === opts.organizationId)
         .filter((t) => !deletedIds.has(t.id));
 
-      const today = opts.today ?? '';
+      const today = opts.today;
       switch (opts.filter) {
         case 'today':
           filtered = filtered.filter((t) => t.dueDate && t.dueDate <= today && !t.completedAt);

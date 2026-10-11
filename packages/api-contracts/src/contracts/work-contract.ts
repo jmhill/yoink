@@ -2,9 +2,10 @@ import { initContract } from '@ts-rest/core';
 import { ListPageQuerySchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema } from '../schemas/error.js';
 import {
+  WorkDueQuerySchema,
   WorkListsPageSchema,
   WorkNextActionsPageSchema,
-  WorkNowQuerySchema,
+  WorkNextActionsQuerySchema,
 } from '../schemas/work.js';
 
 const c = initContract();
@@ -14,7 +15,7 @@ export const workContract = c.router(
     listNextActions: {
       method: 'GET',
       path: '/api/work/next-actions',
-      query: WorkNowQuerySchema,
+      query: WorkNextActionsQuerySchema,
       responses: {
         200: WorkNextActionsPageSchema,
         400: ErrorSchema,
@@ -28,7 +29,7 @@ export const workContract = c.router(
     listDue: {
       method: 'GET',
       path: '/api/work/due',
-      query: WorkNowQuerySchema,
+      query: WorkDueQuerySchema,
       responses: {
         200: TaskListPageSchema,
         400: ErrorSchema,

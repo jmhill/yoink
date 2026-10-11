@@ -15,7 +15,6 @@ import type {
   PageNowDueOptions,
   PageNowNextActionsOptions,
   PageWorkListsOptions,
-  WorkListsPageRows,
   WorkStore,
 } from '../domain/work-store.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
@@ -117,7 +116,7 @@ export const createFakeWorkStore = (options: FakeWorkStoreOptions = {}): WorkSto
       );
     },
 
-    pageLists: (page: PageWorkListsOptions): ResultAsync<WorkListsPageRows, StorageError> => {
+    pageLists: (page: PageWorkListsOptions) => {
       if (options.shouldFail) {
         return fail();
       }
@@ -136,16 +135,29 @@ export const createFakeWorkStore = (options: FakeWorkStoreOptions = {}): WorkSto
           openTaskCount: open.filter((task) => task.listId === list.id).length,
         }))
         .sort(compareWorkLists);
-      return okAsync({
-        lists: pageOrdered({
+      return okAsync(
+        pageOrdered({
           ordered: rows,
           keysOf: workListKeys,
           direction: workListDirection,
           fetchLimit: page.fetchLimit,
           seek: page.seek,
-        }),
-        unlistedOpenCount: open.filter((task) => task.listId === undefined).length,
-      });
+        })
+      );
+    },
+
+    countUnlistedOpen: (organizationId: string) => {
+      if (options.shouldFail) {
+        return fail();
+      }
+      const count = tasks.filter(
+        (task) =>
+          task.organizationId === organizationId &&
+          task.listId === undefined &&
+          !task.completedAt &&
+          !deleted.has(task.id)
+      ).length;
+      return okAsync(count);
     },
   };
 };

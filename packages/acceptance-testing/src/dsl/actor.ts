@@ -125,7 +125,7 @@ export type CoreActor = {
   createTask(input: CreateTaskInput): Promise<Task>;
   listTasks(
     filter?: TaskFilter,
-    viewer?: { timeZone?: string; today?: string }
+    viewer?: { timeZone?: string }
   ): Promise<Task[]>;
   listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage>;
   listNowDue(query?: NowQuery): Promise<TaskListPage>;
@@ -585,6 +585,16 @@ export type BrowserActorOperations = {
    * Assert a rail list open-count (`data-rail-list-count`).
    */
   shouldSeeRailListCount(listId: string, count: number): Promise<void>;
+
+  /**
+   * Assert a one-word rail label stays on a single line (no Weeke/nd wrap).
+   */
+  shouldSeeRailLabelOnOneLine(label: string): Promise<void>;
+
+  /**
+   * Scroll the Due section so it clears the phone tab bar.
+   */
+  scrollNowDueClearOfTabBar(): Promise<void>;
 
   /**
    * Open the Tasks Today view (overdue vs due today outer, list groups inside).

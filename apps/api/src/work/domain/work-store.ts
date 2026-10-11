@@ -28,15 +28,13 @@ export type PageWorkListsOptions = {
   seek?: KeysetCursor;
 };
 
-export type WorkListsPageRows = {
-  lists: KeysetRows<WorkListCursorRow>;
-  unlistedOpenCount: number;
-};
-
 export type WorkStore = {
   pageNextActions(
     options: PageNowNextActionsOptions
   ): ResultAsync<KeysetRows<NowNextActionItem>, StorageError>;
   pageDue(options: PageNowDueOptions): ResultAsync<KeysetRows<Task>, StorageError>;
-  pageLists(options: PageWorkListsOptions): ResultAsync<WorkListsPageRows, StorageError>;
+  pageLists(
+    options: PageWorkListsOptions
+  ): ResultAsync<KeysetRows<WorkListCursorRow>, StorageError>;
+  countUnlistedOpen(organizationId: string): ResultAsync<number, StorageError>;
 };

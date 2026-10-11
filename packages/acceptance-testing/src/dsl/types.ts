@@ -201,7 +201,6 @@ export type NowOwner = 'all' | 'me';
 export type NowQuery = {
   owner?: NowOwner;
   timeZone?: string;
-  today?: string;
   limit?: number;
   cursor?: string;
 };

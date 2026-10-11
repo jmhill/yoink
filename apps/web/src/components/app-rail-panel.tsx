@@ -443,15 +443,15 @@ export function AppRailPanel({
                           <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
                             {item.label}
                           </span>
-                          {listOpenCounts.has(item.listId) ? (
-                            <span
-                              data-rail-list-count={item.listId}
-                              className="ml-auto shrink-0 tabular-nums text-xs text-muted-foreground"
-                            >
-                              {listOpenCounts.get(item.listId)}
-                            </span>
-                          ) : null}
                         </Link>
+                        {listOpenCounts.has(item.listId) ? (
+                          <span
+                            data-rail-list-count={item.listId}
+                            className="mt-2 shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
+                          >
+                            {listOpenCounts.get(item.listId)}
+                          </span>
+                        ) : null}
                         {railItemHasOverflow(item) ? (
                           <NamedListRailOverflow
                             surface={surface}
@@ -497,28 +497,30 @@ export function AppRailPanel({
               <Fragment key={key}>
                 {taskFamilyHeading}
                 {listsHeading}
-                <Link
-                  to="/tasks"
-                  search={railTaskSearch(item)}
-                  data-rail-item={item.kind === 'smart' ? item.key : item.kind}
-                  data-rail-label={item.label}
-                  data-rail-active={active ? 'true' : undefined}
-                  className={railClassName(active)}
-                  onClick={active ? onDestinationChosen : undefined}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
-                    {item.label}
-                  </span>
+                <div className="flex min-w-0 items-start">
+                  <Link
+                    to="/tasks"
+                    search={railTaskSearch(item)}
+                    data-rail-item={item.kind === 'smart' ? item.key : item.kind}
+                    data-rail-label={item.label}
+                    data-rail-active={active ? 'true' : undefined}
+                    className={cn(railClassName(active), 'flex-1')}
+                    onClick={active ? onDestinationChosen : undefined}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      {item.label}
+                    </span>
+                  </Link>
                   {item.kind === 'unlisted' && unlistedOpenCount !== undefined ? (
                     <span
                       data-rail-list-count="unlisted"
-                      className="ml-auto shrink-0 tabular-nums text-xs text-muted-foreground"
+                      className="mt-2 shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
                     >
                       {unlistedOpenCount}
                     </span>
                   ) : null}
-                </Link>
+                </div>
               </Fragment>
             );
           })}

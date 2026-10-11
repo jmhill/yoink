@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { NamedList, Project, Task } from '@yoink/api-contracts';
-import { workDueCursor, workNextActionCursor } from '../../listing/domain/list-keys.js';
+import {
+  workDueCursor,
+  workListCursor,
+  workNextActionCursor,
+} from '../../listing/domain/list-keys.js';
 import type { WorkStore } from './work-store.js';
 
 export const WORK_TODAY = '2025-01-15';
@@ -402,15 +406,99 @@ export const runWorkStoreContractTests = (options: {
       if (!result.isOk()) {
         return;
       }
-      expect(result.value.lists.rows.map((list) => [list.id, list.name, list.openTaskCount])).toEqual(
-        [
-          [WORK_LIST_CHORES, 'Chores', 3],
-          [WORK_LIST_EMPTY, 'Empty', 0],
-          [WORK_LIST_WEEKEND, 'Weekend', 2],
-        ]
-      );
-      expect(result.value.unlistedOpenCount).toBe(6);
-      expect(result.value.lists.total).toBe(3);
+      expect(result.value.rows.map((list) => [list.id, list.name, list.openTaskCount])).toEqual([
+        [WORK_LIST_CHORES, 'Chores', 3],
+        [WORK_LIST_EMPTY, 'Empty', 0],
+        [WORK_LIST_WEEKEND, 'Weekend', 2],
+      ]);
+      expect(result.value.total).toBe(3);
+
+      const unlisted = await store.countUnlistedOpen(WORK_ORG);
+      expect(unlisted.isOk()).toBe(true);
+      if (unlisted.isOk()) {
+        expect(unlisted.value).toBe(6);
+      }
+    });
+
+    it('pages due one row at a time with a stable total', async () => {
+      const first = await store.pageDue({
+        organizationId: WORK_ORG,
+        owner: 'all',
+        callerId: WORK_ALICE,
+        today: WORK_TODAY,
+        fetchLimit: 1,
+      });
+      expect(first.isOk()).toBe(true);
+      if (!first.isOk() || !first.value.rows[0]) {
+        return;
+      }
+      expect(first.value.total).toBe(3);
+      expect(first.value.rows.map((task) => task.id)).toEqual([WORK_TASK.aliceLoose]);
+
+      const second = await store.pageDue({
+        organizationId: WORK_ORG,
+        owner: 'all',
+        callerId: WORK_ALICE,
+        today: WORK_TODAY,
+        fetchLimit: 1,
+        seek: workDueCursor.of(first.value.rows[0]),
+      });
+      expect(second.isOk()).toBe(true);
+      if (!second.isOk() || !second.value.rows[0]) {
+        return;
+      }
+      expect(second.value.total).toBe(3);
+      expect(second.value.rows.map((task) => task.id)).toEqual([WORK_TASK.echoNa]);
+
+      const last = await store.pageDue({
+        organizationId: WORK_ORG,
+        owner: 'all',
+        callerId: WORK_ALICE,
+        today: WORK_TODAY,
+        fetchLimit: 1,
+        seek: workDueCursor.of(second.value.rows[0]),
+      });
+      expect(last.isOk()).toBe(true);
+      if (last.isOk()) {
+        expect(last.value.rows.map((task) => task.id)).toEqual([WORK_TASK.inProject]);
+        expect(last.value.total).toBe(3);
+      }
+    });
+
+    it('pages lists one row at a time with a stable total', async () => {
+      const first = await store.pageLists({
+        organizationId: WORK_ORG,
+        fetchLimit: 1,
+      });
+      expect(first.isOk()).toBe(true);
+      if (!first.isOk() || !first.value.rows[0]) {
+        return;
+      }
+      expect(first.value.total).toBe(3);
+      expect(first.value.rows.map((list) => list.id)).toEqual([WORK_LIST_CHORES]);
+
+      const second = await store.pageLists({
+        organizationId: WORK_ORG,
+        fetchLimit: 1,
+        seek: workListCursor.of(first.value.rows[0]),
+      });
+      expect(second.isOk()).toBe(true);
+      if (!second.isOk() || !second.value.rows[0]) {
+        return;
+      }
+      expect(second.value.total).toBe(3);
+      expect(second.value.rows.map((list) => list.id)).toEqual([WORK_LIST_EMPTY]);
+
+      const last = await store.pageLists({
+        organizationId: WORK_ORG,
+        fetchLimit: 1,
+        seek: workListCursor.of(second.value.rows[0]),
+      });
+      expect(last.isOk()).toBe(true);
+      if (last.isOk()) {
+        expect(last.value.rows.map((list) => list.id)).toEqual([WORK_LIST_WEEKEND]);
+        expect(last.value.total).toBe(3);
+      }
     });
   });
 };

@@ -1736,9 +1736,11 @@ export const createPlaywrightActor = (
         }
       });
       const discard = page.locator('[data-import-discard]');
+      await discard.scrollIntoViewIfNeeded();
+      await expect(discard).toBeVisible();
       await discard.evaluate((el) => {
         el.setAttribute('data-screenshot-focus', '');
-        el.scrollIntoView({ block: 'end', inline: 'nearest' });
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
       });
     },
 
@@ -1764,8 +1766,15 @@ export const createPlaywrightActor = (
         }
       });
       const heading = page.locator('[data-place-heading]');
-      await heading.scrollIntoViewIfNeeded();
       await expect(heading).toBeVisible();
+      if (walkthroughViewport === 'phone') {
+        await heading.scrollIntoViewIfNeeded();
+        return;
+      }
+      const history = page.locator('[data-project-history-entry]').first();
+      if ((await history.count()) > 0) {
+        await history.scrollIntoViewIfNeeded();
+      }
     },
 
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {
@@ -2313,7 +2322,7 @@ export const createPlaywrightActor = (
 
     async goToAllProjects(): Promise<void> {
       await page.goto('/projects');
-      await expect(page.locator('[data-projects-index]')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
     },
 
     async shouldSeeProjectOnAllProjects(input: {

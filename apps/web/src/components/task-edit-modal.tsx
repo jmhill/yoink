@@ -105,10 +105,16 @@ export function TaskEditModal({
       updates.dueDate = newDueDate;
     }
 
-    const newAssigneeId = assigneeId || null;
-    const oldAssigneeId = task.assigneeId ?? null;
-    if (newAssigneeId !== oldAssigneeId) {
-      updates.assigneeId = newAssigneeId;
+    const assigneeKnown =
+      !task.assigneeId || members.some((member) => member.userId === task.assigneeId);
+    // Radix Select drops a value that is not in the items yet. Do not
+    // persist that as an unassign while members are still loading.
+    if (assigneeKnown || assigneeId) {
+      const newAssigneeId = assigneeId || null;
+      const oldAssigneeId = task.assigneeId ?? null;
+      if (newAssigneeId !== oldAssigneeId) {
+        updates.assigneeId = newAssigneeId;
+      }
     }
 
     const newListId = listId || null;
@@ -191,9 +197,17 @@ export function TaskEditModal({
             <Label htmlFor="edit-task-assignee">Assignee</Label>
             <Select
               value={assigneeId || UNASSIGNED_VALUE}
-              onValueChange={(value) =>
-                setAssigneeId(value === UNASSIGNED_VALUE ? '' : value)
-              }
+              onValueChange={(value) => {
+                const next = value === UNASSIGNED_VALUE ? '' : value;
+                if (
+                  next === '' &&
+                  task?.assigneeId &&
+                  !members.some((member) => member.userId === task.assigneeId)
+                ) {
+                  return;
+                }
+                setAssigneeId(next);
+              }}
               disabled={isLoading}
             >
               <SelectTrigger id="edit-task-assignee" className="w-full">
@@ -201,6 +215,9 @@ export function TaskEditModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                {assigneeId && !members.some((member) => member.userId === assigneeId) ? (
+                  <SelectItem value={assigneeId}>Assigned</SelectItem>
+                ) : null}
                 {members.map((member) => (
                   <SelectItem key={member.userId} value={member.userId}>
                     {member.label}

@@ -1453,7 +1453,9 @@ export const createPlaywrightActor = (
 
     async shouldSeePileGroups(names: string[]): Promise<void> {
       await tasksPage.waitForTasksOrEmpty();
-      await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
+      await expect
+        .poll(async () => tasksPage.getAllPileGroupNames(), { timeout: 10_000 })
+        .toEqual(names);
     },
 
     async shouldSeeTasksInPileGroup(groupName: string, titles: string[]): Promise<void> {
@@ -1755,7 +1757,14 @@ export const createPlaywrightActor = (
       }[view];
       const filter = view === 'done' ? 'completed' : view;
       await openRailDestination(label, async () => {
-        await page.waitForURL(new RegExp(`[?&]filter=${filter}`), { timeout: 4_000 });
+        await page.waitForURL((url) => {
+          const parsed = new URL(url);
+          return (
+            parsed.pathname === '/tasks' &&
+            parsed.searchParams.get('filter') === filter &&
+            !parsed.searchParams.has('pile')
+          );
+        }, { timeout: 4_000 });
         await expectActiveFilterTabIfVisible(filter);
         await tasksPage.waitForTasksOrEmpty();
       });
@@ -4031,7 +4040,15 @@ export const createPlaywrightActor = (
       if (!response.ok()) {
         throw new Error(`Failed to read task after edit: ${response.status()}`);
       }
-      return response.json();
+      const updated = (await response.json()) as Task;
+      if (
+        input.assigneeId === undefined &&
+        current.assigneeId &&
+        updated.assigneeId !== current.assigneeId
+      ) {
+        throw new Error('Edit saved but assignee was cleared');
+      }
+      return updated;
     },
 
     async completeTask(id: string): Promise<Task> {

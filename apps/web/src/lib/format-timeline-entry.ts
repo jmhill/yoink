@@ -113,16 +113,17 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
     case 'TaskCreated':
       return `${who} added ${quoted(title)} · ${stamp}`;
     case 'TaskUpdated': {
-      const isRename =
-        entry.details.title !== undefined && entry.details.previousTitle !== undefined;
+      const newTitle = entry.details.title;
+      const oldTitle = entry.details.previousTitle;
+      const isRename = newTitle !== undefined && oldTitle !== undefined;
       const otherFields = taskUpdatedFieldLabels({
-        title: isRename ? undefined : entry.details.title,
+        title: isRename ? undefined : newTitle,
         dueDate: entry.details.dueDate,
         assigneeId: entry.details.assigneeId,
         listId: entry.details.listId,
       });
       if (isRename) {
-        const renamed = `${who} renamed ${quoted(entry.details.previousTitle ?? null)} to ${quoted(entry.details.title)}`;
+        const renamed = `${who} renamed ${quoted(oldTitle)} to ${quoted(newTitle)}`;
         if (otherFields.length === 0) {
           return `${renamed} · ${stamp}`;
         }

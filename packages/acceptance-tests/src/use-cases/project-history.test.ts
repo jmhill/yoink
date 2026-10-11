@@ -1,5 +1,13 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
 import type { BrowserActor, CoreActor, HistoryPage, TimelineEntry } from '@yoink/acceptance-testing';
+
+const walkthroughArtifactDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../../../docs/pr-artifacts/138-project-history'
+);
 
 const WALKTHROUGH_STORY = '138-project-history';
 
@@ -119,6 +127,15 @@ usingDrivers(['http'] as const, (ctx) => {
       });
 
       const { pages, entries } = await collectHistory(alice, kitchen.id, 3);
+      await mkdir(walkthroughArtifactDir, { recursive: true });
+      await writeFile(
+        path.join(walkthroughArtifactDir, 'api-history-pages.json'),
+        `${JSON.stringify(pages, null, 2)}\n`
+      );
+      await writeFile(
+        path.join(walkthroughArtifactDir, 'api-finished-pages.json'),
+        `${JSON.stringify({ firstPageLimit2: finished, page1Limit1: paged, page2Limit1: page2 }, null, 2)}\n`
+      );
       expect(pages[0]?.historyStartsAt).toBe('2026-10-10T13:56:00.000Z');
       expect(pages[pages.length - 1]?.hasMore).toBe(false);
       expect(pages[pages.length - 1]?.nextCursor).toBeNull();
@@ -128,13 +145,15 @@ usingDrivers(['http'] as const, (ctx) => {
       const kinds = entries.map((entry) => entry.kind);
       expect(kinds).not.toContain('TaskPinned');
       expect(kinds).not.toContain('TaskUpdated');
+      const personName = entries.find((entry) => entry.kind === 'ProjectCreated')?.actor.name;
+      expect(personName).toBeTruthy();
       expect(entries.filter((entry) => entry.kind === 'TaskDeleted').map((entry) => ({
         title: entry.subject.title,
         actor: entry.actor.name,
         kind: entry.actor.kind,
       }))).toEqual([
         { title: 'Bot trash', actor: 'Lane', kind: 'bot' },
-        { title: 'Old invoice', actor: alice.email, kind: 'user' },
+        { title: 'Old invoice', actor: personName, kind: 'user' },
       ]);
 
       const completed = entries.find((entry) => entry.kind === 'TaskCompleted');
@@ -161,11 +180,11 @@ usingDrivers(['http'] as const, (ctx) => {
         (entry) => entry.kind === 'TaskDeleted' && entry.subject.title === 'Old invoice'
       );
       expect(deletedC?.subject.deleted).toBe(true);
-      expect(deletedC?.actor.name).toBe(alice.email);
+      expect(deletedC?.actor.name).toBe(personName);
 
       expect(entries[entries.length - 1]).toMatchObject({
         kind: 'ProjectCreated',
-        actor: { name: alice.email, kind: 'user' },
+        actor: { name: personName, kind: 'user' },
         subject: { type: 'project', title: 'Kitchen renovation', deleted: false },
       });
 

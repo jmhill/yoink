@@ -1,0 +1,510 @@
+[
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE5LjM3OFoiLDQyXX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "dec19c7d-4950-4e36-89ad-578d54868e4f",
+        "kind": "ProjectStatusChanged",
+        "occurredAt": "2026-10-11T03:31:19.443Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectStatusChanged",
+          "from": "waiting",
+          "to": "done",
+          "waitingOn": null,
+          "waitingSince": null
+        }
+      },
+      {
+        "id": "baf37737-3399-41f0-bc51-84069afc137d",
+        "kind": "TaskRemovedFromProject",
+        "occurredAt": "2026-10-11T03:31:19.443Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "11c3a967-175b-4798-ad34-e34680ff2d40",
+          "title": "Leftover",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskRemovedFromProject",
+          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+        }
+      },
+      {
+        "id": "31ed4fea-4c0d-424d-9a17-139c44bbd92e",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:19.378Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "11c3a967-175b-4798-ad34-e34680ff2d40",
+          "title": "Leftover",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4Ljk0OVoiLDM2XX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "506749c4-8f5d-4fa4-bb8a-3daaf0a90935",
+        "kind": "TaskCompleted",
+        "occurredAt": "2026-10-11T03:31:19.107Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "3d752737-fa20-492c-a3f1-c5f5de38c6d7",
+          "title": "Finish later A",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCompleted"
+        }
+      },
+      {
+        "id": "0c4bcb13-bebc-4cdc-8598-e8d233684422",
+        "kind": "TaskCompleted",
+        "occurredAt": "2026-10-11T03:31:19.035Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "88522bf3-e284-4d36-b53f-718be03ec49c",
+          "title": "Finish later B",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCompleted"
+        }
+      },
+      {
+        "id": "4f7c6e80-bd95-490b-b74a-f10712a51ff5",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:18.949Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "88522bf3-e284-4d36-b53f-718be03ec49c",
+          "title": "Finish later B",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjczMVoiLDMwXX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "8305c977-504a-4dba-99eb-1a0f90c1e433",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:18.866Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "3d752737-fa20-492c-a3f1-c5f5de38c6d7",
+          "title": "Finish later A",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      },
+      {
+        "id": "a6fd8d85-8aa4-40ab-8acb-91edda3d374f",
+        "kind": "ProjectWaitingChanged",
+        "occurredAt": "2026-10-11T03:31:18.795Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectWaitingChanged",
+          "waitingOn": "Contractor",
+          "waitingSince": "2026-10-01"
+        }
+      },
+      {
+        "id": "3a4beda7-40d9-4483-a458-4e4df90ccf4e",
+        "kind": "ProjectStatusChanged",
+        "occurredAt": "2026-10-11T03:31:18.731Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectStatusChanged",
+          "from": "active",
+          "to": "waiting",
+          "waitingOn": "Don't know",
+          "waitingSince": null
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjUyOFoiLDI1XX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "55b97dfd-e4d3-4803-ac84-3ee7c2b14ec1",
+        "kind": "TaskDeleted",
+        "occurredAt": "2026-10-11T03:31:18.671Z",
+        "actor": {
+          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "kind": "bot",
+          "name": "Lane"
+        },
+        "subject": {
+          "type": "task",
+          "id": "66222dde-a101-4f30-82f7-90e40ca9fdf7",
+          "title": "Bot trash",
+          "deleted": true
+        },
+        "details": {
+          "kind": "TaskDeleted"
+        }
+      },
+      {
+        "id": "4b605d51-3993-4167-a9fa-d6288b1e238a",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:18.604Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "66222dde-a101-4f30-82f7-90e40ca9fdf7",
+          "title": "Bot trash",
+          "deleted": true
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      },
+      {
+        "id": "3bc88f4d-4489-4bfd-ad83-ed5868b5bfac",
+        "kind": "TaskDeleted",
+        "occurredAt": "2026-10-11T03:31:18.528Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "4e9f329a-4fea-4848-add2-7698f65968e0",
+          "title": "Old invoice",
+          "deleted": true
+        },
+        "details": {
+          "kind": "TaskDeleted"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjI1MFoiLDE3XX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "8b6f240d-37ba-49f2-9bc9-39851d96c476",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:18.464Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "4e9f329a-4fea-4848-add2-7698f65968e0",
+          "title": "Old invoice",
+          "deleted": true
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      },
+      {
+        "id": "28adb12d-65e8-4afb-b649-2d2553b42a6b",
+        "kind": "TaskRemovedFromProject",
+        "occurredAt": "2026-10-11T03:31:18.402Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "title": "Order lumber",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskRemovedFromProject",
+          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+        }
+      },
+      {
+        "id": "01210f07-5ec1-46df-8014-fcd3af53fa42",
+        "kind": "ProjectNextActionCleared",
+        "occurredAt": "2026-10-11T03:31:18.250Z",
+        "actor": {
+          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "kind": "bot",
+          "name": "Lane"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectNextActionCleared",
+          "taskId": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "taskTitle": "Call Trident",
+          "reason": "completed"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjAxM1oiLDExXX0",
+    "total": 22,
+    "entries": [
+      {
+        "id": "573d58c0-2b3c-42c9-b4ec-a2b090315257",
+        "kind": "TaskCompleted",
+        "occurredAt": "2026-10-11T03:31:18.250Z",
+        "actor": {
+          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "kind": "bot",
+          "name": "Lane"
+        },
+        "subject": {
+          "type": "task",
+          "id": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "title": "Call Trident",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCompleted"
+        }
+      },
+      {
+        "id": "5c0b6598-ae59-418e-8ee0-f78ced0ce325",
+        "kind": "ProjectNextActionSet",
+        "occurredAt": "2026-10-11T03:31:18.093Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectNextActionSet",
+          "taskId": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "taskTitle": "Call Trident",
+          "previousTaskId": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "previousTaskTitle": "Order lumber"
+        }
+      },
+      {
+        "id": "e99e286b-02a6-485a-8ca9-a353bd76e7d6",
+        "kind": "ProjectNextActionSet",
+        "occurredAt": "2026-10-11T03:31:18.013Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectNextActionSet",
+          "taskId": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "taskTitle": "Order lumber",
+          "previousTaskId": null,
+          "previousTaskTitle": null
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": true,
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE3LjY3MFoiLDNdfQ",
+    "total": 22,
+    "entries": [
+      {
+        "id": "8363217a-2b6b-4714-9170-48c96cd60ee4",
+        "kind": "TaskCreated",
+        "occurredAt": "2026-10-11T03:31:17.936Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "title": "Order lumber",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskCreated"
+        }
+      },
+      {
+        "id": "754999e4-4f94-42fd-bfad-d1e94f52bd3d",
+        "kind": "TaskAddedToProject",
+        "occurredAt": "2026-10-11T03:31:17.841Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "task",
+          "id": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "title": "Call Trident",
+          "deleted": false
+        },
+        "details": {
+          "kind": "TaskAddedToProject",
+          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+        }
+      },
+      {
+        "id": "68f7ca84-b4e1-4e90-aeb3-a19642ff6053",
+        "kind": "ProjectUpdated",
+        "occurredAt": "2026-10-11T03:31:17.670Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectUpdated",
+          "name": "Kitchen renovation"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  },
+  {
+    "hasMore": false,
+    "nextCursor": null,
+    "total": 22,
+    "entries": [
+      {
+        "id": "b9dc246a-4c11-4a54-a5d8-3bd008fbaa06",
+        "kind": "ProjectCreated",
+        "occurredAt": "2026-10-11T03:31:17.571Z",
+        "actor": {
+          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "kind": "user",
+          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+        },
+        "subject": {
+          "type": "project",
+          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "title": "Kitchen renovation",
+          "deleted": false
+        },
+        "details": {
+          "kind": "ProjectCreated",
+          "name": "Kitchen"
+        }
+      }
+    ],
+    "historyStartsAt": "2026-10-10T13:56:00.000Z"
+  }
+]

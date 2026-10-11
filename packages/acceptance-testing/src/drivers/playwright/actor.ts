@@ -3358,8 +3358,17 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('unpinTask', 'playwright');
     },
 
-    async deleteTask(_id: string): Promise<void> {
-      throw new UnsupportedOperationError('deleteTask', 'playwright');
+    async deleteTask(id: string): Promise<void> {
+      const response = await page.request.delete(`/api/tasks/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.status() !== 204) {
+        throw new Error(`Failed to delete task: ${response.status()}`);
+      }
     },
 
     async goToSettings(): Promise<void> {

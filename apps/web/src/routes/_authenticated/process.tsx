@@ -52,6 +52,7 @@ function ProcessPage() {
   const previousCurrentId = useRef<string | null>(null);
   const keyLock = useRef(false);
   const keyLockId = useRef<string | null>(null);
+  const [keyLockNonce, setKeyLockNonce] = useState(0);
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -97,7 +98,7 @@ function ProcessPage() {
     }
     keyLock.current = false;
     keyLockId.current = null;
-  }, [actionPending, current?.id]);
+  }, [actionPending, keyLockNonce, current?.id]);
 
   useEffect(() => {
     const previous = previousCurrentId.current;
@@ -136,6 +137,7 @@ function ProcessPage() {
       if (action === 'trash') {
         keyLock.current = true;
         keyLockId.current = current.id;
+        setKeyLockNonce((nonce) => nonce + 1);
       }
       switch (action) {
         case 'make-task':

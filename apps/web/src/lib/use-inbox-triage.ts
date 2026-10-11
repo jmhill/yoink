@@ -5,6 +5,11 @@ import { toast } from 'sonner';
 import { tsr } from '@/api/client';
 import type { ExitDirection, SnoozeOption } from '@/components/capture-card';
 import type { PromoteConfirmInput } from '@/components/promote-sheet';
+import {
+  inboxQueryWithoutCapture,
+  promoteTaskData,
+  snoozeUntil,
+} from '@/lib/inbox-triage';
 import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
 import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
 
@@ -17,34 +22,6 @@ const messageFromUnknown = (err: unknown): string | null => {
     return null;
   }
   return typeof body.message === 'string' ? body.message : null;
-};
-
-const getSnoozeTime = (option: 'later-today' | 'tomorrow' | 'next-week'): string => {
-  const now = new Date();
-
-  switch (option) {
-    case 'later-today': {
-      const sixPm = new Date(now);
-      sixPm.setHours(18, 0, 0, 0);
-      if (now.getHours() >= 16) {
-        return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-      }
-      return sixPm.toISOString();
-    }
-    case 'tomorrow': {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0);
-      return tomorrow.toISOString();
-    }
-    case 'next-week': {
-      const nextMonday = new Date(now);
-      const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-      nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
-      nextMonday.setHours(9, 0, 0, 0);
-      return nextMonday.toISOString();
-    }
-  }
 };
 
 /**
@@ -71,14 +48,10 @@ export function useInboxTriage() {
       if (previousInbox?.status === 200) {
         const captureToTrash = previousInbox.body.captures.find((c) => c.id === params.id);
 
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter((c) => c.id !== params.id),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          inboxQueryWithoutCapture(previousInbox, params.id)
+        );
 
         if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
           tsrQueryClient.setQueryData(
@@ -128,14 +101,10 @@ export function useInboxTriage() {
       if (previousInbox?.status === 200) {
         const captureToSnooze = previousInbox.body.captures.find((c) => c.id === params.id);
 
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter((c) => c.id !== params.id),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          inboxQueryWithoutCapture(previousInbox, params.id)
+        );
 
         if (captureToSnooze && previousSnoozed?.status === 200) {
           tsrQueryClient.list.setQueryData(['captures', 'snoozed'], {
@@ -183,14 +152,10 @@ export function useInboxTriage() {
       const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
 
       if (previousInbox?.status === 200) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
-          ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: previousInbox.body.captures.filter((c) => c.id !== params.id),
-            total: Math.max(0, previousInbox.body.total - 1),
-          },
-        });
+        tsrQueryClient.list.setQueryData(
+          ['captures', 'inbox'],
+          inboxQueryWithoutCapture(previousInbox, params.id)
+        );
       }
 
       return { previousInbox };
@@ -236,7 +201,7 @@ export function useInboxTriage() {
     setExitDirections((prev) => ({ ...prev, [id]: direction }));
     snoozeMutation.mutate({
       params: { id },
-      body: { until: getSnoozeTime(option) },
+      body: { until: snoozeUntil(option, new Date()) },
     });
   };
 
@@ -247,21 +212,9 @@ export function useInboxTriage() {
 
   const handleConfirmPromote = (captureId: string, input: PromoteConfirmInput) => {
     setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
-    const data: { title: string; dueDate?: string; listId?: string; projectId?: string } = {
-      title: input.title,
-    };
-    if (input.dueDate) {
-      data.dueDate = input.dueDate;
-    }
-    if (input.listId) {
-      data.listId = input.listId;
-    }
-    if (input.projectId) {
-      data.projectId = input.projectId;
-    }
     processMutation.mutate({
       params: { id: captureId },
-      body: { type: 'task', data },
+      body: { type: 'task', data: promoteTaskData(input) },
     });
   };
 

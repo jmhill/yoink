@@ -10,7 +10,7 @@ export function AppNav() {
   const active = activeMobileTab(pathname);
   const { data: inboxData } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
+    queryData: { query: { status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP } },
   });
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const processBadge = processBadgeCount(inboxCount);

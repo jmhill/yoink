@@ -6,8 +6,9 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Issue #110: You-are-here headings on Inbox and task views.
  *
  * Product lock (Justin 2026-09-17): fix headings across the app for
- * consistent wayfinding. Mobile Inbox | Tasks bottom bar stays. Tasks
- * landing is Now (`/work`, #144). Pin chrome stays gone (#111).
+ * consistent wayfinding. Mobile Capture | Process | Work | Review
+ * bottom bar stays. Tasks landing is Now (`/work`, #144). Pin chrome
+ * stays gone (#111).
  *
  * Every task view/pile gets Inbox-grade place chrome: the view or list
  * name as the primary heading, plus a short count cue. Inbox heading

@@ -9,9 +9,10 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  * always-open rail ate the viewport. Content owns the screen; the rail
  * swipes in like a native drawer. Desktop sidebar stays always-visible.
  *
- * Polly lock: bottom tabs stay Inbox | Tasks only. Drawer contents stay
- * the approved flat rail (smart views, Lists heading, named lists,
- * Unlisted, + New list, overflow delete). Inbox mobile behavior unchanged.
+ * Polly lock: bottom tabs are Capture | Process | Work | Review. Drawer
+ * contents stay the approved flat rail (smart views, Lists heading,
+ * named lists, Unlisted, + New list, overflow delete). Capture mobile
+ * behavior is unchanged.
  *
  * Out of scope: drag reorder (#78), checkbox redesign (#77), swipe-to-complete
  * (#79), multi-select, changing the desktop rail.
@@ -100,7 +101,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileTasksRail();
     }, 60_000);
 
-    it('opens the Inbox capture pane from the mobile Inbox bottom tab', async () => {
+    it('opens the Capture pane from the mobile Capture tab', async () => {
       await alice.createCapture({ content: 'Note one' });
 
       await alice.openMobileBottomTab('work');

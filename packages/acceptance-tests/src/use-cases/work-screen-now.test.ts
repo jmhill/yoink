@@ -5,7 +5,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 /**
  * Projects plan story 12 (#144): Work screen with a Now view.
  *
- * Polly lock (Sun Oct 11): /work now; phone Tasks tab opens it; desktop
+ * Polly lock (Sun Oct 11): /work now; phone Work tab opens it; desktop
  * Now sits above Today. Mine is a heading toggle (`?mine=true`), reset
  * to everyone on each visit. Owner labels hide the viewer and unowned
  * rows. Next actions: dated first, then project name. Due is Today’s

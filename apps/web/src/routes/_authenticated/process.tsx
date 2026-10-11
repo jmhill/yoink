@@ -46,7 +46,7 @@ function ProcessPage() {
 
   const { data, isPending, error, refetch } = tsr.list.useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
+    queryData: { query: { status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP } },
   });
 
   const captures = data?.status === 200 ? sortProcessQueue(data.body.captures) : [];
@@ -61,7 +61,7 @@ function ProcessPage() {
       <Header />
       <PlaceHeading
         title="Process"
-        subcopy={processQueueSubcopy(toProcessCount)}
+        subcopy={ready ? processQueueSubcopy(toProcessCount) : undefined}
         subcopyTestId="process-subcopy"
       />
 

@@ -25,7 +25,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('shows Capture, Process, Work, Review and lights only the matching tab', async () => {
       const groceries = await alice.createNamedList('Groceries');
-      const garden = await alice.createProject({ name: 'Garden' });
+      await alice.createProject({ name: 'Garden' });
       await alice.createCapture({ content: 'Clip for tabs' });
       const staged = await alice.stageProjectImport([
         { name: 'Harbor shed', status: 'active', newTasks: [{ key: 'paint', title: 'Paint the door' }] },
@@ -99,7 +99,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.goToSettings();
       await alice.shouldSeeLitMobileTab(null);
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'settings_no_tab_lit' });
-      expect(garden.id).toBeTruthy();
     }, 90_000);
 
     it('keeps Capture as inbox: quick add, swipe-trash, snooze, and pane tabs', async () => {
@@ -128,7 +127,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('shows Process oldest first with the badge, then empties after triage', async () => {
       const chores = await alice.createNamedList('Chores');
-      await alice.createProject({ name: 'Shed' });
+      const shed = await alice.createProject({ name: 'Shed' });
       await alice.createCapture({ content: 'Oldest clip' });
       await alice.createCapture({ content: 'Middle clip' });
       await alice.createCapture({ content: 'Newest clip' });
@@ -160,7 +159,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         projectName: 'Shed',
       });
       expect(task.listId).toBe(chores.id);
-      expect(task.projectId).toBeDefined();
+      expect(task.projectId).toBe(shed.id);
 
       await alice.snoozeCaptureOnCurrentPane('Newest clip');
       await alice.shouldSeeProcessEmpty();

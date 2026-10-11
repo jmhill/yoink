@@ -3333,7 +3333,11 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeBackToWork(): Promise<void> {
-      await expect(page.locator('[data-back-to-work]')).toBeVisible();
+      const link = page.locator('[data-back-to-work]');
+      await expect(link).toBeVisible();
+      await expect
+        .poll(async () => (await link.boundingBox())?.height ?? Number.POSITIVE_INFINITY)
+        .toBeLessThanOrEqual(24);
     },
 
     async shouldNotSeeBackToWork(): Promise<void> {

@@ -798,18 +798,19 @@ function TasksPage() {
     >
       <Header
         leading={
-          <>
+          <div className="flex shrink-0 items-center gap-2">
             <MobileTasksRailDrawer />
             {allPile !== null ? (
               <Link
                 to="/work"
                 data-back-to-work=""
-                className="text-sm text-muted-foreground md:hidden"
+                aria-label="Back to Work"
+                className="shrink-0 whitespace-nowrap text-sm text-muted-foreground md:hidden"
               >
                 ‹ Work
               </Link>
             ) : null}
-          </>
+          </div>
         }
       />
       <PlaceHeading

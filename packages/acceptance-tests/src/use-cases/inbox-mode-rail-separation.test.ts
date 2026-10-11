@@ -8,7 +8,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  * Product lock: Inbox first (count badge unchanged) as a capture/triage
  * mode, then a loud split before Today → Upcoming → Mine → Done, then
  * Lists heading + named lists + Unlisted + + New list. No new destinations.
- * All stays retired. Thumb bar stays Inbox | Tasks.
+ * All stays retired. Thumb bar is Capture | Process | Work | Review.
  *
  * Out of scope: pane surface (#98), capture-card density (#99), ⌘K (#101),
  * lifecycle / Promote domain, new nav destinations.

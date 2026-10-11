@@ -112,6 +112,9 @@ export const waitForSettledOpenSelect = async (input: {
   await option.waitFor({ state: 'visible' });
 };
 
+/** Radix leaves a closing dialog in the DOM with data-state=closed. */
+export const OPEN_DIALOG_CONTENT = '[data-slot="dialog-content"][data-state="open"]';
+
 export const waitForSettledOpenDialog = async (input: {
   page: {
     locator: (selector: string) => {
@@ -133,7 +136,7 @@ export const waitForSettledOpenDialog = async (input: {
     };
   };
 }): Promise<void> => {
-  const dialog = input.page.locator('[data-slot="dialog-content"]').last();
+  const dialog = input.page.locator(OPEN_DIALOG_CONTENT).last();
   await dialog.waitFor({ state: 'visible' });
   await dialog.evaluate(async (el) => {
     const view = el.ownerDocument.defaultView;

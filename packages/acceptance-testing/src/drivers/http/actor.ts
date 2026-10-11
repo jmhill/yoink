@@ -896,75 +896,75 @@ export const createHttpActor = (
 
     async shouldSeeWaitingSummary(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeWaitingSummary', 'http');
-    }
+    },
 
     async openNextActionPicker(): Promise<void> {
       throw new UnsupportedOperationError('openNextActionPicker', 'http');
-    }
+    },
 
     async pickNextActionFromPicker(_title: string): Promise<void> {
       throw new UnsupportedOperationError('pickNextActionFromPicker', 'http');
-    }
+    },
 
     async createNextActionFromPicker(_title: string): Promise<void> {
       throw new UnsupportedOperationError('createNextActionFromPicker', 'http');
-    }
+    },
 
     async completeNextActionFromPage(_title: string): Promise<void> {
       throw new UnsupportedOperationError('completeNextActionFromPage', 'http');
-    }
+    },
 
     async skipWhatsNext(): Promise<void> {
       throw new UnsupportedOperationError('skipWhatsNext', 'http');
-    }
+    },
 
     async pickWhatsNextTask(_title: string): Promise<void> {
       throw new UnsupportedOperationError('pickWhatsNextTask', 'http');
-    }
+    },
 
     async shouldSeeNextAction(_title: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNextAction', 'http');
-    }
+    },
 
     async shouldSeeNoNextActionCard(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNoNextActionCard', 'http');
-    }
+    },
 
     async shouldSeeWhatsNext(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeWhatsNext', 'http');
-    }
+    },
 
     async shouldSeeNoNextActionOnAllProjects(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNoNextActionOnAllProjects', 'http');
-    }
+    },
 
     async shouldSeeNoNextActionDotOnRail(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNoNextActionDotOnRail', 'http');
-    }
+    },
 
     async shouldSeeBlankProjectNameError(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeBlankProjectNameError', 'http');
-    }
+    },
 
     async openProjectEditDialog(): Promise<void> {
       throw new UnsupportedOperationError('openProjectEditDialog', 'http');
-    }
+    },
 
     async dismissProjectEditDialog(): Promise<void> {
       throw new UnsupportedOperationError('dismissProjectEditDialog', 'http');
-    }
+    },
 
     async deleteTaskFromEdit(): Promise<void> {
       throw new UnsupportedOperationError('deleteTaskFromEdit', 'http');
-    }
+    },
 
     async clearTaskProjectFromEdit(): Promise<void> {
       throw new UnsupportedOperationError('clearTaskProjectFromEdit', 'http');
-    }
+    },
 
     async shouldSeeSingleStatusControl(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeSingleStatusControl', 'http');
-    }
+    },
 
     async shouldSeeHistoryPlaceholder(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeHistoryPlaceholder', 'http');

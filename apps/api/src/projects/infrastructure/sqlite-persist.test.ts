@@ -505,7 +505,7 @@ describe('sqlite project persist', () => {
           organizationId: 'org-1',
           taskId: 'task-1',
           reason: 'cleared',
-          occurredAt: later,
+          occurredAt: '2026-10-11T13:00:00.000Z',
         },
         current: afterSet,
         actor,

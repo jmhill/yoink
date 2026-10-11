@@ -2377,10 +2377,12 @@ export const createPlaywrightActor = (
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
       await page.mouse.move(0, 0);
       await page.evaluate(`
-        document.querySelectorAll('[data-sonner-toast]').forEach((node) => node.remove());
+        window.__YOINK_DISMISS_TOASTS?.();
       `);
       if (input.step === 'whats_next') {
-        await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+        await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, {
+          timeout: 8_000,
+        });
       }
       const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
       if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {

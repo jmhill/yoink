@@ -15,9 +15,6 @@ const WALKTHROUGH_STORY = '141-four-tabs-phone';
 const FOUR_TABS = ['Capture', 'Process', 'Work', 'Review'] as const;
 const DESKTOP_1440 = { width: 1440, height: 900 } as const;
 
-const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
-
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Four tabs on phone [${ctx.driverName}]`, () => {
     let alice: BrowserActor;
@@ -258,7 +255,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport(DESKTOP_1440);
       await alice.shouldNotSeeMobileBottomNav();
       await alice.shouldSeeDesktopAppRail();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems([
+        'Inbox',
+        'Now',
+        'Today',
+        'Upcoming',
+        'Mine',
+        'Done',
+        'Groceries',
+        'Unlisted',
+        'New list',
+        'Garden',
+        'New project',
+      ]);
 
       await alice.openRailInbox();
       await alice.shouldSeeRailInboxHighlighted();

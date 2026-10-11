@@ -3275,7 +3275,7 @@ export const createPlaywrightActor = (
         return;
       }
       if (tab === 'review') {
-        await expect(page.locator('[data-review-ready], [data-projects-index]')).toBeVisible();
+        await expect(page.locator('[data-review-ready]')).toBeVisible();
         return;
       }
       await expect(page.locator('[data-now-ready]')).toBeVisible();

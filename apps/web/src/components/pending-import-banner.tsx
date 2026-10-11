@@ -13,16 +13,21 @@ export function PendingImportBanner() {
       return LIVE_QUERY_REFETCH_INTERVAL_MS;
     },
   });
-  const pending = data?.status === 200 ? data.body.imports[0] : undefined;
-  if (!pending) {
+  const pending = data?.status === 200 ? data.body.imports : [];
+  if (pending.length === 0) {
     return null;
   }
 
-  const count = pending.preview?.totals.projectCount;
+  const newest = pending.reduce((current, item) =>
+    item.createdAt >= current.createdAt ? item : current
+  );
+  const count = newest.preview?.totals.projectCount;
   const summary =
-    count === undefined
-      ? `${pending.createdByName} staged an import.`
-      : `${pending.createdByName} staged an import of ${count} project${count === 1 ? '' : 's'}.`;
+    pending.length > 1
+      ? `${pending.length} imports waiting`
+      : count === undefined
+        ? `${newest.createdByName} staged an import.`
+        : `${newest.createdByName} staged an import of ${count} project${count === 1 ? '' : 's'}.`;
 
   return (
     <div
@@ -33,7 +38,7 @@ export function PendingImportBanner() {
         <p className="min-w-0">{summary}</p>
         <Link
           to="/projects/imports/$importId"
-          params={{ importId: pending.id }}
+          params={{ importId: newest.id }}
           data-import-review=""
           className="shrink-0 font-semibold underline underline-offset-2"
         >

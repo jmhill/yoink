@@ -66,7 +66,10 @@ const inventedBatch = async (
   hook: { id: string; title: string };
   projects: ImportProject[];
 }> => {
-  const paint = await actor.createTask({ title: 'Paint the door' });
+  const paint = await actor.createTask({
+    title: 'Paint the door',
+    assigneeId: actor.userId,
+  });
   const hinges = await actor.createTask({ title: 'Order hinges', dueDate: '2026-11-01' });
   const hook = await actor.createTask({ title: 'Hang the hook' });
   return {
@@ -103,6 +106,91 @@ const inventedBatch = async (
         newTasks: [{ key: 'measure', title: 'Measure the cockpit' }],
       },
     ],
+  };
+};
+
+const NOT_A_MEMBER = '00000000-0000-4000-8000-000000000099';
+
+const largeInventedSpecs = [
+  { name: 'Cedar pantry', status: 'active' as const, existing: ['Measure the shelves', 'Buy jar lids'] },
+  { name: 'Bike stand', status: 'active' as const, existing: ['Cut the uprights', 'Find the lag bolts'] },
+  { name: 'Tomato starts', status: 'active' as const, existing: ['Fill the trays', 'Mix the potting soil'] },
+  { name: 'Attic fan', status: 'active' as const, existing: ['Measure the vent', 'Order the thermostat'] },
+  { name: 'Guest towels', status: 'active' as const, existing: ['Wash the extras', 'Label the shelf'] },
+  { name: 'Maple syrup', status: 'active' as const, existing: ['Rinse the jugs', 'Mark the date'] },
+  { name: 'Porch swing', status: 'active' as const, existing: ['Sand the seat', 'Oil the chains'] },
+  { name: 'Rain barrel', status: 'active' as const, existing: ['Level the pad', 'Fit the diverter'] },
+  { name: 'Spice rack', status: 'active' as const, existing: ['Sort the jars', 'Print the labels'] },
+  { name: 'Compost bin', status: 'active' as const, existing: ['Drill the sides', 'Add the browns'] },
+  { name: 'Window quilts', status: 'active' as const, existing: ['Cut the batting', 'Sew the tabs'] },
+  { name: 'Seed packets', status: 'active' as const, existing: ['Sort by month', 'Clip the extras'] },
+  { name: 'Tool wall', status: 'active' as const, existing: ['Outline the saw'] },
+  { name: 'Bread box', status: 'active' as const, existing: ['Fit the lid'] },
+  { name: 'Laundry chute', status: 'waiting' as const, waitingOn: 'Carpenter', existing: ['Measure the drop'] },
+  {
+    name: 'Bird feeder',
+    status: 'someday' as const,
+    existing: [] as string[],
+    newTasks: [{ key: 'hang-feeder', title: 'Hang the feeder' }],
+  },
+  {
+    name: 'Storm windows',
+    status: 'someday' as const,
+    existing: [] as string[],
+    newTasks: [{ key: 'label-sashes', title: 'Label the sashes' }],
+  },
+  {
+    name: 'Shoe rack',
+    status: 'waiting' as const,
+    waitingOn: 'Hardware shop',
+    existing: [] as string[],
+    newTasks: [{ key: 'order-dowels', title: 'Order the dowels', assigneeId: NOT_A_MEMBER }],
+  },
+  {
+    name: 'Firewood crib',
+    status: 'someday' as const,
+    existing: [] as string[],
+    newTasks: [{ key: 'stack-first-row', title: 'Stack the first row' }],
+  },
+];
+
+const largeInventedBatch = async (
+  actor: CoreActor
+): Promise<{
+  projects: ImportProject[];
+  firstName: string;
+  midName: string;
+  warningName: string;
+}> => {
+  const projects: ImportProject[] = [];
+  for (const spec of largeInventedSpecs) {
+    const existing = [];
+    for (const title of spec.existing) {
+      existing.push(await actor.createTask({ title }));
+    }
+    projects.push({
+      name: spec.name,
+      status: spec.status,
+      ...(spec.waitingOn !== undefined ? { waitingOn: spec.waitingOn, waitingSince: null } : {}),
+      ...(existing.length > 0
+        ? {
+            existingTaskIds: existing.map((task) => task.id),
+            nextAction: { existingTaskId: existing[0]!.id },
+          }
+        : {}),
+      ...('newTasks' in spec && spec.newTasks
+        ? {
+            newTasks: spec.newTasks,
+            nextAction: { newTaskKey: spec.newTasks[0]!.key },
+          }
+        : {}),
+    });
+  }
+  return {
+    projects,
+    firstName: 'Cedar pantry',
+    midName: 'Spice rack',
+    warningName: 'Shoe rack',
   };
 };
 
@@ -148,8 +236,8 @@ usingDrivers(['http'] as const, (ctx) => {
             waitingSince: null,
             nextActionTitle: 'Paint the door',
             tasks: [
-              { title: 'Paint the door', source: 'existing' },
-              { title: 'Order hinges', source: 'existing' },
+              { title: 'Paint the door', source: 'existing', assigneeName: 'Alice' },
+              { title: 'Order hinges', source: 'existing', dueDate: '2026-11-01' },
               { title: 'Hang the hook', source: 'existing' },
             ],
             notebookPages: harborNotebook,
@@ -443,15 +531,28 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
 
         await alice.reviewPendingImport();
-        await alice.shouldSeeImportPreviewProject('Harbor shed');
+        await alice.shouldSeeImportPreviewSummary(
+          '3 projects · 3 existing tasks · 2 new · 1 warning'
+        );
+        await alice.shouldSeeImportPreviewCollapsed('Harbor shed');
+        await alice.shouldSeeImportPreviewProject('Paint the door');
+        await alice.shouldSeeImportPreviewExpanded('Permit desk');
+        await alice.shouldSeeImportPreviewCollapsed('Winter boat cover');
+        await alice.shouldSeeImportPreviewProject('No next action');
+        await alice.shouldSeeImportWarning('Assignee is not a member');
         await alice.scrollImportPreviewProject('Harbor shed');
         await alice.saveWalkthroughScreenshot({
           story: '139-project-import',
           step: 'preview',
         });
+        await alice.expandImportPreviewProject('Harbor shed');
+        await alice.shouldSeeImportPreviewExpanded('Harbor shed');
+        await alice.shouldSeeImportPreviewProject('Keep the dock usable');
+        await alice.shouldSeeImportPreviewProject('Paint the door (existing) · Alice');
+        await alice.shouldSeeImportPreviewProject('Order hinges (existing) · Nov 1');
         await alice.shouldSeeImportPreviewProject('Permit desk');
-        await alice.shouldSeeImportWarning('Assignee is not a member');
         await alice.shouldSeeImportPreviewProject('Winter boat cover');
+        await alice.shouldSeeImportFooterWhilePreviewScrolledTo('Winter boat cover');
         await alice.scrollImportActionsIntoView();
         await alice.saveWalkthroughScreenshot({
           story: '139-project-import',
@@ -565,11 +666,125 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const staged = await alice.stageProjectImport(projects);
       await alice.createProject({ name: 'Harbor shed' });
       await alice.goToImportPreview(staged.id);
-      await alice.shouldSeeImportError("A project with this name already exists");
+      await alice.shouldSeeImportError('Harbor shed: a project with this name already exists');
       await alice.saveWalkthroughScreenshot({
         story: '139-project-import',
         step: 'preview_errors',
       });
+    }, 120_000);
+
+    it('scans a large invented batch on the phone', async () => {
+      await alice.useMobileViewport();
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+      const { projects, firstName, midName, warningName } = await largeInventedBatch(alice);
+      expect(projects).toHaveLength(19);
+      const staged = await bot.stageProjectImport(projects);
+      expect(staged.preview?.totals).toEqual({
+        projectCount: 19,
+        existingTaskCount: 27,
+        newTaskCount: 4,
+        projectsWithNoNextAction: 0,
+      });
+
+      await alice.goToAllProjects();
+      await alice.reviewPendingImport();
+      await alice.shouldSeeImportPreviewSummary(
+        '19 projects · 27 existing tasks · 4 new · 1 warning'
+      );
+      await alice.shouldSeeImportPreviewCollapsed(firstName);
+      await alice.shouldSeeImportPreviewExpanded(warningName);
+      await alice.shouldSeeImportWarning('Assignee is not a member');
+      await alice.shouldSeeImportFooter();
+      await alice.saveWalkthroughScreenshot({
+        story: '139-project-import',
+        step: 'preview_large',
+      });
+
+      await alice.expandImportPreviewProject(firstName);
+      await alice.shouldSeeImportPreviewExpanded(firstName);
+      await alice.scrollImportPreviewProject(firstName);
+      await alice.saveWalkthroughScreenshot({
+        story: '139-project-import',
+        step: 'preview_large_open',
+      });
+
+      await alice.scrollImportPreviewProject(warningName);
+      await alice.shouldSeeImportPreviewExpanded(warningName);
+      await alice.saveWalkthroughScreenshot({
+        story: '139-project-import',
+        step: 'preview_large_warning',
+      });
+
+      await alice.shouldSeeImportFooterWhilePreviewScrolledTo(midName);
+      await alice.saveWalkthroughScreenshot({
+        story: '139-project-import',
+        step: 'preview_large_mid',
+      });
+    }, 180_000);
+
+    it('keeps notebook-page focus and adds a page on Enter', async () => {
+      await alice.useDesktopViewport();
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+      const { projects } = await inventedBatch(alice);
+      const staged = await bot.stageProjectImport(projects);
+      const applied = await alice.applyProjectImport(staged.id);
+      const harbor = applied.projects.find((project) => project.name === 'Harbor shed');
+      expect(harbor).toBeDefined();
+      if (!harbor) {
+        return;
+      }
+      await alice.goToProject(harbor.id);
+      await alice.openProjectEditDialog();
+      await alice.typeNotebookPageAndKeepFocus(0, 'x');
+      await alice.addNotebookPageWithEnter('notes/Harbor shed extra.md');
+      await alice.shouldSeeNotebookPageInputs([
+        'notes/Harbor shed (dock).mdx',
+        'notes/Harbor shed winter.md',
+        'notes/Harbor shed extra.md',
+      ]);
+    }, 120_000);
+
+    it('shows N imports waiting and Review opens the newest', async () => {
+      await alice.useMobileViewport();
+      const minted = await alice.mintAgent('Lane');
+      const bot = ctx.createActorWithCredentials({
+        email: minted.agent.name,
+        userId: minted.agent.userId,
+        organizationId: alice.organizationId,
+        token: minted.rawToken,
+      });
+      const first = await inventedBatch(alice);
+      await bot.stageProjectImport(first.projects);
+      const laterTask = await alice.createTask({ title: 'Rake the leaves' });
+      await bot.stageProjectImport([
+        {
+          name: 'Cedar pantry',
+          status: 'active',
+          existingTaskIds: [laterTask.id],
+          nextAction: { existingTaskId: laterTask.id },
+        },
+      ]);
+      await alice.goToAllProjects();
+      await alice.shouldSeePendingImportBanner('2 imports waiting');
+      await alice.saveWalkthroughScreenshot({
+        story: '139-project-import',
+        step: 'banner_two',
+      });
+      await alice.reviewPendingImport();
+      await alice.shouldSeeImportPreviewProject('Cedar pantry');
+      await alice.shouldSeeImportPreviewCollapsed('Cedar pantry');
     }, 120_000);
 
     it('shows preview errors on the phone and a multi-error batch', async () => {
@@ -578,7 +793,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const staged = await alice.stageProjectImport(projects);
       await alice.createProject({ name: 'Harbor shed' });
       await alice.goToImportPreview(staged.id);
-      await alice.shouldSeeImportError('A project with this name already exists');
+      await alice.shouldSeeImportError('Harbor shed: a project with this name already exists');
       await alice.saveWalkthroughScreenshot({
         story: '139-project-import',
         step: 'preview_errors',
@@ -587,8 +802,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const other = await alice.createProject({ name: 'Other dock' });
       await alice.updateTask(paint.id, { projectId: other.id });
       await alice.goToImportPreview(staged.id);
-      await alice.shouldSeeImportError('A project with this name already exists');
-      await alice.shouldSeeImportError('That task is already in a project');
+      await alice.shouldSeeImportError('Harbor shed: a project with this name already exists');
+      await alice.shouldSeeImportError("Harbor shed: 'Paint the door' is already in another project");
       await alice.saveWalkthroughScreenshot({
         story: '139-project-import',
         step: 'preview_errors_multi',

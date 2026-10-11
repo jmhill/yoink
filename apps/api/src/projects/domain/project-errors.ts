@@ -148,6 +148,7 @@ export type ImportEntryError = {
   readonly field: string;
   readonly code: string;
   readonly message: string;
+  readonly taskTitle?: string;
 };
 
 export type ImportRequiresPersonError = {

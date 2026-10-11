@@ -171,6 +171,8 @@ export type ImportPreviewWarning = z.infer<typeof ImportPreviewWarningSchema>;
 export const ImportPreviewTaskSchema = z.object({
   title: z.string(),
   source: z.enum(['existing', 'new']),
+  dueDate: z.string().nullable().optional(),
+  assigneeName: z.string().nullable().optional(),
 });
 
 export type ImportPreviewTask = z.infer<typeof ImportPreviewTaskSchema>;

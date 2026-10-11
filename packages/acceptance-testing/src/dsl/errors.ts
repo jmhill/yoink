@@ -51,6 +51,7 @@ export class ImportInvalidError extends ValidationError {
     field: string;
     code: string;
     message: string;
+    taskTitle?: string;
   }>;
 
   constructor(
@@ -61,6 +62,7 @@ export class ImportInvalidError extends ValidationError {
       field: string;
       code: string;
       message: string;
+      taskTitle?: string;
     }>
   ) {
     super(message);

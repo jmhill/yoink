@@ -1,16 +1,144 @@
+import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { ChevronDown } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { tsrProjects } from '@/api/client';
 import { Button } from '@yoink/ui-base/components/button';
+import { cn } from '@yoink/ui-base/lib/utils';
 import { isBlockingQueryFailure, invalidateLiveQueries } from '@/lib/live-query';
 import { toast } from 'sonner';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { projectContract } from '@yoink/api-contracts';
+import {
+  projectContract,
+  type ImportEntryError,
+  type ImportPreviewProject,
+} from '@yoink/api-contracts';
+import { formatImportPreviewSummary } from '@/lib/import-preview-summary';
+import { formatImportPreviewError } from '@/lib/format-import-preview-error';
+import { formatImportPreviewTaskLine } from '@/lib/format-import-preview-task';
 
 export const Route = createFileRoute('/_authenticated/projects_/imports/$importId')({
   component: ImportPreviewPage,
 });
+
+const statusLabel = (status: ImportPreviewProject['status']): string => {
+  if (status === 'active') return 'Active';
+  if (status === 'waiting') return 'Waiting';
+  return 'Someday';
+};
+
+const taskCountLabel = (count: number): string =>
+  `${count} task${count === 1 ? '' : 's'}`;
+
+const errorsForIndex = (
+  errors: ImportEntryError[],
+  index: number
+): ImportEntryError[] => errors.filter((item) => item.index === index);
+
+function ImportPreviewProjectCard(props: {
+  index: number;
+  project: ImportPreviewProject;
+  errors: ImportEntryError[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { project, errors, open, onToggle } = props;
+  const tone = errors.length > 0 ? 'error' : project.warnings.length > 0 ? 'warning' : null;
+  const nextAction = project.nextActionTitle ?? 'No next action';
+
+  return (
+    <section
+      data-import-preview-project={props.index}
+      data-import-preview-open={open ? 'true' : 'false'}
+      className="rounded-xl border border-border bg-card"
+    >
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        {tone === 'warning' ? (
+          <span
+            data-import-preview-marker="warning"
+            className="size-1.5 shrink-0 rounded-full bg-warning"
+          />
+        ) : null}
+        {tone === 'error' ? (
+          <span
+            data-import-preview-marker="error"
+            className="size-1.5 shrink-0 rounded-full bg-destructive"
+          />
+        ) : null}
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold">{project.name}</span>
+          <span className="text-muted-foreground">
+            {' · '}
+            {statusLabel(project.status)}
+            {' · '}
+            {nextAction}
+            {' · '}
+            {taskCountLabel(project.tasks.length)}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180'
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      {open ? (
+        <div className="space-y-2 border-t border-border px-4 py-3" data-import-preview-detail="">
+          {project.objective ? (
+            <p className="text-sm">{project.objective}</p>
+          ) : null}
+          {project.status === 'waiting' ? (
+            <p className="text-sm text-muted-foreground">
+              Waiting on {project.waitingOn} · since {project.waitingSince ?? 'unknown'}
+            </p>
+          ) : null}
+          <ul className="space-y-1 text-sm">
+            {project.tasks.map((task) => (
+              <li key={`${task.source}-${task.title}`}>{formatImportPreviewTaskLine(task)}</li>
+            ))}
+          </ul>
+          {project.notebookPages.length > 0 ? (
+            <ul className="space-y-1 text-sm">
+              {project.notebookPages.map((page) => (
+                <li key={page.path}>
+                  <a href={page.url} className="underline underline-offset-2">
+                    {page.path}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {project.warnings.map((warning) => (
+            <p
+              key={`${warning.field}-${warning.code}`}
+              data-import-warning={warning.field}
+              className="text-sm text-warning"
+            >
+              {warning.message}
+            </p>
+          ))}
+          {errors.map((item) => (
+            <p
+              key={`${item.field}-${item.code}`}
+              data-import-error={item.index}
+              className="text-sm text-destructive"
+            >
+              {formatImportPreviewError(item)}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 function ImportPreviewPage() {
   const { importId } = Route.useParams();
@@ -20,6 +148,7 @@ function ImportPreviewPage() {
     queryKey: ['project-imports', importId],
     queryData: { params: { id: importId } },
   });
+  const [toggled, setToggled] = useState<Record<number, boolean>>({});
 
   const applyMutation = tsrProjects.applyImport.useMutation({
     onSuccess: async (result) => {
@@ -85,11 +214,19 @@ function ImportPreviewPage() {
   const preview = staged?.preview;
   const errors = staged?.errors ?? [];
   const count = preview?.totals.projectCount ?? 0;
+  const warningCount =
+    preview?.projects.reduce((sum, project) => sum + project.warnings.length, 0) ?? 0;
   const busy = applyMutation.isPending || discardMutation.isPending;
   const canDecide = staged?.status === 'pending';
+  const isOpen = (index: number, project: ImportPreviewProject): boolean => {
+    if (toggled[index] !== undefined) {
+      return toggled[index];
+    }
+    return project.warnings.length > 0 || errorsForIndex(errors, index).length > 0;
+  };
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
+    <div className="container mx-auto max-w-2xl p-4 pb-36 md:pb-24">
       <Header />
       <h1 className="text-2xl font-bold">Import preview</h1>
       {isPending || !staged ? (
@@ -108,104 +245,78 @@ function ImportPreviewPage() {
               data-import-error={item.index}
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
-              {item.name || 'Untitled'} ({item.field}): {item.message}
+              {formatImportPreviewError(item)}
             </li>
           ))}
         </ul>
       ) : null}
 
       {preview ? (
-        <div className="mt-6 space-y-4" data-import-preview="">
-          <p className="text-sm text-muted-foreground">
-            {preview.totals.projectCount} projects · {preview.totals.existingTaskCount} existing
-            tasks · {preview.totals.newTaskCount} new tasks ·{' '}
-            {preview.totals.projectsWithNoNextAction} with no next action
+        <div className="mt-6 space-y-3" data-import-preview="">
+          <p className="text-sm text-muted-foreground" data-import-preview-summary="">
+            {formatImportPreviewSummary({
+              projectCount: preview.totals.projectCount,
+              existingTaskCount: preview.totals.existingTaskCount,
+              newTaskCount: preview.totals.newTaskCount,
+              warningCount,
+            })}
           </p>
           {preview.projects.map((project, index) => (
-            <section
+            <ImportPreviewProjectCard
               key={`${project.name}-${index}`}
-              data-import-preview-project={index}
-              className="rounded-xl border border-border bg-card p-4"
-            >
-              <h2 className="font-semibold">{project.name}</h2>
-              {project.objective ? (
-                <p className="mt-1 text-sm">{project.objective}</p>
-              ) : null}
-              <p className="mt-2 text-sm capitalize text-muted-foreground">{project.status}</p>
-              {project.status === 'waiting' ? (
-                <p className="text-sm text-muted-foreground">
-                  Waiting on {project.waitingOn} · since {project.waitingSince ?? 'unknown'}
-                </p>
-              ) : null}
-              <p className="mt-2 text-sm">
-                Next action: {project.nextActionTitle ?? 'none'}
-              </p>
-              <ul className="mt-2 space-y-1 text-sm">
-                {project.tasks.map((task) => (
-                  <li key={`${task.source}-${task.title}`}>
-                    {task.title}{' '}
-                    <span className="text-muted-foreground">({task.source})</span>
-                  </li>
-                ))}
-              </ul>
-              {project.notebookPages.length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm">
-                  {project.notebookPages.map((page) => (
-                    <li key={page.path}>
-                      <a href={page.url} className="underline underline-offset-2">
-                        {page.path}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {project.warnings.map((warning) => (
-                <p
-                  key={`${warning.field}-${warning.code}`}
-                  data-import-warning={warning.field}
-                  className="mt-2 text-sm text-warning"
-                >
-                  {warning.message}
-                </p>
-              ))}
-            </section>
+              index={index}
+              project={project}
+              errors={errorsForIndex(errors, index)}
+              open={isOpen(index, project)}
+              onToggle={() => {
+                setToggled((current) => ({
+                  ...current,
+                  [index]: !isOpen(index, project),
+                }));
+              }}
+            />
           ))}
         </div>
       ) : null}
 
       {canDecide ? (
-        <div className="mt-6 flex flex-wrap gap-2 pb-8">
-          {count > 0 && errors.length === 0 ? (
+        <div
+          data-import-actions=""
+          className="fixed inset-x-0 bottom-16 z-40 border-t bg-background px-4 py-3 md:bottom-0"
+        >
+          <div className="container mx-auto flex max-w-2xl flex-wrap gap-2">
+            {count > 0 && errors.length === 0 ? (
+              <Button
+                type="button"
+                data-import-submit=""
+                disabled={busy || !preview}
+                onClick={() =>
+                  applyMutation.mutate({
+                    params: { id: importId },
+                    body: {},
+                  })
+                }
+              >
+                {applyMutation.isPending
+                  ? 'Importing…'
+                  : `Import ${count} project${count === 1 ? '' : 's'}`}
+              </Button>
+            ) : null}
             <Button
               type="button"
-              data-import-submit=""
-              disabled={busy || !preview}
+              variant="outline"
+              data-import-discard=""
+              disabled={busy}
               onClick={() =>
-                applyMutation.mutate({
+                discardMutation.mutate({
                   params: { id: importId },
                   body: {},
                 })
               }
             >
-              {applyMutation.isPending
-                ? 'Importing…'
-                : `Import ${count} project${count === 1 ? '' : 's'}`}
+              {discardMutation.isPending ? 'Discarding…' : 'Discard'}
             </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            data-import-discard=""
-            disabled={busy}
-            onClick={() =>
-              discardMutation.mutate({
-                params: { id: importId },
-                body: {},
-              })
-            }
-          >
-            {discardMutation.isPending ? 'Discarding…' : 'Discard'}
-          </Button>
+          </div>
         </div>
       ) : null}
     </div>

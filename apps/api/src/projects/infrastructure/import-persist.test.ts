@@ -60,6 +60,7 @@ const writePlan = () => {
     tasksById: new Map([[paint.id, paint]]),
     listsById: new Map(),
     memberIds: new Set(['user-1']),
+    assigneeNamesById: new Map(),
     nextOpenOrderByListId: new Map([['', 0]]),
     actor: person,
     now,

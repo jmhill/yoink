@@ -19,6 +19,7 @@ export const ImportEntryErrorSchema = z.object({
   field: z.string(),
   code: z.string(),
   message: z.string(),
+  taskTitle: z.string().optional(),
 });
 
 export type ImportEntryError = z.infer<typeof ImportEntryErrorSchema>;

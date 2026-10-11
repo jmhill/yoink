@@ -788,6 +788,12 @@ export type BrowserActorOperations = {
   shouldSeePendingImportBanner(text: string): Promise<void>;
   shouldNotSeePendingImportBanner(): Promise<void>;
   shouldSeeImportPreviewProject(name: string): Promise<void>;
+  shouldSeeImportPreviewSummary(text: string): Promise<void>;
+  shouldSeeImportPreviewCollapsed(name: string): Promise<void>;
+  shouldSeeImportPreviewExpanded(name: string): Promise<void>;
+  expandImportPreviewProject(name: string): Promise<void>;
+  shouldSeeImportFooter(): Promise<void>;
+  shouldSeeImportFooterWhilePreviewScrolledTo(name: string): Promise<void>;
   shouldSeeImportWarning(text: string): Promise<void>;
   shouldSeeImportError(text: string): Promise<void>;
   applyImportOnPreview(): Promise<void>;
@@ -800,6 +806,8 @@ export type BrowserActorOperations = {
   shouldSeeNotebookPage(path: string): Promise<void>;
   shouldSeeNotebookHref(path: string, href: string): Promise<void>;
   shouldSeeNotebookPageInputs(paths: string[]): Promise<void>;
+  typeNotebookPageAndKeepFocus(index: number, extra: string): Promise<void>;
+  addNotebookPageWithEnter(path: string): Promise<void>;
   scrollProjectHeadingIntoView(): Promise<void>;
   scrollProjectHistoryIntoView(): Promise<void>;
 

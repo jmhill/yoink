@@ -1694,6 +1694,49 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-import-preview-project]').filter({ hasText: name })).toBeVisible();
     },
 
+    async shouldSeeImportPreviewSummary(text: string): Promise<void> {
+      await expect(page.locator('[data-import-preview-summary]')).toHaveText(text);
+    },
+
+    async shouldSeeImportPreviewCollapsed(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(row.locator('button[aria-expanded]')).toHaveAttribute('aria-expanded', 'false');
+      await expect(row.locator('[data-import-preview-detail]')).toHaveCount(0);
+    },
+
+    async shouldSeeImportPreviewExpanded(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(row.locator('button[aria-expanded]')).toHaveAttribute('aria-expanded', 'true');
+      await expect(row.locator('[data-import-preview-detail]')).toBeVisible();
+    },
+
+    async expandImportPreviewProject(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      const toggle = row.locator('button[aria-expanded]');
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click();
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    },
+
+    async shouldSeeImportFooter(): Promise<void> {
+      const actions = page.locator('[data-import-actions]');
+      await expect(actions).toBeVisible();
+      await expect(page.locator('[data-import-submit]')).toBeVisible();
+      await expect(page.locator('[data-import-discard]')).toBeVisible();
+    },
+
+    async shouldSeeImportFooterWhilePreviewScrolledTo(name: string): Promise<void> {
+      const card = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(card).toBeVisible();
+      await card.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      await expect(page.locator('[data-import-actions]')).toBeVisible();
+      await expect(page.locator('[data-import-submit]')).toBeVisible();
+      await expect(page.locator('[data-import-discard]')).toBeVisible();
+    },
+
     async shouldSeeImportWarning(text: string): Promise<void> {
       await expect(page.locator('[data-import-warning]').filter({ hasText: text })).toBeVisible();
     },
@@ -1791,6 +1834,30 @@ export const createPlaywrightActor = (
       for (const [index, path] of paths.entries()) {
         await expect(page.locator(`[data-notebook-page-input="${index}"]`)).toHaveValue(path);
       }
+    },
+
+    async typeNotebookPageAndKeepFocus(index: number, extra: string): Promise<void> {
+      const input = page.locator(`[data-notebook-page-input="${index}"]`);
+      await expect(input).toBeVisible();
+      const current = await input.inputValue();
+      await input.focus();
+      await input.press('End');
+      await input.pressSequentially(extra);
+      await expect(input).toBeFocused();
+      await expect(input).toHaveValue(`${current}${extra}`);
+    },
+
+    async addNotebookPageWithEnter(path: string): Promise<void> {
+      const input = page.locator('[data-notebook-page-input="new"]');
+      await expect(input).toBeVisible();
+      const existing = page.locator('[data-notebook-page-input]:not([data-notebook-page-input="new"])');
+      const before = await existing.count();
+      await input.fill(path);
+      await input.press('Enter');
+      const dialog = page.getByRole('dialog', { name: 'Edit project' });
+      await expect(dialog).toBeVisible();
+      await expect(page.locator(`[data-notebook-page-input="${before}"]`)).toHaveValue(path);
+      await expect(input).toHaveValue('');
     },
 
     async scrollProjectHeadingIntoView(): Promise<void> {

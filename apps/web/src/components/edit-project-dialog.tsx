@@ -65,6 +65,15 @@ export function EditProjectDialog({
     });
   };
 
+  const addNewPage = () => {
+    const trimmed = newPage.trim();
+    if (!trimmed) {
+      return;
+    }
+    setPages([...pages, trimmed]);
+    setNewPage('');
+  };
+
   const formError = localError ?? error;
 
   return (
@@ -107,7 +116,7 @@ export function EditProjectDialog({
             <Label>Notebook pages</Label>
             <ul className="space-y-2">
               {pages.map((path, index) => (
-                <li key={`${path}-${index}`} className="flex items-center gap-2">
+                <li key={index} className="flex items-center gap-2">
                   <Input
                     data-notebook-page-input={index}
                     value={path}
@@ -136,19 +145,19 @@ export function EditProjectDialog({
                   value={newPage}
                   placeholder="notes/Page.md"
                   onChange={(event) => setNewPage(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') {
+                      return;
+                    }
+                    event.preventDefault();
+                    addNewPage();
+                  }}
                   disabled={isPending}
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    const trimmed = newPage.trim();
-                    if (!trimmed) {
-                      return;
-                    }
-                    setPages([...pages, trimmed]);
-                    setNewPage('');
-                  }}
+                  onClick={addNewPage}
                   disabled={isPending}
                 >
                   Add

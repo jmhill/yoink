@@ -1122,6 +1122,30 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeImportPreviewProject', 'http');
     },
 
+    async shouldSeeImportPreviewSummary(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportPreviewSummary', 'http');
+    },
+
+    async shouldSeeImportPreviewCollapsed(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportPreviewCollapsed', 'http');
+    },
+
+    async shouldSeeImportPreviewExpanded(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportPreviewExpanded', 'http');
+    },
+
+    async expandImportPreviewProject(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('expandImportPreviewProject', 'http');
+    },
+
+    async shouldSeeImportFooter(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportFooter', 'http');
+    },
+
+    async shouldSeeImportFooterWhilePreviewScrolledTo(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeImportFooterWhilePreviewScrolledTo', 'http');
+    },
+
     async shouldSeeImportWarning(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeImportWarning', 'http');
     },
@@ -1168,6 +1192,14 @@ export const createHttpActor = (
 
     async shouldSeeNotebookPageInputs(_paths: string[]): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNotebookPageInputs', 'http');
+    },
+
+    async typeNotebookPageAndKeepFocus(_index: number, _extra: string): Promise<void> {
+      throw new UnsupportedOperationError('typeNotebookPageAndKeepFocus', 'http');
+    },
+
+    async addNotebookPageWithEnter(_path: string): Promise<void> {
+      throw new UnsupportedOperationError('addNotebookPageWithEnter', 'http');
     },
 
     async scrollProjectHeadingIntoView(): Promise<void> {

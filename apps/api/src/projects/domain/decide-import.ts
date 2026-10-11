@@ -25,6 +25,7 @@ export type DecideImportInput = {
   tasksById: ReadonlyMap<string, Task>;
   listsById: ReadonlyMap<string, { id: string; organizationId: string }>;
   memberIds: ReadonlySet<string>;
+  assigneeNamesById: ReadonlyMap<string, string>;
   nextOpenOrderByListId: ReadonlyMap<string, number>;
   actor: Actor;
   now: string;
@@ -57,13 +58,15 @@ const entryError = (
   name: string,
   field: string,
   code: string,
-  message: string
+  message: string,
+  taskTitle?: string
 ): ImportEntryError => ({
   index,
   name,
   field,
   code,
   message,
+  ...(taskTitle !== undefined ? { taskTitle } : {}),
 });
 
 const compareEntryErrors = (left: ImportEntryError, right: ImportEntryError): number =>
@@ -177,8 +180,8 @@ const decideOneEntry = (
 ): { errors: ImportEntryError[]; planned?: PlannedImportedProject } => {
   const errors: ImportEntryError[] = [];
   const nameLabel = entry.name;
-  const add = (field: string, code: string, message: string) => {
-    errors.push(entryError(index, nameLabel, field, code, message));
+  const add = (field: string, code: string, message: string, taskTitle?: string) => {
+    errors.push(entryError(index, nameLabel, field, code, message, taskTitle));
   };
 
   if (entry.status === 'done' || entry.status === 'proposed') {
@@ -240,7 +243,12 @@ const decideOneEntry = (
     const field = `existingTaskIds.${taskIndex}`;
     const seen = seenTaskIds.get(taskId);
     if (seen) {
-      add(field, 'TASK_LISTED_TWICE', 'That task is listed more than once in this import');
+      add(
+        field,
+        'TASK_LISTED_TWICE',
+        'That task is listed more than once in this import',
+        input.tasksById.get(taskId)?.title
+      );
       continue;
     }
     seenTaskIds.set(taskId, { index, name: nameLabel });
@@ -251,11 +259,11 @@ const decideOneEntry = (
       continue;
     }
     if (task.completedAt) {
-      add(field, 'TASK_NOT_OPEN', 'Only an open task can join an imported project');
+      add(field, 'TASK_NOT_OPEN', 'Only an open task can join an imported project', task.title);
       continue;
     }
     if (task.projectId) {
-      add(field, 'TASK_ALREADY_IN_PROJECT', 'That task is already in a project');
+      add(field, 'TASK_ALREADY_IN_PROJECT', 'That task is already in a project', task.title);
       continue;
     }
     existingById.set(taskId, task);
@@ -453,7 +461,17 @@ const decideOneEntry = (
     waitingSince,
     nextActionTitle,
     tasks: [
-      ...existingTasks.map((item) => ({ title: item.current.title, source: 'existing' as const })),
+      ...existingTasks.map((item) => {
+        const assigneeId = item.current.assigneeId;
+        const assigneeName =
+          assigneeId !== undefined ? input.assigneeNamesById.get(assigneeId) : undefined;
+        return {
+          title: item.current.title,
+          source: 'existing' as const,
+          ...(item.current.dueDate !== undefined ? { dueDate: item.current.dueDate } : {}),
+          ...(assigneeName !== undefined ? { assigneeName } : {}),
+        };
+      }),
       ...createdEvents.map((event) => ({ title: event.title, source: 'new' as const })),
     ],
     notebookPages: view.notebookPages,

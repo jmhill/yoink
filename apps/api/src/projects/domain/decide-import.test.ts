@@ -47,6 +47,7 @@ const inputOf = (
   ]),
   listsById: new Map(),
   memberIds: new Set(['user-1']),
+  assigneeNamesById: new Map(),
   nextOpenOrderByListId: new Map([['', 0]]),
   actor: person,
   now,
@@ -87,6 +88,7 @@ const expectErrors = (
     field: string;
     code: string;
     message: string;
+    taskTitle?: string;
   }>,
   overrides: Partial<DecideImportInput> = {}
 ) => {
@@ -100,6 +102,29 @@ const expectErrors = (
 };
 
 describe('decideImport', () => {
+  it('puts due date and owner on existing preview tasks', () => {
+    const dated = task('task-paint', 'Paint the door', {
+      dueDate: '2026-11-01',
+      assigneeId: 'user-1',
+    });
+    const result = decideImport(
+      inputOf([harbor], {
+        tasksById: new Map([[dated.id, dated], [hinges.id, hinges], [hook.id, hook]]),
+        assigneeNamesById: new Map([['user-1', 'Alice']]),
+      })
+    );
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.preview.projects[0]?.tasks[0]).toEqual({
+      title: 'Paint the door',
+      source: 'existing',
+      dueDate: '2026-11-01',
+      assigneeName: 'Alice',
+    });
+  });
+
   it('builds a preview for a valid three-project batch in entry order', () => {
     const result = decideImport(inputOf([harbor, permit, cover]));
     expect(result.isOk()).toBe(true);
@@ -397,6 +422,7 @@ describe('decideImport', () => {
           field: 'existingTaskIds.1',
           code: 'TASK_NOT_OPEN',
           message: 'Only an open task can join an imported project',
+          taskTitle: 'Already done',
         },
         {
           index: 0,
@@ -404,6 +430,7 @@ describe('decideImport', () => {
           field: 'existingTaskIds.2',
           code: 'TASK_ALREADY_IN_PROJECT',
           message: 'That task is already in a project',
+          taskTitle: 'Already claimed',
         },
         {
           index: 1,
@@ -411,6 +438,7 @@ describe('decideImport', () => {
           field: 'existingTaskIds.0',
           code: 'TASK_LISTED_TWICE',
           message: 'That task is listed more than once in this import',
+          taskTitle: 'Paint the door',
         },
       ],
       {

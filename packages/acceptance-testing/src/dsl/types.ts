@@ -124,7 +124,12 @@ export type ImportPreviewProject = {
   waitingOn?: string | null;
   waitingSince?: string | null;
   nextActionTitle: string | null;
-  tasks: Array<{ title: string; source: 'existing' | 'new' }>;
+  tasks: Array<{
+    title: string;
+    source: 'existing' | 'new';
+    dueDate?: string;
+    assigneeName?: string;
+  }>;
   notebookPages: NotebookPage[];
   warnings: ImportPreviewWarning[];
 };

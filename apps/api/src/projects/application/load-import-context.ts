@@ -8,6 +8,7 @@ import type {
   LoadMemberIds,
   LoadNextOpenOrder,
   LoadTasksByIds,
+  LoadUserName,
 } from './ports.js';
 import type { Actor } from '../../shared/auth-context.js';
 
@@ -16,6 +17,7 @@ export type LoadImportContextDeps = {
   loadTasksByIds: LoadTasksByIds;
   loadListsByIds: LoadListsByIds;
   loadMemberIds: LoadMemberIds;
+  loadUserName: LoadUserName;
   loadNextOpenOrder: LoadNextOpenOrder;
   nextId: () => string;
   now: () => string;
@@ -56,6 +58,11 @@ export const loadImportContext = (
       deps.loadListsByIds(listIds).andThen((lists) =>
         deps.loadMemberIds(input.organizationId).andThen((memberIds) => {
           const destLists = unique([...listIds, '']);
+          const assigneeIds = unique(
+            tasks
+              .map((task) => task.assigneeId)
+              .filter((id): id is string => id !== undefined && id !== null && id !== '')
+          );
           return ResultAsync.combine(
             destLists.map((listId) =>
               deps
@@ -64,19 +71,26 @@ export const loadImportContext = (
             )
           )
             .map((entries) => new Map(entries))
-            .map((nextOpenOrderByListId) => ({
-              projects: input.projects,
-              organizationId: input.organizationId,
-              createdById: input.createdById,
-              existingProjectNames: existing.map((project) => project.name),
-              tasksById: new Map(tasks.map((task) => [task.id, task])),
-              listsById: new Map(lists.map((list) => [list.id, list])),
-              memberIds,
-              nextOpenOrderByListId,
-              actor: input.actor,
-              now: deps.now(),
-              nextId: deps.nextId,
-            }));
+            .andThen((nextOpenOrderByListId) =>
+              ResultAsync.combine(
+                assigneeIds.map((id) =>
+                  deps.loadUserName(id).map((name) => [id, name] as const)
+                )
+              ).map((names) => ({
+                projects: input.projects,
+                organizationId: input.organizationId,
+                createdById: input.createdById,
+                existingProjectNames: existing.map((project) => project.name),
+                tasksById: new Map(tasks.map((task) => [task.id, task])),
+                listsById: new Map(lists.map((list) => [list.id, list])),
+                memberIds,
+                assigneeNamesById: new Map(names),
+                nextOpenOrderByListId,
+                actor: input.actor,
+                now: deps.now(),
+                nextId: deps.nextId,
+              }))
+            );
         })
       )
     )

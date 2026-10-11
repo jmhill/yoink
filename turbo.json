@@ -13,7 +13,14 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "passThroughEnv": ["TEST_BASE_URL", "TEST_ADMIN_PASSWORD"]
+      "passThroughEnv": [
+        "TEST_BASE_URL",
+        "TEST_ADMIN_PASSWORD",
+        "TEST_DB_PATH",
+        "TEST_DB_COMPOSE_FILE",
+        "TEST_DB_COMPOSE_SERVICE",
+        "TEST_DB_CONTAINER_PATH"
+      ]
     },
     "dev": {
       "cache": false,

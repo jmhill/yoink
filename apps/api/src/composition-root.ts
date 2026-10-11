@@ -16,6 +16,7 @@ import {
   createSqliteProjectPersist,
   createSqliteProjectStatusPersist,
 } from './projects/infrastructure/store-backed-persist.js';
+import { storageError } from './projects/domain/project-errors.js';
 import { createTaskService } from './tasks/domain/task-service.js';
 import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
 import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
@@ -374,7 +375,10 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const persistProjectBatch = createSqliteProjectStatusPersist({ db: database });
   const projectHandlers = createProjectHandlers({
     persist: createSqliteProjectPersist({ db: database }),
-    persistStatus: persistProjectBatch,
+    persistStatus: (input) =>
+      persistProjectBatch(input).mapErr((error) =>
+        error.type === 'PROJECT_DONE' ? storageError(error.message) : error
+      ),
     persistSetNextAction: persistProjectBatch,
     list: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),

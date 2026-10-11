@@ -24,6 +24,27 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
   ],
 });
 
+export const setNextActionQuery = (input: {
+  projectId: string;
+  organizationId: string;
+  nextActionTaskId: string;
+  lastChangedAt: string | null;
+  lastChangedBy: string | null;
+}): SqlQuery => ({
+  sql: `
+    UPDATE projects
+    SET next_action_task_id = ?, last_changed_at = ?, last_changed_by = ?
+    WHERE id = ? AND organization_id = ? AND status <> 'done'
+  `,
+  args: [
+    input.nextActionTaskId,
+    input.lastChangedAt,
+    input.lastChangedBy,
+    input.projectId,
+    input.organizationId,
+  ],
+});
+
 export const clearNextActionQuery = (input: {
   projectId: string;
   organizationId: string;

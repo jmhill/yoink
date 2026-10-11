@@ -850,6 +850,29 @@ export type BrowserActorOperations = {
   shouldSeeWhatsNext(): Promise<void>;
 
   /**
+   * Assert the dashed no-next-action warning is not showing and a plain
+   * Set next action link is (someday, no warning).
+   */
+  shouldSeeSomedaySetNextActionLink(): Promise<void>;
+
+  /**
+   * Close the next-action picker / What’s next drawer without choosing.
+   */
+  dismissNextActionPicker(): Promise<void>;
+
+  /**
+   * Assert the Change next-action drawer body overflows and Create and set
+   * is in the viewport and enabled after a title is typed.
+   */
+  shouldSeePickerCreateInViewport(): Promise<void>;
+
+  /**
+   * Assert the What’s next drawer body overflows and Skip plus Create and set
+   * are in the viewport and clickable.
+   */
+  shouldSeeWhatsNextFooterInViewport(): Promise<void>;
+
+  /**
    * Assert All projects shows the amber no-next-action label for this name.
    */
   shouldSeeNoNextActionOnAllProjects(name: string): Promise<void>;

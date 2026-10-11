@@ -201,8 +201,17 @@ export const waitForSettledOpenDrawer = async (input: {
   });
 };
 
+/** Hide toasts for the capture only — no app code, no production hook. */
+const HIDE_TOASTS_STYLE = '[data-sonner-toaster]{display:none !important}';
+
 export const saveWalkthroughPng = async (input: {
-  page: { screenshot: (options: { path: string; animations?: 'disabled' }) => Promise<unknown> };
+  page: {
+    screenshot: (options: {
+      path: string;
+      animations?: 'disabled';
+      style?: string;
+    }) => Promise<unknown>;
+  };
   fromDir: string;
   story: string;
   viewport: WalkthroughViewport;
@@ -215,6 +224,6 @@ export const saveWalkthroughPng = async (input: {
     step: input.step,
   });
   await mkdir(path.dirname(dest), { recursive: true });
-  await input.page.screenshot({ path: dest });
+  await input.page.screenshot({ path: dest, style: HIDE_TOASTS_STYLE });
   return dest;
 };

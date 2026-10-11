@@ -396,7 +396,12 @@ describe('sqlite project persist', () => {
       {
         load: (id) => projectStore.findById(id),
         pageOpenTasksOnProject: (options) => taskStore.pageOpenInProject(options),
-        persistStatus,
+        persistStatus: (input) =>
+          persistStatus(input).mapErr((error) =>
+            error.type === 'PROJECT_DONE'
+              ? { type: 'STORAGE_ERROR' as const, message: error.message }
+              : error
+          ),
         nextId: () => {
           next += 1;
           return `log-done-${next}`;
@@ -733,5 +738,276 @@ describe('sqlite project persist', () => {
     const taskStore = await createSqliteTaskStore(db);
     expect((await taskStore.findById('task-new'))._unsafeUnwrap()).toBeNull();
     expect((await projectStore.findById('project-1'))._unsafeUnwrap()?.nextActionTaskId).toBeNull();
+  });
+
+  it('does not write a clear record or bump last-changed when the guarded clear matches 0 rows', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const persistTask = createSqliteTaskPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+    await persistTask(
+      planTaskChange({
+        event: {
+          type: 'TaskCreated',
+          id: 'task-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          title: 'Buy soil',
+          projectId: 'project-1',
+          openOrder: 0,
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-task-1' },
+      })
+    );
+
+    const store = await createSqliteProjectStore(db);
+    const current = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected project');
+    }
+    await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-1',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current,
+        actor,
+        ids: { recordId: 'log-set' },
+      }),
+      tasks: [],
+    });
+    const afterSet = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(afterSet?.nextActionTaskId).toBe('task-1');
+    if (!afterSet) {
+      throw new Error('expected project after set');
+    }
+
+    const stale = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionCleared',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-other',
+          reason: 'completed',
+          occurredAt: '2026-10-11T13:00:00.000Z',
+        },
+        current: { ...afterSet, nextActionTaskId: 'task-other' },
+        actor,
+        ids: { recordId: 'log-stale-clear' },
+      }),
+      tasks: [],
+    });
+    expect(stale.isOk()).toBe(true);
+
+    const afterStale = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(afterStale?.nextActionTaskId).toBe('task-1');
+    expect(afterStale?.lastChangedAt).toBe(afterSet.lastChangedAt);
+    expect(afterStale?.lastChangedBy).toBe(afterSet.lastChangedBy);
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('project', 'project-1'))._unsafeUnwrap();
+    expect(records.map((record) => record.kind)).toEqual([
+      'ProjectCreated',
+      'ProjectNextActionSet',
+    ]);
+  });
+
+  it('refuses a set and writes no history when the project is marked done between load and save', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const persistTask = createSqliteTaskPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+    await persistTask(
+      planTaskChange({
+        event: {
+          type: 'TaskCreated',
+          id: 'task-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          title: 'Buy soil',
+          projectId: 'project-1',
+          openOrder: 0,
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-task-1' },
+      })
+    );
+
+    const store = await createSqliteProjectStore(db);
+    const loaded = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(loaded).not.toBeNull();
+    if (!loaded) {
+      throw new Error('expected project');
+    }
+
+    await db.execute({
+      sql: `UPDATE projects SET status = 'done' WHERE id = ?`,
+      args: ['project-1'],
+    });
+
+    const result = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-1',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current: loaded,
+        actor,
+        ids: { recordId: 'log-raced-set' },
+      }),
+      tasks: [],
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_DONE');
+    }
+
+    const after = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(after?.status).toBe('done');
+    expect(after?.nextActionTaskId).toBeNull();
+    expect(after?.lastChangedAt).toBe(loaded.lastChangedAt);
+    expect(after?.lastChangedBy).toBe(loaded.lastChangedBy);
+
+    const log = createSqliteChangeLogStore(db);
+    const records = (await log.findBySubject('project', 'project-1'))._unsafeUnwrap();
+    expect(records.map((record) => record.kind)).toEqual(['ProjectCreated']);
+  });
+
+  it('does not create a New task when the project is marked done between load and save', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+
+    const store = await createSqliteProjectStore(db);
+    const loaded = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(loaded).not.toBeNull();
+    if (!loaded) {
+      throw new Error('expected project');
+    }
+
+    await db.execute({
+      sql: `UPDATE projects SET status = 'done' WHERE id = ?`,
+      args: ['project-1'],
+    });
+
+    const result = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-new',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current: loaded,
+        actor,
+        ids: { recordId: 'log-raced-new-task' },
+      }),
+      tasks: [
+        planTaskChange({
+          event: {
+            type: 'TaskCreated',
+            id: 'task-new',
+            organizationId: 'org-1',
+            createdById: 'user-1',
+            title: 'Order lumber',
+            projectId: 'project-1',
+            openOrder: 0,
+            createdAt: later,
+            occurredAt: later,
+          },
+          current: null,
+          actor,
+          ids: { recordId: 'log-task-new' },
+        }),
+      ],
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_DONE');
+    }
+
+    const taskStore = await createSqliteTaskStore(db);
+    expect((await taskStore.findById('task-new'))._unsafeUnwrap()).toBeNull();
+    const after = (await store.findById('project-1'))._unsafeUnwrap();
+    expect(after?.status).toBe('done');
+    expect(after?.nextActionTaskId).toBeNull();
+
+    const log = createSqliteChangeLogStore(db);
+    const projectLog = (await log.findBySubject('project', 'project-1'))._unsafeUnwrap();
+    expect(projectLog.map((record) => record.kind)).toEqual(['ProjectCreated']);
   });
 });

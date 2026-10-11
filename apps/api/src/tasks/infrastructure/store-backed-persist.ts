@@ -1,6 +1,9 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Database, QueryResult } from '../../database/types.js';
-import { insertChangeLogQuery } from '../../shared/change-log/infrastructure/sql.js';
+import {
+  insertChangeLogIfChangedQuery,
+  insertChangeLogQuery,
+} from '../../shared/change-log/infrastructure/sql.js';
 import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import type { PersistTaskChange } from '../application/ports.js';
 import type { TaskChangePlan } from '../domain/plan-task-change.js';
@@ -11,6 +14,7 @@ import type { ProjectChangePlan } from '../../projects/domain/plan-project-chang
 import {
   clearNextActionQuery,
   insertProjectQuery,
+  setNextActionQuery,
   updateProjectQuery,
 } from '../../projects/infrastructure/project-row-statements.js';
 import type { FakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
@@ -81,7 +85,18 @@ const queriesForProjectExtra = (project: ProjectChangePlan) => {
           lastChangedAt: project.view.lastChangedAt,
           lastChangedBy: project.view.lastChangedBy,
         }),
-        ...history,
+        ...project.records.map((record) => insertChangeLogIfChangedQuery(record)),
+      ];
+    case 'setNextAction':
+      return [
+        setNextActionQuery({
+          projectId: project.projectId,
+          organizationId: project.organizationId,
+          nextActionTaskId: project.view.nextActionTaskId ?? '',
+          lastChangedAt: project.view.lastChangedAt,
+          lastChangedBy: project.view.lastChangedBy,
+        }),
+        ...project.records.map((record) => insertChangeLogIfChangedQuery(record)),
       ];
   }
 };
@@ -138,22 +153,42 @@ export type FakeTaskPersistDeps = {
 const applyProjectPlan = (
   projects: FakeProjectStore | undefined,
   project: ProjectChangePlan | undefined
-): ResultAsync<void, StorageError> => {
+): ResultAsync<boolean, StorageError> => {
   if (!project) {
-    return okAsync(undefined);
+    return okAsync(false);
   }
   if (!projects) {
     return errAsync(storageError('Project persist is not configured'));
   }
   if (project.action === 'insert') {
     projects.applyInsert(project.view);
-    return okAsync(undefined);
+    return okAsync(true);
+  }
+  if (project.action === 'clearNextAction') {
+    return okAsync(
+      projects.applyClearNextAction({
+        projectId: project.projectId,
+        previousTaskId: project.previousTaskId,
+        lastChangedAt: project.view.lastChangedAt,
+        lastChangedBy: project.view.lastChangedBy,
+      })
+    );
+  }
+  if (project.action === 'setNextAction') {
+    return okAsync(
+      projects.applySetNextAction({
+        projectId: project.projectId,
+        nextActionTaskId: project.view.nextActionTaskId ?? '',
+        lastChangedAt: project.view.lastChangedAt,
+        lastChangedBy: project.view.lastChangedBy,
+      })
+    );
   }
   if (!projects.hasActive(project.view.id)) {
     return errAsync(storageError('Project not found'));
   }
   projects.applyReplace(project.view);
-  return okAsync(undefined);
+  return okAsync(true);
 };
 
 export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskChange => {
@@ -224,7 +259,7 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
 
     return run()
       .andThen(() => applyProjectPlan(projects, extras?.project))
-      .andThen(() => persistProjectRecords())
+      .andThen((applied) => (applied ? persistProjectRecords() : okAsync(undefined)))
       .mapErr((error) => {
         restoreTask();
         restoreLog();

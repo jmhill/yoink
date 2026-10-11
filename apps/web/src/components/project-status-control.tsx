@@ -208,7 +208,20 @@ export function ProjectStatusControl({
                 : 'border-border bg-muted text-foreground'
             )}
           >
-            <span data-project-status={project.status} data-part="status-chip">
+            <span
+              data-project-status={project.status}
+              data-part="status-chip"
+              className={cn(
+                'inline-flex items-center gap-1.5',
+                project.status === 'waiting' && 'text-warning'
+              )}
+            >
+              {project.status === 'active' ? (
+                <span data-status-dot="active" className="size-1.5 rounded-full bg-success" />
+              ) : null}
+              {project.status === 'waiting' ? (
+                <span data-status-dot="waiting" className="size-1.5 rounded-full bg-warning" />
+              ) : null}
               {statusLabel(project.status)}
             </span>
           </SelectTrigger>

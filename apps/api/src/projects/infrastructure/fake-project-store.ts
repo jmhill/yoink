@@ -10,6 +10,18 @@ export type FakeProjectStore = ProjectStore & {
   hasActive: (id: string) => boolean;
   applyInsert: (project: Project) => void;
   applyReplace: (project: Project) => void;
+  applyClearNextAction: (input: {
+    projectId: string;
+    previousTaskId: string;
+    lastChangedAt: string | null;
+    lastChangedBy: string | null;
+  }) => boolean;
+  applySetNextAction: (input: {
+    projectId: string;
+    nextActionTaskId: string;
+    lastChangedAt: string | null;
+    lastChangedBy: string | null;
+  }) => boolean;
 };
 
 export const createFakeProjectStore = (initial: Project[] = []): FakeProjectStore => {
@@ -32,6 +44,34 @@ export const createFakeProjectStore = (initial: Project[] = []): FakeProjectStor
       if (index !== -1) {
         projects[index] = project;
       }
+    },
+    applyClearNextAction: (input) => {
+      const index = projects.findIndex((item) => item.id === input.projectId);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current || current.nextActionTaskId !== input.previousTaskId) {
+        return false;
+      }
+      projects[index] = {
+        ...current,
+        nextActionTaskId: null,
+        lastChangedAt: input.lastChangedAt,
+        lastChangedBy: input.lastChangedBy,
+      };
+      return true;
+    },
+    applySetNextAction: (input) => {
+      const index = projects.findIndex((item) => item.id === input.projectId);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current || current.status === 'done') {
+        return false;
+      }
+      projects[index] = {
+        ...current,
+        nextActionTaskId: input.nextActionTaskId,
+        lastChangedAt: input.lastChangedAt,
+        lastChangedBy: input.lastChangedBy,
+      };
+      return true;
     },
     findById: (id: string): ResultAsync<Project | null, StorageError> =>
       okAsync(projects.find((project) => project.id === id) ?? null),

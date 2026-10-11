@@ -31,7 +31,7 @@ import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contract
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
-import { showsNoNextActionWarning } from '@/lib/project-next-action';
+import { showsNoNextActionWarning, showsSomedaySetNextAction } from '@/lib/project-next-action';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 import type { AssignableProjectStatus } from '@yoink/api-contracts';
@@ -281,6 +281,7 @@ function ProjectPage() {
   const nextActionTask = openTasks.find((task) => task.id === project.nextActionTaskId);
   const otherOpenTasks = openTasks.filter((task) => task.id !== project.nextActionTaskId);
   const showEmptyCard = showsNoNextActionWarning(project);
+  const showSomedaySetLink = showsSomedaySetNextAction(project);
   const waitingParts =
     project.status === 'waiting' && project.waitingOn
       ? waitingLineParts({
@@ -431,7 +432,8 @@ function ProjectPage() {
               No next action
             </p>
             <p className="mt-2 text-sm text-warning-foreground">
-              This project won’t show in Work until it has a next action.
+              This project won’t show up in Work until it has one. Pick an open task or add a
+              new one.
             </p>
             <Button
               type="button"
@@ -445,6 +447,20 @@ function ProjectPage() {
               + Set next action
             </Button>
           </section>
+        ) : showSomedaySetLink ? (
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto px-0 text-muted-foreground"
+            data-set-next-action=""
+            data-someday-set-next-action=""
+            onClick={() => {
+              setNextActionError(null);
+              setPickerOpen(true);
+            }}
+          >
+            Set next action
+          </Button>
         ) : null}
 
         <section className="space-y-3" data-project-open-tasks="">

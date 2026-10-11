@@ -194,6 +194,36 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeWaitingSummary('Waiting on Contractor');
       await alice.shouldSeeWaitingSummary('since unknown');
     });
+
+    it('shows a plain Set next action link on someday, not the warning card', async () => {
+      const garden = await alice.createProject({ name: 'Garden' });
+      await alice.createTask({ title: 'Buy soil', projectId: garden.id });
+      await alice.goToProject(garden.id);
+      await alice.setProjectStatusFromPage('someday');
+      await alice.shouldSeeSomedaySetNextActionLink();
+      await alice.openNextActionPicker();
+      await alice.pickNextActionFromPicker('Buy soil');
+      await alice.shouldSeeNextAction('Buy soil');
+    });
+
+    it('keeps Skip and Create and set on screen when the phone picker overflows', async () => {
+      await alice.useMobileViewport();
+      const garden = await alice.createProject({ name: 'Garden' });
+      const soil = await alice.createTask({ title: 'Buy soil', projectId: garden.id });
+      for (let index = 1; index <= 12; index += 1) {
+        await alice.createTask({ title: `Overflow task ${index}`, projectId: garden.id });
+      }
+      await alice.setNextAction(garden.id, { taskId: soil.id });
+      await alice.goToProject(garden.id);
+      await alice.openNextActionPicker();
+      await alice.shouldSeePickerCreateInViewport();
+      await alice.dismissNextActionPicker();
+      await alice.completeNextActionFromPage('Buy soil');
+      await alice.shouldSeeWhatsNext();
+      await alice.shouldSeeWhatsNextFooterInViewport();
+      await alice.skipWhatsNext();
+      await alice.shouldSeeNoNextActionCard();
+    }, 60_000);
   });
 });
 
@@ -313,7 +343,50 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'history_placeholder',
         });
+
+        await alice.setProjectStatusFromPage('someday');
+        await alice.shouldSeeSomedaySetNextActionLink();
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'someday_set_next_action',
+        });
       }, 120_000);
     }
+
+    it('saves phone overflow shots of What’s next and Change next action', async () => {
+      const alice = await ctx.createActor('alice-137-walkthrough-overflow@example.com');
+      await alice.useMobileViewport();
+
+      const kitchen = await alice.createProject({
+        name: 'Kitchen renovation',
+        objective: 'New counters installed and kitchen usable',
+      });
+      const quotes = await alice.createTask({
+        title: 'Get three contractor quotes',
+        projectId: kitchen.id,
+      });
+      for (let index = 1; index <= 12; index += 1) {
+        await alice.createTask({
+          title: `Overflow task ${index}`,
+          projectId: kitchen.id,
+        });
+      }
+      await alice.setNextAction(kitchen.id, { taskId: quotes.id });
+
+      await alice.goToProject(kitchen.id);
+      await alice.openNextActionPicker();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'picker_overflow',
+      });
+      await alice.dismissNextActionPicker();
+
+      await alice.completeNextActionFromPage('Get three contractor quotes');
+      await alice.shouldSeeWhatsNext();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'whats_next_overflow',
+      });
+    }, 90_000);
   });
 });

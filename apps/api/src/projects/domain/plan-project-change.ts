@@ -65,6 +65,13 @@ export type ProjectChangePlan =
       previousTaskId: string;
       view: Project;
       records: ChangeLogRecord[];
+    }
+  | {
+      action: 'setNextAction';
+      organizationId: string;
+      projectId: string;
+      view: Project;
+      records: ChangeLogRecord[];
     };
 
 /**
@@ -78,14 +85,13 @@ export function planProjectChange(
   input: Extract<
     ProjectChangePlanInput,
     {
-      event:
-        | ProjectUpdated
-        | ProjectStatusChanged
-        | ProjectWaitingChanged
-        | ProjectNextActionSet;
+      event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged;
     }
   >
 ): Extract<ProjectChangePlan, { action: 'update' }>;
+export function planProjectChange(
+  input: Extract<ProjectChangePlanInput, { event: ProjectNextActionSet }>
+): Extract<ProjectChangePlan, { action: 'setNextAction' }>;
 export function planProjectChange(
   input: Extract<ProjectChangePlanInput, { event: ProjectNextActionCleared }>
 ): Extract<ProjectChangePlan, { action: 'clearNextAction' }>;
@@ -123,14 +129,22 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
     };
   }
 
+  if (input.event.type === 'ProjectNextActionSet') {
+    return {
+      action: 'setNextAction',
+      organizationId: input.event.organizationId,
+      projectId: input.event.id,
+      view: applyProjectNextActionSet(input.current, input.event, applyMeta),
+      records,
+    };
+  }
+
   const view =
     input.event.type === 'ProjectUpdated'
       ? applyProjectUpdated(input.current, input.event, applyMeta)
       : input.event.type === 'ProjectStatusChanged'
         ? applyProjectStatusChanged(input.current, input.event, applyMeta)
-        : input.event.type === 'ProjectWaitingChanged'
-          ? applyProjectWaitingChanged(input.current, input.event, applyMeta)
-          : applyProjectNextActionSet(input.current, input.event, applyMeta);
+        : applyProjectWaitingChanged(input.current, input.event, applyMeta);
 
   return {
     action: 'update',

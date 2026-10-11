@@ -1526,6 +1526,15 @@ export const createPlaywrightActor = (
       if (response.status() !== 200) {
         throw new Error(`Failed to set project waiting: ${response.status()}`);
       }
+      await expect(page.locator(OPEN_DIALOG_CONTENT)).toHaveCount(0);
+      const dialog = page.locator('[data-slot="dialog-content"]');
+      if ((await dialog.count()) > 0) {
+        await expect(dialog).toBeHidden();
+      }
+      const drawer = page.locator('[data-slot="drawer-content"]');
+      if ((await drawer.count()) > 0) {
+        await expect(drawer).toBeHidden();
+      }
     },
 
     async confirmDoneComplete(): Promise<void> {
@@ -1654,11 +1663,56 @@ export const createPlaywrightActor = (
 
     async shouldSeeNoNextActionCard(): Promise<void> {
       await expect(projectPage.nextActionEmpty()).toBeVisible();
+      await expect(projectPage.nextActionEmpty()).toContainText(
+        "This project won’t show up in Work until it has one. Pick an open task or add a new one."
+      );
       await expect(projectPage.nextActionCard()).toHaveCount(0);
     },
 
     async shouldSeeWhatsNext(): Promise<void> {
       await expect(page.locator('[data-whats-next-prompt]')).toBeVisible();
+    },
+
+    async shouldSeeSomedaySetNextActionLink(): Promise<void> {
+      await expect(page.locator('[data-someday-set-next-action]')).toBeVisible();
+      await expect(projectPage.nextActionEmpty()).toHaveCount(0);
+    },
+
+    async dismissNextActionPicker(): Promise<void> {
+      await page.keyboard.press('Escape');
+      await expect(projectPage.nextActionPicker()).toHaveCount(0);
+    },
+
+    async shouldSeePickerCreateInViewport(): Promise<void> {
+      const picker = projectPage.nextActionPicker();
+      await expect(picker).toBeVisible();
+      const body = picker.locator('[data-next-action-picker-body]');
+      await expect(body).toBeVisible();
+      const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      expect(overflows, 'picker body should scroll').toBe(true);
+      const create = picker.locator('[data-next-action-create]');
+      await expect(create).toBeInViewport();
+      await page.locator('[data-next-action-new-title]').fill('Overflow create');
+      await expect(create).toBeEnabled();
+      await expect(create).toBeInViewport();
+    },
+
+    async shouldSeeWhatsNextFooterInViewport(): Promise<void> {
+      const prompt = page.locator('[data-whats-next-prompt]');
+      await expect(prompt).toBeVisible();
+      const body = prompt.locator('[data-next-action-picker-body]');
+      await expect(body).toBeVisible();
+      const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      expect(overflows, 'What’s next body should scroll').toBe(true);
+      const skip = page.locator('[data-whats-next-skip]');
+      const create = prompt.locator('[data-next-action-create]');
+      await expect(skip).toBeInViewport();
+      await expect(create).toBeInViewport();
+      await expect(skip).toBeEnabled();
+      await page.locator('[data-next-action-new-title]').fill('Overflow create');
+      await expect(create).toBeEnabled();
+      await expect(create).toBeInViewport();
+      await expect(skip).toBeInViewport();
     },
 
     async shouldSeeNoNextActionOnAllProjects(name: string): Promise<void> {
@@ -2375,15 +2429,6 @@ export const createPlaywrightActor = (
     },
 
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
-      await page.mouse.move(0, 0);
-      await page.evaluate(`
-        window.__YOINK_DISMISS_TOASTS?.();
-      `);
-      if (input.step === 'whats_next') {
-        await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, {
-          timeout: 8_000,
-        });
-      }
       const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
       if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
         await waitForSettledOpenSelect({ page });
@@ -2395,10 +2440,20 @@ export const createPlaywrightActor = (
       const openDialog = page.locator(OPEN_DIALOG_CONTENT);
       if (await openDialog.isVisible().catch(() => false)) {
         await waitForSettledOpenDialog({ page });
+      } else {
+        const closingDialog = page.locator('[data-slot="dialog-content"]');
+        if ((await closingDialog.count()) > 0) {
+          await closingDialog.last().waitFor({ state: 'hidden' });
+        }
       }
       const drawer = page.locator('[data-slot="drawer-content"]');
       if (await drawer.isVisible()) {
-        await waitForSettledOpenDrawer({ page });
+        const openDrawer = await drawer.getAttribute('data-state');
+        if (openDrawer === 'open' || openDrawer === null) {
+          await waitForSettledOpenDrawer({ page });
+        } else {
+          await drawer.last().waitFor({ state: 'hidden' });
+        }
       }
       await saveWalkthroughPng({
         page,

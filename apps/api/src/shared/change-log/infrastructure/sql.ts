@@ -76,3 +76,16 @@ export const insertChangeLogQuery = (
     ],
   };
 };
+
+/**
+ * Same as {@link insertChangeLogQuery}, but only if the previous statement
+ * in this batch changed a row (`changes() > 0`). Used after a guarded
+ * `UPDATE ... WHERE next_action_task_id = ?` so a 0-row clear writes no history.
+ */
+export const insertChangeLogIfChangedQuery = (record: ChangeLogRecord): SqlQuery => {
+  const base = insertChangeLogQuery(record);
+  return {
+    sql: `${base.sql.trimEnd()} AND changes() > 0`,
+    args: base.args,
+  };
+};

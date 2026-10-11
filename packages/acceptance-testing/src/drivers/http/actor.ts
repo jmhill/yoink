@@ -934,6 +934,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeWhatsNext', 'http');
     },
 
+    async shouldSeeSomedaySetNextActionLink(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeSomedaySetNextActionLink', 'http');
+    },
+
+    async dismissNextActionPicker(): Promise<void> {
+      throw new UnsupportedOperationError('dismissNextActionPicker', 'http');
+    },
+
+    async shouldSeePickerCreateInViewport(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePickerCreateInViewport', 'http');
+    },
+
+    async shouldSeeWhatsNextFooterInViewport(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWhatsNextFooterInViewport', 'http');
+    },
+
     async shouldSeeNoNextActionOnAllProjects(_name: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNoNextActionOnAllProjects', 'http');
     },

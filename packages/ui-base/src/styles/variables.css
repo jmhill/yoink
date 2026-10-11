@@ -59,6 +59,8 @@
     --warning-foreground: oklch(0.4 0.12 55);
     --warning-muted: oklch(0.98 0.03 90);
     --warning-border: oklch(0.84 0.1 80);
+    /* Active status-chip dot (design green). */
+    --success: oklch(0.63 0.17 145);
     /* Swipe action colors (default light theme) */
     --swipe-trash: #16a34a;
     --swipe-snooze: #d97706;
@@ -103,6 +105,7 @@
     --warning-foreground: oklch(0.88 0.1 85);
     --warning-muted: oklch(0.28 0.05 75);
     --warning-border: oklch(0.55 0.1 80);
+    --success: oklch(0.72 0.17 145);
     /* Swipe action colors (default dark theme) */
     --swipe-trash: #22c55e;
     --swipe-snooze: #f59e0b;
@@ -158,6 +161,7 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-muted: var(--warning-muted);
   --color-warning-border: var(--warning-border);
+  --color-success: var(--success);
 }
 
 /* ============================================
@@ -208,6 +212,7 @@
   --warning-foreground: #6b430c;
   --warning-muted: #f3e6c8;
   --warning-border: #d4a54a;
+  --success: #385f0d;
   /* Swipe action colors */
   --swipe-trash: #385f0d;
   --swipe-snooze: #8f5e15;
@@ -253,6 +258,7 @@
   --warning-foreground: #e0af68;
   --warning-muted: #2a2416;
   --warning-border: #8f5e15;
+  --success: #9ece6a;
   /* Swipe action colors */
   --swipe-trash: #9ece6a;
   --swipe-snooze: #e0af68;

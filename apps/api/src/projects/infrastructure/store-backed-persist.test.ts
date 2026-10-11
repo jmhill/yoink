@@ -161,4 +161,81 @@ describe('store-backed project persist', () => {
     expect((await projects.findById(emptyGarden.id))._unsafeUnwrap()?.nextActionTaskId).toBeNull();
     expect((await tasks.findById(created.id))._unsafeUnwrap()).toBeNull();
   });
+
+  it('does not write a clear record or bump last-changed when the guarded clear matches 0 rows', async () => {
+    const projects = createFakeProjectStore([garden]);
+    const tasks = createFakeTaskStore({ initialTasks: [soil] });
+    const changeLog = createFakeChangeLogStore();
+    const persist = createStoreBackedProjectStatusPersist({
+      projects,
+      tasks,
+      changeLog,
+    });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    const result = await persist({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionCleared',
+          id: garden.id,
+          organizationId: garden.organizationId,
+          taskId: 'task-other',
+          reason: 'completed',
+          occurredAt: later,
+        },
+        current: { ...garden, nextActionTaskId: 'task-other' },
+        actor,
+        ids: { recordId: 'log-stale-clear' },
+      }),
+      tasks: [],
+    });
+
+    expect(result.isOk()).toBe(true);
+    const after = (await projects.findById(garden.id))._unsafeUnwrap();
+    expect(after?.nextActionTaskId).toBe('task-1');
+    expect(after?.lastChangedAt).toBe(garden.lastChangedAt);
+    expect(after?.lastChangedBy).toBe(garden.lastChangedBy);
+    expect(changeLog.records.map((record) => record.kind)).toEqual([]);
+  });
+
+  it('refuses a set and writes no history when the project is marked done between load and save', async () => {
+    const done: Project = { ...garden, status: 'done', nextActionTaskId: null };
+    const projects = createFakeProjectStore([done]);
+    const tasks = createFakeTaskStore({ initialTasks: [soil] });
+    const changeLog = createFakeChangeLogStore();
+    const persist = createStoreBackedProjectStatusPersist({
+      projects,
+      tasks,
+      changeLog,
+    });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+    const staleActive: Project = { ...garden, status: 'active', nextActionTaskId: null };
+
+    const result = await persist({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: staleActive.id,
+          organizationId: staleActive.organizationId,
+          taskId: soil.id,
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current: staleActive,
+        actor,
+        ids: { recordId: 'log-raced-set' },
+      }),
+      tasks: [],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_DONE');
+    }
+    const after = (await projects.findById(garden.id))._unsafeUnwrap();
+    expect(after?.status).toBe('done');
+    expect(after?.nextActionTaskId).toBeNull();
+    expect(after?.lastChangedAt).toBe(done.lastChangedAt);
+    expect(changeLog.records.map((record) => record.kind)).toEqual([]);
+  });
 });

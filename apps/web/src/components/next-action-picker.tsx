@@ -105,7 +105,9 @@ export function NextActionPicker({
     });
   };
 
-  const body = (
+  const formId = `${testId}-new-task`;
+
+  const fields = (
     <div className="space-y-5">
       {candidates.length > 0 ? (
         <div className="space-y-2">
@@ -131,7 +133,7 @@ export function NextActionPicker({
         <p className="text-sm text-muted-foreground">No other open tasks in this project.</p>
       )}
 
-      <form onSubmit={handleCreate} className="space-y-3" data-next-action-new-task="">
+      <form id={formId} onSubmit={handleCreate} className="space-y-3" data-next-action-new-task="">
         <p className="text-sm font-medium">New task</p>
         <div className="space-y-1">
           <Label htmlFor="next-action-new-title">Title</Label>
@@ -204,15 +206,19 @@ export function NextActionPicker({
             {error}
           </p>
         ) : null}
-        <Button
-          type="submit"
-          data-next-action-create=""
-          disabled={isPending || newTitle.trim() === ''}
-        >
-          {isPending ? 'Saving…' : 'Create and set'}
-        </Button>
       </form>
     </div>
+  );
+
+  const createButton = (
+    <Button
+      type="submit"
+      form={formId}
+      data-next-action-create=""
+      disabled={isPending || newTitle.trim() === ''}
+    >
+      {isPending ? 'Saving…' : 'Create and set'}
+    </Button>
   );
 
   if (isDesktop) {
@@ -222,13 +228,22 @@ export function NextActionPicker({
           data-next-action-picker=""
           data-whats-next-prompt={whatsNext ? '' : undefined}
           data-testid={testId}
+          className="flex max-h-[min(80vh,40rem)] flex-col overflow-hidden"
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
-          {body}
-          {extraActions ? <DialogFooter>{extraActions}</DialogFooter> : null}
+          <div
+            data-next-action-picker-body=""
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            {fields}
+          </div>
+          <DialogFooter className="shrink-0 sm:flex-col-reverse">
+            {extraActions}
+            {createButton}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
@@ -240,13 +255,22 @@ export function NextActionPicker({
         data-next-action-picker=""
         data-whats-next-prompt={whatsNext ? '' : undefined}
         data-testid={testId}
+        className="overflow-hidden"
       >
-        <DrawerHeader>
+        <DrawerHeader className="shrink-0">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>{description}</DrawerDescription>
         </DrawerHeader>
-        <div className="px-4 pb-4">{body}</div>
-        {extraActions ? <DrawerFooter>{extraActions}</DrawerFooter> : null}
+        <div
+          data-next-action-picker-body=""
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
+        >
+          {fields}
+        </div>
+        <DrawerFooter className="shrink-0">
+          {createButton}
+          {extraActions}
+        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

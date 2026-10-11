@@ -205,7 +205,7 @@ export const waitForSettledOpenDrawer = async (input: {
 const HIDE_TOASTS_STYLE = [
   '[data-sonner-toaster]{display:none !important}',
   '[data-project-history] button svg,[data-project-finished] button svg{transition:none !important}',
-  '[data-screenshot-focus]{outline:2px solid #2563eb;background:#dbeafe}',
+  '[data-screenshot-focus]{outline:3px solid #2563eb !important;outline-offset:3px !important;background:#dbeafe !important;box-shadow:0 0 0 3px rgba(37,99,235,0.35) !important}',
 ].join('');
 
 export const saveWalkthroughPng = async (input: {

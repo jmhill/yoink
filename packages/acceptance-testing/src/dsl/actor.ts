@@ -795,6 +795,8 @@ export type BrowserActorOperations = {
   scrollImportPreviewProject(name: string): Promise<void>;
   scrollImportActionsIntoView(): Promise<void>;
   highlightImportDiscard(): Promise<void>;
+  pressImportDiscardAndHold(): Promise<void>;
+  releaseHeldImportDiscard(): Promise<void>;
   shouldSeeNotebookPage(path: string): Promise<void>;
   shouldSeeNotebookHref(path: string, href: string): Promise<void>;
   shouldSeeNotebookPageInputs(paths: string[]): Promise<void>;

@@ -258,6 +258,7 @@ export const createPlaywrightActor = (
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
   let walkthroughViewport: WalkthroughViewport = 'desktop';
+  let heldImportDiscardRelease: (() => void) | undefined;
 
   const expectActiveFilterTabIfVisible = async (
     filter: 'today' | 'upcoming' | 'mine' | 'completed'
@@ -1744,6 +1745,37 @@ export const createPlaywrightActor = (
       });
     },
 
+    async pressImportDiscardAndHold(): Promise<void> {
+      await page.unroute('**/api/projects/imports/*/discard').catch(() => undefined);
+      let release: (() => void) | undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      heldImportDiscardRelease = () => {
+        release?.();
+      };
+      await page.route('**/api/projects/imports/*/discard', async (route) => {
+        await held;
+        await route.continue();
+      });
+      const discard = page.locator('[data-import-discard]');
+      await discard.scrollIntoViewIfNeeded();
+      await discard.click();
+      await expect(discard).toHaveText('Discarding…');
+      await discard.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async releaseHeldImportDiscard(): Promise<void> {
+      const release = heldImportDiscardRelease;
+      heldImportDiscardRelease = undefined;
+      release?.();
+      await page.waitForURL(/\/projects$/);
+      await page.unroute('**/api/projects/imports/*/discard');
+    },
+
     async shouldSeeNotebookPage(path: string): Promise<void> {
       await expect(page.locator('[data-project-notebook]')).toContainText(path);
     },
@@ -1765,16 +1797,14 @@ export const createPlaywrightActor = (
           el.removeAttribute('data-screenshot-focus');
         }
       });
+      if (walkthroughViewport === 'desktop') {
+        await page.setViewportSize({ width: DESKTOP_VIEWPORT.width, height: 1080 });
+      }
       const heading = page.locator('[data-place-heading]');
       await expect(heading).toBeVisible();
-      if (walkthroughViewport === 'phone') {
-        await heading.scrollIntoViewIfNeeded();
-        return;
-      }
-      const history = page.locator('[data-project-history-entry]').first();
-      if ((await history.count()) > 0) {
-        await history.scrollIntoViewIfNeeded();
-      }
+      await heading.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
     },
 
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {

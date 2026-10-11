@@ -1150,6 +1150,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('highlightImportDiscard', 'http');
     },
 
+    async pressImportDiscardAndHold(): Promise<void> {
+      throw new UnsupportedOperationError('pressImportDiscardAndHold', 'http');
+    },
+
+    async releaseHeldImportDiscard(): Promise<void> {
+      throw new UnsupportedOperationError('releaseHeldImportDiscard', 'http');
+    },
+
     async shouldSeeNotebookPage(_path: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNotebookPage', 'http');
     },

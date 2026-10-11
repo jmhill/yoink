@@ -504,6 +504,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: '139-project-import',
           step: 'imported_project_history',
         });
+        await viewport.apply(alice);
 
         const permit = (await alice.listProjects()).find((project) => project.name === 'Permit desk');
         expect(permit).toBeDefined();
@@ -545,12 +546,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await bot.stageProjectImport(projects);
         await alice.goToAllProjects();
         await alice.reviewPendingImport();
-        await alice.highlightImportDiscard();
+        await alice.pressImportDiscardAndHold();
         await alice.saveWalkthroughScreenshot({
           story: '139-project-import',
           step: 'discard_preview',
         });
-        await alice.discardImportOnPreview();
+        await alice.releaseHeldImportDiscard();
         await alice.shouldNotSeePendingImportBanner();
         await alice.saveWalkthroughScreenshot({
           story: '139-project-import',

@@ -3537,11 +3537,13 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeUndoToast(): Promise<void> {
-      await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+      await expect(
+        page.locator('[data-sonner-toast]').last().getByRole('button', { name: 'Undo' })
+      ).toBeVisible();
     },
 
     async undoFromToast(): Promise<void> {
-      await page.getByRole('button', { name: 'Undo' }).click();
+      await page.locator('[data-sonner-toast]').last().getByRole('button', { name: 'Undo' }).click();
     },
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {

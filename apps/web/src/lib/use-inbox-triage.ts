@@ -43,6 +43,8 @@ type ProcessCapture = {
   sourceUrl?: string | null;
 };
 
+const INBOX_TRIAGE_TOAST = 'inbox-triage';
+
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
  * Optimistic updates and rollback stay on the shared inbox query key.
@@ -69,7 +71,7 @@ export function useInboxTriage() {
 
   const restoreMutation = tsr.restore.useMutation({
     onSuccess: () => {
-      toast.success('Restored to inbox');
+      toast.success('Restored to inbox', { id: INBOX_TRIAGE_TOAST });
     },
     onError: (err) => {
       if (isFetchError(err)) {
@@ -85,7 +87,7 @@ export function useInboxTriage() {
 
   const unsnoozeMutation = tsr.unsnooze.useMutation({
     onSuccess: () => {
-      toast.success('Moved to inbox');
+      toast.success('Moved to inbox', { id: INBOX_TRIAGE_TOAST });
     },
     onError: (err) => {
       if (isFetchError(err)) {
@@ -146,6 +148,7 @@ export function useInboxTriage() {
 
     onSuccess: (_data, variables) => {
       toast.success('Moved to trash', {
+        id: INBOX_TRIAGE_TOAST,
         action: {
           label: 'Undo',
           onClick: () => {
@@ -208,6 +211,7 @@ export function useInboxTriage() {
 
     onSuccess: (_data, variables) => {
       toast.success('Snoozed', {
+        id: INBOX_TRIAGE_TOAST,
         action: {
           label: 'Undo',
           onClick: () => {

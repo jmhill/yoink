@@ -1,7 +1,8 @@
-# node:24-alpine — Amazon ECR Public official-image mirror (not Docker Hub).
-# Same digest: mirror.gcr.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+# node:24-alpine — GCR Docker Hub mirror (not Docker Hub, not ECR Public).
+# ECR Public 429'd CI with "Data limit exceeded". Same digest:
+# public.ecr.aws/docker/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 # Bump: docs/operations/CI.md
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+ARG NODE_IMAGE=mirror.gcr.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 
 # Build stage
 FROM ${NODE_IMAGE} AS builder

@@ -6,8 +6,15 @@ the `Build Docker image` step, so we do not use Docker Hub for base images.
 
 ## API image (`apps/api/Dockerfile`)
 
-Both stages use **`node:24-alpine`**, pulled from Amazon ECR Public's
-official-image mirror and pinned by digest:
+Both stages use **`node:24-alpine`**, pulled from Google's Docker Hub
+mirror and pinned by digest (ECR Public 429'd CI with a data-limit
+exceeded):
+
+```
+mirror.gcr.io/library/node:24-alpine@sha256:…
+```
+
+Same digest on Amazon ECR Public if that mirror is healthy again:
 
 ```
 public.ecr.aws/docker/library/node:24-alpine@sha256:…

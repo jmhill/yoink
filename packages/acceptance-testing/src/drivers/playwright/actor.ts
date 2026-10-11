@@ -322,6 +322,17 @@ export const createPlaywrightActor = (
     await expect(mobileNav.root()).toBeHidden();
   };
 
+  const visibleUndoToast = (message: string) =>
+    page.locator('[data-sonner-toast]:not([data-removed="true"])').filter({ hasText: message });
+
+  const processActionSelectors = [
+    '[data-process-make-task]',
+    '[data-process-new-project]',
+    '[data-process-someday-project]',
+    '[data-process-snooze]',
+    '[data-process-trash]',
+  ] as const;
+
   const openRailDestination = async (
     label: string,
     arrived: () => Promise<void>
@@ -3522,9 +3533,15 @@ export const createPlaywrightActor = (
     },
 
     async pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void> {
-      await page.evaluate(`(() => {
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
+      await page.evaluate(`(async () => {
+        const fire = () => {
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
+        };
+        fire();
+        await new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+        fire();
       })()`);
     },
 
@@ -3536,14 +3553,39 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-process-key-hint="⌫"]')).toBeVisible();
     },
 
-    async shouldSeeUndoToast(): Promise<void> {
-      await expect(
-        page.locator('[data-sonner-toast]').last().getByRole('button', { name: 'Undo' })
-      ).toBeVisible();
+    async shouldSeeProcessActionsFitCard(): Promise<void> {
+      const card = page.locator('[data-process-item-kind="capture"]');
+      await expect(card).toBeVisible();
+      const cardBox = await card.boundingBox();
+      if (cardBox === null) {
+        throw new Error('process card should have a layout box');
+      }
+      for (const selector of processActionSelectors) {
+        const button = page.locator(selector);
+        await expect(button).toBeVisible();
+        const box = await button.boundingBox();
+        if (box === null) {
+          throw new Error(`${selector} should have a layout box`);
+        }
+        expect(box.x, `${selector} left`).toBeGreaterThanOrEqual(cardBox.x);
+        expect(box.y, `${selector} top`).toBeGreaterThanOrEqual(cardBox.y);
+        expect(box.x + box.width, `${selector} right`).toBeLessThanOrEqual(
+          cardBox.x + cardBox.width + 1
+        );
+        expect(box.y + box.height, `${selector} bottom`).toBeLessThanOrEqual(
+          cardBox.y + cardBox.height + 1
+        );
+      }
     },
 
-    async undoFromToast(): Promise<void> {
-      await page.locator('[data-sonner-toast]').last().getByRole('button', { name: 'Undo' }).click();
+    async shouldSeeUndoToast(message: string): Promise<void> {
+      const toast = visibleUndoToast(message);
+      await expect(toast).toBeVisible();
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
+    },
+
+    async undoFromToast(message: string): Promise<void> {
+      await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
     },
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {
@@ -3551,6 +3593,22 @@ export const createPlaywrightActor = (
     },
 
     async shouldNotSeeAlreadyProcessedNotice(): Promise<void> {
+      const ready = page.locator('[data-process-ready]');
+      await expect(ready).toBeVisible();
+      const snapshot = () =>
+        ready.evaluate(
+          (el) =>
+            `${el.getAttribute('data-process-current') ?? ''}|${el.getAttribute('data-process-left') ?? ''}`
+        );
+      const first = await snapshot();
+      await page.evaluate(
+        `(async () => {
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+        })()`
+      );
+      expect(await snapshot()).toBe(first);
       await expect(page.getByText('That capture was already processed')).toHaveCount(0);
     },
 

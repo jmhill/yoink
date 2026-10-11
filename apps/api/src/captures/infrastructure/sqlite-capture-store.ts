@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync, err, errAsync, ok, okAsync, type Result } from 'neverthrow';
+import { Result, ResultAsync, err, errAsync, ok, okAsync } from 'neverthrow';
 import { z } from 'zod';
 import {
   CaptureStatusSchema,
@@ -218,17 +218,9 @@ export const createSqliteCaptureStore = async (
         seek,
         mapRow: (row) => row,
         errorMessage: 'Failed to find captures',
-      }).andThen((page) => {
-        const rows: Capture[] = [];
-        for (const row of page.rows) {
-          const parsed = captureFromUnknown(row);
-          if (parsed.isErr()) {
-            return errAsync(parsed.error);
-          }
-          rows.push(parsed.value);
-        }
-        return okAsync({ ...page, rows });
-      });
+      }).andThen((page) =>
+        Result.combine(page.rows.map(captureFromUnknown)).map((rows) => ({ ...page, rows }))
+      );
     },
 
     softDelete: (id: string): ResultAsync<void, StorageError> => {

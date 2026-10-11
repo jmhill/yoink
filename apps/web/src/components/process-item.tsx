@@ -83,6 +83,7 @@ export function ProcessItem({
   const snoozeTriggerRef = useRef<HTMLDivElement>(null);
   const snoozeMenuRef = useRef<HTMLDivElement>(null);
   const showHints = useDesktopLayout();
+  const actionSize = showHints ? 'sm' : 'default';
   const domain = capture.sourceUrl ? captureUrlDomain(capture.sourceUrl) : undefined;
 
   const closeSnoozeMenu = () => {
@@ -152,10 +153,11 @@ export function ProcessItem({
         sourceApp={capture.sourceApp}
         capturedAt={capture.capturedAt}
       />
-      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap')}>
+      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap gap-1.5')}>
         <Button
           type="button"
           variant="outline"
+          size={actionSize}
           data-process-make-task=""
           disabled={disabled}
           onClick={() => onMakeTask({ id: capture.id, content: capture.content })}
@@ -166,6 +168,7 @@ export function ProcessItem({
         <Button
           type="button"
           variant="outline"
+          size={actionSize}
           data-process-new-project=""
           disabled={disabled}
           onClick={() => onNewProject(capture)}
@@ -176,6 +179,7 @@ export function ProcessItem({
         <Button
           type="button"
           variant="outline"
+          size={actionSize}
           data-process-someday-project=""
           disabled={disabled}
           onClick={() => onSomedayProject(capture)}
@@ -187,6 +191,7 @@ export function ProcessItem({
           <Button
             type="button"
             variant="outline"
+            size={actionSize}
             data-process-snooze=""
             disabled={disabled}
             aria-expanded={snoozeOpen}
@@ -206,6 +211,7 @@ export function ProcessItem({
         <Button
           type="button"
           variant="outline"
+          size={actionSize}
           data-process-trash=""
           disabled={disabled}
           onClick={() => onTrash(capture.id)}

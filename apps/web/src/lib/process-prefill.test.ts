@@ -39,13 +39,22 @@ describe('projectObjectiveFromCapture', () => {
     ).toBe('Paint the door\nhttps://example.com/harbor');
   });
 
-  it('does not append a URL that is already in the text', () => {
+  it('does not append a URL that is already in the rest', () => {
     expect(
       projectObjectiveFromCapture({
         content: 'Harbor shed\nSee https://example.com/harbor tonight',
         sourceUrl: 'https://example.com/harbor',
       })
     ).toBe('See https://example.com/harbor tonight');
+  });
+
+  it('appends a URL that only appears on the first line of a long capture', () => {
+    expect(
+      projectObjectiveFromCapture({
+        content: 'See https://example.com/harbor\nPaint the door tonight',
+        sourceUrl: 'https://example.com/harbor',
+      })
+    ).toBe('Paint the door tonight\nhttps://example.com/harbor');
   });
 
   it('splits on CRLF the same way as LF', () => {

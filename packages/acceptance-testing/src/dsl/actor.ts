@@ -1689,8 +1689,8 @@ export type BrowserActorOperations = {
   pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void>;
 
   /**
-   * Fire the same Process key twice in one tick so a held or double
-   * Delete cannot trash two captures.
+   * Fire the same Process key twice with a frame between so a held or
+   * double Delete cannot trash two captures after the first re-render.
    */
   pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void>;
 
@@ -1700,14 +1700,19 @@ export type BrowserActorOperations = {
   shouldSeeProcessKeyHints(): Promise<void>;
 
   /**
-   * Assert the Undo toast is showing.
+   * Assert every Process action button sits inside the current card.
    */
-  shouldSeeUndoToast(): Promise<void>;
+  shouldSeeProcessActionsFitCard(): Promise<void>;
 
   /**
-   * Click Undo on the current toast.
+   * Assert the Undo toast with this message is showing.
    */
-  undoFromToast(): Promise<void>;
+  shouldSeeUndoToast(message: string): Promise<void>;
+
+  /**
+   * Click Undo on the toast with this message.
+   */
+  undoFromToast(message: string): Promise<void>;
 
   /**
    * Assert Process moved on because the current capture was processed elsewhere.

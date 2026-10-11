@@ -71,8 +71,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.trashProcessCurrent();
       await alice.shouldSeeProcessCurrent('Next clip');
       await alice.shouldSeeProcessLeft(1);
-      await alice.shouldSeeUndoToast();
-      await alice.undoFromToast();
+      await alice.shouldSeeUndoToast('Moved to trash');
+      await alice.undoFromToast('Moved to trash');
       await alice.shouldSeeProcessCurrent('Oldest clip');
       await alice.shouldSeeProcessLeft(2);
       await alice.shouldNotSeeAlreadyProcessedNotice();
@@ -88,8 +88,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openProcessSnoozeMenu();
       await alice.pickProcessSnooze('tomorrow');
       await alice.shouldSeeProcessCurrent('Stay next');
-      await alice.shouldSeeUndoToast();
-      await alice.undoFromToast();
+      await alice.shouldSeeUndoToast('Snoozed');
+      await alice.undoFromToast('Snoozed');
       await alice.shouldSeeProcessCurrent('Snooze first');
       await alice.shouldSeeProcessLeft(2);
       await alice.shouldNotSeeAlreadyProcessedNotice();
@@ -223,6 +223,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailSectionHighlighted('process');
       await alice.shouldSeeProcessKeyHints();
       await alice.shouldSeeProcessCurrent('Desktop clip');
+      await alice.shouldSeeProcessActionsFitCard();
       await alice.shouldSeeProcessLeft(2);
 
       await alice.pressProcessKey('t');
@@ -254,16 +255,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.pressProcessKey('Delete');
       await alice.shouldSeeProcessEmpty();
-      await alice.shouldSeeUndoToast();
-      await alice.undoFromToast();
+      await alice.shouldSeeUndoToast('Moved to trash');
+      await alice.undoFromToast('Moved to trash');
       await alice.shouldSeeProcessCurrent('Second desktop');
       await alice.shouldNotSeeAlreadyProcessedNotice();
 
       await alice.pressProcessKey('z');
       await alice.pickProcessSnooze('tomorrow');
       await alice.shouldSeeProcessEmpty();
-      await alice.shouldSeeUndoToast();
-      await alice.undoFromToast();
+      await alice.shouldSeeUndoToast('Snoozed');
+      await alice.undoFromToast('Snoozed');
       await alice.shouldSeeProcessCurrent('Second desktop');
       await alice.shouldNotSeeAlreadyProcessedNotice();
       await alice.pressProcessKey('z');
@@ -281,7 +282,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.pressProcessKeyTwice('Delete');
       await alice.shouldSeeProcessCurrent('Second desk');
       await alice.shouldSeeProcessLeft(1);
-      await alice.shouldSeeUndoToast();
+      await alice.shouldSeeUndoToast('Moved to trash');
+      const inbox = await alice.listCaptures();
+      const trash = await alice.listTrashedCaptures();
+      expect(inbox.map((capture) => capture.content)).toEqual(['Second desk']);
+      expect(trash.map((capture) => capture.content)).toEqual(['First desk']);
+    }, 60_000);
+
+    it('keeps all five process actions inside the card on desktop widths', async () => {
+      await alice.createCapture({ content: 'Fit the buttons' });
+      for (const viewport of [
+        { width: 1440, height: 900 },
+        { width: 1024, height: 768 },
+      ] as const) {
+        await alice.useDesktopViewport(viewport);
+        await alice.openProcess();
+        await alice.shouldSeeProcessCurrent('Fit the buttons');
+        await alice.shouldSeeProcessActionsFitCard();
+      }
     }, 60_000);
 
     it('moves on when another device processes the current capture', async () => {
@@ -302,7 +320,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeAlreadyProcessedNotice();
     }, 60_000);
 
-    it('saves phone and desktop walkthrough shots', async () => {
+    it('saves phone walkthrough shots', async () => {
       await alice.createCapture({
         content: 'NOLA Brewing - Live Music / Events',
         sourceUrl: 'https://www.nolabrewing.com/events',
@@ -344,7 +362,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.cancelProcessProjectSheet();
 
       await alice.trashProcessCurrent();
-      await alice.shouldSeeUndoToast();
+      await alice.shouldSeeUndoToast('Moved to trash');
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_undo_toast',
@@ -410,8 +428,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'review_someday_group',
       });
+    }, 90_000);
 
-      await alice.useDesktopViewport(DESKTOP);
+    it('saves desktop walkthrough shots', async () => {
       await alice.createCapture({
         content: 'NOLA Brewing - Live Music / Events',
         sourceUrl: 'https://www.nolabrewing.com/events',
@@ -420,10 +439,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createCapture({ content: 'Harbor shed' });
       await alice.createCapture({ content: LONG_CLIP });
       await alice.createCapture({ content: 'Desktop leftover' });
+
+      await alice.useDesktopViewport(DESKTOP);
       await alice.openProcess();
       await alice.shouldSeeRailSectionHighlighted('process');
       await alice.shouldSeeProcessKeyHints();
       await alice.shouldSeeProcessCurrent('NOLA Brewing - Live Music / Events');
+      await alice.shouldSeeProcessActionsFitCard();
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_card' });
 
       await alice.openProcessProjectSheet('active');
@@ -438,7 +460,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.cancelProcessProjectSheet();
 
       await alice.trashProcessCurrent();
-      await alice.shouldSeeUndoToast();
+      await alice.shouldSeeUndoToast('Moved to trash');
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_undo_toast',
@@ -467,7 +489,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.trashProcessCurrent();
       await alice.shouldSeeProcessEmpty();
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_empty' });
-    }, 120_000);
+    }, 90_000);
   });
 });
 
@@ -517,6 +539,10 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.pressProcessKeyTwice('Delete')).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeProcessActionsFitCard()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeUndoToast('Moved to trash')).rejects.toThrow(
+        UnsupportedOperationError
+      );
       await expect(actor.shouldSeeTaskCreatedToast()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeProjectCreatedToast()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldNotSeeAlreadyProcessedNotice()).rejects.toThrow(

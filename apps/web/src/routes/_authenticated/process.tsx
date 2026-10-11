@@ -80,10 +80,24 @@ function ProcessPage() {
   const inboxIdKey = captures.map((capture) => capture.id).join(',');
 
   useEffect(() => {
-    if (!actionPending) {
-      keyLock.current = false;
+    if (!keyLock.current) {
+      return;
     }
-  }, [actionPending]);
+    let inner = 0;
+    let inner2 = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        inner2 = requestAnimationFrame(() => {
+          keyLock.current = false;
+        });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+      cancelAnimationFrame(inner2);
+    };
+  }, [current?.id]);
 
   useEffect(() => {
     const previous = previousCurrentId.current;
@@ -96,7 +110,7 @@ function ProcessPage() {
   }, [current?.id, inboxIdKey, wasActed]);
 
   useEffect(() => {
-    if (!desktop || !current || sheetOpen || actionPending) {
+    if (!desktop || !current || sheetOpen) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,7 +148,6 @@ function ProcessPage() {
     desktop,
     current,
     sheetOpen,
-    actionPending,
     handleProcessToTask,
     handleOpenProjectSheet,
     handleTrash,

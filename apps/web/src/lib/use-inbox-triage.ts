@@ -152,6 +152,7 @@ export function useInboxTriage() {
         action: {
           label: 'Undo',
           onClick: () => {
+            toast.dismiss(INBOX_TRIAGE_TOAST);
             restoreMutation.mutate({ params: { id: variables.params.id }, body: {} });
           },
         },
@@ -215,6 +216,7 @@ export function useInboxTriage() {
         action: {
           label: 'Undo',
           onClick: () => {
+            toast.dismiss(INBOX_TRIAGE_TOAST);
             unsnoozeMutation.mutate({ params: { id: variables.params.id }, body: {} });
           },
         },

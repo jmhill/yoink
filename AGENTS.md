@@ -24,7 +24,7 @@ For environment variables and operational config, see `docs/operations/ENVIRONME
 
 CI and the API image pull `node:24-alpine` from Google's Docker Hub
 mirror (`mirror.gcr.io/library/...`), not Docker Hub. Digests are pinned.
-See `docs/operations/CI.md` to bump a digest or switch back to ECR Public.
+See `docs/operations/CI.md` to bump a digest.
 
 ## Architecture
 

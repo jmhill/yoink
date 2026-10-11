@@ -14,12 +14,6 @@ exceeded):
 mirror.gcr.io/library/node:24-alpine@sha256:…
 ```
 
-Same digest on Amazon ECR Public if that mirror is healthy again:
-
-```
-public.ecr.aws/docker/library/node:24-alpine@sha256:…
-```
-
 The `# syntax=docker/dockerfile:1` frontend line is omitted on purpose: it
 also pulled from Docker Hub. GitHub Actions Buildx already provides a
 BuildKit frontend that supports `--mount=type=cache`.
@@ -29,34 +23,21 @@ Dockerfile (or runs a pre-built `IMAGE`).
 
 ### Bump the Node digest
 
-1. Resolve the current index digest for `24-alpine`:
+1. Resolve the current index digest for `24-alpine` from the GCR mirror:
 
    ```bash
-   TOKEN=$(curl -fsS \
-     'https://public.ecr.aws/token/?service=public.ecr.aws&scope=repository:docker/library/node:pull' \
-     | jq -r .token)
    curl -fsSI \
-     -H "Authorization: Bearer $TOKEN" \
      -H 'Accept: application/vnd.oci.image.index.v1+json' \
-     https://public.ecr.aws/v2/docker/library/node/manifests/24-alpine \
+     https://mirror.gcr.io/v2/library/node/manifests/24-alpine \
      | tr -d '\r' \
      | awk -F': ' 'tolower($1)=="docker-content-digest" { print $2 }'
    ```
 
-   Or, with Docker: `docker buildx imagetools inspect public.ecr.aws/docker/library/node:24-alpine --format '{{.Manifest.Digest}}'`
+   Or, with Docker: `docker buildx imagetools inspect mirror.gcr.io/library/node:24-alpine --format '{{.Manifest.Digest}}'`
 
 2. Replace `ARG NODE_IMAGE=...` in `apps/api/Dockerfile` (both `FROM` stages
-   use that ARG). Keep the `node:24-alpine` comment and the GCR fallback
-   comment in sync with the same digest.
+   use that ARG). Keep the `node:24-alpine` comment in sync with the same digest.
 3. Leave the tag as `24-alpine` unless we intentionally change major/OS.
-
-### Fallback if ECR Public is unreachable
-
-Use the same digest on Google's Docker Hub mirror:
-
-```
-mirror.gcr.io/library/node:24-alpine@sha256:…   # same digest as ECR
-```
 
 ## Buildx / BuildKit (`pr.yml`, `trunk.yml`)
 

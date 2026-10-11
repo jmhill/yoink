@@ -15,7 +15,7 @@ export function projectObjectiveFromCapture(input: {
   if (rest.length === 0) {
     return url.slice(0, PROJECT_OBJECTIVE_MAX_LENGTH);
   }
-  const alreadyHasUrl = url.length > 0 && input.content.includes(url);
+  const alreadyHasUrl = url.length > 0 && rest.includes(url);
   const body = url.length > 0 && !alreadyHasUrl ? `${rest}\n${url}` : rest;
   return body.slice(0, PROJECT_OBJECTIVE_MAX_LENGTH);
 }

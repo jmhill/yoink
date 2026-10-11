@@ -1963,11 +1963,15 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeProcessKeyHints', 'http');
     },
 
-    async shouldSeeUndoToast(): Promise<void> {
+    async shouldSeeProcessActionsFitCard(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessActionsFitCard', 'http');
+    },
+
+    async shouldSeeUndoToast(_message: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeUndoToast', 'http');
     },
 
-    async undoFromToast(): Promise<void> {
+    async undoFromToast(_message: string): Promise<void> {
       throw new UnsupportedOperationError('undoFromToast', 'http');
     },
 

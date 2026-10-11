@@ -73,7 +73,9 @@ export function ProcessProjectSheet({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            Name is required. The objective starts from this capture and is editable.
+            {objective.trim()
+              ? 'Name is required. The objective starts from this capture and is editable.'
+              : 'Name is required.'}
           </SheetDescription>
         </SheetHeader>
 

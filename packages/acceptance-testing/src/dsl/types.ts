@@ -33,6 +33,43 @@ export type NamedList = {
   createdAt: string;
 };
 
+export type TimelineActor = {
+  userId: string | null;
+  kind: 'user' | 'bot' | null;
+  name: string | null;
+};
+
+export type TimelineSubject = {
+  type: 'task' | 'project';
+  id: string;
+  title: string | null;
+  deleted: boolean;
+};
+
+export type TimelineEntry = {
+  id: string;
+  kind: string;
+  occurredAt: string;
+  actor: TimelineActor;
+  subject: TimelineSubject;
+  details: { kind: string; [key: string]: unknown };
+};
+
+export type HistoryPage = {
+  entries: TimelineEntry[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+  historyStartsAt: string;
+};
+
+export type FinishedTaskPage = {
+  tasks: Task[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -64,6 +101,7 @@ export type Task = {
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
   completedBy?: string | null;
+  completedByName?: string;
 };
 
 export type Organization = {

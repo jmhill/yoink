@@ -140,6 +140,7 @@ export type TaskUpdatedChangeLogInput = {
   current: Task | null;
   actor: Actor;
   ids: TaskUpdatedChangeLogIds;
+  destinationProjectName?: string;
 };
 
 export type ChangeLogRecordsFromTaskEventInput =
@@ -294,6 +295,10 @@ const membershipRecords = (
     case 'moved': {
       const removedPayload: TaskRemovedFromProjectPayloadV1 = {
         projectId: membership.fromProjectId,
+        toProjectId: membership.toProjectId,
+        ...(input.destinationProjectName !== undefined
+          ? { toProjectName: input.destinationProjectName }
+          : {}),
       };
       const addedPayload: TaskAddedToProjectPayloadV1 = { projectId: membership.toProjectId };
       return [
@@ -397,7 +402,12 @@ export const changeLogRecordsFromTaskEvent = (
         ...envelope(input, subject, input.event.occurredAt, input.ids.recordId, projectId),
         kind: 'TaskUpdated',
         hidden: hiddenFor('TaskUpdated'),
-        payload: taskPayloadByType.TaskUpdated(input.event),
+        payload: {
+          ...taskPayloadByType.TaskUpdated(input.event),
+          ...(input.event.title !== undefined && input.current
+            ? { previousTitle: input.current.title }
+            : {}),
+        },
       },
       ...membershipRecords(input, subject),
     ];

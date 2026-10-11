@@ -2,7 +2,7 @@ import type { Database } from '../../database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
-import { storageError, type StorageError } from '../domain/project-errors.js';
+import { projectNotFoundError, storageError, type StorageError } from '../domain/project-errors.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
@@ -47,6 +47,21 @@ export const createSqliteProjectStore = async (db: Database): Promise<ProjectSto
         }
         const parsed = parseProjectRow(row);
         return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
+    },
+
+    updateCreatedAt: (id: string, createdAt: string) => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE projects SET created_at = ? WHERE id = ?`,
+          args: [createdAt, id],
+        }),
+        (cause) => storageError('Failed to update project created at', cause)
+      ).andThen((result) => {
+        if (result.rowsAffected === 0) {
+          return errAsync(projectNotFoundError(id));
+        }
+        return okAsync(undefined);
       });
     },
 

@@ -130,6 +130,13 @@ describe('changeLogRecordsFromTaskEvent', () => {
 
     expect(records[0]?.actorUserId).toBe('user-justin');
     expect(records[0]?.actorKind).toBe('user');
+    expect(records[0]?.kind).toBe('TaskUpdated');
+    if (records[0]?.kind === 'TaskUpdated') {
+      expect(records[0].payload).toMatchObject({
+        title: 'Oat milk',
+        previousTitle: 'Eggs',
+      });
+    }
   });
 
   it('attributes a bot actor as bot kind', () => {
@@ -200,6 +207,7 @@ describe('changeLogRecordsFromTaskEvent', () => {
       current: inGarden,
       actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       ids,
+      destinationProjectName: 'Cabin',
     });
 
     expect(records.map((record) => record.kind)).toEqual([
@@ -210,6 +218,11 @@ describe('changeLogRecordsFromTaskEvent', () => {
     expect(records[1]?.projectId).toBe('project-garden');
     expect(records[2]?.projectId).toBe('project-cabin');
     expect(records[0]?.projectId).toBe('project-cabin');
+    expect(records[1]?.kind === 'TaskRemovedFromProject' && records[1].payload).toEqual({
+      projectId: 'project-garden',
+      toProjectId: 'project-cabin',
+      toProjectName: 'Cabin',
+    });
     expect(parseChangeLogRecord(records[1]!).isOk()).toBe(true);
     expect(parseChangeLogRecord(records[2]!).isOk()).toBe(true);
   });

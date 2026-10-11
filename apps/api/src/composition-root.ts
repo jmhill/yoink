@@ -24,7 +24,10 @@ import {
   clearCompletedListIdQuery,
   setOpenOrderQueries,
 } from './tasks/infrastructure/task-row-statements.js';
-import { createPinoCommandLogger } from './logging/index.js';
+import { createPinoCommandLogger, createPinoHistoryReadLogger } from './logging/index.js';
+import { createHistoryHandlers } from './history/application/create-history-handlers.js';
+import { createSqliteChangeLogStore } from './shared/change-log/infrastructure/sqlite-change-log-store.js';
+import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-history-lookups.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
@@ -337,6 +340,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
 
   const app = createFastifyInstance(config.log);
   const commandLogger = createPinoCommandLogger(app.log);
+  const historyReadLogger = createPinoHistoryReadLogger(app.log);
 
   const listStore = await createSqliteListStore(database);
   const taskStore = await createSqliteTaskStore(database);
@@ -394,6 +398,16 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     logger: commandLogger,
   });
 
+  const changeLogStore = createSqliteChangeLogStore(database);
+  const historyHandlers = createHistoryHandlers({
+    loadProject: (id) => projectStore.findById(id),
+    loadTaskIncludingDeleted: (id) => taskStore.findByIdIncludingDeleted(id),
+    pageProjectHistory: (options) => changeLogStore.pageVisibleForProject(options),
+    pageTaskHistory: (options) => changeLogStore.pageVisibleForTask(options),
+    pageFinishedTasksInProject: (options) => taskStore.pageFinishedInProject(options),
+    loadLookups: createSqliteTimelineLookups(database),
+    logger: historyReadLogger,
+  });
   const taskService = createTaskService({
     store: taskStore,
   });
@@ -439,6 +453,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       organizationMembershipStore: membershipStore,
       userStore,
       tokenStore,
+      projectStore,
       clock,
       idGenerator,
       passwordHasher,
@@ -452,6 +467,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     captureHandlers,
     listHandlers,
     projectHandlers,
+    historyHandlers,
     taskService,
     taskHandlers,
     captureProcessingService,

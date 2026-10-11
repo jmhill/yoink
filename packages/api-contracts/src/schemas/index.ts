@@ -3,6 +3,7 @@ export * from './auth.js';
 export * from './capture.js';
 export * from './error.js';
 export * from './health.js';
+export * from './history.js';
 export * from './invitation.js';
 export * from './list.js';
 export * from './list-page.js';

@@ -1,5 +1,6 @@
 import type { Driver, DriverConfig } from '../types.js';
 import type { Actor, AnonymousActor } from '../../dsl/index.js';
+import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { createHttpClient } from './http-client.js';
 import { createHttpAdmin } from './admin.js';
 import { createHttpHealth } from './health.js';
@@ -33,7 +34,10 @@ export const createHttpDriver = (config: DriverConfig): Driver => {
         const org = await admin.createOrganization(orgName);
         // Isolated tenant's sole user must be admin (owner is personal-org only).
         // Playwright createActor invites as admin for the same reason.
-        const user = await admin.createUser(org.id, uniqueEmail, { role: 'admin' });
+        const user = await admin.createUser(org.id, uniqueEmail, {
+          role: 'admin',
+          name: displayNameFromEmail(email),
+        });
         const { rawToken } = await admin.createToken(org.id, user.id, 'test-token');
 
         return createHttpActor(

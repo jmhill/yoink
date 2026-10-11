@@ -12,7 +12,8 @@ whole pile in **one request**, up to a safety cap of 1000. If that cap is hit,
 (completed/Done tasks, trashed captures) stays paged (default 50).
 
 Cursors are opaque keysets tagged with the list view (board, completed, pile,
-lists, projects, capture feed, snoozed) plus the sort keys for that view. Resume with
+lists, projects, capture feed, snoozed, project/task history, finished project
+tasks) plus the sort keys for that view. Resume with
 the previous page’s `nextCursor` on the **same** list. A malformed cursor,
 a cursor from another view, or the wrong key shape is `400` with
 `code: "invalid_cursor"` — never an empty page that looks done. Completing,
@@ -196,10 +197,26 @@ Setting the same task again, or clearing when there is none, is a no-op
 
 ## History: loop while `hasMore` is true
 
-Completed tasks and trashed captures are open-ended. Page with `nextCursor`.
+Completed tasks, trashed captures, a project's timeline, a task's timeline,
+and a project's finished-task list are open-ended. Page with `nextCursor`.
 Keep going only while `hasMore` is exactly `true` — do not treat a missing
 field, a string, or an empty page as done. `curl -f` exits on `4xx`/`5xx`,
 including `400 invalid_cursor` (malformed cursor, wrong view, or wrong shape).
+Project and task history default to 50 and cap at 1000. Every history page
+includes `historyStartsAt` (`2026-10-10T13:56:00.000Z` — story 2). Hidden
+kinds (pin, reorder, list rename) never appear. A `TaskUpdated` that only
+changed `projectId` or `openOrder` is hidden; title / due / owner / list
+edits show. Actor `name` is the user's `name`, else their `email`; a null
+actor is `"Unknown"`.
+
+`GET /api/projects/:id/history` is the project's visible change log, newest
+first (`occurredAt`, then `seq`). `GET /api/tasks/:id/history` is that task's
+own visible log, including after delete. Pre-import history on a task that
+later moved in stays on the task route and is not copied onto the project
+timeline — the project timeline starts at the Moved in line. `GET
+/api/projects/:id/tasks?status=finished` is the same resource as the open
+list, filtered to completed tasks (`completedAt` desc). Omit `status` (or
+`status=open`) for the open working set.
 
 ```bash
 # Done / completed history
@@ -220,6 +237,45 @@ while :; do
   qs="status=trashed&limit=50"
   [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
   body=$(curl -fsS -H "Authorization: Bearer $TOKEN" "$API/api/captures?$qs") || exit 1
+  echo "$body"
+  hasMore=$(printf '%s' "$body" | jq -r .hasMore)
+  [ "$hasMore" = "true" ] || break
+  cursor=$(printf '%s' "$body" | jq -r .nextCursor)
+done
+
+# Project timeline
+cursor=""
+while :; do
+  qs="limit=50"
+  [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
+  body=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
+    "$API/api/projects/$PROJECT_ID/history?$qs") || exit 1
+  echo "$body"
+  hasMore=$(printf '%s' "$body" | jq -r .hasMore)
+  [ "$hasMore" = "true" ] || break
+  cursor=$(printf '%s' "$body" | jq -r .nextCursor)
+done
+
+# Task timeline (works after delete)
+cursor=""
+while :; do
+  qs="limit=50"
+  [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
+  body=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
+    "$API/api/tasks/$TASK_ID/history?$qs") || exit 1
+  echo "$body"
+  hasMore=$(printf '%s' "$body" | jq -r .hasMore)
+  [ "$hasMore" = "true" ] || break
+  cursor=$(printf '%s' "$body" | jq -r .nextCursor)
+done
+
+# Finished tasks on a project
+cursor=""
+while :; do
+  qs="status=finished&limit=50"
+  [ -n "$cursor" ] && qs="$qs&cursor=$cursor"
+  body=$(curl -fsS -H "Authorization: Bearer $TOKEN" \
+    "$API/api/projects/$PROJECT_ID/tasks?$qs") || exit 1
   echo "$body"
   hasMore=$(printf '%s' "$body" | jq -r .hasMore)
   [ "$hasMore" = "true" ] || break

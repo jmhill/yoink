@@ -131,6 +131,37 @@ export const createHttpAdmin = (
     return response.json<User>();
   },
 
+  async updateUser(id: string, options: { name: string }): Promise<User> {
+    const response = await client.patch(`/api/admin/users/${id}`, { name: options.name });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('User', id);
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to update user: ${response.body}`);
+    }
+    return response.json<User>();
+  },
+
+  async updateProjectCreatedAt(
+    id: string,
+    createdAt: string
+  ): Promise<{ id: string; createdAt: string }> {
+    const response = await client.patch(`/api/admin/projects/${id}`, { createdAt });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Project', id);
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to back-date project: ${response.body}`);
+    }
+    return response.json<{ id: string; createdAt: string }>();
+  },
+
   async createToken(organizationId: string, userId: string, name: string): Promise<CreateTokenResult> {
     const response = await client.post(
       `/api/admin/organizations/${organizationId}/tokens`,

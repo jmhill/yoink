@@ -5,7 +5,7 @@ export type TestConfig = {
 
 /**
  * Gets test configuration from environment variables.
- * 
+ *
  * Required environment variables:
  * - TEST_BASE_URL: Base URL of the system under test (e.g., http://localhost:3333)
  * - TEST_ADMIN_PASSWORD: Admin password for the system under test

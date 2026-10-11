@@ -18,6 +18,8 @@ export const taskCreatedPayloadV1Schema = z.object({
 
 export const taskUpdatedPayloadV1Schema = z.object({
   title: z.string().optional(),
+  /** Optional, backward-compatible addition to v1. Older records lack it. */
+  previousTitle: z.string().optional(),
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
   listId: z.string().nullable().optional(),
@@ -104,6 +106,14 @@ export const taskAddedToProjectPayloadV1Schema = z.object({
 
 export const taskRemovedFromProjectPayloadV1Schema = z.object({
   projectId: z.string(),
+  /** Optional; present when the task moved to another project. Older records lack it. */
+  toProjectId: z.string().optional(),
+  /** Destination name at write time. Older move records may have only toProjectId. */
+  toProjectName: z.string().optional(),
+});
+
+export const projectImportedPayloadV1Schema = z.object({
+  taskCount: z.number().int().min(0),
 });
 
 export type TaskCreatedPayloadV1 = z.infer<typeof taskCreatedPayloadV1Schema>;
@@ -140,3 +150,4 @@ export type TaskAddedToProjectPayloadV1 = z.infer<typeof taskAddedToProjectPaylo
 export type TaskRemovedFromProjectPayloadV1 = z.infer<
   typeof taskRemovedFromProjectPayloadV1Schema
 >;
+export type ProjectImportedPayloadV1 = z.infer<typeof projectImportedPayloadV1Schema>;

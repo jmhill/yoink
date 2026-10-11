@@ -9,6 +9,9 @@ export const CursorViewSchema = z.enum([
   'tasks.completed',
   'tasks.pile',
   'tasks.project',
+  'tasks.project.finished',
+  'history.project',
+  'history.task',
   'lists',
   'projects',
   'captures.feed',
@@ -21,6 +24,9 @@ const taskBoardKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const completedTaskKeysSchema = z.tuple([z.string(), z.string()]);
 const pileTaskKeysSchema = z.tuple([z.number().int(), z.string(), z.string()]);
 const projectTaskKeysSchema = z.tuple([z.string(), z.string()]);
+const finishedProjectTaskKeysSchema = z.tuple([z.string(), z.string()]);
+const projectHistoryKeysSchema = z.tuple([z.string(), z.number().int()]);
+const taskHistoryKeysSchema = z.tuple([z.string(), z.number().int()]);
 const namedListKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const projectKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const captureFeedKeysSchema = z.tuple([z.string(), z.string()]);
@@ -37,6 +43,9 @@ export type KeysetCursor =
   | { view: 'tasks.completed'; keys: z.infer<typeof completedTaskKeysSchema> }
   | { view: 'tasks.pile'; keys: z.infer<typeof pileTaskKeysSchema> }
   | { view: 'tasks.project'; keys: z.infer<typeof projectTaskKeysSchema> }
+  | { view: 'tasks.project.finished'; keys: z.infer<typeof finishedProjectTaskKeysSchema> }
+  | { view: 'history.project'; keys: z.infer<typeof projectHistoryKeysSchema> }
+  | { view: 'history.task'; keys: z.infer<typeof taskHistoryKeysSchema> }
   | { view: 'lists'; keys: z.infer<typeof namedListKeysSchema> }
   | { view: 'projects'; keys: z.infer<typeof projectKeysSchema> }
   | { view: 'captures.feed'; keys: z.infer<typeof captureFeedKeysSchema> }
@@ -90,6 +99,24 @@ const parseKeys = (
       const keys = projectTaskKeysSchema.safeParse(rawKeys);
       return keys.success
         ? ok({ view: 'tasks.project', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'tasks.project.finished': {
+      const keys = finishedProjectTaskKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'tasks.project.finished', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'history.project': {
+      const keys = projectHistoryKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'history.project', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'history.task': {
+      const keys = taskHistoryKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'history.task', keys: keys.data })
         : err(invalidCursorError());
     }
     case 'lists': {

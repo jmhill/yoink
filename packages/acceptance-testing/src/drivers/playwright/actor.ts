@@ -733,6 +733,112 @@ export const createPlaywrightActor = (
       return body.tasks;
     },
 
+    async listFinishedTasksOnProject(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ) {
+      const qs = new URLSearchParams({ status: 'finished' });
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const response = await page.request.get(
+        `/api/projects/${projectId}/tasks?${qs.toString()}`
+      );
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list finished tasks: ${response.status()}`);
+      }
+      return (await response.json()) as {
+        tasks: Task[];
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+      };
+    },
+
+    async listProjectHistory(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ) {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await page.request.get(`/api/projects/${projectId}/history${suffix}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list project history: ${response.status()}`);
+      }
+      return (await response.json()) as {
+        entries: Array<{
+          id: string;
+          kind: string;
+          occurredAt: string;
+          actor: { userId: string | null; kind: 'user' | 'bot' | null; name: string | null };
+          subject: { type: 'task' | 'project'; id: string; title: string | null; deleted: boolean };
+          details: { kind: string; [key: string]: unknown };
+        }>;
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+        historyStartsAt: string;
+      };
+    },
+
+    async listTaskHistory(taskId: string, query?: { limit?: number; cursor?: string }) {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await page.request.get(`/api/tasks/${taskId}/history${suffix}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', taskId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list task history: ${response.status()}`);
+      }
+      return (await response.json()) as {
+        entries: Array<{
+          id: string;
+          kind: string;
+          occurredAt: string;
+          actor: { userId: string | null; kind: 'user' | 'bot' | null; name: string | null };
+          subject: { type: 'task' | 'project'; id: string; title: string | null; deleted: boolean };
+          details: { kind: string; [key: string]: unknown };
+        }>;
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+        historyStartsAt: string;
+      };
+    },
+
+    async expectInvalidProjectHistoryCursor(projectId: string, cursor: string) {
+      const response = await page.request.get(
+        `/api/projects/${projectId}/history?cursor=${encodeURIComponent(cursor)}`
+      );
+      if (response.status() !== 400) {
+        throw new Error(`Expected 400 invalid_cursor, got ${response.status()}`);
+      }
+      const body = (await response.json()) as { message: string; code: string };
+      if (body.code !== 'invalid_cursor') {
+        throw new Error(`Expected code invalid_cursor, got ${body.code}`);
+      }
+      return body;
+    },
+
     async createNamedList(name: string): Promise<NamedList> {
       // Setup path: session API. The rail New list dialog is proven by
       // createNamedListFromRail — Radix close/reopen is too slow for
@@ -1787,10 +1893,170 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-project-waiting-fields]')).toHaveCount(0);
     },
 
-    async shouldSeeHistoryPlaceholder(): Promise<void> {
-      const row = page.locator('[data-project-history-placeholder]');
+    async shouldSeeHistorySection(): Promise<void> {
+      const row = page.locator('[data-project-history]');
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
+    },
+
+    async expandProjectHistory(): Promise<void> {
+      const section = page.locator('[data-project-history]');
+      await section.scrollIntoViewIfNeeded();
+      const toggle = section.locator('button[aria-expanded]').first();
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click();
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.evaluate(async (el) => {
+        await Promise.all(
+          el
+            .getAnimations({ subtree: true })
+            .map((animation: { finished: Promise<unknown> }) => animation.finished.catch(() => undefined))
+        );
+      });
+    },
+
+    async expandProjectFinished(): Promise<void> {
+      const section = page.locator('[data-project-finished]');
+      await section.scrollIntoViewIfNeeded();
+      const toggle = section.locator('button[aria-expanded]').first();
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click();
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.evaluate(async (el) => {
+        await Promise.all(
+          el
+            .getAnimations({ subtree: true })
+            .map((animation: { finished: Promise<unknown> }) => animation.finished.catch(() => undefined))
+        );
+      });
+    },
+
+    async clickProjectHistoryMore(): Promise<void> {
+      const more = page.locator('[data-project-history-more]');
+      await more.scrollIntoViewIfNeeded();
+      await expect(more).toBeVisible();
+      const count = await page.locator('[data-project-history-entry]').count();
+      await more.click();
+      await expect(page.locator('[data-project-history-entry]')).not.toHaveCount(count);
+    },
+
+    async loadAllProjectHistory(): Promise<void> {
+      const more = page.locator('[data-project-history-more]');
+      while ((await more.count()) > 0) {
+        await this.clickProjectHistoryMore();
+      }
+    },
+
+    async shouldSeeHistoryEntry(input: {
+      kind: string;
+      actor: string;
+      text: string;
+      deleted?: boolean;
+    }): Promise<void> {
+      const line = page.locator(
+        `[data-project-history-entry][data-history-kind="${input.kind}"][data-history-actor="${input.actor}"]`
+      ).filter({ hasText: input.text });
+      await expect(line.first()).toBeVisible();
+      if (input.deleted) {
+        await expect(line.first()).toHaveAttribute('data-history-deleted', 'true');
+      }
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await line.first().evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+      await line.first().evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async shouldSeeHistoryEntryCount(count: number): Promise<void> {
+      await expect(page.locator('[data-project-history-entry]')).toHaveCount(count);
+    },
+
+    async shouldSeeHistoryMore(): Promise<void> {
+      const more = page.locator('[data-project-history-more]');
+      await expect(more).toBeVisible();
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await more.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async shouldSeeHistoryStart(): Promise<void> {
+      const start = page.locator('[data-project-history-start]');
+      await start.scrollIntoViewIfNeeded();
+      await expect(start).toBeVisible();
+      await expect(start).toHaveText(/History starts Oct 10, 2026/);
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await start.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async shouldNotSeeHistoryStart(): Promise<void> {
+      await expect(page.locator('[data-project-history-start]')).toHaveCount(0);
+    },
+
+    async shouldSeeHistoryLinesInOrder(texts: string[]): Promise<void> {
+      const lines = page.locator('[data-project-history-entry]');
+      await expect(lines.first()).toBeVisible();
+      const found = await lines.allTextContents();
+      expect(found.length).toBeGreaterThanOrEqual(texts.length);
+      for (const [index, text] of texts.entries()) {
+        expect(found[index], `history line ${index}`).toContain(text);
+      }
+    },
+
+    async shouldSeeFinishedTask(title: string): Promise<void> {
+      const row = page.locator(`[data-project-finished] [data-task-title="${title}"]`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+    },
+
+    async shouldSeeFinishedBy(title: string, text: string): Promise<void> {
+      const row = page.locator(`[data-project-finished] [data-task-title="${title}"]`);
+      const line = row.locator('[data-finished-by]');
+      await line.scrollIntoViewIfNeeded();
+      await expect(line).toContainText(text);
+    },
+
+    async shouldNotSeeFinishedTask(title: string): Promise<void> {
+      await expect(
+        page.locator(`[data-project-finished] [data-task-title="${title}"]`)
+      ).toHaveCount(0);
+    },
+
+    async reopenFinishedTask(title: string): Promise<void> {
+      const row = page.locator(`[data-project-finished] [data-task-title="${title}"]`);
+      await row.scrollIntoViewIfNeeded();
+      const complete = row.locator('[data-slot="task-complete"]');
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/uncomplete') && response.request().method() === 'POST'
+      );
+      await complete.click();
+      await responsePromise;
+      const openRow = page.locator(`[data-project-open-tasks] [data-task-title="${title}"]`);
+      await openRow.evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+      await expect(openRow).toBeVisible();
     },
 
     async shouldSeeProjectOnRail(name: string): Promise<void> {
@@ -3176,8 +3442,17 @@ export const createPlaywrightActor = (
       throw new UnsupportedOperationError('unpinTask', 'playwright');
     },
 
-    async deleteTask(_id: string): Promise<void> {
-      throw new UnsupportedOperationError('deleteTask', 'playwright');
+    async deleteTask(id: string): Promise<void> {
+      const response = await page.request.delete(`/api/tasks/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.status() !== 204) {
+        throw new Error(`Failed to delete task: ${response.status()}`);
+      }
     },
 
     async goToSettings(): Promise<void> {
@@ -3870,6 +4145,35 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
     },
 
     async listOpenTasksOnProject(_projectId: string): Promise<Task[]> {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listFinishedTasksOnProject(
+      _projectId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listProjectHistory(
+      _projectId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async listTaskHistory(
+      _taskId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
+      await ensureRedirectsToAuth();
+      throw new UnauthorizedError();
+    },
+
+    async expectInvalidProjectHistoryCursor(_projectId: string, _cursor: string) {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

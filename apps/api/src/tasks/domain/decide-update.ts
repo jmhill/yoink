@@ -39,10 +39,23 @@ export type DecideUpdateTaskError =
   | ProjectDoneError
   | TaskNotOpenError;
 
-const hasOtherFieldChanges = (command: UpdateTaskCommand): boolean =>
-  command.title !== undefined ||
-  command.dueDate !== undefined ||
-  command.assigneeId !== undefined;
+const changedTitle = (current: Task, command: UpdateTaskCommand): string | undefined =>
+  command.title !== undefined && command.title !== current.title ? command.title : undefined;
+
+const changedDueDate = (current: Task, command: UpdateTaskCommand): string | null | undefined =>
+  command.dueDate !== undefined && command.dueDate !== (current.dueDate ?? null)
+    ? command.dueDate
+    : undefined;
+
+const changedAssigneeId = (current: Task, command: UpdateTaskCommand): string | null | undefined =>
+  command.assigneeId !== undefined && command.assigneeId !== (current.assigneeId ?? null)
+    ? command.assigneeId
+    : undefined;
+
+const hasOtherFieldChanges = (current: Task, command: UpdateTaskCommand): boolean =>
+  changedTitle(current, command) !== undefined ||
+  changedDueDate(current, command) !== undefined ||
+  changedAssigneeId(current, command) !== undefined;
 
 const listForUpdate = (
   current: Task,
@@ -140,7 +153,7 @@ export const decideUpdateTask = ({
   const { listId, openOrder } = listDecision.value;
   const { projectId } = projectDecision.value;
 
-  if (listId === undefined && projectId === undefined && !hasOtherFieldChanges(command)) {
+  if (listId === undefined && projectId === undefined && !hasOtherFieldChanges(current, command)) {
     return ok({ type: 'Noop' });
   }
 
@@ -148,9 +161,9 @@ export const decideUpdateTask = ({
     type: 'TaskUpdated',
     id: command.id,
     organizationId: command.organizationId,
-    title: command.title,
-    dueDate: command.dueDate,
-    assigneeId: command.assigneeId,
+    title: changedTitle(current, command),
+    dueDate: changedDueDate(current, command),
+    assigneeId: changedAssigneeId(current, command),
     listId,
     projectId,
     openOrder,

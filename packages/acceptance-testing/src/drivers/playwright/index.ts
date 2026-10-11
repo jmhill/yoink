@@ -5,6 +5,7 @@ import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
+import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
 
 /**
@@ -115,7 +116,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
       
-      // Fill email and device name
+      // Fill email and device name. Display name is set through admin after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
       await signupPage.enterDeviceName('Test Device');
@@ -181,11 +182,14 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw e;
       }
       
-      debug(`Session validated, user: ${(sessionResponse as { user: { id: string } }).user.id}`);
+      const userId = (sessionResponse as { user: { id: string } }).user.id;
+      debug(`Session validated, user: ${userId}`);
+      await admin.updateUser(userId, { name: displayNameFromEmail(email) });
+      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
-        userId: (sessionResponse as { user: { id: string } }).user.id,
+        userId,
         organizationId: orgId,
       });
     },
@@ -239,7 +243,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
 
-      // Fill email and device name
+      // Fill email and device name. Display name is set through admin after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
       await signupPage.enterDeviceName('Test Device');
@@ -296,6 +300,8 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
       const typedSession = sessionResponse as { user: { id: string }; organizationId: string };
       debug(`Session validated, user: ${typedSession.user.id}, org: ${typedSession.organizationId}`);
+      await admin.updateUser(typedSession.user.id, { name: displayNameFromEmail(email) });
+      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
@@ -363,6 +369,25 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         async listOpenTasksOnProject(projectId) {
           const p = await getPage();
           return createPlaywrightAnonymousActor(p).listOpenTasksOnProject(projectId);
+        },
+        async listFinishedTasksOnProject(projectId, query) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listFinishedTasksOnProject(projectId, query);
+        },
+        async listProjectHistory(projectId, query) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listProjectHistory(projectId, query);
+        },
+        async listTaskHistory(taskId, query) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).listTaskHistory(taskId, query);
+        },
+        async expectInvalidProjectHistoryCursor(projectId, cursor) {
+          const p = await getPage();
+          return createPlaywrightAnonymousActor(p).expectInvalidProjectHistoryCursor(
+            projectId,
+            cursor
+          );
         },
         async reorderOpenTasksOnList(listId, taskIds) {
           const p = await getPage();

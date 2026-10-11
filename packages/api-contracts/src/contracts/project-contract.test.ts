@@ -17,6 +17,8 @@ describe('projectContract', () => {
     expect(projectContract.changeStatus.path).toBe('/api/projects/:id/status');
     expect(projectContract.setNextAction.method).toBe('PUT');
     expect(projectContract.setNextAction.path).toBe('/api/projects/:id/next-action');
+    expect(projectContract.listHistory.method).toBe('GET');
+    expect(projectContract.listHistory.path).toBe('/api/projects/:id/history');
   });
 
   it('requires hasMore and an explicit nextCursor on list', () => {

@@ -2,6 +2,7 @@ import type { OrganizationStorageError, MembershipStorageError } from './organiz
 import type { UserStorageError } from './user-errors.js';
 import type { TokenStorageError } from './auth-errors.js';
 import type { InvalidTokenNameError } from './token-errors.js';
+import type { ProjectNotFoundError, StorageError as ProjectStorageError } from '../../projects/domain/project-errors.js';
 
 // Re-export storage errors for convenience
 export type { OrganizationStorageError, MembershipStorageError, UserStorageError, TokenStorageError };
@@ -31,7 +32,9 @@ export type AdminServiceError =
   | OrganizationNotFoundError
   | UserNotFoundError
   | TokenNotFoundError
-  | InvalidTokenNameError;
+  | InvalidTokenNameError
+  | ProjectNotFoundError
+  | ProjectStorageError;
 
 // Factory functions
 export const organizationNotFoundError = (

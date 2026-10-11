@@ -1,7 +1,7 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
-import { storageError, type StorageError } from '../domain/project-errors.js';
+import { projectNotFoundError, storageError, type StorageError } from '../domain/project-errors.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
@@ -75,6 +75,15 @@ export const createFakeProjectStore = (initial: Project[] = []): FakeProjectStor
     },
     findById: (id: string): ResultAsync<Project | null, StorageError> =>
       okAsync(projects.find((project) => project.id === id) ?? null),
+    updateCreatedAt: (id: string, createdAt: string) => {
+      const index = projects.findIndex((project) => project.id === id);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current) {
+        return errAsync(projectNotFoundError(id));
+      }
+      projects[index] = { ...current, createdAt };
+      return okAsync(undefined);
+    },
     findByOrganization: (organizationId: string): ResultAsync<Project[], StorageError> =>
       okAsync(projects.filter((project) => project.organizationId === organizationId)),
     pageByOrganization: (_options: {

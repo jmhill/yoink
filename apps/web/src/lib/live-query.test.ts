@@ -73,6 +73,9 @@ describe('live query interval', () => {
     expect(isLiveOpenTaskListQueryKey(['lists', 'list-1', 'tasks'])).toBe(true);
     expect(isLiveOpenTaskListQueryKey(['unlisted', 'tasks'])).toBe(true);
     expect(isLiveOpenTaskListQueryKey(['tasks', 'project', 'project-1'])).toBe(true);
+    expect(isLiveOpenTaskListQueryKey(['tasks', 'project', 'project-1', 'finished'])).toBe(
+      false
+    );
     expect(isLiveOpenTaskListQueryKey(['captures', 'inbox'])).toBe(false);
   });
 

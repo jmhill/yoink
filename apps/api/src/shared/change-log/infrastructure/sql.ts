@@ -6,6 +6,31 @@ export type SqlQuery = {
   args?: unknown[];
 };
 
+/**
+ * Visible timeline rows: not hidden, and not a TaskUpdated that only
+ * moved the task between projects (or only touched openOrder).
+ *
+ * Damaged JSON must still pass through so the read can render Unknown.
+ * CASE short-circuits so json_type never runs on invalid JSON.
+ *
+ * json_type is NULL when the key is absent and 'null' when the payload
+ * cleared the field — a cleared due date must still show.
+ */
+export const VISIBLE_TIMELINE_SQL = `
+  hidden = 0
+  AND subject_type IN ('task', 'project')
+  AND CASE
+    WHEN json_valid(payload_json) = 0 THEN 1
+    WHEN kind = 'TaskUpdated'
+      AND json_type(payload_json, '$.title') IS NULL
+      AND json_type(payload_json, '$.dueDate') IS NULL
+      AND json_type(payload_json, '$.assigneeId') IS NULL
+      AND json_type(payload_json, '$.listId') IS NULL
+      THEN 0
+    ELSE 1
+  END
+`;
+
 const existsClause = (
   record: ChangeLogRecord
 ): { sql: string; args: unknown[] } => {
@@ -53,9 +78,10 @@ export const insertChangeLogQuery = (
       INSERT INTO change_log (
         id, organization_id, project_id, subject_type, subject_id,
         kind, schema_version, payload_json, actor_user_id, actor_kind,
-        occurred_at, hidden
+        occurred_at, hidden, seq
       )
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+             COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1
       WHERE EXISTS (${exists.sql})${alsoExists.sql}
     `,
     args: [

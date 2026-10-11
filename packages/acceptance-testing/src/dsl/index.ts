@@ -3,6 +3,9 @@ export type {
   Capture,
   NamedList,
   Project,
+  HistoryPage,
+  FinishedTaskPage,
+  TimelineEntry,
   Task,
   Organization,
   User,
@@ -41,6 +44,8 @@ export {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from './errors.js';
+
+export { displayNameFromEmail } from './display-name.js';
 
 // Interfaces
 export type { Actor, CoreActor, BrowserActor, BrowserActorOperations, AnonymousActor } from './actor.js';

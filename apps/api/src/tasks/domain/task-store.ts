@@ -16,6 +16,7 @@ export type FindByOrganizationOptions = {
 
 export type TaskStore = {
   findById(id: string): ResultAsync<Task | null, StorageError>;
+  findByIdIncludingDeleted(id: string): ResultAsync<Task | null, StorageError>;
   findByOrganization(
     options: FindByOrganizationOptions
   ): ResultAsync<KeysetRows<Task>, StorageError>;
@@ -36,6 +37,14 @@ export type TaskStore = {
     projectId: string;
     fetchLimit: number;
     seek?: KeysetCursor;
+  }): ResultAsync<KeysetRows<Task>, StorageError>;
+  pageFinishedInProject(options: {
+    organizationId: string;
+    projectId: string;
+    fetchLimit: number;
+    seek?: KeysetCursor;
+    completedAfter?: string;
+    completedBefore?: string;
   }): ResultAsync<KeysetRows<Task>, StorageError>;
   nextOpenOrderInPile(options: {
     organizationId: string;

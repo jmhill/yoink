@@ -1,21 +1,21 @@
 [
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE5LjM3OFoiLDQyXX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUzLjkyOFoiLDEwODJdfQ",
     "total": 22,
     "entries": [
       {
-        "id": "dec19c7d-4950-4e36-89ad-578d54868e4f",
+        "id": "81ada313-f671-4e26-9a04-2dd37aef1388",
         "kind": "ProjectStatusChanged",
-        "occurredAt": "2026-10-11T03:31:19.443Z",
+        "occurredAt": "2026-10-11T03:39:53.998Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
@@ -28,37 +28,37 @@
         }
       },
       {
-        "id": "baf37737-3399-41f0-bc51-84069afc137d",
+        "id": "d2688a67-4ad9-4400-b7b6-ed38029d6662",
         "kind": "TaskRemovedFromProject",
-        "occurredAt": "2026-10-11T03:31:19.443Z",
+        "occurredAt": "2026-10-11T03:39:53.998Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "11c3a967-175b-4798-ad34-e34680ff2d40",
+          "id": "1a6a1967-b1fa-4481-a931-81c6dcf000e0",
           "title": "Leftover",
           "deleted": false
         },
         "details": {
           "kind": "TaskRemovedFromProject",
-          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+          "projectId": "a44ca10e-af60-4305-997b-9ce862f76a1b"
         }
       },
       {
-        "id": "31ed4fea-4c0d-424d-9a17-139c44bbd92e",
+        "id": "f9498ed5-b8ae-4638-ae48-14d0e9168fd3",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:19.378Z",
+        "occurredAt": "2026-10-11T03:39:53.928Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "11c3a967-175b-4798-ad34-e34680ff2d40",
+          "id": "1a6a1967-b1fa-4481-a931-81c6dcf000e0",
           "title": "Leftover",
           "deleted": false
         },
@@ -71,21 +71,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4Ljk0OVoiLDM2XX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUzLjU1MFoiLDEwNzldfQ",
     "total": 22,
     "entries": [
       {
-        "id": "506749c4-8f5d-4fa4-bb8a-3daaf0a90935",
+        "id": "c098a74f-deae-4ff0-8ae1-efce37ed4378",
         "kind": "TaskCompleted",
-        "occurredAt": "2026-10-11T03:31:19.107Z",
+        "occurredAt": "2026-10-11T03:39:53.685Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "3d752737-fa20-492c-a3f1-c5f5de38c6d7",
+          "id": "df88d10b-7d36-4275-88c5-a66ece0d7332",
           "title": "Finish later A",
           "deleted": false
         },
@@ -94,17 +94,17 @@
         }
       },
       {
-        "id": "0c4bcb13-bebc-4cdc-8598-e8d233684422",
+        "id": "c0b1907a-5e2c-4c0f-af53-86b58a988085",
         "kind": "TaskCompleted",
-        "occurredAt": "2026-10-11T03:31:19.035Z",
+        "occurredAt": "2026-10-11T03:39:53.616Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "88522bf3-e284-4d36-b53f-718be03ec49c",
+          "id": "a597240b-ec48-4ef9-8f18-fc8b17295bbf",
           "title": "Finish later B",
           "deleted": false
         },
@@ -113,17 +113,17 @@
         }
       },
       {
-        "id": "4f7c6e80-bd95-490b-b74a-f10712a51ff5",
+        "id": "7bf362c1-be14-4803-ab46-6f06dc18b60e",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:18.949Z",
+        "occurredAt": "2026-10-11T03:39:53.550Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "88522bf3-e284-4d36-b53f-718be03ec49c",
+          "id": "a597240b-ec48-4ef9-8f18-fc8b17295bbf",
           "title": "Finish later B",
           "deleted": false
         },
@@ -136,21 +136,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjczMVoiLDMwXX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUzLjMzOFoiLDEwNzZdfQ",
     "total": 22,
     "entries": [
       {
-        "id": "8305c977-504a-4dba-99eb-1a0f90c1e433",
+        "id": "3eee1ef5-07b6-4554-b610-e3428db01131",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:18.866Z",
+        "occurredAt": "2026-10-11T03:39:53.479Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "3d752737-fa20-492c-a3f1-c5f5de38c6d7",
+          "id": "df88d10b-7d36-4275-88c5-a66ece0d7332",
           "title": "Finish later A",
           "deleted": false
         },
@@ -159,17 +159,17 @@
         }
       },
       {
-        "id": "a6fd8d85-8aa4-40ab-8acb-91edda3d374f",
+        "id": "1efc5802-dc77-4921-9b4a-a80707bbb1f8",
         "kind": "ProjectWaitingChanged",
-        "occurredAt": "2026-10-11T03:31:18.795Z",
+        "occurredAt": "2026-10-11T03:39:53.411Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
@@ -180,17 +180,17 @@
         }
       },
       {
-        "id": "3a4beda7-40d9-4483-a458-4e4df90ccf4e",
+        "id": "8ca602fe-195c-4e3e-8b21-2c8b3ef5693b",
         "kind": "ProjectStatusChanged",
-        "occurredAt": "2026-10-11T03:31:18.731Z",
+        "occurredAt": "2026-10-11T03:39:53.338Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
@@ -207,21 +207,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjUyOFoiLDI1XX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUzLjEzMVoiLDEwNzNdfQ",
     "total": 22,
     "entries": [
       {
-        "id": "55b97dfd-e4d3-4803-ac84-3ee7c2b14ec1",
+        "id": "09d743a4-4821-4d3d-b408-0f349050e6dd",
         "kind": "TaskDeleted",
-        "occurredAt": "2026-10-11T03:31:18.671Z",
+        "occurredAt": "2026-10-11T03:39:53.269Z",
         "actor": {
-          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "userId": "41af51e6-104c-41ed-b847-6abbc7e915ae",
           "kind": "bot",
           "name": "Lane"
         },
         "subject": {
           "type": "task",
-          "id": "66222dde-a101-4f30-82f7-90e40ca9fdf7",
+          "id": "617ffc9a-bab8-464c-8e58-c776b0e95043",
           "title": "Bot trash",
           "deleted": true
         },
@@ -230,17 +230,17 @@
         }
       },
       {
-        "id": "4b605d51-3993-4167-a9fa-d6288b1e238a",
+        "id": "fc385b9a-b28a-420f-b0fe-d33977fc76ac",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:18.604Z",
+        "occurredAt": "2026-10-11T03:39:53.200Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "66222dde-a101-4f30-82f7-90e40ca9fdf7",
+          "id": "617ffc9a-bab8-464c-8e58-c776b0e95043",
           "title": "Bot trash",
           "deleted": true
         },
@@ -249,17 +249,17 @@
         }
       },
       {
-        "id": "3bc88f4d-4489-4bfd-ad83-ed5868b5bfac",
+        "id": "215febf0-94d6-4d9c-8457-2faf7b20a542",
         "kind": "TaskDeleted",
-        "occurredAt": "2026-10-11T03:31:18.528Z",
+        "occurredAt": "2026-10-11T03:39:53.131Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "4e9f329a-4fea-4848-add2-7698f65968e0",
+          "id": "867b1c9f-85d3-4d02-a227-549f85d1d470",
           "title": "Old invoice",
           "deleted": true
         },
@@ -272,21 +272,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjI1MFoiLDE3XX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUyLjg0N1oiLDEwNjddfQ",
     "total": 22,
     "entries": [
       {
-        "id": "8b6f240d-37ba-49f2-9bc9-39851d96c476",
+        "id": "bf017559-7182-4193-8264-816a55f37391",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:18.464Z",
+        "occurredAt": "2026-10-11T03:39:53.060Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "4e9f329a-4fea-4848-add2-7698f65968e0",
+          "id": "867b1c9f-85d3-4d02-a227-549f85d1d470",
           "title": "Old invoice",
           "deleted": true
         },
@@ -295,43 +295,43 @@
         }
       },
       {
-        "id": "28adb12d-65e8-4afb-b649-2d2553b42a6b",
+        "id": "905f9601-9dc8-454c-ab58-2129c7ef5ddd",
         "kind": "TaskRemovedFromProject",
-        "occurredAt": "2026-10-11T03:31:18.402Z",
+        "occurredAt": "2026-10-11T03:39:52.991Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "id": "709752db-b54d-47b0-af72-b4bc927a2a5c",
           "title": "Order lumber",
           "deleted": false
         },
         "details": {
           "kind": "TaskRemovedFromProject",
-          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+          "projectId": "a44ca10e-af60-4305-997b-9ce862f76a1b"
         }
       },
       {
-        "id": "01210f07-5ec1-46df-8014-fcd3af53fa42",
+        "id": "4c7ea273-e00f-4866-9ccb-1f8f0e82d22d",
         "kind": "ProjectNextActionCleared",
-        "occurredAt": "2026-10-11T03:31:18.250Z",
+        "occurredAt": "2026-10-11T03:39:52.847Z",
         "actor": {
-          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "userId": "41af51e6-104c-41ed-b847-6abbc7e915ae",
           "kind": "bot",
           "name": "Lane"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
         "details": {
           "kind": "ProjectNextActionCleared",
-          "taskId": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "taskId": "1aead481-74f2-4a58-bd33-24d759e5b316",
           "taskTitle": "Call Trident",
           "reason": "completed"
         }
@@ -341,21 +341,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE4LjAxM1oiLDExXX0",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUyLjYxOVoiLDEwNjRdfQ",
     "total": 22,
     "entries": [
       {
-        "id": "573d58c0-2b3c-42c9-b4ec-a2b090315257",
+        "id": "26fe4ed3-6c29-402c-af0a-55ab9a504fb2",
         "kind": "TaskCompleted",
-        "occurredAt": "2026-10-11T03:31:18.250Z",
+        "occurredAt": "2026-10-11T03:39:52.847Z",
         "actor": {
-          "userId": "f64881fc-59cc-4e83-88e4-31032aff05e8",
+          "userId": "41af51e6-104c-41ed-b847-6abbc7e915ae",
           "kind": "bot",
           "name": "Lane"
         },
         "subject": {
           "type": "task",
-          "id": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "id": "1aead481-74f2-4a58-bd33-24d759e5b316",
           "title": "Call Trident",
           "deleted": false
         },
@@ -364,46 +364,46 @@
         }
       },
       {
-        "id": "5c0b6598-ae59-418e-8ee0-f78ced0ce325",
+        "id": "64beb1d1-85e6-4869-a038-da4e8d55a6fe",
         "kind": "ProjectNextActionSet",
-        "occurredAt": "2026-10-11T03:31:18.093Z",
+        "occurredAt": "2026-10-11T03:39:52.692Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
         "details": {
           "kind": "ProjectNextActionSet",
-          "taskId": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "taskId": "1aead481-74f2-4a58-bd33-24d759e5b316",
           "taskTitle": "Call Trident",
-          "previousTaskId": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "previousTaskId": "709752db-b54d-47b0-af72-b4bc927a2a5c",
           "previousTaskTitle": "Order lumber"
         }
       },
       {
-        "id": "e99e286b-02a6-485a-8ca9-a353bd76e7d6",
+        "id": "54312f07-2a71-4440-b058-0c65dff535ba",
         "kind": "ProjectNextActionSet",
-        "occurredAt": "2026-10-11T03:31:18.013Z",
+        "occurredAt": "2026-10-11T03:39:52.619Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
         "details": {
           "kind": "ProjectNextActionSet",
-          "taskId": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "taskId": "709752db-b54d-47b0-af72-b4bc927a2a5c",
           "taskTitle": "Order lumber",
           "previousTaskId": null,
           "previousTaskTitle": null
@@ -414,21 +414,21 @@
   },
   {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjMxOjE3LjY3MFoiLDNdfQ",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoiaGlzdG9yeS5wcm9qZWN0IiwiayI6WyIyMDI2LTEwLTExVDAzOjM5OjUyLjMyMloiLDEwNTldfQ",
     "total": 22,
     "entries": [
       {
-        "id": "8363217a-2b6b-4714-9170-48c96cd60ee4",
+        "id": "23adf1b0-7174-417b-a520-72f8a9a55940",
         "kind": "TaskCreated",
-        "occurredAt": "2026-10-11T03:31:17.936Z",
+        "occurredAt": "2026-10-11T03:39:52.545Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "fccd59ac-0252-4a2d-942e-0f1164acb2d4",
+          "id": "709752db-b54d-47b0-af72-b4bc927a2a5c",
           "title": "Order lumber",
           "deleted": false
         },
@@ -437,37 +437,37 @@
         }
       },
       {
-        "id": "754999e4-4f94-42fd-bfad-d1e94f52bd3d",
+        "id": "cbdc13dd-d47e-4bed-84ad-981fa55d7a64",
         "kind": "TaskAddedToProject",
-        "occurredAt": "2026-10-11T03:31:17.841Z",
+        "occurredAt": "2026-10-11T03:39:52.467Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "task",
-          "id": "18aa798c-9c16-40e4-b6c6-8296d781ed15",
+          "id": "1aead481-74f2-4a58-bd33-24d759e5b316",
           "title": "Call Trident",
           "deleted": false
         },
         "details": {
           "kind": "TaskAddedToProject",
-          "projectId": "2893b1a0-6c2a-41f5-9211-415627db1938"
+          "projectId": "a44ca10e-af60-4305-997b-9ce862f76a1b"
         }
       },
       {
-        "id": "68f7ca84-b4e1-4e90-aeb3-a19642ff6053",
+        "id": "c974c3a9-e179-4dd2-9eb6-f911874344a6",
         "kind": "ProjectUpdated",
-        "occurredAt": "2026-10-11T03:31:17.670Z",
+        "occurredAt": "2026-10-11T03:39:52.322Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },
@@ -485,17 +485,17 @@
     "total": 22,
     "entries": [
       {
-        "id": "b9dc246a-4c11-4a54-a5d8-3bd008fbaa06",
+        "id": "c208ed73-5096-436c-b65a-b6ca4af49459",
         "kind": "ProjectCreated",
-        "occurredAt": "2026-10-11T03:31:17.571Z",
+        "occurredAt": "2026-10-11T03:39:52.248Z",
         "actor": {
-          "userId": "6dca685b-e611-430f-8480-fa7ef85e8296",
+          "userId": "832c85d4-a83c-4320-a152-0e3c2d7ad841",
           "kind": "user",
-          "name": "alice-history-http+1791689477344-4ynq4t@example.com"
+          "name": "alice-history-http+1791689992082-og78mi@example.com"
         },
         "subject": {
           "type": "project",
-          "id": "2893b1a0-6c2a-41f5-9211-415627db1938",
+          "id": "a44ca10e-af60-4305-997b-9ce862f76a1b",
           "title": "Kitchen renovation",
           "deleted": false
         },

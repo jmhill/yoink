@@ -35,6 +35,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.shouldSeeRailItems([
         'Inbox',
+        'Now',
         'Today',
         'Upcoming',
         'Mine',
@@ -52,6 +53,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('hides the Inbox count badge when the inbox is empty', async () => {
       await alice.shouldSeeRailItems([
         'Inbox',
+        'Now',
         'Today',
         'Upcoming',
         'Mine',
@@ -172,6 +174,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNamedPileOnAll('Groceries');
       await alice.shouldSeeRailItems([
         'Inbox',
+        'Now',
         'Today',
         'Upcoming',
         'Mine',

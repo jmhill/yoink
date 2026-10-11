@@ -202,7 +202,7 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
           SELECT
             id, organization_id, project_id, subject_type, subject_id,
             kind, schema_version, payload_json, actor_user_id, actor_kind,
-            occurred_at, hidden
+            occurred_at, hidden, seq
           FROM change_log
           WHERE subject_type = ? AND subject_id = ?
           ORDER BY occurred_at ASC, id ASC

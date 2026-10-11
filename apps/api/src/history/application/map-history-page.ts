@@ -78,8 +78,7 @@ export const entriesFromHistoryPage = (
         logger.warn({
           recordId: record.id,
           kind: record.kind,
-          reason: 'Unrecognised change-log subject type',
-          subjectType: record.subjectType,
+          reason: `Unrecognised change-log subject type: ${record.subjectType}`,
         });
         continue;
       }

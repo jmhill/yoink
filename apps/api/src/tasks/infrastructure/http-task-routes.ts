@@ -6,6 +6,7 @@ import type { AuthMiddleware } from '../../access/application/index.js';
 import type { TaskHandlers } from '../application/create-task-handlers.js';
 import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
 import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
+import { listedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;
@@ -82,6 +83,7 @@ export const registerTaskRoutes = async (
           limit: query.limit,
           cursor: query.cursor,
           callerId: request.authContext.userId,
+          timeZone: query.timeZone,
         });
 
         return result.match(
@@ -377,7 +379,7 @@ export const registerTaskRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(listedRequestValidationError(err));
       },
     });
   });

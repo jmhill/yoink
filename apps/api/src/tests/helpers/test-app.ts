@@ -33,7 +33,7 @@ export const testConfig: AppConfig = {
   infrastructure: {
     clock: {
       type: 'fake',
-      startTime: new Date('2025-01-15T10:00:00.000Z'),
+      startTime: new Date('2026-10-12T01:00:00.000Z'),
       autoAdvanceMs: 1000, // Advance 1 second on each call for ordering tests
     },
     idGenerator: { type: 'sequential' },

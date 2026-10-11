@@ -12,6 +12,7 @@ import { registerCaptureRoutes } from './captures/infrastructure/http-capture-ro
 import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
 import { registerProjectRoutes } from './projects/infrastructure/http-project-routes.js';
 import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
+import { registerWorkRoutes } from './work/infrastructure/http-work-routes.js';
 import {
   registerAdminRoutes,
   registerInvitationRoutes,
@@ -30,6 +31,7 @@ import type { ProjectHandlers } from './projects/application/index.js';
 import type { HistoryHandlers } from './history/application/create-history-handlers.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
+import type { WorkHandlers } from './work/application/create-work-handlers.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
 import type {
@@ -77,6 +79,7 @@ export type AppDependencies = {
   historyHandlers: HistoryHandlers;
   taskService: TaskService;
   taskHandlers: TaskHandlers;
+  workHandlers: WorkHandlers;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
@@ -150,6 +153,10 @@ export const createApp = async (deps: AppDependencies) => {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
     historyHandlers: deps.historyHandlers,
+    authMiddleware: deps.authMiddleware,
+  });
+  await registerWorkRoutes(app, {
+    workHandlers: deps.workHandlers,
     authMiddleware: deps.authMiddleware,
   });
 

@@ -7,7 +7,7 @@ import type { StorageError } from './task-errors.js';
 export type FindByOrganizationOptions = {
   organizationId: string;
   filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
-  today?: string; // Current date in YYYY-MM-DD format for date comparisons
+  today: string;
   /** Caller principal id; used when filter is 'mine' */
   assigneeId?: string;
   fetchLimit: number;

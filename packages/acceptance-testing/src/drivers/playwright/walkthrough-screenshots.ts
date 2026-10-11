@@ -201,6 +201,29 @@ export const waitForSettledOpenDrawer = async (input: {
   });
 };
 
+export const waitForFinishedPageAnimations = async (input: {
+  page: {
+    evaluate: (pageFunction: string) => Promise<unknown>;
+  };
+}): Promise<void> => {
+  await input.page.evaluate(`(() => {
+    const animations = document.getAnimations();
+    return Promise.all(
+      animations.map((animation) => {
+        const effect = animation.effect;
+        if (
+          effect !== null &&
+          typeof effect.getComputedTiming === 'function' &&
+          effect.getComputedTiming().iterations === Infinity
+        ) {
+          return undefined;
+        }
+        return animation.finished.catch(() => undefined);
+      })
+    );
+  })()`);
+};
+
 /** Hide toasts for the capture only — no app code, no production hook. */
 const HIDE_TOASTS_STYLE = [
   '[data-sonner-toaster]{display:none !important}',

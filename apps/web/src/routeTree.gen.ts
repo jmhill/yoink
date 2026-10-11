@@ -20,6 +20,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSnoozedRouteImport } from './routes/_authenticated/snoozed'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedTrashRouteImport } from './routes/_authenticated/trash'
+import { Route as AuthenticatedWorkRouteImport } from './routes/_authenticated/work'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AuthenticatedListsListIdRouteImport } from './routes/_authenticated/lists_.$listId'
 import { Route as AuthenticatedListsUnlistedRouteImport } from './routes/_authenticated/lists_.unlisted'
@@ -80,6 +81,11 @@ const AuthenticatedTrashRoute = AuthenticatedTrashRouteImport.update({
   path: '/trash',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedWorkRoute = AuthenticatedWorkRouteImport.update({
+  id: '/work',
+  path: '/work',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/trash': typeof AuthenticatedTrashRoute
+  '/work': typeof AuthenticatedWorkRoute
   '/join/$code': typeof JoinCodeRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
   '/lists/unlisted': typeof AuthenticatedListsUnlistedRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/snoozed': typeof AuthenticatedSnoozedRoute
   '/tasks': typeof AuthenticatedTasksRoute
   '/trash': typeof AuthenticatedTrashRoute
+  '/work': typeof AuthenticatedWorkRoute
   '/join/$code': typeof JoinCodeRoute
   '/': typeof AuthenticatedIndexRoute
   '/lists/$listId': typeof AuthenticatedListsListIdRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_authenticated/snoozed': typeof AuthenticatedSnoozedRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/trash': typeof AuthenticatedTrashRoute
+  '/_authenticated/work': typeof AuthenticatedWorkRoute
   '/join/$code': typeof JoinCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/lists_/$listId': typeof AuthenticatedListsListIdRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/snoozed'
     | '/tasks'
     | '/trash'
+    | '/work'
     | '/join/$code'
     | '/lists/$listId'
     | '/lists/unlisted'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/snoozed'
     | '/tasks'
     | '/trash'
+    | '/work'
     | '/join/$code'
     | '/'
     | '/lists/$listId'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/_authenticated/snoozed'
     | '/_authenticated/tasks'
     | '/_authenticated/trash'
+    | '/_authenticated/work'
     | '/join/$code'
     | '/_authenticated/'
     | '/_authenticated/lists_/$listId'
@@ -305,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrashRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/work': {
+      id: '/_authenticated/work'
+      path: '/work'
+      fullPath: '/work'
+      preLoaderRoute: typeof AuthenticatedWorkRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/join/$code': {
       id: '/join/$code'
       path: '/join/$code'
@@ -350,6 +369,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSnoozedRoute: typeof AuthenticatedSnoozedRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedTrashRoute: typeof AuthenticatedTrashRoute
+  AuthenticatedWorkRoute: typeof AuthenticatedWorkRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedListsListIdRoute: typeof AuthenticatedListsListIdRoute
   AuthenticatedListsUnlistedRoute: typeof AuthenticatedListsUnlistedRoute
@@ -364,6 +384,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSnoozedRoute: AuthenticatedSnoozedRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedTrashRoute: AuthenticatedTrashRoute,
+  AuthenticatedWorkRoute: AuthenticatedWorkRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedListsListIdRoute: AuthenticatedListsListIdRoute,
   AuthenticatedListsUnlistedRoute: AuthenticatedListsUnlistedRoute,

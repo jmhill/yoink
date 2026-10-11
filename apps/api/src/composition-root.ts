@@ -32,6 +32,8 @@ import { createHistoryHandlers } from './history/application/create-history-hand
 import { createSqliteChangeLogStore } from './shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-history-lookups.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
+import { createWorkHandlers } from './work/application/create-work-handlers.js';
+import { createSqliteWorkStore } from './work/infrastructure/sqlite-work-store.js';
 import { createCaptureProcessingService } from './processing/domain/processing-service.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
@@ -451,11 +453,20 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     loadOpenInPile: (organizationId, listId) =>
       taskStore.findOpenInPile({ organizationId, listId }),
     list: (options) => taskStore.findByOrganization(options),
-    today: () => clock.now().toISOString().slice(0, 10),
+    viewerNow: () => clock.now(),
     principalLookup,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
     logger: commandLogger,
+  });
+
+  const workStore = createSqliteWorkStore(database);
+  const workHandlers = createWorkHandlers({
+    pageNextActions: (options) => workStore.pageNextActions(options),
+    pageDue: (options) => workStore.pageDue(options),
+    pageLists: (options) => workStore.pageLists(options),
+    countUnlistedOpen: (organizationId) => workStore.countUnlistedOpen(organizationId),
+    now: () => clock.now(),
   });
 
   // Create capture processing service (cross-entity operations).
@@ -498,6 +509,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     historyHandlers,
     taskService,
     taskHandlers,
+    workHandlers,
     captureProcessingService,
     authMiddleware,
     healthChecker,

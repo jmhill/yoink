@@ -17,7 +17,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Named-list overflow above the mobile drawer [${ctx.driverName}]`, () => {
@@ -69,11 +69,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('tasks');
-      await alice.shouldBeOnToday();
+      await alice.shouldSeeNowReady('all');
 
       await alice.openMobileTasksRail();
       await alice.shouldNotNavigateWhenOpeningNamedListOverflow('Groceries');
-      await alice.shouldBeOnToday();
+      await alice.shouldSeeNowReady('all');
       await alice.shouldSeeMobileTasksRail();
 
       await alice.openRailNamedList('Groceries');

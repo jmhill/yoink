@@ -18,10 +18,17 @@ const mobileNavItems: MobileNavItem[] = [
     matchPaths: ['/', '/snoozed', '/trash'],
   },
   {
-    to: '/tasks',
+    to: '/work',
     label: 'Tasks',
     icon: CheckSquare,
-    matchPaths: ['/tasks', '/lists', '/lists/$listId', '/projects', '/projects/$projectId'],
+    matchPaths: [
+      '/work',
+      '/tasks',
+      '/lists',
+      '/lists/$listId',
+      '/projects',
+      '/projects/$projectId',
+    ],
   },
 ];
 

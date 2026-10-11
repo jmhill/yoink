@@ -7,7 +7,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  *
  * Product lock (Justin 2026-09-17): fix headings across the app for
  * consistent wayfinding. Mobile Inbox | Tasks bottom bar stays. Tasks
- * landing stays Today. Pin chrome stays gone (#111).
+ * landing is Now (`/work`, #144). Pin chrome stays gone (#111).
  *
  * Every task view/pile gets Inbox-grade place chrome: the view or list
  * name as the primary heading, plus a short count cue. Inbox heading
@@ -43,6 +43,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTasksContentWithoutMobileRail();
+      await alice.shouldSeeNowReady('all');
+      await alice.openRailSmartView('today');
       await alice.shouldSeeTaskPlace('Today', '1 open');
 
       await alice.openRailNamedList('Groceries');
@@ -86,6 +88,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
 
       await alice.openMobileBottomTab('tasks');
+      await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openRailSmartView('today');
       await alice.shouldSeeTaskPlace('Today', '0 open');
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
 

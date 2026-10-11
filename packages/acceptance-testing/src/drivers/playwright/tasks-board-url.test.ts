@@ -74,8 +74,10 @@ describe('tasksBoardCopyForUrl', () => {
 });
 
 describe('isTasksThumbLandingUrl', () => {
-  it('is only Today with no pile — the Link to="/tasks" landing', () => {
-    expect(isTasksThumbLandingUrl('http://localhost/tasks?filter=today')).toBe(true);
+  it('is /work — the Tasks thumb landing (Now)', () => {
+    expect(isTasksThumbLandingUrl('http://localhost/work')).toBe(true);
+    expect(isTasksThumbLandingUrl('http://localhost/work?mine=true')).toBe(true);
+    expect(isTasksThumbLandingUrl('http://localhost/tasks?filter=today')).toBe(false);
     expect(isTasksThumbLandingUrl('http://localhost/tasks?filter=upcoming')).toBe(false);
     expect(
       isTasksThumbLandingUrl('http://localhost/tasks?pile=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')

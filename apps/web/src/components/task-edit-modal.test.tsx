@@ -158,6 +158,25 @@ describe('TaskEditModal', () => {
     expect(screen.queryByTestId('task-edit-completed')).toBeNull();
   });
 
+  it('does not treat a missing members list as an unassign', () => {
+    const onSave = vi.fn();
+    render(
+      <TaskEditModal
+        open
+        onOpenChange={vi.fn()}
+        task={{ ...milk, assigneeId: milk.createdById }}
+        sourceCapture={null}
+        onSave={onSave}
+        onDelete={vi.fn()}
+        members={[]}
+        lists={[{ id: '00000000-0000-4000-8000-000000000031', name: 'Groceries' }]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('offers a project picker and sends projectId only when it changed', () => {
     const onSave = vi.fn();
     render(

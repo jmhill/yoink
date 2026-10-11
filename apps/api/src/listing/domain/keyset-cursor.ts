@@ -16,6 +16,9 @@ export const CursorViewSchema = z.enum([
   'projects',
   'captures.feed',
   'captures.snoozed',
+  'work.next-actions',
+  'work.due',
+  'work.lists',
 ]);
 
 export type CursorView = z.infer<typeof CursorViewSchema>;
@@ -31,6 +34,9 @@ const namedListKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const projectKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const captureFeedKeysSchema = z.tuple([z.string(), z.string()]);
 const snoozedCaptureKeysSchema = z.tuple([z.string(), z.string()]);
+const workNextActionsKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
+const workDueKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
+const workListsKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 
 const CursorEnvelopeSchema = z.object({
   v: z.literal(1),
@@ -49,7 +55,10 @@ export type KeysetCursor =
   | { view: 'lists'; keys: z.infer<typeof namedListKeysSchema> }
   | { view: 'projects'; keys: z.infer<typeof projectKeysSchema> }
   | { view: 'captures.feed'; keys: z.infer<typeof captureFeedKeysSchema> }
-  | { view: 'captures.snoozed'; keys: z.infer<typeof snoozedCaptureKeysSchema> };
+  | { view: 'captures.snoozed'; keys: z.infer<typeof snoozedCaptureKeysSchema> }
+  | { view: 'work.next-actions'; keys: z.infer<typeof workNextActionsKeysSchema> }
+  | { view: 'work.due'; keys: z.infer<typeof workDueKeysSchema> }
+  | { view: 'work.lists'; keys: z.infer<typeof workListsKeysSchema> };
 
 export type ListedCursor<T, V extends CursorView> = {
   readonly view: V;
@@ -141,6 +150,24 @@ const parseKeys = (
       const keys = snoozedCaptureKeysSchema.safeParse(rawKeys);
       return keys.success
         ? ok({ view: 'captures.snoozed', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'work.next-actions': {
+      const keys = workNextActionsKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'work.next-actions', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'work.due': {
+      const keys = workDueKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'work.due', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'work.lists': {
+      const keys = workListsKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'work.lists', keys: keys.data })
         : err(invalidCursorError());
     }
   }

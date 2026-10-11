@@ -12,6 +12,7 @@ import {
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
 import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
+import { localCalendarDate } from '@/lib/viewer-today';
 import { cn } from '@yoink/ui-base/lib/utils';
 
 const TAP_SLOP_PX = 10;
@@ -24,6 +25,7 @@ type TaskCardProps = {
   isLoading?: boolean;
   assigneeLabel?: string;
   listLabel?: string;
+  projectLabel?: string;
   dragHandle?: SortablePileDragHandle;
   reorderMode?: boolean;
   emphasis?: 'default' | 'next-action';
@@ -37,6 +39,7 @@ export function TaskCard({
   isLoading = false,
   assigneeLabel,
   listLabel,
+  projectLabel,
   dragHandle,
   reorderMode = false,
   emphasis = 'default',
@@ -96,7 +99,7 @@ export function TaskCard({
     }
   };
 
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getTodayStr = () => localCalendarDate(new Date());
 
   const formatDueDate = (dueDate: string) => {
     const today = new Date();
@@ -105,7 +108,7 @@ export function TaskCard({
     const todayStr = getTodayStr();
     const tomorrowDate = new Date(today);
     tomorrowDate.setDate(today.getDate() + 1);
-    const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+    const tomorrowStr = localCalendarDate(tomorrowDate);
 
     if (dueDate === todayStr) {
       return 'Today';
@@ -190,11 +193,16 @@ export function TaskCard({
         {task.title}
       </p>
 
-      {(task.dueDate || assigneeLabel || listLabel) && (
+      {(projectLabel || task.dueDate || assigneeLabel || listLabel) && (
         <div
           data-slot="task-meta"
           className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
         >
+          {projectLabel ? (
+            <span data-project={projectLabel} className="text-muted-foreground">
+              {projectLabel}
+            </span>
+          ) : null}
           {task.dueDate && (
             <div
               className={`flex items-center gap-1 ${

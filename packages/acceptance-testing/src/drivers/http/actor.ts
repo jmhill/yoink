@@ -9,6 +9,14 @@ import type {
   Project,
   StagedImport,
   Task,
+  NowOwner,
+  NowQuery,
+  NowNextActionsPage,
+  TaskListPage,
+  WorkListsPage,
+  NowNextActionRow,
+  NowDueRow,
+  NowListRow,
   Token,
   CreateTokenResult,
   PasskeyCredentialInfo,
@@ -885,6 +893,66 @@ export const createHttpActor = (
       _filter: 'today' | 'upcoming' | 'mine' | 'completed'
     ): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeTaskFilterWithoutAllPile', 'http');
+    },
+
+    async openWork(_options?: { mine?: boolean }): Promise<void> {
+      throw new UnsupportedOperationError('openWork', 'http');
+    },
+
+    async openRailNow(): Promise<void> {
+      throw new UnsupportedOperationError('openRailNow', 'http');
+    },
+
+    async toggleNowMine(): Promise<void> {
+      throw new UnsupportedOperationError('toggleNowMine', 'http');
+    },
+
+    async shouldSeeNowReady(_owner: NowOwner): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowReady', 'http');
+    },
+
+    async shouldSeeNowSubcopy(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowSubcopy', 'http');
+    },
+
+    async shouldSeeNowMinePressed(_pressed: boolean): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowMinePressed', 'http');
+    },
+
+    async shouldSeeNowNextActionRows(_rows: NowNextActionRow[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowNextActionRows', 'http');
+    },
+
+    async shouldSeeNowDueRows(_rows: NowDueRow[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowDueRows', 'http');
+    },
+
+    async shouldSeeNowEmpty(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowEmpty', 'http');
+    },
+
+    async openNowListsSheet(): Promise<void> {
+      throw new UnsupportedOperationError('openNowListsSheet', 'http');
+    },
+
+    async shouldSeeNowListRows(_rows: NowListRow[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowListRows', 'http');
+    },
+
+    async pickNowList(_listId: string): Promise<void> {
+      throw new UnsupportedOperationError('pickNowList', 'http');
+    },
+
+    async shouldSeeRailListCount(_listId: string, _count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailListCount', 'http');
+    },
+
+    async shouldSeeRailLabelOnOneLine(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailLabelOnOneLine', 'http');
+    },
+
+    async scrollNowDueClearOfTabBar(): Promise<void> {
+      throw new UnsupportedOperationError('scrollNowDueClearOfTabBar', 'http');
     },
 
     async openToday(): Promise<void> {
@@ -1908,6 +1976,12 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('awaitLiveInboxCaptures', 'http');
     },
 
+    async awaitLiveNowNextActions(
+      _matches: (items: Array<{ title: string; project: string }>) => boolean
+    ): Promise<void> {
+      throw new UnsupportedOperationError('awaitLiveNowNextActions', 'http');
+    },
+
     async hideApp(): Promise<void> {
       throw new UnsupportedOperationError('hideApp', 'http');
     },
@@ -1955,13 +2029,92 @@ export const createHttpActor = (
       return response.json<Task>();
     },
 
-    async listTasks(filter?: TaskFilter): Promise<Task[]> {
-      const query = filter ? `?filter=${filter}` : '';
+    async listTasks(
+      filter?: TaskFilter,
+      viewer?: { timeZone?: string }
+    ): Promise<Task[]> {
+      const params = new URLSearchParams();
+      if (filter) {
+        params.set('filter', filter);
+      }
+      if (viewer?.timeZone) {
+        params.set('timeZone', viewer.timeZone);
+      }
+      const query = params.toString() ? `?${params.toString()}` : '';
       const response = await client.get(`/api/tasks${query}`, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
       return response.json<{ tasks: Task[] }>().tasks;
+    },
+
+    async listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await client.get(`/api/work/next-actions${encoded}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list now next actions: ${response.body}`);
+      }
+      return response.json<NowNextActionsPage>();
+    },
+
+    async listNowDue(query?: NowQuery): Promise<TaskListPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await client.get(`/api/work/due${encoded}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list now due: ${response.body}`);
+      }
+      return response.json<TaskListPage>();
+    },
+
+    async listWorkLists(): Promise<WorkListsPage> {
+      const response = await client.get('/api/work/lists', authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list work lists: ${response.body}`);
+      }
+      return response.json<WorkListsPage>();
     },
 
     async getTask(id: string): Promise<Task> {

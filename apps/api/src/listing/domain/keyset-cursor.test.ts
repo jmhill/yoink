@@ -111,4 +111,21 @@ describe('listed cursor payload', () => {
     const parsed = parseListedCursor({ k: ['a', 'b'] }, 'captures.feed');
     expect(parsed.isErr()).toBe(true);
   });
+
+  it('parses a work next-actions cursor and rejects a due cursor on that view', () => {
+    const parsed = parseListedCursor(
+      { v: 1, view: 'work.next-actions', k: ['2025-01-15', 'alpha', 'id'] },
+      'work.next-actions'
+    );
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      expect(parsed.value.keys).toEqual(['2025-01-15', 'alpha', 'id']);
+    }
+    expect(
+      parseListedCursor(
+        { v: 1, view: 'work.due', k: ['2025-01-15', '2025-01-15T10:00:00.000Z', 'id'] },
+        'work.next-actions'
+      ).isErr()
+    ).toBe(true);
+  });
 });

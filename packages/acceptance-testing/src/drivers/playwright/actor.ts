@@ -11,6 +11,14 @@ import type {
   Project,
   StagedImport,
   Task,
+  NowOwner,
+  NowQuery,
+  NowNextActionsPage,
+  TaskListPage,
+  WorkListsPage,
+  NowNextActionRow,
+  NowDueRow,
+  NowListRow,
   Token,
   CreateTokenResult,
   PasskeyCredentialInfo,
@@ -57,6 +65,7 @@ import {
 import {
   OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
+  waitForFinishedPageAnimations,
   waitForSettledOpenDialog,
   waitForSettledOpenDrawer,
   waitForSettledOpenSelect,
@@ -1287,6 +1296,159 @@ export const createPlaywrightActor = (
         .toEqual(titles);
     },
 
+    async openWork(options?: { mine?: boolean }): Promise<void> {
+      const mine = options?.mine === true;
+      await page.goto(mine ? '/work?mine=true' : '/work');
+      await expect(
+        page.locator(`[data-now-ready][data-now-owner="${mine ? 'me' : 'all'}"]`)
+      ).toBeVisible();
+    },
+
+    async openRailNow(): Promise<void> {
+      await openRailDestination('Now', async () => {
+        await expect(page.locator('[data-now-ready][data-now-owner]')).toBeVisible();
+      });
+    },
+
+    async toggleNowMine(): Promise<void> {
+      const toggle = page.locator('[data-now-mine-toggle]');
+      await expect(toggle).toBeVisible();
+      const pressed = await toggle.getAttribute('aria-pressed');
+      await toggle.click();
+      await expect(
+        page.locator(`[data-now-ready][data-now-owner="${pressed === 'true' ? 'all' : 'me'}"]`)
+      ).toBeVisible();
+    },
+
+    async shouldSeeNowReady(owner: NowOwner): Promise<void> {
+      await expect(page.locator(`[data-now-ready][data-now-owner="${owner}"]`)).toBeVisible();
+    },
+
+    async shouldSeeNowSubcopy(text: string): Promise<void> {
+      await expect(page.getByTestId('now-subcopy')).toHaveText(text);
+    },
+
+    async shouldSeeNowMinePressed(pressed: boolean): Promise<void> {
+      const toggle = page.locator('[data-now-mine-toggle]');
+      await expect(toggle).toHaveAttribute('aria-pressed', pressed ? 'true' : 'false');
+      if (pressed) {
+        await expect(page).toHaveURL(/[?&]mine=true/);
+        return;
+      }
+      await expect(page).not.toHaveURL(/[?&]mine=/);
+    },
+
+    async shouldSeeNowNextActionRows(rows: NowNextActionRow[]): Promise<void> {
+      const section = page.locator('[data-now-section="next-actions"]');
+      await expect.poll(async () => {
+        const cards = section.locator('[data-now-row]');
+        const count = await cards.count();
+        const found: NowNextActionRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const card = cards.nth(index);
+          found.push({
+            title: (await card.locator('[data-task-title]').getAttribute('data-task-title')) ?? '',
+            project: (await card.getAttribute('data-now-row-project')) ?? '',
+            owner: (await card.getAttribute('data-now-row-owner')) ?? '',
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async shouldSeeNowDueRows(rows: NowDueRow[]): Promise<void> {
+      const section = page.locator('[data-now-section="due"]');
+      await expect.poll(async () => {
+        const cards = section.locator('[data-now-row]');
+        const count = await cards.count();
+        const found: NowDueRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const card = cards.nth(index);
+          found.push({
+            title: (await card.locator('[data-task-title]').getAttribute('data-task-title')) ?? '',
+            owner: (await card.getAttribute('data-now-row-owner')) ?? '',
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async shouldSeeNowEmpty(): Promise<void> {
+      await expect(page.getByText('Nothing in Now', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-now-section]')).toHaveCount(0);
+    },
+
+    async openNowListsSheet(): Promise<void> {
+      await waitForFinishedPageAnimations({ page });
+      await page.locator('[data-now-lists-row]').click();
+      await waitForSettledOpenDrawer({ page });
+      await expect(page.locator('[data-now-lists-sheet]')).toBeVisible();
+    },
+
+    async shouldSeeNowListRows(rows: NowListRow[]): Promise<void> {
+      const sheet = page.locator('[data-now-lists-sheet]');
+      await expect.poll(async () => {
+        const items = sheet.locator('[data-now-list]');
+        const count = await items.count();
+        const found: NowListRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const item = items.nth(index);
+          found.push({
+            id: (await item.getAttribute('data-now-list')) ?? '',
+            name: ((await item.locator('span').first().textContent()) ?? '').trim(),
+            count: Number(await item.getAttribute('data-now-list-count')),
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async pickNowList(listId: string): Promise<void> {
+      await page.locator(`[data-now-lists-sheet] [data-now-list="${listId}"]`).click();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeeRailListCount(listId: string, count: number): Promise<void> {
+      await expect(page.locator(`[data-rail-list-count="${listId}"]`)).toHaveText(String(count));
+    },
+
+    async shouldSeeRailLabelOnOneLine(label: string): Promise<void> {
+      const text = page.locator(`[data-rail-label="${label}"] [data-rail-label-text]`).first();
+      await expect(text).toBeVisible();
+      const metrics = await text.evaluate((el) => {
+        const view = el.ownerDocument.defaultView;
+        if (view === null) {
+          throw new Error('expected a window for computed style');
+        }
+        const styles = view.getComputedStyle(el);
+        return {
+          height: el.getBoundingClientRect().height,
+          lineHeight: Number.parseFloat(styles.lineHeight),
+          text: (el.textContent ?? '').replace(/\s+/g, ''),
+        };
+      });
+      expect(metrics.text).toBe(label.replace(/\s+/g, ''));
+      expect(metrics.height).toBeLessThanOrEqual(metrics.lineHeight + 1);
+    },
+
+    async scrollNowDueClearOfTabBar(): Promise<void> {
+      const due = page.locator('[data-now-section="due"]');
+      await expect(due).toBeVisible();
+      await expect.poll(async () => {
+        return due.evaluate((el) => {
+          el.scrollIntoView({ block: 'start', inline: 'nearest' });
+          const tabBar = el.ownerDocument.querySelector('[data-app-mobile-nav]');
+          const tabBox = tabBar === null ? null : tabBar.getBoundingClientRect();
+          const fold =
+            tabBox !== null && tabBox.height > 0
+              ? tabBox.top
+              : el.ownerDocument.documentElement.clientHeight;
+          const dueBox = el.getBoundingClientRect();
+          return dueBox.top >= -8 && dueBox.top + 32 <= fold;
+        });
+      }).toBe(true);
+    },
+
     async openToday(): Promise<void> {
       await tasksPage.goto('today');
       await tasksPage.waitForTasksOrEmpty();
@@ -1543,6 +1705,7 @@ export const createPlaywrightActor = (
         return {
           inbox: order.indexOf('Inbox'),
           family: order.indexOf('Task family'),
+          now: order.indexOf('Now'),
           today: order.indexOf('Today'),
           done: order.indexOf('Done'),
           lists: order.indexOf('Lists'),
@@ -1550,9 +1713,10 @@ export const createPlaywrightActor = (
       }).toEqual({
         inbox: 0,
         family: 1,
-        today: 2,
-        done: 5,
-        lists: 6,
+        now: 2,
+        today: 3,
+        done: 6,
+        lists: 7,
       });
 
       const modeBg = await appRail.inboxMode().evaluate(readComputedBackgroundColor);
@@ -1599,7 +1763,14 @@ export const createPlaywrightActor = (
       }[view];
       const filter = view === 'done' ? 'completed' : view;
       await openRailDestination(label, async () => {
-        await page.waitForURL(new RegExp(`[?&]filter=${filter}`), { timeout: 4_000 });
+        await page.waitForURL((url) => {
+          const parsed = new URL(url);
+          return (
+            parsed.pathname === '/tasks' &&
+            parsed.searchParams.get('filter') === filter &&
+            !parsed.searchParams.has('pile')
+          );
+        }, { timeout: 4_000 });
         await expectActiveFilterTabIfVisible(filter);
         await tasksPage.waitForTasksOrEmpty();
       });
@@ -3080,6 +3251,8 @@ export const createPlaywrightActor = (
           await drawer.last().waitFor({ state: 'hidden' });
         }
       }
+      await page.mouse.move(0, 0);
+      await waitForFinishedPageAnimations({ page });
       await saveWalkthroughPng({
         page,
         fromDir: fileURLToPath(new URL('.', import.meta.url)),
@@ -3096,7 +3269,7 @@ export const createPlaywrightActor = (
         await inboxPage.waitForCapturesOrEmpty();
         return;
       }
-      await tasksPage.waitForTasksOrEmpty();
+      await expect(page.locator('[data-now-ready]')).toBeVisible();
       await expect(appRail.mobileTrigger()).toBeVisible();
     },
 
@@ -3121,7 +3294,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeTasksContentWithoutMobileRail(): Promise<void> {
-      await expect(page.locator('#create-task-title')).toBeVisible();
+      await expect(page.locator('[data-task-surface]')).toBeVisible();
       await expect(appRail.mobileTrigger()).toBeVisible();
       await expect(appRail.mobileTasks()).toBeHidden();
     },
@@ -3535,6 +3708,42 @@ export const createPlaywrightActor = (
       );
     },
 
+    async awaitLiveNowNextActions(
+      matches: (items: Array<{ title: string; project: string }>) => boolean
+    ): Promise<void> {
+      await waitForLiveJsonGet(
+        page,
+        (pathname) => pathname === '/api/work/next-actions',
+        (body) => {
+          if (typeof body !== 'object' || body === null || !('items' in body)) {
+            return false;
+          }
+          const items = (body as { items: unknown }).items;
+          if (!Array.isArray(items)) {
+            return false;
+          }
+          const rows: Array<{ title: string; project: string }> = [];
+          for (const item of items) {
+            if (
+              typeof item !== 'object' ||
+              item === null ||
+              !('task' in item) ||
+              !('project' in item)
+            ) {
+              return false;
+            }
+            const task = (item as { task: { title?: unknown } }).task;
+            const project = (item as { project: { name?: unknown } }).project;
+            if (typeof task?.title !== 'string' || typeof project?.name !== 'string') {
+              return false;
+            }
+            rows.push({ title: task.title, project: project.name });
+          }
+          return matches(rows);
+        }
+      );
+    },
+
     async hideApp(): Promise<void> {
       await page.evaluate(`(() => {
         Object.defineProperty(document, 'visibilityState', {
@@ -3624,12 +3833,13 @@ export const createPlaywrightActor = (
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
-      // Quick-add can pick a list and project, but has no assignee or due-date controls.
-      // Use the session API when those fields are present so setup is exact.
+      // Quick-add on a named pile can pick a list and project, but has no
+      // assignee or due-date controls. Today quick-add stamps today's due
+      // date, so a project-only create must use the session API.
       const usesQuickAdd =
         input.assigneeId === undefined &&
         input.dueDate === undefined &&
-        (input.listId !== undefined || input.projectId !== undefined);
+        input.listId !== undefined;
       if (usesQuickAdd) {
         if (input.listId !== undefined) {
           await tasksPage.gotoNamedPile(input.listId);
@@ -3684,8 +3894,80 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async listTasks(_filter?: TaskFilter): Promise<Task[]> {
+    async listTasks(
+      _filter?: TaskFilter,
+      _viewer?: { timeZone?: string }
+    ): Promise<Task[]> {
       throw new UnsupportedOperationError('listTasks', 'playwright');
+    },
+
+    async listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/work/next-actions${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list now next actions: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async listNowDue(query?: NowQuery): Promise<TaskListPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/work/due${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list now due: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async listWorkLists(): Promise<WorkListsPage> {
+      const response = await page.request.get('/api/work/lists');
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list work lists: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async getTask(id: string): Promise<Task> {
@@ -3766,7 +4048,15 @@ export const createPlaywrightActor = (
       if (!response.ok()) {
         throw new Error(`Failed to read task after edit: ${response.status()}`);
       }
-      return response.json();
+      const updated = (await response.json()) as Task;
+      if (
+        input.assigneeId === undefined &&
+        current.assigneeId &&
+        updated.assigneeId !== current.assigneeId
+      ) {
+        throw new Error('Edit saved but assignee was cleared');
+      }
+      return updated;
     },
 
     async completeTask(id: string): Promise<Task> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTypingTarget, processKeyAction } from './process-keys';
+import { isTypingTarget, processKeyAction, shouldListenForProcessKeys } from './process-keys';
 
 const keyEvent = (key: string, target?: EventTarget | null): KeyboardEvent => {
   const event = new KeyboardEvent('keydown', { key });
@@ -8,6 +8,24 @@ const keyEvent = (key: string, target?: EventTarget | null): KeyboardEvent => {
   }
   return event;
 };
+
+describe('shouldListenForProcessKeys', () => {
+  const active = {
+    desktop: true,
+    hasCurrent: true,
+    sheetOpen: false,
+    pathname: '/process',
+  };
+
+  it('listens only on the desktop Process page', () => {
+    expect(shouldListenForProcessKeys(active)).toBe(true);
+    expect(shouldListenForProcessKeys({ ...active, pathname: '/tasks' })).toBe(false);
+    expect(shouldListenForProcessKeys({ ...active, pathname: '/' })).toBe(false);
+    expect(shouldListenForProcessKeys({ ...active, desktop: false })).toBe(false);
+    expect(shouldListenForProcessKeys({ ...active, hasCurrent: false })).toBe(false);
+    expect(shouldListenForProcessKeys({ ...active, sheetOpen: true })).toBe(false);
+  });
+});
 
 describe('processKeyAction', () => {
   it('maps T P S Z, Delete, and Backspace', () => {

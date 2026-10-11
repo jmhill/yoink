@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useRouterState } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
@@ -12,7 +12,7 @@ import { ProcessProjectSheet } from '@/components/process-project-sheet';
 import { PromoteSheet } from '@/components/promote-sheet';
 import { isBlockingQueryFailure } from '@/lib/live-query';
 import { processEmptySnoozedCopy, processQueue, processQueueSubcopy } from '@/lib/process-queue';
-import { processKeyAction } from '@/lib/process-keys';
+import { processKeyAction, shouldListenForProcessKeys } from '@/lib/process-keys';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
 import { useInboxTriage } from '@/lib/use-inbox-triage';
 import { toast } from 'sonner';
@@ -43,6 +43,7 @@ function ProcessPage() {
     handleConfirmProject,
   } = useInboxTriage();
   const desktop = useDesktopLayout();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const previousCurrentId = useRef<string | null>(null);
   const keyLock = useRef(false);
@@ -110,7 +111,17 @@ function ProcessPage() {
   }, [current?.id, inboxIdKey, wasActed]);
 
   useEffect(() => {
-    if (!desktop || !current || sheetOpen) {
+    if (
+      !shouldListenForProcessKeys({
+        desktop,
+        hasCurrent: current !== null,
+        sheetOpen,
+        pathname,
+      })
+    ) {
+      return;
+    }
+    if (!current) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -148,6 +159,7 @@ function ProcessPage() {
     desktop,
     current,
     sheetOpen,
+    pathname,
     handleProcessToTask,
     handleOpenProjectSheet,
     handleTrash,

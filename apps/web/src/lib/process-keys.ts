@@ -24,6 +24,20 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+export function shouldListenForProcessKeys(input: {
+  desktop: boolean;
+  hasCurrent: boolean;
+  sheetOpen: boolean;
+  pathname: string;
+}): boolean {
+  return (
+    input.desktop &&
+    input.hasCurrent &&
+    !input.sheetOpen &&
+    input.pathname === '/process'
+  );
+}
+
 export function processKeyAction(event: KeyboardEvent): ProcessKeyAction | null {
   if (event.repeat) {
     return null;

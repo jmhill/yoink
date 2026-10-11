@@ -62,7 +62,8 @@ export function TaskCard({
   };
 
   const handleRowClick = () => {
-    if (reorderMode || isLoading || !onEdit) {
+    // Board-wide isLoading still disables complete and swipe; edit stays per-row.
+    if (reorderMode || !onEdit) {
       return;
     }
     if (swipeStartedRef.current) {

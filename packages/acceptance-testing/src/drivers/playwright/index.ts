@@ -116,11 +116,9 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
       
-      // Fill email, display name, and device name
+      // Fill email and device name. Display name is set through admin after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
-      await signupPage.enterName(displayNameFromEmail(email));
-      debug('Filled name');
       await signupPage.enterDeviceName('Test Device');
       debug('Filled device name');
       
@@ -184,11 +182,14 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw e;
       }
       
-      debug(`Session validated, user: ${(sessionResponse as { user: { id: string } }).user.id}`);
+      const userId = (sessionResponse as { user: { id: string } }).user.id;
+      debug(`Session validated, user: ${userId}`);
+      await admin.updateUser(userId, { name: displayNameFromEmail(email) });
+      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
-        userId: (sessionResponse as { user: { id: string } }).user.id,
+        userId,
         organizationId: orgId,
       });
     },
@@ -242,11 +243,9 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
 
-      // Fill email, display name, and device name
+      // Fill email and device name. Display name is set through admin after signup.
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
-      await signupPage.enterName(displayNameFromEmail(email));
-      debug('Filled name');
       await signupPage.enterDeviceName('Test Device');
       debug('Filled device name');
 
@@ -301,6 +300,8 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
       const typedSession = sessionResponse as { user: { id: string }; organizationId: string };
       debug(`Session validated, user: ${typedSession.user.id}, org: ${typedSession.organizationId}`);
+      await admin.updateUser(typedSession.user.id, { name: displayNameFromEmail(email) });
+      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,

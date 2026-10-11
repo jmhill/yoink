@@ -115,10 +115,10 @@ export const registerSignupRoutes = async (
       },
 
       verify: async ({ body, reply }) => {
-        const { challenge, code, email, credential, credentialName, name } = body;
+        const { challenge, code, email, credential, credentialName } = body;
 
         // First complete the signup (creates user, org, memberships)
-        const signupResult = await signupService.completeSignup({ code, email, name });
+        const signupResult = await signupService.completeSignup({ code, email });
 
         return signupResult.match(
           async ({ user, personalOrganization, invitedOrganization }) => {

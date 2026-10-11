@@ -19,7 +19,12 @@ export const createFakeUserStore = (
       if (options.shouldFailOnSave) {
         return errAsync(userStorageError('Save failed'));
       }
-      users.push(user);
+      const index = users.findIndex((existing) => existing.id === user.id);
+      if (index >= 0) {
+        users[index] = user;
+      } else {
+        users.push(user);
+      }
       return okAsync(undefined);
     },
 

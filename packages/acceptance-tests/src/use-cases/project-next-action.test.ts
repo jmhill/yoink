@@ -338,7 +338,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'waiting_unknown',
         });
-        await alice.shouldSeeHistoryPlaceholder();
+        await alice.shouldSeeHistorySection();
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'history_placeholder',

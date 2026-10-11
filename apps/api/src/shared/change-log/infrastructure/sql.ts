@@ -18,6 +18,7 @@ export type SqlQuery = {
  */
 export const VISIBLE_TIMELINE_SQL = `
   hidden = 0
+  AND subject_type IN ('task', 'project')
   AND CASE
     WHEN json_valid(payload_json) = 0 THEN 1
     WHEN kind = 'TaskUpdated'

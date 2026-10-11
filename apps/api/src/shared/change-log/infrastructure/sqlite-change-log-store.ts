@@ -1,4 +1,4 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { err, errAsync, ok, okAsync, ResultAsync, type Result } from 'neverthrow';
 import { z } from 'zod';
 import type { Database } from '../../../database/types.js';
 import { parseChangeLogRecord } from '../domain/parse-record.js';
@@ -43,21 +43,18 @@ const changeLogRowSchema = z.object({
   seq: z.coerce.number().int(),
 });
 
-/** Typed stand-in when a row's seq cannot be read. Not a silent default. */
-export const UNREADABLE_CHANGE_LOG_SEQ = Number.NaN;
-
-const readSeq = (raw: Record<string, unknown>): number => {
+const readSeq = (raw: Record<string, unknown>): Result<number, ChangeLogStorageError> => {
   const value = raw.seq;
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
+    return ok(value);
   }
   if (typeof value === 'string' && value.length > 0) {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
-      return parsed;
+      return ok(parsed);
     }
   }
-  return UNREADABLE_CHANGE_LOG_SEQ;
+  return err(storageError('Unreadable change-log seq', { seq: raw.seq }));
 };
 
 const readSubjectType = (
@@ -101,17 +98,23 @@ const rowToUnknown = (raw: unknown): unknown => {
 const actorKindOf = (value: string | null): 'user' | 'bot' | null =>
   value === 'user' || value === 'bot' ? value : null;
 
-export const rowToHistoryItem = (raw: Record<string, unknown>): HistoryPageItem => {
+export const rowToHistoryItem = (
+  raw: Record<string, unknown>
+): Result<HistoryPageItem, ChangeLogStorageError> => {
   const row = changeLogRowSchema.safeParse(raw);
   const occurredAt = row.success ? row.data.occurred_at : String(raw.occurred_at ?? '');
-  const seq = row.success ? row.data.seq : readSeq(raw);
+  const seqResult = row.success ? ok(row.data.seq) : readSeq(raw);
+  if (seqResult.isErr()) {
+    return err(seqResult.error);
+  }
+  const seq = seqResult.value;
   const parsed = parseChangeLogRecord(rowToUnknown(raw));
   if (parsed.isOk()) {
-    return { occurredAt, seq, record: parsed.value };
+    return ok({ occurredAt, seq, record: parsed.value });
   }
   const rawSubject = row.success ? row.data.subject_type : String(raw.subject_type ?? '');
   const subjectType = readSubjectType(rawSubject);
-  return {
+  return ok({
     occurredAt,
     seq,
     record: {
@@ -124,7 +127,21 @@ export const rowToHistoryItem = (raw: Record<string, unknown>): HistoryPageItem 
       subjectType,
       subjectId: row.success ? row.data.subject_id : String(raw.subject_id ?? ''),
     },
-  };
+  });
+};
+
+const mapHistoryRows = (
+  page: KeysetRows<Record<string, unknown>>
+): ResultAsync<KeysetRows<HistoryPageItem>, ChangeLogStorageError> => {
+  const rows: HistoryPageItem[] = [];
+  for (const raw of page.rows) {
+    const mapped = rowToHistoryItem(raw);
+    if (mapped.isErr()) {
+      return errAsync(mapped.error);
+    }
+    rows.push(mapped.value);
+  }
+  return okAsync({ ...page, rows });
 };
 
 export type PageVisibleHistory = (options: {
@@ -171,9 +188,9 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
       direction: projectHistoryDirection,
       fetchLimit: options.fetchLimit,
       seek: options.seek,
-      mapRow: rowToHistoryItem,
+      mapRow: (row) => row,
       errorMessage: 'Failed to load project history',
-    }),
+    }).andThen(mapHistoryRows),
 
   pageVisibleForTask: (options) =>
     pageSqlite({
@@ -191,9 +208,9 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
       direction: taskHistoryDirection,
       fetchLimit: options.fetchLimit,
       seek: options.seek,
-      mapRow: rowToHistoryItem,
+      mapRow: (row) => row,
       errorMessage: 'Failed to load task history',
-    }),
+    }).andThen(mapHistoryRows),
 
   findBySubject: (subjectType, subjectId) =>
     ResultAsync.fromPromise(

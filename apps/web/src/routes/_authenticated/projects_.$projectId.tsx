@@ -267,16 +267,7 @@ function ProjectPage() {
     return member ? memberLabel(member) : task.assigneeId;
   };
 
-  const finishedByName = (task: Task): string => {
-    if (!task.completedBy) {
-      return 'Unknown';
-    }
-    const member = members.find((item) => item.userId === task.completedBy);
-    if (!member) {
-      return 'Unknown';
-    }
-    return member.name ?? member.email;
-  };
+  const finishedByName = (task: Task): string => task.completedByName ?? 'Unknown';
 
   const handleSaveEdit = (
     taskId: string,

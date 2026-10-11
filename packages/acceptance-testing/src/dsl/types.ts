@@ -101,6 +101,7 @@ export type Task = {
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
   completedBy?: string | null;
+  completedByName?: string;
 };
 
 export type Organization = {

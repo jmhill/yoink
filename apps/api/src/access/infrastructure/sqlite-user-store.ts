@@ -46,6 +46,10 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
           sql: `
             INSERT INTO users (id, email, name, kind, created_at)
             VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              email = excluded.email,
+              name = excluded.name,
+              kind = excluded.kind
           `,
           args: [user.id, user.email, user.name ?? null, user.kind ?? 'human', user.createdAt],
         }),

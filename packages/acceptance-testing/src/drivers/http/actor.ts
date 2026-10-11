@@ -1105,8 +1105,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeSingleStatusControl', 'http');
     },
 
-    async shouldSeeHistoryPlaceholder(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeHistoryPlaceholder', 'http');
+    async shouldSeeHistorySection(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistorySection', 'http');
     },
 
     async expandProjectHistory(): Promise<void> {

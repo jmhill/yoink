@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { okAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
@@ -181,6 +182,22 @@ describe('handleListTasks', () => {
     expect(page2.value.items.map((task) => task.id)).toEqual(['done-2', 'done-3']);
     expect(page2.value.hasMore).toBe(false);
     expect(page2.value.total).toBe(2);
+  });
+
+  it('returns STORAGE_ERROR when a completed row has no completion date', async () => {
+    const broken = task({
+      id: 'done-broken',
+      title: 'Broken done',
+      completedAt: undefined,
+    });
+    const result = await handleListTasks(
+      { organizationId: 'org-123', filter: 'completed' },
+      { list: () => okAsync({ rows: [broken], total: 1 }), today }
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('STORAGE_ERROR');
+    }
   });
 
   it('returns InvalidCursor for a malformed cursor', async () => {

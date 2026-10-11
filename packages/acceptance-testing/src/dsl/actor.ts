@@ -933,7 +933,7 @@ export type BrowserActorOperations = {
   /**
    * Scroll the History row into view on the project page.
    */
-  shouldSeeHistoryPlaceholder(): Promise<void>;
+  shouldSeeHistorySection(): Promise<void>;
   expandProjectHistory(): Promise<void>;
   expandProjectFinished(): Promise<void>;
   clickProjectHistoryMore(): Promise<void>;

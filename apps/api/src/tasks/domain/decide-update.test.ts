@@ -105,6 +105,28 @@ describe('decideUpdateTask', () => {
     }
   });
 
+  it('is a noop when saving the same title again', () => {
+    const result = decideUpdateTask({
+      current,
+      command: {
+        id: current.id,
+        organizationId: current.organizationId,
+        title: current.title,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      list: null,
+      project: null,
+      assigneeInOrganization: null,
+      nextOpenOrder: 0,
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'Noop' });
+    }
+  });
+
   it('is a noop when putting the task on the same list again', () => {
     const onGroceries: Task = { ...current, listId: groceries.id };
 

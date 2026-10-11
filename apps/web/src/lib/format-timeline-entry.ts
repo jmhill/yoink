@@ -112,8 +112,21 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
       return `${who} changed something · ${stamp}`;
     case 'TaskCreated':
       return `${who} added ${quoted(title)} · ${stamp}`;
-    case 'TaskUpdated':
-      return `${who} changed ${joinChangedFields(taskUpdatedFieldLabels(entry.details))} · ${stamp}`;
+    case 'TaskUpdated': {
+      const otherFields = taskUpdatedFieldLabels({
+        dueDate: entry.details.dueDate,
+        assigneeId: entry.details.assigneeId,
+        listId: entry.details.listId,
+      });
+      if (entry.details.title !== undefined) {
+        const renamed = `${who} renamed ${quoted(entry.details.previousTitle ?? null)} to ${quoted(entry.details.title)}`;
+        if (otherFields.length === 0) {
+          return `${renamed} · ${stamp}`;
+        }
+        return `${renamed} and changed ${joinChangedFields(otherFields)} · ${stamp}`;
+      }
+      return `${who} changed ${joinChangedFields(otherFields)} on ${quoted(title)} · ${stamp}`;
+    }
     case 'TaskCompleted':
       return `${who} completed ${quoted(title)} · ${stamp}`;
     case 'TaskUncompleted':
@@ -141,7 +154,7 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
     case 'ProjectImported': {
       const count = entry.details.taskCount;
       const tasks = count === 1 ? '1 task' : `${count} tasks`;
-      return `${who} · Moved in · ${tasks}`;
+      return `${who} · Moved in · ${tasks} · ${stamp}`;
     }
   }
 };

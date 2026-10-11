@@ -38,6 +38,7 @@ export const createFakeChangeLogStore = (
       const visible = records
         .filter((record) => record.organizationId === options.organizationId)
         .filter((record) => record.projectId === options.projectId)
+        .filter((record) => record.subjectType === 'task' || record.subjectType === 'project')
         .filter((record) => !isHiddenChangeLogKind(record.kind))
         .filter((record) =>
           record.kind === 'TaskUpdated' ? taskUpdatedShowsOnTimeline(record.payload) : true

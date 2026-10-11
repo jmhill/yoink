@@ -130,6 +130,13 @@ describe('changeLogRecordsFromTaskEvent', () => {
 
     expect(records[0]?.actorUserId).toBe('user-justin');
     expect(records[0]?.actorKind).toBe('user');
+    expect(records[0]?.kind).toBe('TaskUpdated');
+    if (records[0]?.kind === 'TaskUpdated') {
+      expect(records[0].payload).toMatchObject({
+        title: 'Oat milk',
+        previousTitle: 'Eggs',
+      });
+    }
   });
 
   it('attributes a bot actor as bot kind', () => {

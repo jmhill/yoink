@@ -24,37 +24,62 @@ describe('formatTimelineLine', () => {
     expect(line.startsWith("Lane completed 'Call Trident' ·")).toBe(true);
   });
 
-  it('names each task field that changed', () => {
-    expect(
-      formatTimelineLine(
-        entry({
-          kind: 'TaskUpdated',
-          details: { kind: 'TaskUpdated', title: 'New' },
-        })
-      )
-    ).toContain('Lane changed title');
-    expect(
-      formatTimelineLine(
-        entry({
-          kind: 'TaskUpdated',
-          details: { kind: 'TaskUpdated', title: 'New', dueDate: '2026-10-20' },
-        })
-      )
-    ).toContain('Lane changed title and due date');
+  it('names a title-only edit as a rename from the payload', () => {
     expect(
       formatTimelineLine(
         entry({
           kind: 'TaskUpdated',
           details: {
             kind: 'TaskUpdated',
-            title: 'New',
+            title: 'Pick paint colour',
+            previousTitle: 'Paint samples',
+          },
+          subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
+        })
+      )
+    ).toContain("Lane renamed 'Paint samples' to 'Pick paint colour'");
+  });
+
+  it('adds other fields after a rename', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskUpdated',
+          details: {
+            kind: 'TaskUpdated',
+            title: 'Pick paint colour',
+            previousTitle: 'Paint samples',
+            dueDate: '2026-10-20',
+          },
+          subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
+        })
+      )
+    ).toContain("Lane renamed 'Paint samples' to 'Pick paint colour' and changed due date");
+  });
+
+  it('names other edits on the current title', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskUpdated',
+          details: { kind: 'TaskUpdated', dueDate: '2026-10-20' },
+          subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
+        })
+      )
+    ).toContain("Lane changed due date on 'Pick paint colour'");
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskUpdated',
+          details: {
+            kind: 'TaskUpdated',
             dueDate: null,
             assigneeId: 'u2',
             listId: 'l1',
           },
         })
       )
-    ).toContain('Lane changed title, due date, owner and list');
+    ).toContain("Lane changed due date, owner and list on 'Call Trident'");
     expect(
       formatTimelineLine(
         entry({
@@ -62,7 +87,7 @@ describe('formatTimelineLine', () => {
           details: { kind: 'TaskUpdated', assigneeId: null, listId: null },
         })
       )
-    ).toContain('Lane changed owner and list');
+    ).toContain("Lane changed owner and list on 'Call Trident'");
   });
 
   it('names each project field that changed', () => {
@@ -125,7 +150,7 @@ describe('formatTimelineLine', () => {
         subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
       })
     );
-    expect(two).toBe('Lane · Moved in · 2 tasks');
+    expect(two.startsWith('Lane · Moved in · 2 tasks ·')).toBe(true);
     const one = formatTimelineLine(
       entry({
         kind: 'ProjectImported',
@@ -133,7 +158,7 @@ describe('formatTimelineLine', () => {
         subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
       })
     );
-    expect(one).toBe('Lane · Moved in · 1 task');
+    expect(one.startsWith('Lane · Moved in · 1 task ·')).toBe(true);
   });
 });
 

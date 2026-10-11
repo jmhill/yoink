@@ -152,6 +152,28 @@ describe('AdminService', () => {
       expect(result.value.email).toMatch(/^agent-.+@yoink\.invalid$/);
     });
 
+    it('sets a display name on an existing user', async () => {
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+
+      const created = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'alice@example.com',
+      });
+      expect(created.isOk()).toBe(true);
+      if (!created.isOk()) return;
+      expect(created.value.name).toBeUndefined();
+
+      const updated = await service.updateUser(created.value.id, 'Alice');
+      expect(updated.isOk()).toBe(true);
+      if (!updated.isOk()) return;
+      expect(updated.value.name).toBe('Alice');
+
+      const loaded = await service.getUser(created.value.id);
+      expect(loaded.isOk() && loaded.value?.name).toBe('Alice');
+    });
+
     it('creates an admin when role is admin', async () => {
       const orgResult = await service.createOrganization('Test Org');
       expect(orgResult.isOk()).toBe(true);

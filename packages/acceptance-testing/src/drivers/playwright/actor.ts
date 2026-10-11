@@ -1893,7 +1893,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-project-waiting-fields]')).toHaveCount(0);
     },
 
-    async shouldSeeHistoryPlaceholder(): Promise<void> {
+    async shouldSeeHistorySection(): Promise<void> {
       const row = page.locator('[data-project-history]');
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
@@ -1907,6 +1907,13 @@ export const createPlaywrightActor = (
         await toggle.click();
       }
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.evaluate(async (el) => {
+        await Promise.all(
+          el
+            .getAnimations({ subtree: true })
+            .map((animation: { finished: Promise<unknown> }) => animation.finished.catch(() => undefined))
+        );
+      });
     },
 
     async expandProjectFinished(): Promise<void> {
@@ -1917,6 +1924,13 @@ export const createPlaywrightActor = (
         await toggle.click();
       }
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await toggle.evaluate(async (el) => {
+        await Promise.all(
+          el
+            .getAnimations({ subtree: true })
+            .map((animation: { finished: Promise<unknown> }) => animation.finished.catch(() => undefined))
+        );
+      });
     },
 
     async clickProjectHistoryMore(): Promise<void> {
@@ -1944,11 +1958,21 @@ export const createPlaywrightActor = (
       const line = page.locator(
         `[data-project-history-entry][data-history-kind="${input.kind}"][data-history-actor="${input.actor}"]`
       ).filter({ hasText: input.text });
-      await line.scrollIntoViewIfNeeded();
       await expect(line.first()).toBeVisible();
       if (input.deleted) {
         await expect(line.first()).toHaveAttribute('data-history-deleted', 'true');
       }
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await line.first().evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+      await line.first().evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
     },
 
     async shouldSeeHistoryEntryCount(count: number): Promise<void> {
@@ -1957,8 +1981,16 @@ export const createPlaywrightActor = (
 
     async shouldSeeHistoryMore(): Promise<void> {
       const more = page.locator('[data-project-history-more]');
-      await more.scrollIntoViewIfNeeded();
       await expect(more).toBeVisible();
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await more.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
     },
 
     async shouldSeeHistoryStart(): Promise<void> {
@@ -1974,15 +2006,11 @@ export const createPlaywrightActor = (
 
     async shouldSeeHistoryLinesInOrder(texts: string[]): Promise<void> {
       const lines = page.locator('[data-project-history-entry]');
-      await expect(lines).not.toHaveCount(0);
+      await expect(lines.first()).toBeVisible();
       const found = await lines.allTextContents();
-      let searchFrom = 0;
-      for (const text of texts) {
-        const index = found.findIndex(
-          (line, lineIndex) => lineIndex >= searchFrom && line.includes(text)
-        );
-        expect(index).toBeGreaterThanOrEqual(0);
-        searchFrom = index + 1;
+      expect(found.length).toBeGreaterThanOrEqual(texts.length);
+      for (const [index, text] of texts.entries()) {
+        expect(found[index], `history line ${index}`).toContain(text);
       }
     },
 
@@ -2017,6 +2045,11 @@ export const createPlaywrightActor = (
       );
       await complete.click();
       await responsePromise;
+      const openRow = page.locator(`[data-project-open-tasks] [data-task-title="${title}"]`);
+      await openRow.evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+      await expect(openRow).toBeVisible();
     },
 
     async shouldSeeProjectOnRail(name: string): Promise<void> {

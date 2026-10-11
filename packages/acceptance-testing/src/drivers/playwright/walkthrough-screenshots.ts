@@ -202,7 +202,11 @@ export const waitForSettledOpenDrawer = async (input: {
 };
 
 /** Hide toasts for the capture only — no app code, no production hook. */
-const HIDE_TOASTS_STYLE = '[data-sonner-toaster]{display:none !important}';
+const HIDE_TOASTS_STYLE = [
+  '[data-sonner-toaster]{display:none !important}',
+  '[data-project-history] button svg,[data-project-finished] button svg{transition:none !important}',
+  '[data-screenshot-focus]{outline:2px solid #2563eb;background:#dbeafe}',
+].join('');
 
 export const saveWalkthroughPng = async (input: {
   page: {

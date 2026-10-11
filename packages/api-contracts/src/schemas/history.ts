@@ -37,6 +37,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('TaskUpdated'),
     title: z.string().optional(),
+    previousTitle: z.string().optional(),
     dueDate: z.string().nullable().optional(),
     assigneeId: z.string().nullable().optional(),
     listId: z.string().nullable().optional(),

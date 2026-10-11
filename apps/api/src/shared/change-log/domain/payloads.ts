@@ -18,6 +18,7 @@ export const taskCreatedPayloadV1Schema = z.object({
 
 export const taskUpdatedPayloadV1Schema = z.object({
   title: z.string().optional(),
+  previousTitle: z.string().optional(),
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
   listId: z.string().nullable().optional(),

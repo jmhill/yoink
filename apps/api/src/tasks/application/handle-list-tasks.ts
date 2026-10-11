@@ -1,12 +1,13 @@
-import type { ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { ListTasksQuery } from '../domain/task-commands.js';
-import type { ListTasksError } from '../domain/task-errors.js';
+import { storageError, type ListTasksError } from '../domain/task-errors.js';
 import { listKindForTaskFilter, resolveListLimit } from '../../listing/domain/list-kind.js';
 import {
   asFinishedTask,
   completedTaskCursor,
   taskBoardCursor,
+  type FinishedTask,
 } from '../../listing/domain/list-keys.js';
 import { runListedQuery } from '../../listing/application/run-listed-query.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
@@ -38,13 +39,19 @@ export const handleListTasks = (
             seek,
             assigneeId: query.callerId,
           })
-          .map((page) => ({
-            ...page,
-            rows: page.rows.flatMap((task) => {
+          .andThen((page) => {
+            const rows: FinishedTask[] = [];
+            for (const task of page.rows) {
               const finished = asFinishedTask(task);
-              return finished ? [finished] : [];
-            }),
-          })),
+              if (!finished) {
+                return errAsync(
+                  storageError('Completed task is missing completedAt', { taskId: task.id })
+                );
+              }
+              rows.push(finished);
+            }
+            return okAsync({ ...page, rows });
+          }),
     });
   }
   return runListedQuery({

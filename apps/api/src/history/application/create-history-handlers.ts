@@ -40,6 +40,7 @@ export const createHistoryHandlers = (deps: HistoryHandlerDeps) => ({
     handleListFinishedTasksOnProject(query, {
       load: deps.loadProject,
       pageFinishedTasksInProject: deps.pageFinishedTasksInProject,
+      loadLookups: deps.loadLookups,
     }),
 });
 

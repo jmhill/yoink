@@ -302,7 +302,6 @@ const verifySignup = async (options: {
   email: string;
   credential: RegistrationResponseJSON;
   credentialName?: string;
-  name?: string;
 }): Promise<ApiResponse<SignupVerifyResponse>> => {
   const response = await fetch('/api/auth/signup/verify', {
     method: 'POST',
@@ -333,9 +332,8 @@ export const signupWithPasskey = async (options: {
   code: string;
   email: string;
   deviceName?: string;
-  name?: string;
 }): Promise<ApiResponse<SignupVerifyResponse>> => {
-  const { code, email, deviceName, name } = options;
+  const { code, email, deviceName } = options;
 
   // Step 1: Get signup options
   const optionsResult = await getSignupOptions({ code, email });
@@ -362,7 +360,6 @@ export const signupWithPasskey = async (options: {
     email,
     credential,
     credentialName: deviceName,
-    name,
   });
 };
 

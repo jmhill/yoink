@@ -26,6 +26,11 @@ export const TaskSchema = z.object({
   lastChangedBy: z.string().uuid().nullable(),
   /** Set on complete; cleared on uncomplete. */
   completedBy: z.string().uuid().nullable(),
+  /**
+   * Resolved from users.name ?? email on finished-task reads.
+   * Survives a removed member or revoked bot.
+   */
+  completedByName: z.string().optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;

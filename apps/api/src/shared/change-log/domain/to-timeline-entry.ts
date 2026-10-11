@@ -35,6 +35,9 @@ const taskUpdatedDetails = (payload: TaskUpdatedPayloadV1): TimelineDetails | nu
   if (payload.title !== undefined) {
     details.title = payload.title;
   }
+  if (payload.previousTitle !== undefined) {
+    details.previousTitle = payload.previousTitle;
+  }
   if (payload.dueDate !== undefined) {
     details.dueDate = payload.dueDate;
   }

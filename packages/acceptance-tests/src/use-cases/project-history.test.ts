@@ -260,8 +260,8 @@ usingDrivers(['http'] as const, (ctx) => {
             kind: 'ProjectStatusChanged',
             from: 'waiting',
             to: 'done',
-            waitingOn: 'Contractor',
-            waitingSince: '2026-10-01',
+            waitingOn: null,
+            waitingSince: null,
           },
         },
         {

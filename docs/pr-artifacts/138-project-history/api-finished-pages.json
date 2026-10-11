@@ -1,74 +1,78 @@
 {
   "firstPageLimit2": {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDoyNTo1OC44NzlaIiwiYTU4MjUwMDQtZTdhOS00ZDczLWE3NDctY2UzMTBlZGZkNzAyIl19",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDo1OToxNC41ODZaIiwiMjhmNWVlYzItZmM3Yi00MWNjLWExYTctMzQ5MThkZGM2OTMzIl19",
     "total": 3,
     "tasks": [
       {
-        "id": "403b017e-8ea5-4b89-ab2b-6abff4274403",
-        "organizationId": "fd63e054-db2f-4083-8386-94447be26e76",
-        "createdById": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
+        "id": "8eddcae6-5099-4561-9078-e3dc5d54fce4",
+        "organizationId": "6116dd5c-97fd-4616-b105-59cb7fd675d6",
+        "createdById": "6576d192-c126-4fe9-b554-343fa39f6496",
         "title": "Finish later A",
-        "completedAt": "2026-10-11T04:25:58.945Z",
-        "createdAt": "2026-10-11T04:25:58.752Z",
-        "projectId": "6a04c259-76a2-4d76-a882-f34c7d6d1120",
+        "completedAt": "2026-10-11T04:59:14.654Z",
+        "createdAt": "2026-10-11T04:59:14.433Z",
+        "projectId": "0dab03f9-1890-46b0-9bb8-d1cce571fc90",
         "openOrder": 2,
-        "lastChangedAt": "2026-10-11T04:25:58.945Z",
-        "lastChangedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
-        "completedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef"
+        "lastChangedAt": "2026-10-11T04:59:14.654Z",
+        "lastChangedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedByName": "Alice"
       },
       {
-        "id": "a5825004-e7a9-4d73-a747-ce310edfd702",
-        "organizationId": "fd63e054-db2f-4083-8386-94447be26e76",
-        "createdById": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
+        "id": "28f5eec2-fc7b-41cc-a1a7-34918ddc6933",
+        "organizationId": "6116dd5c-97fd-4616-b105-59cb7fd675d6",
+        "createdById": "6576d192-c126-4fe9-b554-343fa39f6496",
         "title": "Finish later B",
-        "completedAt": "2026-10-11T04:25:58.879Z",
-        "createdAt": "2026-10-11T04:25:58.816Z",
-        "projectId": "6a04c259-76a2-4d76-a882-f34c7d6d1120",
+        "completedAt": "2026-10-11T04:59:14.586Z",
+        "createdAt": "2026-10-11T04:59:14.510Z",
+        "projectId": "0dab03f9-1890-46b0-9bb8-d1cce571fc90",
         "openOrder": 3,
-        "lastChangedAt": "2026-10-11T04:25:58.879Z",
-        "lastChangedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
-        "completedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef"
+        "lastChangedAt": "2026-10-11T04:59:14.586Z",
+        "lastChangedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedByName": "Alice"
       }
     ]
   },
   "page1Limit1": {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDoyNTo1OC45NDVaIiwiNDAzYjAxN2UtOGVhNS00Yjg5LWFiMmItNmFiZmY0Mjc0NDAzIl19",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDo1OToxNC42NTRaIiwiOGVkZGNhZTYtNTA5OS00NTYxLTkwNzgtZTNkYzVkNTRmY2U0Il19",
     "total": 3,
     "tasks": [
       {
-        "id": "403b017e-8ea5-4b89-ab2b-6abff4274403",
-        "organizationId": "fd63e054-db2f-4083-8386-94447be26e76",
-        "createdById": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
+        "id": "8eddcae6-5099-4561-9078-e3dc5d54fce4",
+        "organizationId": "6116dd5c-97fd-4616-b105-59cb7fd675d6",
+        "createdById": "6576d192-c126-4fe9-b554-343fa39f6496",
         "title": "Finish later A",
-        "completedAt": "2026-10-11T04:25:58.945Z",
-        "createdAt": "2026-10-11T04:25:58.752Z",
-        "projectId": "6a04c259-76a2-4d76-a882-f34c7d6d1120",
+        "completedAt": "2026-10-11T04:59:14.654Z",
+        "createdAt": "2026-10-11T04:59:14.433Z",
+        "projectId": "0dab03f9-1890-46b0-9bb8-d1cce571fc90",
         "openOrder": 2,
-        "lastChangedAt": "2026-10-11T04:25:58.945Z",
-        "lastChangedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
-        "completedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef"
+        "lastChangedAt": "2026-10-11T04:59:14.654Z",
+        "lastChangedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedByName": "Alice"
       }
     ]
   },
   "page2Limit1": {
     "hasMore": true,
-    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDoyNTo1OC44NzlaIiwiYTU4MjUwMDQtZTdhOS00ZDczLWE3NDctY2UzMTBlZGZkNzAyIl19",
+    "nextCursor": "eyJ2IjoxLCJ2aWV3IjoidGFza3MucHJvamVjdC5maW5pc2hlZCIsImsiOlsiMjAyNi0xMC0xMVQwNDo1OToxNC41ODZaIiwiMjhmNWVlYzItZmM3Yi00MWNjLWExYTctMzQ5MThkZGM2OTMzIl19",
     "total": 3,
     "tasks": [
       {
-        "id": "a5825004-e7a9-4d73-a747-ce310edfd702",
-        "organizationId": "fd63e054-db2f-4083-8386-94447be26e76",
-        "createdById": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
+        "id": "28f5eec2-fc7b-41cc-a1a7-34918ddc6933",
+        "organizationId": "6116dd5c-97fd-4616-b105-59cb7fd675d6",
+        "createdById": "6576d192-c126-4fe9-b554-343fa39f6496",
         "title": "Finish later B",
-        "completedAt": "2026-10-11T04:25:58.879Z",
-        "createdAt": "2026-10-11T04:25:58.816Z",
-        "projectId": "6a04c259-76a2-4d76-a882-f34c7d6d1120",
+        "completedAt": "2026-10-11T04:59:14.586Z",
+        "createdAt": "2026-10-11T04:59:14.510Z",
+        "projectId": "0dab03f9-1890-46b0-9bb8-d1cce571fc90",
         "openOrder": 3,
-        "lastChangedAt": "2026-10-11T04:25:58.879Z",
-        "lastChangedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef",
-        "completedBy": "1aa454b0-128e-4f2f-ba45-c1c6d51f4eef"
+        "lastChangedAt": "2026-10-11T04:59:14.586Z",
+        "lastChangedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedBy": "6576d192-c126-4fe9-b554-343fa39f6496",
+        "completedByName": "Alice"
       }
     ]
   }

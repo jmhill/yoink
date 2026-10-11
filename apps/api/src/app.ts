@@ -32,7 +32,7 @@ import type { HistoryHandlers } from './history/application/create-history-handl
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
 import type { WorkHandlers } from './work/application/create-work-handlers.js';
-import type { CaptureProcessingService } from './processing/domain/processing-service.js';
+import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
 import type {
   AdminService,

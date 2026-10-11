@@ -2,6 +2,7 @@ import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { CaptureSchema, CaptureStatusSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';
 import { CaptureListPageSchema, ListPageQuerySchema } from '../schemas/list-page.js';
+import { CreateProjectSchema, ProjectSchema } from '../schemas/project.js';
 import { TaskSchema } from '../schemas/task.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -26,6 +27,21 @@ export const ProcessCaptureBodySchema = ProcessCaptureToTaskSchema;
 // Future: z.discriminatedUnion('type', [ProcessCaptureToTaskSchema, ProcessCaptureToNoteSchema])
 
 export type ProcessCaptureBody = z.infer<typeof ProcessCaptureBodySchema>;
+
+export const ProcessCaptureToProjectSchema = CreateProjectSchema.extend({
+  status: z.enum(['active', 'someday']),
+});
+
+export type ProcessCaptureToProject = z.infer<typeof ProcessCaptureToProjectSchema>;
+
+export const ProcessCaptureToProjectResponseSchema = z.object({
+  project: ProjectSchema,
+  capture: CaptureSchema,
+});
+
+export type ProcessCaptureToProjectResponse = z.infer<
+  typeof ProcessCaptureToProjectResponseSchema
+>;
 
 const c = initContract();
 
@@ -209,6 +225,25 @@ export const captureContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Process a capture into a task (or note in the future)',
+  },
+
+  processToProject: {
+    method: 'POST',
+    path: '/api/captures/:id/process-to-project',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    body: ProcessCaptureToProjectSchema,
+    responses: {
+      201: ProcessCaptureToProjectResponseSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      403: ErrorSchema,
+      404: ErrorSchema,
+      409: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Process a capture into a project (person only)',
   },
 }, {
     strictStatusCodes: true

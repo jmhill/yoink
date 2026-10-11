@@ -48,7 +48,8 @@ export const decideCreateProject = ({
   }
 
   const objective = parseProjectObjective(command.objective);
-  const event: ProjectCreated = {
+
+  return ok({
     type: 'ProjectCreated',
     id,
     organizationId: command.organizationId,
@@ -57,11 +58,6 @@ export const decideCreateProject = ({
     status: 'active',
     createdAt: now,
     occurredAt: now,
-  };
-
-  if (objective !== undefined) {
-    event.objective = objective;
-  }
-
-  return ok(event);
+    ...(objective !== undefined ? { objective } : {}),
+  });
 };

@@ -7,7 +7,8 @@ export type ProjectCreated = {
   createdById: string;
   name: string;
   objective?: string;
-  status: 'active';
+  status: 'active' | 'someday';
+  captureId?: string;
   createdAt: string;
   occurredAt: string;
 };

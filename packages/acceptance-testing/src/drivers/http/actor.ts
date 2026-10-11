@@ -26,6 +26,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  ProcessCaptureToProjectInput,
+  ProcessCaptureToProjectResult,
   MintedAgent,
   Member,
 } from '../../dsl/index.js';
@@ -237,6 +239,39 @@ export const createHttpActor = (
         throw new Error(`Failed to process capture: ${response.body}`);
       }
       return response.json<Task>();
+    },
+
+    async processCaptureToProject(
+      captureId: string,
+      input: ProcessCaptureToProjectInput
+    ): Promise<ProcessCaptureToProjectResult> {
+      const response = await client.post(
+        `/api/captures/${captureId}/process-to-project`,
+        input,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        const error = response.json<{ message?: string }>();
+        throw new ForbiddenError(error.message ?? 'Creating a project requires a person');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Capture', captureId);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'Capture must be in the inbox');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to process capture to project: ${response.body}`);
+      }
+      return response.json<ProcessCaptureToProjectResult>();
     },
 
     async listNamedLists(): Promise<NamedList[]> {
@@ -1840,7 +1875,11 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('dismissOpenSelect', 'http');
     },
 
-    async saveWalkthroughScreenshot(_input: { story: string; step: string }): Promise<void> {
+    async saveWalkthroughScreenshot(_input: {
+      story: string;
+      step: string;
+      includeToasts?: boolean;
+    }): Promise<void> {
       throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
     },
 
@@ -1856,12 +1895,108 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeProcessReady', 'http');
     },
 
-    async shouldSeeProcessQueue(_contents: string[]): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeProcessQueue', 'http');
+    async shouldSeeProcessCurrent(_content: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessCurrent', 'http');
     },
 
-    async shouldSeeProcessSubcopy(_text: string): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeProcessSubcopy', 'http');
+    async shouldSeeProcessLeft(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessLeft', 'http');
+    },
+
+    async shouldSeeProcessSnoozedComingBack(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessSnoozedComingBack', 'http');
+    },
+
+    async openProcessMakeTask(): Promise<void> {
+      throw new UnsupportedOperationError('openProcessMakeTask', 'http');
+    },
+
+    async openProcessProjectSheet(_status: 'active' | 'someday'): Promise<void> {
+      throw new UnsupportedOperationError('openProcessProjectSheet', 'http');
+    },
+
+    async shouldSeeProcessProjectPrefill(_input: { name: string; objective: string }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessProjectPrefill', 'http');
+    },
+
+    async fillProcessProject(_input: { name?: string; objective?: string }): Promise<void> {
+      throw new UnsupportedOperationError('fillProcessProject', 'http');
+    },
+
+    async confirmProcessProject(): Promise<ProcessCaptureToProjectResult> {
+      throw new UnsupportedOperationError('confirmProcessProject', 'http');
+    },
+
+    async shouldSeeProcessProjectError(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessProjectError', 'http');
+    },
+
+    async cancelProcessProjectSheet(): Promise<void> {
+      throw new UnsupportedOperationError('cancelProcessProjectSheet', 'http');
+    },
+
+    async openProcessSnoozeMenu(): Promise<void> {
+      throw new UnsupportedOperationError('openProcessSnoozeMenu', 'http');
+    },
+
+    async pickProcessSnooze(_option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
+      throw new UnsupportedOperationError('pickProcessSnooze', 'http');
+    },
+
+    async trashProcessCurrent(): Promise<void> {
+      throw new UnsupportedOperationError('trashProcessCurrent', 'http');
+    },
+
+    async shouldSeeProcessSourceUrl(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessSourceUrl', 'http');
+    },
+
+    async pressProcessKey(_key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessKey', 'http');
+    },
+
+    async pressProcessDeleteWhileTrashHeld(): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessDeleteWhileTrashHeld', 'http');
+    },
+
+    async pressProcessDeleteAfterTrashError(): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessDeleteAfterTrashError', 'http');
+    },
+
+    async shouldSeeProcessKeyHints(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessKeyHints', 'http');
+    },
+
+    async shouldSeeProcessActionsFitCard(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessActionsFitCard', 'http');
+    },
+
+    async shouldSeeUndoToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeUndoToast', 'http');
+    },
+
+    async undoFromToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('undoFromToast', 'http');
+    },
+
+    async shouldSeeAlreadyProcessedNotice(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeAlreadyProcessedNotice', 'http');
+    },
+
+    async shouldNotSeeAlreadyProcessedNotice(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAlreadyProcessedNotice', 'http');
+    },
+
+    async shouldNotSeeWhatsNext(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeWhatsNext', 'http');
+    },
+
+    async shouldSeeTaskCreatedToast(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeTaskCreatedToast', 'http');
+    },
+
+    async shouldSeeProjectCreatedToast(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectCreatedToast', 'http');
     },
 
     async shouldSeeProcessEmpty(): Promise<void> {
@@ -1915,6 +2050,7 @@ export const createHttpActor = (
     async confirmPromoteOnListAndProject(_input: {
       listName: string;
       projectName: string;
+      dueDate?: string;
     }): Promise<Task> {
       throw new UnsupportedOperationError('confirmPromoteOnListAndProject', 'http');
     },

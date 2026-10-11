@@ -8,7 +8,7 @@ export const CaptureStatusSchema = z.enum(['inbox', 'trashed', 'processed']);
 export type CaptureStatus = z.infer<typeof CaptureStatusSchema>;
 
 // Type of entity a capture was processed into
-export const ProcessedToTypeSchema = z.enum(['task', 'note']);
+export const ProcessedToTypeSchema = z.enum(['task', 'note', 'project']);
 export type ProcessedToType = z.infer<typeof ProcessedToTypeSchema>;
 
 export const CaptureSchema = z.object({

@@ -31,6 +31,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  ProcessCaptureToProjectInput,
+  ProcessCaptureToProjectResult,
   CreateInvitationInput,
   MintedAgent,
   MobileTabKey,
@@ -65,13 +67,30 @@ import {
 } from './page-objects.js';
 import {
   OPEN_DIALOG_CONTENT,
+  OPEN_SHEET_CONTENT,
   saveWalkthroughPng,
   waitForFinishedPageAnimations,
   waitForSettledOpenDialog,
   waitForSettledOpenDrawer,
   waitForSettledOpenSelect,
+  waitForSettledOpenSheet,
   type WalkthroughViewport,
 } from './walkthrough-screenshots.js';
+
+const isProcessToTaskPost = (url: string): boolean =>
+  /\/api\/captures\/[^/]+\/process$/.test(new URL(url).pathname);
+
+const isProcessToProjectPost = (url: string): boolean =>
+  /\/api\/captures\/[^/]+\/process-to-project$/.test(new URL(url).pathname);
+
+const isCaptureTrashPost = (url: URL): boolean => {
+  const path = url.pathname;
+  return (
+    path.startsWith('/api/captures/') &&
+    path.endsWith('/trash') &&
+    !path.includes('/trash/empty')
+  );
+};
 
 /**
  * Playwright evaluate callbacks run in the page, but this package's
@@ -311,6 +330,17 @@ export const createPlaywrightActor = (
     await expect(appRail.desktop()).toBeVisible();
     await expect(mobileNav.root()).toBeHidden();
   };
+
+  const visibleUndoToast = (message: string) =>
+    page.locator('[data-sonner-toast]:not([data-removed="true"])').filter({ hasText: message });
+
+  const processActionSelectors = [
+    '[data-process-make-task]',
+    '[data-process-new-project]',
+    '[data-process-someday-project]',
+    '[data-process-snooze]',
+    '[data-process-trash]',
+  ] as const;
 
   const openRailDestination = async (
     label: string,
@@ -573,6 +603,13 @@ export const createPlaywrightActor = (
     // session API (quick-add has no assignee), update goes through the edit UI.
     async processCaptureToTask(_captureId: string, _input?: ProcessCaptureToTaskInput): Promise<Task> {
       throw new UnsupportedOperationError('processCaptureToTask', 'playwright');
+    },
+
+    async processCaptureToProject(
+      _captureId: string,
+      _input: ProcessCaptureToProjectInput
+    ): Promise<ProcessCaptureToProjectResult> {
+      throw new UnsupportedOperationError('processCaptureToProject', 'playwright');
     },
 
     async listNamedLists(): Promise<NamedList[]> {
@@ -2742,9 +2779,7 @@ export const createPlaywrightActor = (
       await inboxPage.selectPromoteProjectByName(projectName);
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/captures/') &&
-          response.url().includes('/process') &&
-          response.request().method() === 'POST'
+          isProcessToTaskPost(response.url()) && response.request().method() === 'POST'
       );
       await inboxPage.confirmPromote();
       const response = await responsePromise;
@@ -3245,9 +3280,7 @@ export const createPlaywrightActor = (
     async confirmPromoteUnlisted(): Promise<Task> {
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/captures/') &&
-          response.url().includes('/process') &&
-          response.request().method() === 'POST'
+          isProcessToTaskPost(response.url()) && response.request().method() === 'POST'
       );
       await inboxPage.confirmPromote();
       const response = await responsePromise;
@@ -3262,9 +3295,7 @@ export const createPlaywrightActor = (
       await inboxPage.selectPromoteListByName(listName);
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/captures/') &&
-          response.url().includes('/process') &&
-          response.request().method() === 'POST'
+          isProcessToTaskPost(response.url()) && response.request().method() === 'POST'
       );
       await inboxPage.confirmPromote();
       const response = await responsePromise;
@@ -3318,7 +3349,11 @@ export const createPlaywrightActor = (
       await expect(listbox).toBeHidden();
     },
 
-    async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
+    async saveWalkthroughScreenshot(input: {
+      story: string;
+      step: string;
+      includeToasts?: boolean;
+    }): Promise<void> {
       const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
       if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
         await waitForSettledOpenSelect({ page });
@@ -3336,6 +3371,10 @@ export const createPlaywrightActor = (
           await closingDialog.last().waitFor({ state: 'hidden' });
         }
       }
+      const openSheet = page.locator(OPEN_SHEET_CONTENT);
+      if (await openSheet.isVisible().catch(() => false)) {
+        await waitForSettledOpenSheet({ page });
+      }
       const drawer = page.locator('[data-slot="drawer-content"]');
       if (await drawer.isVisible()) {
         const openDrawer = await drawer.getAttribute('data-state');
@@ -3345,6 +3384,9 @@ export const createPlaywrightActor = (
           await drawer.last().waitFor({ state: 'hidden' });
         }
       }
+      if (input.includeToasts) {
+        await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
+      }
       await page.mouse.move(0, 0);
       await waitForFinishedPageAnimations({ page });
       await saveWalkthroughPng({
@@ -3353,6 +3395,7 @@ export const createPlaywrightActor = (
         story: input.story,
         viewport: walkthroughViewport,
         step: input.step,
+        includeToasts: input.includeToasts,
       });
     },
 
@@ -3393,25 +3436,289 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-process-ready]')).toBeVisible();
     },
 
-    async shouldSeeProcessQueue(contents: string[]): Promise<void> {
+    async shouldSeeProcessCurrent(content: string): Promise<void> {
+      await expect(page.locator('[data-process-ready]')).toBeVisible();
+      const card = page.locator('[data-process-item-kind="capture"]');
+      await expect(card).toBeVisible();
       await expect.poll(async () => {
-        const cards = page.locator('[data-capture-id]');
-        const count = await cards.count();
-        const found: string[] = [];
-        for (let index = 0; index < count; index += 1) {
-          found.push(((await cards.nth(index).getByTestId('capture-content').textContent()) ?? '').trim());
-        }
-        return found;
-      }).toEqual(contents);
+        return ((await card.getByTestId('capture-content').textContent()) ?? '').trim();
+      }).toBe(content);
     },
 
-    async shouldSeeProcessSubcopy(text: string): Promise<void> {
-      await expect(page.getByTestId('process-subcopy')).toHaveText(text);
+    async shouldSeeProcessLeft(count: number): Promise<void> {
+      await expect(page.locator('[data-process-ready]')).toHaveAttribute(
+        'data-process-left',
+        String(count)
+      );
+      await expect(page.getByTestId('process-subcopy')).toHaveText(`${count} left`);
+    },
+
+    async shouldSeeProcessSnoozedComingBack(count: number): Promise<void> {
+      await expect(page.locator('[data-process-snoozed-count]')).toHaveText(
+        `${count} snoozed will come back`
+      );
+    },
+
+    async openProcessMakeTask(): Promise<void> {
+      await page.locator('[data-process-make-task]').click();
+      await expect(inboxPage.promoteSheet()).toBeVisible();
+    },
+
+    async openProcessProjectSheet(status: 'active' | 'someday'): Promise<void> {
+      const trigger =
+        status === 'someday'
+          ? page.locator('[data-process-someday-project]')
+          : page.locator('[data-process-new-project]');
+      await trigger.click();
+      await expect(page.locator('[data-process-project-sheet]')).toBeVisible();
+    },
+
+    async shouldSeeProcessProjectPrefill(input: { name: string; objective: string }): Promise<void> {
+      await expect(page.locator('[data-process-project-name]')).toHaveValue(input.name);
+      await expect(page.locator('[data-process-project-objective]')).toHaveValue(input.objective);
+    },
+
+    async fillProcessProject(input: { name?: string; objective?: string }): Promise<void> {
+      if (input.name !== undefined) {
+        await page.locator('[data-process-project-name]').fill(input.name);
+      }
+      if (input.objective !== undefined) {
+        await page.locator('[data-process-project-objective]').fill(input.objective);
+      }
+    },
+
+    async confirmProcessProject(): Promise<ProcessCaptureToProjectResult> {
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          isProcessToProjectPost(response.url()) && response.request().method() === 'POST'
+      );
+      await page.locator('[data-process-project-submit]').click();
+      const response = await responsePromise;
+      if (response.status() !== 201) {
+        throw new Error(`Failed to process capture to project: ${response.status()}`);
+      }
+      await expect(page.locator('[data-process-project-sheet]')).toBeHidden();
+      return response.json();
+    },
+
+    async shouldSeeProcessProjectError(text: string): Promise<void> {
+      await page.locator('[data-process-project-submit]').click();
+      await expect(page.locator('[data-process-project-error]')).toHaveText(text);
+      await expect(page.locator('[data-process-project-sheet]')).toBeVisible();
+    },
+
+    async cancelProcessProjectSheet(): Promise<void> {
+      await page.locator('[data-process-project-sheet]').getByRole('button', { name: 'Cancel' }).click();
+      await expect(page.locator('[data-process-project-sheet]')).toBeHidden();
+    },
+
+    async openProcessSnoozeMenu(): Promise<void> {
+      await page.locator('[data-process-snooze]').click();
+      await expect(page.locator('[data-process-snooze-menu]')).toBeVisible();
+    },
+
+    async pickProcessSnooze(option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void> {
+      const item = page.locator(`[data-process-snooze-option="${option}"]`);
+      await expect(item).toBeVisible();
+      await item.click();
+    },
+
+    async trashProcessCurrent(): Promise<void> {
+      const current = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      await page.locator('[data-process-trash]').click();
+      if (current) {
+        await expect(page.locator(`[data-process-current="${current}"]`)).toHaveCount(0);
+      }
+    },
+
+    async shouldSeeProcessSourceUrl(label: string): Promise<void> {
+      await expect(page.locator('[data-process-item-kind="capture"] [data-testid="source-url"]')).toHaveText(
+        label
+      );
+    },
+
+    async pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void> {
+      await page.keyboard.press(key);
+    },
+
+    async pressProcessDeleteWhileTrashHeld(): Promise<void> {
+      let releaseTrash = (): void => undefined;
+      const trashGate = new Promise<void>((resolve) => {
+        releaseTrash = resolve;
+      });
+      const trashRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        await trashGate;
+        await route.continue();
+      };
+
+      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      if (!firstId) {
+        throw new Error('Process should show a current capture before Delete');
+      }
+      await page.route(isCaptureTrashPost, trashRoute);
+      try {
+        await page.keyboard.press('Delete');
+        await expect(page.locator('[data-process-ready]')).not.toHaveAttribute(
+          'data-process-current',
+          firstId
+        );
+        await page.keyboard.press('Delete');
+        const settled = page.waitForResponse(
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) && response.request().method() === 'POST'
+        );
+        releaseTrash();
+        await settled;
+      } finally {
+        releaseTrash();
+        await page.unroute(isCaptureTrashPost, trashRoute);
+      }
+    },
+
+    async pressProcessDeleteAfterTrashError(): Promise<void> {
+      let trashPosts = 0;
+      const trashRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+        fulfill: (response: {
+          status: number;
+          contentType: string;
+          body: string;
+        }) => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        trashPosts += 1;
+        if (trashPosts === 1) {
+          await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({ message: 'Failed to trash' }),
+          });
+          return;
+        }
+        await route.continue();
+      };
+
+      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      if (!firstId) {
+        throw new Error('Process should show a current capture before Delete');
+      }
+      await page.route(isCaptureTrashPost, trashRoute);
+      try {
+        await page.keyboard.press('Delete');
+        await expect(page.locator('[data-process-ready]')).toHaveAttribute(
+          'data-process-current',
+          firstId
+        );
+        const second = page.waitForResponse(
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) &&
+            response.request().method() === 'POST' &&
+            response.status() !== 500
+        );
+        await page.keyboard.press('Delete');
+        await second;
+        expect(trashPosts).toBe(2);
+      } finally {
+        await page.unroute(isCaptureTrashPost, trashRoute);
+      }
+    },
+
+    async shouldSeeProcessKeyHints(): Promise<void> {
+      await expect(page.locator('[data-process-key-hint="T"]')).toBeVisible();
+      await expect(page.locator('[data-process-key-hint="P"]')).toBeVisible();
+      await expect(page.locator('[data-process-key-hint="S"]')).toBeVisible();
+      await expect(page.locator('[data-process-key-hint="Z"]')).toBeVisible();
+      await expect(page.locator('[data-process-key-hint="⌫"]')).toBeVisible();
+    },
+
+    async shouldSeeProcessActionsFitCard(): Promise<void> {
+      const card = page.locator('[data-process-item-kind="capture"]');
+      await expect(card).toBeVisible();
+      const cardBox = await card.boundingBox();
+      if (cardBox === null) {
+        throw new Error('process card should have a layout box');
+      }
+      for (const selector of processActionSelectors) {
+        const button = page.locator(selector);
+        await expect(button).toBeVisible();
+        const box = await button.boundingBox();
+        if (box === null) {
+          throw new Error(`${selector} should have a layout box`);
+        }
+        expect(box.x, `${selector} left`).toBeGreaterThanOrEqual(cardBox.x);
+        expect(box.y, `${selector} top`).toBeGreaterThanOrEqual(cardBox.y);
+        expect(box.x + box.width, `${selector} right`).toBeLessThanOrEqual(
+          cardBox.x + cardBox.width + 1
+        );
+        expect(box.y + box.height, `${selector} bottom`).toBeLessThanOrEqual(
+          cardBox.y + cardBox.height + 1
+        );
+      }
+    },
+
+    async shouldSeeUndoToast(message: string): Promise<void> {
+      const toast = visibleUndoToast(message);
+      await expect(toast).toBeVisible();
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
+    },
+
+    async undoFromToast(message: string): Promise<void> {
+      await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
+    },
+
+    async shouldSeeAlreadyProcessedNotice(): Promise<void> {
+      await expect(page.getByText('That capture was already processed')).toBeVisible();
+    },
+
+    async shouldNotSeeAlreadyProcessedNotice(): Promise<void> {
+      const ready = page.locator('[data-process-ready]');
+      await expect(ready).toBeVisible();
+      const snapshot = () =>
+        ready.evaluate(
+          (el) =>
+            `${el.getAttribute('data-process-current') ?? ''}|${el.getAttribute('data-process-left') ?? ''}`
+        );
+      const first = await snapshot();
+      await page.evaluate(
+        `(async () => {
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+        })()`
+      );
+      expect(await snapshot()).toBe(first);
+      await expect(page.getByText('That capture was already processed')).toHaveCount(0);
+    },
+
+    async shouldNotSeeWhatsNext(): Promise<void> {
+      await expect(page.locator('[data-whats-next-prompt]')).toHaveCount(0);
+    },
+
+    async shouldSeeTaskCreatedToast(): Promise<void> {
+      await expect(page.getByText('Task created', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'View' })).toBeVisible();
+    },
+
+    async shouldSeeProjectCreatedToast(): Promise<void> {
+      await expect(page.getByText('Project created', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'View' })).toBeVisible();
     },
 
     async shouldSeeProcessEmpty(): Promise<void> {
       await expect(page.getByText('Nothing to process', { exact: true })).toBeVisible();
       await expect(page.locator('[data-process-empty-capture]')).toBeVisible();
+      await expect(page.getByTestId('process-subcopy')).toHaveCount(0);
     },
 
     async shouldSeeProcessBadge(count: number | null): Promise<void> {
@@ -3516,14 +3823,16 @@ export const createPlaywrightActor = (
     async confirmPromoteOnListAndProject(input: {
       listName: string;
       projectName: string;
+      dueDate?: string;
     }): Promise<Task> {
       await inboxPage.selectPromoteListByName(input.listName);
       await inboxPage.selectPromoteProjectByName(input.projectName);
+      if (input.dueDate !== undefined) {
+        await page.locator('#promote-due-date').fill(input.dueDate);
+      }
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/captures/') &&
-          response.url().includes('/process') &&
-          response.request().method() === 'POST'
+          isProcessToTaskPost(response.url()) && response.request().method() === 'POST'
       );
       await inboxPage.confirmPromote();
       const response = await responsePromise;

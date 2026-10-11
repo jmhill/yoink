@@ -1,7 +1,7 @@
 export type WhatsNextPrompt = {
   projectId: string;
   projectName: string;
-  completedTaskId: string;
+  completedTaskId?: string;
 };
 
 type Listener = (prompt: WhatsNextPrompt | null) => void;

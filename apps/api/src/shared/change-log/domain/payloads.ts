@@ -77,8 +77,9 @@ export const namedListDeletedPayloadV1Schema = z.object({});
 export const projectCreatedPayloadV1Schema = z.object({
   name: z.string(),
   objective: z.string().optional(),
-  status: z.literal('active'),
+  status: z.enum(['active', 'someday']),
   createdById: z.string(),
+  captureId: z.string().uuid().optional(),
 });
 
 export const projectUpdatedPayloadV1Schema = z.object({

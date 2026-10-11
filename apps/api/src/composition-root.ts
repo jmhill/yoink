@@ -34,7 +34,11 @@ import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-his
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createWorkHandlers } from './work/application/create-work-handlers.js';
 import { createSqliteWorkStore } from './work/infrastructure/sqlite-work-store.js';
-import { createCaptureProcessingService } from './processing/domain/processing-service.js';
+import { createProcessingHandlers } from './processing/application/create-processing-handlers.js';
+import {
+  createSqliteProcessToProjectPersist,
+  createSqliteProcessToTaskPersist,
+} from './processing/infrastructure/persist-process.js';
 import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
 import {
   createAuthMiddleware,
@@ -469,12 +473,27 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now(),
   });
 
-  // Create capture processing service (cross-entity operations).
-  // Task create reuses the existing sandwich so listId joins open order.
-  const captureProcessingService = createCaptureProcessingService({
-    captureStore,
-    createTask: (command) => taskHandlers.create(command).map((result) => result.view),
-    clock,
+  const processToTaskPersist = createSqliteProcessToTaskPersist({ db: database });
+  const processToProjectPersist = createSqliteProcessToProjectPersist({ db: database });
+  const captureProcessingService = createProcessingHandlers({
+    processToTask: {
+      loadCapture: (id) => captureStore.findById(id),
+      loadList: (id) => listStore.findById(id),
+      loadProject: (id) => projectStore.findById(id),
+      loadNextOpenOrder: (organizationId, listId) =>
+        taskStore.nextOpenOrderInPile({ organizationId, listId }),
+      persist: processToTaskPersist,
+      nextId: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
+    },
+    processToProject: {
+      loadCapture: (id) => captureStore.findById(id),
+      listProjects: (organizationId) => projectStore.findByOrganization(organizationId),
+      persist: processToProjectPersist,
+      nextId: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
+    },
+    logger: commandLogger,
   });
 
   // Create admin services if admin config is provided

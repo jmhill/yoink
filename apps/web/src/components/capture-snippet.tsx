@@ -29,6 +29,7 @@ const SOURCE_ICON = {
 type CaptureSnippetProps = {
   content: string;
   sourceUrl?: string | null;
+  sourceUrlLabel?: string;
   sourceApp?: string | null;
   capturedAt: string;
   meta?: ReactNode;
@@ -38,6 +39,7 @@ type CaptureSnippetProps = {
 export function CaptureSnippet({
   content,
   sourceUrl,
+  sourceUrlLabel,
   sourceApp,
   capturedAt,
   meta,
@@ -61,7 +63,7 @@ export function CaptureSnippet({
           data-testid="source-url"
           onClick={stopRowActions}
         >
-          {sourceUrl}
+          {sourceUrlLabel ?? sourceUrl}
         </a>
       ) : null}
       <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">

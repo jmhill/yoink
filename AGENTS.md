@@ -22,9 +22,9 @@ For testing philosophy, test pyramid, and how to write tests, see `docs/testing/
 
 For environment variables and operational config, see `docs/operations/ENVIRONMENT.md`.
 
-CI and the API image pull `node:24-alpine` from Amazon ECR Public
-(`public.ecr.aws/docker/library/...`), not Docker Hub. Digests are pinned.
-See `docs/operations/CI.md` to bump a digest or switch to the GCR fallback.
+CI and the API image pull `node:24-alpine` from Google's Docker Hub
+mirror (`mirror.gcr.io/library/...`), not Docker Hub. Digests are pinned.
+See `docs/operations/CI.md` to bump a digest.
 
 ## Architecture
 

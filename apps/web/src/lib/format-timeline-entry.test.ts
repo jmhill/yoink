@@ -105,6 +105,31 @@ describe('formatTimelineLine', () => {
     ).toBe("Lane changed the owner and the list on 'Call Trident'");
   });
 
+  it('names a project created from a capture', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectCreated',
+          details: {
+            kind: 'ProjectCreated',
+            name: 'Harbor',
+            captureId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane created this project from a capture');
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectCreated',
+          details: { kind: 'ProjectCreated', name: 'Harbor' },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane created this project');
+  });
+
   it('names each project field that changed', () => {
     expect(
       formatTimelineLine(

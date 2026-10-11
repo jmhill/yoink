@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
-import type { CaptureProcessingService } from '../../processing/domain/processing-service.js';
+import type { CaptureProcessingService } from '../../processing/application/create-processing-handlers.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { CaptureHandlers } from '../application/create-capture-handlers.js';
 import {
   invalidCursorHttp,
   toCaptureListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
+import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
 
 export type CaptureRoutesDependencies = {
   captureHandlers: CaptureHandlers;
@@ -399,12 +400,72 @@ export const registerCaptureRoutes = async (
           }
         );
       },
+
+      processToProject: async ({ params, body, request }) => {
+        const result = await captureProcessingService.processCaptureToProject({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          createdById: request.authContext.userId,
+          name: body.name,
+          objective: body.objective,
+          status: body.status,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          (value) => ({
+            status: 201 as const,
+            body: value,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'PROJECT_CREATE_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: { message: error.message, code: error.type },
+                };
+              case 'DUPLICATE_PROJECT_NAME':
+              case 'CAPTURE_NOT_IN_INBOX':
+                return {
+                  status: 409 as const,
+                  body: {
+                    message:
+                      error.type === 'CAPTURE_NOT_IN_INBOX'
+                        ? 'Capture must be in the inbox'
+                        : error.message,
+                    code: error.type,
+                  },
+                };
+              case 'CAPTURE_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Capture not found', code: error.type },
+                };
+              case 'PROJECT_NAME_BLANK':
+              case 'INVALID_PROJECT_NAME':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message, code: error.type },
+                };
+              case 'STORAGE_ERROR':
+              default:
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(captureContract, captureRouter, authedApp, {
       jsonQuery: true,
       responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
+      requestValidationErrorHandler: (err, request, reply) => {
+        if (request.url.includes('/process-to-project')) {
+          return reply.status(400).send(projectRequestValidationError(err));
+        }
         return reply.status(400).send({ message: err.message });
       },
     });

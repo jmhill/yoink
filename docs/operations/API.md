@@ -292,6 +292,49 @@ with `projectId` sets or replaces; `null` clears; omit leaves it unchanged. Only
 open tasks move in or out. A done project is `400`; a project in another org is
 `404`. Bots may set or clear a project.
 
+`POST /api/captures/:id/process` (process to a task) is unchanged for bots: same
+body, same `201` Task. That write is all-or-nothing — the task and the
+capture's processed mark land in one batch, or neither does.
+
+## Process a capture into a project (person only)
+
+`POST /api/captures/:id/process-to-project` creates an `active` or `someday`
+project from an inbox capture and marks the capture processed, in one batch.
+Bots cannot use it (story 16 gives them `proposed`). A web session or a
+person's own token may. The existing `process` route stays a Task response so
+bot clients do not change.
+
+Body: `{ "name", "objective"?, "status": "active" | "someday" }`. Name is
+trimmed, 1–200, unique in the org. Objective is optional, max 2000.
+
+`201` is `{ "project", "capture" }`. The capture is `processed` with
+`processedToType: "project"` and `processedToId` equal to the project id. The
+project's history records `ProjectCreated` with the source `captureId`.
+
+| Code | When |
+| --- | --- |
+| `PROJECT_CREATE_REQUIRES_PERSON` | A bot token called this route (`403`) |
+| `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name; capture stays inbox (`409`) |
+| `CAPTURE_NOT_IN_INBOX` | Capture is missing from the inbox (trashed or already processed); no project is created (`409`) |
+| `CAPTURE_NOT_FOUND` | No capture with that id in this org (`404`) |
+| `PROJECT_NAME_BLANK` / `INVALID_PROJECT_NAME` | Name is blank after trim or too long (`400`) |
+
+```bash
+# Person session or that person's own token
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"name":"Harbor shed","objective":"Fix the door","status":"active"}' \
+  "$API/api/captures/$CAPTURE_ID/process-to-project"
+
+# Someday in the same write — no second status change
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"name":"Later garden","status":"someday"}' \
+  "$API/api/captures/$CAPTURE_ID/process-to-project"
+```
+
 Open tasks on a project are a working set, newest created first:
 
 ```bash
@@ -494,10 +537,10 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 
 ## Error codes
 
-Project, task, and work list routes return `{ "message": "…", "code": "…" }`.
-`code` is stable; `message` is for humans. On those routes, request
-validation uses a specific code instead of the generic
-`[ts-rest] request validation failed` text.
+Project, task, work list, and `POST /api/captures/:id/process-to-project`
+return `{ "message": "…", "code": "…" }`. `code` is stable; `message` is for
+humans. On those routes, request validation uses a specific code instead of
+the generic `[ts-rest] request validation failed` text.
 
 `PROJECT_HAS_OPEN_TASKS` and `OPEN_TASKS_UNREAD` also include
 `openTaskCount`.
@@ -507,7 +550,8 @@ validation uses a specific code instead of the generic
 | `PROJECT_NAME_BLANK` | Create/update name is blank after trim (`400`) |
 | `INVALID_PROJECT_NAME` | Name is too long (`400`) |
 | `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name (`409`) |
-| `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project (`403`) |
+| `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project, or called `POST /api/captures/:id/process-to-project` (`403`) |
+| `CAPTURE_NOT_IN_INBOX` | Process-to-project when the capture is not in the inbox; nothing is written (`409`) |
 | `PROJECT_NOT_FOUND` | No project with that id in this org (`404`) |
 | `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done`; imported projects also refuse `done` and `proposed` (`400`) |
 | `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted, including on import (`400`) |

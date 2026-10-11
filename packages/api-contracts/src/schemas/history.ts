@@ -54,6 +54,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
     kind: z.literal('ProjectCreated'),
     name: z.string(),
     objective: z.string().optional(),
+    captureId: z.string().uuid().optional(),
   }),
   z.object({
     kind: z.literal('ProjectUpdated'),

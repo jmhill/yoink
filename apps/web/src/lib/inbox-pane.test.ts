@@ -3,7 +3,6 @@ import {
   INBOX_PANE_TABS,
   INBOX_TRIAGE_HEADING,
   inboxPaneTabLabels,
-  inboxTriageSubcopy,
   isInboxPanePath,
 } from './inbox-pane';
 
@@ -24,12 +23,5 @@ describe('inbox pane tabs', () => {
 describe('inbox triage heading', () => {
   it('keeps the pane titled Capture', () => {
     expect(INBOX_TRIAGE_HEADING).toBe('Capture');
-  });
-
-  it('has no subtitle — the to-process count belongs on Process', () => {
-    expect(inboxTriageSubcopy(0)).toBe('');
-    expect(inboxTriageSubcopy(1)).toBe('');
-    expect(inboxTriageSubcopy(4)).toBe('');
-    expect(inboxTriageSubcopy(4)).not.toMatch(/to process|open tasks/i);
   });
 });

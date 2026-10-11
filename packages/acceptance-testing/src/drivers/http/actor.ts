@@ -1573,6 +1573,13 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeNoHorizontalPageScrollFromRail', 'http');
     },
 
+    async shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
+      throw new UnsupportedOperationError(
+        'shouldSeeNamedListLabelsClearOfCountAndOverflow',
+        'http'
+      );
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },

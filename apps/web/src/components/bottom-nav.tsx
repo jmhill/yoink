@@ -65,7 +65,7 @@ export function AppNav() {
       <AppRailPanel
         surface="desktop"
         showBrand
-        className="fixed left-0 top-0 z-50 hidden h-full w-48 flex-col border-r bg-background p-4 md:flex"
+        className="fixed left-0 top-0 z-50 hidden h-full w-56 flex-col border-r bg-background p-4 md:flex"
       />
     </>
   );

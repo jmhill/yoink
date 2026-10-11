@@ -26,7 +26,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.shouldSeeNamedListOverflowOnRail('Groceries');
       await alice.shouldNotSeeNamedListOverflowOnRail('Unlisted');
-      await alice.shouldNotSeeNamedListOverflowOnRail('Inbox');
+      await alice.shouldNotSeeNamedListOverflowOnRail('Capture');
+      await alice.shouldNotSeeNamedListOverflowOnRail('Process');
+      await alice.shouldNotSeeNamedListOverflowOnRail('Work');
+      await alice.shouldNotSeeNamedListOverflowOnRail('Review');
       await alice.shouldNotSeeNamedListOverflowOnRail('Today');
       await alice.shouldNotSeeNamedListOverflowOnRail('Upcoming');
       await alice.shouldNotSeeNamedListOverflowOnRail('My tasks');

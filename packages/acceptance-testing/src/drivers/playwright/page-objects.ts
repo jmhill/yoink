@@ -2267,15 +2267,12 @@ export class AppRail {
 
   async openItem(label: string): Promise<void> {
     const rail = await this.railForInteraction();
-    const desktop = await this.desktop().isVisible().catch(() => false);
-    const resolved =
-      desktop && label === 'Now' ? 'Work' : desktop && label === 'Inbox' ? 'Capture' : label;
     const item =
-      !desktop && resolved === 'Now'
+      label === 'Now'
         ? rail.locator('[data-rail-item="now"]')
-        : rail.locator(`[data-rail-label="${resolved}"]`);
+        : rail.locator(`[data-rail-label="${label}"]`);
     await item.waitFor({ state: 'attached', timeout: 10_000 });
-    if (!desktop) {
+    if (!(await this.desktop().isVisible().catch(() => false))) {
       await this.waitForItemGeometry(item);
     }
     await this.clickRailControl(item);
@@ -2332,6 +2329,70 @@ export class AppRail {
     }
     if (geometry.clipped) {
       throw new Error(`Rail label "${label}" is clipped; the wrapped name is not fully readable`);
+    }
+  }
+
+  /**
+   * Named-list label text must not run into the open-count or ⋯.
+   * Uses the painted text boxes, not the flex slot — overflow:visible
+   * text can overlap even when the span itself does not.
+   */
+  async expectNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
+    await this.waitForVisible();
+    const overlaps = await this.root().evaluate(`(rail) => {
+      const overlapsBox = (rects, box) =>
+        [...rects].some(
+          (rect) =>
+            rect.width > 0 &&
+            rect.height > 0 &&
+            !(
+              rect.right <= box.left ||
+              rect.left >= box.right ||
+              rect.bottom <= box.top ||
+              rect.top >= box.bottom
+            )
+        );
+
+      return [...rail.querySelectorAll('[data-rail-item="named"]')].flatMap((item) => {
+        const label = item.getAttribute('data-rail-label') ?? '';
+        const row = item.parentElement;
+        const text = item.querySelector('[data-rail-label-text]');
+        if (row === null || text === null) {
+          return [{ label, overlap: 'missing-label' }];
+        }
+        const range = item.ownerDocument.createRange();
+        range.selectNodeContents(text);
+        const textRects = range.getClientRects();
+        const count = row.querySelector('[data-rail-list-count]');
+        const overflow = row.querySelector('[data-rail-overflow]');
+        const countHit =
+          count !== null && overlapsBox(textRects, count.getBoundingClientRect())
+            ? [{ label, overlap: 'count' }]
+            : [];
+        const overflowHit =
+          overflow !== null && overlapsBox(textRects, overflow.getBoundingClientRect())
+            ? [{ label, overlap: 'overflow' }]
+            : [];
+        return [...countHit, ...overflowHit];
+      });
+    }`);
+
+    if (!Array.isArray(overlaps)) {
+      throw new Error('expected named-list overlap hits to be an array');
+    }
+    const hits = overlaps.filter(
+      (hit): hit is { label: string; overlap: string } =>
+        typeof hit === 'object' &&
+        hit !== null &&
+        typeof hit.label === 'string' &&
+        typeof hit.overlap === 'string'
+    );
+    if (hits.length > 0) {
+      throw new Error(
+        `Named-list labels overlap count or overflow: ${hits
+          .map((hit) => `${hit.label}→${hit.overlap}`)
+          .join(', ')}`
+      );
     }
   }
 

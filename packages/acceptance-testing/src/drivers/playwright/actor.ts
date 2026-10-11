@@ -2799,6 +2799,10 @@ export const createPlaywrightActor = (
       await appRail.expectNoHorizontalPageScroll();
     },
 
+    async shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
+      await appRail.expectNamedListLabelsClearOfCountAndOverflow();
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.itemByLabel(label)).toBeVisible();
@@ -3426,6 +3430,9 @@ export const createPlaywrightActor = (
       await expect
         .poll(async () => (await link.boundingBox())?.height ?? 0)
         .toBeGreaterThanOrEqual(40);
+      await expect
+        .poll(async () => (await link.boundingBox())?.height ?? 0)
+        .toBeLessThanOrEqual(44);
     },
 
     async shouldNotSeeBackToWork(): Promise<void> {

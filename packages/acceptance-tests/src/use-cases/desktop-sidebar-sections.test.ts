@@ -336,6 +336,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport(DESKTOP);
       await alice.openRailWork();
       await alice.shouldSeeWrappedRailNamedList('Household Shopping');
+      await alice.shouldSeeNamedListLabelsClearOfCountAndOverflow();
       await alice.shouldSeeNoHorizontalPageScrollFromRail();
       await alice.shouldSeeRailLabelOnOneLine('Capture');
       await alice.shouldSeeRailLabelOnOneLine('Process');
@@ -402,6 +403,9 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.scrollDesktopRailSoLabelIsVisible('Review')).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.shouldSeeNamedListLabelsClearOfCountAndOverflow()).rejects.toThrow(
         UnsupportedOperationError
       );
     });

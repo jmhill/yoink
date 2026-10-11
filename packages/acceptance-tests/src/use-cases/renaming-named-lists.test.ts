@@ -18,8 +18,11 @@ import {
 const isoDateOffset = (days: number): string =>
   new Date(Date.now() + days * 86_400_000).toISOString().split('T')[0]!;
 
-const railWith = (...names: string[]): string[] =>
+const desktopRailWith = (...names: string[]): string[] =>
   ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
+
+const drawerRailWith = (...names: string[]): string[] =>
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['http', 'playwright'] as const, (ctx) => {
   describe(`Renaming named lists [${ctx.driverName}]`, () => {
@@ -169,7 +172,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
       expect(renamed.id).toBe(list.id);
       expect(renamed.name).toBe('Shopping');
-      await alice.shouldSeeRailItems(railWith('Shopping'));
+      await alice.shouldSeeRailItems(desktopRailWith('Shopping'));
       await alice.shouldSeeTaskPlace('Shopping', '1 open');
       await alice.shouldSeeOpenTasksInOrder(['Milk']);
 
@@ -178,7 +181,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Shopping');
       await alice.shouldSeeNamedListOverflowOnRail('Shopping');
       await alice.renameNamedListFromRail('Shopping', 'Errands', { submit: 'done' });
-      await alice.shouldSeeRailItems(railWith('Errands'));
+      await alice.shouldSeeRailItems(drawerRailWith('Errands'));
       await alice.openRailNamedList('Errands');
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTaskPlace('Errands', '1 open');
@@ -192,7 +195,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         ValidationError
       );
 
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
     }, 60_000);
 
     it('refuses a duplicate name from the rail and keeps the old name', async () => {
@@ -204,7 +207,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         ConflictError
       );
 
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Weekend'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries', 'Weekend'));
     }, 60_000);
 
     it('allows a capitalization-only rename from the rail', async () => {
@@ -214,7 +217,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       const renamed = await alice.renameNamedListFromRail('groceries', 'Groceries');
       expect(renamed.id).toBe(list.id);
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
       await alice.shouldSeeTaskPlace('Groceries', '0 open');
     }, 60_000);
 
@@ -237,7 +240,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
       await alice.renameNamedListFromRail('Groceries', 'Shopping');
 
-      await alice.shouldSeeRailItems(railWith('Shopping', 'Weekend'));
+      await alice.shouldSeeRailItems(desktopRailWith('Shopping', 'Weekend'));
       await alice.shouldSeeTaskPlace('Shopping', '2 open');
       await alice.shouldSeeOpenTasksInOrder(['Milk', 'Eggs']);
       await alice.shouldSeeListOnTask(milk.id, 'Shopping');
@@ -258,11 +261,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList('Groceries');
 
       await alice.cancelNamedListRenameFromRail('Groceries', 'Shopping', 'escape');
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
       await alice.shouldSeeTaskPlace('Groceries', '0 open');
 
       await alice.cancelNamedListRenameFromRail('Groceries', 'Errands', 'click-away');
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
       await alice.shouldSeeTaskPlace('Groceries', '0 open');
     }, 60_000);
   });

@@ -1224,6 +1224,12 @@ export type BrowserActorOperations = {
   shouldSeeNoHorizontalPageScrollFromRail(): Promise<void>;
 
   /**
+   * Assert every named-list rail label’s painted text stays clear of that
+   * row’s `[data-rail-list-count]` and overflow button.
+   */
+  shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void>;
+
+  /**
    * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
    */
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;

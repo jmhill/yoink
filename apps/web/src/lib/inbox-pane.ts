@@ -8,7 +8,6 @@ export type InboxPaneTabKey = (typeof INBOX_PANE_TABS)[number]['key'];
 
 export const INBOX_TRIAGE_HEADING = 'Capture';
 export const INBOX_TRIAGE_SURFACE_TEST_ID = 'inbox-triage-surface';
-export const INBOX_TRIAGE_SUBCOPY_TEST_ID = 'inbox-triage-subcopy';
 export const TASK_SURFACE_TEST_ID = 'task-surface';
 
 /**
@@ -21,11 +20,4 @@ export function inboxPaneTabLabels(): string[] {
 
 export function isInboxPanePath(pathname: string): boolean {
   return pathname === '/' || pathname === '/snoozed' || pathname === '/trash';
-}
-
-/**
- * Capture’s heading stands alone. The to-process count lives on Process.
- */
-export function inboxTriageSubcopy(_toProcessCount?: number): string {
-  return '';
 }

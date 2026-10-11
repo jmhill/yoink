@@ -121,9 +121,9 @@ export function buildAppRailItems(input: {
   ];
 }
 
-/** A zero inbox count is noise — hide the badge. */
+/** A zero inbox count is noise — hide the badge. Same rule as Process. */
 export function shouldShowInboxCount(count: number): boolean {
-  return count > 0;
+  return processBadgeCount(count) !== null;
 }
 
 const isTaskFamilyItem = (item: RailItem): boolean =>
@@ -318,12 +318,9 @@ export function desktopRailLabels(sections: DesktopRailSection[]): string[] {
   ]);
 }
 
-const SMART_VIEW_ITEMS: RailItem[] = [
-  { kind: 'smart', key: 'today', label: 'Today' },
-  { kind: 'smart', key: 'upcoming', label: 'Upcoming' },
-  { kind: 'smart', key: 'mine', label: RAIL_MY_TASKS_LABEL },
-  { kind: 'smart', key: 'done', label: 'Done' },
-];
+const SMART_VIEW_ITEMS: RailItem[] = workSectionItems([]).filter(
+  (item): item is Extract<RailItem, { kind: 'smart' }> => item.kind === 'smart'
+);
 
 const projectIdFromPath = (pathname: string): string | null => {
   const prefix = '/projects/';

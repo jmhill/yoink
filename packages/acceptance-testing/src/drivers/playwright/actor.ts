@@ -3777,12 +3777,13 @@ export const createPlaywrightActor = (
     },
 
     async createTask(input: CreateTaskInput): Promise<Task> {
-      // Quick-add can pick a list and project, but has no assignee or due-date controls.
-      // Use the session API when those fields are present so setup is exact.
+      // Quick-add on a named pile can pick a list and project, but has no
+      // assignee or due-date controls. Today quick-add stamps today's due
+      // date, so a project-only create must use the session API.
       const usesQuickAdd =
         input.assigneeId === undefined &&
         input.dueDate === undefined &&
-        (input.listId !== undefined || input.projectId !== undefined);
+        input.listId !== undefined;
       if (usesQuickAdd) {
         if (input.listId !== undefined) {
           await tasksPage.gotoNamedPile(input.listId);

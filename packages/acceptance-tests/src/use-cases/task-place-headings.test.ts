@@ -7,7 +7,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  *
  * Product lock (Justin 2026-09-17): fix headings across the app for
  * consistent wayfinding. Mobile Inbox | Tasks bottom bar stays. Tasks
- * landing stays Today. Pin chrome stays gone (#111).
+ * landing is Now (`/work`, #144). Pin chrome stays gone (#111).
  *
  * Every task view/pile gets Inbox-grade place chrome: the view or list
  * name as the primary heading, plus a short count cue. Inbox heading

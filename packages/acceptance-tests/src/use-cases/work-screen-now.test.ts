@@ -19,15 +19,18 @@ const isoDateOffset = (days: number): string =>
   new Date(Date.now() + days * 86_400_000).toISOString().split('T')[0]!;
 
 const nowSubcopyFor = (nextActionCount: number, dueCount: number): string => {
-  const localDate = new Date().toLocaleDateString('en-US', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-  });
+  }).formatToParts(new Date());
+  const weekday = parts.find((part) => part.type === 'weekday')?.value ?? '';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '';
   const next =
     nextActionCount === 1 ? '1 next action' : `${nextActionCount} next actions`;
   const due = dueCount === 1 ? '1 due' : `${dueCount} due`;
-  return `${localDate} · ${next} · ${due}`;
+  return `${weekday} ${month} ${day} · ${next} · ${due}`;
 };
 
 const mintBot = async (

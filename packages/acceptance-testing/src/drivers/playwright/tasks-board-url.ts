@@ -29,18 +29,13 @@ export function isSettledTasksBoardUrl(url: string | URL): boolean {
 }
 
 /**
- * The Inbox | Tasks thumb `Link to="/tasks"` has no search, so the board
- * lands on Today. From a named-list pile that is already `/tasks?pile=…`,
- * `waitForURL(/\/tasks/)` is already true and must not return before the
- * Today redirect finishes — that href change closes the mobile drawer.
+ * The Inbox | Tasks thumb opens `/work` (Now). From a named-list pile that
+ * is already `/tasks?pile=…`, `waitForURL(/\/tasks/)` is already true and
+ * must not return — wait for `/work` so the href change closes the drawer.
  */
 export function isTasksThumbLandingUrl(url: string | URL): boolean {
   const parsed = typeof url === 'string' ? new URL(url, 'http://localhost') : url;
-  return (
-    parsed.pathname === '/tasks' &&
-    parsed.searchParams.get('filter') === 'today' &&
-    !parsed.searchParams.get('pile')
-  );
+  return parsed.pathname === '/work';
 }
 
 /**

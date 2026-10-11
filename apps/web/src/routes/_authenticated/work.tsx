@@ -144,7 +144,7 @@ function WorkPage() {
       <PlaceHeading
         title="Work"
         subcopy={nowSubcopy({
-          localDate: localDateLabel(new Date()),
+          localDate: localDateLabel(new Date(), timeZone),
           nextActionCount,
           dueCount,
         })}

@@ -1974,8 +1974,7 @@ export class MobileNav {
       return;
     }
     // Already on /tasks?pile=… is a match for /\/tasks/. The thumb Link
-    // has no search, so beforeLoad still redirects to Today — wait for
-    // that href, not the pile we are leaving.
+    // goes to /work (Now) — wait for that href, not the pile we are leaving.
     await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
   }
 }
@@ -2073,7 +2072,8 @@ export class AppRail {
     }
     const tasksTab = this.page.locator('[data-app-mobile-nav] [data-mobile-nav-item="Tasks"]');
     if (await tasksTab.isVisible().catch(() => false)) {
-      if (!/\/tasks(?:\?|$)/.test(new URL(this.page.url()).pathname)) {
+      const path = new URL(this.page.url()).pathname;
+      if (path !== '/work' && path !== '/tasks') {
         await tasksTab.click();
         await this.page.waitForURL((url) => isTasksThumbLandingUrl(url));
       }

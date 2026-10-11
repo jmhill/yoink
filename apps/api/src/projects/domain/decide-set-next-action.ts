@@ -13,7 +13,7 @@ import {
 export type DecideSetNextActionInput = {
   project: Project;
   task: Task | null;
-  command: SetProjectNextActionCommand;
+  command: Extract<SetProjectNextActionCommand, { type: 'set' | 'clear' }>;
   now: string;
 };
 
@@ -28,7 +28,7 @@ export const decideSetNextAction = ({
   command,
   now,
 }: DecideSetNextActionInput): Result<DecideSetNextActionResult, SetProjectNextActionError> => {
-  if (command.taskId === null) {
+  if (command.type === 'clear') {
     if (!project.nextActionTaskId) {
       return ok({ type: 'unchanged' });
     }

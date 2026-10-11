@@ -91,7 +91,7 @@ export const projectRequestValidationError = (
   if (issue.path === 'newTask.title' && issue.code === 'too_big') {
     return {
       message: 'Title must be 500 characters or fewer',
-      code: 'TASK_TITLE_BLANK',
+      code: 'TASK_TITLE_TOO_LONG',
     };
   }
   if (issue.path === 'taskId' || issue.path === 'newTask') {

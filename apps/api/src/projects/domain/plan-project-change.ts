@@ -57,6 +57,14 @@ export type ProjectChangePlan =
       projectId: string;
       view: Project;
       records: ChangeLogRecord[];
+    }
+  | {
+      action: 'clearNextAction';
+      organizationId: string;
+      projectId: string;
+      previousTaskId: string;
+      view: Project;
+      records: ChangeLogRecord[];
     };
 
 /**
@@ -74,11 +82,13 @@ export function planProjectChange(
         | ProjectUpdated
         | ProjectStatusChanged
         | ProjectWaitingChanged
-        | ProjectNextActionSet
-        | ProjectNextActionCleared;
+        | ProjectNextActionSet;
     }
   >
 ): Extract<ProjectChangePlan, { action: 'update' }>;
+export function planProjectChange(
+  input: Extract<ProjectChangePlanInput, { event: ProjectNextActionCleared }>
+): Extract<ProjectChangePlan, { action: 'clearNextAction' }>;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan {
   const records = changeLogRecordsFromProjectEvent({
@@ -102,6 +112,17 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
   }
 
   const applyMeta = { actorUserId: input.actor.userId };
+  if (input.event.type === 'ProjectNextActionCleared') {
+    return {
+      action: 'clearNextAction',
+      organizationId: input.event.organizationId,
+      projectId: input.event.id,
+      previousTaskId: input.event.taskId,
+      view: applyProjectNextActionCleared(input.current, input.event, applyMeta),
+      records,
+    };
+  }
+
   const view =
     input.event.type === 'ProjectUpdated'
       ? applyProjectUpdated(input.current, input.event, applyMeta)
@@ -109,9 +130,7 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
         ? applyProjectStatusChanged(input.current, input.event, applyMeta)
         : input.event.type === 'ProjectWaitingChanged'
           ? applyProjectWaitingChanged(input.current, input.event, applyMeta)
-          : input.event.type === 'ProjectNextActionSet'
-            ? applyProjectNextActionSet(input.current, input.event, applyMeta)
-            : applyProjectNextActionCleared(input.current, input.event, applyMeta);
+          : applyProjectNextActionSet(input.current, input.event, applyMeta);
 
   return {
     action: 'update',
@@ -124,7 +143,7 @@ export function planProjectChange(input: ProjectChangePlanInput): ProjectChangeP
 
 export const mergeProjectUpdatePlans = (
   first: Extract<ProjectChangePlan, { action: 'update' }>,
-  second: Extract<ProjectChangePlan, { action: 'update' }>
+  second: Extract<ProjectChangePlan, { action: 'update' | 'clearNextAction' }>
 ): Extract<ProjectChangePlan, { action: 'update' }> => ({
   action: 'update',
   organizationId: second.organizationId,

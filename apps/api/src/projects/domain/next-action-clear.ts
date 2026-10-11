@@ -10,7 +10,7 @@ export type NextActionTaskChange =
   | { type: 'completed'; taskId: string }
   | { type: 'deleted'; taskId: string }
   | { type: 'removedFromProject'; taskId: string }
-  | { type: 'projectDone'; taskIds: readonly string[] };
+  | { type: 'projectDone' };
 
 const reasonFor = (change: NextActionTaskChange): ProjectNextActionClearReason => {
   switch (change.type) {
@@ -27,7 +27,7 @@ const reasonFor = (change: NextActionTaskChange): ProjectNextActionClearReason =
 
 const appliesTo = (nextActionTaskId: string, change: NextActionTaskChange): boolean => {
   if (change.type === 'projectDone') {
-    return change.taskIds.length === 0 || change.taskIds.includes(nextActionTaskId);
+    return true;
   }
   return change.taskId === nextActionTaskId;
 };

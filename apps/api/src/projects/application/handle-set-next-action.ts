@@ -6,10 +6,13 @@ import { decideCreateTask } from '../../tasks/domain/decide-create.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
 import type { SetProjectNextActionCommand } from '../domain/project-commands.js';
 import {
+  assigneeNotInOrganizationError,
+  listNotInOrganizationError,
   openTaskPlanFailedError,
   projectDoneError,
   projectNotFoundError,
   taskTitleBlankError,
+  taskTitleTooLongError,
   type SetProjectNextActionError,
 } from '../domain/project-errors.js';
 import { decideSetNextAction } from '../domain/decide-set-next-action.js';
@@ -19,24 +22,17 @@ import type {
   LoadNextOpenOrder,
   LoadProject,
   LoadTask,
-  PersistProjectStatusChange,
+  PersistSetNextAction,
 } from './ports.js';
 
-export type SetNextActionInput = SetProjectNextActionCommand & {
-  newTask?: {
-    title: string;
-    dueDate?: string;
-    assigneeId?: string;
-    listId?: string;
-  };
-};
+const NEW_TASK_TITLE_MAX = 500;
 
 export type HandleSetNextActionDeps = {
   load: LoadProject;
   loadTask: LoadTask;
   loadList: LoadNamedList;
   loadNextOpenOrder: LoadNextOpenOrder;
-  persistStatus: PersistProjectStatusChange;
+  persistSetNextAction: PersistSetNextAction;
   principalLookup?: OrgPrincipalLookup;
   nextId: () => string;
   now: () => string;
@@ -49,7 +45,7 @@ export type SetNextActionResult = {
 };
 
 export const handleSetNextAction = (
-  command: SetNextActionInput,
+  command: SetProjectNextActionCommand,
   deps: HandleSetNextActionDeps
 ): ResultAsync<SetNextActionResult, SetProjectNextActionError> => {
   return deps.load(command.id).andThen((loaded) => {
@@ -57,24 +53,18 @@ export const handleSetNextAction = (
       return errAsync(projectNotFoundError(command.id));
     }
 
-    if (command.newTask) {
+    if (command.type === 'newTask') {
       return handleNewTask(loaded, command, deps);
     }
 
-    const taskId = command.taskId;
     const loadedTask =
-      taskId === null || taskId === undefined ? okAsync(null) : deps.loadTask(taskId);
+      command.type === 'clear' ? okAsync(null) : deps.loadTask(command.taskId);
 
     return loadedTask.andThen((task) => {
       const decision = decideSetNextAction({
         project: loaded,
         task,
-        command: {
-          id: command.id,
-          organizationId: command.organizationId,
-          taskId: command.taskId,
-          actor: command.actor,
-        },
+        command,
         now: deps.now(),
       });
       if (decision.isErr()) {
@@ -94,7 +84,7 @@ export const handleSetNextAction = (
         actor: command.actor,
         ids: { recordId: deps.nextId() },
       });
-      return deps.persistStatus({ project: projectPlan, tasks: [] }).map(() => ({
+      return deps.persistSetNextAction({ project: projectPlan, tasks: [] }).map(() => ({
         view: projectPlan.view,
         ...(task ? { task } : {}),
         eventKinds: projectPlan.records.map((record) => record.kind),
@@ -105,12 +95,16 @@ export const handleSetNextAction = (
 
 const handleNewTask = (
   project: Project,
-  command: SetNextActionInput,
+  command: Extract<SetProjectNextActionCommand, { type: 'newTask' }>,
   deps: HandleSetNextActionDeps
 ): ResultAsync<SetNextActionResult, SetProjectNextActionError> => {
   const newTask = command.newTask;
-  if (!newTask || newTask.title.trim() === '') {
+  const title = newTask.title.trim();
+  if (title === '') {
     return errAsync(taskTitleBlankError());
+  }
+  if (title.length > NEW_TASK_TITLE_MAX) {
+    return errAsync(taskTitleTooLongError());
   }
 
   const loadedList = newTask.listId ? deps.loadList(newTask.listId) : okAsync(null);
@@ -118,15 +112,15 @@ const handleNewTask = (
 
   return loadedList.andThen((list) =>
     deps.loadNextOpenOrder(command.organizationId, destListId).andThen((nextOpenOrder) => {
-      const assigneeCheck =
-        newTask.assigneeId !== undefined
-          ? deps.principalLookup
+      const assigneeCheck: ResultAsync<boolean | null, SetProjectNextActionError> =
+        newTask.assigneeId === undefined
+          ? okAsync(null)
+          : deps.principalLookup
             ? deps.principalLookup.existsInOrganization(
                 newTask.assigneeId,
                 command.organizationId
               )
-            : okAsync(false)
-          : okAsync(null as boolean | null);
+            : okAsync(false);
 
       return assigneeCheck.andThen((assigneeInOrganization) => {
         const now = deps.now();
@@ -150,13 +144,30 @@ const handleNewTask = (
           now,
         });
         if (createDecision.isErr()) {
-          if (createDecision.error.type === 'PROJECT_DONE') {
-            return errAsync(projectDoneError(project.id));
+          switch (createDecision.error.type) {
+            case 'PROJECT_DONE':
+              return errAsync(projectDoneError(project.id));
+            case 'PROJECT_NOT_IN_ORGANIZATION':
+              return errAsync(projectNotFoundError(project.id));
+            case 'LIST_NOT_IN_ORGANIZATION':
+              return errAsync(
+                listNotInOrganizationError(
+                  createDecision.error.listId,
+                  createDecision.error.organizationId
+                )
+              );
+            case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+              return errAsync(
+                assigneeNotInOrganizationError(
+                  createDecision.error.assigneeId,
+                  createDecision.error.organizationId
+                )
+              );
+            default:
+              return errAsync(
+                openTaskPlanFailedError(createdId, createDecision.error)
+              );
           }
-          if (createDecision.error.type === 'PROJECT_NOT_IN_ORGANIZATION') {
-            return errAsync(projectNotFoundError(project.id));
-          }
-          return errAsync(openTaskPlanFailedError(createdId, createDecision.error));
         }
 
         const taskPlan = planTaskChange({
@@ -170,6 +181,7 @@ const handleNewTask = (
           project,
           task: taskPlan.view,
           command: {
+            type: 'set',
             id: command.id,
             organizationId: command.organizationId,
             taskId: taskPlan.view.id,
@@ -181,11 +193,7 @@ const handleNewTask = (
           return errAsync(setDecision.error);
         }
         if (setDecision.value.type !== 'set') {
-          return okAsync({
-            view: project,
-            task: taskPlan.view,
-            eventKinds: taskPlan.records.map((record) => record.kind),
-          });
+          return errAsync(openTaskPlanFailedError(taskPlan.view.id, setDecision.value));
         }
 
         const projectPlan = planProjectChange({
@@ -195,14 +203,16 @@ const handleNewTask = (
           ids: { recordId: deps.nextId() },
         });
 
-        return deps.persistStatus({ project: projectPlan, tasks: [taskPlan] }).map(() => ({
-          view: projectPlan.view,
-          task: taskPlan.view,
-          eventKinds: [
-            ...taskPlan.records.map((record) => record.kind),
-            ...projectPlan.records.map((record) => record.kind),
-          ],
-        }));
+        return deps
+          .persistSetNextAction({ project: projectPlan, tasks: [taskPlan] })
+          .map(() => ({
+            view: projectPlan.view,
+            task: taskPlan.view,
+            eventKinds: [
+              ...taskPlan.records.map((record) => record.kind),
+              ...projectPlan.records.map((record) => record.kind),
+            ],
+          }));
       });
     })
   );

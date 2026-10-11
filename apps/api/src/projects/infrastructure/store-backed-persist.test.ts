@@ -95,4 +95,70 @@ describe('store-backed project persist', () => {
     );
     expect((await tasks.findById(soil.id))._unsafeUnwrap()?.completedAt).toBeUndefined();
   });
+
+  it('rolls back New task create plus set when a change-log insert fails', async () => {
+    const emptyGarden: Project = { ...garden, nextActionTaskId: null };
+    const projects = createFakeProjectStore([emptyGarden]);
+    const tasks = createFakeTaskStore({ initialTasks: [] });
+    const changeLog = createFakeChangeLogStore();
+    const originalInsert = changeLog.insert;
+    let inserts = 0;
+    changeLog.insert = (record) => {
+      inserts += 1;
+      if (inserts > 1) {
+        return errAsync({ type: 'STORAGE_ERROR', message: 'history failed' });
+      }
+      return originalInsert(record);
+    };
+
+    const persist = createStoreBackedProjectStatusPersist({
+      projects,
+      tasks,
+      changeLog,
+    });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+    const created: Task = {
+      ...soil,
+      id: 'task-new',
+      title: 'Order lumber',
+    };
+
+    const result = await persist({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: emptyGarden.id,
+          organizationId: emptyGarden.organizationId,
+          taskId: created.id,
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current: emptyGarden,
+        actor,
+        ids: { recordId: 'log-set' },
+      }),
+      tasks: [
+        planTaskChange({
+          event: {
+            type: 'TaskCreated',
+            id: created.id,
+            organizationId: created.organizationId,
+            createdById: created.createdById,
+            title: created.title,
+            projectId: emptyGarden.id,
+            openOrder: 0,
+            createdAt: later,
+            occurredAt: later,
+          },
+          current: null,
+          actor,
+          ids: { recordId: 'log-create' },
+        }),
+      ],
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect((await projects.findById(emptyGarden.id))._unsafeUnwrap()?.nextActionTaskId).toBeNull();
+    expect((await tasks.findById(created.id))._unsafeUnwrap()).toBeNull();
+  });
 });

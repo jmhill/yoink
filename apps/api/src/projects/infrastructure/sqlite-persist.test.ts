@@ -655,4 +655,83 @@ describe('sqlite project persist', () => {
       'ProjectNextActionSet',
     ]);
   });
+
+  it('does not create the task or set the next action when New task persist fails', async () => {
+    const persist = createSqliteProjectPersist({ db });
+    const persistStatus = createSqliteProjectStatusPersist({ db });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+
+    await persist(
+      planProjectChange({
+        event: {
+          type: 'ProjectCreated',
+          id: 'project-1',
+          organizationId: 'org-1',
+          createdById: 'user-1',
+          name: 'Garden',
+          status: 'active',
+          createdAt: now,
+          occurredAt: now,
+        },
+        current: null,
+        actor,
+        ids: { recordId: 'log-project-create' },
+      })
+    );
+
+    const projectStore = await createSqliteProjectStore(db);
+    const current = (await projectStore.findById('project-1'))._unsafeUnwrap();
+    expect(current).not.toBeNull();
+    if (!current) {
+      throw new Error('expected project');
+    }
+
+    await db.execute({
+      sql: `
+        CREATE TRIGGER fail_new_task_log BEFORE INSERT ON change_log
+        BEGIN
+          SELECT RAISE(ABORT, 'history failed');
+        END
+      `,
+    });
+
+    const result = await persistStatus({
+      project: planProjectChange({
+        event: {
+          type: 'ProjectNextActionSet',
+          id: 'project-1',
+          organizationId: 'org-1',
+          taskId: 'task-new',
+          previousTaskId: null,
+          occurredAt: later,
+        },
+        current,
+        actor,
+        ids: { recordId: 'log-set' },
+      }),
+      tasks: [
+        planTaskChange({
+          event: {
+            type: 'TaskCreated',
+            id: 'task-new',
+            organizationId: 'org-1',
+            createdById: 'user-1',
+            title: 'Order lumber',
+            projectId: 'project-1',
+            openOrder: 0,
+            createdAt: later,
+            occurredAt: later,
+          },
+          current: null,
+          actor,
+          ids: { recordId: 'log-task-new' },
+        }),
+      ],
+    });
+    expect(result.isErr()).toBe(true);
+
+    const taskStore = await createSqliteTaskStore(db);
+    expect((await taskStore.findById('task-new'))._unsafeUnwrap()).toBeNull();
+    expect((await projectStore.findById('project-1'))._unsafeUnwrap()?.nextActionTaskId).toBeNull();
+  });
 });

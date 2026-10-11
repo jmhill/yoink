@@ -15,7 +15,7 @@ import type {
 import { kindsFromRecords, type WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 import { changeLogIdsForTaskUpdated } from '../domain/change-log-records.js';
-import { planNextActionClear } from '../../projects/application/plan-next-action-clear.js';
+import { planNextActionClear } from '../../projects/domain/plan-next-action-clear.js';
 
 export type HandleUpdateTaskDeps = {
   load: LoadTask;
@@ -77,7 +77,7 @@ export const handleUpdateTask = (
       loadedDestProject.andThen((project) =>
         loadedCurrentProject.andThen((currentProject) =>
           loadedNextOpenOrder.andThen((nextOpenOrder) => {
-            const assigneeCheck =
+            const assigneeCheck: ResultAsync<boolean | null, UpdateTaskError> =
               command.assigneeId !== undefined && command.assigneeId !== null
                 ? deps.principalLookup
                   ? deps.principalLookup.existsInOrganization(
@@ -85,7 +85,7 @@ export const handleUpdateTask = (
                       command.organizationId
                     )
                   : okAsync(false)
-                : okAsync(null as boolean | null);
+                : okAsync(null);
 
             return assigneeCheck.andThen((assigneeInOrganization) => {
               const now = deps.now();

@@ -1455,7 +1455,12 @@ export const createPlaywrightActor = (
     async pageClickWaitingOption(): Promise<void> {
       await page.locator('[data-project-status-option="waiting"]').click();
       await expect(page.getByRole('listbox')).toBeHidden();
+      await expect(page.locator('[data-slot="select-content"]')).toHaveCount(0);
       await expect(page.locator('[data-project-waiting-fields]')).toBeVisible();
+      const drawer = page.locator('[data-slot="drawer-content"]');
+      if (await drawer.isVisible()) {
+        await waitForSettledOpenDrawer({ page });
+      }
     },
 
     async pageClickDoneOption(): Promise<void> {
@@ -2370,6 +2375,7 @@ export const createPlaywrightActor = (
     },
 
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
+      await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 8_000 });
       const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
       if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
         await waitForSettledOpenSelect({ page });

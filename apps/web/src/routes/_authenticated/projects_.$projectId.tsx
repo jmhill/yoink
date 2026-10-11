@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Clock, History, Pencil } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Clock, History, Pencil } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   Dialog,
@@ -426,7 +426,10 @@ function ProjectPage() {
             data-part="next-action-empty"
             className="rounded-xl border-2 border-dashed border-warning-border bg-warning-muted p-4"
           >
-            <p className="text-sm font-semibold text-warning">No next action</p>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-warning">
+              <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+              No next action
+            </p>
             <p className="mt-2 text-sm text-warning-foreground">
               This project won’t show in Work until it has a next action.
             </p>
@@ -439,7 +442,7 @@ function ProjectPage() {
                 setPickerOpen(true);
               }}
             >
-              Set next action
+              + Set next action
             </Button>
           </section>
         ) : null}
@@ -450,7 +453,7 @@ function ProjectPage() {
             <p className="text-sm text-muted-foreground" data-project-open-task-count="">
               {openTasksPending
                 ? 'Loading…'
-                : `${otherOpenTasks.length} open task${otherOpenTasks.length === 1 ? '' : 's'}`}
+                : `${otherOpenTasks.length} open task${otherOpenTasks.length === 1 ? '' : 's'} · newest first`}
             </p>
           </div>
           {tasksBlocking ? (

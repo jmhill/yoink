@@ -105,6 +105,26 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeOpenTaskOnProject('Order lumber');
     });
 
+    for (const viewport of [
+      { name: 'desktop' as const, apply: (actor: BrowserActor) => actor.useDesktopViewport() },
+      { name: 'phone' as const, apply: (actor: BrowserActor) => actor.useMobileViewport() },
+    ]) {
+      it(`shows What’s next after completing the next action from Today on ${viewport.name}`, async () => {
+        await viewport.apply(alice);
+        const today = new Date().toISOString().split('T')[0]!;
+        const garden = await alice.createProject({ name: 'Garden' });
+        const soil = await alice.createTask({
+          title: 'Buy soil',
+          projectId: garden.id,
+          dueDate: today,
+        });
+        await alice.setNextAction(garden.id, { taskId: soil.id });
+        await alice.openToday();
+        await alice.completeOpenTaskFromRow(soil.id);
+        await alice.shouldSeeWhatsNext();
+      });
+    }
+
     it('shows What’s next after completing, then picks another', async () => {
       const garden = await alice.createProject({ name: 'Garden' });
       const soil = await alice.createTask({ title: 'Buy soil', projectId: garden.id });
@@ -241,6 +261,25 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'no_next_action',
         });
+
+        await alice.goToAllProjects();
+        await alice.shouldSeeNoNextActionOnAllProjects('Kitchen renovation');
+        if (viewport.name === 'desktop') {
+          await alice.shouldSeeNoNextActionDotOnRail('Kitchen renovation');
+        }
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'all_projects_no_next_action',
+        });
+        if (viewport.name === 'phone') {
+          await alice.openToday();
+          await alice.openMobileTasksRail();
+          await alice.shouldSeeNoNextActionDotOnRail('Kitchen renovation');
+          await alice.saveWalkthroughScreenshot({
+            story: WALKTHROUGH_STORY,
+            step: 'rail_no_next_action',
+          });
+        }
 
         await alice.goToProject(kitchen.id);
         await alice.openProjectEditDialog();

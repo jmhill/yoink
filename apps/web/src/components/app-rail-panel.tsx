@@ -131,7 +131,6 @@ export function AppRailPanel({
   const { data: projectsData } = tsrProjects.list.useQuery({
     queryKey: ['projects'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
-    refetchInterval: false,
   });
 
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;

@@ -15,6 +15,7 @@ import type {
   PageProjects,
   PersistProjectChange,
   PersistProjectStatusChange,
+  PersistSetNextAction,
 } from './ports.js';
 import type { OrgPrincipalLookup } from '../../tasks/domain/org-principal-lookup.js';
 import {
@@ -26,6 +27,7 @@ import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 export type ProjectHandlerDeps = {
   persist: PersistProjectChange;
   persistStatus: PersistProjectStatusChange;
+  persistSetNextAction: PersistSetNextAction;
   list: ListProjects;
   pageProjects: PageProjects;
   load: LoadProject;

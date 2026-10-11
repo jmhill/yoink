@@ -118,6 +118,25 @@ export type TaskTitleBlankError = {
   readonly message: string;
 };
 
+export type TaskTitleTooLongError = {
+  readonly type: 'TASK_TITLE_TOO_LONG';
+  readonly message: string;
+};
+
+export type ListNotInOrganizationError = {
+  readonly type: 'LIST_NOT_IN_ORGANIZATION';
+  readonly listId: string;
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export type AssigneeNotInOrganizationError = {
+  readonly type: 'ASSIGNEE_NOT_IN_ORGANIZATION';
+  readonly assigneeId: string;
+  readonly organizationId: string;
+  readonly message: string;
+};
+
 export type ListProjectsError = StorageError | InvalidCursorError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
 export type ListOpenTasksOnProjectError =
@@ -157,6 +176,9 @@ export type SetProjectNextActionError =
   | TaskNotInProjectError
   | ProjectDoneError
   | TaskTitleBlankError
+  | TaskTitleTooLongError
+  | ListNotInOrganizationError
+  | AssigneeNotInOrganizationError
   | OpenTaskPlanFailedError;
 
 export const storageError = (message: string, cause?: unknown): StorageError => ({
@@ -284,4 +306,29 @@ export const projectDoneError = (id: string): ProjectDoneError => ({
 export const taskTitleBlankError = (): TaskTitleBlankError => ({
   type: 'TASK_TITLE_BLANK',
   message: "Title can't be blank",
+});
+
+export const taskTitleTooLongError = (): TaskTitleTooLongError => ({
+  type: 'TASK_TITLE_TOO_LONG',
+  message: 'Title must be 500 characters or fewer',
+});
+
+export const listNotInOrganizationError = (
+  listId: string,
+  organizationId: string
+): ListNotInOrganizationError => ({
+  type: 'LIST_NOT_IN_ORGANIZATION',
+  listId,
+  organizationId,
+  message: 'List is not in this organization',
+});
+
+export const assigneeNotInOrganizationError = (
+  assigneeId: string,
+  organizationId: string
+): AssigneeNotInOrganizationError => ({
+  type: 'ASSIGNEE_NOT_IN_ORGANIZATION',
+  assigneeId,
+  organizationId,
+  message: 'Assignee is not a member of this organization',
 });

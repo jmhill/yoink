@@ -9,6 +9,7 @@ import type { StorageError, TaskNotFoundError } from '../domain/task-errors.js';
 import type { FakeTaskStore } from './fake-task-store.js';
 import type { ProjectChangePlan } from '../../projects/domain/plan-project-change.js';
 import {
+  clearNextActionQuery,
   insertProjectQuery,
   updateProjectQuery,
 } from '../../projects/infrastructure/project-row-statements.js';
@@ -64,6 +65,27 @@ export const queriesForTaskPlan = (plan: TaskChangePlan) => {
 const subjectIdOf = (plan: TaskChangePlan): string =>
   plan.action === 'delete' ? plan.taskId : plan.view.id;
 
+const queriesForProjectExtra = (project: ProjectChangePlan) => {
+  const history = project.records.map((record) => insertChangeLogQuery(record));
+  switch (project.action) {
+    case 'insert':
+      return [insertProjectQuery(project.view), ...history];
+    case 'update':
+      return [updateProjectQuery(project.view), ...history];
+    case 'clearNextAction':
+      return [
+        clearNextActionQuery({
+          projectId: project.projectId,
+          organizationId: project.organizationId,
+          previousTaskId: project.previousTaskId,
+          lastChangedAt: project.view.lastChangedAt,
+          lastChangedBy: project.view.lastChangedBy,
+        }),
+        ...history,
+      ];
+  }
+};
+
 const mutationMissed = (plan: TaskChangePlan, results: QueryResult[]): boolean => {
   switch (plan.action) {
     case 'insert':
@@ -85,17 +107,7 @@ export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChan
       deps.db.batch(
         [
           ...queriesForTaskPlan(plan),
-          ...(extras?.project
-            ? extras.project.action === 'insert'
-              ? [
-                  insertProjectQuery(extras.project.view),
-                  ...extras.project.records.map((record) => insertChangeLogQuery(record)),
-                ]
-              : [
-                  updateProjectQuery(extras.project.view),
-                  ...extras.project.records.map((record) => insertChangeLogQuery(record)),
-                ]
-            : []),
+          ...(extras?.project ? queriesForProjectExtra(extras.project) : []),
         ],
         'write'
       ),
@@ -161,7 +173,7 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
               error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
             )
           ),
-        okAsync(undefined) as ResultAsync<void, StorageError>
+        okAsync<void, StorageError>(undefined)
       );
 
     const missing = (): ResultAsync<void, TaskNotFoundError> =>
@@ -206,7 +218,7 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
               error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
             )
           ),
-        okAsync(undefined) as ResultAsync<void, StorageError>
+        okAsync<void, StorageError>(undefined)
       );
     };
 

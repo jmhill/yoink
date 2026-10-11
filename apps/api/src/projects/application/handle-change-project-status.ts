@@ -9,7 +9,7 @@ import {
 import { decideChangeProjectStatus } from '../domain/decide-change-status.js';
 import { mergeProjectUpdatePlans, planProjectChange } from '../domain/plan-project-change.js';
 import { planOpenTasksForProjectDone } from '../domain/plan-open-tasks-for-done.js';
-import { planNextActionClear } from './plan-next-action-clear.js';
+import { planNextActionClear } from '../domain/plan-next-action-clear.js';
 import type {
   LoadProject,
   PageOpenTasksOnProject,
@@ -101,10 +101,7 @@ export const handleChangeProjectStatus = (
         command.status === 'done'
           ? planNextActionClear({
               project: statusPlan.view,
-              change: {
-                type: 'projectDone',
-                taskIds: tasks.map((task) => task.id),
-              },
+              change: { type: 'projectDone' },
               actor: command.actor,
               now,
               recordId: deps.nextId(),
@@ -112,7 +109,9 @@ export const handleChangeProjectStatus = (
           : null;
 
       const projectPlan =
-        clearPlan && statusPlan.action === 'update' && clearPlan.action === 'update'
+        clearPlan &&
+        clearPlan.action === 'clearNextAction' &&
+        statusPlan.action === 'update'
           ? mergeProjectUpdatePlans(statusPlan, clearPlan)
           : statusPlan;
 

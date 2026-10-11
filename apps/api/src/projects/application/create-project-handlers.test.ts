@@ -37,6 +37,7 @@ const handlersOf = (logger: ReturnType<typeof collectLogger>['logger']) =>
   createProjectHandlers({
     persist,
     persistStatus: () => okAsync(undefined),
+    persistSetNextAction: () => okAsync(undefined),
     list: () => okAsync([garden]),
     pageProjects: () => okAsync({ rows: [garden], total: 1 }),
     load: () => okAsync(garden),

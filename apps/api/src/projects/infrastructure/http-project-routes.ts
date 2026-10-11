@@ -264,13 +264,18 @@ export const registerProjectRoutes = async (
       },
 
       setNextAction: async ({ params, body, request }) => {
-        const result = await projectHandlers.setNextAction({
+        const base = {
           id: params.id,
           organizationId: request.authContext.organizationId,
-          taskId: 'taskId' in body ? body.taskId : null,
-          newTask: 'newTask' in body ? body.newTask : undefined,
           actor: request.authContext.actor,
-        });
+        };
+        const command =
+          'newTask' in body
+            ? { type: 'newTask' as const, ...base, newTask: body.newTask }
+            : body.taskId === null
+              ? { type: 'clear' as const, ...base }
+              : { type: 'set' as const, ...base, taskId: body.taskId };
+        const result = await projectHandlers.setNextAction(command);
 
         return result.match(
           ({ view, task }) => ({
@@ -286,6 +291,9 @@ export const registerProjectRoutes = async (
               case 'TASK_NOT_IN_PROJECT':
               case 'PROJECT_DONE':
               case 'TASK_TITLE_BLANK':
+              case 'TASK_TITLE_TOO_LONG':
+              case 'LIST_NOT_IN_ORGANIZATION':
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
                 return {
                   status: 400 as const,
                   body: projectErrorBody(error),

@@ -36,20 +36,10 @@ describe('nextActionClearFor', () => {
     ).toBe('removedFromProject');
   });
 
-  it('clears on project done when the next action is among the tasks', () => {
-    expect(
-      nextActionClearFor(
-        project,
-        { type: 'projectDone', taskIds: ['task-herbs', 'task-soil'] },
-        now
-      )?.reason
-    ).toBe('projectDone');
-  });
-
-  it('clears on project done even when no open tasks were planned', () => {
-    expect(
-      nextActionClearFor(project, { type: 'projectDone', taskIds: [] }, now)?.reason
-    ).toBe('projectDone');
+  it('always clears on project done when a next action is set', () => {
+    expect(nextActionClearFor(project, { type: 'projectDone' }, now)?.reason).toBe(
+      'projectDone'
+    );
   });
 
   it('does not clear when a different task is completed', () => {

@@ -14,7 +14,11 @@ import type { ProjectChangePlan } from '../domain/plan-project-change.js';
 import { queriesForTaskPlan } from '../../tasks/infrastructure/store-backed-persist.js';
 import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import type { TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
-import { insertProjectQuery, updateProjectQuery } from './project-row-statements.js';
+import {
+  clearNextActionQuery,
+  insertProjectQuery,
+  updateProjectQuery,
+} from './project-row-statements.js';
 import type { FakeProjectStore } from './fake-project-store.js';
 
 export const queriesForProjectPlan = (plan: ProjectChangePlan): SqlQuery[] => {
@@ -25,6 +29,17 @@ export const queriesForProjectPlan = (plan: ProjectChangePlan): SqlQuery[] => {
       return [insertProjectQuery(plan.view), ...history];
     case 'update':
       return [updateProjectQuery(plan.view), ...history];
+    case 'clearNextAction':
+      return [
+        clearNextActionQuery({
+          projectId: plan.projectId,
+          organizationId: plan.organizationId,
+          previousTaskId: plan.previousTaskId,
+          lastChangedAt: plan.view.lastChangedAt,
+          lastChangedBy: plan.view.lastChangedBy,
+        }),
+        ...history,
+      ];
   }
 };
 
@@ -80,7 +95,7 @@ const persistRecords = (
           error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
         )
       ),
-    okAsync(undefined) as ResultAsync<void, StorageError>
+    okAsync<void, StorageError>(undefined)
   );
 
 const applyTaskPlanToStore = (store: FakeTaskStore, plan: TaskChangePlan): void => {

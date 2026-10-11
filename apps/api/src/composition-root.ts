@@ -371,9 +371,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         .map((membership) => membership !== null)
         .orElse(() => okAsync(false)),
   };
+  const persistProjectBatch = createSqliteProjectStatusPersist({ db: database });
   const projectHandlers = createProjectHandlers({
     persist: createSqliteProjectPersist({ db: database }),
-    persistStatus: createSqliteProjectStatusPersist({ db: database }),
+    persistStatus: persistProjectBatch,
+    persistSetNextAction: persistProjectBatch,
     list: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
     load: (id) => projectStore.findById(id),

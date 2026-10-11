@@ -32,6 +32,11 @@ export type PersistProjectStatusChange = (input: {
   tasks: readonly TaskChangePlan[];
 }) => ResultAsync<void, StorageError>;
 
+export type PersistSetNextAction = (input: {
+  project: ProjectChangePlan;
+  tasks: readonly TaskChangePlan[];
+}) => ResultAsync<void, StorageError>;
+
 export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
 
 export type LoadNamedList = (

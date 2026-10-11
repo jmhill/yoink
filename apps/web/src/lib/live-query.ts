@@ -1,5 +1,6 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
-import type { Project, Task } from '@yoink/api-contracts';
+import { z } from 'zod';
+import { ProjectSchema, type Project, type Task } from '@yoink/api-contracts';
 
 /** Collection prefixes the 10s live poll refreshes. Partial-match so pile keys cancel too. */
 export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
@@ -25,13 +26,28 @@ type ProjectGetResult = {
   body: Project;
 };
 
-const isTaskListResult = (data: unknown): data is TaskListResult => {
-  if (typeof data !== 'object' || data === null) {
-    return false;
-  }
-  const result = data as { status?: unknown; body?: { tasks?: unknown } };
-  return result.status === 200 && Array.isArray(result.body?.tasks);
-};
+const TaskListResultSchema = z.object({
+  status: z.literal(200),
+  body: z.object({
+    tasks: z.array(z.unknown()),
+    total: z.number().optional(),
+  }),
+});
+
+const ProjectListResultSchema = z.object({
+  status: z.literal(200),
+  body: z.object({
+    projects: z.array(ProjectSchema),
+  }),
+});
+
+const ProjectGetResultSchema = z.object({
+  status: z.literal(200),
+  body: ProjectSchema,
+});
+
+const isTaskListResult = (data: unknown): data is TaskListResult =>
+  TaskListResultSchema.safeParse(data).success;
 
 /**
  * Open-task list caches the UI actually renders: board filters (not Done),
@@ -75,27 +91,11 @@ export const restoreQuerySnapshots = (
   }
 };
 
-const isProjectListResult = (data: unknown): data is ProjectListResult => {
-  if (typeof data !== 'object' || data === null) {
-    return false;
-  }
-  const result = data as { status?: unknown; body?: { projects?: unknown } };
-  return result.status === 200 && Array.isArray(result.body?.projects);
-};
+const isProjectListResult = (data: unknown): data is ProjectListResult =>
+  ProjectListResultSchema.safeParse(data).success;
 
-const isProjectGetResult = (data: unknown): data is ProjectGetResult => {
-  if (typeof data !== 'object' || data === null) {
-    return false;
-  }
-  const result = data as { status?: unknown; body?: { id?: unknown; nextActionTaskId?: unknown } };
-  return (
-    result.status === 200 &&
-    typeof result.body === 'object' &&
-    result.body !== null &&
-    typeof result.body.id === 'string' &&
-    'nextActionTaskId' in result.body
-  );
-};
+const isProjectGetResult = (data: unknown): data is ProjectGetResult =>
+  ProjectGetResultSchema.safeParse(data).success;
 
 export const snapshotLiveProjects = (
   queryClient: QueryClient

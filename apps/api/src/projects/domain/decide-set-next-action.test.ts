@@ -44,12 +44,10 @@ const command = (
     userId: 'user-456',
     via: 'session',
   }
-): SetProjectNextActionCommand => ({
-  id: garden.id,
-  organizationId: garden.organizationId,
-  taskId,
-  actor,
-});
+): Extract<SetProjectNextActionCommand, { type: 'set' | 'clear' }> =>
+  taskId === null
+    ? { type: 'clear', id: garden.id, organizationId: garden.organizationId, actor }
+    : { type: 'set', id: garden.id, organizationId: garden.organizationId, taskId, actor };
 
 describe('decideSetNextAction', () => {
   it('sets an open task in the project', () => {

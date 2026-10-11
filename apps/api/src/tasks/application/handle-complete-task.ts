@@ -7,7 +7,7 @@ import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadProject, LoadTask, PersistTaskChange } from './ports.js';
 import { kindsFromRecords, type WriteResult } from './write-result.js';
-import { planNextActionClear } from '../../projects/application/plan-next-action-clear.js';
+import { planNextActionClear } from '../../projects/domain/plan-next-action-clear.js';
 
 export type HandleCompleteTaskDeps = {
   load: LoadTask;

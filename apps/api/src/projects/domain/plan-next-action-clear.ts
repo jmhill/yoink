@@ -1,7 +1,7 @@
 import type { Project } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/auth-context.js';
-import { nextActionClearFor, type NextActionTaskChange } from '../domain/next-action-clear.js';
-import { planProjectChange, type ProjectChangePlan } from '../domain/plan-project-change.js';
+import { nextActionClearFor, type NextActionTaskChange } from './next-action-clear.js';
+import { planProjectChange, type ProjectChangePlan } from './plan-project-change.js';
 
 export const planNextActionClear = (input: {
   project: Project;

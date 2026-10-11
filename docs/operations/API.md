@@ -321,5 +321,8 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `TASK_NOT_FOUND` | Next-action task is missing, deleted, or in another org (`404`) |
 | `PROJECT_DONE` | Setting a next action on a done project (`400`) |
 | `TASK_TITLE_BLANK` | New-task title is blank after trim (`400`) |
+| `TASK_TITLE_TOO_LONG` | New-task title is longer than 500 characters (`400`) |
+| `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
+| `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation (`400`) |
 

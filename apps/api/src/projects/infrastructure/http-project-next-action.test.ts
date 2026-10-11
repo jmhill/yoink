@@ -203,6 +203,59 @@ describe('project next-action HTTP', () => {
     expect(response.json<{ code: string }>().code).toBe('TASK_TITLE_BLANK');
   });
 
+  it('returns TASK_TITLE_TOO_LONG for a too-long new-task title', async () => {
+    const garden = await createProject('Garden');
+    const response = await setNext(garden.id, { newTask: { title: 'x'.repeat(501) } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('TASK_TITLE_TOO_LONG');
+  });
+
+  it('returns LIST_NOT_IN_ORGANIZATION for an unknown new-task list', async () => {
+    const garden = await createProject('Garden');
+    const response = await setNext(garden.id, {
+      newTask: { title: 'Buy soil', listId: '00000000-0000-4000-8000-000000000088' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('LIST_NOT_IN_ORGANIZATION');
+  });
+
+  it('returns LIST_NOT_IN_ORGANIZATION for a new-task list in another org', async () => {
+    const garden = await createProject('Garden');
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      cookies: session.cookies,
+      payload: { name: 'Other org list' },
+    });
+    expect(created.statusCode).toBe(201);
+    const listId = created.json<{ id: string }>().id;
+    await database.execute({
+      sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+      args: ['org-other', 'Other', '2025-01-15T10:00:00.000Z'],
+    });
+    await database.execute({
+      sql: `UPDATE lists SET organization_id = ? WHERE id = ?`,
+      args: ['org-other', listId],
+    });
+    const response = await setNext(garden.id, {
+      newTask: { title: 'Buy soil', listId },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('LIST_NOT_IN_ORGANIZATION');
+  });
+
+  it('returns ASSIGNEE_NOT_IN_ORGANIZATION for a new-task assignee outside the org', async () => {
+    const garden = await createProject('Garden');
+    const response = await setNext(garden.id, {
+      newTask: {
+        title: 'Buy soil',
+        assigneeId: '00000000-0000-4000-8000-000000000066',
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ code: string }>().code).toBe('ASSIGNEE_NOT_IN_ORGANIZATION');
+  });
+
   it('clears the next action when the task is completed', async () => {
     const garden = await createProject('Garden');
     const soil = await createTask({ title: 'Buy soil', projectId: garden.id });
@@ -222,5 +275,62 @@ describe('project next-action HTTP', () => {
     const log = createSqliteChangeLogStore(database);
     const records = (await log.findBySubject('project', garden.id))._unsafeUnwrap();
     expect(records.some((record) => record.kind === 'ProjectNextActionCleared')).toBe(true);
+  });
+
+  it('clears the next action when the task moves to another project', async () => {
+    const garden = await createProject('Garden');
+    const cabin = await createProject('Cabin');
+    const soil = await createTask({ title: 'Buy soil', projectId: garden.id });
+    await setNext(garden.id, { taskId: soil.id });
+    const moved = await app.inject({
+      method: 'PATCH',
+      url: `/api/tasks/${soil.id}`,
+      headers: bearer,
+      payload: { projectId: cabin.id },
+    });
+    expect(moved.statusCode).toBe(200);
+    const fetched = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${garden.id}`,
+      headers: bearer,
+    });
+    expect(fetched.json<Project>().nextActionTaskId).toBeNull();
+    const log = createSqliteChangeLogStore(database);
+    const records = (await log.findBySubject('project', garden.id))._unsafeUnwrap();
+    expect(
+      records.some(
+        (record) =>
+          record.kind === 'ProjectNextActionCleared' &&
+          (record.payload as { reason?: string }).reason === 'removedFromProject'
+      )
+    ).toBe(true);
+  });
+
+  it('clears the next action when the project is marked done', async () => {
+    const garden = await createProject('Garden');
+    const soil = await createTask({ title: 'Buy soil', projectId: garden.id });
+    await setNext(garden.id, { taskId: soil.id });
+    const done = await app.inject({
+      method: 'PUT',
+      url: `/api/projects/${garden.id}/status`,
+      cookies: session.cookies,
+      payload: { status: 'done', openTasks: 'complete' },
+    });
+    expect(done.statusCode).toBe(200);
+    const fetched = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${garden.id}`,
+      headers: bearer,
+    });
+    expect(fetched.json<Project>().nextActionTaskId).toBeNull();
+    const log = createSqliteChangeLogStore(database);
+    const records = (await log.findBySubject('project', garden.id))._unsafeUnwrap();
+    expect(
+      records.some(
+        (record) =>
+          record.kind === 'ProjectNextActionCleared' &&
+          (record.payload as { reason?: string }).reason === 'projectDone'
+      )
+    ).toBe(true);
   });
 });

@@ -26,9 +26,19 @@ export type ChangeProjectStatusCommand = {
   actor: Actor;
 };
 
+export type NewNextActionTask = {
+  title: string;
+  dueDate?: string;
+  assigneeId?: string;
+  listId?: string;
+};
+
 export type SetProjectNextActionCommand = {
   id: string;
   organizationId: string;
-  taskId: string | null;
   actor: Actor;
-};
+} & (
+  | { type: 'set'; taskId: string }
+  | { type: 'clear' }
+  | { type: 'newTask'; newTask: NewNextActionTask }
+);

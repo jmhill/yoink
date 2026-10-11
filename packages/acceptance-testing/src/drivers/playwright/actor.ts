@@ -2030,10 +2030,8 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeFinishedBy(title: string, text: string): Promise<void> {
-      const item = page.locator('[data-project-finished-item]').filter({
-        has: page.locator(`[data-task-title="${title}"]`),
-      });
-      const line = item.locator('[data-finished-by]');
+      const row = page.locator(`[data-project-finished] [data-task-title="${title}"]`);
+      const line = row.locator('[data-finished-by]');
       await line.scrollIntoViewIfNeeded();
       await expect(line).toContainText(text);
     },

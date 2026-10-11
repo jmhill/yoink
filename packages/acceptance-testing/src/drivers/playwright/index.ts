@@ -1,12 +1,72 @@
 import { chromium, type Browser, type BrowserContext, type Page, type CDPSession } from '@playwright/test';
 import type { Driver, DriverConfig } from '../types.js';
-import type { Actor, AnonymousActor } from '../../dsl/index.js';
+import type { Actor, Admin, AnonymousActor } from '../../dsl/index.js';
 import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
 import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
+
+type SignupSession = {
+  user: { id: string };
+  organizationId?: string;
+};
+
+/**
+ * Session cookie is set as soon as signup succeeds, before the 2s home redirect.
+ * Read it from the success page so we can name the user without another navigation.
+ */
+const readSignupSession = async (page: Page): Promise<SignupSession> => {
+  const sessionPromise = page.evaluate(async () => {
+    const response = await fetch('/api/auth/session', {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to get session: ${response.status} - ${text}`);
+    }
+    return response.json();
+  });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Session fetch timed out after 5s')), 5000);
+  });
+
+  return (await Promise.race([sessionPromise, timeoutPromise])) as SignupSession;
+};
+
+/**
+ * One instance-admin PATCH — no extra page. Overlap it with the signup redirect
+ * so naming does not add sequential time after an already-heavy passkey signup.
+ */
+const nameSignedUpUser = async (
+  admin: Admin,
+  userId: string,
+  email: string,
+  debug: (msg: string) => void
+): Promise<void> => {
+  const name = displayNameFromEmail(email);
+  await admin.updateUser(userId, { name });
+  debug(`Set display name via admin: ${name}`);
+};
+
+const finishSignupOnHome = async (
+  page: Page,
+  signupPage: SignupPage,
+  admin: Admin,
+  email: string,
+  debug: (msg: string) => void
+): Promise<SignupSession> => {
+  const session = await readSignupSession(page);
+  debug(`Session validated, user: ${session.user.id}`);
+  await Promise.all([
+    signupPage.waitForRedirect(),
+    nameSignedUpUser(admin, session.user.id, email, debug),
+  ]);
+  debug('Redirected to home');
+  return session;
+};
 
 /**
  * Creates a Playwright driver that implements DSL interfaces via browser automation.
@@ -149,47 +209,19 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw e;
       }
       debug('Signup success!');
-      
-      // Wait for auto-redirect to home page (happens after 2 seconds)
-      await signupPage.waitForRedirect();
-      debug('Redirected to home');
 
-      // Get user ID from session - we need to call the API  
-      // The session cookie is already set from signup
-      
-      // Set a timeout for the page.evaluate call
-      const sessionPromise = page.evaluate(async () => {
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Failed to get session: ${response.status} - ${text}`);
-        }
-        return response.json();
-      });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Session fetch timed out after 5s')), 5000);
-      });
-      
-      let sessionResponse;
+      let session;
       try {
-        sessionResponse = await Promise.race([sessionPromise, timeoutPromise]);
+        session = await finishSignupOnHome(page, signupPage, admin, email, debug);
       } catch (e) {
-        debug(`Session fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+        debug(`Signup finish failed: ${e instanceof Error ? e.message : String(e)}`);
         debug(`Current page URL: ${page.url()}`);
         throw e;
       }
-      
-      const userId = (sessionResponse as { user: { id: string } }).user.id;
-      debug(`Session validated, user: ${userId}`);
-      await admin.updateUser(userId, { name: displayNameFromEmail(email) });
-      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
-        userId,
+        userId: session.user.id,
         organizationId: orgId,
       });
     },
@@ -272,41 +304,23 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       }
       debug('Signup success!');
 
-      // Wait for auto-redirect to home page
-      await signupPage.waitForRedirect();
-      debug('Redirected to home');
-
-      // Get user ID and org ID from session
-      const sessionPromise = page.evaluate(async () => {
-        const response = await fetch('/api/auth/session', { credentials: 'include' });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Failed to get session: ${response.status} - ${text}`);
-        }
-        return response.json();
-      });
-
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Session fetch timed out after 5s')), 5000);
-      });
-
-      let sessionResponse;
+      let session;
       try {
-        sessionResponse = await Promise.race([sessionPromise, timeoutPromise]);
+        session = await finishSignupOnHome(page, signupPage, admin, email, debug);
       } catch (e) {
-        debug(`Session fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+        debug(`Signup finish failed: ${e instanceof Error ? e.message : String(e)}`);
         throw e;
       }
 
-      const typedSession = sessionResponse as { user: { id: string }; organizationId: string };
-      debug(`Session validated, user: ${typedSession.user.id}, org: ${typedSession.organizationId}`);
-      await admin.updateUser(typedSession.user.id, { name: displayNameFromEmail(email) });
-      debug(`Set display name via admin: ${displayNameFromEmail(email)}`);
+      if (session.organizationId === undefined) {
+        throw new Error('Signup session did not include organizationId');
+      }
+      debug(`Session org: ${session.organizationId}`);
 
       return createPlaywrightActor(page, {
         email: uniqueEmail,
-        userId: typedSession.user.id,
-        organizationId: typedSession.organizationId,
+        userId: session.user.id,
+        organizationId: session.organizationId,
       });
     },
 

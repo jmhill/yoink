@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Clock } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
+import { Checkbox } from '@yoink/ui-base/components/checkbox';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import {
@@ -12,14 +12,23 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@yoink/ui-base/components/drawer';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@yoink/ui-base/components/select';
+import { cn } from '@yoink/ui-base/lib/utils';
 import type { AssignableProjectStatus, Project } from '@yoink/api-contracts';
-import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
+import { localDateString } from '@/lib/format-waiting-line';
+import { useDesktopLayout } from '@/lib/use-desktop-layout';
 
 const STATUS_OPTIONS: Array<{ value: AssignableProjectStatus; label: string }> = [
   { value: 'active', label: 'Active' },
@@ -38,6 +47,8 @@ type ProjectStatusControlProps = {
   openTaskCount: number;
   isPending: boolean;
   error: string | null;
+  waitingFormOpen: boolean;
+  onWaitingFormOpenChange: (open: boolean) => void;
   onChangeStatus: (input: {
     status: AssignableProjectStatus;
     waitingOn?: string | null;
@@ -51,27 +62,28 @@ export function ProjectStatusControl({
   openTaskCount,
   isPending,
   error,
+  waitingFormOpen,
+  onWaitingFormOpenChange,
   onChangeStatus,
 }: ProjectStatusControlProps) {
-  const [draftWaiting, setDraftWaiting] = useState(project.status === 'waiting');
+  const isDesktop = useDesktopLayout();
   const [waitingOn, setWaitingOn] = useState(project.waitingOn ?? '');
   const [waitingSince, setWaitingSince] = useState(
     project.waitingSince ?? localDateString()
   );
+  const [dontKnow, setDontKnow] = useState(project.status === 'waiting' && !project.waitingSince);
+  const [sinceError, setSinceError] = useState<string | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
 
   useEffect(() => {
-    setDraftWaiting(project.status === 'waiting');
     setWaitingOn(project.waitingOn ?? '');
     setWaitingSince(project.waitingSince ?? localDateString());
-  }, [project]);
+    setDontKnow(project.status === 'waiting' && !project.waitingSince);
+    setSinceError(null);
+  }, [project, waitingFormOpen]);
 
   const selectValue: AssignableProjectStatus =
-    draftWaiting && project.status !== 'waiting'
-      ? 'waiting'
-      : project.status === 'proposed'
-        ? 'active'
-        : project.status;
+    project.status === 'proposed' ? 'active' : project.status;
 
   const handleStatus = (next: string) => {
     if (
@@ -83,13 +95,9 @@ export function ProjectStatusControl({
       return;
     }
     if (next === 'waiting') {
-      setDraftWaiting(true);
-      if (!waitingSince) {
-        setWaitingSince(localDateString());
-      }
+      onWaitingFormOpenChange(true);
       return;
     }
-    setDraftWaiting(false);
     if (next === 'done' && openTaskCount > 0) {
       setDoneOpen(true);
       return;
@@ -102,51 +110,120 @@ export function ProjectStatusControl({
     if (!trimmed) {
       return;
     }
+    if (!dontKnow && waitingSince === '') {
+      setSinceError('Choose a date, or check Don’t know');
+      return;
+    }
     onChangeStatus({
       status: 'waiting',
       waitingOn: trimmed,
-      waitingSince: waitingSince === '' ? null : waitingSince,
+      waitingSince: dontKnow ? null : waitingSince,
     });
+    onWaitingFormOpenChange(false);
   };
 
-  const showWaitingFields = draftWaiting || project.status === 'waiting';
-  const waitingParts =
-    project.status === 'waiting' && project.waitingOn
-      ? waitingLineParts({
-          waitingOn: project.waitingOn,
-          waitingSince: project.waitingSince,
-          today: localDateString(),
-        })
-      : null;
-  const waitingDayLabel =
-    waitingParts?.kind === 'known'
-      ? waitingParts.days === 1
-        ? '1 day'
-        : `${waitingParts.days} days`
-      : null;
+  const waitingForm = (
+    <div className="grid gap-3" data-project-waiting-fields="">
+      <div className="space-y-1">
+        <Label htmlFor="project-waiting-on">Waiting on</Label>
+        <Input
+          id="project-waiting-on"
+          data-project-waiting-on=""
+          value={waitingOn}
+          onChange={(event) => setWaitingOn(event.target.value)}
+          maxLength={200}
+          disabled={isPending}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="project-waiting-since">Since</Label>
+        <Input
+          id="project-waiting-since"
+          data-project-waiting-since=""
+          type="date"
+          value={waitingSince}
+          onChange={(event) => {
+            setWaitingSince(event.target.value);
+            setSinceError(null);
+          }}
+          disabled={isPending || dontKnow}
+        />
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          data-project-waiting-unknown=""
+          checked={dontKnow}
+          onCheckedChange={(checked) => {
+            setDontKnow(checked === true);
+            setSinceError(null);
+            if (checked === true) {
+              setWaitingSince(localDateString());
+            }
+          }}
+          disabled={isPending}
+        />
+        Don’t know
+      </label>
+      {sinceError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {sinceError}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const waitingActions = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onWaitingFormOpenChange(false)}
+        disabled={isPending}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        data-project-waiting-save=""
+        onClick={applyWaiting}
+        disabled={isPending || waitingOn.trim() === ''}
+      >
+        Set waiting
+      </Button>
+    </>
+  );
 
   return (
     <div className="space-y-3" data-project-status-control="">
       <div className="flex items-center gap-2" data-project-status-row="">
-        <span
-          data-project-status={project.status}
-          data-part="status-chip"
-          className={
-            project.status === 'waiting'
-              ? 'inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground'
-              : 'inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold'
-          }
-        >
-          {statusLabel(project.status)}
-        </span>
         <Select value={selectValue} onValueChange={handleStatus} disabled={isPending}>
           <SelectTrigger
             size="sm"
             data-project-status-trigger=""
             aria-label="Change project status"
-            className="min-w-[7.5rem]"
+            className={cn(
+              'h-auto min-w-0 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none',
+              project.status === 'waiting'
+                ? 'border-warning-border bg-warning-muted text-warning'
+                : 'border-border bg-muted text-foreground'
+            )}
           >
-            <SelectValue />
+            <span
+              data-project-status={project.status}
+              data-part="status-chip"
+              className={cn(
+                'inline-flex items-center gap-1.5',
+                project.status === 'waiting' && 'text-warning'
+              )}
+            >
+              {project.status === 'active' ? (
+                <span data-status-dot="active" className="size-1.5 rounded-full bg-success" />
+              ) : null}
+              {project.status === 'waiting' ? (
+                <span data-status-dot="waiting" className="size-1.5 rounded-full bg-warning" />
+              ) : null}
+              {statusLabel(project.status)}
+            </span>
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((option) => (
@@ -162,64 +239,35 @@ export function ProjectStatusControl({
         </Select>
       </div>
 
-      {waitingParts ? (
-        <p
-          data-project-waiting-summary=""
-          data-part="waiting-line"
-          className="flex items-center gap-2 text-sm text-muted-foreground"
-        >
-          <Clock className="size-4 shrink-0" aria-hidden="true" />
-          <span>
-            Waiting on <b>{waitingParts.who}</b>
-            {waitingParts.kind === 'unknown'
-              ? ' · since unknown'
-              : ` since ${waitingParts.dateLabel} (${waitingDayLabel})`}
-          </span>
-        </p>
-      ) : null}
-
-      {showWaitingFields ? (
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" data-project-waiting-fields="">
-          <div className="space-y-1">
-            <Label htmlFor="project-waiting-on">Waiting on</Label>
-            <Input
-              id="project-waiting-on"
-              data-project-waiting-on=""
-              value={waitingOn}
-              onChange={(event) => setWaitingOn(event.target.value)}
-              maxLength={200}
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="project-waiting-since">Since</Label>
-            <Input
-              id="project-waiting-since"
-              data-project-waiting-since=""
-              type="date"
-              value={waitingSince}
-              onChange={(event) => setWaitingSince(event.target.value)}
-              disabled={isPending}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              data-project-waiting-save=""
-              onClick={applyWaiting}
-              disabled={isPending || waitingOn.trim() === ''}
-            >
-              Set waiting
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       {error ? (
         <p role="alert" data-project-status-error="" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
+
+      {isDesktop ? (
+        <Dialog open={waitingFormOpen} onOpenChange={onWaitingFormOpenChange}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Waiting</DialogTitle>
+              <DialogDescription>Who are you waiting on, and since when?</DialogDescription>
+            </DialogHeader>
+            {waitingForm}
+            <DialogFooter>{waitingActions}</DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Drawer open={waitingFormOpen} onOpenChange={onWaitingFormOpenChange}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Waiting</DrawerTitle>
+              <DrawerDescription>Who are you waiting on, and since when?</DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4">{waitingForm}</div>
+            <DrawerFooter>{waitingActions}</DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      )}
 
       <Dialog open={doneOpen} onOpenChange={setDoneOpen}>
         <DialogContent data-project-done-confirm="" showCloseButton={false}>

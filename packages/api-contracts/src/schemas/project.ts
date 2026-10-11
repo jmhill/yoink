@@ -30,6 +30,7 @@ export const ProjectSchema = z.object({
   status: ProjectStatusSchema,
   waitingOn: z.string().max(PROJECT_WAITING_ON_MAX_LENGTH).nullable(),
   waitingSince: z.string().date().nullable(),
+  nextActionTaskId: z.string().uuid().nullable(),
   createdById: z.string().uuid(),
   createdAt: z.string().datetime(),
   lastChangedAt: z.string().datetime().nullable(),
@@ -74,3 +75,30 @@ export const ChangeProjectStatusResponseSchema = z.object({
 });
 
 export type ChangeProjectStatusResponse = z.infer<typeof ChangeProjectStatusResponseSchema>;
+
+const NewNextActionTaskSchema = z.object({
+  title: z.string().trim().min(1).max(500),
+  dueDate: z.string().date().optional(),
+  assigneeId: z.string().uuid().optional(),
+  listId: z.string().uuid().optional(),
+});
+
+export const SetProjectNextActionSchema = z.union([
+  z.object({ taskId: z.string().uuid() }),
+  z.object({ taskId: z.null() }),
+  z.object({ newTask: NewNextActionTaskSchema }),
+]);
+
+export type SetProjectNextAction = z.infer<typeof SetProjectNextActionSchema>;
+
+export const SetProjectNextActionResponseSchema = z.object({
+  project: ProjectSchema,
+  task: z
+    .object({
+      id: z.string().uuid(),
+      title: z.string(),
+    })
+    .optional(),
+});
+
+export type SetProjectNextActionResponse = z.infer<typeof SetProjectNextActionResponseSchema>;

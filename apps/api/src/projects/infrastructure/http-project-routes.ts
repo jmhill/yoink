@@ -262,6 +262,58 @@ export const registerProjectRoutes = async (
           }
         );
       },
+
+      setNextAction: async ({ params, body, request }) => {
+        const base = {
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          actor: request.authContext.actor,
+        };
+        const command =
+          'newTask' in body
+            ? { type: 'newTask' as const, ...base, newTask: body.newTask }
+            : body.taskId === null
+              ? { type: 'clear' as const, ...base }
+              : { type: 'set' as const, ...base, taskId: body.taskId };
+        const result = await projectHandlers.setNextAction(command);
+
+        return result.match(
+          ({ view, task }) => ({
+            status: 200 as const,
+            body: {
+              project: view,
+              ...(task ? { task: { id: task.id, title: task.title } } : {}),
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'TASK_NOT_OPEN':
+              case 'TASK_NOT_IN_PROJECT':
+              case 'PROJECT_DONE':
+              case 'TASK_TITLE_BLANK':
+              case 'TASK_TITLE_TOO_LONG':
+              case 'LIST_NOT_IN_ORGANIZATION':
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+                return {
+                  status: 400 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+              case 'OPEN_TASK_PLAN_FAILED':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
     });
 
     s.registerRouter(projectContract, projectRouter, authedApp, {

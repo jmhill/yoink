@@ -1,6 +1,8 @@
 import type { Project } from '@yoink/api-contracts';
 import type {
   ProjectCreated,
+  ProjectNextActionCleared,
+  ProjectNextActionSet,
   ProjectStatusChanged,
   ProjectUpdated,
   ProjectWaitingChanged,
@@ -32,6 +34,7 @@ export const applyProjectCreated = (
     status: event.status,
     waitingOn: null,
     waitingSince: null,
+    nextActionTaskId: null,
     createdAt: event.createdAt,
     lastChangedAt: event.occurredAt,
     lastChangedBy: meta.actorUserId,
@@ -88,4 +91,22 @@ export const applyProjectWaitingChanged = (
   status: 'waiting',
   waitingOn: event.waitingOn,
   waitingSince: event.waitingSince,
+});
+
+export const applyProjectNextActionSet = (
+  current: Project,
+  event: ProjectNextActionSet,
+  meta: ApplyProjectMeta
+): Project => ({
+  ...withLastChanged(current, event.occurredAt, meta),
+  nextActionTaskId: event.taskId,
+});
+
+export const applyProjectNextActionCleared = (
+  current: Project,
+  event: ProjectNextActionCleared,
+  meta: ApplyProjectMeta
+): Project => ({
+  ...withLastChanged(current, event.occurredAt, meta),
+  nextActionTaskId: null,
 });

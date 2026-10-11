@@ -1,6 +1,10 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import type { DuplicateProjectNameError, StorageError } from '../domain/project-errors.js';
+import type {
+  DuplicateProjectNameError,
+  ProjectDoneError,
+  StorageError,
+} from '../domain/project-errors.js';
 import type { ProjectChangePlan } from '../domain/plan-project-change.js';
 import type { TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
@@ -31,3 +35,19 @@ export type PersistProjectStatusChange = (input: {
   project: ProjectChangePlan;
   tasks: readonly TaskChangePlan[];
 }) => ResultAsync<void, StorageError>;
+
+export type PersistSetNextAction = (input: {
+  project: ProjectChangePlan;
+  tasks: readonly TaskChangePlan[];
+}) => ResultAsync<void, StorageError | ProjectDoneError>;
+
+export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
+
+export type LoadNamedList = (
+  id: string
+) => ResultAsync<{ id: string; organizationId: string } | null, StorageError>;
+
+export type LoadNextOpenOrder = (
+  organizationId: string,
+  listId: string | null
+) => ResultAsync<number, StorageError>;

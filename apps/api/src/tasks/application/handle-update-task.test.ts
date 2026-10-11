@@ -310,4 +310,53 @@ describe('handleUpdateTask', () => {
     }
     expect(events).toHaveLength(0);
   });
+
+  it('clears the next action when the task moves to another project', async () => {
+    const cabin = {
+      id: 'project-cabin',
+      organizationId: current.organizationId,
+      createdById: current.createdById,
+      name: 'Cabin',
+      status: 'active' as const,
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: null,
+      createdAt: current.createdAt,
+      lastChangedAt: current.createdAt,
+      lastChangedBy: current.createdById,
+    };
+    const garden = {
+      ...cabin,
+      id: 'project-garden',
+      name: 'Garden',
+      nextActionTaskId: current.id,
+    };
+    const onGarden: Task = { ...current, projectId: garden.id };
+    const extrasKinds: string[] = [];
+    const persist: PersistTaskChange = (_plan, extras) => {
+      extrasKinds.push(...(extras?.project?.records.map((record) => record.kind) ?? []));
+      return okAsync(undefined);
+    };
+
+    const result = await handleUpdateTask(
+      {
+        id: onGarden.id,
+        organizationId: onGarden.organizationId,
+        projectId: cabin.id,
+        actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
+      },
+      {
+        load: () => okAsync(onGarden),
+        loadList: () => okAsync(null),
+        loadProject: (id) => okAsync(id === cabin.id ? cabin : garden),
+        loadNextOpenOrder: () => okAsync(0),
+        persist,
+        now: () => '2025-01-15T10:00:00.000Z',
+        nextId: () => 'id-1',
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(extrasKinds).toContain('ProjectNextActionCleared');
+  });
 });

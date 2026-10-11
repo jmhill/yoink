@@ -158,8 +158,60 @@ export const waitForSettledOpenDialog = async (input: {
   });
 };
 
+export const waitForSettledOpenDrawer = async (input: {
+  page: {
+    locator: (selector: string) => {
+      last: () => {
+        waitFor: (options: { state: 'visible' }) => Promise<unknown>;
+        evaluate: (
+          fn: (el: {
+            getAnimations: (options: { subtree: boolean }) => Array<{
+              finished: Promise<unknown>;
+            }>;
+            ownerDocument: {
+              defaultView: {
+                getComputedStyle: (element: unknown) => { opacity: string };
+              } | null;
+            };
+          }) => Promise<void>
+        ) => Promise<unknown>;
+      };
+    };
+  };
+}): Promise<void> => {
+  const drawer = input.page.locator('[data-slot="drawer-content"]').last();
+  await drawer.waitFor({ state: 'visible' });
+  await drawer.evaluate(async (el) => {
+    const view = el.ownerDocument.defaultView;
+    if (view === null) {
+      throw new Error('expected a window for computed style');
+    }
+    const finish = () =>
+      Promise.all(
+        el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined))
+      );
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      await finish();
+      if (view.getComputedStyle(el).opacity === '1') {
+        return;
+      }
+    }
+    throw new Error(`Drawer opacity settled at ${view.getComputedStyle(el).opacity}, expected 1`);
+  });
+};
+
+/** Hide toasts for the capture only — no app code, no production hook. */
+const HIDE_TOASTS_STYLE = '[data-sonner-toaster]{display:none !important}';
+
 export const saveWalkthroughPng = async (input: {
-  page: { screenshot: (options: { path: string; animations?: 'disabled' }) => Promise<unknown> };
+  page: {
+    screenshot: (options: {
+      path: string;
+      animations?: 'disabled';
+      style?: string;
+    }) => Promise<unknown>;
+  };
   fromDir: string;
   story: string;
   viewport: WalkthroughViewport;
@@ -172,6 +224,6 @@ export const saveWalkthroughPng = async (input: {
     step: input.step,
   });
   await mkdir(path.dirname(dest), { recursive: true });
-  await input.page.screenshot({ path: dest });
+  await input.page.screenshot({ path: dest, style: HIDE_TOASTS_STYLE });
   return dest;
 };

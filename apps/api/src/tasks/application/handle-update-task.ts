@@ -15,6 +15,8 @@ import type {
 import { kindsFromRecords, type WriteResult } from './write-result.js';
 import type { OrgPrincipalLookup } from '../domain/org-principal-lookup.js';
 import { changeLogIdsForTaskUpdated } from '../domain/change-log-records.js';
+import { planNextActionClear } from '../../projects/domain/plan-next-action-clear.js';
+
 export type HandleUpdateTaskDeps = {
   load: LoadTask;
   loadList: LoadNamedList;
@@ -45,15 +47,22 @@ export const handleUpdateTask = (
       ? deps.loadList(listIdToLoad)
       : okAsync(null);
 
-    const projectIdToLoad =
+    const destProjectId =
       command.projectId !== undefined &&
       command.projectId !== null &&
       command.projectId !== current.projectId
         ? command.projectId
         : null;
-    const loadedProject = projectIdToLoad
-      ? deps.loadProject(projectIdToLoad)
+    const loadedDestProject = destProjectId
+      ? deps.loadProject(destProjectId)
       : okAsync(null);
+
+    const leavingProject =
+      command.projectId !== undefined && command.projectId !== current.projectId;
+    const loadedCurrentProject =
+      leavingProject && current.projectId
+        ? deps.loadProject(current.projectId)
+        : okAsync(null);
 
     const destListId =
       command.listId !== undefined && command.listId !== current.listId
@@ -65,52 +74,69 @@ export const handleUpdateTask = (
         : okAsync(0);
 
     return loadedList.andThen((list) =>
-      loadedProject.andThen((project) =>
-        loadedNextOpenOrder.andThen((nextOpenOrder) => {
-          const assigneeCheck =
-            command.assigneeId !== undefined && command.assigneeId !== null
-              ? deps.principalLookup
-                ? deps.principalLookup.existsInOrganization(
-                    command.assigneeId,
-                    command.organizationId
-                  )
-                : okAsync(false)
-              : okAsync(null as boolean | null);
+      loadedDestProject.andThen((project) =>
+        loadedCurrentProject.andThen((currentProject) =>
+          loadedNextOpenOrder.andThen((nextOpenOrder) => {
+            const assigneeCheck: ResultAsync<boolean | null, UpdateTaskError> =
+              command.assigneeId !== undefined && command.assigneeId !== null
+                ? deps.principalLookup
+                  ? deps.principalLookup.existsInOrganization(
+                      command.assigneeId,
+                      command.organizationId
+                    )
+                  : okAsync(false)
+                : okAsync(null);
 
-          return assigneeCheck.andThen((assigneeInOrganization) => {
-            const now = deps.now();
-            const decision = decideUpdateTask({
-              current,
-              command,
-              list,
-              project,
-              assigneeInOrganization,
-              nextOpenOrder,
-              now,
+            return assigneeCheck.andThen((assigneeInOrganization) => {
+              const now = deps.now();
+              const decision = decideUpdateTask({
+                current,
+                command,
+                list,
+                project,
+                assigneeInOrganization,
+                nextOpenOrder,
+                now,
+              });
+
+              if (decision.isErr()) {
+                return errAsync(decision.error);
+              }
+
+              if (decision.value.type === 'Noop') {
+                return okAsync({ event: null, view: current, eventKinds: [] });
+              }
+
+              const event = decision.value;
+              const plan = planTaskChange({
+                event,
+                current,
+                actor: command.actor,
+                ids: changeLogIdsForTaskUpdated(event, current, deps.nextId),
+              });
+              const projectPlan =
+                currentProject === null
+                  ? null
+                  : planNextActionClear({
+                      project: currentProject,
+                      change: { type: 'removedFromProject', taskId: current.id },
+                      actor: command.actor,
+                      now,
+                      recordId: deps.nextId(),
+                    });
+              return deps
+                .persist(plan, projectPlan ? { project: projectPlan } : undefined)
+                .map(() => ({
+                  event,
+                  view: plan.view,
+                  eventKinds: kindsFromRecords([
+                    ...plan.records,
+                    ...(projectPlan?.records ?? []),
+                  ]),
+                }));
             });
-
-            if (decision.isErr()) {
-              return errAsync(decision.error);
-            }
-
-            if (decision.value.type === 'Noop') {
-              return okAsync({ event: null, view: current, eventKinds: [] });
-            }
-
-            const event = decision.value;
-            const plan = planTaskChange({
-              event,
-              current,
-              actor: command.actor,
-              ids: changeLogIdsForTaskUpdated(event, current, deps.nextId),
-            });
-            return deps.persist(plan).map(() => ({
-              event,
-              view: plan.view,
-              eventKinds: kindsFromRecords(plan.records),
-            }));
-          });
-        })
+          })
+        )
       )
     );
   });

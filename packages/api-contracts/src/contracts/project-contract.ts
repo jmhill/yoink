@@ -5,6 +5,8 @@ import {
   ChangeProjectStatusSchema,
   CreateProjectSchema,
   ProjectSchema,
+  SetProjectNextActionResponseSchema,
+  SetProjectNextActionSchema,
   UpdateProjectSchema,
 } from '../schemas/project.js';
 import { ListPageQuerySchema, ProjectListPageSchema, TaskListPageSchema } from '../schemas/list-page.js';
@@ -109,6 +111,24 @@ export const projectContract = c.router(
         500: ErrorSchema,
       },
       summary: "Change a project's status, including waiting on / since",
+    },
+
+    setNextAction: {
+      method: 'PUT',
+      path: '/api/projects/:id/next-action',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: SetProjectNextActionSchema,
+      responses: {
+        200: SetProjectNextActionResponseSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary:
+        "Set, replace, or clear a project's next action, or create a task and set it",
     },
   },
   {

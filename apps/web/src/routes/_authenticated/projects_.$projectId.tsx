@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, ChevronLeft, Clock, History, Pencil } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
-import { Input } from '@yoink/ui-base/components/input';
-import { Label } from '@yoink/ui-base/components/label';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,10 @@ import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
+import { PlaceHeading } from '@/components/place-heading';
+import { ProjectStatusControl } from '@/components/project-status-control';
+import { EditProjectDialog } from '@/components/edit-project-dialog';
+import { NextActionPicker, type NewNextActionTask } from '@/components/next-action-picker';
 import {
   tsr,
   tsrAuth,
@@ -27,7 +30,8 @@ import { memberLabel } from '@/api/auth';
 import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contracts';
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
-import { ProjectStatusControl } from '@/components/project-status-control';
+import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
+import { showsNoNextActionWarning, showsSomedaySetNextAction } from '@/lib/project-next-action';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 import type { AssignableProjectStatus } from '@yoink/api-contracts';
@@ -42,7 +46,6 @@ function ProjectPage() {
   const { data, error, isPending, refetch } = tsrProjects.get.useQuery({
     queryKey: ['projects', projectId],
     queryData: { params: { id: projectId } },
-    refetchInterval: false,
   });
 
   const {
@@ -75,6 +78,7 @@ function ProjectPage() {
     refetchInterval: false,
   });
   const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
+  const viewerId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
 
   const membersQuery = tsrOrganizations.listMembers.useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
@@ -86,12 +90,14 @@ function ProjectPage() {
 
   const project = data?.status === 200 ? data.body : undefined;
   const openTasks = openTasksData?.status === 200 ? openTasksData.body.tasks : [];
-  const [name, setName] = useState('');
-  const [objective, setObjective] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [nextActionError, setNextActionError] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [waitingFormOpen, setWaitingFormOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
@@ -100,14 +106,6 @@ function ProjectPage() {
     refetchInterval: false,
   });
   const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
-
-  useEffect(() => {
-    if (!project) {
-      return;
-    }
-    setName(project.name);
-    setObjective(project.objective ?? '');
-  }, [project]);
 
   useEffect(() => {
     if (editingTask) {
@@ -146,6 +144,7 @@ function ProjectPage() {
     onSuccess: async (result) => {
       if (result.status !== 200) return;
       setFormError(null);
+      setEditOpen(false);
       toast.success('Project saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
@@ -165,6 +164,34 @@ function ProjectPage() {
         }
       }
       toast.error('Failed to save project');
+    },
+  });
+
+  const nextActionMutation = tsrProjects.setNextAction.useMutation({
+    onSuccess: async (result) => {
+      if (result.status !== 200) return;
+      setNextActionError(null);
+      setPickerOpen(false);
+      toast.success('Next action saved');
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
+        const status = err.status;
+        if (status === 400 || status === 404) {
+          const parsed = projectContract.setNextAction.responses[status].safeParse(err.body);
+          if (parsed.success) {
+            setNextActionError(parsed.data.message);
+            return;
+          }
+        }
+      }
+      toast.error('Failed to set next action');
     },
   });
 
@@ -216,33 +243,10 @@ function ProjectPage() {
     );
   }
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const trimmedName = name.trim();
-    if (!trimmedName || updateMutation.isPending) {
-      if (!trimmedName) {
-        setFormError('Name is required');
-      }
-      return;
-    }
-    updateMutation.mutate({
-      params: { id: projectId },
-      body: {
-        name: trimmedName,
-        objective: objective.trim() === '' ? null : objective.trim(),
-      },
-    });
-  };
-
   const assigneeLabelFor = (task: Task): string | undefined => {
-    if (!task.assigneeId) return undefined;
+    if (!task.assigneeId || task.assigneeId === viewerId) return undefined;
     const member = members.find((item) => item.userId === task.assigneeId);
     return member ? memberLabel(member) : task.assigneeId;
-  };
-
-  const listLabelFor = (task: Task): string | undefined => {
-    if (!task.listId) return undefined;
-    return namedLists.find((list) => list.id === task.listId)?.name;
   };
 
   const handleSaveEdit = (
@@ -266,112 +270,279 @@ function ProjectPage() {
     setDeleteConfirmId(null);
   };
 
+  const submitNextAction = (body: { taskId: string } | { newTask: NewNextActionTask }) => {
+    setNextActionError(null);
+    nextActionMutation.mutate({
+      params: { id: projectId },
+      body,
+    });
+  };
+
+  const nextActionTask = openTasks.find((task) => task.id === project.nextActionTaskId);
+  const otherOpenTasks = openTasks.filter((task) => task.id !== project.nextActionTaskId);
+  const showEmptyCard = showsNoNextActionWarning(project);
+  const showSomedaySetLink = showsSomedaySetNextAction(project);
+  const waitingParts =
+    project.status === 'waiting' && project.waitingOn
+      ? waitingLineParts({
+          waitingOn: project.waitingOn,
+          waitingSince: project.waitingSince,
+          today: localDateString(),
+        })
+      : null;
+  const waitingDayLabel =
+    waitingParts?.kind === 'known'
+      ? waitingParts.days === 1
+        ? '1 day'
+        : `${waitingParts.days} days`
+      : null;
+
   const tasksBlocking = isBlockingQueryFailure(openTasksError, openTasksData) && openTasksError;
+  const taskBusy =
+    completeMutation.isPending || updateTaskMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
       <Header />
       <div data-project-page="" className="space-y-4">
-        <ProjectStatusControl
-          project={project}
-          openTaskCount={openTasks.length}
-          isPending={statusMutation.isPending}
-          error={statusError}
-          onChangeStatus={(input: {
-            status: AssignableProjectStatus;
-            waitingOn?: string | null;
-            waitingSince?: string | null;
-            openTasks?: 'complete' | 'remove';
-          }) => {
-            setStatusError(null);
-            statusMutation.mutate({
-              params: { id: projectId },
-              body: input,
-            });
-          }}
+        <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
+          <Link to="/projects" data-part="back-link">
+            <ChevronLeft className="size-4" />
+            All projects
+          </Link>
+        </Button>
+
+        <PlaceHeading
+          title={project.name}
+          meta={
+            <ProjectStatusControl
+              project={project}
+              openTaskCount={openTasks.length}
+              isPending={statusMutation.isPending}
+              error={statusError}
+              waitingFormOpen={waitingFormOpen}
+              onWaitingFormOpenChange={setWaitingFormOpen}
+              onChangeStatus={(input: {
+                status: AssignableProjectStatus;
+                waitingOn?: string | null;
+                waitingSince?: string | null;
+                openTasks?: 'complete' | 'remove';
+              }) => {
+                setStatusError(null);
+                statusMutation.mutate({
+                  params: { id: projectId },
+                  body: input,
+                });
+              }}
+            />
+          }
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              data-project-edit=""
+              data-part="edit-button"
+              onClick={() => {
+                setFormError(null);
+                setEditOpen(true);
+              }}
+            >
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          }
         />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="project-page-name">Name</Label>
-            <Input
-              id="project-page-name"
-              data-project-name-input=""
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setFormError(null);
-              }}
-              maxLength={200}
-              disabled={updateMutation.isPending}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="project-page-objective">Objective</Label>
-            <textarea
-              id="project-page-objective"
-              data-project-objective-input=""
-              value={objective}
-              onChange={(event) => setObjective(event.target.value)}
-              maxLength={2000}
-              rows={5}
-              disabled={updateMutation.isPending}
-              className="border-input dark:bg-input/30 w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            />
-          </div>
-
-          {formError ? (
-            <p role="alert" data-project-save-error="" className="text-sm text-destructive">
-              {formError}
-            </p>
-          ) : null}
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" data-project-save="" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
-            </Button>
-            <Button type="button" variant="ghost" asChild>
-              <Link to="/projects">All projects</Link>
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      <section className="mt-8 space-y-3" data-project-open-tasks="">
-        <h2 className="text-lg font-semibold">Open tasks</h2>
-        <p className="text-sm text-muted-foreground" data-project-open-task-count="">
-          {openTasksPending
-            ? 'Loading…'
-            : `${openTasks.length} open task${openTasks.length === 1 ? '' : 's'}`}
-        </p>
-        {tasksBlocking ? (
-          <ErrorState error={openTasksError} onRetry={() => refetchOpenTasks()} />
-        ) : openTasks.length === 0 && !openTasksPending ? (
-          <p data-project-open-tasks-empty="" className="text-sm text-muted-foreground">
-            No open tasks
+        {project.objective ? (
+          <p data-part="objective" className="text-base leading-6">
+            {project.objective}
           </p>
         ) : (
-          <div className="space-y-2">
-            {openTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
-                onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
-                onEdit={setEditingTask}
-                isLoading={
-                  completeMutation.isPending ||
-                  updateTaskMutation.isPending ||
-                  deleteMutation.isPending
-                }
-                assigneeLabel={assigneeLabelFor(task)}
-                listLabel={listLabelFor(task)}
-              />
-            ))}
-          </div>
+          <Button
+            type="button"
+            variant="link"
+            data-part="objective-empty"
+            className="h-auto px-0 text-muted-foreground"
+            onClick={() => {
+              setFormError(null);
+              setEditOpen(true);
+            }}
+          >
+            + Add an objective
+          </Button>
         )}
-      </section>
+
+        {waitingParts ? (
+          <button
+            type="button"
+            data-project-waiting-summary=""
+            data-part="waiting-line"
+            className="flex w-full items-center gap-2 rounded-lg border border-warning-border bg-warning-muted px-3 py-2 text-left text-sm text-warning"
+            onClick={() => setWaitingFormOpen(true)}
+          >
+            <Clock className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              Waiting on <b>{waitingParts.who}</b>
+              {waitingParts.kind === 'unknown'
+                ? ' · since unknown'
+                : ` since ${waitingParts.dateLabel} (${waitingDayLabel})`}
+            </span>
+          </button>
+        ) : null}
+
+        {nextActionTask ? (
+          <section
+            data-next-action-card=""
+            data-part="next-action-card"
+            className="rounded-xl border-2 border-primary bg-card p-4 shadow-sm"
+          >
+            <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide">
+              <span>Next action</span>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs font-medium normal-case text-muted-foreground"
+                data-set-next-action=""
+                onClick={() => {
+                  setNextActionError(null);
+                  setPickerOpen(true);
+                }}
+              >
+                Change
+              </Button>
+            </div>
+            <TaskCard
+              task={nextActionTask}
+              emphasis="next-action"
+              onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+              onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+              onEdit={setEditingTask}
+              isLoading={taskBusy}
+              assigneeLabel={assigneeLabelFor(nextActionTask)}
+            />
+          </section>
+        ) : showEmptyCard ? (
+          <section
+            data-next-action-empty=""
+            data-part="next-action-empty"
+            className="rounded-xl border-2 border-dashed border-warning-border bg-warning-muted p-4"
+          >
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-warning">
+              <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+              No next action
+            </p>
+            <p className="mt-2 text-sm text-warning-foreground">
+              This project won’t show up in Work until it has one. Pick an open task or add a
+              new one.
+            </p>
+            <Button
+              type="button"
+              className="mt-3"
+              data-set-next-action=""
+              onClick={() => {
+                setNextActionError(null);
+                setPickerOpen(true);
+              }}
+            >
+              + Set next action
+            </Button>
+          </section>
+        ) : showSomedaySetLink ? (
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto px-0 text-muted-foreground"
+            data-set-next-action=""
+            data-someday-set-next-action=""
+            onClick={() => {
+              setNextActionError(null);
+              setPickerOpen(true);
+            }}
+          >
+            Set next action
+          </Button>
+        ) : null}
+
+        <section className="space-y-3" data-project-open-tasks="">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-lg font-semibold">Open tasks</h2>
+            <p className="text-sm text-muted-foreground" data-project-open-task-count="">
+              {openTasksPending
+                ? 'Loading…'
+                : `${otherOpenTasks.length} open task${otherOpenTasks.length === 1 ? '' : 's'} · newest first`}
+            </p>
+          </div>
+          {tasksBlocking ? (
+            <ErrorState error={openTasksError} onRetry={() => refetchOpenTasks()} />
+          ) : otherOpenTasks.length === 0 && !openTasksPending ? (
+            <p data-project-open-tasks-empty="" className="text-sm text-muted-foreground">
+              No open tasks
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {otherOpenTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+                  onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+                  onEdit={setEditingTask}
+                  isLoading={taskBusy}
+                  assigneeLabel={assigneeLabelFor(task)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <div
+          data-part="history-placeholder"
+          data-project-history-placeholder=""
+          className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-muted-foreground"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <History className="size-4" aria-hidden="true" />
+            History
+            <span className="rounded border border-dashed border-muted-foreground/50 px-1.5 text-[11px] font-medium lowercase text-muted-foreground">
+              placeholder · #138
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <EditProjectDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        project={project}
+        isPending={updateMutation.isPending}
+        error={formError}
+        onClearError={() => setFormError(null)}
+        onSave={(input) => {
+          updateMutation.mutate({
+            params: { id: projectId },
+            body: input,
+          });
+        }}
+      />
+
+      <NextActionPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        title={nextActionTask ? 'Change next action' : 'Set next action'}
+        description="Pick an open task or create a new one in this project."
+        testId="next-action-picker"
+        openTasks={openTasks}
+        excludeTaskId={project.nextActionTaskId}
+        lists={namedLists.map((list) => ({ id: list.id, name: list.name }))}
+        members={members.map((member) => ({
+          userId: member.userId,
+          label: memberLabel(member),
+        }))}
+        isPending={nextActionMutation.isPending}
+        error={nextActionError}
+        onPickTask={(taskId) => submitNextAction({ taskId })}
+        onCreateTask={(newTask) => submitNextAction({ newTask })}
+      />
 
       <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
         <DialogContent showCloseButton={false}>

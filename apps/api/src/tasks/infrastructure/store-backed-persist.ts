@@ -1,12 +1,23 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Database, QueryResult } from '../../database/types.js';
-import { insertChangeLogQuery } from '../../shared/change-log/infrastructure/sql.js';
+import {
+  insertChangeLogIfChangedQuery,
+  insertChangeLogQuery,
+} from '../../shared/change-log/infrastructure/sql.js';
 import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import type { PersistTaskChange } from '../application/ports.js';
 import type { TaskChangePlan } from '../domain/plan-task-change.js';
 import { storageError, taskNotFoundError } from '../domain/task-errors.js';
 import type { StorageError, TaskNotFoundError } from '../domain/task-errors.js';
 import type { FakeTaskStore } from './fake-task-store.js';
+import type { ProjectChangePlan } from '../../projects/domain/plan-project-change.js';
+import {
+  clearNextActionQuery,
+  insertProjectQuery,
+  setNextActionQuery,
+  updateProjectQuery,
+} from '../../projects/infrastructure/project-row-statements.js';
+import type { FakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import {
   insertTaskQuery,
   setOpenOrderQueries,
@@ -58,6 +69,38 @@ export const queriesForTaskPlan = (plan: TaskChangePlan) => {
 const subjectIdOf = (plan: TaskChangePlan): string =>
   plan.action === 'delete' ? plan.taskId : plan.view.id;
 
+const queriesForProjectExtra = (project: ProjectChangePlan) => {
+  const history = project.records.map((record) => insertChangeLogQuery(record));
+  switch (project.action) {
+    case 'insert':
+      return [insertProjectQuery(project.view), ...history];
+    case 'update':
+      return [updateProjectQuery(project.view), ...history];
+    case 'clearNextAction':
+      return [
+        clearNextActionQuery({
+          projectId: project.projectId,
+          organizationId: project.organizationId,
+          previousTaskId: project.previousTaskId,
+          lastChangedAt: project.view.lastChangedAt,
+          lastChangedBy: project.view.lastChangedBy,
+        }),
+        ...project.records.map((record) => insertChangeLogIfChangedQuery(record)),
+      ];
+    case 'setNextAction':
+      return [
+        setNextActionQuery({
+          projectId: project.projectId,
+          organizationId: project.organizationId,
+          nextActionTaskId: project.view.nextActionTaskId ?? '',
+          lastChangedAt: project.view.lastChangedAt,
+          lastChangedBy: project.view.lastChangedBy,
+        }),
+        ...project.records.map((record) => insertChangeLogIfChangedQuery(record)),
+      ];
+  }
+};
+
 const mutationMissed = (plan: TaskChangePlan, results: QueryResult[]): boolean => {
   switch (plan.action) {
     case 'insert':
@@ -74,9 +117,15 @@ const mutationMissed = (plan: TaskChangePlan, results: QueryResult[]): boolean =
 };
 
 export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChange => {
-  return (plan) =>
+  return (plan, extras) =>
     ResultAsync.fromPromise(
-      deps.db.batch(queriesForTaskPlan(plan), 'write'),
+      deps.db.batch(
+        [
+          ...queriesForTaskPlan(plan),
+          ...(extras?.project ? queriesForProjectExtra(extras.project) : []),
+        ],
+        'write'
+      ),
       (error) => storageError('Failed to persist task change', error)
     ).andThen((results) =>
       mutationMissed(plan, results)
@@ -94,19 +143,62 @@ export type FakeTaskPersistDeps = {
   store: FakeTaskStore;
   changeLog: FakeChangeLogStore;
   captures: CaptureSideEffects;
+  projects?: FakeProjectStore;
 };
 
 /**
  * In-memory persist: apply the plan's row mutations and history in one snapshot
  * so a failing change-log insert leaves the task (and capture) unchanged.
  */
-export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskChange => {
-  const { store, changeLog, captures } = deps;
+const applyProjectPlan = (
+  projects: FakeProjectStore | undefined,
+  project: ProjectChangePlan | undefined
+): ResultAsync<boolean, StorageError> => {
+  if (!project) {
+    return okAsync(false);
+  }
+  if (!projects) {
+    return errAsync(storageError('Project persist is not configured'));
+  }
+  if (project.action === 'insert') {
+    projects.applyInsert(project.view);
+    return okAsync(true);
+  }
+  if (project.action === 'clearNextAction') {
+    return okAsync(
+      projects.applyClearNextAction({
+        projectId: project.projectId,
+        previousTaskId: project.previousTaskId,
+        lastChangedAt: project.view.lastChangedAt,
+        lastChangedBy: project.view.lastChangedBy,
+      })
+    );
+  }
+  if (project.action === 'setNextAction') {
+    return okAsync(
+      projects.applySetNextAction({
+        projectId: project.projectId,
+        nextActionTaskId: project.view.nextActionTaskId ?? '',
+        lastChangedAt: project.view.lastChangedAt,
+        lastChangedBy: project.view.lastChangedBy,
+      })
+    );
+  }
+  if (!projects.hasActive(project.view.id)) {
+    return errAsync(storageError('Project not found'));
+  }
+  projects.applyReplace(project.view);
+  return okAsync(true);
+};
 
-  return (plan) => {
+export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskChange => {
+  const { store, changeLog, captures, projects } = deps;
+
+  return (plan, extras) => {
     const restoreTask = store.captureSnapshot();
     const restoreLog = changeLog.captureSnapshot();
     const restoreCaptures = captures.captureSnapshot();
+    const restoreProjects = projects?.captureSnapshot();
 
     const persistRecords = (): ResultAsync<void, StorageError> =>
       plan.records.reduce(
@@ -116,7 +208,7 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
               error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
             )
           ),
-        okAsync(undefined) as ResultAsync<void, StorageError>
+        okAsync<void, StorageError>(undefined)
       );
 
     const missing = (): ResultAsync<void, TaskNotFoundError> =>
@@ -152,11 +244,28 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
       }
     };
 
-    return run().mapErr((error) => {
-      restoreTask();
-      restoreLog();
-      restoreCaptures();
-      return error;
-    });
+    const persistProjectRecords = (): ResultAsync<void, StorageError> => {
+      const projectRecords = extras?.project?.records ?? [];
+      return projectRecords.reduce(
+        (chain, record) =>
+          chain.andThen(() =>
+            changeLog.insert(record).mapErr((error) =>
+              error.type === 'STORAGE_ERROR' ? error : storageError(error.message)
+            )
+          ),
+        okAsync<void, StorageError>(undefined)
+      );
+    };
+
+    return run()
+      .andThen(() => applyProjectPlan(projects, extras?.project))
+      .andThen((applied) => (applied ? persistProjectRecords() : okAsync(undefined)))
+      .mapErr((error) => {
+        restoreTask();
+        restoreLog();
+        restoreCaptures();
+        restoreProjects?.();
+        return error;
+      });
   };
 };

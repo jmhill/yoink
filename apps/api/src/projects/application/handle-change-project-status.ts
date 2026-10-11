@@ -7,8 +7,9 @@ import {
   type ChangeProjectStatusError,
 } from '../domain/project-errors.js';
 import { decideChangeProjectStatus } from '../domain/decide-change-status.js';
-import { planProjectChange } from '../domain/plan-project-change.js';
+import { mergeProjectUpdatePlans, planProjectChange } from '../domain/plan-project-change.js';
 import { planOpenTasksForProjectDone } from '../domain/plan-open-tasks-for-done.js';
+import { planNextActionClear } from '../domain/plan-next-action-clear.js';
 import type {
   LoadProject,
   PageOpenTasksOnProject,
@@ -77,7 +78,7 @@ export const handleChangeProjectStatus = (
         });
       }
 
-      const projectPlan = planProjectChange({
+      const statusPlan = planProjectChange({
         event: decision.value.event,
         current: loaded,
         actor: command.actor,
@@ -95,6 +96,24 @@ export const handleChangeProjectStatus = (
       if (taskPlans.isErr()) {
         return errAsync(taskPlans.error);
       }
+
+      const clearPlan =
+        command.status === 'done'
+          ? planNextActionClear({
+              project: statusPlan.view,
+              change: { type: 'projectDone' },
+              actor: command.actor,
+              now,
+              recordId: deps.nextId(),
+            })
+          : null;
+
+      const projectPlan =
+        clearPlan &&
+        clearPlan.action === 'clearNextAction' &&
+        statusPlan.action === 'update'
+          ? mergeProjectUpdatePlans(statusPlan, clearPlan)
+          : statusPlan;
 
       return deps.persistStatus({ project: projectPlan, tasks: taskPlans.value }).map(() => ({
         view: projectPlan.view,

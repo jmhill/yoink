@@ -1,3 +1,5 @@
+import { showsNoNextActionWarning } from './project-next-action';
+
 export const RAIL_SMART_VIEWS = ['today', 'upcoming', 'mine', 'done'] as const;
 
 export type RailSmartView = (typeof RAIL_SMART_VIEWS)[number];
@@ -11,6 +13,7 @@ export type RailProject = {
   id: string;
   name: string;
   status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  nextActionTaskId?: string | null;
 };
 
 export type RailItem =
@@ -19,7 +22,7 @@ export type RailItem =
   | { kind: 'named'; listId: string; label: string }
   | { kind: 'unlisted'; label: 'Unlisted' }
   | { kind: 'new-list'; label: 'New list' }
-  | { kind: 'project'; projectId: string; label: string }
+  | { kind: 'project'; projectId: string; label: string; missingNextAction: boolean }
   | { kind: 'someday-project'; projectId: string; label: string }
   | { kind: 'new-project'; label: 'New project' };
 
@@ -98,6 +101,10 @@ export function buildAppRailItems(input: {
       kind: 'project' as const,
       projectId: project.id,
       label: project.name,
+      missingNextAction: showsNoNextActionWarning({
+        status: project.status,
+        nextActionTaskId: project.nextActionTaskId ?? null,
+      }),
     })),
     ...someday.map((project) => ({
       kind: 'someday-project' as const,

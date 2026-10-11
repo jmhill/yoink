@@ -4,14 +4,20 @@ import { handleListProjects } from './handle-list-projects.js';
 import { handleGetProject } from './handle-get-project.js';
 import { handleListOpenTasksOnProject } from './handle-list-open-tasks.js';
 import { handleChangeProjectStatus } from './handle-change-project-status.js';
+import { handleSetNextAction } from './handle-set-next-action.js';
 import type {
   ListProjects,
+  LoadNamedList,
+  LoadNextOpenOrder,
   LoadProject,
+  LoadTask,
   PageOpenTasksOnProject,
   PageProjects,
   PersistProjectChange,
   PersistProjectStatusChange,
+  PersistSetNextAction,
 } from './ports.js';
+import type { OrgPrincipalLookup } from '../../tasks/domain/org-principal-lookup.js';
 import {
   withCommandLog,
   type CommandLogger,
@@ -21,10 +27,15 @@ import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 export type ProjectHandlerDeps = {
   persist: PersistProjectChange;
   persistStatus: PersistProjectStatusChange;
+  persistSetNextAction: PersistSetNextAction;
   list: ListProjects;
   pageProjects: PageProjects;
   load: LoadProject;
+  loadTask: LoadTask;
+  loadList: LoadNamedList;
+  loadNextOpenOrder: LoadNextOpenOrder;
   pageOpenTasksOnProject: PageOpenTasksOnProject;
+  principalLookup?: OrgPrincipalLookup;
   nextId: () => string;
   now: () => string;
   logger: CommandLogger;
@@ -70,6 +81,17 @@ export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
       },
       (result) => result.eventKinds,
       () => handleChangeProjectStatus(command, deps)
+    ),
+  setNextAction: (command: Parameters<typeof handleSetNextAction>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'SetProjectNextAction',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => result.eventKinds,
+      () => handleSetNextAction(command, deps)
     ),
 });
 

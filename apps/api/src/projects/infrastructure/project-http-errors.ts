@@ -85,6 +85,21 @@ export const projectRequestValidationError = (
       code: 'VALIDATION_FAILED',
     };
   }
+  if (issue.path === 'newTask.title' && issue.code === 'too_small') {
+    return { message: "Title can't be blank", code: 'TASK_TITLE_BLANK' };
+  }
+  if (issue.path === 'newTask.title' && issue.code === 'too_big') {
+    return {
+      message: 'Title must be 500 characters or fewer',
+      code: 'TASK_TITLE_TOO_LONG',
+    };
+  }
+  if (issue.path === 'taskId' || issue.path === 'newTask') {
+    return {
+      message: 'Provide a taskId, null to clear, or a newTask',
+      code: 'VALIDATION_FAILED',
+    };
+  }
 
   return { message: 'Request validation failed', code: 'VALIDATION_FAILED' };
 };

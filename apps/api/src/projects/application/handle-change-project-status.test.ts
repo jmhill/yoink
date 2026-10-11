@@ -12,6 +12,7 @@ const garden: Project = {
   status: 'active',
   waitingOn: null,
   waitingSince: null,
+  nextActionTaskId: null,
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-456',
@@ -133,6 +134,33 @@ describe('handleChangeProjectStatus', () => {
     if (result.isErr() && result.error.type === 'OPEN_TASKS_UNREAD') {
       expect(result.error.openTaskCount).toBe(3);
       expect(result.error.readCount).toBe(1);
+    }
+  });
+
+  it('clears the next action when the project is marked done', async () => {
+    const soil = task('task-soil');
+    const withNext: Project = { ...garden, nextActionTaskId: soil.id };
+    const result = await handleChangeProjectStatus(
+      {
+        id: garden.id,
+        organizationId: garden.organizationId,
+        status: 'done',
+        openTasks: 'complete',
+        actor: { kind: 'user', userId: garden.createdById, via: 'session' },
+      },
+      {
+        load: () => okAsync(withNext),
+        pageOpenTasksOnProject: () => okAsync({ rows: [soil], total: 1 }),
+        persistStatus,
+        nextId: nextId(),
+        now: () => '2026-10-10T15:00:00.000Z',
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.view.nextActionTaskId).toBeNull();
+      expect(result.value.eventKinds).toContain('ProjectNextActionCleared');
     }
   });
 });

@@ -11,6 +11,7 @@ const garden: Project = {
   status: 'active',
   waitingOn: null,
   waitingSince: null,
+  nextActionTaskId: null,
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-456',

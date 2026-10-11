@@ -351,6 +351,38 @@ export const createHttpActor = (
       }>();
     },
 
+    async setNextAction(
+      projectId: string,
+      input:
+        | { taskId: string }
+        | { taskId: null }
+        | { newTask: { title: string; dueDate?: string; assigneeId?: string; listId?: string } }
+    ): Promise<{ project: Project; task?: { id: string; title: string } }> {
+      const response = await client.put(
+        `/api/projects/${projectId}/next-action`,
+        input,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        const error = response.json<{ message?: string; code?: string }>();
+        if (error.code === 'TASK_NOT_FOUND') {
+          throw new NotFoundError('Task', 'taskId' in input && input.taskId ? input.taskId : '');
+        }
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to set next action: ${response.body}`);
+      }
+      return response.json<{ project: Project; task?: { id: string; title: string } }>();
+    },
+
     async listOpenTasksOnProject(projectId: string): Promise<Task[]> {
       const response = await client.get(`/api/projects/${projectId}/tasks`, authHeaders());
       if (response.statusCode === 401) {
@@ -849,6 +881,7 @@ export const createHttpActor = (
     async setProjectWaitingFromPage(_input: {
       waitingOn: string;
       waitingSince?: string;
+      unknownSince?: boolean;
     }): Promise<void> {
       throw new UnsupportedOperationError('setProjectWaitingFromPage', 'http');
     },
@@ -863,6 +896,94 @@ export const createHttpActor = (
 
     async shouldSeeWaitingSummary(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeWaitingSummary', 'http');
+    },
+
+    async openNextActionPicker(): Promise<void> {
+      throw new UnsupportedOperationError('openNextActionPicker', 'http');
+    },
+
+    async pickNextActionFromPicker(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('pickNextActionFromPicker', 'http');
+    },
+
+    async createNextActionFromPicker(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('createNextActionFromPicker', 'http');
+    },
+
+    async completeNextActionFromPage(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('completeNextActionFromPage', 'http');
+    },
+
+    async skipWhatsNext(): Promise<void> {
+      throw new UnsupportedOperationError('skipWhatsNext', 'http');
+    },
+
+    async pickWhatsNextTask(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('pickWhatsNextTask', 'http');
+    },
+
+    async shouldSeeNextAction(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNextAction', 'http');
+    },
+
+    async shouldSeeNoNextActionCard(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoNextActionCard', 'http');
+    },
+
+    async shouldSeeWhatsNext(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWhatsNext', 'http');
+    },
+
+    async shouldSeeSomedaySetNextActionLink(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeSomedaySetNextActionLink', 'http');
+    },
+
+    async dismissNextActionPicker(): Promise<void> {
+      throw new UnsupportedOperationError('dismissNextActionPicker', 'http');
+    },
+
+    async shouldSeePickerCreateInViewport(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePickerCreateInViewport', 'http');
+    },
+
+    async shouldSeeWhatsNextFooterInViewport(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeWhatsNextFooterInViewport', 'http');
+    },
+
+    async shouldSeeNoNextActionOnAllProjects(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoNextActionOnAllProjects', 'http');
+    },
+
+    async shouldSeeNoNextActionDotOnRail(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoNextActionDotOnRail', 'http');
+    },
+
+    async shouldSeeBlankProjectNameError(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeBlankProjectNameError', 'http');
+    },
+
+    async openProjectEditDialog(): Promise<void> {
+      throw new UnsupportedOperationError('openProjectEditDialog', 'http');
+    },
+
+    async dismissProjectEditDialog(): Promise<void> {
+      throw new UnsupportedOperationError('dismissProjectEditDialog', 'http');
+    },
+
+    async deleteTaskFromEdit(): Promise<void> {
+      throw new UnsupportedOperationError('deleteTaskFromEdit', 'http');
+    },
+
+    async clearTaskProjectFromEdit(): Promise<void> {
+      throw new UnsupportedOperationError('clearTaskProjectFromEdit', 'http');
+    },
+
+    async shouldSeeSingleStatusControl(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeSingleStatusControl', 'http');
+    },
+
+    async shouldSeeHistoryPlaceholder(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryPlaceholder', 'http');
     },
 
     async shouldSeeProjectOnRail(_name: string): Promise<void> {

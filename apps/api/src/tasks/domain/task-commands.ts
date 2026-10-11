@@ -6,6 +6,7 @@ export type LoadedProject = {
   id: string;
   organizationId: string;
   status: ProjectStatus;
+  nextActionTaskId: string | null;
 };
 
 export type CreateTaskCommand = {

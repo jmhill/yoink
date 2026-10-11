@@ -3,6 +3,7 @@ import {
   ChangeProjectStatusSchema,
   CreateProjectSchema,
   ProjectSchema,
+  SetProjectNextActionSchema,
   UpdateProjectSchema,
 } from './project.js';
 
@@ -13,6 +14,7 @@ const garden = {
   status: 'active' as const,
   waitingOn: null,
   waitingSince: null,
+  nextActionTaskId: null,
   createdById: '550e8400-e29b-41d4-a716-446655440002',
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
@@ -38,6 +40,16 @@ describe('ProjectSchema', () => {
     for (const status of ['active', 'waiting', 'someday', 'done', 'proposed'] as const) {
       expect(ProjectSchema.safeParse({ ...garden, status }).success).toBe(true);
     }
+  });
+
+  it('accepts a next-action task id or none', () => {
+    expect(ProjectSchema.safeParse(garden).success).toBe(true);
+    expect(
+      ProjectSchema.safeParse({
+        ...garden,
+        nextActionTaskId: '550e8400-e29b-41d4-a716-446655440099',
+      }).success
+    ).toBe(true);
   });
 
   it('accepts waiting on and a date or unknown since', () => {
@@ -114,5 +126,25 @@ describe('ChangeProjectStatusSchema', () => {
 
   it('refuses proposed as a target status', () => {
     expect(ChangeProjectStatusSchema.safeParse({ status: 'proposed' }).success).toBe(false);
+  });
+});
+
+describe('SetProjectNextActionSchema', () => {
+  it('accepts a task id, a clear, or a new task', () => {
+    expect(
+      SetProjectNextActionSchema.safeParse({
+        taskId: '550e8400-e29b-41d4-a716-446655440099',
+      }).success
+    ).toBe(true);
+    expect(SetProjectNextActionSchema.safeParse({ taskId: null }).success).toBe(true);
+    expect(
+      SetProjectNextActionSchema.safeParse({ newTask: { title: 'Pick counters' } }).success
+    ).toBe(true);
+  });
+
+  it('rejects a blank new-task title', () => {
+    expect(SetProjectNextActionSchema.safeParse({ newTask: { title: '   ' } }).success).toBe(
+      false
+    );
   });
 });

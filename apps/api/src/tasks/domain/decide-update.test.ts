@@ -510,11 +510,13 @@ describe('decideUpdateTask', () => {
     id: 'project-garden',
     organizationId: 'org-123',
     status: 'active' as const,
+    nextActionTaskId: null,
   };
   const cabin = {
     id: 'project-cabin',
     organizationId: 'org-123',
     status: 'active' as const,
+    nextActionTaskId: null,
   };
 
   it('sets a project on an open task without touching list or order', () => {
@@ -623,7 +625,12 @@ describe('decideUpdateTask', () => {
         actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const },
       },
       list: null,
-      project: { id: 'project-other', organizationId: 'org-other', status: 'active' },
+      project: {
+        id: 'project-other',
+        organizationId: 'org-other',
+        status: 'active',
+        nextActionTaskId: null,
+      },
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       now: '2025-01-15T10:00:00.000Z',

@@ -34,7 +34,7 @@ Each HTML file is self-contained (inline CSS and SVG, no external assets). Eleme
   - It's the most prominent block on the page: a strong border and a bigger title.
   - It holds one row, a circle and a title, completable like any row. The meta line shows the due date, plus the owner's name when the owner isn't the viewer (for example a bot like "Lane").
   - "Change" opens the next-action picker.
-- **No next action:** a dashed amber card that says "No next action", explains that the project won't show in Work, and has a black "Set next action" button. The project should look unfinished. This applies to every status, waiting included.
+- **No next action:** a dashed amber card that says "No next action", explains that the project won't show in Work, and has a black "Set next action" button. The project should look unfinished. The warning shows on active and waiting projects only. Someday projects may have a next action but never show this warning. Done projects cannot have a next action.
 - **Set next action / Change** lets you pick one of the project's open tasks or add a new one: "New task" creates the task in this project and makes it the next action.
 - **Open tasks:** today's row style (circle, title, small meta line), newest first, with the heading "Open tasks" and the count. Rows have no extra controls (#118). The current next action isn't repeated in this list.
 - **History:** a placeholder for #138, drawn as a collapsed row at the bottom. It does nothing until #138 builds it.

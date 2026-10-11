@@ -5,8 +5,8 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     INSERT INTO projects (
       id, organization_id, created_by_id, name, objective, status,
-      waiting_on, waiting_since, created_at, last_changed_at, last_changed_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      waiting_on, waiting_since, next_action_task_id, created_at, last_changed_at, last_changed_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   args: [
     project.id,
@@ -17,9 +17,52 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
     project.status,
     project.waitingOn,
     project.waitingSince,
+    project.nextActionTaskId,
     project.createdAt,
     project.lastChangedAt,
     project.lastChangedBy,
+  ],
+});
+
+export const setNextActionQuery = (input: {
+  projectId: string;
+  organizationId: string;
+  nextActionTaskId: string;
+  lastChangedAt: string | null;
+  lastChangedBy: string | null;
+}): SqlQuery => ({
+  sql: `
+    UPDATE projects
+    SET next_action_task_id = ?, last_changed_at = ?, last_changed_by = ?
+    WHERE id = ? AND organization_id = ? AND status <> 'done'
+  `,
+  args: [
+    input.nextActionTaskId,
+    input.lastChangedAt,
+    input.lastChangedBy,
+    input.projectId,
+    input.organizationId,
+  ],
+});
+
+export const clearNextActionQuery = (input: {
+  projectId: string;
+  organizationId: string;
+  previousTaskId: string;
+  lastChangedAt: string | null;
+  lastChangedBy: string | null;
+}): SqlQuery => ({
+  sql: `
+    UPDATE projects
+    SET next_action_task_id = NULL, last_changed_at = ?, last_changed_by = ?
+    WHERE id = ? AND organization_id = ? AND next_action_task_id = ?
+  `,
+  args: [
+    input.lastChangedAt,
+    input.lastChangedBy,
+    input.projectId,
+    input.organizationId,
+    input.previousTaskId,
   ],
 });
 
@@ -27,7 +70,7 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     UPDATE projects
     SET name = ?, objective = ?, status = ?, waiting_on = ?, waiting_since = ?,
-        last_changed_at = ?, last_changed_by = ?
+        next_action_task_id = ?, last_changed_at = ?, last_changed_by = ?
     WHERE id = ? AND organization_id = ?
   `,
   args: [
@@ -36,6 +79,7 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
     project.status,
     project.waitingOn,
     project.waitingSince,
+    project.nextActionTaskId,
     project.lastChangedAt,
     project.lastChangedBy,
     project.id,

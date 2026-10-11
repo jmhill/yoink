@@ -73,6 +73,13 @@ export type CoreActor = {
     completedTaskCount: number;
     removedTaskCount: number;
   }>;
+  setNextAction(
+    projectId: string,
+    input:
+      | { taskId: string }
+      | { taskId: null }
+      | { newTask: { title: string; dueDate?: string; assigneeId?: string; listId?: string } }
+  ): Promise<{ project: Project; task?: { id: string; title: string } }>;
   listOpenTasksOnProject(projectId: string): Promise<Task[]>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
@@ -774,7 +781,11 @@ export type BrowserActorOperations = {
   /**
    * Set waiting from the project-page fields. Since defaults to today when omitted.
    */
-  setProjectWaitingFromPage(input: { waitingOn: string; waitingSince?: string }): Promise<void>;
+  setProjectWaitingFromPage(input: {
+    waitingOn: string;
+    waitingSince?: string;
+    unknownSince?: boolean;
+  }): Promise<void>;
 
   /**
    * Confirm completing open tasks when marking the project done.
@@ -792,6 +803,119 @@ export type BrowserActorOperations = {
    * Assert the waiting summary line on the project page.
    */
   shouldSeeWaitingSummary(text: string): Promise<void>;
+
+  /**
+   * Open the next-action picker from Set / Change.
+   */
+  openNextActionPicker(): Promise<void>;
+
+  /**
+   * Pick an existing open task in the next-action picker.
+   */
+  pickNextActionFromPicker(title: string): Promise<void>;
+
+  /**
+   * Create a new task from the next-action picker and set it.
+   */
+  createNextActionFromPicker(title: string): Promise<void>;
+
+  /**
+   * Complete the next-action card from the project page (shows What’s next).
+   */
+  completeNextActionFromPage(title: string): Promise<void>;
+
+  /**
+   * Skip the What’s next prompt.
+   */
+  skipWhatsNext(): Promise<void>;
+
+  /**
+   * Pick an open task from the What’s next prompt.
+   */
+  pickWhatsNextTask(title: string): Promise<void>;
+
+  /**
+   * Assert the next-action card shows this title.
+   */
+  shouldSeeNextAction(title: string): Promise<void>;
+
+  /**
+   * Assert the dashed no-next-action card is showing.
+   */
+  shouldSeeNoNextActionCard(): Promise<void>;
+
+  /**
+   * Assert the What’s next prompt is visible.
+   */
+  shouldSeeWhatsNext(): Promise<void>;
+
+  /**
+   * Assert the dashed no-next-action warning is not showing and a plain
+   * Set next action link is (someday, no warning).
+   */
+  shouldSeeSomedaySetNextActionLink(): Promise<void>;
+
+  /**
+   * Close the next-action picker / What’s next drawer without choosing.
+   */
+  dismissNextActionPicker(): Promise<void>;
+
+  /**
+   * Assert the Change next-action drawer body overflows and Create and set
+   * is in the viewport and enabled after a title is typed.
+   */
+  shouldSeePickerCreateInViewport(): Promise<void>;
+
+  /**
+   * Assert the What’s next drawer body overflows and Skip plus Create and set
+   * are in the viewport and clickable.
+   */
+  shouldSeeWhatsNextFooterInViewport(): Promise<void>;
+
+  /**
+   * Assert All projects shows the amber no-next-action label for this name.
+   */
+  shouldSeeNoNextActionOnAllProjects(name: string): Promise<void>;
+
+  /**
+   * Assert the rail shows the amber missing-next-action dot for this name.
+   */
+  shouldSeeNoNextActionDotOnRail(name: string): Promise<void>;
+
+  /**
+   * Submit a blank name in the Edit dialog and assert the error.
+   */
+  shouldSeeBlankProjectNameError(): Promise<void>;
+
+  /**
+   * Open the project Edit dialog for a screenshot, then leave it open.
+   */
+  openProjectEditDialog(): Promise<void>;
+
+  /**
+   * Close the project Edit dialog without saving.
+   */
+  dismissProjectEditDialog(): Promise<void>;
+
+  /**
+   * Delete the open task from the Edit dialog confirm.
+   */
+  deleteTaskFromEdit(): Promise<void>;
+
+  /**
+   * Clear the project on the open task Edit dialog and save.
+   */
+  clearTaskProjectFromEdit(): Promise<void>;
+
+  /**
+   * Assert only one status control and waiting fields hidden until Waiting.
+   */
+  shouldSeeSingleStatusControl(): Promise<void>;
+
+  /**
+   * Scroll the History placeholder into view on the project page.
+   */
+  shouldSeeHistoryPlaceholder(): Promise<void>;
 
   /**
    * Assert a project is in the rail's open (active/waiting) section.

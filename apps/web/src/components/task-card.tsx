@@ -26,6 +26,7 @@ type TaskCardProps = {
   listLabel?: string;
   dragHandle?: SortablePileDragHandle;
   reorderMode?: boolean;
+  emphasis?: 'default' | 'next-action';
 };
 
 export function TaskCard({
@@ -38,6 +39,7 @@ export function TaskCard({
   listLabel,
   dragHandle,
   reorderMode = false,
+  emphasis = 'default',
 }: TaskCardProps) {
   const isCompleted = Boolean(task.completedAt);
   const completingEnabled = !isLoading && !reorderMode;
@@ -137,6 +139,109 @@ export function TaskCard({
     }
   };
 
+  const completeControl = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      data-slot="task-complete"
+      aria-pressed={isCompleted}
+      aria-label={
+        isCompleted
+          ? `Mark task "${task.title}" as incomplete`
+          : `Mark task "${task.title}" as complete`
+      }
+      disabled={!completingEnabled}
+      onPointerDown={(event) => {
+        if (!reorderMode) {
+          event.stopPropagation();
+        }
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        handleCompleteToggle();
+      }}
+      className={
+        emphasis === 'next-action'
+          ? 'size-6 min-h-6 min-w-6 shrink-0 rounded-full text-muted-foreground hover:text-foreground'
+          : 'size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]'
+      }
+    >
+      {isCompleted ? (
+        <CircleCheck
+          className={emphasis === 'next-action' ? 'size-6 text-primary' : 'size-7 text-primary'}
+        />
+      ) : (
+        <Circle className={emphasis === 'next-action' ? 'size-6' : 'size-7'} />
+      )}
+    </Button>
+  );
+
+  const titleAndMeta = (
+    <div className="min-w-0 flex-1">
+      <p
+        data-slot="task-title"
+        className={cn(
+          'break-words leading-6',
+          emphasis === 'next-action' && 'text-[17px] font-semibold',
+          isCompleted ? 'line-through text-muted-foreground' : ''
+        )}
+      >
+        {task.title}
+      </p>
+
+      {(task.dueDate || assigneeLabel || listLabel) && (
+        <div
+          data-slot="task-meta"
+          className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+        >
+          {task.dueDate && (
+            <div
+              className={`flex items-center gap-1 ${
+                isCompleted ? 'text-muted-foreground' : getDueDateColorClass(task.dueDate)
+              }`}
+            >
+              <Calendar className="h-3 w-3" />
+              <span>{formatDueDate(task.dueDate)}</span>
+            </div>
+          )}
+          {assigneeLabel && (
+            <div
+              className="flex items-center gap-1 text-muted-foreground"
+              data-assignee={assigneeLabel}
+            >
+              <User className="h-3 w-3" />
+              <span>{assigneeLabel}</span>
+            </div>
+          )}
+          {listLabel && (
+            <div
+              className="flex items-center gap-1 text-muted-foreground"
+              data-list={listLabel}
+            >
+              <List className="h-3 w-3" />
+              <span>{listLabel}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  if (emphasis === 'next-action') {
+    return (
+      <div
+        data-task-id={task.id}
+        data-task-title={task.title}
+        className="flex items-center gap-3.5 pt-2.5"
+        onClick={handleRowClick}
+      >
+        {completeControl}
+        {titleAndMeta}
+      </div>
+    );
+  }
+
   return (
     <div
       data-task-title={task.title}
@@ -184,80 +289,8 @@ export function TaskCard({
         onTouchCancel={reorderMode && dragHandle ? dragHandle.onTouchEnd : undefined}
       >
         {/* 44px hit target stays in flow; glyph shifts to the title's first line. */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          data-slot="task-complete"
-          aria-pressed={isCompleted}
-          aria-label={
-            isCompleted
-              ? `Mark task "${task.title}" as incomplete`
-              : `Mark task "${task.title}" as complete`
-          }
-          disabled={!completingEnabled}
-          onPointerDown={(event) => {
-            if (!reorderMode) {
-              event.stopPropagation();
-            }
-          }}
-          onClick={(event) => {
-            event.stopPropagation();
-            handleCompleteToggle();
-          }}
-          className="size-11 min-h-11 min-w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground [&_svg]:translate-y-[calc((var(--task-title-lh)-2.75rem)/2)]"
-        >
-          {isCompleted ? (
-            <CircleCheck className="size-7 text-primary" />
-          ) : (
-            <Circle className="size-7" />
-          )}
-        </Button>
-        
-        <div className="min-w-0 flex-1">
-          <p
-            data-slot="task-title"
-            className={`break-words leading-6 ${isCompleted ? 'line-through text-muted-foreground' : ''}`}
-          >
-            {task.title}
-          </p>
-          
-          {(task.dueDate || assigneeLabel || listLabel) && (
-            <div
-              data-slot="task-meta"
-              className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
-            >
-              {task.dueDate && (
-                <div className={`flex items-center gap-1 ${
-                  isCompleted
-                    ? 'text-muted-foreground'
-                    : getDueDateColorClass(task.dueDate)
-                }`}>
-                  <Calendar className="h-3 w-3" />
-                  <span>{formatDueDate(task.dueDate)}</span>
-                </div>
-              )}
-              {assigneeLabel && (
-                <div
-                  className="flex items-center gap-1 text-muted-foreground"
-                  data-assignee={assigneeLabel}
-                >
-                  <User className="h-3 w-3" />
-                  <span>{assigneeLabel}</span>
-                </div>
-              )}
-              {listLabel && (
-                <div
-                  className="flex items-center gap-1 text-muted-foreground"
-                  data-list={listLabel}
-                >
-                  <List className="h-3 w-3" />
-                  <span>{listLabel}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {completeControl}
+        {titleAndMeta}
 
         {reorderMode && dragHandle ? (
           <span

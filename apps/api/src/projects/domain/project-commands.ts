@@ -25,3 +25,20 @@ export type ChangeProjectStatusCommand = {
   openTasks?: 'complete' | 'remove';
   actor: Actor;
 };
+
+export type NewNextActionTask = {
+  title: string;
+  dueDate?: string;
+  assigneeId?: string;
+  listId?: string;
+};
+
+export type SetProjectNextActionCommand = {
+  id: string;
+  organizationId: string;
+  actor: Actor;
+} & (
+  | { type: 'set'; taskId: string }
+  | { type: 'clear' }
+  | { type: 'newTask'; newTask: NewNextActionTask }
+);

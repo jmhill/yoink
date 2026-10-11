@@ -2761,20 +2761,28 @@ export class ProjectPage {
 
   async shouldShow(input: { name: string; objective?: string; status: string }): Promise<void> {
     await this.waitForVisible();
-    await expect(this.page.locator('[data-project-name-input]')).toHaveValue(input.name);
+    await expect(this.page.locator('[data-place-heading]')).toHaveText(input.name);
     await expect(this.page.locator('[data-project-status]')).toHaveAttribute(
       'data-project-status',
       input.status
     );
     if (input.objective !== undefined) {
-      await expect(this.page.locator('[data-project-objective-input]')).toHaveValue(
-        input.objective
-      );
+      await expect(this.page.locator('[data-part="objective"]')).toHaveText(input.objective);
     }
   }
 
-  async editName(name: string): Promise<void> {
+  async openEdit(): Promise<void> {
     await this.waitForVisible();
+    const dialog = this.page.locator('[data-project-edit-dialog]');
+    if (await dialog.isVisible()) {
+      return;
+    }
+    await this.page.locator('[data-project-edit]').click();
+    await dialog.waitFor({ state: 'visible' });
+  }
+
+  async editName(name: string): Promise<void> {
+    await this.openEdit();
     const input = this.page.locator('[data-project-name-input]');
     await input.fill(name);
     const responsePromise = this.page.waitForResponse(
@@ -2787,11 +2795,12 @@ export class ProjectPage {
     if (response.status() !== 200) {
       throw new Error(`Failed to edit project name: ${response.status()}`);
     }
-    await expect(input).toHaveValue(name);
+    await this.page.locator('[data-project-edit-dialog]').waitFor({ state: 'hidden' });
+    await expect(this.page.locator('[data-place-heading]')).toHaveText(name);
   }
 
   async editObjective(objective: string): Promise<void> {
-    await this.waitForVisible();
+    await this.openEdit();
     const input = this.page.locator('[data-project-objective-input]');
     await input.fill(objective);
     const responsePromise = this.page.waitForResponse(
@@ -2804,7 +2813,8 @@ export class ProjectPage {
     if (response.status() !== 200) {
       throw new Error(`Failed to edit project objective: ${response.status()}`);
     }
-    await expect(input).toHaveValue(objective);
+    await this.page.locator('[data-project-edit-dialog]').waitFor({ state: 'hidden' });
+    await expect(this.page.locator('[data-part="objective"]')).toHaveText(objective);
   }
 
   openTaskByTitle(title: string) {
@@ -2829,6 +2839,30 @@ export class ProjectPage {
 
   waitingSave() {
     return this.page.locator('[data-project-waiting-save]');
+  }
+
+  waitingUnknown() {
+    return this.page.locator('[data-project-waiting-unknown]');
+  }
+
+  nextActionCard() {
+    return this.page.locator('[data-next-action-card]');
+  }
+
+  nextActionEmpty() {
+    return this.page.locator('[data-next-action-empty]');
+  }
+
+  setNextAction() {
+    return this.page.locator('[data-set-next-action]');
+  }
+
+  nextActionPicker() {
+    return this.page.locator('[data-next-action-picker]');
+  }
+
+  whatsNext() {
+    return this.page.locator('[data-whats-next-prompt]');
   }
 
   doneConfirm() {

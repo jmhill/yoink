@@ -27,6 +27,7 @@ describe('parseProjectRow', () => {
         status: 'active',
         waitingOn: null,
         waitingSince: null,
+        nextActionTaskId: null,
         createdAt: '2025-01-15T10:00:00.000Z',
         lastChangedAt: '2025-01-15T10:00:00.000Z',
         lastChangedBy: 'user-1',
@@ -46,6 +47,17 @@ describe('parseProjectRow', () => {
       expect(result.value.objective).toBeUndefined();
       expect(result.value.lastChangedAt).toBeNull();
       expect(result.value.lastChangedBy).toBeNull();
+    }
+  });
+
+  it('maps next_action_task_id', () => {
+    const result = parseProjectRow({
+      ...garden,
+      next_action_task_id: 'task-1',
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.nextActionTaskId).toBe('task-1');
     }
   });
 

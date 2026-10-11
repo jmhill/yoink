@@ -53,6 +53,7 @@ import {
   OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
   waitForSettledOpenDialog,
+  waitForSettledOpenDrawer,
   waitForSettledOpenSelect,
   type WalkthroughViewport,
 } from './walkthrough-screenshots.js';
@@ -685,6 +686,35 @@ export const createPlaywrightActor = (
         project: Project;
         completedTaskCount: number;
         removedTaskCount: number;
+      };
+    },
+
+    async setNextAction(
+      projectId: string,
+      input:
+        | { taskId: string }
+        | { taskId: null }
+        | { newTask: { title: string; dueDate?: string; assigneeId?: string; listId?: string } }
+    ): Promise<{ project: Project; task?: { id: string; title: string } }> {
+      const response = await page.request.put(`/api/projects/${projectId}/next-action`, {
+        data: input,
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to set next action: ${response.status()}`);
+      }
+      return (await response.json()) as {
+        project: Project;
+        task?: { id: string; title: string };
       };
     },
 
@@ -1425,7 +1455,12 @@ export const createPlaywrightActor = (
     async pageClickWaitingOption(): Promise<void> {
       await page.locator('[data-project-status-option="waiting"]').click();
       await expect(page.getByRole('listbox')).toBeHidden();
+      await expect(page.locator('[data-slot="select-content"]')).toHaveCount(0);
       await expect(page.locator('[data-project-waiting-fields]')).toBeVisible();
+      const drawer = page.locator('[data-slot="drawer-content"]');
+      if (await drawer.isVisible()) {
+        await waitForSettledOpenDrawer({ page });
+      }
     },
 
     async pageClickDoneOption(): Promise<void> {
@@ -1449,20 +1484,39 @@ export const createPlaywrightActor = (
       if (response.status() !== 200) {
         throw new Error(`Failed to set project status: ${response.status()}`);
       }
+      const listbox = page.getByRole('listbox');
+      if ((await listbox.count()) > 0) {
+        await expect(listbox).toBeHidden();
+      }
     },
 
     async setProjectWaitingFromPage(input: {
       waitingOn: string;
       waitingSince?: string;
+      unknownSince?: boolean;
     }): Promise<void> {
       await projectPage.waitForVisible();
-      const current = await projectPage.statusTrigger().textContent();
-      if (!current?.includes('Waiting')) {
-        await this.openProjectStatusSelect('Waiting');
-        await page.locator('[data-project-status-option="waiting"]').click();
+      const fields = page.locator('[data-project-waiting-fields]');
+      if (!(await fields.isVisible())) {
+        if (await projectPage.waitingSummary().isVisible()) {
+          await projectPage.waitingSummary().click();
+        } else {
+          await this.openProjectStatusSelect('Waiting');
+          await this.pageClickWaitingOption();
+        }
       }
+      await expect(fields).toBeVisible();
       await projectPage.waitingOnInput().fill(input.waitingOn);
-      if (input.waitingSince !== undefined) {
+      if (input.unknownSince) {
+        const unknown = projectPage.waitingUnknown();
+        if ((await unknown.getAttribute('data-state')) !== 'checked') {
+          await unknown.click();
+        }
+      } else if (input.waitingSince !== undefined) {
+        const unknown = projectPage.waitingUnknown();
+        if ((await unknown.getAttribute('data-state')) === 'checked') {
+          await unknown.click();
+        }
         await projectPage.waitingSinceInput().fill(input.waitingSince);
       }
       const responsePromise = page.waitForResponse(
@@ -1475,6 +1529,15 @@ export const createPlaywrightActor = (
       const response = await responsePromise;
       if (response.status() !== 200) {
         throw new Error(`Failed to set project waiting: ${response.status()}`);
+      }
+      await expect(page.locator(OPEN_DIALOG_CONTENT)).toHaveCount(0);
+      const dialog = page.locator('[data-slot="dialog-content"]');
+      if ((await dialog.count()) > 0) {
+        await expect(dialog).toBeHidden();
+      }
+      const drawer = page.locator('[data-slot="drawer-content"]');
+      if ((await drawer.count()) > 0) {
+        await expect(drawer).toBeHidden();
       }
     },
 
@@ -1520,6 +1583,214 @@ export const createPlaywrightActor = (
 
     async shouldSeeWaitingSummary(text: string): Promise<void> {
       await expect(projectPage.waitingSummary()).toContainText(text);
+    },
+
+    async openNextActionPicker(): Promise<void> {
+      await projectPage.waitForVisible();
+      await projectPage.setNextAction().click();
+      await expect(projectPage.nextActionPicker()).toBeVisible();
+    },
+
+    async pickNextActionFromPicker(title: string): Promise<void> {
+      await expect(projectPage.nextActionPicker()).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/next-action') && response.request().method() === 'PUT'
+      );
+      await projectPage
+        .nextActionPicker()
+        .locator(`[data-next-action-pick-task]`)
+        .filter({ hasText: title })
+        .click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to set next action: ${response.status()}`);
+      }
+    },
+
+    async createNextActionFromPicker(title: string): Promise<void> {
+      await expect(projectPage.nextActionPicker()).toBeVisible();
+      await page.locator('[data-next-action-new-title]').fill(title);
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/next-action') && response.request().method() === 'PUT'
+      );
+      await page.locator('[data-next-action-create]').click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to create next action: ${response.status()}`);
+      }
+    },
+
+    async completeNextActionFromPage(title: string): Promise<void> {
+      await projectPage.waitForVisible();
+      const card = projectPage.nextActionCard().locator(`[data-task-title="${title}"]`);
+      await expect(card).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/complete') && response.request().method() === 'POST'
+      );
+      await card.locator('[data-slot="task-complete"]').click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to complete next action: ${response.status()}`);
+      }
+    },
+
+    async skipWhatsNext(): Promise<void> {
+      await expect(page.locator('[data-whats-next-prompt]')).toBeVisible();
+      await page.locator('[data-whats-next-skip]').click();
+      await expect(page.locator('[data-whats-next-prompt]')).toHaveCount(0);
+    },
+
+    async pickWhatsNextTask(title: string): Promise<void> {
+      await expect(page.locator('[data-whats-next-prompt]')).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/next-action') && response.request().method() === 'PUT'
+      );
+      await page
+        .locator('[data-whats-next-prompt] [data-next-action-pick-task]')
+        .filter({ hasText: title })
+        .click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to pick what’s next: ${response.status()}`);
+      }
+    },
+
+    async shouldSeeNextAction(title: string): Promise<void> {
+      await expect(
+        projectPage.nextActionCard().locator(`[data-task-title="${title}"]`)
+      ).toBeVisible();
+    },
+
+    async shouldSeeNoNextActionCard(): Promise<void> {
+      await expect(projectPage.nextActionEmpty()).toBeVisible();
+      await expect(projectPage.nextActionEmpty()).toContainText(
+        "This project won’t show up in Work until it has one. Pick an open task or add a new one."
+      );
+      await expect(projectPage.nextActionCard()).toHaveCount(0);
+    },
+
+    async shouldSeeWhatsNext(): Promise<void> {
+      await expect(page.locator('[data-whats-next-prompt]')).toBeVisible();
+    },
+
+    async shouldSeeSomedaySetNextActionLink(): Promise<void> {
+      await expect(page.locator('[data-someday-set-next-action]')).toBeVisible();
+      await expect(projectPage.nextActionEmpty()).toHaveCount(0);
+    },
+
+    async dismissNextActionPicker(): Promise<void> {
+      await page.keyboard.press('Escape');
+      await expect(projectPage.nextActionPicker()).toHaveCount(0);
+    },
+
+    async shouldSeePickerCreateInViewport(): Promise<void> {
+      const picker = projectPage.nextActionPicker();
+      await expect(picker).toBeVisible();
+      const body = picker.locator('[data-next-action-picker-body]');
+      await expect(body).toBeVisible();
+      const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      expect(overflows, 'picker body should scroll').toBe(true);
+      const create = picker.locator('[data-next-action-create]');
+      await expect(create).toBeInViewport();
+      await page.locator('[data-next-action-new-title]').fill('Overflow create');
+      await expect(create).toBeEnabled();
+      await expect(create).toBeInViewport();
+    },
+
+    async shouldSeeWhatsNextFooterInViewport(): Promise<void> {
+      const prompt = page.locator('[data-whats-next-prompt]');
+      await expect(prompt).toBeVisible();
+      const body = prompt.locator('[data-next-action-picker-body]');
+      await expect(body).toBeVisible();
+      const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      expect(overflows, 'What’s next body should scroll').toBe(true);
+      const skip = page.locator('[data-whats-next-skip]');
+      const create = prompt.locator('[data-next-action-create]');
+      await expect(skip).toBeInViewport();
+      await expect(create).toBeInViewport();
+      await expect(skip).toBeEnabled();
+      await page.locator('[data-next-action-new-title]').fill('Overflow create');
+      await expect(create).toBeEnabled();
+      await expect(create).toBeInViewport();
+      await expect(skip).toBeInViewport();
+    },
+
+    async shouldSeeNoNextActionOnAllProjects(name: string): Promise<void> {
+      const row = page.locator('[data-projects-index] a').filter({ hasText: name });
+      await expect(row.locator('[data-project-no-next-action]')).toBeVisible();
+    },
+
+    async shouldSeeNoNextActionDotOnRail(name: string): Promise<void> {
+      await expect(
+        page.locator(
+          `[data-app-rail]:visible [data-rail-item="project"][data-rail-label="${name}"] [data-rail-no-next-action]`
+        )
+      ).toBeVisible();
+    },
+
+    async shouldSeeBlankProjectNameError(): Promise<void> {
+      await projectPage.openEdit();
+      const input = page.locator('[data-project-name-input]');
+      await input.fill('');
+      await expect(input).toHaveValue('');
+      await page.locator('[data-project-save]').click();
+      await expect(page.locator('[data-project-save-error]')).toBeVisible();
+    },
+
+    async openProjectEditDialog(): Promise<void> {
+      await projectPage.openEdit();
+      await waitForSettledOpenDialog({ page });
+    },
+
+    async dismissProjectEditDialog(): Promise<void> {
+      const dialog = page.getByRole('dialog', { name: 'Edit project' });
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toHaveCount(0);
+    },
+
+    async deleteTaskFromEdit(): Promise<void> {
+      await page.locator('[data-slot="task-edit-delete"]').click();
+      const confirm = page.getByRole('dialog', { name: 'Delete task?' });
+      await expect(confirm).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/tasks/') && response.request().method() === 'DELETE'
+      );
+      await confirm.getByRole('button', { name: 'Delete' }).click();
+      const response = await responsePromise;
+      if (response.status() !== 204 && response.status() !== 200) {
+        throw new Error(`Failed to delete task: ${response.status()}`);
+      }
+    },
+
+    async clearTaskProjectFromEdit(): Promise<void> {
+      await tasksPage.clearProject();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/tasks/') && response.request().method() === 'PATCH'
+      );
+      await tasksPage.saveEdit();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to clear task project: ${response.status()}`);
+      }
+    },
+
+    async shouldSeeSingleStatusControl(): Promise<void> {
+      await projectPage.waitForVisible();
+      await expect(page.locator('[data-project-status-trigger]')).toHaveCount(1);
+      await expect(page.locator('[data-project-status]')).toHaveCount(1);
+      await expect(page.locator('[data-project-waiting-fields]')).toHaveCount(0);
+    },
+
+    async shouldSeeHistoryPlaceholder(): Promise<void> {
+      const row = page.locator('[data-project-history-placeholder]');
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
     },
 
     async shouldSeeProjectOnRail(name: string): Promise<void> {
@@ -2162,8 +2433,8 @@ export const createPlaywrightActor = (
     },
 
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
-      const listbox = page.getByRole('listbox');
-      if (await listbox.isVisible()) {
+      const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
+      if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
         await waitForSettledOpenSelect({ page });
       }
       // A closing confirm dialog is still "visible" to Playwright (opacity
@@ -2173,6 +2444,20 @@ export const createPlaywrightActor = (
       const openDialog = page.locator(OPEN_DIALOG_CONTENT);
       if (await openDialog.isVisible().catch(() => false)) {
         await waitForSettledOpenDialog({ page });
+      } else {
+        const closingDialog = page.locator('[data-slot="dialog-content"]');
+        if ((await closingDialog.count()) > 0) {
+          await closingDialog.last().waitFor({ state: 'hidden' });
+        }
+      }
+      const drawer = page.locator('[data-slot="drawer-content"]');
+      if (await drawer.isVisible()) {
+        const openDrawer = await drawer.getAttribute('data-state');
+        if (openDrawer === 'open' || openDrawer === null) {
+          await waitForSettledOpenDrawer({ page });
+        } else {
+          await drawer.last().waitFor({ state: 'hidden' });
+        }
       }
       await saveWalkthroughPng({
         page,

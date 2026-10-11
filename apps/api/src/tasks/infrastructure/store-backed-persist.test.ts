@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { errAsync } from 'neverthrow';
 import { createFakeTaskStore } from './fake-task-store.js';
 import { createStoreBackedPersist } from './store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
+import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
+import { planProjectChange } from '../../projects/domain/plan-project-change.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import {
   changeLogIdsForTaskUpdated,
@@ -187,5 +190,77 @@ describe('createStoreBackedPersist', () => {
     expect((await store.findById(withCapture.id))._unsafeUnwrap()?.title).toBe('Buy milk');
     expect((await captures.findById('cap-1'))._unsafeUnwrap()?.id).toBe('cap-1');
     expect(changeLog.records).toHaveLength(0);
+  });
+
+  it('leaves the task and project unchanged when a next-action clear log fails', async () => {
+    const garden = {
+      id: 'project-1',
+      organizationId: 'org-123',
+      createdById: 'user-456',
+      name: 'Garden',
+      status: 'active' as const,
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: current.id,
+      createdAt: current.createdAt,
+      lastChangedAt: current.createdAt,
+      lastChangedBy: 'user-456',
+    };
+    const onProject: Task = { ...current, projectId: garden.id };
+    const store = createFakeTaskStore({ initialTasks: [onProject] });
+    const projects = createFakeProjectStore([garden]);
+    const changeLog = createFakeChangeLogStore();
+    const originalInsert = changeLog.insert;
+    let inserts = 0;
+    changeLog.insert = (record) => {
+      inserts += 1;
+      if (inserts > 1) {
+        return errAsync({ type: 'STORAGE_ERROR', message: 'history failed' });
+      }
+      return originalInsert(record);
+    };
+    const persist = createStoreBackedPersist({
+      store,
+      changeLog,
+      captures: createFakeCaptureStore(),
+      projects,
+    });
+    const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
+    const later = '2025-01-15T11:00:00.000Z';
+    const result = await persist(
+      planTaskChange({
+        event: {
+          type: 'TaskCompleted',
+          id: onProject.id,
+          organizationId: onProject.organizationId,
+          completedAt: later,
+          occurredAt: later,
+        },
+        current: onProject,
+        actor,
+        ids: { recordId: 'log-complete' },
+      }),
+      {
+        project: planProjectChange({
+          event: {
+            type: 'ProjectNextActionCleared',
+            id: garden.id,
+            organizationId: garden.organizationId,
+            taskId: onProject.id,
+            reason: 'completed',
+            occurredAt: later,
+          },
+          current: garden,
+          actor,
+          ids: { recordId: 'log-clear' },
+        }),
+      }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect((await store.findById(onProject.id))._unsafeUnwrap()?.completedAt).toBeUndefined();
+    expect((await projects.findById(garden.id))._unsafeUnwrap()?.nextActionTaskId).toBe(
+      current.id
+    );
   });
 });

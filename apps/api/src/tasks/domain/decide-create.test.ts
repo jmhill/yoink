@@ -198,6 +198,7 @@ describe('decideCreateTask', () => {
     id: 'project-garden',
     organizationId: 'org-123',
     status: 'active' as const,
+    nextActionTaskId: null,
   };
 
   it('creates a task already in a project', () => {
@@ -222,7 +223,12 @@ describe('decideCreateTask', () => {
     const result = decideCreateTask({
       command: { ...command, projectId: 'project-other' },
       list: null,
-      project: { id: 'project-other', organizationId: 'org-other', status: 'active' },
+      project: {
+        id: 'project-other',
+        organizationId: 'org-other',
+        status: 'active',
+        nextActionTaskId: null,
+      },
       assigneeInOrganization: null,
       nextOpenOrder: 0,
       id: 'task-id-1',

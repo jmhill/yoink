@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  LIVE_QUERY_COLLECTION_KEYS,
   LIVE_QUERY_REFETCH_INTERVAL_MS,
   LIVE_QUERY_TEST_INTERVAL_KEY,
   cancelLiveQueries,
@@ -59,6 +60,10 @@ describe('live query interval', () => {
     expect(queries?.refetchInterval).toBe(liveQueryRefetchInterval);
     expect(queries?.refetchIntervalInBackground).toBe(false);
     expect(queries?.refetchOnWindowFocus).toBe(true);
+  });
+
+  it('includes projects in the live collection keys', () => {
+    expect(LIVE_QUERY_COLLECTION_KEYS).toContainEqual(['projects']);
   });
 
   it('treats named-pile and unlisted caches as live open-task lists', () => {

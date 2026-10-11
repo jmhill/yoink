@@ -1,8 +1,12 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync, okAsync } from 'neverthrow';
+import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
-import { userStorageError, type UserStorageError } from '../domain/user-errors.js';
+import {
+  userNotFoundError,
+  userStorageError,
+  type UserStorageError,
+} from '../domain/user-errors.js';
 
 type UserRow = {
   id: string;
@@ -76,6 +80,21 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       ).map((result) => {
         const row = result.rows[0] as UserRow | undefined;
         return row ? rowToUser(row) : null;
+      });
+    },
+
+    updateName: (id: string, name: string) => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `UPDATE users SET name = ? WHERE id = ?`,
+          args: [name, id],
+        }),
+        (error) => userStorageError('Failed to update user name', error)
+      ).andThen((result) => {
+        if (result.rowsAffected === 0) {
+          return errAsync(userNotFoundError(id));
+        }
+        return okAsync(undefined);
       });
     },
 

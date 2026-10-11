@@ -6,6 +6,7 @@ import {
   UpdateOrganizationSchema,
   UserSchema,
   CreateUserSchema,
+  UpdateUserSchema,
   ApiTokenSchema,
   CreateTokenSchema,
   CreateTokenResponseSchema,
@@ -172,6 +173,22 @@ export const adminProtectedContract = c.router(
         500: ErrorSchema,
       },
       summary: 'Get a user by ID',
+    },
+
+    updateUser: {
+      method: 'PATCH',
+      path: '/api/admin/users/:id',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: UpdateUserSchema,
+      responses: {
+        200: UserSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Update a user display name',
     },
 
     // Tokens (scoped to organizations)

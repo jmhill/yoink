@@ -9,11 +9,6 @@ RETRY_INTERVAL=2
 # Test configuration
 TEST_BASE_URL="http://localhost:3333"
 TEST_ADMIN_PASSWORD="test-admin-password"
-E2E_DB_HOST_DIR="$(pwd)/apps/api/data/e2e-ci"
-TEST_DB_PATH="$E2E_DB_HOST_DIR/captures.db"
-export E2E_DB_HOST_DIR
-mkdir -p "$E2E_DB_HOST_DIR"
-chmod 777 "$E2E_DB_HOST_DIR"
 
 cleanup() {
     echo "==> Cleaning up..."
@@ -63,10 +58,6 @@ done
 echo "==> Running acceptance tests (HTTP + Playwright drivers)..."
 TEST_BASE_URL="$TEST_BASE_URL" \
 TEST_ADMIN_PASSWORD="$TEST_ADMIN_PASSWORD" \
-TEST_DB_PATH="$TEST_DB_PATH" \
-TEST_DB_COMPOSE_FILE="$(pwd)/docker-compose.test.yml" \
-TEST_DB_COMPOSE_SERVICE="api" \
-TEST_DB_CONTAINER_PATH="/app/apps/api/data/captures.db" \
 pnpm turbo run test --filter=@yoink/acceptance-tests
 
 echo "==> E2E tests complete!"

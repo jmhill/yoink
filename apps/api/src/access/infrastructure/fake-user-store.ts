@@ -1,7 +1,11 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
-import { userStorageError, type UserStorageError } from '../domain/user-errors.js';
+import {
+  userNotFoundError,
+  userStorageError,
+  type UserStorageError,
+} from '../domain/user-errors.js';
 
 export type FakeUserStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -25,6 +29,22 @@ export const createFakeUserStore = (
       } else {
         users.push(user);
       }
+      return okAsync(undefined);
+    },
+
+    updateName: (id: string, name: string) => {
+      if (options.shouldFailOnSave) {
+        return errAsync(userStorageError('Save failed'));
+      }
+      const index = users.findIndex((existing) => existing.id === id);
+      if (index < 0) {
+        return errAsync(userNotFoundError(id));
+      }
+      const current = users[index];
+      if (!current) {
+        return errAsync(userNotFoundError(id));
+      }
+      users[index] = { ...current, name };
       return okAsync(undefined);
     },
 

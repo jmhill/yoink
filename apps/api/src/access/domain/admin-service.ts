@@ -1,4 +1,4 @@
-import { ResultAsync, errAsync } from 'neverthrow';
+import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
 import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
@@ -14,6 +14,7 @@ import type {
   UserStorageError,
   TokenStorageError,
 } from './admin-errors.js';
+import { userNotFoundError } from './admin-errors.js';
 
 export type AdminServiceDependencies = {
   organizationStore: OrganizationStore;
@@ -62,6 +63,7 @@ export type AdminService = {
   listUsers(organizationId: string): ResultAsync<User[], AdminServiceError>;
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
   createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError>;
+  updateUser(id: string, name: string): ResultAsync<User, AdminServiceError>;
 
   // Tokens (scoped to organizations)
   listTokens(organizationId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
@@ -135,6 +137,14 @@ export const createAdminService = (
 
     getUser(id: string) {
       return userStore.findById(id);
+    },
+
+    updateUser(id: string, name: string): ResultAsync<User, AdminServiceError> {
+      return userStore.updateName(id, name).andThen(() =>
+        userStore.findById(id).andThen((user) =>
+          user ? okAsync(user) : errAsync(userNotFoundError(id))
+        )
+      );
     },
 
     createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {

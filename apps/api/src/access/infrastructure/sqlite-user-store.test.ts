@@ -48,6 +48,28 @@ describe('createSqliteUserStore', () => {
     });
   });
 
+  describe('updateName', () => {
+    it('updates only the name', async () => {
+      const user = createTestUser({ email: 'alice@example.com' });
+      await store.save(user);
+
+      const updateResult = await store.updateName(user.id, 'Alice');
+      expect(updateResult.isOk()).toBe(true);
+
+      const loaded = await store.findById(user.id);
+      expect(loaded.isOk() && loaded.value?.name).toBe('Alice');
+      expect(loaded.isOk() && loaded.value?.email).toBe('alice@example.com');
+    });
+
+    it('returns not found when the user does not exist', async () => {
+      const result = await store.updateName('missing-id', 'Alice');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('USER_NOT_FOUND');
+      }
+    });
+  });
+
   describe('findById', () => {
     it('returns user when found', async () => {
       const user = createTestUser({ email: 'alice@example.com' });

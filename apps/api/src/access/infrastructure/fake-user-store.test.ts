@@ -39,6 +39,29 @@ describe('createFakeUserStore', () => {
     });
   });
 
+  describe('updateName', () => {
+    it('updates only the name', async () => {
+      const user = createTestUser();
+      const store = createFakeUserStore({ initialUsers: [user] });
+
+      const updateResult = await store.updateName(user.id, 'Alice');
+      expect(updateResult.isOk()).toBe(true);
+
+      const loaded = await store.findById(user.id);
+      expect(loaded.isOk() && loaded.value?.name).toBe('Alice');
+      expect(loaded.isOk() && loaded.value?.email).toBe(user.email);
+    });
+
+    it('returns not found when the user does not exist', async () => {
+      const store = createFakeUserStore();
+      const result = await store.updateName('missing-id', 'Alice');
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('USER_NOT_FOUND');
+      }
+    });
+  });
+
   describe('findById', () => {
     it('returns null when user not found', async () => {
       const store = createFakeUserStore();

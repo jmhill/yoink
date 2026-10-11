@@ -761,7 +761,8 @@ export type BrowserActorOperations = {
   pageClickWaitingOption(): Promise<void>;
 
   /**
-   * Click Done in the open project-status select (opens the open-tasks dialog when needed).
+   * Click Done in the open project-status select and wait for the
+   * open-tasks confirm dialog (used when the project still has open tasks).
    */
   pageClickDoneOption(): Promise<void>;
 
@@ -777,11 +778,13 @@ export type BrowserActorOperations = {
 
   /**
    * Confirm completing open tasks when marking the project done.
+   * Leaves the confirm dialog closed and the status chip on done.
    */
   confirmDoneComplete(): Promise<void>;
 
   /**
    * Confirm taking open tasks out of the project when marking it done.
+   * Leaves the confirm dialog closed and the status chip on done.
    */
   confirmDoneRemove(): Promise<void>;
 

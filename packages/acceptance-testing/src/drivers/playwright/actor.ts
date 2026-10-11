@@ -50,6 +50,7 @@ import {
   TasksPage,
 } from './page-objects.js';
 import {
+  OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
   waitForSettledOpenDialog,
   waitForSettledOpenSelect,
@@ -1430,6 +1431,8 @@ export const createPlaywrightActor = (
     async pageClickDoneOption(): Promise<void> {
       await page.locator('[data-project-status-option="done"]').click();
       await expect(page.getByRole('listbox')).toBeHidden();
+      await expect(projectPage.doneConfirm()).toBeVisible();
+      await waitForSettledOpenDialog({ page });
     },
 
     async setProjectStatusFromPage(status: 'active' | 'someday' | 'done'): Promise<void> {
@@ -1488,6 +1491,11 @@ export const createPlaywrightActor = (
       if (response.status() !== 200) {
         throw new Error(`Failed to complete open tasks: ${response.status()}`);
       }
+      await expect(projectPage.doneConfirm()).toBeHidden();
+      await expect(page.locator('[data-project-status]')).toHaveAttribute(
+        'data-project-status',
+        'done'
+      );
     },
 
     async confirmDoneRemove(): Promise<void> {
@@ -1503,6 +1511,11 @@ export const createPlaywrightActor = (
       if (response.status() !== 200) {
         throw new Error(`Failed to remove open tasks: ${response.status()}`);
       }
+      await expect(projectPage.doneConfirm()).toBeHidden();
+      await expect(page.locator('[data-project-status]')).toHaveAttribute(
+        'data-project-status',
+        'done'
+      );
     },
 
     async shouldSeeWaitingSummary(text: string): Promise<void> {
@@ -2153,8 +2166,12 @@ export const createPlaywrightActor = (
       if (await listbox.isVisible()) {
         await waitForSettledOpenSelect({ page });
       }
-      const dialog = page.locator('[data-slot="dialog-content"]');
-      if (await dialog.isVisible()) {
+      // A closing confirm dialog is still "visible" to Playwright (opacity
+      // animation). Waiting for [data-slot="dialog-content"].last() then
+      // times out after the node unmounts. Only settle a dialog the step
+      // actually left open.
+      const openDialog = page.locator(OPEN_DIALOG_CONTENT);
+      if (await openDialog.isVisible().catch(() => false)) {
         await waitForSettledOpenDialog({ page });
       }
       await saveWalkthroughPng({

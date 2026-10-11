@@ -259,6 +259,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
           step: 'done_open_tasks_confirm',
         });
         await alice.confirmDoneComplete();
+        await alice.shouldSeeProjectPage({ name: 'Garden', status: 'done' });
+        await alice.shouldNotSeeOpenTaskOnProject('Buy soil');
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'done_complete',
@@ -274,6 +276,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.openProjectStatusSelect('Done');
         await alice.pageClickDoneOption();
         await alice.confirmDoneRemove();
+        await alice.shouldSeeProjectPage({ name: 'Cabin', status: 'done' });
+        await alice.shouldNotSeeOpenTaskOnProject('Buy nails');
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'done_take_out',

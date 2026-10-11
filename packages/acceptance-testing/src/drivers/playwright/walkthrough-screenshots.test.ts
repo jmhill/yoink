@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   findRepoRoot,
+  OPEN_DIALOG_CONTENT,
   walkthroughScreenshotPath,
 } from './walkthrough-screenshots.js';
 
@@ -47,6 +48,12 @@ describe('walkthroughScreenshotPath', () => {
         step: 'edit_project_picker',
       })
     ).toThrow(/kebab-case/);
+  });
+});
+
+describe('OPEN_DIALOG_CONTENT', () => {
+  it('targets only a Radix dialog that is still open, not a closing fade', () => {
+    expect(OPEN_DIALOG_CONTENT).toBe('[data-slot="dialog-content"][data-state="open"]');
   });
 });
 

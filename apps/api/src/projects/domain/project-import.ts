@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import { ImportProjectSchema, type ImportProject, type StagedImportStatus } from '@yoink/api-contracts';
+import type { ImportProject, StagedImportStatus } from '@yoink/api-contracts';
 
 export type ProjectImportRecord = {
   id: string;
@@ -11,7 +10,3 @@ export type ProjectImportRecord = {
   decidedById: string | null;
   decidedAt: string | null;
 };
-
-export const stagedImportPayloadSchema = z.object({
-  projects: z.array(ImportProjectSchema),
-});

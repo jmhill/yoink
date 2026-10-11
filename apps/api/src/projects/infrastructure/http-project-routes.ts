@@ -143,8 +143,6 @@ export const registerProjectRoutes = async (
       listImports: async ({ request }) => {
         const result = await projectHandlers.listImports({
           organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-          actor: request.authContext.actor,
         });
 
         return result.match(

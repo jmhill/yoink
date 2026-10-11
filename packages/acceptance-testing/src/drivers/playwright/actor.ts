@@ -1711,8 +1711,61 @@ export const createPlaywrightActor = (
       await page.waitForURL(/\/projects$/);
     },
 
+    async scrollImportPreviewProject(name: string): Promise<void> {
+      const card = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await card.scrollIntoViewIfNeeded();
+      await expect(card).toBeVisible();
+    },
+
+    async scrollImportActionsIntoView(): Promise<void> {
+      const actions = page.locator('[data-import-discard]');
+      await actions.scrollIntoViewIfNeeded();
+      await expect(actions).toBeVisible();
+      const cover = page.locator('[data-import-preview-project]').filter({
+        hasText: 'Winter boat cover',
+      });
+      if ((await cover.count()) > 0) {
+        await cover.scrollIntoViewIfNeeded();
+      }
+    },
+
+    async highlightImportDiscard(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      const discard = page.locator('[data-import-discard]');
+      await discard.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'end', inline: 'nearest' });
+      });
+    },
+
     async shouldSeeNotebookPage(path: string): Promise<void> {
       await expect(page.locator('[data-project-notebook]')).toContainText(path);
+    },
+
+    async shouldSeeNotebookHref(path: string, href: string): Promise<void> {
+      const row = page.locator('[data-project-notebook-page]').filter({ hasText: path });
+      await expect(row.locator('a')).toHaveAttribute('href', href);
+    },
+
+    async shouldSeeNotebookPageInputs(paths: string[]): Promise<void> {
+      for (const [index, path] of paths.entries()) {
+        await expect(page.locator(`[data-notebook-page-input="${index}"]`)).toHaveValue(path);
+      }
+    },
+
+    async scrollProjectHeadingIntoView(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      const heading = page.locator('[data-place-heading]');
+      await heading.scrollIntoViewIfNeeded();
+      await expect(heading).toBeVisible();
     },
 
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {
@@ -2119,6 +2172,7 @@ export const createPlaywrightActor = (
       actor: string;
       text: string;
       deleted?: boolean;
+      highlight?: boolean;
     }): Promise<void> {
       const line = page.locator(
         `[data-project-history-entry][data-history-kind="${input.kind}"][data-history-actor="${input.actor}"]`
@@ -2126,6 +2180,9 @@ export const createPlaywrightActor = (
       await expect(line.first()).toBeVisible();
       if (input.deleted) {
         await expect(line.first()).toHaveAttribute('data-history-deleted', 'true');
+      }
+      if (input.highlight === false) {
+        return;
       }
       await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
         for (const el of els) {

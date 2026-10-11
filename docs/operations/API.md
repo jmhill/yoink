@@ -126,11 +126,43 @@ Task-level records written by the import (`via: "import"`) appear on
 `GET /api/tasks/:id/history` only. The project timeline is one
 `ProjectImported` line: `{who} · Moved in · N tasks` (existing plus new).
 
+Lane's batch is an array of project entries. Each entry can attach existing
+open tasks (`existingTaskIds`) and/or create tasks (`newTasks` with a
+per-entry `key`). `nextAction` is either `{ "existingTaskId" }` or
+`{ "newTaskKey" }`. A waiting project needs `waitingOn`; `waitingSince: null`
+means unknown. Preview `warnings` are `{ field, code, message }` — a
+non-member assignee is a warning and the task imports unassigned.
+
 ```bash
 # Stage (bots and people). The response is the id plus the preview.
 curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"projects":[{"name":"Harbor shed","status":"active","notebookPages":["notes/Harbor shed (dock).md"],"existingTaskIds":["'"$TASK_ID"'"],"nextAction":{"existingTaskId":"'"$TASK_ID"'"}}]}' \
+  -d '{
+    "projects": [
+      {
+        "name": "Harbor shed",
+        "objective": "Keep the dock usable",
+        "status": "active",
+        "notebookPages": ["notes/Harbor shed (dock).md"],
+        "existingTaskIds": ["'"$TASK_ID"'"],
+        "newTasks": [{"key": "hinges", "title": "Order hinges"}],
+        "nextAction": {"existingTaskId": "'"$TASK_ID"'"}
+      },
+      {
+        "name": "Permit desk",
+        "status": "waiting",
+        "waitingOn": "City hall",
+        "waitingSince": null,
+        "newTasks": [{"key": "call-clerk", "title": "Call the clerk"}],
+        "nextAction": {"newTaskKey": "call-clerk"}
+      },
+      {
+        "name": "Winter boat cover",
+        "status": "someday",
+        "newTasks": [{"key": "measure", "title": "Measure the cockpit"}]
+      }
+    ]
+  }' \
   "$API/api/projects/imports"
 
 # List pending
@@ -408,8 +440,8 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name (`409`) |
 | `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project (`403`) |
 | `PROJECT_NOT_FOUND` | No project with that id in this org (`404`) |
-| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done` (`400`) |
-| `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted (`400`) |
+| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done`; imported projects also refuse `done` and `proposed` (`400`) |
+| `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted, including on import (`400`) |
 | `PROJECT_WAITING_ON_BLANK` | Status is waiting and `waitingOn` is blank after trim (`400`) |
 | `PROJECT_WAITING_ON_TOO_LONG` | `waitingOn` is longer than 200 characters (`400`) |
 | `INVALID_WAITING_SINCE` | `waitingSince` is not `YYYY-MM-DD` or null (`400`) |
@@ -422,8 +454,13 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `TASK_NOT_IN_PROJECT` | Next-action task is not in this project (`400`) |
 | `TASK_NOT_FOUND` | Next-action task is missing, deleted, or in another org (`404`) |
 | `PROJECT_DONE` | Setting a next action on a done project (`400`) |
-| `TASK_TITLE_BLANK` | New-task title is blank after trim (`400`) |
-| `TASK_TITLE_TOO_LONG` | New-task title is longer than 500 characters (`400`) |
+| `TASK_TITLE_BLANK` | New-task title is blank after trim, including import `newTasks` (`400`) |
+| `TASK_TITLE_TOO_LONG` | New-task title is longer than 500 characters, including import `newTasks` (`400`) |
+| `INVALID_TASK_DUE_DATE` | Import `newTasks.dueDate` is not a real `YYYY-MM-DD` (`400`) |
+| `PROJECT_OBJECTIVE_TOO_LONG` | Import objective is longer than 2000 characters (`400`) |
+| `IMPORT_NEW_TASK_KEY_DUPLICATE` | Two `newTasks` in one entry share the same `key` (`400`) |
+| `IMPORT_TOO_MANY_TASKS` | The batch attaches or creates more than 200 tasks (`400`) |
+| `IMPORT_DUPLICATE_NAME_IN_BATCH` | Two entries in the same batch share a name (`400`) |
 | `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation (`400`) |

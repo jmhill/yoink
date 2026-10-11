@@ -108,7 +108,7 @@ function ImportPreviewPage() {
               data-import-error={item.index}
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
-              {item.name || 'Untitled'}: {item.message}
+              {item.name || 'Untitled'} ({item.field}): {item.message}
             </li>
           ))}
         </ul>
@@ -175,19 +175,23 @@ function ImportPreviewPage() {
 
       {canDecide ? (
         <div className="mt-6 flex flex-wrap gap-2 pb-8">
-          <Button
-            type="button"
-            data-import-submit=""
-            disabled={busy || !preview || errors.length > 0}
-            onClick={() =>
-              applyMutation.mutate({
-                params: { id: importId },
-                body: {},
-              })
-            }
-          >
-            {applyMutation.isPending ? 'Importing…' : `Import ${count} project${count === 1 ? '' : 's'}`}
-          </Button>
+          {count > 0 && errors.length === 0 ? (
+            <Button
+              type="button"
+              data-import-submit=""
+              disabled={busy || !preview}
+              onClick={() =>
+                applyMutation.mutate({
+                  params: { id: importId },
+                  body: {},
+                })
+              }
+            >
+              {applyMutation.isPending
+                ? 'Importing…'
+                : `Import ${count} project${count === 1 ? '' : 's'}`}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

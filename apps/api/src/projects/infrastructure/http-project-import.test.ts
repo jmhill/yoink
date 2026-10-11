@@ -171,7 +171,7 @@ describe('project import HTTP', () => {
     const applied = await app.inject({
       method: 'POST',
       url: `/api/projects/imports/${stagedBody.id}/apply`,
-      cookies: session.cookies,
+      headers: bearer,
       payload: {},
     });
     expect(applied.statusCode).toBe(200);
@@ -247,23 +247,73 @@ describe('project import HTTP', () => {
     expect(clerkTask.assigneeId).toBeUndefined();
     expect(clerkTask.projectId).toBe(permit.id);
 
-    const harborHistory = await app.inject({
-      method: 'GET',
-      url: `/api/projects/${harbor.id}/history?limit=1`,
-      headers: bearer,
-    });
-    expect(harborHistory.statusCode).toBe(200);
-    const harborPage = harborHistory.json<HistoryPage>();
-    expect(harborPage.total).toBe(1);
-    expect(harborPage.hasMore).toBe(false);
-    expect(harborPage.nextCursor).toBeNull();
-    expect(harborPage.entries).toHaveLength(1);
-    expect(harborPage.entries[0]?.kind).toBe('ProjectImported');
-    expect(harborPage.entries[0]?.actor.userId).toBe(TEST_USER_ID);
-    expect(harborPage.entries[0]?.actor.kind).toBe('user');
-    expect(harborPage.entries[0]?.details).toEqual({
+    const collectProjectHistory = async (projectId: string): Promise<HistoryPage['entries']> => {
+      const entries: HistoryPage['entries'] = [];
+      let cursor: string | undefined;
+      let hasMore = true;
+      while (hasMore) {
+        const suffix = cursor
+          ? `?limit=1&cursor=${encodeURIComponent(cursor)}`
+          : '?limit=1';
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/projects/${projectId}/history${suffix}`,
+          headers: bearer,
+        });
+        expect(response.statusCode).toBe(200);
+        const page = response.json<HistoryPage>();
+        entries.push(...page.entries);
+        hasMore = page.hasMore;
+        cursor = page.nextCursor ?? undefined;
+      }
+      return entries;
+    };
+
+    const harborEntries = await collectProjectHistory(harbor.id);
+    expect(harborEntries).toEqual([
+      {
+        id: harborEntries[0]?.id,
+        kind: 'ProjectImported',
+        occurredAt: harborEntries[0]?.occurredAt,
+        actor: {
+          userId: TEST_USER_ID,
+          kind: 'user',
+          name: harborEntries[0]?.actor.name,
+        },
+        subject: {
+          type: 'project',
+          id: harbor.id,
+          title: 'Harbor shed',
+          deleted: false,
+        },
+        details: { kind: 'ProjectImported', taskCount: 3 },
+      },
+    ]);
+
+    const permitEntries = await collectProjectHistory(permit.id);
+    expect(permitEntries.map((entry) => entry.kind)).toEqual(['ProjectImported']);
+    expect(permitEntries[0]?.details).toEqual({
       kind: 'ProjectImported',
-      taskCount: 3,
+      taskCount: 1,
+    });
+    expect(permitEntries[0]?.subject).toEqual({
+      type: 'project',
+      id: permit.id,
+      title: 'Permit desk',
+      deleted: false,
+    });
+
+    const coverEntries = await collectProjectHistory(cover.id);
+    expect(coverEntries.map((entry) => entry.kind)).toEqual(['ProjectImported']);
+    expect(coverEntries[0]?.details).toEqual({
+      kind: 'ProjectImported',
+      taskCount: 1,
+    });
+    expect(coverEntries[0]?.subject).toEqual({
+      type: 'project',
+      id: cover.id,
+      title: 'Winter boat cover',
+      deleted: false,
     });
 
     const paintHistory = await app.inject({
@@ -283,6 +333,26 @@ describe('project import HTTP', () => {
       via: 'import',
     });
 
+    const hingesHistory = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${hinges.id}/history`,
+      headers: bearer,
+    });
+    expect(hingesHistory.json<HistoryPage>().entries.map((entry) => entry.kind)).toEqual([
+      'TaskAddedToProject',
+      'TaskCreated',
+    ]);
+
+    const hookHistory = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${hook.id}/history`,
+      headers: bearer,
+    });
+    expect(hookHistory.json<HistoryPage>().entries.map((entry) => entry.kind)).toEqual([
+      'TaskAddedToProject',
+      'TaskCreated',
+    ]);
+
     const clerkHistory = await app.inject({
       method: 'GET',
       url: `/api/tasks/${clerkTask.id}/history`,
@@ -296,6 +366,24 @@ describe('project import HTTP', () => {
       projectName: 'Permit desk',
     });
 
+    const coverTasks = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${cover.id}/tasks`,
+      headers: bearer,
+    });
+    expect(coverTasks.statusCode).toBe(200);
+    const measure = coverTasks.json<{ tasks: Task[] }>().tasks[0];
+    expect(measure?.title).toBe('Measure the cockpit');
+    const measureHistory = await app.inject({
+      method: 'GET',
+      url: `/api/tasks/${measure?.id}/history`,
+      headers: bearer,
+    });
+    expect(measureHistory.statusCode).toBe(200);
+    expect(measureHistory.json<HistoryPage>().entries.map((entry) => entry.kind)).toEqual([
+      'TaskCreated',
+    ]);
+
     const later = await app.inject({
       method: 'POST',
       url: `/api/tasks/${paint.id}/complete`,
@@ -303,19 +391,17 @@ describe('project import HTTP', () => {
       payload: {},
     });
     expect(later.statusCode).toBe(200);
-    const afterComplete = await app.inject({
-      method: 'GET',
-      url: `/api/projects/${harbor.id}/history`,
-      headers: bearer,
-    });
-    const afterKinds = afterComplete.json<HistoryPage>().entries.map((entry) => entry.kind);
-    expect(afterKinds[afterKinds.length - 1]).toBe('ProjectImported');
-    expect(afterKinds).toContain('TaskCompleted');
+    const afterComplete = await collectProjectHistory(harbor.id);
+    expect(afterComplete.map((entry) => entry.kind)).toEqual([
+      'ProjectNextActionCleared',
+      'TaskCompleted',
+      'ProjectImported',
+    ]);
 
     const double = await app.inject({
       method: 'POST',
       url: `/api/projects/imports/${stagedBody.id}/apply`,
-      cookies: session.cookies,
+      headers: bearer,
       payload: {},
     });
     expect(double.statusCode).toBe(409);
@@ -323,8 +409,6 @@ describe('project import HTTP', () => {
       message: 'This import is no longer pending',
       code: 'IMPORT_NOT_PENDING',
     });
-
-    void hook;
   });
 
   it('refuses an invalid batch at staging and stores nothing', async () => {
@@ -462,11 +546,19 @@ describe('project import HTTP', () => {
       payload: {},
     });
     expect(discarded.statusCode).toBe(200);
-    expect(discarded.json()).toMatchObject({
+    const discardedBody = discarded.json<{
+      id: string;
+      status: string;
+      decidedById: string;
+      decidedAt: string;
+    }>();
+    expect(discardedBody).toEqual({
       id,
       status: 'discarded',
       decidedById: TEST_USER_ID,
+      decidedAt: discardedBody.decidedAt,
     });
+    expect(typeof discardedBody.decidedAt).toBe('string');
 
     const listed = await app.inject({
       method: 'GET',
@@ -482,7 +574,10 @@ describe('project import HTTP', () => {
       payload: {},
     });
     expect(again.statusCode).toBe(409);
-    expect(again.json().code).toBe('IMPORT_NOT_PENDING');
+    expect(again.json()).toEqual({
+      message: 'This import is no longer pending',
+      code: 'IMPORT_NOT_PENDING',
+    });
   });
 
   it('lets a bot replace notebook pages and no-ops the same list', async () => {

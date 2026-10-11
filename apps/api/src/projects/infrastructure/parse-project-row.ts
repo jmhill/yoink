@@ -1,6 +1,7 @@
 import { err, ok, Result } from 'neverthrow';
 import { z } from 'zod';
 import type { Project } from '@yoink/api-contracts';
+import { parseJson } from '../../shared/infrastructure/parse-json.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
 import { notebookPagesFromPaths } from '../domain/notebook-pages.js';
 
@@ -68,12 +69,9 @@ const parseNotebookPagesJson = (
   if (raw === undefined || raw === '') {
     return ok([]);
   }
-  const decoded = Result.fromThrowable(
-    () => JSON.parse(raw) as unknown,
-    (cause) => storageError('Invalid notebook_pages JSON', cause)
-  )();
+  const decoded = parseJson(raw);
   if (decoded.isErr()) {
-    return err(decoded.error);
+    return err(storageError('Invalid notebook_pages JSON', decoded.error));
   }
   const parsedJson = notebookPagesJsonSchema.safeParse(decoded.value);
   if (!parsedJson.success) {

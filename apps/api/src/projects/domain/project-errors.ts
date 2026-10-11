@@ -407,5 +407,3 @@ export const importInvalidError = (errors: readonly ImportEntryError[]): ImportI
   message: 'The import batch is invalid',
   errors,
 });
-
-export const importEntryError = (input: ImportEntryError): ImportEntryError => input;

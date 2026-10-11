@@ -9,9 +9,11 @@ import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import {
   duplicateProjectNameError,
+  importNotPendingError,
   projectDoneError,
   storageError,
   type DuplicateProjectNameError,
+  type ImportNotPendingError,
   type ProjectDoneError,
   type StorageError,
 } from '../domain/project-errors.js';
@@ -88,6 +90,24 @@ const persistFailure = (
     return duplicateProjectNameError(plan.view.name);
   }
   return storageError('Failed to persist project change', error);
+};
+
+const importNotPendingAborted = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /CHECK constraint failed/i.test(message);
+};
+
+const persistImportFailure = (
+  write: ImportWritePlan,
+  error: unknown
+): StorageError | DuplicateProjectNameError | ImportNotPendingError => {
+  if (importNotPendingAborted(error)) {
+    return importNotPendingError();
+  }
+  if (uniqueNameConstraintFailed(error)) {
+    return duplicateProjectNameError(write.projects[0]?.name ?? '');
+  }
+  return storageError('Failed to persist import', error);
 };
 
 export const createSqliteProjectPersist = (deps: {
@@ -265,10 +285,6 @@ export const queriesForImportPlan = (input: {
   );
   const history = input.write.importRecords.map((record) => insertChangeLogQuery(record));
   return [
-    ...projectInserts,
-    ...taskQueries,
-    ...nextActions,
-    ...history,
     markImportDecidedQuery({
       id: input.stagedImportId,
       organizationId: input.write.organizationId,
@@ -276,6 +292,10 @@ export const queriesForImportPlan = (input: {
       decidedById: input.decidedById,
       decidedAt: input.decidedAt,
     }),
+    ...projectInserts,
+    ...taskQueries,
+    ...nextActions,
+    ...history,
   ];
 };
 
@@ -283,28 +303,7 @@ export const createSqliteImportPersist = (deps: { db: Database }): PersistImport
   return (input) =>
     ResultAsync.fromPromise(
       deps.db.batch(queriesForImportPlan(input), 'write'),
-      (error) => persistFailure(
-        {
-          action: 'insert',
-          organizationId: input.write.organizationId,
-          view: input.write.projects[0] ?? {
-            id: '',
-            organizationId: input.write.organizationId,
-            createdById: input.decidedById,
-            name: '',
-            status: 'active',
-            waitingOn: null,
-            waitingSince: null,
-            nextActionTaskId: null,
-            notebookPages: [],
-            createdAt: input.decidedAt,
-            lastChangedAt: input.decidedAt,
-            lastChangedBy: input.decidedById,
-          },
-          records: [],
-        },
-        error
-      )
+      (error) => persistImportFailure(input.write, error)
     ).map(() => undefined);
 };
 
@@ -323,7 +322,10 @@ export const createSqliteImportDiscard = (deps: { db: Database }): PersistImport
         ],
         'write'
       ),
-      (error) => storageError('Failed to discard import', error)
+      (error) =>
+        importNotPendingAborted(error)
+          ? importNotPendingError()
+          : storageError('Failed to discard import', error)
     ).map(() => undefined);
 };
 
@@ -339,37 +341,37 @@ export const createStoreBackedImportPersist = (deps: {
     const restoreLog = deps.changeLog.captureSnapshot();
     const restoreImports = deps.imports.captureSnapshot();
 
-    for (const project of input.write.projects) {
-      deps.projects.applyInsert({ ...project, nextActionTaskId: null });
-    }
-    for (const plan of input.write.tasks) {
-      applyTaskPlanToStore(deps.tasks, plan);
-    }
-    for (const project of input.write.projects) {
-      if (project.nextActionTaskId) {
-        deps.projects.applySetNextAction({
-          projectId: project.id,
-          nextActionTaskId: project.nextActionTaskId,
-          lastChangedAt: project.lastChangedAt,
-          lastChangedBy: project.lastChangedBy,
-        });
-      }
-    }
+    return deps.imports
+      .markDecided({
+        id: input.stagedImportId,
+        status: 'applied',
+        decidedById: input.decidedById,
+        decidedAt: input.decidedAt,
+      })
+      .andThen(() => {
+        for (const project of input.write.projects) {
+          deps.projects.applyInsert({ ...project, nextActionTaskId: null });
+        }
+        for (const plan of input.write.tasks) {
+          applyTaskPlanToStore(deps.tasks, plan);
+        }
+        for (const project of input.write.projects) {
+          if (project.nextActionTaskId) {
+            deps.projects.applySetNextAction({
+              projectId: project.id,
+              nextActionTaskId: project.nextActionTaskId,
+              lastChangedAt: project.lastChangedAt,
+              lastChangedBy: project.lastChangedBy,
+            });
+          }
+        }
 
-    const records = [
-      ...input.write.tasks.flatMap((plan) => plan.records),
-      ...input.write.importRecords,
-    ];
-
-    return persistRecords(deps.changeLog, records)
-      .andThen(() =>
-        deps.imports.markDecided({
-          id: input.stagedImportId,
-          status: 'applied',
-          decidedById: input.decidedById,
-          decidedAt: input.decidedAt,
-        })
-      )
+        const records = [
+          ...input.write.tasks.flatMap((plan) => plan.records),
+          ...input.write.importRecords,
+        ];
+        return persistRecords(deps.changeLog, records);
+      })
       .mapErr((error) => {
         restoreProject();
         restoreTasks();

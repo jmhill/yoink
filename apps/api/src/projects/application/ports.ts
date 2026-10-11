@@ -2,6 +2,7 @@ import type { ResultAsync } from 'neverthrow';
 import type { ImportProject, Project, Task } from '@yoink/api-contracts';
 import type {
   DuplicateProjectNameError,
+  ImportNotPendingError,
   ProjectDoneError,
   StorageError,
 } from '../domain/project-errors.js';
@@ -83,13 +84,13 @@ export type PersistImportApply = (input: {
   stagedImportId: string;
   decidedById: string;
   decidedAt: string;
-}) => ResultAsync<void, StorageError | DuplicateProjectNameError>;
+}) => ResultAsync<void, StorageError | DuplicateProjectNameError | ImportNotPendingError>;
 
 export type PersistImportDiscard = (input: {
   id: string;
   organizationId: string;
   decidedById: string;
   decidedAt: string;
-}) => ResultAsync<void, StorageError>;
+}) => ResultAsync<void, StorageError | ImportNotPendingError>;
 
 export type { ImportProject };

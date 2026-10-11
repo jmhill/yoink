@@ -406,8 +406,9 @@ function ProjectPage() {
                     href={page.url}
                     className="font-medium underline underline-offset-2"
                   >
-                    {page.path}
+                    {page.path.split('/').at(-1) ?? page.path}
                   </a>
+                  <span className="ml-2 text-muted-foreground">{page.path}</span>
                 </li>
               ))}
             </ul>

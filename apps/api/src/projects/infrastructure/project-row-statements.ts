@@ -41,8 +41,10 @@ export const markImportDecidedQuery = (input: {
 }): SqlQuery => ({
   sql: `
     UPDATE project_imports
-    SET status = ?, decided_by = ?, decided_at = ?
-    WHERE id = ? AND organization_id = ? AND status = 'pending'
+    SET status = CASE WHEN status = 'pending' THEN ? ELSE 'stale' END,
+        decided_by = ?,
+        decided_at = ?
+    WHERE id = ? AND organization_id = ?
   `,
   args: [input.status, input.decidedById, input.decidedAt, input.id, input.organizationId],
 });

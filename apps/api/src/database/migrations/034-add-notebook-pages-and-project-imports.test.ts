@@ -79,6 +79,46 @@ describe('Migration 34: add_notebook_pages_and_project_imports', () => {
     expect(result.rows[0]?.decided_at).toBeNull();
   });
 
+  it('rejects a status outside the pending/applied/discarded check', async () => {
+    await runMigrations(db, migrations);
+
+    await db.execute({
+      sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+      args: ['org-1', 'Org', '2025-01-15T10:00:00.000Z'],
+    });
+    await db.execute({
+      sql: `INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)`,
+      args: ['user-1', 'lane@yoink.invalid', '2025-01-15T10:00:00.000Z'],
+    });
+
+    await expect(
+      db.execute({
+        sql: `
+          INSERT INTO project_imports (
+            id, organization_id, created_by, created_at, status, payload_json
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        args: [
+          'import-stale',
+          'org-1',
+          'user-1',
+          '2025-01-15T10:00:00.000Z',
+          'stale',
+          '{"projects":[]}',
+        ],
+      })
+    ).rejects.toThrow(/CHECK constraint failed/i);
+  });
+
+  it('indexes pending imports by organization and status', async () => {
+    await runMigrations(db, migrations);
+
+    const indexes = await db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'project_imports'`,
+    });
+    expect(indexes.rows.map((row) => row.name)).toContain('idx_project_imports_org_status');
+  });
+
   it('does not add a last_moved_on column', async () => {
     await runMigrations(db, migrations);
 

@@ -155,9 +155,19 @@ describe('sqlite import persist', () => {
     const log = createSqliteChangeLogStore(db);
     const projectHistory = (await log.findBySubject('project', harbor.id))._unsafeUnwrap();
     expect(projectHistory.map((record) => record.kind)).toEqual(['ProjectImported']);
-    expect(projectHistory[0]?.payload).toMatchObject({
+    expect(projectHistory[0]?.payload).toEqual({
       taskCount: 2,
       name: 'Harbor shed',
+      status: 'active',
+      waitingOn: null,
+      waitingSince: null,
+      nextActionTaskId: paint.id,
+      notebookPages: ['notes/Harbor shed (dock).md'],
+      taskIds: [paint.id],
+      createdTaskIds: write.tasks
+        .filter((plan) => plan.action === 'insert')
+        .map((plan) => plan.view.id),
+      objective: 'Keep the dock usable',
     });
 
     const taskHistory = (await log.findBySubject('task', paint.id))._unsafeUnwrap();
@@ -166,7 +176,12 @@ describe('sqlite import persist', () => {
       'TaskUpdated',
       'TaskAddedToProject',
     ]);
-    expect(taskHistory[2]?.payload).toMatchObject({ via: 'import' });
+    expect(taskHistory[2]?.payload).toEqual({
+      projectId: harbor.id,
+      via: 'import',
+      importRecordId: write.importRecords[0]?.id,
+      projectName: 'Harbor shed',
+    });
 
     const staged = (await imports.findById('import-1'))._unsafeUnwrap();
     expect(staged?.status).toBe('applied');
@@ -226,10 +241,50 @@ describe('sqlite import persist', () => {
     expect(staged.isOk() ? staged.value?.status : staged.error).toBe('pending');
     expect(staged.isOk() ? staged.value?.decidedById : null).toBeNull();
   });
+
+  it('writes nothing when the import is already discarded', async () => {
+    const imports = createSqliteImportStore(db);
+    await imports.insert({
+      id: 'import-1',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      createdAt: now,
+      status: 'discarded',
+      projects: batch,
+      decidedById: 'user-1',
+      decidedAt: now,
+    });
+
+    const persist = createSqliteImportPersist({ db });
+    const write = writePlan();
+    const result = await persist({
+      write,
+      stagedImportId: 'import-1',
+      decidedById: 'user-1',
+      decidedAt: now,
+    });
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() ? result.error.type : null).toBe('IMPORT_NOT_PENDING');
+
+    const projects = await createSqliteProjectStore(db);
+    const remainingProjects = await projects.findByOrganization('org-1');
+    expect(remainingProjects.isOk()).toBe(true);
+    expect(remainingProjects.isOk() ? remainingProjects.value : remainingProjects.error).toEqual([]);
+
+    const tasks = await createSqliteTaskStore(db);
+    const moved = await tasks.findById(paint.id);
+    expect(moved.isOk()).toBe(true);
+    expect(moved.isOk() ? moved.value?.projectId : moved.error).toBeUndefined();
+
+    const remaining = await db.execute({
+      sql: `SELECT kind FROM change_log ORDER BY seq ASC`,
+    });
+    expect(remaining.rows.map((row) => row.kind)).toEqual(['TaskCreated']);
+  });
 });
 
 describe('store-backed import persist', () => {
-  it('rolls back projects, tasks, history, and the staged import when the last record fails', async () => {
+  it('rolls back projects, tasks, history, and the staged import when markDecided fails', async () => {
     const projects = createFakeProjectStore();
     const tasks = createFakeTaskStore({ initialTasks: [paint] });
     const changeLog = createFakeChangeLogStore();
@@ -246,18 +301,7 @@ describe('store-backed import persist', () => {
       },
     ]);
 
-    const originalInsert = changeLog.insert;
-    const write = writePlan();
-    const totalRecords =
-      write.tasks.reduce((sum, plan) => sum + plan.records.length, 0) + write.importRecords.length;
-    let seen = 0;
-    changeLog.insert = (record) => {
-      seen += 1;
-      if (seen === totalRecords) {
-        return errAsync({ type: 'STORAGE_ERROR', message: 'history failed' });
-      }
-      return originalInsert(record);
-    };
+    imports.markDecided = () => errAsync({ type: 'STORAGE_ERROR', message: 'markDecided failed' });
 
     const persist = createStoreBackedImportPersist({
       projects,
@@ -266,15 +310,65 @@ describe('store-backed import persist', () => {
       imports,
     });
     const result = await persist({
-      write,
+      write: writePlan(),
       stagedImportId: 'import-1',
       decidedById: 'user-1',
       decidedAt: now,
     });
     expect(result.isErr()).toBe(true);
+    expect(result.isErr() ? result.error : null).toEqual({
+      type: 'STORAGE_ERROR',
+      message: 'markDecided failed',
+    });
     expect((await projects.findByOrganization('org-1'))._unsafeUnwrap()).toEqual([]);
     expect((await tasks.findById(paint.id))._unsafeUnwrap()?.projectId).toBeUndefined();
     expect(changeLog.records).toEqual([]);
     expect((await imports.findById('import-1'))._unsafeUnwrap()?.status).toBe('pending');
+  });
+
+  it('writes nothing when the import is already discarded', async () => {
+    const projects = createFakeProjectStore();
+    const tasks = createFakeTaskStore({ initialTasks: [paint] });
+    const changeLog = createFakeChangeLogStore();
+    const imports = createFakeImportStore([
+      {
+        id: 'import-1',
+        organizationId: 'org-1',
+        createdById: 'user-1',
+        createdAt: now,
+        status: 'discarded',
+        projects: batch,
+        decidedById: 'user-1',
+        decidedAt: now,
+      },
+    ]);
+
+    const persist = createStoreBackedImportPersist({
+      projects,
+      tasks,
+      changeLog,
+      imports,
+    });
+    const result = await persist({
+      write: writePlan(),
+      stagedImportId: 'import-1',
+      decidedById: 'user-1',
+      decidedAt: now,
+    });
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() ? result.error.type : null).toBe('IMPORT_NOT_PENDING');
+    expect((await projects.findByOrganization('org-1'))._unsafeUnwrap()).toEqual([]);
+    expect((await tasks.findById(paint.id))._unsafeUnwrap()?.projectId).toBeUndefined();
+    expect(changeLog.records).toEqual([]);
+    expect((await imports.findById('import-1'))._unsafeUnwrap()).toEqual({
+      id: 'import-1',
+      organizationId: 'org-1',
+      createdById: 'user-1',
+      createdAt: now,
+      status: 'discarded',
+      projects: batch,
+      decidedById: 'user-1',
+      decidedAt: now,
+    });
   });
 });

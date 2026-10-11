@@ -1,5 +1,11 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import { importNotFoundError, storageError, type StorageError } from '../domain/project-errors.js';
+import {
+  importNotFoundError,
+  importNotPendingError,
+  storageError,
+  type ImportNotPendingError,
+  type StorageError,
+} from '../domain/project-errors.js';
 import type { ProjectImportRecord } from '../domain/project-import.js';
 
 export type FakeImportStore = {
@@ -13,7 +19,7 @@ export type FakeImportStore = {
     status: 'applied' | 'discarded';
     decidedById: string;
     decidedAt: string;
-  }) => ResultAsync<void, StorageError>;
+  }) => ResultAsync<void, StorageError | ImportNotPendingError>;
 };
 
 export const createFakeImportStore = (
@@ -49,6 +55,9 @@ export const createFakeImportStore = (
       const current = index === -1 ? undefined : records[index];
       if (!current) {
         return errAsync(storageError(importNotFoundError(input.id).message));
+      }
+      if (current.status !== 'pending') {
+        return errAsync(importNotPendingError());
       }
       records[index] = {
         ...current,

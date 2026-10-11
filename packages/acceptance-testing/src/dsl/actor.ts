@@ -792,7 +792,13 @@ export type BrowserActorOperations = {
   shouldSeeImportError(text: string): Promise<void>;
   applyImportOnPreview(): Promise<void>;
   discardImportOnPreview(): Promise<void>;
+  scrollImportPreviewProject(name: string): Promise<void>;
+  scrollImportActionsIntoView(): Promise<void>;
+  highlightImportDiscard(): Promise<void>;
   shouldSeeNotebookPage(path: string): Promise<void>;
+  shouldSeeNotebookHref(path: string, href: string): Promise<void>;
+  shouldSeeNotebookPageInputs(paths: string[]): Promise<void>;
+  scrollProjectHeadingIntoView(): Promise<void>;
 
   /**
    * Open the status select on the project page and wait for it to settle.
@@ -962,6 +968,7 @@ export type BrowserActorOperations = {
     actor: string;
     text: string;
     deleted?: boolean;
+    highlight?: boolean;
   }): Promise<void>;
   shouldSeeHistoryEntryCount(count: number): Promise<void>;
   shouldSeeHistoryMore(): Promise<void>;

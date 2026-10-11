@@ -124,7 +124,7 @@ export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
         organizationId: command.organizationId,
         actor: command.actor,
       },
-      () => ['ProjectImported'],
+      () => [],
       () => handleStageImport(command, { ...deps, persistStage: deps.persistStage })
     ),
   listImports: (query: Parameters<typeof handleListImports>[0]) =>

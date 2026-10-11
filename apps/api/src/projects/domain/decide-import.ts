@@ -1,12 +1,13 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { ImportPreview, ImportPreviewProject, ImportProject, Project, Task } from '@yoink/api-contracts';
-import { IMPORT_TASKS_MAX } from '@yoink/api-contracts';
+import { IMPORT_TASKS_MAX, PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
 import type { Actor } from '../../shared/auth-context.js';
+import { parseIsoDate } from '../../shared/domain/iso-date.js';
 import { decideCreateTask, type DecideCreateTaskError } from '../../tasks/domain/decide-create.js';
 import type { LoadedProject } from '../../tasks/domain/task-commands.js';
 import type { TaskCreated, TaskUpdated } from '../../tasks/domain/events.js';
+import { parseTaskTitle } from '../../tasks/domain/task-title.js';
 import {
-  importEntryError,
   importInvalidError,
   type ImportEntryError,
   type ImportInvalidError,
@@ -15,9 +16,6 @@ import { notebookPagesFromPaths, parseNotebookPages } from './notebook-pages.js'
 import { parseProjectName, projectNameIsTaken, normalizeProjectName } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
 import { parseWaitingOn, parseWaitingSince } from './project-waiting.js';
-
-const TASK_TITLE_MAX = 500;
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export type DecideImportInput = {
   projects: readonly ImportProject[];
@@ -60,47 +58,16 @@ const entryError = (
   field: string,
   code: string,
   message: string
-): ImportEntryError =>
-  importEntryError({
-    index,
-    name,
-    field,
-    code,
-    message,
-  });
+): ImportEntryError => ({
+  index,
+  name,
+  field,
+  code,
+  message,
+});
 
-const parseIsoDate = (raw: string): Result<string, string> => {
-  const match = ISO_DATE.exec(raw);
-  if (!match) {
-    return err('Due date must be a date (YYYY-MM-DD)');
-  }
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return err('Due date must be a date (YYYY-MM-DD)');
-  }
-  return ok(raw);
-};
-
-const parseTaskTitle = (raw: string): Result<string, { code: string; message: string }> => {
-  const title = raw.trim();
-  if (title.length === 0) {
-    return err({ code: 'TASK_TITLE_BLANK', message: "Title can't be blank" });
-  }
-  if (title.length > TASK_TITLE_MAX) {
-    return err({
-      code: 'TASK_TITLE_TOO_LONG',
-      message: 'Title must be 500 characters or fewer',
-    });
-  }
-  return ok(title);
-};
+const compareEntryErrors = (left: ImportEntryError, right: ImportEntryError): number =>
+  left.index - right.index || left.field.localeCompare(right.field);
 
 const listKey = (listId: string | undefined): string => listId ?? '';
 
@@ -141,8 +108,8 @@ export const decideImport = (
             index,
             entry.name,
             'name',
-            'DUPLICATE_PROJECT_NAME',
-            'A project with this name already exists'
+            'IMPORT_DUPLICATE_NAME_IN_BATCH',
+            'This name is used more than once in this import'
           )
         );
       } else {
@@ -178,7 +145,7 @@ export const decideImport = (
   }
 
   if (errors.length > 0) {
-    return err(importInvalidError(errors));
+    return err(importInvalidError([...errors].sort(compareEntryErrors)));
   }
 
   const preview: ImportPreview = {
@@ -226,6 +193,13 @@ const decideOneEntry = (
   }
 
   const objective = parseProjectObjective(entry.objective);
+  if (objective !== undefined && objective.length > PROJECT_OBJECTIVE_MAX_LENGTH) {
+    add(
+      'objective',
+      'PROJECT_OBJECTIVE_TOO_LONG',
+      `Objective must be ${PROJECT_OBJECTIVE_MAX_LENGTH} characters or fewer`
+    );
+  }
 
   if (entry.status === 'waiting') {
     if (entry.waitingOn === undefined) {
@@ -243,8 +217,9 @@ const decideOneEntry = (
       }
     }
   } else if (entry.waitingOn !== undefined || entry.waitingSince !== undefined) {
+    const field = entry.waitingOn !== undefined ? 'waitingOn' : 'waitingSince';
     add(
-      'waitingOn',
+      field,
       'IMPORT_WAITING_FIELDS_NOT_ALLOWED',
       'Waiting on and waiting since are only used when status is waiting'
     );
@@ -259,7 +234,6 @@ const decideOneEntry = (
   }
 
   const existingIds = entry.existingTaskIds ?? [];
-  const existingTasks: PlannedImportedTask[] = [];
   const existingById = new Map<string, Task>();
 
   for (const [taskIndex, taskId] of existingIds.entries()) {
@@ -285,16 +259,6 @@ const decideOneEntry = (
       continue;
     }
     existingById.set(taskId, task);
-    existingTasks.push({
-      current: task,
-      event: {
-        type: 'TaskUpdated',
-        id: task.id,
-        organizationId: task.organizationId,
-        projectId: 'pending',
-        occurredAt: input.now,
-      },
-    });
   }
 
   const newTasks = entry.newTasks ?? [];
@@ -305,21 +269,28 @@ const decideOneEntry = (
     const field = `newTasks.${taskIndex}`;
     if (newTaskKeys.has(newTask.key)) {
       add(`${field}.key`, 'IMPORT_NEW_TASK_KEY_DUPLICATE', 'New-task keys must be unique in an entry');
-      continue;
+    } else {
+      newTaskKeys.set(newTask.key, taskIndex);
     }
-    newTaskKeys.set(newTask.key, taskIndex);
 
     const title = parseTaskTitle(newTask.title);
     if (title.isErr()) {
-      add(`${field}.title`, title.error.code, title.error.message);
-      continue;
+      add(`${field}.title`, title.error.type, title.error.message);
+    } else {
+      newTaskTitles.set(newTask.key, title.value);
     }
-    newTaskTitles.set(newTask.key, title.value);
 
     if (newTask.dueDate !== undefined) {
       const due = parseIsoDate(newTask.dueDate);
       if (due.isErr()) {
-        add(`${field}.dueDate`, 'INVALID_TASK_DUE_DATE', due.error);
+        add(`${field}.dueDate`, 'INVALID_TASK_DUE_DATE', 'Due date must be a date (YYYY-MM-DD)');
+      }
+    }
+
+    if (newTask.listId !== undefined) {
+      const list = input.listsById.get(newTask.listId);
+      if (!list || list.organizationId !== input.organizationId) {
+        add(`${field}.listId`, 'LIST_NOT_IN_ORGANIZATION', 'List is not in this organization');
       }
     }
   }
@@ -384,6 +355,17 @@ const decideOneEntry = (
     nextActionTaskId: null,
   };
 
+  const existingTasks: PlannedImportedTask[] = [...existingById.values()].map((task) => ({
+    current: task,
+    event: {
+      type: 'TaskUpdated',
+      id: task.id,
+      organizationId: task.organizationId,
+      projectId,
+      occurredAt: input.now,
+    },
+  }));
+
   const createdEvents: TaskCreated[] = [];
   const createdIdsByKey = new Map<string, string>();
 
@@ -445,10 +427,6 @@ const decideOneEntry = (
   const nextActionTaskId =
     nextActionExistingId ??
     (nextActionNewKey ? (createdIdsByKey.get(nextActionNewKey) ?? null) : null);
-
-  for (const planned of existingTasks) {
-    planned.event.projectId = projectId;
-  }
 
   const view: Project = {
     id: projectId,

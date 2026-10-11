@@ -1138,8 +1138,32 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('discardImportOnPreview', 'http');
     },
 
+    async scrollImportPreviewProject(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('scrollImportPreviewProject', 'http');
+    },
+
+    async scrollImportActionsIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollImportActionsIntoView', 'http');
+    },
+
+    async highlightImportDiscard(): Promise<void> {
+      throw new UnsupportedOperationError('highlightImportDiscard', 'http');
+    },
+
     async shouldSeeNotebookPage(_path: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNotebookPage', 'http');
+    },
+
+    async shouldSeeNotebookHref(_path: string, _href: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotebookHref', 'http');
+    },
+
+    async shouldSeeNotebookPageInputs(_paths: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotebookPageInputs', 'http');
+    },
+
+    async scrollProjectHeadingIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollProjectHeadingIntoView', 'http');
     },
 
     async openProjectStatusSelect(_visibleOptionName?: string): Promise<void> {
@@ -1287,6 +1311,7 @@ export const createHttpActor = (
       actor: string;
       text: string;
       deleted?: boolean;
+      highlight?: boolean;
     }): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeHistoryEntry', 'http');
     },

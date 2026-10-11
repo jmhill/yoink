@@ -1,11 +1,14 @@
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
+import { ImportProjectSchema } from '@yoink/api-contracts';
 import type { Database } from '../../database/types.js';
+import { parseJson } from '../../shared/infrastructure/parse-json.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
-import {
-  stagedImportPayloadSchema,
-  type ProjectImportRecord,
-} from '../domain/project-import.js';
+import type { ProjectImportRecord } from '../domain/project-import.js';
+
+const stagedImportPayloadSchema = z.object({
+  projects: z.array(ImportProjectSchema),
+});
 
 const ImportRowSchema = z.object({
   id: z.string().min(1),
@@ -19,12 +22,9 @@ const ImportRowSchema = z.object({
 });
 
 const parsePayload = (raw: string): Result<ProjectImportRecord['projects'], StorageError> => {
-  const decoded = Result.fromThrowable(
-    () => JSON.parse(raw) as unknown,
-    (cause) => storageError('Invalid import payload JSON', cause)
-  )();
+  const decoded = parseJson(raw);
   if (decoded.isErr()) {
-    return err(decoded.error);
+    return err(storageError('Invalid import payload JSON', decoded.error));
   }
   const parsed = stagedImportPayloadSchema.safeParse(decoded.value);
   if (!parsed.success) {

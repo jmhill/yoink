@@ -3197,6 +3197,9 @@ export const createPlaywrightActor = (
           await drawer.last().waitFor({ state: 'hidden' });
         }
       }
+      if (walkthroughViewport === 'desktop') {
+        await page.setViewportSize({ width: DESKTOP_VIEWPORT.width, height: 1080 });
+      }
       await saveWalkthroughPng({
         page,
         fromDir: fileURLToPath(new URL('.', import.meta.url)),
@@ -3204,6 +3207,9 @@ export const createPlaywrightActor = (
         viewport: walkthroughViewport,
         step: input.step,
       });
+      if (walkthroughViewport === 'desktop') {
+        await page.setViewportSize(DESKTOP_VIEWPORT);
+      }
     },
 
     async openMobileBottomTab(tab: 'inbox' | 'tasks'): Promise<void> {

@@ -458,25 +458,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
       await alice.useAppearance({ mode: 'light', colorTheme: 'default' });
       await alice.openWork();
-      await alice.completeOpenTaskFromRow(seeded.bravoNa.id);
-      await alice.shouldSeeWhatsNext();
-      await alice.saveWalkthroughScreenshot({
-        story: WALKTHROUGH_STORY,
-        step: 'now_completed_whats_next',
-      });
-      await alice.skipWhatsNext();
-
-      const emptyDesktop = await ctx.createActor('alice-144-work-empty-desktop@example.com');
-      await emptyDesktop.useDesktopViewport();
-      await emptyDesktop.openWork();
-      await emptyDesktop.shouldSeeNowEmpty();
-      await emptyDesktop.saveWalkthroughScreenshot({
-        story: WALKTHROUGH_STORY,
-        step: 'now_empty',
-      });
+      await alice.shouldSeeNowReady('all');
 
       await alice.useMobileViewport();
-      await alice.useAppearance({ mode: 'light', colorTheme: 'default' });
       await alice.openWork();
       await alice.shouldSeeNowReady('all');
       await alice.saveWalkthroughScreenshot({
@@ -501,6 +485,27 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'list_picked',
       });
+
+      await alice.useDesktopViewport();
+      await alice.openWork();
+      await alice.completeOpenTaskFromRow(seeded.bravoNa.id);
+      await alice.shouldSeeWhatsNext();
+      await alice.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'now_completed_whats_next',
+      });
+      await alice.skipWhatsNext();
+
+      const emptyDesktop = await ctx.createActor('alice-144-work-empty-desktop@example.com');
+      await emptyDesktop.useDesktopViewport();
+      await emptyDesktop.openWork();
+      await emptyDesktop.shouldSeeNowEmpty();
+      await emptyDesktop.saveWalkthroughScreenshot({
+        story: WALKTHROUGH_STORY,
+        step: 'now_empty',
+      });
+
+      await alice.useMobileViewport();
       await alice.openWork();
       await alice.completeOpenTaskFromRow(seeded.alphaNa.id);
       await alice.shouldSeeWhatsNext();

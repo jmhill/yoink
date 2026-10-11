@@ -199,7 +199,7 @@ function ProcessPage() {
           onTrash={(id) => handleTrash(id, 'right')}
           snoozeOpen={snoozeOpen}
           onSnoozeOpenChange={setSnoozeOpen}
-          disabled={isTrashing || isSnoozing || isProcessing}
+          disabled={actionPending}
         />
       )}
 

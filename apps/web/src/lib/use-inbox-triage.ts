@@ -43,7 +43,7 @@ type ProcessCapture = {
   sourceUrl?: string | null;
 };
 
-const INBOX_TRIAGE_TOAST = 'inbox-triage';
+const INBOX_TRIAGE_TOAST_PREFIX = 'inbox-triage';
 
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
@@ -54,6 +54,12 @@ export function useInboxTriage() {
   const tsrQueryClient = tsr.useQueryClient();
   const projectsClient = tsrProjects.useQueryClient();
   const actedIds = useRef(new Set<string>());
+  const triageToastGeneration = useRef(0);
+  const triageToastId = () => `${INBOX_TRIAGE_TOAST_PREFIX}-${triageToastGeneration.current}`;
+  const dismissTriageToast = () => {
+    toast.dismiss(triageToastId());
+    triageToastGeneration.current += 1;
+  };
   const [exitDirections, setExitDirections] = useState<Record<string, ExitDirection>>({});
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskModalCapture, setTaskModalCapture] = useState<{
@@ -71,7 +77,7 @@ export function useInboxTriage() {
 
   const restoreMutation = tsr.restore.useMutation({
     onSuccess: () => {
-      toast.success('Restored to inbox', { id: INBOX_TRIAGE_TOAST });
+      toast.success('Restored to inbox', { id: triageToastId() });
     },
     onError: (err) => {
       if (isFetchError(err)) {
@@ -87,7 +93,7 @@ export function useInboxTriage() {
 
   const unsnoozeMutation = tsr.unsnooze.useMutation({
     onSuccess: () => {
-      toast.success('Moved to inbox', { id: INBOX_TRIAGE_TOAST });
+      toast.success('Moved to inbox', { id: triageToastId() });
     },
     onError: (err) => {
       if (isFetchError(err)) {
@@ -148,11 +154,11 @@ export function useInboxTriage() {
 
     onSuccess: (_data, variables) => {
       toast.success('Moved to trash', {
-        id: INBOX_TRIAGE_TOAST,
+        id: triageToastId(),
         action: {
           label: 'Undo',
           onClick: () => {
-            toast.dismiss(INBOX_TRIAGE_TOAST);
+            dismissTriageToast();
             restoreMutation.mutate({ params: { id: variables.params.id }, body: {} });
           },
         },
@@ -212,11 +218,11 @@ export function useInboxTriage() {
 
     onSuccess: (_data, variables) => {
       toast.success('Snoozed', {
-        id: INBOX_TRIAGE_TOAST,
+        id: triageToastId(),
         action: {
           label: 'Undo',
           onClick: () => {
-            toast.dismiss(INBOX_TRIAGE_TOAST);
+            dismissTriageToast();
             unsnoozeMutation.mutate({ params: { id: variables.params.id }, body: {} });
           },
         },

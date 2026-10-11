@@ -61,7 +61,7 @@ const KeyHint = ({
   return (
     <kbd
       data-process-key-hint={PROCESS_KEY_HINTS[action]}
-      className="ml-1 rounded border border-border px-1 text-[10px] font-normal text-muted-foreground"
+      className="ml-0.5 rounded border border-border px-0.5 text-[10px] font-normal text-muted-foreground"
     >
       {PROCESS_KEY_HINTS[action]}
     </kbd>
@@ -153,11 +153,12 @@ export function ProcessItem({
         sourceApp={capture.sourceApp}
         capturedAt={capture.capturedAt}
       />
-      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap gap-1.5')}>
+      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap gap-1')}>
         <Button
           type="button"
           variant="outline"
           size={actionSize}
+          className={showHints ? 'px-2' : undefined}
           data-process-make-task=""
           disabled={disabled}
           onClick={() => onMakeTask({ id: capture.id, content: capture.content })}
@@ -169,6 +170,7 @@ export function ProcessItem({
           type="button"
           variant="outline"
           size={actionSize}
+          className={showHints ? 'px-2' : undefined}
           data-process-new-project=""
           disabled={disabled}
           onClick={() => onNewProject(capture)}
@@ -180,6 +182,7 @@ export function ProcessItem({
           type="button"
           variant="outline"
           size={actionSize}
+          className={showHints ? 'px-2' : undefined}
           data-process-someday-project=""
           disabled={disabled}
           onClick={() => onSomedayProject(capture)}
@@ -192,6 +195,7 @@ export function ProcessItem({
             type="button"
             variant="outline"
             size={actionSize}
+            className={showHints ? 'px-2' : undefined}
             data-process-snooze=""
             disabled={disabled}
             aria-expanded={snoozeOpen}
@@ -212,6 +216,7 @@ export function ProcessItem({
           type="button"
           variant="outline"
           size={actionSize}
+          className={showHints ? 'px-2' : undefined}
           data-process-trash=""
           disabled={disabled}
           onClick={() => onTrash(capture.id)}

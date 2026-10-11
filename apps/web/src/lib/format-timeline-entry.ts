@@ -219,7 +219,9 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
     case 'TaskDeleted':
       return `${who} deleted ${quoted(title)}`;
     case 'ProjectCreated':
-      return `${who} created this project`;
+      return entry.details.captureId
+        ? `${who} created this project from a capture`
+        : `${who} created this project`;
     case 'ProjectUpdated':
       return `${who} changed ${joinChangedFields(projectUpdatedFieldLabels(entry.details))}`;
     case 'ProjectStatusChanged':

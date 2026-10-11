@@ -50,10 +50,9 @@ const projectPayloadByType = {
       name: event.name,
       status: event.status,
       createdById: event.createdById,
+      ...(event.objective !== undefined ? { objective: event.objective } : {}),
+      ...(event.captureId !== undefined ? { captureId: event.captureId } : {}),
     };
-    if (event.objective !== undefined) {
-      payload.objective = event.objective;
-    }
     return payload;
   },
   ProjectUpdated: (

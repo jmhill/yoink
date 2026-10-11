@@ -74,3 +74,13 @@ export type ProcessCaptureToTaskCommand = {
   projectId?: string; // optional project; omit for no project
   actor: Actor;
 };
+
+export type ProcessCaptureToProjectCommand = {
+  id: string;
+  organizationId: string;
+  createdById: string;
+  name: string;
+  objective?: string;
+  status: 'active' | 'someday';
+  actor: Actor;
+};

@@ -34,6 +34,8 @@ export type {
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  ProcessCaptureToProjectInput,
+  ProcessCaptureToProjectResult,
   CreateTokenResult,
   CreateInvitationInput,
   AcceptInvitationResult,

@@ -28,6 +28,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   ProcessCaptureToTaskInput,
+  ProcessCaptureToProjectInput,
+  ProcessCaptureToProjectResult,
   CreateInvitationInput,
   AcceptInvitationResult,
   MintedAgent,
@@ -59,6 +61,10 @@ export type CoreActor = {
 
   // Process capture to task
   processCaptureToTask(captureId: string, input?: ProcessCaptureToTaskInput): Promise<Task>;
+  processCaptureToProject(
+    captureId: string,
+    input: ProcessCaptureToProjectInput
+  ): Promise<ProcessCaptureToProjectResult>;
 
   // Named lists. createNamedList is the product write path (any org member).
   listNamedLists(): Promise<NamedList[]>;
@@ -1586,7 +1592,11 @@ export type BrowserActorOperations = {
    * `135-tasks-in-projects`). `step` is snake_case (e.g.
    * `edit_project_picker`).
    */
-  saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
+  saveWalkthroughScreenshot(input: {
+    story: string;
+    step: string;
+    includeToasts?: boolean;
+  }): Promise<void>;
 
   /**
    * Open Capture, Process, Work, or Review from the mobile bottom tabs.
@@ -1604,14 +1614,99 @@ export type BrowserActorOperations = {
   shouldSeeProcessReady(): Promise<void>;
 
   /**
-   * Assert Process lists these capture contents oldest first.
+   * Assert Process shows this capture as the current card.
    */
-  shouldSeeProcessQueue(contents: string[]): Promise<void>;
+  shouldSeeProcessCurrent(content: string): Promise<void>;
 
   /**
-   * Assert the Process subcopy.
+   * Assert Process subcopy and marker say this many are left, including the current card.
    */
-  shouldSeeProcessSubcopy(text: string): Promise<void>;
+  shouldSeeProcessLeft(count: number): Promise<void>;
+
+  /**
+   * Assert the empty Process state names this many snoozed captures.
+   */
+  shouldSeeProcessSnoozedComingBack(count: number): Promise<void>;
+
+  /**
+   * Open Make it a task on the current Process card.
+   */
+  openProcessMakeTask(): Promise<void>;
+
+  /**
+   * Open New project or Someday project on the current Process card.
+   */
+  openProcessProjectSheet(status: 'active' | 'someday'): Promise<void>;
+
+  /**
+   * Assert the Process project sheet name and objective.
+   */
+  shouldSeeProcessProjectPrefill(input: { name: string; objective: string }): Promise<void>;
+
+  /**
+   * Edit the Process project sheet fields.
+   */
+  fillProcessProject(input: { name?: string; objective?: string }): Promise<void>;
+
+  /**
+   * Submit the Process project sheet and return the created project.
+   */
+  confirmProcessProject(): Promise<ProcessCaptureToProjectResult>;
+
+  /**
+   * Submit the Process project sheet and assert the inline error.
+   */
+  shouldSeeProcessProjectError(text: string): Promise<void>;
+
+  /**
+   * Close the Process project sheet.
+   */
+  cancelProcessProjectSheet(): Promise<void>;
+
+  /**
+   * Open the Process snooze menu.
+   */
+  openProcessSnoozeMenu(): Promise<void>;
+
+  /**
+   * Pick a Process snooze option.
+   */
+  pickProcessSnooze(option: 'later-today' | 'tomorrow' | 'next-week'): Promise<void>;
+
+  /**
+   * Trash the current Process card.
+   */
+  trashProcessCurrent(): Promise<void>;
+
+  /**
+   * Assert the current Process card shows this source URL label.
+   */
+  shouldSeeProcessSourceUrl(label: string): Promise<void>;
+
+  /**
+   * Press a Process desktop key (T, P, S, Z, Delete).
+   */
+  pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete'): Promise<void>;
+
+  /**
+   * Assert desktop Process key hints are showing.
+   */
+  shouldSeeProcessKeyHints(): Promise<void>;
+
+  /**
+   * Assert the Undo toast is showing.
+   */
+  shouldSeeUndoToast(): Promise<void>;
+
+  /**
+   * Click Undo on the current toast.
+   */
+  undoFromToast(): Promise<void>;
+
+  /**
+   * Assert Process moved on because the current capture was processed elsewhere.
+   */
+  shouldSeeAlreadyProcessedNotice(): Promise<void>;
 
   /**
    * Assert the Process empty state and its Capture link.
@@ -1679,6 +1774,7 @@ export type BrowserActorOperations = {
   confirmPromoteOnListAndProject(input: {
     listName: string;
     projectName: string;
+    dueDate?: string;
   }): Promise<Task>;
 
   /**

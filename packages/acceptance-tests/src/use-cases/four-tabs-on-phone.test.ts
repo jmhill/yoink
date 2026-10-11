@@ -6,7 +6,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Projects plan story 10a (#141): four tabs on phone.
  *
  * Polly lock (Sun Oct 11): Capture | Process | Work | Review. Capture
- * stays the inbox at `/`. Process is the whole inbox oldest first.
+ * stays the inbox at `/`. Process is one capture at a time, oldest first.
  * Work stays Now + lists. Review is `/projects` with + New project.
  * Desktop rail and ⌘K do not change.
  */
@@ -138,14 +138,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openMobileBottomTab('process');
       await alice.shouldSeeProcessReady();
-      await alice.shouldSeeProcessSubcopy('3 to process');
-      await alice.shouldSeeProcessQueue(['Oldest clip', 'Middle clip', 'Newest clip']);
+      await alice.shouldSeeProcessLeft(3);
+      await alice.shouldSeeProcessCurrent('Oldest clip');
       await alice.shouldSeeProcessBadge(3);
       await alice.shouldNotSeeQuickAddCapture();
       await alice.shouldSeeClearOfMobileTabBar('[data-capture-id]');
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_tab' });
 
       await alice.trashCaptureOnCurrentPane('Oldest clip');
+      await alice.shouldSeeProcessCurrent('Middle clip');
+      await alice.shouldSeeProcessLeft(2);
       await alice.shouldSeeProcessBadge(2);
 
       await alice.openPromoteSheet('Middle clip');
@@ -161,6 +163,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(task.listId).toBe(chores.id);
       expect(task.projectId).toBe(shed.id);
 
+      await alice.shouldSeeProcessCurrent('Newest clip');
+      await alice.shouldSeeProcessLeft(1);
       await alice.snoozeCaptureOnCurrentPane('Newest clip');
       await alice.shouldSeeProcessEmpty();
       await alice.shouldSeeProcessBadge(null);

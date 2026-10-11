@@ -492,6 +492,11 @@ export class InboxPage {
   async openPromote(content: string): Promise<void> {
     const card = this.captureCard(content);
     await card.hover();
+    const makeTask = card.getByRole('button', { name: 'Make it a task' });
+    if ((await makeTask.count()) > 0) {
+      await makeTask.click();
+      return;
+    }
     await card.getByRole('button', { name: 'Promote' }).click();
   }
 

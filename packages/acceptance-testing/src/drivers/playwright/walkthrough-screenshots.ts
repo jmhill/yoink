@@ -158,6 +158,51 @@ export const waitForSettledOpenDialog = async (input: {
   });
 };
 
+export const OPEN_SHEET_CONTENT = '[data-slot="sheet-content"][data-state="open"]';
+
+export const waitForSettledOpenSheet = async (input: {
+  page: {
+    locator: (selector: string) => {
+      last: () => {
+        waitFor: (options: { state: 'visible' }) => Promise<unknown>;
+        evaluate: (
+          fn: (el: {
+            getAnimations: (options: { subtree: boolean }) => Array<{
+              finished: Promise<unknown>;
+            }>;
+            ownerDocument: {
+              defaultView: {
+                getComputedStyle: (element: unknown) => { opacity: string };
+              } | null;
+            };
+          }) => Promise<void>
+        ) => Promise<unknown>;
+      };
+    };
+  };
+}): Promise<void> => {
+  const sheet = input.page.locator(OPEN_SHEET_CONTENT).last();
+  await sheet.waitFor({ state: 'visible' });
+  await sheet.evaluate(async (el) => {
+    const view = el.ownerDocument.defaultView;
+    if (view === null) {
+      throw new Error('expected a window for computed style');
+    }
+    const finish = () =>
+      Promise.all(
+        el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined))
+      );
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline) {
+      await finish();
+      if (view.getComputedStyle(el).opacity === '1') {
+        return;
+      }
+    }
+    throw new Error(`Sheet opacity settled at ${view.getComputedStyle(el).opacity}, expected 1`);
+  });
+};
+
 export const waitForSettledOpenDrawer = async (input: {
   page: {
     locator: (selector: string) => {
@@ -231,6 +276,11 @@ const HIDE_TOASTS_STYLE = [
   '[data-screenshot-focus]{outline:3px solid #2563eb !important;outline-offset:3px !important;background:#dbeafe !important;box-shadow:0 0 0 3px rgba(37,99,235,0.35) !important}',
 ].join('');
 
+const SHOW_TOASTS_STYLE = [
+  '[data-project-history] button svg,[data-project-finished] button svg{transition:none !important}',
+  '[data-screenshot-focus]{outline:3px solid #2563eb !important;outline-offset:3px !important;background:#dbeafe !important;box-shadow:0 0 0 3px rgba(37,99,235,0.35) !important}',
+].join('');
+
 export const saveWalkthroughPng = async (input: {
   page: {
     screenshot: (options: {
@@ -243,6 +293,7 @@ export const saveWalkthroughPng = async (input: {
   story: string;
   viewport: WalkthroughViewport;
   step: string;
+  includeToasts?: boolean;
 }): Promise<string> => {
   const dest = walkthroughScreenshotPath({
     repoRoot: findRepoRoot(input.fromDir),
@@ -251,6 +302,9 @@ export const saveWalkthroughPng = async (input: {
     step: input.step,
   });
   await mkdir(path.dirname(dest), { recursive: true });
-  await input.page.screenshot({ path: dest, style: HIDE_TOASTS_STYLE });
+  await input.page.screenshot({
+    path: dest,
+    style: input.includeToasts ? SHOW_TOASTS_STYLE : HIDE_TOASTS_STYLE,
+  });
   return dest;
 };

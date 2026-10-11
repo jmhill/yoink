@@ -155,6 +155,9 @@ export const toTimelineEntry = (
         ...(record.payload.objective !== undefined
           ? { objective: record.payload.objective }
           : {}),
+        ...(record.payload.captureId !== undefined
+          ? { captureId: record.payload.captureId }
+          : {}),
       });
     case 'ProjectUpdated':
       return entry(record, lookups, 'ProjectUpdated', {

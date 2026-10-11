@@ -2,18 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { okAsync } from 'neverthrow';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import type { Capture, NamedList, Task } from '@yoink/api-contracts';
-import { createCaptureProcessingService, type CaptureProcessingService } from './processing-service.js';
+import { createProcessingHandlers } from '../application/create-processing-handlers.js';
+import { createFakeProcessToTaskPersist } from '../infrastructure/persist-process.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
-import { createStoreBackedPersist } from '../../tasks/infrastructure/store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
-import { handleCreateTask } from '../../tasks/application/handle-create-task.js';
 import type { FakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import type { ListStore } from '../../lists/domain/list-store.js';
+import type { CaptureProcessingService } from '../application/create-processing-handlers.js';
 
-describe('CaptureProcessingService', () => {
+describe('process capture to task', () => {
   const now = new Date('2024-12-24T10:00:00.000Z');
   const clock = createFakeClock(now);
   const idGenerator = createFakeIdGenerator();
@@ -53,24 +53,29 @@ describe('CaptureProcessingService', () => {
     captureStore = createFakeCaptureStore();
     taskStore = createFakeTaskStore();
     listStore = createFakeListStore({ initialLists: [groceries, otherOrgList] });
-    const persist = createStoreBackedPersist({
-      store: taskStore,
-      changeLog: createFakeChangeLogStore(),
-      captures: captureStore,
-    });
-    service = createCaptureProcessingService({
-      captureStore,
-      createTask: (command) =>
-        handleCreateTask(command, {
-          loadList: (id) => listStore.findById(id),
-          loadProject: () => okAsync(null),
-          loadNextOpenOrder: (organizationId, listId) =>
-            taskStore.nextOpenOrderInPile({ organizationId, listId }),
-          persist,
-          nextId: () => idGenerator.generate(),
-          now: () => clock.now().toISOString(),
-        }).map((result) => result.view),
-      clock,
+    service = createProcessingHandlers({
+      processToTask: {
+        loadCapture: (id) => captureStore.findById(id),
+        loadList: (id) => listStore.findById(id),
+        loadProject: () => okAsync(null),
+        loadNextOpenOrder: (organizationId, listId) =>
+          taskStore.nextOpenOrderInPile({ organizationId, listId }),
+        persist: createFakeProcessToTaskPersist({
+          tasks: taskStore,
+          captures: captureStore,
+          changeLog: createFakeChangeLogStore(),
+        }),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      },
+      processToProject: {
+        loadCapture: (id) => captureStore.findById(id),
+        listProjects: () => okAsync([]),
+        persist: () => okAsync(undefined),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      },
+      logger: { info: () => undefined },
     });
   });
 
@@ -365,5 +370,4 @@ describe('CaptureProcessingService', () => {
       expect(secondResult._unsafeUnwrapErr().type).toBe('CAPTURE_NOT_IN_INBOX');
     });
   });
-
 });

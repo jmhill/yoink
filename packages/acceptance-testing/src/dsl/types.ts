@@ -21,7 +21,7 @@ export type Capture = {
   snoozedUntil?: string;
   // Processing fields - populated when capture is converted to task/note
   processedAt?: string;
-  processedToType?: 'task' | 'note';
+  processedToType?: 'task' | 'note' | 'project';
   processedToId?: string;
 };
 
@@ -360,6 +360,17 @@ export type ProcessCaptureToTaskInput = {
   dueDate?: string; // YYYY-MM-DD format
   listId?: string; // optional single list bucket; omit for unlisted
   projectId?: string; // optional project; omit for no project
+};
+
+export type ProcessCaptureToProjectInput = {
+  name: string;
+  objective?: string;
+  status: 'active' | 'someday';
+};
+
+export type ProcessCaptureToProjectResult = {
+  project: Project;
+  capture: Capture;
 };
 
 // =============================================================================

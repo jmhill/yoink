@@ -26,28 +26,21 @@ const withLastChanged = (
 export const applyProjectCreated = (
   event: ProjectCreated,
   meta: ApplyProjectMeta
-): Project => {
-  const created: Project = {
-    id: event.id,
-    organizationId: event.organizationId,
-    createdById: event.createdById,
-    name: event.name,
-    status: event.status,
-    waitingOn: null,
-    waitingSince: null,
-    nextActionTaskId: null,
-    notebookPages: [],
-    createdAt: event.createdAt,
-    lastChangedAt: event.occurredAt,
-    lastChangedBy: meta.actorUserId,
-  };
-
-  if (event.objective !== undefined) {
-    created.objective = event.objective;
-  }
-
-  return created;
-};
+): Project => ({
+  id: event.id,
+  organizationId: event.organizationId,
+  createdById: event.createdById,
+  name: event.name,
+  status: event.status,
+  waitingOn: null,
+  waitingSince: null,
+  nextActionTaskId: null,
+  notebookPages: [],
+  createdAt: event.createdAt,
+  lastChangedAt: event.occurredAt,
+  lastChangedBy: meta.actorUserId,
+  ...(event.objective !== undefined ? { objective: event.objective } : {}),
+});
 
 export const applyProjectUpdated = (
   current: Project,

@@ -4,6 +4,7 @@ import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 import type { OrgPrincipalLookup } from '../../tasks/domain/org-principal-lookup.js';
 import { decideCreateTask } from '../../tasks/domain/decide-create.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
+import { parseTaskTitle } from '../../tasks/domain/task-title.js';
 import type { SetProjectNextActionCommand } from '../domain/project-commands.js';
 import {
   assigneeNotInOrganizationError,
@@ -24,8 +25,6 @@ import type {
   LoadTask,
   PersistSetNextAction,
 } from './ports.js';
-
-const NEW_TASK_TITLE_MAX = 500;
 
 export type HandleSetNextActionDeps = {
   load: LoadProject;
@@ -99,13 +98,15 @@ const handleNewTask = (
   deps: HandleSetNextActionDeps
 ): ResultAsync<SetNextActionResult, SetProjectNextActionError> => {
   const newTask = command.newTask;
-  const title = newTask.title.trim();
-  if (title === '') {
-    return errAsync(taskTitleBlankError());
+  const parsedTitle = parseTaskTitle(newTask.title);
+  if (parsedTitle.isErr()) {
+    return errAsync(
+      parsedTitle.error.type === 'TASK_TITLE_BLANK'
+        ? taskTitleBlankError()
+        : taskTitleTooLongError()
+    );
   }
-  if (title.length > NEW_TASK_TITLE_MAX) {
-    return errAsync(taskTitleTooLongError());
-  }
+  const title = parsedTitle.value;
 
   const loadedList = newTask.listId ? deps.loadList(newTask.listId) : okAsync(null);
   const destListId = newTask.listId ?? null;
@@ -127,7 +128,7 @@ const handleNewTask = (
         const createdId = deps.nextId();
         const createDecision = decideCreateTask({
           command: {
-            title: newTask.title,
+            title,
             dueDate: newTask.dueDate,
             organizationId: command.organizationId,
             createdById: command.actor.userId,

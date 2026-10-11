@@ -91,6 +91,7 @@ export const taskUpdatedFieldLabels = (details: {
 export const projectUpdatedFieldLabels = (details: {
   name?: string;
   objective?: string | null;
+  notebookPages?: string[];
 }): string[] => {
   const fields: string[] = [];
   if (details.name !== undefined) {
@@ -98,6 +99,9 @@ export const projectUpdatedFieldLabels = (details: {
   }
   if (details.objective !== undefined) {
     fields.push('the objective');
+  }
+  if (details.notebookPages !== undefined) {
+    fields.push('the notebook pages');
   }
   return fields;
 };
@@ -185,6 +189,9 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
     case 'Unknown':
       return `${who} changed something`;
     case 'TaskCreated':
+      if (entry.details.via === 'import' && entry.details.projectName) {
+        return `${who} added ${quoted(title)} in ${quoted(entry.details.projectName)}`;
+      }
       return `${who} added ${quoted(title)}`;
     case 'TaskUpdated': {
       const newTitle = entry.details.title;
@@ -230,6 +237,9 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
       return `${who} cleared the next action ${quoted(entry.details.taskTitle)} (${reason})`;
     }
     case 'TaskAddedToProject':
+      if (entry.details.via === 'import' && entry.details.projectName) {
+        return `${who} moved ${quoted(title)} into ${quoted(entry.details.projectName)}`;
+      }
       return `${who} moved ${quoted(title)} into the project`;
     case 'TaskRemovedFromProject': {
       if (entry.details.toProjectName && entry.details.toProjectName.length > 0) {

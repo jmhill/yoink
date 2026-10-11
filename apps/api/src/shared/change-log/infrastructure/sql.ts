@@ -31,6 +31,18 @@ export const VISIBLE_TIMELINE_SQL = `
   END
 `;
 
+/** Project timeline hides task-level records written by an import. Task history keeps them. */
+export const PROJECT_TIMELINE_SQL = `
+  ${VISIBLE_TIMELINE_SQL}
+  AND CASE
+    WHEN json_valid(payload_json) = 0 THEN 1
+    WHEN json_type(payload_json, '$.via') = 'text'
+      AND json_extract(payload_json, '$.via') = 'import'
+      THEN 0
+    ELSE 1
+  END
+`;
+
 const existsClause = (
   record: ChangeLogRecord
 ): { sql: string; args: unknown[] } => {

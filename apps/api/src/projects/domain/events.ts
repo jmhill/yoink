@@ -18,6 +18,7 @@ export type ProjectUpdated = {
   organizationId: string;
   name?: string;
   objective?: string | null;
+  notebookPages?: string[];
   occurredAt: string;
 };
 

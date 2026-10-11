@@ -1,4 +1,5 @@
 import type { Project } from '@yoink/api-contracts';
+import { notebookPagesFromPaths } from './notebook-pages.js';
 import type {
   ProjectCreated,
   ProjectNextActionCleared,
@@ -35,6 +36,7 @@ export const applyProjectCreated = (
     waitingOn: null,
     waitingSince: null,
     nextActionTaskId: null,
+    notebookPages: [],
     createdAt: event.createdAt,
     lastChangedAt: event.occurredAt,
     lastChangedBy: meta.actorUserId,
@@ -56,6 +58,10 @@ export const applyProjectUpdated = (
 
   if (event.name !== undefined) {
     next.name = event.name;
+  }
+
+  if (event.notebookPages !== undefined) {
+    next.notebookPages = notebookPagesFromPaths(event.notebookPages);
   }
 
   if (event.objective === undefined) {

@@ -1,9 +1,13 @@
 import type {
+  AppliedImport,
   Capture,
+  DiscardedImport,
   NamedList,
   Project,
   HistoryPage,
   FinishedTaskPage,
+  ImportProject,
+  StagedImport,
   Task,
   PasskeyCredentialInfo,
   Member,
@@ -60,8 +64,13 @@ export type CoreActor = {
   getProject(id: string): Promise<Project>;
   updateProject(
     id: string,
-    input: { name?: string; objective?: string | null }
+    input: { name?: string; objective?: string | null; notebookPages?: string[] }
   ): Promise<Project>;
+  stageProjectImport(projects: ImportProject[]): Promise<StagedImport>;
+  listPendingProjectImports(): Promise<StagedImport[]>;
+  getProjectImport(id: string): Promise<StagedImport>;
+  applyProjectImport(id: string): Promise<AppliedImport>;
+  discardProjectImport(id: string): Promise<DiscardedImport>;
   changeProjectStatus(
     id: string,
     input: {
@@ -774,6 +783,33 @@ export type BrowserActorOperations = {
    * Open the project page for this id.
    */
   goToProject(projectId: string): Promise<void>;
+  goToImportPreview(importId: string): Promise<void>;
+  reviewPendingImport(): Promise<void>;
+  shouldSeePendingImportBanner(text: string): Promise<void>;
+  shouldNotSeePendingImportBanner(): Promise<void>;
+  shouldSeeImportPreviewProject(name: string): Promise<void>;
+  shouldSeeImportPreviewSummary(text: string): Promise<void>;
+  shouldSeeImportPreviewCollapsed(name: string): Promise<void>;
+  shouldSeeImportPreviewExpanded(name: string): Promise<void>;
+  expandImportPreviewProject(name: string): Promise<void>;
+  shouldSeeImportFooter(): Promise<void>;
+  shouldSeeImportFooterWhilePreviewScrolledTo(name: string): Promise<void>;
+  shouldSeeImportWarning(text: string): Promise<void>;
+  shouldSeeImportError(text: string): Promise<void>;
+  applyImportOnPreview(): Promise<void>;
+  discardImportOnPreview(): Promise<void>;
+  scrollImportPreviewProject(name: string): Promise<void>;
+  scrollImportActionsIntoView(): Promise<void>;
+  highlightImportDiscard(): Promise<void>;
+  pressImportDiscardAndHold(): Promise<void>;
+  releaseHeldImportDiscard(): Promise<void>;
+  shouldSeeNotebookPage(path: string): Promise<void>;
+  shouldSeeNotebookHref(path: string, href: string): Promise<void>;
+  shouldSeeNotebookPageInputs(paths: string[]): Promise<void>;
+  typeNotebookPageAndKeepFocus(index: number, extra: string): Promise<void>;
+  addNotebookPageWithEnter(path: string): Promise<void>;
+  scrollProjectHeadingIntoView(): Promise<void>;
+  scrollProjectHistoryIntoView(): Promise<void>;
 
   /**
    * Open the status select on the project page and wait for it to settle.
@@ -943,6 +979,7 @@ export type BrowserActorOperations = {
     actor: string;
     text: string;
     deleted?: boolean;
+    highlight?: boolean;
   }): Promise<void>;
   shouldSeeHistoryEntryCount(count: number): Promise<void>;
   shouldSeeHistoryMore(): Promise<void>;

@@ -10,6 +10,12 @@ import {
 } from './project-errors.js';
 import { normalizeProjectName, parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
+import { notebookPagesEqual, parseNotebookPages } from './notebook-pages.js';
+import type {
+  InvalidNotebookPathError,
+  NotebookPageDuplicateError,
+  NotebookPagesTooManyError,
+} from './notebook-pages.js';
 
 export type DecideUpdateProjectInput = {
   command: UpdateProjectCommand;
@@ -21,7 +27,10 @@ export type DecideUpdateProjectInput = {
 export type DecideUpdateProjectError =
   | InvalidProjectNameError
   | ProjectNameBlankError
-  | DuplicateProjectNameError;
+  | DuplicateProjectNameError
+  | InvalidNotebookPathError
+  | NotebookPageDuplicateError
+  | NotebookPagesTooManyError;
 
 export type DecideUpdateProjectResult =
   | { type: 'changed'; event: ProjectUpdated }
@@ -65,7 +74,22 @@ export const decideUpdateProject = ({
     }
   }
 
-  if (event.name === undefined && event.objective === undefined) {
+  if (command.notebookPages !== undefined) {
+    const parsed = parseNotebookPages(command.notebookPages);
+    if (parsed.isErr()) {
+      return err(parsed.error);
+    }
+    const currentPaths = current.notebookPages.map((page) => page.path);
+    if (!notebookPagesEqual(parsed.value, currentPaths)) {
+      event.notebookPages = parsed.value;
+    }
+  }
+
+  if (
+    event.name === undefined &&
+    event.objective === undefined &&
+    event.notebookPages === undefined
+  ) {
     return ok({ type: 'unchanged' });
   }
 

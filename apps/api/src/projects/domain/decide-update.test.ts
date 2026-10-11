@@ -12,6 +12,7 @@ const garden: Project = {
   waitingOn: null,
   waitingSince: null,
   nextActionTaskId: null,
+  notebookPages: [],
   createdAt: '2025-01-15T10:00:00.000Z',
   lastChangedAt: '2025-01-15T10:00:00.000Z',
   lastChangedBy: 'user-456',
@@ -155,6 +156,55 @@ describe('decideUpdateProject', () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('PROJECT_NAME_BLANK');
+    }
+  });
+
+  it('decides notebook page replacement', () => {
+    const result = decideUpdateProject({
+      command: person({
+        name: garden.name,
+        notebookPages: ['notes/Harbor shed (dock).md'],
+      }),
+      current: garden,
+      existingNames: [garden.name],
+      now: '2025-01-15T11:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value.type === 'changed') {
+      expect(result.value.event.notebookPages).toEqual(['notes/Harbor shed (dock).md']);
+    }
+  });
+
+  it('returns unchanged when notebook pages match', () => {
+    const withPages: Project = {
+      ...garden,
+      notebookPages: [{ path: 'notes/Harbor shed.md', url: 'obsidian://open?vault=x&file=y' }],
+    };
+    const result = decideUpdateProject({
+      command: person({ name: withPages.name, notebookPages: ['notes/Harbor shed.md'] }),
+      current: withPages,
+      existingNames: [withPages.name],
+      now: '2025-01-15T11:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ type: 'unchanged' });
+    }
+  });
+
+  it('rejects a bad notebook path', () => {
+    const result = decideUpdateProject({
+      command: person({ name: garden.name, notebookPages: ['/absolute.md'] }),
+      current: garden,
+      existingNames: [garden.name],
+      now: '2025-01-15T11:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('INVALID_NOTEBOOK_PATH');
     }
   });
 });

@@ -3,9 +3,13 @@ import { type Page, expect } from '@playwright/test';
 import type {
   Actor,
   AnonymousActor,
+  AppliedImport,
   Capture,
+  DiscardedImport,
+  ImportProject,
   NamedList,
   Project,
+  StagedImport,
   Task,
   Token,
   CreateTokenResult,
@@ -26,6 +30,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  ImportInvalidError,
   ConflictError,
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
@@ -253,6 +258,7 @@ export const createPlaywrightActor = (
   const mobileNav = new MobileNav(page);
   const orgSwitcher = new OrganizationSwitcherChrome(page);
   let walkthroughViewport: WalkthroughViewport = 'desktop';
+  let heldImportDiscardRelease: (() => void) | undefined;
 
   const expectActiveFilterTabIfVisible = async (
     filter: 'today' | 'upcoming' | 'mine' | 'completed'
@@ -626,7 +632,7 @@ export const createPlaywrightActor = (
 
     async updateProject(
       id: string,
-      input: { name?: string; objective?: string | null }
+      input: { name?: string; objective?: string | null; notebookPages?: string[] }
     ): Promise<Project> {
       const response = await page.request.patch(`/api/projects/${id}`, { data: input });
       if (response.status() === 401) {
@@ -645,6 +651,119 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to update project: ${response.status()}`);
       }
       return (await response.json()) as Project;
+    },
+
+    async stageProjectImport(projects: ImportProject[]) {
+      const response = await page.request.post('/api/projects/imports', { data: { projects } });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as {
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        };
+        if (body.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(body.message ?? 'The import batch is invalid', body.errors ?? []);
+        }
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to stage import: ${response.status()}`);
+      }
+      return (await response.json()) as StagedImport;
+    },
+
+    async listPendingProjectImports() {
+      const response = await page.request.get('/api/projects/imports');
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list imports: ${response.status()}`);
+      }
+      const body = (await response.json()) as { imports: StagedImport[] };
+      return body.imports;
+    },
+
+    async getProjectImport(id: string) {
+      const response = await page.request.get(`/api/projects/imports/${id}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to get import: ${response.status()}`);
+      }
+      return (await response.json()) as StagedImport;
+    },
+
+    async applyProjectImport(id: string) {
+      const response = await page.request.post(`/api/projects/imports/${id}/apply`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'This import is no longer pending');
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as {
+          message?: string;
+          code?: string;
+          errors?: Array<{
+            index: number;
+            name: string;
+            field: string;
+            code: string;
+            message: string;
+          }>;
+        };
+        if (body.code === 'IMPORT_INVALID') {
+          throw new ImportInvalidError(body.message ?? 'The import batch is invalid', body.errors ?? []);
+        }
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to apply import: ${response.status()}`);
+      }
+      return (await response.json()) as AppliedImport;
+    },
+
+    async discardProjectImport(id: string) {
+      const response = await page.request.post(`/api/projects/imports/${id}/discard`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Applying or discarding an import requires a person');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Import', id);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as { message?: string };
+        throw new ConflictError(body.message ?? 'This import is no longer pending');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to discard import: ${response.status()}`);
+      }
+      return (await response.json()) as DiscardedImport;
     },
 
     async changeProjectStatus(
@@ -1553,6 +1672,235 @@ export const createPlaywrightActor = (
       await projectPage.waitForVisible();
     },
 
+    async goToImportPreview(importId: string): Promise<void> {
+      await page.goto(`/projects/imports/${importId}`);
+      await expect(page.locator('[data-import-preview], [data-import-errors]')).toBeVisible();
+    },
+
+    async reviewPendingImport(): Promise<void> {
+      await page.locator('[data-import-review]').click();
+      await expect(page.locator('[data-import-preview], [data-import-errors]')).toBeVisible();
+    },
+
+    async shouldSeePendingImportBanner(text: string): Promise<void> {
+      await expect(page.locator('[data-pending-import-banner]')).toContainText(text);
+    },
+
+    async shouldNotSeePendingImportBanner(): Promise<void> {
+      await expect(page.locator('[data-pending-import-banner]')).toHaveCount(0);
+    },
+
+    async shouldSeeImportPreviewProject(name: string): Promise<void> {
+      await expect(page.locator('[data-import-preview-project]').filter({ hasText: name })).toBeVisible();
+    },
+
+    async shouldSeeImportPreviewSummary(text: string): Promise<void> {
+      await expect(page.locator('[data-import-preview-summary]')).toHaveText(text);
+    },
+
+    async shouldSeeImportPreviewCollapsed(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(row.locator('button[aria-expanded]')).toHaveAttribute('aria-expanded', 'false');
+      await expect(row.locator('[data-import-preview-detail]')).toHaveCount(0);
+    },
+
+    async shouldSeeImportPreviewExpanded(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(row.locator('button[aria-expanded]')).toHaveAttribute('aria-expanded', 'true');
+      await expect(row.locator('[data-import-preview-detail]')).toBeVisible();
+    },
+
+    async expandImportPreviewProject(name: string): Promise<void> {
+      const row = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      const toggle = row.locator('button[aria-expanded]');
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click();
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    },
+
+    async shouldSeeImportFooter(): Promise<void> {
+      const actions = page.locator('[data-import-actions]');
+      await expect(actions).toBeVisible();
+      await expect(page.locator('[data-import-submit]')).toBeVisible();
+      await expect(page.locator('[data-import-discard]')).toBeVisible();
+    },
+
+    async shouldSeeImportFooterWhilePreviewScrolledTo(name: string): Promise<void> {
+      const card = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await expect(card).toBeVisible();
+      await card.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      await expect(page.locator('[data-import-actions]')).toBeVisible();
+      await expect(page.locator('[data-import-submit]')).toBeVisible();
+      await expect(page.locator('[data-import-discard]')).toBeVisible();
+    },
+
+    async shouldSeeImportWarning(text: string): Promise<void> {
+      await expect(page.locator('[data-import-warning]').filter({ hasText: text })).toBeVisible();
+    },
+
+    async shouldSeeImportError(text: string): Promise<void> {
+      await expect(page.locator('[data-import-error]').filter({ hasText: text })).toBeVisible();
+    },
+
+    async applyImportOnPreview(): Promise<void> {
+      await page.locator('[data-import-submit]').click();
+      await page.waitForURL(/\/projects$/);
+    },
+
+    async discardImportOnPreview(): Promise<void> {
+      await page.locator('[data-import-discard]').click();
+      await page.waitForURL(/\/projects$/);
+    },
+
+    async scrollImportPreviewProject(name: string): Promise<void> {
+      const card = page.locator('[data-import-preview-project]').filter({ hasText: name });
+      await card.scrollIntoViewIfNeeded();
+      await expect(card).toBeVisible();
+    },
+
+    async scrollImportActionsIntoView(): Promise<void> {
+      const actions = page.locator('[data-import-discard]');
+      await actions.scrollIntoViewIfNeeded();
+      await expect(actions).toBeVisible();
+      const cover = page.locator('[data-import-preview-project]').filter({
+        hasText: 'Winter boat cover',
+      });
+      if ((await cover.count()) > 0) {
+        await cover.scrollIntoViewIfNeeded();
+      }
+    },
+
+    async highlightImportDiscard(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      const discard = page.locator('[data-import-discard]');
+      await discard.scrollIntoViewIfNeeded();
+      await expect(discard).toBeVisible();
+      await discard.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async pressImportDiscardAndHold(): Promise<void> {
+      await page.unroute('**/api/projects/imports/*/discard').catch(() => undefined);
+      let release: (() => void) | undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      heldImportDiscardRelease = () => {
+        release?.();
+      };
+      await page.route('**/api/projects/imports/*/discard', async (route) => {
+        await held;
+        await route.continue();
+      });
+      const discard = page.locator('[data-import-discard]');
+      await discard.scrollIntoViewIfNeeded();
+      await discard.click();
+      await expect(discard).toHaveText('Discarding…');
+      await discard.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    },
+
+    async releaseHeldImportDiscard(): Promise<void> {
+      const release = heldImportDiscardRelease;
+      heldImportDiscardRelease = undefined;
+      release?.();
+      await page.waitForURL(/\/projects$/);
+      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+      await expect(page.getByText('0 projects')).toBeVisible();
+      await page.unroute('**/api/projects/imports/*/discard');
+    },
+
+    async shouldSeeNotebookPage(path: string): Promise<void> {
+      await expect(page.locator('[data-project-notebook]')).toContainText(path);
+    },
+
+    async shouldSeeNotebookHref(path: string, href: string): Promise<void> {
+      const row = page.locator('[data-project-notebook-page]').filter({ hasText: path });
+      await expect(row.locator('a')).toHaveAttribute('href', href);
+    },
+
+    async shouldSeeNotebookPageInputs(paths: string[]): Promise<void> {
+      for (const [index, path] of paths.entries()) {
+        await expect(page.locator(`[data-notebook-page-input="${index}"]`)).toHaveValue(path);
+      }
+    },
+
+    async typeNotebookPageAndKeepFocus(index: number, extra: string): Promise<void> {
+      const input = page.locator(`[data-notebook-page-input="${index}"]`);
+      await expect(input).toBeVisible();
+      const current = await input.inputValue();
+      await input.focus();
+      await input.press('End');
+      await input.pressSequentially(extra);
+      await expect(input).toBeFocused();
+      await expect(input).toHaveValue(`${current}${extra}`);
+    },
+
+    async addNotebookPageWithEnter(path: string): Promise<void> {
+      const input = page.locator('[data-notebook-page-input="new"]');
+      await expect(input).toBeVisible();
+      const existing = page.locator('[data-notebook-page-input]:not([data-notebook-page-input="new"])');
+      const before = await existing.count();
+      await input.fill(path);
+      await input.press('Enter');
+      const dialog = page.getByRole('dialog', { name: 'Edit project' });
+      await expect(dialog).toBeVisible();
+      await expect(page.locator(`[data-notebook-page-input="${before}"]`)).toHaveValue(path);
+      await expect(input).toHaveValue('');
+    },
+
+    async scrollProjectHeadingIntoView(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      if (walkthroughViewport === 'desktop') {
+        await page.setViewportSize({ width: DESKTOP_VIEWPORT.width, height: 1080 });
+      }
+      const heading = page.locator('[data-place-heading]');
+      await expect(heading).toBeVisible();
+      await heading.evaluate((el) => {
+        el.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+    },
+
+    async scrollProjectHistoryIntoView(): Promise<void> {
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      const section = page.locator('[data-project-history]');
+      await expect(section).toBeVisible();
+      await section.evaluate((el) => {
+        el.scrollIntoView({ block: 'end', inline: 'nearest' });
+        const bar = el.ownerDocument.querySelector('[data-app-mobile-nav]');
+        if (bar === null) {
+          return;
+        }
+        const extra = 8;
+        const overlap = Math.max(
+          0,
+          el.getBoundingClientRect().bottom - bar.getBoundingClientRect().top + extra
+        );
+        if (overlap > 0) {
+          el.ownerDocument.defaultView?.scrollBy(0, overlap);
+        }
+      });
+    },
+
     async openProjectStatusSelect(visibleOptionName?: string): Promise<void> {
       await projectPage.waitForVisible();
       await projectPage.statusTrigger().click();
@@ -1957,6 +2305,7 @@ export const createPlaywrightActor = (
       actor: string;
       text: string;
       deleted?: boolean;
+      highlight?: boolean;
     }): Promise<void> {
       const line = page.locator(
         `[data-project-history-entry][data-history-kind="${input.kind}"][data-history-actor="${input.actor}"]`
@@ -1964,6 +2313,9 @@ export const createPlaywrightActor = (
       await expect(line.first()).toBeVisible();
       if (input.deleted) {
         await expect(line.first()).toHaveAttribute('data-history-deleted', 'true');
+      }
+      if (input.highlight === false) {
+        return;
       }
       await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
         for (const el of els) {
@@ -2094,7 +2446,7 @@ export const createPlaywrightActor = (
 
     async goToAllProjects(): Promise<void> {
       await page.goto('/projects');
-      await expect(page.locator('[data-projects-index]')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
     },
 
     async shouldSeeProjectOnAllProjects(input: {

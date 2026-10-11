@@ -1,7 +1,9 @@
-import { err, ok, type Result } from 'neverthrow';
+import { err, ok, Result } from 'neverthrow';
 import { z } from 'zod';
 import type { Project } from '@yoink/api-contracts';
+import { parseJson } from '../../shared/infrastructure/parse-json.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
+import { notebookPagesFromPaths } from '../domain/notebook-pages.js';
 
 const isoDate = z
   .string()
@@ -21,6 +23,7 @@ const ProjectRowSchema = z.object({
   created_at: z.string().min(1),
   last_changed_at: z.string().nullable().optional(),
   last_changed_by: z.string().nullable().optional(),
+  notebook_pages: z.string().optional(),
 });
 
 export const parseProjectRow = (
@@ -29,6 +32,11 @@ export const parseProjectRow = (
   const parsed = ProjectRowSchema.safeParse(row);
   if (!parsed.success) {
     return err(storageError('Invalid project row', parsed.error));
+  }
+
+  const pages = parseNotebookPagesJson(parsed.data.notebook_pages);
+  if (pages.isErr()) {
+    return err(pages.error);
   }
 
   const project: Project = {
@@ -40,6 +48,7 @@ export const parseProjectRow = (
     waitingOn: parsed.data.waiting_on ?? null,
     waitingSince: parsed.data.waiting_since ?? null,
     nextActionTaskId: parsed.data.next_action_task_id ?? null,
+    notebookPages: pages.value,
     createdAt: parsed.data.created_at,
     lastChangedAt: parsed.data.last_changed_at ?? null,
     lastChangedBy: parsed.data.last_changed_by ?? null,
@@ -50,4 +59,23 @@ export const parseProjectRow = (
   }
 
   return ok(project);
+};
+
+const notebookPagesJsonSchema = z.array(z.string());
+
+const parseNotebookPagesJson = (
+  raw: string | undefined
+): Result<Project['notebookPages'], StorageError> => {
+  if (raw === undefined || raw === '') {
+    return ok([]);
+  }
+  const decoded = parseJson(raw);
+  if (decoded.isErr()) {
+    return err(storageError('Invalid notebook_pages JSON', decoded.error));
+  }
+  const parsedJson = notebookPagesJsonSchema.safeParse(decoded.value);
+  if (!parsedJson.success) {
+    return err(storageError('Invalid notebook_pages JSON', parsedJson.error));
+  }
+  return ok(notebookPagesFromPaths(parsedJson.data));
 };

@@ -62,6 +62,23 @@ export const createSqliteTaskStore = async (
       });
     },
 
+    findByIds: (ids: readonly string[]): ResultAsync<Task[], StorageError> => {
+      if (ids.length === 0) {
+        return okAsync([]);
+      }
+      const placeholders = ids.map(() => '?').join(', ');
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM tasks WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+          args: [...ids],
+        }),
+        (error) => storageError('Failed to find tasks', error)
+      ).andThen((result) => {
+        const parsed = parseRows(result.rows);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
+    },
+
     findByIdIncludingDeleted: (id: string): ResultAsync<Task | null, StorageError> => {
       return ResultAsync.fromPromise(
         db.execute({

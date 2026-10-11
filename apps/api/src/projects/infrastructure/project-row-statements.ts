@@ -5,8 +5,9 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     INSERT INTO projects (
       id, organization_id, created_by_id, name, objective, status,
-      waiting_on, waiting_since, next_action_task_id, created_at, last_changed_at, last_changed_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      waiting_on, waiting_since, next_action_task_id, notebook_pages,
+      created_at, last_changed_at, last_changed_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   args: [
     project.id,
@@ -18,10 +19,34 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
     project.waitingOn,
     project.waitingSince,
     project.nextActionTaskId,
+    JSON.stringify(project.notebookPages.map((page) => page.path)),
     project.createdAt,
     project.lastChangedAt,
     project.lastChangedBy,
   ],
+});
+
+export const insertImportedProjectQuery = (project: Project): SqlQuery =>
+  insertProjectQuery({
+    ...project,
+    nextActionTaskId: null,
+  });
+
+export const markImportDecidedQuery = (input: {
+  id: string;
+  organizationId: string;
+  status: 'applied' | 'discarded';
+  decidedById: string;
+  decidedAt: string;
+}): SqlQuery => ({
+  sql: `
+    UPDATE project_imports
+    SET status = CASE WHEN status = 'pending' THEN ? ELSE 'stale' END,
+        decided_by = ?,
+        decided_at = ?
+    WHERE id = ? AND organization_id = ?
+  `,
+  args: [input.status, input.decidedById, input.decidedAt, input.id, input.organizationId],
 });
 
 export const setNextActionQuery = (input: {
@@ -70,7 +95,7 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     UPDATE projects
     SET name = ?, objective = ?, status = ?, waiting_on = ?, waiting_since = ?,
-        next_action_task_id = ?, last_changed_at = ?, last_changed_by = ?
+        next_action_task_id = ?, notebook_pages = ?, last_changed_at = ?, last_changed_by = ?
     WHERE id = ? AND organization_id = ?
   `,
   args: [
@@ -80,6 +105,7 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
     project.waitingOn,
     project.waitingSince,
     project.nextActionTaskId,
+    JSON.stringify(project.notebookPages.map((page) => page.path)),
     project.lastChangedAt,
     project.lastChangedBy,
     project.id,

@@ -6,6 +6,7 @@ import type { StorageError } from './list-errors.js';
 
 export type ListStore = {
   findById(id: string): ResultAsync<NamedList | null, StorageError>;
+  findByIds(ids: readonly string[]): ResultAsync<NamedList[], StorageError>;
   findByOrganization(organizationId: string): ResultAsync<NamedList[], StorageError>;
   pageByOrganization(options: {
     organizationId: string;

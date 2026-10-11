@@ -1,12 +1,17 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import {
+  AppliedImportSchema,
   ChangeProjectStatusResponseSchema,
   ChangeProjectStatusSchema,
   CreateProjectSchema,
+  DiscardedImportSchema,
   ProjectSchema,
   SetProjectNextActionResponseSchema,
   SetProjectNextActionSchema,
+  StageImportSchema,
+  StagedImportListSchema,
+  StagedImportSchema,
   UpdateProjectSchema,
 } from '../schemas/project.js';
 import {
@@ -14,7 +19,11 @@ import {
   ProjectTasksStatusSchema,
 } from '../schemas/history.js';
 import { ListPageQuerySchema, ProjectListPageSchema, TaskListPageSchema } from '../schemas/list-page.js';
-import { ErrorSchema, ProjectHasOpenTasksErrorSchema } from '../schemas/error.js';
+import {
+  ErrorSchema,
+  ImportInvalidErrorSchema,
+  ProjectHasOpenTasksErrorSchema,
+} from '../schemas/error.js';
 
 const c = initContract();
 
@@ -48,6 +57,82 @@ export const projectContract = c.router(
       summary: 'Create a project in this organization (person only)',
     },
 
+    stageImport: {
+      method: 'POST',
+      path: '/api/projects/imports',
+      body: StageImportSchema,
+      responses: {
+        201: StagedImportSchema,
+        400: ImportInvalidErrorSchema,
+        401: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Stage a project-import batch after all-or-nothing validation (bots and people)',
+    },
+
+    listImports: {
+      method: 'GET',
+      path: '/api/projects/imports',
+      responses: {
+        200: StagedImportListSchema,
+        401: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'List pending staged project imports in this organization',
+    },
+
+    getImport: {
+      method: 'GET',
+      path: '/api/projects/imports/:id',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      responses: {
+        200: StagedImportSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Read a staged import and its current preview',
+    },
+
+    applyImport: {
+      method: 'POST',
+      path: '/api/projects/imports/:id/apply',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: z.object({}),
+      responses: {
+        200: AppliedImportSchema,
+        400: ImportInvalidErrorSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Apply a pending staged import (person only)',
+    },
+
+    discardImport: {
+      method: 'POST',
+      path: '/api/projects/imports/:id/discard',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: z.object({}),
+      responses: {
+        200: DiscardedImportSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Discard a pending staged import (person only)',
+    },
+
     get: {
       method: 'GET',
       path: '/api/projects/:id',
@@ -78,7 +163,7 @@ export const projectContract = c.router(
         409: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: "Edit a project's name or objective",
+      summary: "Edit a project's name, objective, or notebook pages",
     },
 
     listOpenTasks: {

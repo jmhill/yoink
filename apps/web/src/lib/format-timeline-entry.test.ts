@@ -178,6 +178,44 @@ describe('formatTimelineLine', () => {
     ).toBe('Lane · Moved in · 1 task');
   });
 
+  it('renders import-attached task history with the project name', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskAddedToProject',
+          details: {
+            kind: 'TaskAddedToProject',
+            projectId: 'p1',
+            projectName: 'Harbor shed',
+            via: 'import',
+          },
+          subject: { type: 'task', id: 't1', title: 'Paint the door', deleted: false },
+        })
+      )
+    ).toBe("Lane moved 'Paint the door' into 'Harbor shed'");
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskCreated',
+          details: { kind: 'TaskCreated', via: 'import', projectName: 'Permit desk' },
+          subject: { type: 'task', id: 't2', title: 'Call the clerk', deleted: false },
+        })
+      )
+    ).toBe("Lane added 'Call the clerk' in 'Permit desk'");
+  });
+
+  it('says the actor changed the notebook pages', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectUpdated',
+          details: { kind: 'ProjectUpdated', notebookPages: ['notes/Harbor.md'] },
+          subject: { type: 'project', id: 'p1', title: 'Harbor shed', deleted: false },
+        })
+      )
+    ).toBe('Lane changed the notebook pages');
+  });
+
   it('sets the next action', () => {
     expect(
       formatTimelineLine(

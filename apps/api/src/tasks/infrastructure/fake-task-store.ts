@@ -89,6 +89,16 @@ export const createFakeTaskStore = (
       }
     },
 
+    findByIds: (ids: readonly string[]): ResultAsync<Task[], StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const wanted = new Set(ids);
+      return okAsync(
+        tasks.filter((task) => wanted.has(task.id) && !deletedIds.has(task.id))
+      );
+    },
+
     findById: (id: string): ResultAsync<Task | null, StorageError> => {
       if (options.shouldFailOnFind) {
         return errAsync(storageError('Find failed'));

@@ -45,6 +45,7 @@ import { migration as addTaskProjectId } from './030-add-task-project-id.js';
 import { migration as addProjectWaiting } from './031-add-project-waiting.js';
 import { migration as addProjectNextAction } from './032-add-project-next-action.js';
 import { migration as addChangeLogSeq } from './033-add-change-log-seq.js';
+import { migration as addNotebookPagesAndProjectImports } from './034-add-notebook-pages-and-project-imports.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -80,6 +81,7 @@ export const migrations: Migration[] = [
   addProjectWaiting,
   addProjectNextAction,
   addChangeLogSeq,
+  addNotebookPagesAndProjectImports,
 ];
 
 export type { Migration };

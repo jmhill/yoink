@@ -124,8 +124,20 @@ export const toTimelineEntry = (
     case 'NamedListRenamed':
     case 'NamedListDeleted':
       return null;
-    case 'TaskCreated':
-      return entry(record, lookups, 'TaskCreated', { kind: 'TaskCreated' });
+    case 'TaskCreated': {
+      const imported = record.payload.via === 'import';
+      const projectName = imported
+        ? (record.payload.projectName ??
+          (record.payload.projectId
+            ? lookups.subjectOf('project', record.payload.projectId).title
+            : null))
+        : null;
+      return entry(record, lookups, 'TaskCreated', {
+        kind: 'TaskCreated',
+        ...(imported ? { via: 'import' as const } : {}),
+        ...(projectName ? { projectName } : {}),
+      });
+    }
     case 'TaskUpdated': {
       const details = taskUpdatedDetails(record.payload);
       return details ? entry(record, lookups, 'TaskUpdated', details) : null;
@@ -150,6 +162,9 @@ export const toTimelineEntry = (
         ...(record.payload.name !== undefined ? { name: record.payload.name } : {}),
         ...(record.payload.objective !== undefined
           ? { objective: record.payload.objective }
+          : {}),
+        ...(record.payload.notebookPages !== undefined
+          ? { notebookPages: record.payload.notebookPages }
           : {}),
       });
     case 'ProjectStatusChanged':
@@ -187,11 +202,19 @@ export const toTimelineEntry = (
         taskTitle: lookups.taskTitleOf(record.payload.taskId),
         reason: record.payload.reason,
       });
-    case 'TaskAddedToProject':
+    case 'TaskAddedToProject': {
+      const imported = record.payload.via === 'import';
+      const projectName = imported
+        ? (record.payload.projectName ??
+          lookups.subjectOf('project', record.payload.projectId).title)
+        : null;
       return entry(record, lookups, 'TaskAddedToProject', {
         kind: 'TaskAddedToProject',
         projectId: record.payload.projectId,
+        ...(imported ? { via: 'import' as const } : {}),
+        ...(projectName ? { projectName } : {}),
       });
+    }
     case 'TaskRemovedFromProject': {
       const moved =
         record.payload.toProjectId !== undefined || record.payload.toProjectName !== undefined;

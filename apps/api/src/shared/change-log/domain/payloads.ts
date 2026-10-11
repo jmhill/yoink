@@ -5,6 +5,11 @@ const orderEntrySchema = z.object({
   openOrder: z.number().int(),
 });
 
+const importMarkerSchema = {
+  via: z.literal('import').optional(),
+  importRecordId: z.string().optional(),
+};
+
 export const taskCreatedPayloadV1Schema = z.object({
   title: z.string(),
   dueDate: z.string().optional(),
@@ -14,6 +19,8 @@ export const taskCreatedPayloadV1Schema = z.object({
   projectId: z.string().optional(),
   openOrder: z.number().int(),
   createdById: z.string(),
+  projectName: z.string().optional(),
+  ...importMarkerSchema,
 });
 
 export const taskUpdatedPayloadV1Schema = z.object({
@@ -25,6 +32,7 @@ export const taskUpdatedPayloadV1Schema = z.object({
   listId: z.string().nullable().optional(),
   projectId: z.string().nullable().optional(),
   openOrder: z.number().int().optional(),
+  ...importMarkerSchema,
 });
 
 export const taskCompletedPayloadV1Schema = z.object({
@@ -76,6 +84,7 @@ export const projectCreatedPayloadV1Schema = z.object({
 export const projectUpdatedPayloadV1Schema = z.object({
   name: z.string().optional(),
   objective: z.string().nullable().optional(),
+  notebookPages: z.array(z.string()).optional(),
 });
 
 export const projectStatusChangedPayloadV1Schema = z.object({
@@ -102,6 +111,8 @@ export const projectNextActionClearedPayloadV1Schema = z.object({
 
 export const taskAddedToProjectPayloadV1Schema = z.object({
   projectId: z.string(),
+  projectName: z.string().optional(),
+  ...importMarkerSchema,
 });
 
 export const taskRemovedFromProjectPayloadV1Schema = z.object({
@@ -114,6 +125,15 @@ export const taskRemovedFromProjectPayloadV1Schema = z.object({
 
 export const projectImportedPayloadV1Schema = z.object({
   taskCount: z.number().int().min(0),
+  name: z.string().optional(),
+  objective: z.string().optional(),
+  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']).optional(),
+  waitingOn: z.string().nullable().optional(),
+  waitingSince: z.string().nullable().optional(),
+  nextActionTaskId: z.string().nullable().optional(),
+  notebookPages: z.array(z.string()).optional(),
+  taskIds: z.array(z.string()).optional(),
+  createdTaskIds: z.array(z.string()).optional(),
 });
 
 export type TaskCreatedPayloadV1 = z.infer<typeof taskCreatedPayloadV1Schema>;

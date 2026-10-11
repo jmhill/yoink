@@ -28,6 +28,7 @@ describe('parseProjectRow', () => {
         waitingOn: null,
         waitingSince: null,
         nextActionTaskId: null,
+        notebookPages: [],
         createdAt: '2025-01-15T10:00:00.000Z',
         lastChangedAt: '2025-01-15T10:00:00.000Z',
         lastChangedBy: 'user-1',
@@ -72,6 +73,29 @@ describe('parseProjectRow', () => {
     if (result.isOk()) {
       expect(result.value.waitingOn).toBe('Mike');
       expect(result.value.waitingSince).toBe('2026-10-01');
+    }
+  });
+
+  it('maps notebook pages in order and builds urls', () => {
+    const result = parseProjectRow({
+      ...garden,
+      notebook_pages: JSON.stringify(['notes/Harbor shed (dock).md', 'notes/Harbor.md']),
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.notebookPages.map((page) => page.path)).toEqual([
+        'notes/Harbor shed (dock).md',
+        'notes/Harbor.md',
+      ]);
+      expect(result.value.notebookPages[0]?.url).toContain('obsidian://open');
+    }
+  });
+
+  it('returns STORAGE_ERROR for invalid notebook_pages JSON', () => {
+    const result = parseProjectRow({ ...garden, notebook_pages: '{bad' });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('STORAGE_ERROR');
     }
   });
 

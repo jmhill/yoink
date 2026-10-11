@@ -22,6 +22,18 @@ const projectErrorBody = (error: { type: string; message: string }) => ({
   code: error.type,
 });
 
+const importInvalidHttp = (error: {
+  message: string;
+  errors: readonly { index: number; name: string; field: string; code: string; message: string }[];
+}) => ({
+  status: 400 as const,
+  body: {
+    message: error.message,
+    code: 'IMPORT_INVALID' as const,
+    errors: [...error.errors],
+  },
+});
+
 export const registerProjectRoutes = async (
   app: FastifyInstance,
   deps: ProjectRoutesDependencies
@@ -89,6 +101,170 @@ export const registerProjectRoutes = async (
               case 'PROJECT_CREATE_REQUIRES_PERSON':
                 return {
                   status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      stageImport: async ({ body, request }) => {
+        const result = await projectHandlers.stageImport({
+          projects: body.projects,
+          organizationId: request.authContext.organizationId,
+          createdById: request.authContext.userId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          (view) => ({
+            status: 201 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'IMPORT_INVALID':
+                return importInvalidHttp(error);
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      listImports: async ({ request }) => {
+        const result = await projectHandlers.listImports({
+          organizationId: request.authContext.organizationId,
+        });
+
+        return result.match(
+          (body) => ({
+            status: 200 as const,
+            body,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      getImport: async ({ params, request }) => {
+        const result = await projectHandlers.getImport({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          createdById: request.authContext.userId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          (view) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'IMPORT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      applyImport: async ({ params, request }) => {
+        const result = await projectHandlers.applyImport({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          (view) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'IMPORT_INVALID':
+                return importInvalidHttp(error);
+              case 'IMPORT_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'IMPORT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'IMPORT_NOT_PENDING':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'DUPLICATE_PROJECT_NAME':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      discardImport: async ({ params, request }) => {
+        const result = await projectHandlers.discardImport({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          (view) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'IMPORT_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'IMPORT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'IMPORT_NOT_PENDING':
+                return {
+                  status: 409 as const,
                   body: projectErrorBody(error),
                 };
               case 'STORAGE_ERROR':
@@ -207,6 +383,7 @@ export const registerProjectRoutes = async (
           organizationId: request.authContext.organizationId,
           name: body.name,
           objective: body.objective,
+          notebookPages: body.notebookPages,
           actor: request.authContext.actor,
         });
 
@@ -219,6 +396,9 @@ export const registerProjectRoutes = async (
             switch (error.type) {
               case 'PROJECT_NAME_BLANK':
               case 'INVALID_PROJECT_NAME':
+              case 'INVALID_NOTEBOOK_PATH':
+              case 'NOTEBOOK_PAGE_DUPLICATE':
+              case 'NOTEBOOK_PAGES_TOO_MANY':
                 return {
                   status: 400 as const,
                   body: projectErrorBody(error),

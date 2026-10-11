@@ -97,18 +97,99 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID"
 
-# Edit name and objective (bots allowed)
+# Edit name, objective, or notebook pages (bots allowed)
 curl -sS -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -X PATCH \
-  -d '{"name":"Backyard","objective":"Plant herbs"}' \
+  -d '{"name":"Backyard","objective":"Plant herbs","notebookPages":["notes/Harbor shed.md"]}' \
   "$API/api/projects/$PROJECT_ID"
 ```
 
 Responses include `status` (`active` on create; later `waiting`, `someday`,
 or `done`), `waitingOn` / `waitingSince` (both `null` unless status is
-waiting), optional `objective`, and `lastChangedAt` / `lastChangedBy`
-(user ids; resolve names from members).
+waiting), optional `objective`, `notebookPages` (`{ path, url }[]`, vault
+`jmhill-personal`), and `lastChangedAt` / `lastChangedBy` (user ids; resolve
+names from members).
+
+## Import projects
+
+Lane (or any bot or person) stages a batch. Staging runs the full
+all-or-nothing checks and stores a pending import. Invalid batches are
+`400 IMPORT_INVALID` with every per-entry, per-field error and store
+nothing. Applying and discarding are person-only (`403
+IMPORT_REQUIRES_PERSON` for bots). Apply re-validates against current
+data; if anything drifted it returns `400 IMPORT_INVALID` and writes
+nothing. Applying or discarding a non-pending import is `409
+IMPORT_NOT_PENDING`. `GET /api/projects/imports` returns a lightweight
+summary: `preview.projects` is `[]`, `errors` is `[]`, and `preview.totals`
+comes from the stored payload (no re-validate). Use `GET …/imports/:id`
+for the full preview.
+
+Task-level records written by the import (`via: "import"`) appear on
+`GET /api/tasks/:id/history` only. The project timeline is one
+`ProjectImported` line: `{who} · Moved in · N tasks` (existing plus new).
+
+Lane's batch is an array of project entries. Each entry can attach existing
+open tasks (`existingTaskIds`) and/or create tasks (`newTasks` with a
+per-entry `key`). `nextAction` is either `{ "existingTaskId" }` or
+`{ "newTaskKey" }`. A waiting project needs `waitingOn`; `waitingSince: null`
+means unknown. Preview `warnings` are `{ field, code, message }` — a
+non-member assignee is a warning and the task imports unassigned.
+
+```bash
+# Stage (bots and people). The response is the id plus the preview.
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projects": [
+      {
+        "name": "Harbor shed",
+        "objective": "Keep the dock usable",
+        "status": "active",
+        "notebookPages": ["notes/Harbor shed (dock).md"],
+        "existingTaskIds": ["'"$TASK_ID"'"],
+        "newTasks": [{"key": "hinges", "title": "Order hinges"}],
+        "nextAction": {"existingTaskId": "'"$TASK_ID"'"}
+      },
+      {
+        "name": "Permit desk",
+        "status": "waiting",
+        "waitingOn": "City hall",
+        "waitingSince": null,
+        "newTasks": [{"key": "call-clerk", "title": "Call the clerk"}],
+        "nextAction": {"newTaskKey": "call-clerk"}
+      },
+      {
+        "name": "Winter boat cover",
+        "status": "someday",
+        "newTasks": [{"key": "measure", "title": "Measure the cockpit"}]
+      }
+    ]
+  }' \
+  "$API/api/projects/imports"
+
+# List pending — summary only (preview.projects [] and errors []; totals from the payload)
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/projects/imports"
+
+# Read one (recomputes the preview against current data)
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/projects/imports/$IMPORT_ID"
+
+# Apply (person session or that person's own token)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{}' \
+  "$API/api/projects/imports/$IMPORT_ID/apply"
+
+# Discard (person only)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{}' \
+  "$API/api/projects/imports/$IMPORT_ID/discard"
+```
 
 Change status with `PUT /api/projects/:id/status`. Waiting needs a trimmed
 non-blank `waitingOn` and optional `waitingSince` (`YYYY-MM-DD`; omit or
@@ -362,8 +443,8 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name (`409`) |
 | `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project (`403`) |
 | `PROJECT_NOT_FOUND` | No project with that id in this org (`404`) |
-| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done` (`400`) |
-| `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted (`400`) |
+| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done`; imported projects also refuse `done` and `proposed` (`400`) |
+| `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted, including on import (`400`) |
 | `PROJECT_WAITING_ON_BLANK` | Status is waiting and `waitingOn` is blank after trim (`400`) |
 | `PROJECT_WAITING_ON_TOO_LONG` | `waitingOn` is longer than 200 characters (`400`) |
 | `INVALID_WAITING_SINCE` | `waitingSince` is not `YYYY-MM-DD` or null (`400`) |
@@ -376,9 +457,25 @@ return `{ "message": "…" }` only, or that generic validation text.
 | `TASK_NOT_IN_PROJECT` | Next-action task is not in this project (`400`) |
 | `TASK_NOT_FOUND` | Next-action task is missing, deleted, or in another org (`404`) |
 | `PROJECT_DONE` | Setting a next action on a done project (`400`) |
-| `TASK_TITLE_BLANK` | New-task title is blank after trim (`400`) |
-| `TASK_TITLE_TOO_LONG` | New-task title is longer than 500 characters (`400`) |
+| `TASK_TITLE_BLANK` | New-task title is blank after trim, including import `newTasks` (`400`) |
+| `TASK_TITLE_TOO_LONG` | New-task title is longer than 500 characters, including import `newTasks` (`400`) |
+| `INVALID_TASK_DUE_DATE` | Import `newTasks.dueDate` is not a real `YYYY-MM-DD` (`400`) |
+| `PROJECT_OBJECTIVE_TOO_LONG` | Import objective is longer than 2000 characters (`400`) |
+| `IMPORT_NEW_TASK_KEY_DUPLICATE` | Two `newTasks` in one entry share the same `key` (`400`) |
+| `IMPORT_TOO_MANY_TASKS` | The batch attaches or creates more than 200 tasks (`400`) |
+| `IMPORT_DUPLICATE_NAME_IN_BATCH` | Two entries in the same batch share a name (`400`) |
 | `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation (`400`) |
+| `IMPORT_INVALID` | Staging or apply failed all-or-nothing checks; body includes `errors` (`400`) |
+| `IMPORT_REQUIRES_PERSON` | A bot tried to apply or discard (`403`) |
+| `IMPORT_NOT_FOUND` | No staged import with that id in this org (`404`) |
+| `IMPORT_NOT_PENDING` | Apply or discard on an already applied or discarded import (`409`) |
+| `INVALID_NOTEBOOK_PATH` | A notebook path is blank, absolute, has `..`, has a scheme, or is not `.md` (`400`) |
+| `NOTEBOOK_PAGE_DUPLICATE` | The same notebook path is listed twice on one project (`400`) |
+| `NOTEBOOK_PAGES_TOO_MANY` | More than 20 notebook pages (`400`) |
+| `TASK_LISTED_TWICE` | The same existing task is listed more than once in the import (`400`) |
+| `TASK_ALREADY_IN_PROJECT` | An existing task already belongs to a project (`400`) |
+| `NEXT_ACTION_NOT_IN_ENTRY` | `nextAction` is not one of that entry's tasks (`400`) |
+| `IMPORT_WAITING_FIELDS_NOT_ALLOWED` | `waitingOn` / `waitingSince` sent when status is not waiting (`400`) |
 

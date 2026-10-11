@@ -251,7 +251,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('promotes a capture into a project', async () => {
       const garden = await alice.createProjectFromRail({ name: 'Garden' });
       await alice.createCapture({ content: 'Buy soil' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openPromoteSheet('Buy soil');
 
       const task = await alice.confirmPromoteOnProject('Garden');
@@ -307,7 +307,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await alice.dismissOpenSelect();
 
         await alice.createCapture({ content: 'Plant herbs' });
-        await alice.openRailInbox();
+        await alice.openRailCapture();
         await alice.openPromoteSheet('Plant herbs');
         await alice.openPromoteProjectPicker('Garden');
         await alice.saveWalkthroughScreenshot({

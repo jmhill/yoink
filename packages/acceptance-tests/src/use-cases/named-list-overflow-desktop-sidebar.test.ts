@@ -19,7 +19,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Named-list overflow on the desktop sidebar [${ctx.driverName}]`, () => {

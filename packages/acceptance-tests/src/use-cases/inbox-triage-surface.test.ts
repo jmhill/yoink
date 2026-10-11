@@ -34,20 +34,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.snoozeCapture(later.id, tomorrow());
       await alice.trashCapture(gone.id);
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPaneTab('inbox');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeCaptureOnCurrentPane('Stay in inbox');
       await alice.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash']);
 
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldBeOnInboxPaneTab('snoozed');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeCaptureOnCurrentPane('Snooze later');
 
       await alice.openInboxPaneTab('trash');
       await alice.shouldBeOnInboxPaneTab('trash');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeCaptureOnCurrentPane('Trash me');
     });
 
@@ -75,8 +75,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       for (const appearance of appearances) {
         await alice.useAppearance(appearance);
-        await alice.openRailInbox();
-        await alice.shouldSeeInboxTriageSurface(1);
+        await alice.openRailCapture();
+        await alice.shouldSeeInboxTriageSurface();
         await alice.shouldSeeInboxSurfaceDistinctFromTaskSurface();
       }
     }, 90_000);
@@ -86,9 +86,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const later = await alice.createCapture({ content: 'Snooze later' });
       const gone = await alice.createCapture({ content: 'Trash me' });
 
-      await alice.openRailInbox();
-      await alice.shouldSeeInboxTriageSurface(3);
-      await alice.shouldSeeInboxCountOnRail(3);
+      await alice.openRailCapture();
+      await alice.shouldSeeInboxTriageSurface();
+      await alice.shouldSeeProcessCountOnRail(3);
       await alice.shouldSeeInboxCaptureActions('Triage me');
 
       await alice.openPromoteSheet('Triage me');
@@ -99,18 +99,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.snoozeCapture(later.id, tomorrow());
       await alice.trashCapture(gone.id);
 
-      await alice.openRailInbox();
-      await alice.shouldSeeInboxTriageSurface(1);
-      await alice.shouldSeeInboxCountOnRail(1);
+      await alice.openRailCapture();
+      await alice.shouldSeeInboxTriageSurface();
+      await alice.shouldSeeProcessCountOnRail(1);
       await alice.shouldSeeCaptureOnCurrentPane(keep.content);
       await alice.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash']);
 
       await alice.openInboxPaneTab('snoozed');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeCaptureOnCurrentPane('Snooze later');
 
       await alice.openInboxPaneTab('trash');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeCaptureOnCurrentPane('Trash me');
     });
   });
@@ -127,7 +127,7 @@ usingDrivers(['http'] as const, (ctx) => {
         token: 'any-token',
       }) as BrowserActor;
 
-      await expect(actor.shouldSeeInboxTriageSurface(1)).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeInboxTriageSurface()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeTaskSurface()).rejects.toThrow(UnsupportedOperationError);
       await expect(
         actor.useAppearance({ mode: 'dark', colorTheme: 'tokyo-night' })

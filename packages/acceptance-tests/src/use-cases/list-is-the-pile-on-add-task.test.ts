@@ -17,7 +17,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`List is the pile on add-task [${ctx.driverName}]`, () => {

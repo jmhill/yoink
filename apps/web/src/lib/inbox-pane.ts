@@ -6,9 +6,8 @@ export const INBOX_PANE_TABS = [
 
 export type InboxPaneTabKey = (typeof INBOX_PANE_TABS)[number]['key'];
 
-export const INBOX_TRIAGE_HEADING = 'Inbox';
+export const INBOX_TRIAGE_HEADING = 'Capture';
 export const INBOX_TRIAGE_SURFACE_TEST_ID = 'inbox-triage-surface';
-export const INBOX_TRIAGE_SUBCOPY_TEST_ID = 'inbox-triage-subcopy';
 export const TASK_SURFACE_TEST_ID = 'task-surface';
 
 /**
@@ -21,11 +20,4 @@ export function inboxPaneTabLabels(): string[] {
 
 export function isInboxPanePath(pathname: string): boolean {
   return pathname === '/' || pathname === '/snoozed' || pathname === '/trash';
-}
-
-/**
- * Costume subcopy for the Inbox pane: triage/references, not “open tasks”.
- */
-export function inboxTriageSubcopy(toProcessCount: number): string {
-  return `${toProcessCount} to process · references & triage`;
 }

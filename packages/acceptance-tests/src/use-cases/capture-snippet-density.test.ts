@@ -35,7 +35,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('shows inbox captures as dense snippets with source, time, and triage actions', async () => {
       await alice.createCapture({ content: groceryNote, sourceApp: 'web' });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeDenseCaptureSnippet(groceryNote, typedSource);
       await alice.shouldSeeInboxCaptureActions(groceryNote);
       await alice.openPromoteSheet(groceryNote);
@@ -55,7 +55,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         sourceApp: 'android-share',
       });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeDenseCaptureSnippet('Checkout ideas from Figma', chromeSource);
       await alice.shouldSeeCaptureSourceUrl(
         'Checkout ideas from Figma',
@@ -70,7 +70,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.snoozeCapture(later.id, tomorrow());
       await alice.trashCapture(gone.id);
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldSeeDenseCaptureSnippet('Snooze this snippet', typedSource);
 
@@ -82,7 +82,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const linked = 'check this https://example.com/path later';
       await alice.createCapture({ content: linked });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeInboxCaptureActions(linked);
       await alice.openCaptureContentLink(linked, 'https://example.com/path');
       await alice.shouldSeeCaptureOnCurrentPane(linked);
@@ -118,7 +118,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       for (const appearance of appearances) {
         await alice.useAppearance(appearance);
-        await alice.openRailInbox();
+        await alice.openRailCapture();
         await alice.shouldSeeDenseCaptureSnippet(groceryNote, typedSource);
         await alice.shouldSeeCaptureSnippetReadable(groceryNote);
       }

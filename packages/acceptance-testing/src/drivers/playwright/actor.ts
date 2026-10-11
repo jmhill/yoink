@@ -276,7 +276,7 @@ export const createPlaywrightActor = (
     const tabName = {
       today: 'Today',
       upcoming: /Upcoming|Soon/,
-      mine: 'Mine',
+      mine: 'My tasks',
       completed: 'Done',
     }[filter];
     const tab = page.getByRole('tab', { name: tabName });
@@ -1306,8 +1306,9 @@ export const createPlaywrightActor = (
       ).toBeVisible();
     },
 
-    async openRailNow(): Promise<void> {
-      await openRailDestination('Now', async () => {
+    async openRailWork(): Promise<void> {
+      const desktop = await appRail.isDesktopSurface();
+      await openRailDestination(desktop ? 'Work' : 'Now', async () => {
         await expect(page.locator('[data-now-ready][data-now-owner]')).toBeVisible();
       });
     },
@@ -1528,7 +1529,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeRailMineHighlighted(): Promise<void> {
-      await expect.poll(async () => appRail.isItemActive('Mine')).toBe(true);
+      await expect.poll(async () => appRail.isItemActive('My tasks')).toBe(true);
     },
 
     async shouldSeeReorderControls(): Promise<void> {
@@ -1598,7 +1599,7 @@ export const createPlaywrightActor = (
       const tabName = {
         today: 'Today',
         upcoming: /Upcoming|Soon/,
-        mine: 'Mine',
+        mine: 'My tasks',
         completed: 'Done',
       }[filter];
       await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute(
@@ -1678,12 +1679,99 @@ export const createPlaywrightActor = (
       await expect.poll(async () => appRail.getItemLabels(), { timeout: 10_000 }).toEqual(labels);
     },
 
-    async shouldSeeInboxCountOnRail(count: number): Promise<void> {
+    async shouldSeeProcessCountOnRail(count: number): Promise<void> {
       await expect.poll(async () => appRail.getInboxCount()).toBe(count);
     },
 
-    async shouldNotSeeInboxCountOnRail(): Promise<void> {
+    async shouldNotSeeProcessCountOnRail(): Promise<void> {
       await expect.poll(async () => appRail.getInboxCount()).toBeNull();
+    },
+
+    async shouldSeeDesktopRailSections(): Promise<void> {
+      await appRail.waitForVisible();
+      await expect.poll(async () => appRail.sectionHeadings()).toEqual([
+        'Capture',
+        'Process',
+        'Work',
+        'Review',
+      ]);
+      await expect(appRail.sectionRow('capture')).toBeVisible();
+      await expect(appRail.sectionRow('process')).toBeVisible();
+      await expect(appRail.sectionRow('work')).toBeVisible();
+      await expect(appRail.sectionRow('review')).toBeVisible();
+      await expect(page.locator('[data-rail-separator="capture-to-process"]')).toBeVisible();
+      await expect(page.locator('[data-rail-separator="process-to-work"]')).toBeVisible();
+      await expect(page.locator('[data-rail-separator="work-to-review"]')).toBeVisible();
+      await expect.poll(async () => {
+        const order = await appRail.getVisualOrder();
+        const work = order.indexOf('Work');
+        const today = order.indexOf('Today');
+        const lists = order.indexOf('Lists');
+        const review = order.indexOf('Review');
+        const newProject = order.lastIndexOf('New project');
+        return (
+          work > -1 &&
+          today > work &&
+          lists > today &&
+          review > lists &&
+          newProject > review
+        );
+      }).toBe(true);
+    },
+
+    async shouldSeeRailSectionHighlighted(
+      key: 'capture' | 'process' | 'work' | 'review'
+    ): Promise<void> {
+      await expect
+        .poll(async () => (await appRail.sectionRow(key).getAttribute('data-rail-active')) === 'true')
+        .toBe(true);
+      await expect(page.locator('[data-app-rail]:visible [data-rail-active="true"]')).toHaveCount(1);
+    },
+
+    async scrollDesktopRailSoLabelIsVisible(label: string): Promise<void> {
+      await appRail.waitForVisible();
+      const rail = appRail.desktop();
+      await rail.locator(`[data-rail-label="${label}"]`).evaluate((node) => {
+        node.scrollIntoView({ block: 'nearest' });
+      });
+      await expect(rail.locator(`[data-rail-label="${label}"]`)).toBeVisible();
+    },
+
+    async openRailProcess(): Promise<void> {
+      await openRailDestination('Process', async () => {
+        await page.waitForURL((url) => new URL(url).pathname === '/process', { timeout: 4_000 });
+        await expect(page.locator('[data-process-ready]')).toBeVisible();
+      });
+    },
+
+    async openRailReview(): Promise<void> {
+      await openRailDestination('Review', async () => {
+        await page.waitForURL((url) => new URL(url).pathname === '/projects', { timeout: 4_000 });
+        await expect(page.locator('[data-review-ready]')).toBeVisible();
+      });
+    },
+
+    async shouldSeeRailRowHighlighted(label: string): Promise<void> {
+      await expect.poll(async () => appRail.isItemActive(label)).toBe(true);
+      await expect(page.locator('[data-app-rail]:visible [data-rail-active="true"]')).toHaveCount(1);
+    },
+
+    async shouldSeeNoCountOnCaptureSection(): Promise<void> {
+      await appRail.waitForVisible();
+      await expect(appRail.sectionRow('capture').locator('[data-inbox-count]')).toHaveCount(0);
+    },
+
+    async shouldSeeBackToWorkAbovePlaceHeading(): Promise<void> {
+      const back = page.locator('[data-back-to-work]');
+      const heading = tasksPage.placeHeading();
+      await expect(back).toBeVisible();
+      await expect(heading).toBeVisible();
+      const backBox = await back.boundingBox();
+      const headingBox = await heading.boundingBox();
+      if (backBox === null || headingBox === null) {
+        throw new Error('expected layout boxes for the Work back row and place heading');
+      }
+      expect(backBox.y + backBox.height).toBeLessThanOrEqual(headingBox.y + 1);
     },
 
     async shouldSeeListsHeadingAboveNamedList(name: string): Promise<void> {
@@ -1760,7 +1848,7 @@ export const createPlaywrightActor = (
       const label = {
         today: 'Today',
         upcoming: 'Upcoming',
-        mine: 'Mine',
+        mine: 'My tasks',
         done: 'Done',
       }[view];
       const filter = view === 'done' ? 'completed' : view;
@@ -2711,6 +2799,10 @@ export const createPlaywrightActor = (
       await appRail.expectNoHorizontalPageScroll();
     },
 
+    async shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
+      await appRail.expectNamedListLabelsClearOfCountAndOverflow();
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.itemByLabel(label)).toBeVisible();
@@ -2807,8 +2899,9 @@ export const createPlaywrightActor = (
       return task;
     },
 
-    async openRailInbox(): Promise<void> {
-      await openRailDestination('Inbox', async () => {
+    async openRailCapture(): Promise<void> {
+      const desktop = await appRail.isDesktopSurface();
+      await openRailDestination(desktop ? 'Capture' : 'Inbox', async () => {
         await page.waitForURL((url) => new URL(url).pathname === '/', { timeout: 4_000 });
         await inboxPage.waitForCapturesOrEmpty();
       });
@@ -2860,8 +2953,9 @@ export const createPlaywrightActor = (
       );
     },
 
-    async shouldSeeRailInboxHighlighted(): Promise<void> {
-      await expect.poll(async () => appRail.isItemActive('Inbox')).toBe(true);
+    async shouldSeeRailCaptureHighlighted(): Promise<void> {
+      const desktop = await appRail.isDesktopSurface();
+      await expect.poll(async () => appRail.isItemActive(desktop ? 'Capture' : 'Inbox')).toBe(true);
     },
 
     async shouldSeeCaptureOnCurrentPane(content: string): Promise<void> {
@@ -2940,12 +3034,10 @@ export const createPlaywrightActor = (
       await expect(card).toHaveCount(0);
     },
 
-    async shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void> {
+    async shouldSeeInboxTriageSurface(): Promise<void> {
       await expect(inboxPage.triageSurface()).toBeVisible();
-      await expect(inboxPage.triageHeading()).toBeVisible();
-      await expect(inboxPage.triageSubcopy()).toHaveText(
-        `${toProcessCount} to process · references & triage`
-      );
+      await expect(inboxPage.triageHeading()).toHaveText('Capture');
+      await expect(inboxPage.triageSubcopy()).toHaveCount(0);
       await expect(tasksPage.taskSurface()).toHaveCount(0);
     },
 
@@ -3336,8 +3428,11 @@ export const createPlaywrightActor = (
       const link = page.locator('[data-back-to-work]');
       await expect(link).toBeVisible();
       await expect
-        .poll(async () => (await link.boundingBox())?.height ?? Number.POSITIVE_INFINITY)
-        .toBeLessThanOrEqual(24);
+        .poll(async () => (await link.boundingBox())?.height ?? 0)
+        .toBeGreaterThanOrEqual(40);
+      await expect
+        .poll(async () => (await link.boundingBox())?.height ?? 0)
+        .toBeLessThanOrEqual(44);
     },
 
     async shouldNotSeeBackToWork(): Promise<void> {

@@ -1,4 +1,5 @@
 import type { AllPile } from './all-tasks-piles';
+import { RAIL_MY_TASKS_LABEL } from './app-rail';
 
 export const TASK_PLACE_SUBCOPY_TEST_ID = 'task-place-subcopy';
 
@@ -48,7 +49,7 @@ export function taskPlaceHeading(place: TaskPlace): string {
     return 'Upcoming';
   }
   if (place.kind === 'mine') {
-    return 'Mine';
+    return RAIL_MY_TASKS_LABEL;
   }
   if (place.kind === 'done') {
     return 'Done';

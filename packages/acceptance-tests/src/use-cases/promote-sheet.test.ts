@@ -12,7 +12,7 @@ import { UnsupportedOperationError, ValidationError } from '@yoink/acceptance-te
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Promote sheet [${ctx.driverName}]`, () => {
@@ -24,7 +24,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('opens a sheet from Inbox Promote, not the old centered dialog', async () => {
       await alice.createCapture({ content: 'Buy oat milk' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeCaptureOnCurrentPane('Buy oat milk');
 
       await alice.openPromoteSheet('Buy oat milk');
@@ -35,7 +35,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('promotes as unlisted: no listId and the capture leaves Inbox', async () => {
       await alice.createCapture({ content: 'Loose thought' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openPromoteSheet('Loose thought');
 
       const task = await alice.confirmPromoteUnlisted();
@@ -52,7 +52,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('promotes onto a named list and the task appears on that pile', async () => {
       const list = await alice.createNamedListFromRail('Groceries');
       await alice.createCapture({ content: 'Buy milk' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openPromoteSheet('Buy milk');
       await alice.shouldSeePromoteListUnlisted();
 
@@ -69,7 +69,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('leaves the capture in Inbox when Promote is cancelled', async () => {
       await alice.createCapture({ content: 'Keep me' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openPromoteSheet('Keep me');
       await alice.cancelPromoteSheet();
 
@@ -85,7 +85,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.snoozeCapture(later.id, tomorrow);
       await alice.trashCapture(gone.id);
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeInboxCaptureActions('Stay put');
       await alice.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash']);
 
@@ -94,10 +94,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openInboxPaneTab('trash');
       await alice.shouldSeeCaptureOnCurrentPane('Trash me');
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPane();
       await alice.shouldSeeRailItems(railWith());
-      await alice.shouldSeeRailInboxHighlighted();
+      await alice.shouldSeeRailCaptureHighlighted();
     }, 60_000);
   });
 });

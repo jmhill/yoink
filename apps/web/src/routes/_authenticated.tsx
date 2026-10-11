@@ -54,7 +54,7 @@ function AuthenticatedLayout() {
   });
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-48">
+    <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-56">
       <PendingImportBanner />
       <Outlet />
       <WhatsNextHost />

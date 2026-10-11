@@ -1,11 +1,24 @@
 import { CheckSquare, FolderKanban, Inbox, ListFilter } from 'lucide-react';
-import { shouldShowInboxCount } from './app-rail';
+
+export const MOBILE_TAB_DESTINATIONS = [
+  { key: 'capture', label: 'Capture', to: '/' },
+  { key: 'process', label: 'Process', to: '/process' },
+  { key: 'work', label: 'Work', to: '/work' },
+  { key: 'review', label: 'Review', to: '/projects' },
+] as const;
+
+const MOBILE_TAB_ICONS = {
+  capture: Inbox,
+  process: ListFilter,
+  work: CheckSquare,
+  review: FolderKanban,
+} as const;
 
 export const MOBILE_TABS = [
-  { key: 'capture', label: 'Capture', to: '/', icon: Inbox },
-  { key: 'process', label: 'Process', to: '/process', icon: ListFilter },
-  { key: 'work', label: 'Work', to: '/work', icon: CheckSquare },
-  { key: 'review', label: 'Review', to: '/projects', icon: FolderKanban },
+  { ...MOBILE_TAB_DESTINATIONS[0], icon: MOBILE_TAB_ICONS.capture },
+  { ...MOBILE_TAB_DESTINATIONS[1], icon: MOBILE_TAB_ICONS.process },
+  { ...MOBILE_TAB_DESTINATIONS[2], icon: MOBILE_TAB_ICONS.work },
+  { ...MOBILE_TAB_DESTINATIONS[3], icon: MOBILE_TAB_ICONS.review },
 ] as const;
 
 export type MobileTabKey = (typeof MOBILE_TABS)[number]['key'];
@@ -37,7 +50,7 @@ export function activeMobileTab(pathname: string): MobileTabKey | null {
 }
 
 export function processBadgeCount(total: number): number | null {
-  if (!shouldShowInboxCount(total)) {
+  if (total <= 0) {
     return null;
   }
   return total;

@@ -49,7 +49,7 @@ describe('task place heading', () => {
   it('reads the current place name at a glance', () => {
     expect(taskPlaceHeading({ kind: 'today' })).toBe('Today');
     expect(taskPlaceHeading({ kind: 'upcoming' })).toBe('Upcoming');
-    expect(taskPlaceHeading({ kind: 'mine' })).toBe('Mine');
+    expect(taskPlaceHeading({ kind: 'mine' })).toBe('My tasks');
     expect(taskPlaceHeading({ kind: 'done' })).toBe('Done');
     expect(taskPlaceHeading({ kind: 'unlisted' })).toBe('Unlisted');
     expect(taskPlaceHeading({ kind: 'named', name: 'Groceries' })).toBe('Groceries');

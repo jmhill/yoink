@@ -18,8 +18,11 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  * (#79), multi-select, changing the desktop rail.
  */
 
-const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+const drawerRailWith = (...names: string[]): string[] =>
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+
+const desktopRailWith = (...names: string[]): string[] =>
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Mobile Tasks rail drawer [${ctx.driverName}]`, () => {
@@ -72,7 +75,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openMobileTasksRail();
       await alice.shouldSeeMobileTasksRail();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries'));
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
 
       await alice.openRailSmartView('today');
@@ -150,14 +153,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       const weekend = await alice.createNamedListFromRail('Weekend');
       await alice.shouldBeOnAllNamedPile(weekend.id);
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Weekend'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries', 'Weekend'));
 
       await alice.deleteNamedListFromRail('Weekend');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries'));
 
       await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries'));
 
       await alice.createCapture({ content: 'Promote me' });
       await alice.openMobileBottomTab('capture');
@@ -183,7 +186,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openToday();
       await alice.shouldSeeDesktopAppRail();
       await alice.shouldNotSeeMobileBottomNav();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
 
       await alice.openRailNamedList('Groceries');
       await alice.shouldBeOnAllNamedPile(groceries.id);

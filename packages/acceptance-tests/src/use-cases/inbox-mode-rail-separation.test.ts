@@ -14,8 +14,11 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  * lifecycle / Promote domain, new nav destinations.
  */
 
-const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+const desktopRailWith = (...names: string[]): string[] =>
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
+
+const drawerRailWith = (...names: string[]): string[] =>
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Inbox mode rail separation [${ctx.driverName}]`, () => {
@@ -30,11 +33,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createNamedList('Groceries');
       await alice.useDesktopViewport();
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeDesktopAppRail();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
-      await alice.shouldSeeInboxCountOnRail(1);
-      await alice.shouldSeeInboxModeSeparatedFromTaskFamily();
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
+      await alice.shouldSeeProcessCountOnRail(1);
+      await alice.shouldSeeDesktopRailSections();
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
       await alice.shouldNotSeeMobileBottomNav();
     });
@@ -57,7 +60,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openMobileTasksRail();
       await alice.shouldSeeMobileTasksRail();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries'));
       await alice.shouldSeeInboxModeSeparatedFromTaskFamily();
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
     });
@@ -67,8 +70,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openRailSmartView('today');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeInboxModeSeparatedFromTaskFamily();
-      await alice.shouldSeeInboxCountOnRail(1);
+      await alice.shouldSeeDesktopRailSections();
+      await alice.shouldSeeProcessCountOnRail(1);
 
       const groceries = await alice.createNamedListFromRail('Groceries');
       await alice.shouldBeOnAllNamedPile(groceries.id);
@@ -82,15 +85,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       const weekend = await alice.createNamedListFromRail('Weekend');
       await alice.shouldBeOnAllNamedPile(weekend.id);
-      await alice.shouldSeeRailItems(railWith('Groceries', 'Weekend'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries', 'Weekend'));
 
       await alice.deleteNamedListFromRail('Weekend');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeRailItems(railWith('Groceries'));
-      await alice.shouldSeeInboxModeSeparatedFromTaskFamily();
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
+      await alice.shouldSeeDesktopRailSections();
 
       await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(desktopRailWith('Groceries'));
     });
 
     it('keeps the Inbox-vs-task split distinct in light, dark, and tokyo night', async () => {
@@ -106,9 +109,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       for (const appearance of appearances) {
         await alice.useAppearance(appearance);
         await alice.useDesktopViewport();
-        await alice.openRailInbox();
+        await alice.openRailCapture();
         await alice.shouldSeeDesktopAppRail();
-        await alice.shouldSeeInboxModeSeparatedFromTaskFamily();
+        await alice.shouldSeeDesktopRailSections();
         await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
       }
     }, 90_000);
@@ -129,6 +132,7 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.shouldSeeInboxModeSeparatedFromTaskFamily()).rejects.toThrow(
         UnsupportedOperationError
       );
+      await expect(actor.shouldSeeDesktopRailSections()).rejects.toThrow(UnsupportedOperationError);
     });
   });
 });

@@ -3,7 +3,6 @@ import {
   INBOX_PANE_TABS,
   INBOX_TRIAGE_HEADING,
   inboxPaneTabLabels,
-  inboxTriageSubcopy,
   isInboxPanePath,
 } from './inbox-pane';
 
@@ -22,14 +21,7 @@ describe('inbox pane tabs', () => {
 });
 
 describe('inbox triage heading', () => {
-  it('keeps the pane titled Inbox', () => {
-    expect(INBOX_TRIAGE_HEADING).toBe('Inbox');
-  });
-
-  it('reads as triage and references, not open tasks', () => {
-    expect(inboxTriageSubcopy(0)).toBe('0 to process · references & triage');
-    expect(inboxTriageSubcopy(1)).toBe('1 to process · references & triage');
-    expect(inboxTriageSubcopy(4)).toBe('4 to process · references & triage');
-    expect(inboxTriageSubcopy(4)).not.toMatch(/open tasks/i);
+  it('keeps the pane titled Capture', () => {
+    expect(INBOX_TRIAGE_HEADING).toBe('Capture');
   });
 });

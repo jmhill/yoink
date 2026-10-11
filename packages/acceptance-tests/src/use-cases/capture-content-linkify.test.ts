@@ -31,7 +31,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('shows a whole-content https URL as a new-tab link', async () => {
       await alice.createCapture({ content: exactUrl });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeCaptureContentLink(exactUrl, exactUrl);
       await alice.openCaptureContentLink(exactUrl, exactUrl);
     });
@@ -39,21 +39,21 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('linkifies only the URL inside surrounding prose', async () => {
       await alice.createCapture({ content: proseContent });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeCaptureContentLink(proseContent, exactUrl);
     });
 
     it('leaves free text without a URL as plain text', async () => {
       await alice.createCapture({ content: plainContent });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeCaptureContentWithoutLinks(plainContent);
     });
 
     it('opens the content link without Promote, Snooze, or Trash', async () => {
       await alice.createCapture({ content: exactUrl });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openCaptureContentLink(exactUrl, exactUrl);
       await alice.shouldSeeCaptureOnCurrentPane(exactUrl);
       await alice.shouldSeeInboxCaptureActions(exactUrl);
@@ -64,7 +64,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const snoozeMe = await alice.createCapture({ content: 'https://example.com/snooze' });
       const trashMe = await alice.createCapture({ content: 'https://example.com/trash' });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openPromoteSheet(promoteMe.content);
       await alice.cancelPromoteSheet();
       await alice.shouldSeeCaptureOnCurrentPane(promoteMe.content);
@@ -103,7 +103,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.trashCapture(trashedProse.id);
       await alice.trashCapture(trashedPlain.id);
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldSeeCaptureContentLink(snoozedExact.content, snoozedExact.content);
       await alice.shouldSeeCaptureContentLink(
@@ -130,7 +130,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         sourceUrl,
       });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeCaptureContentLink(proseContent, exactUrl);
       await alice.shouldSeeCaptureSourceUrl(proseContent, sourceUrl);
     });

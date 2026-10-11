@@ -899,8 +899,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openWork', 'http');
     },
 
-    async openRailNow(): Promise<void> {
-      throw new UnsupportedOperationError('openRailNow', 'http');
+    async openRailWork(): Promise<void> {
+      throw new UnsupportedOperationError('openRailWork', 'http');
     },
 
     async toggleNowMine(): Promise<void> {
@@ -1103,12 +1103,46 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeRailItems', 'http');
     },
 
-    async shouldSeeInboxCountOnRail(_count: number): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeInboxCountOnRail', 'http');
+    async shouldSeeProcessCountOnRail(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessCountOnRail', 'http');
     },
 
-    async shouldNotSeeInboxCountOnRail(): Promise<void> {
-      throw new UnsupportedOperationError('shouldNotSeeInboxCountOnRail', 'http');
+    async shouldNotSeeProcessCountOnRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeProcessCountOnRail', 'http');
+    },
+
+    async shouldSeeDesktopRailSections(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDesktopRailSections', 'http');
+    },
+
+    async shouldSeeRailSectionHighlighted(
+      _key: 'capture' | 'process' | 'work' | 'review'
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailSectionHighlighted', 'http');
+    },
+
+    async scrollDesktopRailSoLabelIsVisible(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('scrollDesktopRailSoLabelIsVisible', 'http');
+    },
+
+    async openRailProcess(): Promise<void> {
+      throw new UnsupportedOperationError('openRailProcess', 'http');
+    },
+
+    async openRailReview(): Promise<void> {
+      throw new UnsupportedOperationError('openRailReview', 'http');
+    },
+
+    async shouldSeeRailRowHighlighted(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailRowHighlighted', 'http');
+    },
+
+    async shouldSeeNoCountOnCaptureSection(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoCountOnCaptureSection', 'http');
+    },
+
+    async shouldSeeBackToWorkAbovePlaceHeading(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeBackToWorkAbovePlaceHeading', 'http');
     },
 
     async shouldSeeListsHeadingAboveNamedList(_name: string): Promise<void> {
@@ -1539,6 +1573,13 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeNoHorizontalPageScrollFromRail', 'http');
     },
 
+    async shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
+      throw new UnsupportedOperationError(
+        'shouldSeeNamedListLabelsClearOfCountAndOverflow',
+        'http'
+      );
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },
@@ -1593,8 +1634,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('addTaskOnCurrentView', 'http');
     },
 
-    async openRailInbox(): Promise<void> {
-      throw new UnsupportedOperationError('openRailInbox', 'http');
+    async openRailCapture(): Promise<void> {
+      throw new UnsupportedOperationError('openRailCapture', 'http');
     },
 
     async shouldBeOnInboxPane(): Promise<void> {
@@ -1617,8 +1658,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldBeOnInboxPaneTab', 'http');
     },
 
-    async shouldSeeRailInboxHighlighted(): Promise<void> {
-      throw new UnsupportedOperationError('shouldSeeRailInboxHighlighted', 'http');
+    async shouldSeeRailCaptureHighlighted(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRailCaptureHighlighted', 'http');
     },
 
     async shouldSeeCaptureOnCurrentPane(_content: string): Promise<void> {
@@ -1648,7 +1689,7 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('trashCaptureBySwipe', 'http');
     },
 
-    async shouldSeeInboxTriageSurface(_toProcessCount: number): Promise<void> {
+    async shouldSeeInboxTriageSurface(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeInboxTriageSurface', 'http');
     },
 

@@ -16,8 +16,11 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  * #90 multi-slot drag, multi-select, new list actions beyond Delete.
  */
 
-const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+const drawerRailWith = (...names: string[]): string[] =>
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+
+const desktopRailWith = (...names: string[]): string[] =>
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Named-list overflow above the mobile drawer [${ctx.driverName}]`, () => {
@@ -52,13 +55,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.deleteNamedListFromRail('Weekend');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeRailItems(railWith('Chores', 'Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Chores', 'Groceries'));
 
       await expect(alice.deleteNamedListFromRail('Groceries')).rejects.toThrow(ConflictError);
-      await alice.shouldSeeRailItems(railWith('Chores', 'Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Chores', 'Groceries'));
 
       await alice.deleteNamedListFromRail('Chores');
-      await alice.shouldSeeRailItems(railWith('Groceries'));
+      await alice.shouldSeeRailItems(drawerRailWith('Groceries'));
       await alice.openRailSmartView('done');
       await alice.shouldSeeTaskTitles(['Laundry']);
       await alice.shouldNotSeeListOnVisibleTask(laundry.id);
@@ -99,7 +102,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.deleteNamedListFromRail('Weekend');
       await alice.shouldBeOnToday();
-      await alice.shouldSeeRailItems(railWith());
+      await alice.shouldSeeRailItems(desktopRailWith());
     }, 60_000);
   });
 });

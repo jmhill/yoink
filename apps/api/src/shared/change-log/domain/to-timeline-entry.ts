@@ -125,14 +125,16 @@ export const toTimelineEntry = (
     case 'NamedListDeleted':
       return null;
     case 'TaskCreated': {
-      const lookedUp =
-        record.payload.via === 'import' && record.payload.projectId
-          ? lookups.subjectOf('project', record.payload.projectId).title
-          : null;
-      const projectName = record.payload.projectName ?? lookedUp;
+      const imported = record.payload.via === 'import';
+      const projectName = imported
+        ? (record.payload.projectName ??
+          (record.payload.projectId
+            ? lookups.subjectOf('project', record.payload.projectId).title
+            : null))
+        : null;
       return entry(record, lookups, 'TaskCreated', {
         kind: 'TaskCreated',
-        ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
+        ...(imported ? { via: 'import' as const } : {}),
         ...(projectName ? { projectName } : {}),
       });
     }
@@ -200,15 +202,19 @@ export const toTimelineEntry = (
         taskTitle: lookups.taskTitleOf(record.payload.taskId),
         reason: record.payload.reason,
       });
-    case 'TaskAddedToProject':
+    case 'TaskAddedToProject': {
+      const imported = record.payload.via === 'import';
+      const projectName = imported
+        ? (record.payload.projectName ??
+          lookups.subjectOf('project', record.payload.projectId).title)
+        : null;
       return entry(record, lookups, 'TaskAddedToProject', {
         kind: 'TaskAddedToProject',
         projectId: record.payload.projectId,
-        projectName:
-          record.payload.projectName ??
-          lookups.subjectOf('project', record.payload.projectId).title,
-        ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
+        ...(imported ? { via: 'import' as const } : {}),
+        ...(projectName ? { projectName } : {}),
       });
+    }
     case 'TaskRemovedFromProject': {
       const moved =
         record.payload.toProjectId !== undefined || record.payload.toProjectName !== undefined;

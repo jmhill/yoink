@@ -359,4 +359,66 @@ describe('toTimelineEntry', () => {
       reason: 'completed',
     });
   });
+
+  it('keeps projectName off a later add-to-project that is not an import', () => {
+    const record = recordForKind('TaskAddedToProject');
+    if (record.kind !== 'TaskAddedToProject') {
+      throw new Error('expected TaskAddedToProject');
+    }
+    const mapped = toTimelineEntry(
+      {
+        ...record,
+        payload: { projectId: 'project-1', projectName: 'Kitchen renovation' },
+      },
+      lookups
+    );
+    expect(mapped?.details).toEqual({
+      kind: 'TaskAddedToProject',
+      projectId: 'project-1',
+    });
+  });
+
+  it('projects import via and projectName onto import-attached task history', () => {
+    const added = recordForKind('TaskAddedToProject');
+    if (added.kind !== 'TaskAddedToProject') {
+      throw new Error('expected TaskAddedToProject');
+    }
+    expect(
+      toTimelineEntry(
+        {
+          ...added,
+          payload: { projectId: 'project-1', via: 'import', projectName: 'Harbor shed' },
+        },
+        lookups
+      )?.details
+    ).toEqual({
+      kind: 'TaskAddedToProject',
+      projectId: 'project-1',
+      via: 'import',
+      projectName: 'Harbor shed',
+    });
+
+    const created = recordForKind('TaskCreated');
+    if (created.kind !== 'TaskCreated') {
+      throw new Error('expected TaskCreated');
+    }
+    expect(
+      toTimelineEntry(
+        {
+          ...created,
+          payload: {
+            ...created.payload,
+            projectId: 'project-1',
+            via: 'import',
+            projectName: 'Permit desk',
+          },
+        },
+        lookups
+      )?.details
+    ).toEqual({
+      kind: 'TaskCreated',
+      via: 'import',
+      projectName: 'Permit desk',
+    });
+  });
 });

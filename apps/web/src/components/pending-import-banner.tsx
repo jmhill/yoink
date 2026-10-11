@@ -1,10 +1,17 @@
 import { Link } from '@tanstack/react-router';
 import { tsrProjects } from '@/api/client';
+import { LIVE_QUERY_REFETCH_INTERVAL_MS } from '@/lib/live-query';
 
 export function PendingImportBanner() {
   const { data } = tsrProjects.listImports.useQuery({
     queryKey: ['project-imports'],
     queryData: {},
+    refetchInterval: () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return false;
+      }
+      return LIVE_QUERY_REFETCH_INTERVAL_MS;
+    },
   });
   const pending = data?.status === 200 ? data.body.imports[0] : undefined;
   if (!pending) {

@@ -2339,20 +2339,7 @@ export class AppRail {
    */
   async expectNamedListLabelsClearOfCountAndOverflow(): Promise<void> {
     await this.waitForVisible();
-    const overlaps = await this.root().evaluate(`(rail) => {
-      const overlapsBox = (rects, box) =>
-        [...rects].some(
-          (rect) =>
-            rect.width > 0 &&
-            rect.height > 0 &&
-            !(
-              rect.right <= box.left ||
-              rect.left >= box.right ||
-              rect.bottom <= box.top ||
-              rect.top >= box.bottom
-            )
-        );
-
+    const overlaps = await this.root().evaluate((rail) => {
       return [...rail.querySelectorAll('[data-rail-item="named"]')].flatMap((item) => {
         const label = item.getAttribute('data-rail-label') ?? '';
         const row = item.parentElement;
@@ -2362,20 +2349,42 @@ export class AppRail {
         }
         const range = item.ownerDocument.createRange();
         range.selectNodeContents(text);
-        const textRects = range.getClientRects();
+        const textRects = [...range.getClientRects()].filter(
+          (rect) => rect.width > 0 && rect.height > 0
+        );
         const count = row.querySelector('[data-rail-list-count]');
         const overflow = row.querySelector('[data-rail-overflow]');
+        const countBox = count === null ? null : count.getBoundingClientRect();
+        const overflowBox = overflow === null ? null : overflow.getBoundingClientRect();
         const countHit =
-          count !== null && overlapsBox(textRects, count.getBoundingClientRect())
+          countBox !== null &&
+          textRects.some(
+            (rect) =>
+              !(
+                rect.right <= countBox.left ||
+                rect.left >= countBox.right ||
+                rect.bottom <= countBox.top ||
+                rect.top >= countBox.bottom
+              )
+          )
             ? [{ label, overlap: 'count' }]
             : [];
         const overflowHit =
-          overflow !== null && overlapsBox(textRects, overflow.getBoundingClientRect())
+          overflowBox !== null &&
+          textRects.some(
+            (rect) =>
+              !(
+                rect.right <= overflowBox.left ||
+                rect.left >= overflowBox.right ||
+                rect.bottom <= overflowBox.top ||
+                rect.top >= overflowBox.bottom
+              )
+          )
             ? [{ label, overlap: 'overflow' }]
             : [];
         return [...countHit, ...overflowHit];
       });
-    }`);
+    });
 
     if (!Array.isArray(overlaps)) {
       throw new Error('expected named-list overlap hits to be an array');

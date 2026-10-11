@@ -15,7 +15,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 const isoDateOffset = (days: number): string =>
   new Date(Date.now() + days * 86_400_000).toISOString().split('T')[0]!;
@@ -121,7 +121,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailItems(railWith('Groceries'));
 
       await alice.createCapture({ content: 'Promote me' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPane();
       await alice.openPromoteSheet('Promote me');
       await alice.shouldSeePromoteSheet();

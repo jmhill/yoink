@@ -25,7 +25,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('on desktop, the shortcut focuses quick capture and a typed note lands in Inbox — including from Today', async () => {
       await alice.useDesktopViewport();
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeQuickAddCapture();
       await alice.shouldSeeQuickCaptureShortcutHint();
       await alice.pressQuickCaptureShortcut();
@@ -99,7 +99,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       for (const appearance of appearances) {
         await alice.useAppearance(appearance);
         await alice.useDesktopViewport();
-        await alice.openRailInbox();
+        await alice.openRailCapture();
         await alice.shouldSeeQuickCaptureShortcutHint();
         await alice.shouldSeeQuickCaptureShortcutHintReadable();
       }

@@ -71,7 +71,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileBottomNav();
 
       await alice.openRailSmartView('mine');
-      await alice.shouldSeeTaskPlace('Mine', '1 assigned');
+      await alice.shouldSeeTaskPlace('My tasks', '1 assigned');
 
       await alice.openRailSmartView('done');
       await alice.shouldSeeTaskPlace('Done', '1 completed');
@@ -85,7 +85,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('capture');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
 
       await alice.openMobileBottomTab('work');
@@ -96,7 +96,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
 
       await alice.openMobileBottomTab('capture');
-      await alice.shouldSeeInboxTriageSurface(1);
+      await alice.shouldSeeInboxTriageSurface();
       await alice.shouldSeeMobileBottomTabs(['Capture', 'Process', 'Work', 'Review']);
     });
 

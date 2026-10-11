@@ -74,7 +74,7 @@ export function tasksBoardCopyForUrl(url: string | URL): TasksBoardCopy | null {
     return { heading: 'Upcoming', empty: 'No upcoming tasks' };
   }
   if (filter === 'mine') {
-    return { heading: 'Mine', empty: 'No tasks assigned to you' };
+    return { heading: 'My tasks', empty: 'No tasks assigned to you' };
   }
   if (filter === 'completed') {
     return { heading: 'Done', empty: 'No completed tasks' };

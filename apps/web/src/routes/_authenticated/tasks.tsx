@@ -29,7 +29,7 @@ import {
 } from '@/lib/live-query';
 import { memberLabel } from '@/api/auth';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { CheckSquare, Calendar, CalendarClock, List, CheckCheck, AlertCircle, User } from 'lucide-react';
+import { CheckSquare, Calendar, CalendarClock, ChevronLeft, List, CheckCheck, AlertCircle, User } from 'lucide-react';
 import { Header } from '@/components/header';
 import { MobileTasksRailDrawer } from '@/components/mobile-tasks-rail-drawer';
 import { PlaceHeading } from '@/components/place-heading';
@@ -796,23 +796,20 @@ function TasksPage() {
       data-task-surface=""
       className="container mx-auto max-w-2xl bg-background p-4"
     >
-      <Header
-        leading={
-          <div className="flex shrink-0 items-center gap-2">
-            <MobileTasksRailDrawer />
-            {allPile !== null ? (
-              <Link
-                to="/work"
-                data-back-to-work=""
-                aria-label="Back to Work"
-                className="shrink-0 whitespace-nowrap text-sm text-muted-foreground md:hidden"
-              >
-                ‹ Work
-              </Link>
-            ) : null}
-          </div>
-        }
-      />
+      <Header leading={<MobileTasksRailDrawer />} />
+      {allPile !== null ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="-ml-2 min-h-10 text-muted-foreground md:hidden"
+        >
+          <Link to="/work" data-back-to-work="" aria-label="Back to Work">
+            <ChevronLeft className="size-4" />
+            Work
+          </Link>
+        </Button>
+      ) : null}
       <PlaceHeading
         title={isReordering ? 'Reorder' : taskPlaceHeading(place)}
         subcopy={taskPlaceSubcopy(place, displayedCount)}
@@ -855,7 +852,7 @@ function TasksPage() {
           </TabsTrigger>
           <TabsTrigger value="mine" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <User className="h-4 w-4 shrink-0" />
-            <span className="truncate">Mine</span>
+            <span className="truncate">My tasks</span>
           </TabsTrigger>
           <TabsTrigger value="completed" className="flex items-center gap-1 px-2 sm:gap-2 sm:px-3">
             <CheckCheck className="h-4 w-4 shrink-0" />

@@ -46,7 +46,6 @@ function ProjectsPage() {
           type="button"
           variant="outline"
           data-review-new-project=""
-          className="md:hidden"
           onClick={() => setCreateOpen(true)}
         >
           + New project

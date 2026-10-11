@@ -15,7 +15,7 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 const tomorrow = (): string => new Date(Date.now() + 86_400_000).toISOString();
 
@@ -28,17 +28,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
     });
 
     it('opens the Inbox pane of captures from the rail, with Inbox first and the count badge', async () => {
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPane();
       await alice.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash']);
       await alice.shouldNotSeeSnoozedOrTrashOnRail();
       await alice.shouldSeeRailItems(railWith());
-      await alice.shouldNotSeeInboxCountOnRail();
+      await alice.shouldNotSeeProcessCountOnRail();
 
       await alice.createCapture({ content: 'Note one' });
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPane();
-      await alice.shouldSeeInboxCountOnRail(1);
+      await alice.shouldSeeProcessCountOnRail(1);
     });
 
     it('shows snoozed and trashed captures on their tabs while rail Inbox stays highlighted', async () => {
@@ -48,33 +48,33 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.snoozeCapture(later.id, tomorrow());
       await alice.trashCapture(gone.id);
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldBeOnInboxPaneTab('inbox');
       await alice.shouldSeeCaptureOnCurrentPane('Stay in inbox');
-      await alice.shouldSeeRailInboxHighlighted();
-      await alice.shouldSeeInboxCountOnRail(1);
+      await alice.shouldSeeRailCaptureHighlighted();
+      await alice.shouldSeeProcessCountOnRail(1);
 
       await alice.openInboxPaneTab('snoozed');
       await alice.shouldBeOnInboxPaneTab('snoozed');
       await alice.shouldSeeCaptureOnCurrentPane('Snooze later');
-      await alice.shouldSeeRailInboxHighlighted();
+      await alice.shouldSeeRailCaptureHighlighted();
       await alice.shouldNotSeeSnoozedOrTrashOnRail();
 
       await alice.openInboxPaneTab('trash');
       await alice.shouldBeOnInboxPaneTab('trash');
       await alice.shouldSeeCaptureOnCurrentPane('Trash me');
-      await alice.shouldSeeRailInboxHighlighted();
+      await alice.shouldSeeRailCaptureHighlighted();
     });
 
     it('keeps Promote / Snooze / Trash on an inbox capture and has no checkbox, drag, or due date', async () => {
       await alice.createCapture({ content: 'Triage me' });
 
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeInboxCaptureActions('Triage me');
     });
 
     it('keeps quick-add on the Inbox tab and Promote as a sheet', async () => {
-      await alice.openRailInbox();
+      await alice.openRailCapture();
       await alice.shouldSeeQuickAddCapture();
 
       const capture = await alice.createCapture({ content: 'Promote me' });
@@ -124,7 +124,7 @@ usingDrivers(['http'] as const, (ctx) => {
         token: 'any-token',
       }) as BrowserActor;
 
-      await expect(actor.openRailInbox()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.openRailCapture()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldBeOnInboxPane()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeInboxPaneTabs(['Inbox', 'Snoozed', 'Trash'])).rejects.toThrow(
         UnsupportedOperationError
@@ -134,7 +134,7 @@ usingDrivers(['http'] as const, (ctx) => {
       );
       await expect(actor.openInboxPaneTab('snoozed')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldBeOnInboxPaneTab('trash')).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.shouldSeeRailInboxHighlighted()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeRailCaptureHighlighted()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeCaptureOnCurrentPane('Later')).rejects.toThrow(
         UnsupportedOperationError
       );

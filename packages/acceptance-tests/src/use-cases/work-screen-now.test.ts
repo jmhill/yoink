@@ -314,17 +314,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
         { title: 'Golf leftover', owner: '' },
       ]);
       await alice.shouldSeeRailItems([
-        'Inbox',
-        'Now',
+        'Capture',
+        'Process',
+        'Work',
         'Today',
         'Upcoming',
-        'Mine',
+        'My tasks',
         'Done',
         'Chores',
         'Empty',
         'Weekend',
         'Unlisted',
         'New list',
+        'Review',
         'Alpha',
         'Bravo',
         'Charlie',
@@ -402,7 +404,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.toggleNowMine();
       await alice.shouldSeeNowMinePressed(true);
       await alice.openRailSmartView('today');
-      await alice.openRailNow();
+      await alice.openRailWork();
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowMinePressed(false);
     });
@@ -601,7 +603,7 @@ usingDrivers(['http'] as const, (ctx) => {
       }) as BrowserActor;
 
       await expect(actor.openWork()).rejects.toThrow(UnsupportedOperationError);
-      await expect(actor.openRailNow()).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.openRailWork()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.toggleNowMine()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeNowReady('all')).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.openNowListsSheet()).rejects.toThrow(UnsupportedOperationError);

@@ -534,10 +534,10 @@ export type BrowserActorOperations = {
   openWork(options?: { mine?: boolean }): Promise<void>;
 
   /**
-   * Open Now from the desktop/phone rail (`[data-rail-item="now"]`).
+   * Open Work from the desktop section row, or Now from the phone drawer.
    * Waits for `[data-now-ready][data-now-owner]`.
    */
-  openRailNow(): Promise<void>;
+  openRailWork(): Promise<void>;
 
   /**
    * Flip the Now Mine toggle and wait until the matching owner is ready.
@@ -680,7 +680,7 @@ export type BrowserActorOperations = {
   shouldNotSeeMinePileDropdown(): Promise<void>;
 
   /**
-   * Assert the rail Mine row is highlighted (not a named list).
+   * Assert the rail My tasks row is highlighted (not a named list).
    */
   shouldSeeRailMineHighlighted(): Promise<void>;
 
@@ -786,21 +786,64 @@ export type BrowserActorOperations = {
   shouldNotSeeNamedPileOnAll(name: string): Promise<void>;
 
   /**
-   * Assert the desktop app rail shows these labels in order
-   * (Inbox, Now, Today, Upcoming, Mine, Done, named lists, Unlisted, New list).
+   * Assert the visible app rail shows these labels in order.
+   * Desktop: Capture, Process, Work, smart views, lists, Review, projects.
+   * Phone drawer: Inbox, Now, smart views, lists, projects.
    */
   shouldSeeRailItems(labels: string[]): Promise<void>;
 
   /**
-   * Assert the rail Inbox item shows this capture count.
-   * Count must be positive — a zero badge is hidden.
+   * Assert the Process (desktop) or Inbox-mode (phone drawer) badge
+   * shows this capture count. Count must be positive — a zero badge is hidden.
    */
-  shouldSeeInboxCountOnRail(count: number): Promise<void>;
+  shouldSeeProcessCountOnRail(count: number): Promise<void>;
 
   /**
-   * Assert the rail Inbox item has no count badge (empty inbox).
+   * Assert the Process / Inbox-mode rail badge is hidden (empty inbox).
    */
-  shouldNotSeeInboxCountOnRail(): Promise<void>;
+  shouldNotSeeProcessCountOnRail(): Promise<void>;
+
+  /**
+   * Assert the desktop sidebar has Capture, Process, Work, and Review
+   * section rows in that order, with separators between them, Lists
+   * under Work, and projects under Review.
+   */
+  shouldSeeDesktopRailSections(): Promise<void>;
+
+  /**
+   * Assert this desktop section row is the only lit rail row.
+   */
+  shouldSeeRailSectionHighlighted(key: 'capture' | 'process' | 'work' | 'review'): Promise<void>;
+
+  /**
+   * Scroll the desktop sidebar until this rail label is in view.
+   */
+  scrollDesktopRailSoLabelIsVisible(label: string): Promise<void>;
+
+  /**
+   * Open Process from the desktop section row. Waits on `data-process-ready`.
+   */
+  openRailProcess(): Promise<void>;
+
+  /**
+   * Open Review from the desktop section row. Waits on `/projects` and `data-review-ready`.
+   */
+  openRailReview(): Promise<void>;
+
+  /**
+   * Assert this rail label is the only lit row.
+   */
+  shouldSeeRailRowHighlighted(label: string): Promise<void>;
+
+  /**
+   * Assert the Capture section row has no inbox-count badge.
+   */
+  shouldSeeNoCountOnCaptureSection(): Promise<void>;
+
+  /**
+   * Assert the phone “‹ Work” back row sits above the list title.
+   */
+  shouldSeeBackToWorkAbovePlaceHeading(): Promise<void>;
 
   /**
    * Assert the rail has a Lists heading above this named list
@@ -826,7 +869,7 @@ export type BrowserActorOperations = {
   openRailUnlisted(): Promise<void>;
 
   /**
-   * Open a smart view from the rail (Today, Upcoming, Mine, Done).
+   * Open a smart view from the rail (Today, Upcoming, My tasks, Done).
    */
   openRailSmartView(view: 'today' | 'upcoming' | 'mine' | 'done'): Promise<void>;
 
@@ -1254,10 +1297,10 @@ export type BrowserActorOperations = {
   addTaskOnCurrentView(title: string): Promise<Task>;
 
   /**
-   * Open Inbox from the rail. Lands on the Inbox pane of captures (`/`),
-   * not Tasks.
+   * Open Capture from the desktop section row, or Inbox from the phone
+   * drawer. Lands on the capture pane (`/`), not Tasks.
    */
-  openRailInbox(): Promise<void>;
+  openRailCapture(): Promise<void>;
 
   /**
    * Assert the current screen is the Inbox pane of captures: `/`, Inbox tab
@@ -1287,9 +1330,10 @@ export type BrowserActorOperations = {
   shouldBeOnInboxPaneTab(tab: 'inbox' | 'snoozed' | 'trash'): Promise<void>;
 
   /**
-   * Assert the rail Inbox row is highlighted (including on Snoozed / Trash).
+   * Assert the Capture section (desktop) or Inbox mode row (phone drawer)
+   * is highlighted, including on Snoozed / Trash.
    */
-  shouldSeeRailInboxHighlighted(): Promise<void>;
+  shouldSeeRailCaptureHighlighted(): Promise<void>;
 
   /**
    * Assert this capture is visible on the current pane (no navigation).
@@ -1326,11 +1370,10 @@ export type BrowserActorOperations = {
   trashCaptureBySwipe(content: string): Promise<void>;
 
   /**
-   * Assert the current screen is the Inbox capture pane’s triage
-   * surface (not the task checklist surface): heading Inbox, and
-   * subcopy that this many captures are to process as references & triage.
+   * Assert the current screen is the Capture pane (not the task
+   * checklist surface): heading Capture, no to-process subtitle.
    */
-  shouldSeeInboxTriageSurface(toProcessCount: number): Promise<void>;
+  shouldSeeInboxTriageSurface(): Promise<void>;
 
   /**
    * Assert the current screen is a task pile/smart view on the existing

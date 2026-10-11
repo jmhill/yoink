@@ -11,7 +11,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWithout = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Capture', 'Process', 'Work', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'Review', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Deleting a named list from the rail [${ctx.driverName}]`, () => {
@@ -29,7 +29,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeNamedListOverflowOnRail('Inbox');
       await alice.shouldNotSeeNamedListOverflowOnRail('Today');
       await alice.shouldNotSeeNamedListOverflowOnRail('Upcoming');
-      await alice.shouldNotSeeNamedListOverflowOnRail('Mine');
+      await alice.shouldNotSeeNamedListOverflowOnRail('My tasks');
       await alice.shouldNotSeeNamedListOverflowOnRail('Done');
       await alice.shouldNotSeeNamedListOverflowOnRail('New list');
     });

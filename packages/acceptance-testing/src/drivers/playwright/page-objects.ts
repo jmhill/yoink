@@ -391,7 +391,7 @@ export class InboxPage {
   }
 
   triageHeading() {
-    return this.page.getByRole('heading', { name: 'Inbox', level: 1 });
+    return this.triageSurface().locator('[data-place-heading]');
   }
 
   triageSubcopy() {
@@ -913,7 +913,7 @@ export class TasksPage {
       today: 'Today',
       upcoming: /Upcoming|Soon/,
       completed: 'Done',
-      mine: 'Mine',
+      mine: 'My tasks',
     }[filter];
     await this.page.getByRole('tab', { name }).click();
   }
@@ -2179,6 +2179,24 @@ export class AppRail {
     const labels: string[] = [];
     for (let i = 0; i < count; i++) {
       const label = await items.nth(i).getAttribute('data-rail-label');
+      if (label) {
+        labels.push(label);
+      }
+    }
+    return labels;
+  }
+
+  sectionRow(key: string) {
+    return this.root().locator(`[data-rail-section="${key}"]`);
+  }
+
+  async sectionHeadings(): Promise<string[]> {
+    await this.waitForVisible();
+    const rows = this.root().locator('[data-rail-item="section"]');
+    const count = await rows.count();
+    const labels: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const label = await rows.nth(i).getAttribute('data-rail-label');
       if (label) {
         labels.push(label);
       }

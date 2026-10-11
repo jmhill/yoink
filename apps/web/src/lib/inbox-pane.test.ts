@@ -22,14 +22,14 @@ describe('inbox pane tabs', () => {
 });
 
 describe('inbox triage heading', () => {
-  it('keeps the pane titled Inbox', () => {
-    expect(INBOX_TRIAGE_HEADING).toBe('Inbox');
+  it('keeps the pane titled Capture', () => {
+    expect(INBOX_TRIAGE_HEADING).toBe('Capture');
   });
 
-  it('reads as triage and references, not open tasks', () => {
-    expect(inboxTriageSubcopy(0)).toBe('0 to process · references & triage');
-    expect(inboxTriageSubcopy(1)).toBe('1 to process · references & triage');
-    expect(inboxTriageSubcopy(4)).toBe('4 to process · references & triage');
-    expect(inboxTriageSubcopy(4)).not.toMatch(/open tasks/i);
+  it('has no subtitle — the to-process count belongs on Process', () => {
+    expect(inboxTriageSubcopy(0)).toBe('');
+    expect(inboxTriageSubcopy(1)).toBe('');
+    expect(inboxTriageSubcopy(4)).toBe('');
+    expect(inboxTriageSubcopy(4)).not.toMatch(/to process|open tasks/i);
   });
 });

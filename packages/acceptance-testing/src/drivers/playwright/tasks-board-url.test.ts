@@ -41,7 +41,7 @@ describe('tasksBoardCopyForUrl', () => {
       empty: 'No upcoming tasks',
     });
     expect(tasksBoardCopyForUrl('http://localhost/tasks?filter=mine')).toEqual({
-      heading: 'Mine',
+      heading: 'My tasks',
       empty: 'No tasks assigned to you',
     });
     expect(tasksBoardCopyForUrl('http://localhost/tasks?filter=completed')).toEqual({

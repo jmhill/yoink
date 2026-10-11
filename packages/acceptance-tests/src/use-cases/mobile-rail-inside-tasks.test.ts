@@ -19,7 +19,7 @@ import { ConflictError, UnsupportedOperationError } from '@yoink/acceptance-test
  */
 
 const railWith = (...names: string[]): string[] =>
-  ['Inbox', 'Now', 'Today', 'Upcoming', 'Mine', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
+  ['Inbox', 'Now', 'Today', 'Upcoming', 'My tasks', 'Done', ...names, 'Unlisted', 'New list', 'New project'];
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Mobile Tasks rail drawer [${ctx.driverName}]`, () => {

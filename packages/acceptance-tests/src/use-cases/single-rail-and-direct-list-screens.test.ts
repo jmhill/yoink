@@ -34,35 +34,39 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.createNamedList('Weekend');
 
       await alice.shouldSeeRailItems([
-        'Inbox',
-        'Now',
+        'Capture',
+        'Process',
+        'Work',
         'Today',
         'Upcoming',
-        'Mine',
+        'My tasks',
         'Done',
         'Groceries',
         'Weekend',
         'Unlisted',
         'New list',
+        'Review',
         'New project',
       ]);
-      await alice.shouldSeeInboxCountOnRail(2);
+      await alice.shouldSeeProcessCountOnRail(2);
       await alice.shouldSeeListsHeadingAboveNamedList('Groceries');
     });
 
     it('hides the Inbox count badge when the inbox is empty', async () => {
       await alice.shouldSeeRailItems([
-        'Inbox',
-        'Now',
+        'Capture',
+        'Process',
+        'Work',
         'Today',
         'Upcoming',
-        'Mine',
+        'My tasks',
         'Done',
         'Unlisted',
         'New list',
+        'Review',
         'New project',
       ]);
-      await alice.shouldNotSeeInboxCountOnRail();
+      await alice.shouldNotSeeProcessCountOnRail();
     });
 
     it('opens a named list from the rail onto the existing one-pile with add-task and reorder', async () => {
@@ -174,15 +178,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeEmptyNamedPile();
       await alice.shouldSeeNamedPileOnAll('Groceries');
       await alice.shouldSeeRailItems([
-        'Inbox',
-        'Now',
+        'Capture',
+        'Process',
+        'Work',
         'Today',
         'Upcoming',
-        'Mine',
+        'My tasks',
         'Done',
         'Groceries',
         'Unlisted',
         'New list',
+        'Review',
         'New project',
       ]);
     });

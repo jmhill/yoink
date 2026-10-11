@@ -1,4 +1,8 @@
+import { MOBILE_TAB_DESTINATIONS, activeMobileTab, processBadgeCount, type MobileTabKey } from './mobile-tabs';
 import { showsNoNextActionWarning } from './project-next-action';
+
+/** Visible label for the Mine smart view. Now’s Mine toggle stays “Mine”. */
+export const RAIL_MY_TASKS_LABEL = 'My tasks';
 
 export const RAIL_SMART_VIEWS = ['today', 'upcoming', 'mine', 'done'] as const;
 
@@ -90,7 +94,7 @@ export function buildAppRailItems(input: {
     { kind: 'now', label: 'Now' },
     { kind: 'smart', key: 'today', label: 'Today' },
     { kind: 'smart', key: 'upcoming', label: 'Upcoming' },
-    { kind: 'smart', key: 'mine', label: 'Mine' },
+    { kind: 'smart', key: 'mine', label: RAIL_MY_TASKS_LABEL },
     { kind: 'smart', key: 'done', label: 'Done' },
     ...input.namedLists.map((list) => ({
       kind: 'named' as const,
@@ -230,3 +234,164 @@ export function railItemHasOverflow(item: RailItem): boolean {
  */
 export const RAIL_LABEL_WRAP_CLASS =
   'min-w-0 flex-1 whitespace-normal break-normal [overflow-wrap:normal]';
+
+export type DesktopRailSection = {
+  key: MobileTabKey;
+  label: string;
+  to: (typeof MOBILE_TAB_DESTINATIONS)[number]['to'];
+  items: RailItem[];
+  badge: number | null;
+};
+
+const workSectionItems = (namedLists: RailNamedList[]): RailItem[] => [
+  { kind: 'smart', key: 'today', label: 'Today' },
+  { kind: 'smart', key: 'upcoming', label: 'Upcoming' },
+  { kind: 'smart', key: 'mine', label: RAIL_MY_TASKS_LABEL },
+  { kind: 'smart', key: 'done', label: 'Done' },
+  ...namedLists.map((list) => ({
+    kind: 'named' as const,
+    listId: list.id,
+    label: list.name,
+  })),
+  { kind: 'unlisted', label: 'Unlisted' },
+  { kind: 'new-list', label: 'New list' },
+];
+
+const reviewSectionItems = (projects: RailProject[]): RailItem[] => {
+  const { open, someday } = partitionRailProjects(projects);
+  return [
+    ...open.map((project) => ({
+      kind: 'project' as const,
+      projectId: project.id,
+      label: project.name,
+      missingNextAction: showsNoNextActionWarning({
+        status: project.status,
+        nextActionTaskId: project.nextActionTaskId ?? null,
+      }),
+    })),
+    ...someday.map((project) => ({
+      kind: 'someday-project' as const,
+      projectId: project.id,
+      label: project.name,
+    })),
+    { kind: 'new-project', label: 'New project' },
+  ];
+};
+
+const itemsForDesktopSection = (
+  key: MobileTabKey,
+  input: { namedLists: RailNamedList[]; projects: RailProject[] }
+): RailItem[] => {
+  if (key === 'work') {
+    return workSectionItems(input.namedLists);
+  }
+  if (key === 'review') {
+    return reviewSectionItems(input.projects);
+  }
+  return [];
+};
+
+/**
+ * Desktop sidebar: four section rows from the phone tabs, with Work’s
+ * smart views + lists and Review’s projects indented underneath.
+ */
+export function buildDesktopRailSections(input: {
+  inboxCount: number;
+  namedLists: RailNamedList[];
+  projects?: RailProject[];
+}): DesktopRailSection[] {
+  const namedLists = input.namedLists;
+  const projects = input.projects ?? [];
+  return MOBILE_TAB_DESTINATIONS.map((tab) => ({
+    key: tab.key,
+    label: tab.label,
+    to: tab.to,
+    items: itemsForDesktopSection(tab.key, { namedLists, projects }),
+    badge: tab.key === 'process' ? processBadgeCount(input.inboxCount) : null,
+  }));
+}
+
+export function desktopRailLabels(sections: DesktopRailSection[]): string[] {
+  return sections.flatMap((section) => [
+    section.label,
+    ...section.items.map((item) => item.label),
+  ]);
+}
+
+const SMART_VIEW_ITEMS: RailItem[] = [
+  { kind: 'smart', key: 'today', label: 'Today' },
+  { kind: 'smart', key: 'upcoming', label: 'Upcoming' },
+  { kind: 'smart', key: 'mine', label: RAIL_MY_TASKS_LABEL },
+  { kind: 'smart', key: 'done', label: 'Done' },
+];
+
+const projectIdFromPath = (pathname: string): string | null => {
+  const prefix = '/projects/';
+  if (!pathname.startsWith(prefix)) {
+    return null;
+  }
+  const rest = pathname.slice(prefix.length);
+  if (rest === '' || rest.startsWith('imports/') || rest.includes('/')) {
+    return null;
+  }
+  return rest;
+};
+
+const activeWorkChildRow = (location: RailLocation): string | null => {
+  const namedItems: RailItem[] =
+    location.pile !== undefined && location.pile !== 'unlisted'
+      ? [{ kind: 'named', listId: location.pile, label: '' }]
+      : [];
+  const candidates: RailItem[] = [
+    ...SMART_VIEW_ITEMS,
+    { kind: 'unlisted', label: 'Unlisted' },
+    ...namedItems,
+  ];
+  const hit = candidates.find((item) => isRailItemActive(item, location));
+  return hit === undefined ? null : railItemKey(hit);
+};
+
+const activeReviewChildRow = (location: RailLocation): string | null => {
+  if (location.pathname === '/projects' || location.pathname.startsWith('/projects/imports/')) {
+    return null;
+  }
+  const projectId = projectIdFromPath(location.pathname);
+  if (projectId === null) {
+    return null;
+  }
+  const projectItem: RailItem = {
+    kind: 'project',
+    projectId,
+    label: '',
+    missingNextAction: false,
+  };
+  if (isRailItemActive(projectItem, location)) {
+    return railItemKey(projectItem);
+  }
+  const somedayItem: RailItem = { kind: 'someday-project', projectId, label: '' };
+  if (isRailItemActive(somedayItem, location)) {
+    return railItemKey(somedayItem);
+  }
+  return null;
+};
+
+/**
+ * The one desktop row to light: a section key or a child `railItemKey`.
+ * Section membership comes from `activeMobileTab`; child rows reuse
+ * `isRailItemActive`. Settings and unknown paths light nothing.
+ */
+export function activeDesktopRailRow(location: RailLocation): string | null {
+  const tab = activeMobileTab(location.pathname);
+  if (tab === null) {
+    return null;
+  }
+  if (tab === 'work') {
+    const child = activeWorkChildRow(location);
+    return child ?? 'work';
+  }
+  if (tab === 'review') {
+    const child = activeReviewChildRow(location);
+    return child ?? 'review';
+  }
+  return tab;
+}

@@ -48,7 +48,7 @@ export function taskPlaceHeading(place: TaskPlace): string {
     return 'Upcoming';
   }
   if (place.kind === 'mine') {
-    return 'Mine';
+    return 'My tasks';
   }
   if (place.kind === 'done') {
     return 'Done';

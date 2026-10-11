@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   RAIL_LABEL_WRAP_CLASS,
+  RAIL_MY_TASKS_LABEL,
+  activeDesktopRailRow,
   buildAppRailItems,
+  buildDesktopRailSections,
+  desktopRailLabels,
   isRailItemActive,
   railItemHasOverflow,
   railItemKey,
@@ -17,6 +21,7 @@ import {
   partitionRailProjects,
   shouldShowProjectsHeadingBefore,
 } from './app-rail';
+import { MOBILE_TABS, processBadgeCount } from './mobile-tabs';
 
 const groceriesId = '00000000-0000-0000-0000-000000000010';
 const weekendId = '00000000-0000-0000-0000-000000000011';
@@ -35,7 +40,7 @@ describe('buildAppRailItems', () => {
       'Now',
       'Today',
       'Upcoming',
-      'Mine',
+      'My tasks',
       'Done',
       'Groceries',
       'Weekend',
@@ -264,6 +269,145 @@ describe('shouldShowProjectsHeadingBefore', () => {
     expect(RAIL_SOMEDAY_HEADING).toBe('Someday');
     expect(items[items.length - 1]).toMatchObject({ kind: 'new-project' });
     expect(flags[flags.length - 1]).toBe(true);
+  });
+});
+
+describe('buildDesktopRailSections', () => {
+  const gardenId = '00000000-0000-0000-0000-000000000030';
+  const laterId = '00000000-0000-0000-0000-000000000031';
+
+  it('uses the phone tab order, keys, and labels', () => {
+    const sections = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
+
+    expect(sections.map((section) => section.key)).toEqual(MOBILE_TABS.map((tab) => tab.key));
+    expect(sections.map((section) => section.label)).toEqual(MOBILE_TABS.map((tab) => tab.label));
+    expect(sections.map((section) => section.to)).toEqual(MOBILE_TABS.map((tab) => tab.to));
+  });
+
+  it('puts smart views and lists under Work, and projects under Review', () => {
+    const sections = buildDesktopRailSections({
+      inboxCount: 3,
+      namedLists,
+      projects: [
+        { id: gardenId, name: 'Garden', status: 'active', nextActionTaskId: null },
+        { id: laterId, name: 'Later', status: 'someday' },
+      ],
+    });
+    const byKey = Object.fromEntries(sections.map((section) => [section.key, section]));
+
+    expect(byKey.capture?.items).toEqual([]);
+    expect(byKey.process?.items).toEqual([]);
+    expect(byKey.process?.badge).toBe(3);
+    expect(railItemLabels(byKey.work?.items ?? [])).toEqual([
+      'Today',
+      'Upcoming',
+      RAIL_MY_TASKS_LABEL,
+      'Done',
+      'Groceries',
+      'Weekend',
+      'Unlisted',
+      'New list',
+    ]);
+    expect(railItemLabels(byKey.review?.items ?? [])).toEqual([
+      'Garden',
+      'Later',
+      'New project',
+    ]);
+    expect(desktopRailLabels(sections)).toEqual([
+      'Capture',
+      'Process',
+      'Work',
+      'Today',
+      'Upcoming',
+      'My tasks',
+      'Done',
+      'Groceries',
+      'Weekend',
+      'Unlisted',
+      'New list',
+      'Review',
+      'Garden',
+      'Later',
+      'New project',
+    ]);
+  });
+
+  it('keeps Unlisted and New list when there are no named lists', () => {
+    const sections = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
+    const work = sections.find((section) => section.key === 'work');
+
+    expect(railItemLabels(work?.items ?? [])).toEqual([
+      'Today',
+      'Upcoming',
+      'My tasks',
+      'Done',
+      'Unlisted',
+      'New list',
+    ]);
+  });
+
+  it('keeps New project when there are no projects', () => {
+    const sections = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
+    const review = sections.find((section) => section.key === 'review');
+
+    expect(railItemLabels(review?.items ?? [])).toEqual(['New project']);
+  });
+
+  it('lists someday-only projects under Review without inventing open ones', () => {
+    const sections = buildDesktopRailSections({
+      inboxCount: 0,
+      namedLists: [],
+      projects: [{ id: laterId, name: 'Later', status: 'someday' }],
+    });
+    const review = sections.find((section) => section.key === 'review');
+
+    expect(railItemLabels(review?.items ?? [])).toEqual(['Later', 'New project']);
+    expect(review?.items[0]).toMatchObject({ kind: 'someday-project', projectId: laterId });
+  });
+
+  it('reuses processBadgeCount for the Process badge, null at 0', () => {
+    const empty = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
+    const counted = buildDesktopRailSections({ inboxCount: 19, namedLists: [] });
+    const processEmpty = empty.find((section) => section.key === 'process');
+    const processCounted = counted.find((section) => section.key === 'process');
+
+    expect(processEmpty?.badge).toBe(processBadgeCount(0));
+    expect(processEmpty?.badge).toBeNull();
+    expect(processCounted?.badge).toBe(processBadgeCount(19));
+    expect(processCounted?.badge).toBe(19);
+    expect(empty.find((section) => section.key === 'capture')?.badge).toBeNull();
+  });
+});
+
+describe('activeDesktopRailRow', () => {
+  it.each([
+    [{ pathname: '/' }, 'capture'],
+    [{ pathname: '/snoozed' }, 'capture'],
+    [{ pathname: '/trash' }, 'capture'],
+    [{ pathname: '/process' }, 'process'],
+    [{ pathname: '/work' }, 'work'],
+    [{ pathname: '/work', filter: 'ignored' }, 'work'],
+    [{ pathname: '/tasks', filter: 'today' }, 'today'],
+    [{ pathname: '/tasks', filter: 'upcoming' }, 'upcoming'],
+    [{ pathname: '/tasks', filter: 'mine' }, 'mine'],
+    [{ pathname: '/tasks', filter: 'completed' }, 'done'],
+    [{ pathname: '/tasks', pile: groceriesId }, groceriesId],
+    [{ pathname: '/tasks', pile: 'unlisted' }, 'unlisted'],
+    [{ pathname: '/projects' }, 'review'],
+    [
+      { pathname: '/projects/imports/00000000-0000-0000-0000-000000000099' },
+      'review',
+    ],
+    [{ pathname: '/projects/00000000-0000-0000-0000-000000000030' }, '00000000-0000-0000-0000-000000000030'],
+    [{ pathname: '/projects/00000000-0000-0000-0000-000000000031' }, '00000000-0000-0000-0000-000000000031'],
+    [{ pathname: '/settings' }, null],
+    [{ pathname: '/not-a-route' }, null],
+  ] as const)('lights %j as %s', (location, expected) => {
+    expect(activeDesktopRailRow(location)).toBe(expected);
+  });
+
+  it('lights Work on /work?mine=true (Now’s Mine toggle, not the smart view)', () => {
+    expect(activeDesktopRailRow({ pathname: '/work' })).toBe('work');
   });
 });
 

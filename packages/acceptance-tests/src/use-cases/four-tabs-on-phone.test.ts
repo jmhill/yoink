@@ -246,7 +246,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(created.name).toBe('From Drawer');
     }, 90_000);
 
-    it('leaves the desktop rail, ⌘K, and Now unchanged; /process has no rail item', async () => {
+    it('shows four desktop sections and lights Process on /process', async () => {
       await alice.createNamedList('Groceries');
       await alice.createProject({ name: 'Garden' });
       await alice.createCapture({ content: 'Desktop clip' });
@@ -255,21 +255,23 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeMobileBottomNav();
       await alice.shouldSeeDesktopAppRail();
       await alice.shouldSeeRailItems([
-        'Inbox',
-        'Now',
+        'Capture',
+        'Process',
+        'Work',
         'Today',
         'Upcoming',
-        'Mine',
+        'My tasks',
         'Done',
         'Groceries',
         'Unlisted',
         'New list',
+        'Review',
         'Garden',
         'New project',
       ]);
 
-      await alice.openRailInbox();
-      await alice.shouldSeeRailInboxHighlighted();
+      await alice.openRailCapture();
+      await alice.shouldSeeRailCaptureHighlighted();
       await alice.shouldSeeQuickAddCapture();
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'inbox' });
 
@@ -279,7 +281,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.openProcess();
       await alice.shouldSeeProcessReady();
-      await alice.shouldSeeNoRailItemHighlighted();
+      await alice.shouldSeeRailSectionHighlighted('process');
       await alice.shouldNotSeeMobileBottomNav();
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process' });
 

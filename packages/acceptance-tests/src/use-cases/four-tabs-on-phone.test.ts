@@ -254,6 +254,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport(DESKTOP_1440);
       await alice.shouldNotSeeMobileBottomNav();
       await alice.shouldSeeDesktopAppRail();
+      await alice.openRailReview();
       await alice.shouldSeeRailItems([
         'Capture',
         'Process',

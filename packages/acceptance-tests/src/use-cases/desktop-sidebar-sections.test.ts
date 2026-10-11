@@ -62,6 +62,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await alice.useDesktopViewport(DESKTOP);
       await alice.shouldSeeDesktopAppRail();
+      await alice.openRailReview();
       await alice.shouldSeeDesktopRailSections();
       await alice.shouldSeeRailItems(
         desktopRailWith(['Chores', 'Groceries'], ['Garden', 'Later', 'Shed'])
@@ -282,6 +283,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'work_drawer_unchanged',
       });
 
+      await alice.openRailWork();
       await alice.openNowListsSheet();
       await alice.pickNowList(groceries.id);
       await alice.shouldBeOnAllNamedPile(groceries.id);

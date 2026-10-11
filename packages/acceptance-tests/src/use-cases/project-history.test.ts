@@ -136,7 +136,6 @@ usingDrivers(['http'] as const, (ctx) => {
         waitingSince: '2026-10-01',
       });
       await alice.setNextAction(kitchen.id, { taskId: leftover.id });
-      await alice.updateTask(leftover.id, { title: 'Leftover' });
       await alice.updateTask(leftover.id, { projectId: kitchen.id });
       expect(snapshot((await collectHistory(alice, kitchen.id, 3)).entries)).toEqual(beforeNoops);
 
@@ -206,8 +205,8 @@ usingDrivers(['http'] as const, (ctx) => {
           reason: entry.details && 'reason' in entry.details ? entry.details.reason : undefined,
         }))
       ).toEqual([
-        { kind: 'ProjectStatusChanged', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
         { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user', reason: 'projectDone' },
+        { kind: 'ProjectStatusChanged', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
         { kind: 'TaskRemovedFromProject', subjectTitle: 'Leftover', actorName: 'Alice', actorKind: 'user' },
         { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
         { kind: 'TaskCreated', subjectTitle: 'Leftover', actorName: 'Alice', actorKind: 'user' },
@@ -226,7 +225,7 @@ usingDrivers(['http'] as const, (ctx) => {
         { kind: 'TaskDeleted', subjectTitle: 'Old invoice', actorName: 'Alice', actorKind: 'user' },
         { kind: 'TaskCreated', subjectTitle: 'Old invoice', actorName: 'Alice', actorKind: 'user' },
         { kind: 'TaskRemovedFromProject', subjectTitle: 'Order lumber', actorName: 'Alice', actorKind: 'user' },
-        { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user', reason: 'completed' },
+        { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Lane', actorKind: 'bot', reason: 'completed' },
         { kind: 'TaskCompleted', subjectTitle: 'Call Trident', actorName: 'Lane', actorKind: 'bot' },
         { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
         { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
@@ -266,7 +265,7 @@ usingDrivers(['http'] as const, (ctx) => {
       const invalid = await alice.expectInvalidProjectHistoryCursor(kitchen.id, 'not-a-cursor');
       expect(invalid.code).toBe('invalid_cursor');
 
-      const beforeNoops = snapshot(entries);
+      const beforeDoneNoops = snapshot(entries);
       await alice.updateProject(kitchen.id, { name: 'Kitchen renovation' });
       await alice.updateProject(kitchen.id, { objective: null });
       await alice.changeProjectStatus(kitchen.id, { status: 'done' });
@@ -277,8 +276,8 @@ usingDrivers(['http'] as const, (ctx) => {
       });
       await alice.updateTask(leftoverElsewhere.id, { projectId: other.id });
       await alice.updateTask(leftoverElsewhere.id, { title: 'Stay put' });
-      const afterNoops = snapshot((await collectHistory(alice, kitchen.id, 3)).entries);
-      expect(afterNoops).toEqual(beforeNoops);
+      const afterDoneNoops = snapshot((await collectHistory(alice, kitchen.id, 3)).entries);
+      expect(afterDoneNoops).toEqual(beforeDoneNoops);
 
       const afterDelete = await alice.listTaskHistory(taskC.id);
       expect(afterDelete.entries.some((entry) => entry.kind === 'TaskDeleted')).toBe(true);

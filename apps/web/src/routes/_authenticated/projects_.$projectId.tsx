@@ -272,7 +272,10 @@ function ProjectPage() {
       return 'Unknown';
     }
     const member = members.find((item) => item.userId === task.completedBy);
-    return member ? memberLabel(member) : 'Unknown';
+    if (!member) {
+      return 'Unknown';
+    }
+    return member.name ?? member.email;
   };
 
   const handleSaveEdit = (

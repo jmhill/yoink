@@ -391,7 +391,7 @@ export type MintedAgent = {
 };
 
 export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): string =>
-  member.name ?? (member.kind === 'agent' ? 'Agent' : member.email);
+  member.kind === 'agent' ? (member.name ?? 'Agent') : member.email;
 
 /**
  * List members of the current organization.

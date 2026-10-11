@@ -334,8 +334,17 @@ describe('handleUpdateTask', () => {
     };
     const onGarden: Task = { ...current, projectId: garden.id };
     const extrasKinds: string[] = [];
-    const persist: PersistTaskChange = (_plan, extras) => {
+    const membership: Array<{ kind: string; payload: unknown }> = [];
+    const persist: PersistTaskChange = (plan, extras) => {
       extrasKinds.push(...(extras?.project?.records.map((record) => record.kind) ?? []));
+      for (const record of plan.records) {
+        if (
+          record.kind === 'TaskRemovedFromProject' ||
+          record.kind === 'TaskAddedToProject'
+        ) {
+          membership.push({ kind: record.kind, payload: record.payload });
+        }
+      }
       return okAsync(undefined);
     };
 
@@ -359,5 +368,19 @@ describe('handleUpdateTask', () => {
 
     expect(result.isOk()).toBe(true);
     expect(extrasKinds).toContain('ProjectNextActionCleared');
+    expect(membership).toEqual([
+      {
+        kind: 'TaskRemovedFromProject',
+        payload: {
+          projectId: garden.id,
+          toProjectId: cabin.id,
+          toProjectName: 'Cabin',
+        },
+      },
+      {
+        kind: 'TaskAddedToProject',
+        payload: { projectId: cabin.id, projectName: 'Cabin' },
+      },
+    ]);
   });
 });

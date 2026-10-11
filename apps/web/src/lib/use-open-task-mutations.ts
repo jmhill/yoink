@@ -6,10 +6,12 @@ import { tsrTasks } from '@/api/client';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
+  mapLiveNowSections,
   mapLiveOpenTaskLists,
   mapLiveProjects,
   projectsWithNextAction,
   restoreQuerySnapshots,
+  snapshotLiveNowSections,
   snapshotLiveOpenTaskLists,
   snapshotLiveProjects,
 } from '@/lib/live-query';
@@ -48,10 +50,12 @@ export const useOpenTaskMutations = (
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
       const previousProjects = snapshotLiveProjects(queryClient);
+      const previousNow = snapshotLiveNowSections(queryClient);
       const nextActionProjects = projectsWithNextAction(queryClient, params.id);
       mapLiveOpenTaskLists(queryClient, (tasks) =>
         tasks.filter((task) => task.id !== params.id)
       );
+      mapLiveNowSections(queryClient, params.id);
       mapLiveProjects(queryClient, (project) =>
         project.nextActionTaskId === params.id
           ? { ...project, nextActionTaskId: null }
@@ -65,7 +69,7 @@ export const useOpenTaskMutations = (
           completedTaskId: params.id,
         });
       }
-      return { previous, previousProjects };
+      return { previous, previousProjects, previousNow };
     },
     onError: (err, _variables, context) => {
       if (context?.previous) {
@@ -73,6 +77,9 @@ export const useOpenTaskMutations = (
       }
       if (context?.previousProjects) {
         restoreQuerySnapshots(queryClient, context.previousProjects);
+      }
+      if (context?.previousNow) {
+        restoreQuerySnapshots(queryClient, context.previousNow);
       }
       dismissWhatsNext();
       if (isFetchError(err)) {
@@ -94,11 +101,13 @@ export const useOpenTaskMutations = (
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
       const previousProjects = snapshotLiveProjects(queryClient);
+      const previousNow = snapshotLiveNowSections(queryClient);
       const completedKey = ['tasks', 'completed'] as const;
       const previousCompleted = queryClient.getQueryData(completedKey);
       mapLiveOpenTaskLists(queryClient, (tasks) =>
         tasks.filter((task) => task.id !== params.id)
       );
+      mapLiveNowSections(queryClient, params.id);
       mapLiveProjects(queryClient, (project) =>
         project.nextActionTaskId === params.id
           ? { ...project, nextActionTaskId: null }
@@ -112,7 +121,7 @@ export const useOpenTaskMutations = (
           )
         );
       }
-      return { previous, previousProjects, previousCompleted, completedKey };
+      return { previous, previousProjects, previousNow, previousCompleted, completedKey };
     },
     onError: (err, _variables, context) => {
       if (context?.previous) {
@@ -120,6 +129,9 @@ export const useOpenTaskMutations = (
       }
       if (context?.previousProjects) {
         restoreQuerySnapshots(queryClient, context.previousProjects);
+      }
+      if (context?.previousNow) {
+        restoreQuerySnapshots(queryClient, context.previousNow);
       }
       if (context?.completedKey) {
         queryClient.setQueryData(context.completedKey, context.previousCompleted);

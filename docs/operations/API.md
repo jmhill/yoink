@@ -6,14 +6,16 @@ List endpoints never omit a page marker: every list response includes `hasMore`
 last). They also include `total` (the matching row count).
 
 Working-set reads — a named list’s pile, Unlisted, Today, Upcoming, Mine, the
-open-task feed (`filter=all`), Inbox, Snoozed, and named lists — return the
-whole pile in **one request**, up to a safety cap of 1000. If that cap is hit,
-`hasMore` is `true` and `nextCursor` points at the next page. History
-(completed/Done tasks, trashed captures) stays paged (default 50).
+open-task feed (`filter=all`), Inbox, Snoozed, named lists, and Now
+(`GET /api/work/next-actions`, `GET /api/work/due`, `GET /api/work/lists`) —
+return the whole pile in **one request**, up to a safety cap of 1000. If that
+cap is hit, `hasMore` is `true` and `nextCursor` points at the next page.
+History (completed/Done tasks, trashed captures) stays paged (default 50).
 
 Cursors are opaque keysets tagged with the list view (board, completed, pile,
 lists, projects, capture feed, snoozed, project/task history, finished project
-tasks) plus the sort keys for that view. Resume with
+tasks, work next-actions / due / lists) plus the sort keys for that view.
+Resume with
 the previous page’s `nextCursor` on the **same** list. A malformed cursor,
 a cursor from another view, or the wrong key shape is `400` with
 `code: "invalid_cursor"` — never an empty page that looks done. Completing,
@@ -50,6 +52,14 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/lists"
 
+# Now (Work): next actions, due, lists with counts
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/next-actions"
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/due"
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/lists"
+
 # Inbox (exclude snoozed)
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/captures?status=inbox&snoozed=false"
@@ -72,6 +82,56 @@ Example complete response (small board):
 
 If `hasMore` is `true`, keep going with `cursor` set to `nextCursor`. Never
 treat a truncated page as the full pile.
+
+## Work: Now and lists
+
+Now is a read-only working set for the Work screen. Loop while `hasMore` is
+true; omit `limit` (or pass `limit=1000`) so a bot gets the full pile in one
+request. `owner` is `all` (default) or `me`. `me` keeps only tasks assigned to
+the caller (`callerId`, the same rule as `GET /api/tasks?filter=mine`);
+unowned rows are left out. A bad `owner` is `400` from query validation.
+
+Viewer today is a pure input: send `timeZone` (IANA) and/or `today`
+(`YYYY-MM-DD`). When neither is sent, today is `(now, America/Chicago)`.
+The same query parameters apply to `GET /api/tasks?filter=today|upcoming`.
+
+`GET /api/work/next-actions` returns `{ items: { task, project: { id, name } }[], hasMore, nextCursor, total }`.
+Each row is an **active** project whose `next_action_task_id` points at an
+open, non-deleted task in the same org. Waiting, someday, done, and proposed
+projects never appear. Order is dated first (earliest `due_date`), then
+undated; ties and undated rows sort by project name A–Z, then task id.
+
+`GET /api/work/due` returns `{ tasks, hasMore, nextCursor, total }` using the
+same Today rule: open, non-deleted tasks due on or before viewer today, loose
+or in a project. Anything already shown as a next action is omitted. Future
+loose tasks stay in their lists.
+
+`GET /api/work/lists` returns named lists in `GET /api/lists` order
+(`name`, `created_at`, `id`) with `openTaskCount` (every open task on that
+list, any owner, project tasks included) plus `unlisted.openTaskCount`.
+`owner` does not apply; counts do not change with Mine.
+
+```bash
+# Everyone's next actions
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/next-actions"
+
+# Only the caller's assigned next actions (person or bot token)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/next-actions?owner=me"
+
+# Due on the Chicago calendar day
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/work/due?timeZone=America/Chicago"
+
+# Named lists plus Unlisted counts
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/work/lists"
+```
+
+Cursors are view-tagged (`work.next-actions`, `work.due`, `work.lists`). A
+cursor from another Now endpoint, or a malformed cursor, is `400` with
+`code: "invalid_cursor"`.
 
 ## Projects
 

@@ -10,3 +10,4 @@ export * from './project-contract.js';
 export * from './signup-contract.js';
 export * from './task-contract.js';
 export * from './token-contract.js';
+export * from './work-contract.js';

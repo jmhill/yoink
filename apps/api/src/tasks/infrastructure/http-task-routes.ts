@@ -82,6 +82,8 @@ export const registerTaskRoutes = async (
           limit: query.limit,
           cursor: query.cursor,
           callerId: request.authContext.userId,
+          timeZone: query.timeZone,
+          today: query.today,
         });
 
         return result.match(

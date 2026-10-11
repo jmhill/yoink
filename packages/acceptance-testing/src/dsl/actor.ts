@@ -9,6 +9,14 @@ import type {
   ImportProject,
   StagedImport,
   Task,
+  NowOwner,
+  NowQuery,
+  NowNextActionsPage,
+  TaskListPage,
+  WorkListsPage,
+  NowNextActionRow,
+  NowDueRow,
+  NowListRow,
   PasskeyCredentialInfo,
   Member,
   Invitation,
@@ -115,7 +123,13 @@ export type CoreActor = {
 
   // Task operations
   createTask(input: CreateTaskInput): Promise<Task>;
-  listTasks(filter?: TaskFilter): Promise<Task[]>;
+  listTasks(
+    filter?: TaskFilter,
+    viewer?: { timeZone?: string; today?: string }
+  ): Promise<Task[]>;
+  listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage>;
+  listNowDue(query?: NowQuery): Promise<TaskListPage>;
+  listWorkLists(): Promise<WorkListsPage>;
   getTask(id: string): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   completeTask(id: string): Promise<Task>;
@@ -513,6 +527,66 @@ export type BrowserActorOperations = {
   shouldSeeTaskFilterWithoutAllPile(filter: 'today' | 'upcoming' | 'mine' | 'completed'): Promise<void>;
 
   /**
+   * Open the Work / Now screen. Mine is off unless `mine` is true.
+   */
+  openWork(options?: { mine?: boolean }): Promise<void>;
+
+  /**
+   * Flip the Now Mine toggle and wait until the matching owner is ready.
+   */
+  toggleNowMine(): Promise<void>;
+
+  /**
+   * Assert Now has settled for this owner (`data-now-ready` + `data-now-owner`).
+   */
+  shouldSeeNowReady(owner: NowOwner): Promise<void>;
+
+  /**
+   * Assert the Work heading subcopy string exactly.
+   */
+  shouldSeeNowSubcopy(text: string): Promise<void>;
+
+  /**
+   * Assert the Mine toggle pressed state and `?mine=true` when on.
+   */
+  shouldSeeNowMinePressed(pressed: boolean): Promise<void>;
+
+  /**
+   * Assert Next action rows in order: title, project, owner (empty string if none).
+   */
+  shouldSeeNowNextActionRows(rows: NowNextActionRow[]): Promise<void>;
+
+  /**
+   * Assert Due rows in order: title and owner (empty string if none).
+   */
+  shouldSeeNowDueRows(rows: NowDueRow[]): Promise<void>;
+
+  /**
+   * Assert the single empty-Now card is showing.
+   */
+  shouldSeeNowEmpty(): Promise<void>;
+
+  /**
+   * Open the phone Lists sheet from the Now lists row.
+   */
+  openNowListsSheet(): Promise<void>;
+
+  /**
+   * Assert Lists-sheet rows in order, including Unlisted last before New list.
+   */
+  shouldSeeNowListRows(rows: NowListRow[]): Promise<void>;
+
+  /**
+   * Pick a named list or Unlisted from the Now lists sheet and land on that pile.
+   */
+  pickNowList(listId: string): Promise<void>;
+
+  /**
+   * Assert a rail list open-count (`data-rail-list-count`).
+   */
+  shouldSeeRailListCount(listId: string, count: number): Promise<void>;
+
+  /**
    * Open the Tasks Today view (overdue vs due today outer, list groups inside).
    */
   openToday(): Promise<void>;
@@ -695,7 +769,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert the desktop app rail shows these labels in order
-   * (Inbox, Today, Upcoming, Mine, Done, named lists, Unlisted, New list).
+   * (Inbox, Now, Today, Upcoming, Mine, Done, named lists, Unlisted, New list).
    */
   shouldSeeRailItems(labels: string[]): Promise<void>;
 
@@ -1674,6 +1748,14 @@ export type BrowserActorOperations = {
    */
   awaitLiveInboxCaptures(
     matches: (captures: Array<{ id: string; content: string }>) => boolean
+  ): Promise<void>;
+
+  /**
+   * Wait until a live GET of Now next actions has a body that matches.
+   * Start this before the out-of-band write.
+   */
+  awaitLiveNowNextActions(
+    matches: (items: Array<{ title: string; project: string }>) => boolean
   ): Promise<void>;
 
   /**

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@yoink/ui-base/components/select';
 import { tsrTasks, tsr, tsrLists, tsrOrganizations, tsrAuth, tsrProjects } from '@/api/client';
+import { localCalendarDate, viewerTimeZone } from '@/lib/viewer-today';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
@@ -69,7 +70,7 @@ import {
 /**
  * Helper to get today's date in YYYY-MM-DD format
  */
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+const getTodayStr = () => localCalendarDate(new Date());
 
 /**
  * Split tasks into overdue and due today for the Today view
@@ -313,7 +314,9 @@ function TasksPage() {
   const liveBoard = boardQueryEnabled && boardFilter !== 'completed';
   const { data, isPending, error, refetch } = tsrTasks.list.useQuery({
     queryKey: ['tasks', boardFilter],
-    queryData: { query: { filter: boardFilter, limit: PILE_SAFETY_CAP } },
+    queryData: {
+      query: { filter: boardFilter, limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() },
+    },
     enabled: liveBoard,
   });
   const completedPages = useCompletedTaskPages(completedBoard);

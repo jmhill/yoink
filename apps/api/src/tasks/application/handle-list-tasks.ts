@@ -11,11 +11,12 @@ import {
 } from '../../listing/domain/list-keys.js';
 import { runListedQuery } from '../../listing/application/run-listed-query.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { resolveViewerToday } from '../../shared/domain/viewer-today.js';
 import type { ListTasks } from './ports.js';
 
 export type HandleListTasksDeps = {
   list: ListTasks;
-  today: () => string;
+  viewerNow: () => Date;
 };
 
 export const handleListTasks = (
@@ -23,6 +24,11 @@ export const handleListTasks = (
   deps: HandleListTasksDeps
 ): ResultAsync<ListedPage<Task>, ListTasksError> => {
   const limit = resolveListLimit(query.limit, listKindForTaskFilter(query.filter));
+  const today = resolveViewerToday({
+    now: deps.viewerNow(),
+    timeZone: query.timeZone,
+    today: query.today,
+  });
   const completed = query.filter === 'completed';
   if (completed) {
     return runListedQuery({
@@ -34,7 +40,7 @@ export const handleListTasks = (
           .list({
             organizationId: query.organizationId,
             filter: query.filter,
-            today: deps.today(),
+            today,
             fetchLimit,
             seek,
             assigneeId: query.callerId,
@@ -62,7 +68,7 @@ export const handleListTasks = (
       deps.list({
         organizationId: query.organizationId,
         filter: query.filter,
-        today: deps.today(),
+        today,
         fetchLimit,
         seek,
         assigneeId: query.callerId,

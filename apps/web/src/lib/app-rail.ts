@@ -18,6 +18,7 @@ export type RailProject = {
 
 export type RailItem =
   | { kind: 'inbox'; label: 'Inbox'; count: number }
+  | { kind: 'now'; label: 'Now' }
   | { kind: 'smart'; key: RailSmartView; label: string }
   | { kind: 'named'; listId: string; label: string }
   | { kind: 'unlisted'; label: 'Unlisted' }
@@ -75,7 +76,7 @@ export function partitionRailProjects(projects: RailProject[]): {
 
 /**
  * One rail: Inbox as a capture/triage **mode**, then the task family
- * (Today → Done), then named lists, Unlisted last, then New list,
+ * (Now above Today → Done), then named lists, Unlisted last, then New list,
  * then Projects (active/waiting, collapsed Someday, New project).
  */
 export function buildAppRailItems(input: {
@@ -86,6 +87,7 @@ export function buildAppRailItems(input: {
   const { open, someday } = partitionRailProjects(input.projects ?? []);
   return [
     { kind: 'inbox', label: 'Inbox', count: input.inboxCount },
+    { kind: 'now', label: 'Now' },
     { kind: 'smart', key: 'today', label: 'Today' },
     { kind: 'smart', key: 'upcoming', label: 'Upcoming' },
     { kind: 'smart', key: 'mine', label: 'Mine' },
@@ -120,7 +122,8 @@ export function shouldShowInboxCount(count: number): boolean {
   return count > 0;
 }
 
-const isTaskFamilyItem = (item: RailItem): boolean => item.kind === 'smart';
+const isTaskFamilyItem = (item: RailItem): boolean =>
+  item.kind === 'now' || item.kind === 'smart';
 
 const isListsSectionItem = (item: RailItem): boolean =>
   item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list';
@@ -176,6 +179,10 @@ export function isRailItemActive(item: RailItem, location: RailLocation): boolea
     return false;
   }
 
+  if (item.kind === 'now') {
+    return location.pathname === '/work';
+  }
+
   if (item.kind === 'project' || item.kind === 'someday-project') {
     return location.pathname === `/projects/${item.projectId}`;
   }
@@ -196,6 +203,9 @@ export function isRailItemActive(item: RailItem, location: RailLocation): boolea
 }
 
 export function railItemKey(item: RailItem): string {
+  if (item.kind === 'now') {
+    return 'now';
+  }
   if (item.kind === 'smart') {
     return item.key;
   }

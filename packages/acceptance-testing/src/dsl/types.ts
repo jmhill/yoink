@@ -196,6 +196,66 @@ export type Task = {
   completedByName?: string;
 };
 
+export type NowOwner = 'all' | 'me';
+
+export type NowQuery = {
+  owner?: NowOwner;
+  timeZone?: string;
+  today?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type NowNextActionItem = {
+  task: Task;
+  project: { id: string; name: string };
+};
+
+export type NowNextActionsPage = {
+  items: NowNextActionItem[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
+export type TaskListPage = {
+  tasks: Task[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
+export type WorkListItem = {
+  id: string;
+  name: string;
+  openTaskCount: number;
+};
+
+export type WorkListsPage = {
+  lists: WorkListItem[];
+  unlisted: { openTaskCount: number };
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
+export type NowNextActionRow = {
+  title: string;
+  project: string;
+  owner: string;
+};
+
+export type NowDueRow = {
+  title: string;
+  owner: string;
+};
+
+export type NowListRow = {
+  id: string;
+  name: string;
+  count: number;
+};
+
 export type Organization = {
   id: string;
   name: string;

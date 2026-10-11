@@ -8,6 +8,7 @@ import { sqlKeysetClause } from './sql-keyset.js';
 export const pageSqlite = <T>(options: {
   db: Database;
   from: string;
+  selectSql?: string;
   whereSql: string;
   whereArgs: (string | number)[];
   orderSql: string;
@@ -46,7 +47,7 @@ export const pageSqlite = <T>(options: {
           args: options.whereArgs,
         },
         {
-          sql: `SELECT * FROM ${options.from} WHERE ${selectWhere} ${options.orderSql} LIMIT ?`,
+          sql: `${options.selectSql ?? 'SELECT *'} FROM ${options.from} WHERE ${selectWhere} ${options.orderSql} LIMIT ?`,
           args: selectArgs,
         },
       ],

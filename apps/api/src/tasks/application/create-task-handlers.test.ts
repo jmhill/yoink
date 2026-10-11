@@ -44,7 +44,7 @@ const handlersOf = (logger: ReturnType<typeof collectLogger>['logger']) =>
     loadNextOpenOrder: () => okAsync(0),
     loadOpenInPile: () => okAsync([]),
     list: () => okAsync({ rows: [], total: 0 }),
-    today: () => '2025-01-15',
+    viewerNow: () => new Date('2025-01-15T10:00:00.000Z'),
     nextId: () => 'id-1',
     now: () => '2025-01-15T11:00:00.000Z',
     logger,

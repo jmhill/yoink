@@ -11,6 +11,14 @@ import type {
   Project,
   StagedImport,
   Task,
+  NowOwner,
+  NowQuery,
+  NowNextActionsPage,
+  TaskListPage,
+  WorkListsPage,
+  NowNextActionRow,
+  NowDueRow,
+  NowListRow,
   Token,
   CreateTokenResult,
   PasskeyCredentialInfo,
@@ -1285,6 +1293,115 @@ export const createPlaywrightActor = (
       await expect
         .poll(async () => tasksPage.getTitlesInPileGroup(groupName))
         .toEqual(titles);
+    },
+
+    async openWork(options?: { mine?: boolean }): Promise<void> {
+      const mine = options?.mine === true;
+      await page.goto(mine ? '/work?mine=true' : '/work');
+      await expect(
+        page.locator(`[data-now-ready][data-now-owner="${mine ? 'me' : 'all'}"]`)
+      ).toBeVisible();
+    },
+
+    async toggleNowMine(): Promise<void> {
+      const toggle = page.locator('[data-now-mine-toggle]');
+      await expect(toggle).toBeVisible();
+      const pressed = await toggle.getAttribute('aria-pressed');
+      await toggle.click();
+      await expect(
+        page.locator(`[data-now-ready][data-now-owner="${pressed === 'true' ? 'all' : 'me'}"]`)
+      ).toBeVisible();
+    },
+
+    async shouldSeeNowReady(owner: NowOwner): Promise<void> {
+      await expect(page.locator(`[data-now-ready][data-now-owner="${owner}"]`)).toBeVisible();
+    },
+
+    async shouldSeeNowSubcopy(text: string): Promise<void> {
+      await expect(page.getByTestId('now-subcopy')).toHaveText(text);
+    },
+
+    async shouldSeeNowMinePressed(pressed: boolean): Promise<void> {
+      const toggle = page.locator('[data-now-mine-toggle]');
+      await expect(toggle).toHaveAttribute('aria-pressed', pressed ? 'true' : 'false');
+      if (pressed) {
+        await expect(page).toHaveURL(/[?&]mine=true/);
+        return;
+      }
+      await expect(page).not.toHaveURL(/[?&]mine=true/);
+    },
+
+    async shouldSeeNowNextActionRows(rows: NowNextActionRow[]): Promise<void> {
+      const section = page.locator('[data-now-section="next-actions"]');
+      await expect.poll(async () => {
+        const cards = section.locator('[data-now-row]');
+        const count = await cards.count();
+        const found: NowNextActionRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const card = cards.nth(index);
+          found.push({
+            title: (await card.locator('[data-task-title]').getAttribute('data-task-title')) ?? '',
+            project: (await card.getAttribute('data-now-row-project')) ?? '',
+            owner: (await card.getAttribute('data-now-row-owner')) ?? '',
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async shouldSeeNowDueRows(rows: NowDueRow[]): Promise<void> {
+      const section = page.locator('[data-now-section="due"]');
+      await expect.poll(async () => {
+        const cards = section.locator('[data-now-row]');
+        const count = await cards.count();
+        const found: NowDueRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const card = cards.nth(index);
+          found.push({
+            title: (await card.locator('[data-task-title]').getAttribute('data-task-title')) ?? '',
+            owner: (await card.getAttribute('data-now-row-owner')) ?? '',
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async shouldSeeNowEmpty(): Promise<void> {
+      await expect(page.getByText('Nothing in Now', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-now-section]')).toHaveCount(0);
+    },
+
+    async openNowListsSheet(): Promise<void> {
+      await page.locator('[data-now-lists-row]').click();
+      await waitForSettledOpenDrawer({ page });
+      await expect(page.locator('[data-now-lists-sheet]')).toBeVisible();
+    },
+
+    async shouldSeeNowListRows(rows: NowListRow[]): Promise<void> {
+      const sheet = page.locator('[data-now-lists-sheet]');
+      await expect.poll(async () => {
+        const items = sheet.locator('[data-now-list]');
+        const count = await items.count();
+        const found: NowListRow[] = [];
+        for (let index = 0; index < count; index += 1) {
+          const item = items.nth(index);
+          found.push({
+            id: (await item.getAttribute('data-now-list')) ?? '',
+            name: ((await item.locator('span').first().textContent()) ?? '').trim(),
+            count: Number(await item.getAttribute('data-now-list-count')),
+          });
+        }
+        return found;
+      }).toEqual(rows);
+    },
+
+    async pickNowList(listId: string): Promise<void> {
+      await page.locator(`[data-now-lists-sheet] [data-now-list="${listId}"]`).click();
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldSeeRailListCount(listId: string, count: number): Promise<void> {
+      await expect(page.locator(`[data-rail-list-count="${listId}"]`)).toHaveText(String(count));
     },
 
     async openToday(): Promise<void> {
@@ -3096,7 +3213,7 @@ export const createPlaywrightActor = (
         await inboxPage.waitForCapturesOrEmpty();
         return;
       }
-      await tasksPage.waitForTasksOrEmpty();
+      await expect(page.locator('[data-now-ready]')).toBeVisible();
       await expect(appRail.mobileTrigger()).toBeVisible();
     },
 
@@ -3121,7 +3238,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeTasksContentWithoutMobileRail(): Promise<void> {
-      await expect(page.locator('#create-task-title')).toBeVisible();
+      await expect(page.locator('[data-task-surface]')).toBeVisible();
       await expect(appRail.mobileTrigger()).toBeVisible();
       await expect(appRail.mobileTasks()).toBeHidden();
     },
@@ -3535,6 +3652,42 @@ export const createPlaywrightActor = (
       );
     },
 
+    async awaitLiveNowNextActions(
+      matches: (items: Array<{ title: string; project: string }>) => boolean
+    ): Promise<void> {
+      await waitForLiveJsonGet(
+        page,
+        (pathname) => pathname === '/api/work/next-actions',
+        (body) => {
+          if (typeof body !== 'object' || body === null || !('items' in body)) {
+            return false;
+          }
+          const items = (body as { items: unknown }).items;
+          if (!Array.isArray(items)) {
+            return false;
+          }
+          const rows: Array<{ title: string; project: string }> = [];
+          for (const item of items) {
+            if (
+              typeof item !== 'object' ||
+              item === null ||
+              !('task' in item) ||
+              !('project' in item)
+            ) {
+              return false;
+            }
+            const task = (item as { task: { title?: unknown } }).task;
+            const project = (item as { project: { name?: unknown } }).project;
+            if (typeof task?.title !== 'string' || typeof project?.name !== 'string') {
+              return false;
+            }
+            rows.push({ title: task.title, project: project.name });
+          }
+          return matches(rows);
+        }
+      );
+    },
+
     async hideApp(): Promise<void> {
       await page.evaluate(`(() => {
         Object.defineProperty(document, 'visibilityState', {
@@ -3684,8 +3837,86 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async listTasks(_filter?: TaskFilter): Promise<Task[]> {
+    async listTasks(
+      _filter?: TaskFilter,
+      _viewer?: { timeZone?: string; today?: string }
+    ): Promise<Task[]> {
       throw new UnsupportedOperationError('listTasks', 'playwright');
+    },
+
+    async listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.today) {
+        params.set('today', query.today);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/work/next-actions${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list now next actions: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async listNowDue(query?: NowQuery): Promise<TaskListPage> {
+      const params = new URLSearchParams();
+      if (query?.owner) {
+        params.set('owner', query.owner);
+      }
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.today) {
+        params.set('today', query.today);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/work/due${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list now due: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async listWorkLists(): Promise<WorkListsPage> {
+      const response = await page.request.get('/api/work/lists');
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list work lists: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async getTask(id: string): Promise<Task> {

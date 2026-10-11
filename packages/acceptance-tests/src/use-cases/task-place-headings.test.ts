@@ -43,6 +43,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
       await alice.shouldNotSeeMobileTasksRail();
       await alice.shouldSeeTasksContentWithoutMobileRail();
+      await alice.shouldSeeNowReady('all');
+      await alice.openRailSmartView('today');
       await alice.shouldSeeTaskPlace('Today', '1 open');
 
       await alice.openRailNamedList('Groceries');
@@ -86,6 +88,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
 
       await alice.openMobileBottomTab('tasks');
+      await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
+      await alice.openRailSmartView('today');
       await alice.shouldSeeTaskPlace('Today', '0 open');
       await alice.shouldSeeMobileBottomTabs(['Inbox', 'Tasks']);
 

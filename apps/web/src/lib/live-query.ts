@@ -9,6 +9,7 @@ export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
   ['lists'],
   ['unlisted'],
   ['projects'],
+  ['work'],
 ];
 
 type TaskListResult = {
@@ -132,11 +133,98 @@ export const mapLiveProjects = (
   }
 };
 
+export type NextActionProjectRef = {
+  id: string;
+  name: string;
+};
+
+type NowNextActionsResult = {
+  status: number;
+  body: { items: { task: Task; project: { id: string; name: string } }[]; total?: number };
+};
+
+type NowDueResult = {
+  status: number;
+  body: { tasks: Task[]; total?: number };
+};
+
+const NowNextActionsResultSchema = z.object({
+  status: z.literal(200),
+  body: z.object({
+    items: z.array(
+      z.object({
+        task: z.object({ id: z.string() }).passthrough(),
+        project: z.object({ id: z.string(), name: z.string() }),
+      })
+    ),
+    total: z.number().optional(),
+  }),
+});
+
+const isNowNextActionsResult = (data: unknown): data is NowNextActionsResult =>
+  NowNextActionsResultSchema.safeParse(data).success;
+
+const isNowDueResult = (data: unknown): data is NowDueResult => isTaskListResult(data);
+
+export const isLiveNowQueryKey = (queryKey: QueryKey): boolean => {
+  const [root, section] = queryKey;
+  return root === 'work' && (section === 'next-actions' || section === 'due');
+};
+
+export const snapshotLiveNowSections = (
+  queryClient: QueryClient
+): ReturnType<QueryClient['getQueriesData']> =>
+  queryClient.getQueriesData({
+    predicate: (query) => isLiveNowQueryKey(query.queryKey),
+  });
+
+export const mapLiveNowSections = (
+  queryClient: QueryClient,
+  removeTaskId: string
+): void => {
+  const entries = queryClient.getQueriesData({
+    predicate: (query) => isLiveNowQueryKey(query.queryKey),
+  });
+  for (const [queryKey, data] of entries) {
+    if (isNowNextActionsResult(data)) {
+      const items = data.body.items.filter((item) => item.task.id !== removeTaskId);
+      const total =
+        typeof data.body.total === 'number'
+          ? Math.max(0, data.body.total + (items.length - data.body.items.length))
+          : data.body.total;
+      queryClient.setQueryData(queryKey, {
+        ...data,
+        body: {
+          ...data.body,
+          items,
+          ...(typeof total === 'number' ? { total } : {}),
+        },
+      });
+      continue;
+    }
+    if (isNowDueResult(data)) {
+      const tasks = data.body.tasks.filter((task) => task.id !== removeTaskId);
+      const total =
+        typeof data.body.total === 'number'
+          ? Math.max(0, data.body.total + (tasks.length - data.body.tasks.length))
+          : data.body.total;
+      queryClient.setQueryData(queryKey, {
+        ...data,
+        body: {
+          ...data.body,
+          tasks,
+          ...(typeof total === 'number' ? { total } : {}),
+        },
+      });
+    }
+  }
+};
+
 export const projectsWithNextAction = (
   queryClient: QueryClient,
   taskId: string
-): Project[] => {
-  const found = new Map<string, Project>();
+): NextActionProjectRef[] => {
+  const found = new Map<string, NextActionProjectRef>();
   const entries = queryClient.getQueriesData({ queryKey: ['projects'] });
   for (const [, data] of entries) {
     const projects = isProjectListResult(data)
@@ -146,7 +234,18 @@ export const projectsWithNextAction = (
         : [];
     for (const project of projects) {
       if (project.nextActionTaskId === taskId) {
-        found.set(project.id, project);
+        found.set(project.id, { id: project.id, name: project.name });
+      }
+    }
+  }
+  const nowEntries = queryClient.getQueriesData({ queryKey: ['work', 'next-actions'] });
+  for (const [, data] of nowEntries) {
+    if (!isNowNextActionsResult(data)) {
+      continue;
+    }
+    for (const item of data.body.items) {
+      if (item.task.id === taskId) {
+        found.set(item.project.id, { id: item.project.id, name: item.project.name });
       }
     }
   }

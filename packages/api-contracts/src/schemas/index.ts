@@ -13,3 +13,4 @@ export * from './project.js';
 export * from './signup.js';
 export * from './task.js';
 export * from './token.js';
+export * from './work.js';

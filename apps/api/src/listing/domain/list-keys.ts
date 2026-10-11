@@ -1,4 +1,4 @@
-import type { Capture, NamedList, Project, Task } from '@yoink/api-contracts';
+import type { Capture, NamedList, NowNextActionItem, Project, Task } from '@yoink/api-contracts';
 import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
@@ -107,6 +107,43 @@ export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
   }),
 };
 
+export const UNDATED_DUE_SENTINEL = '9999-12-31';
+
+export const workNextActionCursor: ListedCursor<NowNextActionItem, 'work.next-actions'> = {
+  view: 'work.next-actions',
+  of: (item) => ({
+    view: 'work.next-actions',
+    keys: [
+      item.task.dueDate ?? UNDATED_DUE_SENTINEL,
+      item.project.name.toLowerCase(),
+      item.task.id,
+    ],
+  }),
+};
+
+export const workDueCursor: ListedCursor<Task, 'work.due'> = {
+  view: 'work.due',
+  of: (task) => ({
+    view: 'work.due',
+    keys: [task.dueDate ?? UNDATED_DUE_SENTINEL, task.createdAt, task.id],
+  }),
+};
+
+export type WorkListCursorRow = {
+  id: string;
+  name: string;
+  createdAt: string;
+  openTaskCount: number;
+};
+
+export const workListCursor: ListedCursor<WorkListCursorRow, 'work.lists'> = {
+  view: 'work.lists',
+  of: (list) => ({
+    view: 'work.lists',
+    keys: [list.name, list.createdAt, list.id],
+  }),
+};
+
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
@@ -119,6 +156,9 @@ export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
 export const projectKeys = (project: Project) => projectCursor.of(project).keys;
 export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
 export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(capture).keys;
+export const workNextActionKeys = (item: NowNextActionItem) => workNextActionCursor.of(item).keys;
+export const workDueKeys = (task: Task) => workDueCursor.of(task).keys;
+export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
@@ -131,3 +171,6 @@ export const namedListDirection: KeysetDirection = 'asc';
 export const projectDirection: KeysetDirection = 'asc';
 export const captureFeedDirection: KeysetDirection = 'desc';
 export const snoozedCaptureDirection: KeysetDirection = 'asc';
+export const workNextActionDirection: KeysetDirection = 'asc';
+export const workDueDirection: KeysetDirection = 'asc';
+export const workListDirection: KeysetDirection = 'asc';

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { TaskSchema, CreateTaskSchema, UpdateTaskSchema, TaskFilterSchema } from '../schemas/task.js';
 import { HistoryPageSchema } from '../schemas/history.js';
 import { ListPageQuerySchema, TaskListPageSchema } from '../schemas/list-page.js';
+import { ViewerTodayQuerySchema } from '../schemas/work.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -28,7 +29,7 @@ export const taskContract = c.router({
     path: '/api/tasks',
     query: ListPageQuerySchema.extend({
       filter: TaskFilterSchema.optional(), // today, upcoming, all, completed, mine
-    }),
+    }).merge(ViewerTodayQuerySchema),
     responses: {
       200: TaskListPageSchema,
       400: ErrorSchema,

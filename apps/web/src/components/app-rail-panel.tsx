@@ -7,13 +7,14 @@ import {
   Calendar,
   CalendarClock,
   CheckCheck,
+  CircleDot,
   FolderKanban,
   Inbox,
   List,
   Plus,
   User,
 } from 'lucide-react';
-import { tsr, tsrLists, tsrProjects } from '@/api/client';
+import { tsr, tsrLists, tsrProjects, tsrWork } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -56,6 +57,7 @@ const SMART_VIEW_FILTER: Record<
 
 const railIcon = (item: RailItem) => {
   if (item.kind === 'inbox') return Inbox;
+  if (item.kind === 'now') return CircleDot;
   if (item.kind === 'unlisted' || item.kind === 'named') return List;
   if (item.kind === 'new-list' || item.kind === 'new-project') return Plus;
   if (item.kind === 'project' || item.kind === 'someday-project') return FolderKanban;
@@ -132,10 +134,21 @@ export function AppRailPanel({
     queryKey: ['projects'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
+  const { data: workListsData } = tsrWork.listLists.useQuery({
+    queryKey: ['work', 'lists'],
+    queryData: { query: { limit: PILE_SAFETY_CAP } },
+  });
 
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const listOpenCounts = new Map(
+    workListsData?.status === 200
+      ? workListsData.body.lists.map((list) => [list.id, list.openTaskCount])
+      : []
+  );
+  const unlistedOpenCount =
+    workListsData?.status === 200 ? workListsData.body.unlisted.openTaskCount : undefined;
   const railItems = buildAppRailItems({ inboxCount, namedLists, projects });
   const location: RailLocation = {
     pathname,
@@ -430,6 +443,14 @@ export function AppRailPanel({
                           <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
                             {item.label}
                           </span>
+                          {listOpenCounts.has(item.listId) ? (
+                            <span
+                              data-rail-list-count={item.listId}
+                              className="ml-auto shrink-0 tabular-nums text-xs text-muted-foreground"
+                            >
+                              {listOpenCounts.get(item.listId)}
+                            </span>
+                          ) : null}
                         </Link>
                         {railItemHasOverflow(item) ? (
                           <NamedListRailOverflow
@@ -451,6 +472,27 @@ export function AppRailPanel({
               );
             }
 
+            if (item.kind === 'now') {
+              return (
+                <Fragment key={key}>
+                  {taskFamilyHeading}
+                  <Link
+                    to="/work"
+                    data-rail-item="now"
+                    data-rail-label={item.label}
+                    data-rail-active={active ? 'true' : undefined}
+                    className={railClassName(active)}
+                    onClick={active ? onDestinationChosen : undefined}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+                      {item.label}
+                    </span>
+                  </Link>
+                </Fragment>
+              );
+            }
+
             return (
               <Fragment key={key}>
                 {taskFamilyHeading}
@@ -468,6 +510,14 @@ export function AppRailPanel({
                   <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
                     {item.label}
                   </span>
+                  {item.kind === 'unlisted' && unlistedOpenCount !== undefined ? (
+                    <span
+                      data-rail-list-count="unlisted"
+                      className="ml-auto shrink-0 tabular-nums text-xs text-muted-foreground"
+                    >
+                      {unlistedOpenCount}
+                    </span>
+                  ) : null}
                 </Link>
               </Fragment>
             );

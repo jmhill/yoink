@@ -1,5 +1,5 @@
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
-import { authContract, captureContract, listContract, organizationContract, projectContract, taskContract, tokenContract } from '@yoink/api-contracts';
+import { authContract, captureContract, listContract, organizationContract, projectContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
 import { tokenStorage } from '@/lib/token';
 
 /**
@@ -136,6 +136,14 @@ export const tsrAuth = initTsrReactQuery(authContract, {
  * Uses session cookies for authentication.
  */
 export const tsrProjects = initTsrReactQuery(projectContract, {
+  baseUrl: '',
+  baseHeaders: {
+    'Content-Type': 'application/json',
+  },
+  api: createApi(),
+});
+
+export const tsrWork = initTsrReactQuery(workContract, {
   baseUrl: '',
   baseHeaders: {
     'Content-Type': 'application/json',

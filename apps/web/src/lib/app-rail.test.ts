@@ -32,6 +32,7 @@ describe('buildAppRailItems', () => {
 
     expect(railItemLabels(items)).toEqual([
       'Inbox',
+      'Now',
       'Today',
       'Upcoming',
       'Mine',
@@ -91,9 +92,22 @@ describe('shouldShowTaskFamilyHeadingBefore', () => {
     );
 
     expect(railItemLabels(items)).not.toContain('Task family');
-    expect(flags).toEqual([false, true, false, false, false, false, false, false, false, false]);
+    expect(flags).toEqual([
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
     expect(items[0]).toMatchObject({ kind: 'inbox' });
-    expect(items[1]).toMatchObject({ kind: 'smart', key: 'today' });
+    expect(items[1]).toMatchObject({ kind: 'now' });
+    expect(items[2]).toMatchObject({ kind: 'smart', key: 'today' });
   });
 });
 
@@ -103,8 +117,20 @@ describe('shouldShowListsHeadingBefore', () => {
     const flags = items.map((item, index) => shouldShowListsHeadingBefore(item, items[index - 1]));
 
     expect(railItemLabels(items)).not.toContain('Lists');
-    expect(flags).toEqual([false, false, false, false, false, true, false, false, false, false]);
-    expect(items[5]).toMatchObject({ kind: 'named', label: 'Groceries' });
+    expect(flags).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(items[6]).toMatchObject({ kind: 'named', label: 'Groceries' });
   });
 
   it('places Lists above Unlisted when there are no named lists', () => {
@@ -120,11 +146,12 @@ describe('shouldShowListsHeadingBefore', () => {
 describe('isRailItemActive', () => {
   const items = buildAppRailItems({ inboxCount: 0, namedLists });
   const inbox = items[0]!;
-  const today = items[1]!;
-  const mine = items[3]!;
-  const groceries = items[5]!;
-  const unlisted = items[7]!;
-  const newList = items[8]!;
+  const now = items[1]!;
+  const today = items[2]!;
+  const mine = items[4]!;
+  const groceries = items[6]!;
+  const unlisted = items[8]!;
+  const newList = items[9]!;
 
   it('marks Inbox for the capture pane — inbox, snoozed, and trash', () => {
     expect(isRailItemActive(inbox, { pathname: '/' })).toBe(true);
@@ -143,6 +170,9 @@ describe('isRailItemActive', () => {
       isRailItemActive(groceries, { pathname: '/tasks', filter: 'mine', pile: groceriesId })
     ).toBe(false);
     expect(isRailItemActive(today, { pathname: '/tasks', filter: 'upcoming' })).toBe(false);
+    expect(isRailItemActive(now, { pathname: '/work' })).toBe(true);
+    expect(isRailItemActive(now, { pathname: '/tasks', filter: 'today' })).toBe(false);
+    expect(isRailItemActive(today, { pathname: '/work' })).toBe(false);
   });
 
   it('marks named list and Unlisted on pile screens, not on Today or leftover All URLs', () => {

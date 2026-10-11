@@ -6,7 +6,7 @@ import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
 import { asFinishedTask, completedTaskCursor } from '../../listing/domain/list-keys.js';
 import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
 
-const today = () => '2025-01-15';
+const viewerNow = () => new Date('2025-01-15T10:00:00.000Z');
 
 const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   organizationId: 'org-123',
@@ -26,7 +26,7 @@ describe('handleListTasks', () => {
 
     const result = await handleListTasks(
       { organizationId: 'org-123' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isOk()).toBe(true);
@@ -55,7 +55,7 @@ describe('handleListTasks', () => {
 
     const result = await handleListTasks(
       { organizationId: 'org-123', filter: 'today' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isOk()).toBe(true);
@@ -77,7 +77,7 @@ describe('handleListTasks', () => {
 
     const result = await handleListTasks(
       { organizationId: 'org-123', filter: 'upcoming' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isOk()).toBe(true);
@@ -101,7 +101,7 @@ describe('handleListTasks', () => {
 
     const result = await handleListTasks(
       { organizationId: 'org-123', filter: 'completed' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isOk()).toBe(true);
@@ -128,7 +128,7 @@ describe('handleListTasks', () => {
 
     const result = await handleListTasks(
       { organizationId: 'org-123', filter: 'mine', callerId: 'user-456' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isOk()).toBe(true);
@@ -155,7 +155,7 @@ describe('handleListTasks', () => {
       completedAt: '2025-01-15T10:00:00.000Z',
     });
     const store = createFakeTaskStore({ initialTasks: [first, second, third] });
-    const deps = { list: store.findByOrganization, today };
+    const deps = { list: store.findByOrganization, viewerNow };
 
     const page1 = await handleListTasks(
       { organizationId: 'org-123', filter: 'completed', limit: 1 },
@@ -192,7 +192,7 @@ describe('handleListTasks', () => {
     });
     const result = await handleListTasks(
       { organizationId: 'org-123', filter: 'completed' },
-      { list: () => okAsync({ rows: [broken], total: 1 }), today }
+      { list: () => okAsync({ rows: [broken], total: 1 }), viewerNow }
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -204,7 +204,7 @@ describe('handleListTasks', () => {
     const store = createFakeTaskStore();
     const result = await handleListTasks(
       { organizationId: 'org-123', cursor: 'not-a-cursor' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -216,12 +216,53 @@ describe('handleListTasks', () => {
     const store = createFakeTaskStore({ shouldFailOnFind: true });
     const result = await handleListTasks(
       { organizationId: 'org-123' },
-      { list: (options) => store.findByOrganization(options), today }
+      { list: (options) => store.findByOrganization(options), viewerNow }
     );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe('STORAGE_ERROR');
+    }
+  });
+
+  it('uses America/Chicago at 8pm CT so Today stays on the Chicago calendar day', async () => {
+    const eightPmCt = () => new Date('2026-10-12T01:00:00.000Z');
+    const store = createFakeTaskStore({
+      initialTasks: [
+        task({
+          id: 'chicago-today',
+          title: 'Chicago today',
+          dueDate: '2026-10-11',
+          createdAt: '2026-10-11T12:00:00.000Z',
+        }),
+        task({
+          id: 'utc-tomorrow',
+          title: 'UTC tomorrow',
+          dueDate: '2026-10-12',
+          createdAt: '2026-10-11T11:00:00.000Z',
+        }),
+      ],
+    });
+
+    const chicago = await handleListTasks(
+      { organizationId: 'org-123', filter: 'today', timeZone: 'America/Chicago' },
+      { list: (options) => store.findByOrganization(options), viewerNow: eightPmCt }
+    );
+    expect(chicago.isOk()).toBe(true);
+    if (chicago.isOk()) {
+      expect(chicago.value.items.map((item) => item.id)).toEqual(['chicago-today']);
+    }
+
+    const utc = await handleListTasks(
+      { organizationId: 'org-123', filter: 'today', timeZone: 'UTC' },
+      { list: (options) => store.findByOrganization(options), viewerNow: eightPmCt }
+    );
+    expect(utc.isOk()).toBe(true);
+    if (utc.isOk()) {
+      expect(utc.value.items.map((item) => item.id)).toEqual([
+        'chicago-today',
+        'utc-tomorrow',
+      ]);
     }
   });
 });

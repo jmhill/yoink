@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { HISTORY_STARTS_AT } from '@yoink/api-contracts';
 import { UNKNOWN_ACTOR_NAME } from '../../shared/change-log/domain/to-timeline-entry.js';
-import type { HistoryPageItem } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import type { HistoryPageItem } from '../../shared/change-log/domain/history-page-item.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';
 
 const lookups = {

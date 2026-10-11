@@ -4056,17 +4056,26 @@ export const createPlaywrightAnonymousActor = (page: Page): AnonymousActor => {
       throw new UnauthorizedError();
     },
 
-    async listFinishedTasksOnProject(_projectId: string) {
+    async listFinishedTasksOnProject(
+      _projectId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },
 
-    async listProjectHistory(_projectId: string) {
+    async listProjectHistory(
+      _projectId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },
 
-    async listTaskHistory(_taskId: string) {
+    async listTaskHistory(
+      _taskId: string,
+      _query?: { limit?: number; cursor?: string }
+    ) {
       await ensureRedirectsToAuth();
       throw new UnauthorizedError();
     },

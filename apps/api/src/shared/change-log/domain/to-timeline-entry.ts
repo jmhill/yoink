@@ -3,7 +3,6 @@ import type {
   TimelineEntry,
   TimelineEntryKind,
 } from '@yoink/api-contracts';
-import type { ChangeLogKind } from './kinds.js';
 import type { ChangeLogRecord } from './record.js';
 import type { TaskUpdatedPayloadV1 } from './payloads.js';
 
@@ -88,8 +87,7 @@ export const toTimelineEntry = (
   record: ChangeLogRecord,
   lookups: TimelineLookups
 ): TimelineEntry | null => {
-  const kind: ChangeLogKind = record.kind;
-  switch (kind) {
+  switch (record.kind) {
     case 'TaskPinned':
     case 'TaskUnpinned':
     case 'OpenTasksReordered':

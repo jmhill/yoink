@@ -1,6 +1,9 @@
 import { HISTORY_STARTS_AT, type HistoryPage, type TimelineEntry } from '@yoink/api-contracts';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
-import type { HistoryPageItem } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import {
+  isUnparsedHistoryRow,
+  type HistoryPageItem,
+} from '../../shared/change-log/domain/history-page-item.js';
 import {
   toTimelineEntry,
   unknownTimelineEntry,
@@ -15,7 +18,7 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
 
   for (const item of items) {
     const record = item.record;
-    if ('type' in record && record.type === 'UNPARSED') {
+    if (isUnparsedHistoryRow(record)) {
       if (record.subjectType === 'task') {
         taskIds.add(record.subjectId);
       }
@@ -62,7 +65,7 @@ export const entriesFromHistoryPage = (
   const entries: TimelineEntry[] = [];
   for (const item of page.items) {
     const record = item.record;
-    if ('type' in record && record.type === 'UNPARSED') {
+    if (isUnparsedHistoryRow(record)) {
       logger.warn({
         recordId: record.id,
         kind: record.kind,

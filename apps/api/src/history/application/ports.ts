@@ -5,7 +5,7 @@ import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import type {
   ChangeLogStorageError,
   HistoryPageItem,
-} from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+} from '../../shared/change-log/domain/history-page-item.js';
 import type { StorageError } from '../../projects/domain/project-errors.js';
 import type { TimelineLookups } from '../../shared/change-log/domain/to-timeline-entry.js';
 

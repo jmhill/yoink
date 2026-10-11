@@ -1,5 +1,5 @@
 import { HISTORY_PAGE_DEFAULT, type HistoryPage } from '@yoink/api-contracts';
-import { tsrProjects, tsrTasks } from '@/api/client';
+import { tsrProjects } from '@/api/client';
 
 /** First page is small so the walkthrough can show Show more without 50 rows. */
 export const PROJECT_HISTORY_PAGE_SIZE = 5;

@@ -9,7 +9,7 @@ import {
   type ProjectNotFoundError,
   type StorageError,
 } from '../../projects/domain/project-errors.js';
-import type { ChangeLogStorageError } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import type { ChangeLogStorageError } from '../../shared/change-log/domain/history-page-item.js';
 import type { ListProjectHistoryQuery } from '../domain/queries.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';
 import type {

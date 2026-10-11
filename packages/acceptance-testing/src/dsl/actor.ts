@@ -1751,6 +1751,22 @@ export type AnonymousActor = {
   deleteNamedList(id: string): Promise<void>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   listOpenTasksOnProject(projectId: string): Promise<Task[]>;
+  listFinishedTasksOnProject(
+    projectId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<FinishedTaskPage>;
+  listProjectHistory(
+    projectId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<HistoryPage>;
+  listTaskHistory(
+    taskId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<HistoryPage>;
+  expectInvalidProjectHistoryCursor(
+    projectId: string,
+    cursor: string
+  ): Promise<{ message: string; code: string }>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
   reorderUnlistedOpenTasks(taskIds: string[]): Promise<Task[]>;

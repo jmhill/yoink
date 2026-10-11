@@ -12,6 +12,7 @@ import {
 import { SwipeableCard } from '@/components/swipeable-card';
 import type { Task } from '@yoink/api-contracts';
 import type { SortablePileDragHandle } from '@/components/sortable-pile-list';
+import { isOptimisticTask } from '@/lib/is-optimistic-task';
 import { localCalendarDate } from '@/lib/viewer-today';
 import { cn } from '@yoink/ui-base/lib/utils';
 
@@ -62,8 +63,9 @@ export function TaskCard({
   };
 
   const handleRowClick = () => {
-    // Board-wide isLoading still disables complete and swipe; edit stays per-row.
-    if (reorderMode || !onEdit) {
+    // Board-wide isLoading still disables complete and swipe; edit stays per-row
+    // except for optimistic temp- rows the server does not have yet.
+    if (reorderMode || !onEdit || isOptimisticTask(task)) {
       return;
     }
     if (swipeStartedRef.current) {

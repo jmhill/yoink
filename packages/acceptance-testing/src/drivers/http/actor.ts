@@ -1955,8 +1955,8 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('pressProcessKey', 'http');
     },
 
-    async pressProcessKeyTwice(_key: 'Delete' | 'Backspace'): Promise<void> {
-      throw new UnsupportedOperationError('pressProcessKeyTwice', 'http');
+    async pressProcessDeleteWhileTrashHeld(): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessDeleteWhileTrashHeld', 'http');
     },
 
     async shouldSeeProcessKeyHints(): Promise<void> {

@@ -90,6 +90,35 @@ describe('TaskCard', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it('does not open edit on an optimistic temp row while a sibling is pending', () => {
+    const onEdit = vi.fn();
+    const tempMilk = { ...milk, id: 'temp-123' };
+    const { rerender } = render(
+      <TaskCard
+        task={tempMilk}
+        onComplete={vi.fn()}
+        onUncomplete={vi.fn()}
+        onEdit={onEdit}
+        isLoading
+      />
+    );
+
+    fireEvent.click(screen.getByText('Milk'));
+    expect(onEdit).not.toHaveBeenCalled();
+
+    rerender(
+      <TaskCard
+        task={milk}
+        onComplete={vi.fn()}
+        onUncomplete={vi.fn()}
+        onEdit={onEdit}
+        isLoading
+      />
+    );
+    fireEvent.click(screen.getByText('Milk'));
+    expect(onEdit).toHaveBeenCalledWith(milk);
+  });
+
   it('shows a grip in reorder mode and does not edit, complete, or swipe', () => {
     const onEdit = vi.fn();
     const onComplete = vi.fn();

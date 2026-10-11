@@ -12,7 +12,11 @@ import { ProcessProjectSheet } from '@/components/process-project-sheet';
 import { PromoteSheet } from '@/components/promote-sheet';
 import { isBlockingQueryFailure } from '@/lib/live-query';
 import { processEmptySnoozedCopy, processQueue, processQueueSubcopy } from '@/lib/process-queue';
-import { processKeyAction, shouldListenForProcessKeys } from '@/lib/process-keys';
+import {
+  processKeyAction,
+  shouldListenForProcessKeys,
+  shouldReleaseProcessKeyLock,
+} from '@/lib/process-keys';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
 import { useInboxTriage } from '@/lib/use-inbox-triage';
 import { toast } from 'sonner';
@@ -47,6 +51,7 @@ function ProcessPage() {
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const previousCurrentId = useRef<string | null>(null);
   const keyLock = useRef(false);
+  const keyLockId = useRef<string | null>(null);
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -81,24 +86,18 @@ function ProcessPage() {
   const inboxIdKey = captures.map((capture) => capture.id).join(',');
 
   useEffect(() => {
-    if (!keyLock.current) {
+    if (
+      !shouldReleaseProcessKeyLock({
+        actionPending,
+        lockedId: keyLockId.current,
+        currentId: current?.id ?? null,
+      })
+    ) {
       return;
     }
-    let inner = 0;
-    let inner2 = 0;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => {
-        inner2 = requestAnimationFrame(() => {
-          keyLock.current = false;
-        });
-      });
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-      cancelAnimationFrame(inner2);
-    };
-  }, [current?.id]);
+    keyLock.current = false;
+    keyLockId.current = null;
+  }, [actionPending, current?.id]);
 
   useEffect(() => {
     const previous = previousCurrentId.current;
@@ -116,6 +115,7 @@ function ProcessPage() {
         desktop,
         hasCurrent: current !== null,
         sheetOpen,
+        actionPending,
         pathname,
       })
     ) {
@@ -135,6 +135,7 @@ function ProcessPage() {
       event.preventDefault();
       if (action === 'trash') {
         keyLock.current = true;
+        keyLockId.current = current.id;
       }
       switch (action) {
         case 'make-task':
@@ -159,6 +160,7 @@ function ProcessPage() {
     desktop,
     current,
     sheetOpen,
+    actionPending,
     pathname,
     handleProcessToTask,
     handleOpenProjectSheet,

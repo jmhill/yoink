@@ -28,14 +28,24 @@ export function shouldListenForProcessKeys(input: {
   desktop: boolean;
   hasCurrent: boolean;
   sheetOpen: boolean;
+  actionPending: boolean;
   pathname: string;
 }): boolean {
   return (
     input.desktop &&
     input.hasCurrent &&
     !input.sheetOpen &&
+    !input.actionPending &&
     input.pathname === '/process'
   );
+}
+
+export function shouldReleaseProcessKeyLock(input: {
+  actionPending: boolean;
+  lockedId: string | null;
+  currentId: string | null;
+}): boolean {
+  return !input.actionPending && input.lockedId !== null && input.currentId !== input.lockedId;
 }
 
 export function processKeyAction(event: KeyboardEvent): ProcessKeyAction | null {

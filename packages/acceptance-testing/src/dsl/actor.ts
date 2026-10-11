@@ -1689,10 +1689,10 @@ export type BrowserActorOperations = {
   pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void>;
 
   /**
-   * Fire the same Process key twice with a frame between so a held or
-   * double Delete cannot trash two captures after the first re-render.
+   * Press Delete, hold the trash POST so the next card is showing while
+   * the first save is still in flight, press Delete again, then release.
    */
-  pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void>;
+  pressProcessDeleteWhileTrashHeld(): Promise<void>;
 
   /**
    * Assert desktop Process key hints are showing.

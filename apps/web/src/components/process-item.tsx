@@ -153,7 +153,7 @@ export function ProcessItem({
         sourceApp={capture.sourceApp}
         capturedAt={capture.capturedAt}
       />
-      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'flex-nowrap gap-1')}>
+      <div className={cn('flex flex-wrap gap-2 px-3 pb-3', showHints && 'gap-1')}>
         <Button
           type="button"
           variant="outline"

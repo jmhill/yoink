@@ -279,10 +279,9 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport(DESKTOP);
       await alice.openProcess();
       await alice.shouldSeeProcessCurrent('First desk');
-      await alice.pressProcessKeyTwice('Delete');
+      await alice.pressProcessDeleteWhileTrashHeld();
       await alice.shouldSeeProcessCurrent('Second desk');
       await alice.shouldSeeProcessLeft(1);
-      await alice.shouldSeeUndoToast('Moved to trash');
       const inbox = await alice.listCaptures();
       const trash = await alice.listTrashedCaptures();
       expect(inbox.map((capture) => capture.content)).toEqual(['Second desk']);
@@ -294,6 +293,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       for (const viewport of [
         { width: 1440, height: 900 },
         { width: 1024, height: 768 },
+        { width: 800, height: 700 },
       ] as const) {
         await alice.useDesktopViewport(viewport);
         await alice.openProcess();
@@ -485,9 +485,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'process_project_sheet_long',
       });
       await alice.cancelProcessProjectSheet();
-      await alice.trashProcessCurrent();
+      await alice.openProcessSnoozeMenu();
+      await alice.pickProcessSnooze('tomorrow');
+      await alice.shouldSeeProcessCurrent('Desktop leftover');
       await alice.trashProcessCurrent();
       await alice.shouldSeeProcessEmpty();
+      await alice.shouldSeeProcessSnoozedComingBack(1);
       await alice.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'process_empty' });
     }, 90_000);
   });
@@ -538,7 +541,9 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.openProcessProjectSheet('active')).rejects.toThrow(
         UnsupportedOperationError
       );
-      await expect(actor.pressProcessKeyTwice('Delete')).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.pressProcessDeleteWhileTrashHeld()).rejects.toThrow(
+        UnsupportedOperationError
+      );
       await expect(actor.shouldSeeProcessActionsFitCard()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeUndoToast('Moved to trash')).rejects.toThrow(
         UnsupportedOperationError

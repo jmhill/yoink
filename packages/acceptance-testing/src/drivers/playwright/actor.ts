@@ -3532,17 +3532,52 @@ export const createPlaywrightActor = (
       await page.keyboard.press(key);
     },
 
-    async pressProcessKeyTwice(key: 'Delete' | 'Backspace'): Promise<void> {
-      await page.evaluate(`(async () => {
-        const fire = () => {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true }));
-        };
-        fire();
-        await new Promise((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(resolve));
-        });
-        fire();
-      })()`);
+    async pressProcessDeleteWhileTrashHeld(): Promise<void> {
+      let releaseTrash = (): void => undefined;
+      const trashGate = new Promise<void>((resolve) => {
+        releaseTrash = resolve;
+      });
+      const isTrashPost = (url: URL): boolean => {
+        const path = url.pathname;
+        return (
+          path.startsWith('/api/captures/') &&
+          path.endsWith('/trash') &&
+          !path.includes('/trash/empty')
+        );
+      };
+      const trashRoute = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+        await trashGate;
+        await route.continue();
+      };
+
+      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      if (!firstId) {
+        throw new Error('Process should show a current capture before Delete');
+      }
+      await page.route(isTrashPost, trashRoute);
+      try {
+        await page.keyboard.press('Delete');
+        await expect(page.locator('[data-process-ready]')).not.toHaveAttribute(
+          'data-process-current',
+          firstId
+        );
+        await page.keyboard.press('Delete');
+        const settled = page.waitForResponse(
+          (response) => isTrashPost(new URL(response.url())) && response.request().method() === 'POST'
+        );
+        releaseTrash();
+        await settled;
+      } finally {
+        releaseTrash();
+        await page.unroute(isTrashPost, trashRoute);
+      }
     },
 
     async shouldSeeProcessKeyHints(): Promise<void> {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isTypingTarget, processKeyAction, shouldListenForProcessKeys } from './process-keys';
+import {
+  isTypingTarget,
+  processKeyAction,
+  shouldListenForProcessKeys,
+  shouldReleaseProcessKeyLock,
+} from './process-keys';
 
 const keyEvent = (key: string, target?: EventTarget | null): KeyboardEvent => {
   const event = new KeyboardEvent('keydown', { key });
@@ -14,16 +19,44 @@ describe('shouldListenForProcessKeys', () => {
     desktop: true,
     hasCurrent: true,
     sheetOpen: false,
+    actionPending: false,
     pathname: '/process',
   };
 
-  it('listens only on the desktop Process page', () => {
+  it('listens only on the desktop Process page while no action is saving', () => {
     expect(shouldListenForProcessKeys(active)).toBe(true);
     expect(shouldListenForProcessKeys({ ...active, pathname: '/tasks' })).toBe(false);
     expect(shouldListenForProcessKeys({ ...active, pathname: '/' })).toBe(false);
     expect(shouldListenForProcessKeys({ ...active, desktop: false })).toBe(false);
     expect(shouldListenForProcessKeys({ ...active, hasCurrent: false })).toBe(false);
     expect(shouldListenForProcessKeys({ ...active, sheetOpen: true })).toBe(false);
+    expect(shouldListenForProcessKeys({ ...active, actionPending: true })).toBe(false);
+  });
+});
+
+describe('shouldReleaseProcessKeyLock', () => {
+  it('releases only after the save finishes and the current card changed', () => {
+    expect(
+      shouldReleaseProcessKeyLock({
+        actionPending: true,
+        lockedId: 'first',
+        currentId: 'second',
+      })
+    ).toBe(false);
+    expect(
+      shouldReleaseProcessKeyLock({
+        actionPending: false,
+        lockedId: 'first',
+        currentId: 'first',
+      })
+    ).toBe(false);
+    expect(
+      shouldReleaseProcessKeyLock({
+        actionPending: false,
+        lockedId: 'first',
+        currentId: 'second',
+      })
+    ).toBe(true);
   });
 });
 

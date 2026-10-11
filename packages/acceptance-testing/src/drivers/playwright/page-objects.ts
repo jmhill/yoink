@@ -1,7 +1,11 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import type { TaskFilter } from '../../dsl/types.js';
 import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
-import { isTasksThumbLandingUrl } from './tasks-board-url.js';
+import {
+  isSettledTasksBoardUrl,
+  isTasksThumbLandingUrl,
+  tasksBoardCopyForUrl,
+} from './tasks-board-url.js';
 
 /**
  * Page object for the login page (/login).
@@ -912,25 +916,35 @@ export class TasksPage {
     await this.page.getByRole('tab', { name }).click();
   }
 
-  async waitForTasksOrEmpty(): Promise<void> {
+  /**
+   * Wait until this board URL's heading (when known) and its own empty
+   * card or a visible task row are on the task surface. Do not treat
+   * leftover empty copy from the previous rail destination as settled —
+   * that is what made Mine pile-group polls see [] after a pile click.
+   */
+  async waitForTasksOrEmpty(options?: { heading?: string }): Promise<void> {
     await this.page
+      .waitForURL((url) => isSettledTasksBoardUrl(url), { timeout: 8_000 })
+      .catch(() => {
+        // Caller may already be settled, or this is a non-board page.
+      });
+    const copy = tasksBoardCopyForUrl(this.page.url());
+    const heading = options?.heading ?? copy?.heading;
+    if (heading) {
+      await expect(this.placeHeading()).toHaveText(heading, { timeout: 8_000 });
+    }
+    const surface = this.taskSurface();
+    await surface
       .getByText('Loading...', { exact: true })
-      .waitFor({ state: 'hidden', timeout: 15000 })
+      .waitFor({ state: 'hidden', timeout: 15_000 })
       .catch(() => {
         // Loading copy is absent on views that never show it.
       });
+    const emptyCopy = copy?.empty ?? 'No tasks yet';
     const settleMs = 8_000;
     await Promise.race([
-      this.page.locator('[data-task-id]').first().waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No tasks yet').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No tasks for today').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No tasks assigned to you').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No upcoming tasks').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No completed tasks').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No open tasks on this list').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No open unlisted tasks').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No tasks assigned to you on this list').waitFor({ state: 'attached', timeout: settleMs }),
-      this.page.getByText('No unlisted tasks assigned to you').waitFor({ state: 'attached', timeout: settleMs }),
+      surface.locator('[data-task-id]').first().waitFor({ state: 'visible', timeout: settleMs }),
+      surface.getByText(emptyCopy, { exact: true }).waitFor({ state: 'visible', timeout: settleMs }),
     ]).catch(() => {
       // If neither appears, let the test continue (it will fail if data is missing)
     });
@@ -1242,7 +1256,7 @@ export class TasksPage {
   }
 
   async getAllPileGroupNames(): Promise<string[]> {
-    const groups = this.page.locator('[data-pile-group]');
+    const groups = this.taskSurface().locator('[data-pile-group]');
     const count = await groups.count();
     const names: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -1255,7 +1269,9 @@ export class TasksPage {
   }
 
   async getTitlesInPileGroup(groupName: string): Promise<string[]> {
-    return this.titlesIn(this.page.locator(`[data-pile-name="${groupName}"]`).locator('[data-task-id]'));
+    return this.titlesIn(
+      this.taskSurface().locator(`[data-pile-name="${groupName}"]`).locator('[data-task-id]')
+    );
   }
 
   async getTodayOuterSections(): Promise<Array<'overdue' | 'due-today'>> {
@@ -1274,7 +1290,7 @@ export class TasksPage {
   async getPileGroupNamesInTodaySection(
     section: 'overdue' | 'due-today'
   ): Promise<string[]> {
-    const groups = this.page
+    const groups = this.taskSurface()
       .locator(`[data-today-section="${section}"]`)
       .locator('[data-pile-group]');
     const count = await groups.count();
@@ -1293,7 +1309,7 @@ export class TasksPage {
     groupName: string
   ): Promise<string[]> {
     return this.titlesIn(
-      this.page
+      this.taskSurface()
         .locator(`[data-today-section="${section}"]`)
         .locator(`[data-pile-name="${groupName}"]`)
         .locator('[data-task-id]')
@@ -1301,7 +1317,7 @@ export class TasksPage {
   }
 
   todayDueSections() {
-    return this.page.locator('[data-today-section]');
+    return this.taskSurface().locator('[data-today-section]');
   }
 
   private async titlesIn(cards: Locator): Promise<string[]> {

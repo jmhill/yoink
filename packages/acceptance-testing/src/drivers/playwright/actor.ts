@@ -861,7 +861,7 @@ export const createPlaywrightActor = (
       const created = (await response.json()) as NamedList;
       await page.goto(`/tasks?pile=${created.id}`);
       await expect(page).toHaveURL(new RegExp(`[?&]pile=${created.id}`));
-      await tasksPage.waitForTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty({ heading: created.name });
       // Desktop sidebar stays visible. Mobile drawer stays closed so content
       // owns the screen; createNamedListFromRail proves the rail row.
       if (await appRail.desktop().isVisible().catch(() => false)) {
@@ -891,7 +891,7 @@ export const createPlaywrightActor = (
       }
       const renamed = (await response.json()) as NamedList;
       await page.reload();
-      await tasksPage.waitForTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty({ heading: renamed.name });
       if (await appRail.desktop().isVisible().catch(() => false)) {
         await expect(appRail.itemByLabel(renamed.name)).toBeVisible();
       }
@@ -1001,7 +1001,7 @@ export const createPlaywrightActor = (
       await openRailDestination(name, async () => {
         await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
         await expect(page).not.toHaveURL(/[?&]filter=all/);
-        await tasksPage.waitForTasksOrEmpty();
+        await tasksPage.waitForTasksOrEmpty({ heading: name });
       });
     },
 
@@ -1144,7 +1144,7 @@ export const createPlaywrightActor = (
       await openRailDestination(name, async () => {
         await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
         await expect(page).not.toHaveURL(/[?&]filter=all/);
-        await tasksPage.waitForTasksOrEmpty();
+        await tasksPage.waitForTasksOrEmpty({ heading: name });
       });
     },
 
@@ -1158,6 +1158,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeAllPileGroups(names: string[]): Promise<void> {
+      await tasksPage.waitForTasksOrEmpty();
       await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
     },
 
@@ -1178,6 +1179,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeePileGroups(names: string[]): Promise<void> {
+      await tasksPage.waitForTasksOrEmpty();
       await expect.poll(async () => tasksPage.getAllPileGroupNames()).toEqual(names);
     },
 
@@ -1197,6 +1199,7 @@ export const createPlaywrightActor = (
       section: 'overdue' | 'due-today',
       names: string[]
     ): Promise<void> {
+      await tasksPage.waitForTasksOrEmpty();
       await expect
         .poll(async () => tasksPage.getPileGroupNamesInTodaySection(section))
         .toEqual(names);
@@ -1334,7 +1337,7 @@ export const createPlaywrightActor = (
       if (created.status === 'duplicate') {
         throw new ConflictError('A list with this name already exists');
       }
-      await tasksPage.waitForTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty({ heading: created.name });
       return {
         id: created.id,
         name: created.name,
@@ -1456,7 +1459,7 @@ export const createPlaywrightActor = (
       await openRailDestination(name, async () => {
         await page.waitForURL(/[?&]pile=[0-9a-f-]{36}/i, { timeout: 4_000 });
         await expect(page).not.toHaveURL(/[?&]filter=all/);
-        await tasksPage.waitForTasksOrEmpty();
+        await tasksPage.waitForTasksOrEmpty({ heading: name });
       });
     },
 
@@ -1499,7 +1502,7 @@ export const createPlaywrightActor = (
       if (created.status === 'duplicate') {
         throw new ConflictError('A list with this name already exists');
       }
-      await tasksPage.waitForTasksOrEmpty();
+      await tasksPage.waitForTasksOrEmpty({ heading: created.name });
       return {
         id: created.id,
         name: created.name,

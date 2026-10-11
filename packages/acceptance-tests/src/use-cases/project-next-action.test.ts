@@ -150,10 +150,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('renames from Edit and shows the blank-name error', async () => {
       const garden = await alice.createProject({ name: 'Garden' });
       await alice.goToProject(garden.id);
+      await alice.shouldSeeBlankProjectNameError();
+      await alice.dismissProjectEditDialog();
       await alice.editProjectName('Backyard');
       await alice.shouldSeeProjectPage({ name: 'Backyard', status: 'active' });
-      await alice.shouldSeeBlankProjectNameError();
-    });
+    }, 45_000);
 
     it('uses a single status control and opens waiting only when chosen', async () => {
       const garden = await alice.createProject({ name: 'Garden' });

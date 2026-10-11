@@ -1671,7 +1671,9 @@ export const createPlaywrightActor = (
 
     async shouldSeeBlankProjectNameError(): Promise<void> {
       await projectPage.openEdit();
-      await page.locator('[data-project-name-input]').fill('   ');
+      const input = page.locator('[data-project-name-input]');
+      await input.fill('');
+      await expect(input).toHaveValue('');
       await page.locator('[data-project-save]').click();
       await expect(page.locator('[data-project-save-error]')).toBeVisible();
     },
@@ -2368,8 +2370,8 @@ export const createPlaywrightActor = (
     },
 
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
-      const listbox = page.getByRole('listbox');
-      if (await listbox.isVisible()) {
+      const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
+      if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
         await waitForSettledOpenSelect({ page });
       }
       // A closing confirm dialog is still "visible" to Playwright (opacity

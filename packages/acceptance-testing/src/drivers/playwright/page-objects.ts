@@ -2773,8 +2773,12 @@ export class ProjectPage {
 
   async openEdit(): Promise<void> {
     await this.waitForVisible();
+    const dialog = this.page.locator('[data-project-edit-dialog]');
+    if (await dialog.isVisible()) {
+      return;
+    }
     await this.page.locator('[data-project-edit]').click();
-    await this.page.locator('[data-project-edit-dialog]').waitFor({ state: 'visible' });
+    await dialog.waitFor({ state: 'visible' });
   }
 
   async editName(name: string): Promise<void> {
@@ -2791,6 +2795,7 @@ export class ProjectPage {
     if (response.status() !== 200) {
       throw new Error(`Failed to edit project name: ${response.status()}`);
     }
+    await this.page.locator('[data-project-edit-dialog]').waitFor({ state: 'hidden' });
     await expect(this.page.locator('[data-place-heading]')).toHaveText(name);
   }
 
@@ -2808,6 +2813,7 @@ export class ProjectPage {
     if (response.status() !== 200) {
       throw new Error(`Failed to edit project objective: ${response.status()}`);
     }
+    await this.page.locator('[data-project-edit-dialog]').waitFor({ state: 'hidden' });
     await expect(this.page.locator('[data-part="objective"]')).toHaveText(objective);
   }
 

@@ -11,6 +11,7 @@ import {
   projectWaitingChangedPayloadV1Schema,
   taskAddedToProjectPayloadV1Schema,
   taskRemovedFromProjectPayloadV1Schema,
+  projectImportedPayloadV1Schema,
   openTasksRenumberedPayloadV1Schema,
   openTasksReorderedPayloadV1Schema,
   taskCompletedPayloadV1Schema,
@@ -184,6 +185,13 @@ export const taskRemovedFromProjectRecordSchema = z.object({
   payload: taskRemovedFromProjectPayloadV1Schema,
 });
 
+export const projectImportedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('ProjectImported'),
+  ...visibleV1,
+  payload: projectImportedPayloadV1Schema,
+});
+
 export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   taskCreatedRecordSchema,
   taskUpdatedRecordSchema,
@@ -205,6 +213,7 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   projectNextActionClearedRecordSchema,
   taskAddedToProjectRecordSchema,
   taskRemovedFromProjectRecordSchema,
+  projectImportedRecordSchema,
 ]);
 
 export type ChangeLogRecord = z.infer<typeof changeLogRecordSchema>;
@@ -234,6 +243,7 @@ export type TaskAddedToProjectRecord = z.infer<typeof taskAddedToProjectRecordSc
 export type TaskRemovedFromProjectRecord = z.infer<
   typeof taskRemovedFromProjectRecordSchema
 >;
+export type ProjectImportedRecord = z.infer<typeof projectImportedRecordSchema>;
 
 export type ChangeLogParseError = {
   readonly type: 'CHANGE_LOG_PARSE_ERROR';

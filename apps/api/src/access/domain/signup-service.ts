@@ -117,6 +117,7 @@ export type ValidateSignupResult = {
 export type CompleteSignupCommand = {
   code: string;
   email: string;
+  name?: string;
 };
 
 export type CompleteSignupResult = {
@@ -244,7 +245,7 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
     completeSignup(
       command: CompleteSignupCommand
     ): ResultAsync<CompleteSignupResult, SignupServiceError> {
-      const { code, email } = command;
+      const { code, email, name } = command;
 
       return validateInvitationAndEmail(code, email).andThen(({ invitation, organization }) => {
         const now = clock.now().toISOString();
@@ -257,6 +258,7 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
           id: userId,
           email,
           createdAt: now,
+          ...(name && name.trim().length > 0 ? { name: name.trim() } : {}),
         };
 
         // Create personal organization

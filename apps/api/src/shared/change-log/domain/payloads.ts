@@ -106,6 +106,10 @@ export const taskRemovedFromProjectPayloadV1Schema = z.object({
   projectId: z.string(),
 });
 
+export const projectImportedPayloadV1Schema = z.object({
+  taskCount: z.number().int().min(0),
+});
+
 export type TaskCreatedPayloadV1 = z.infer<typeof taskCreatedPayloadV1Schema>;
 export type TaskUpdatedPayloadV1 = z.infer<typeof taskUpdatedPayloadV1Schema>;
 export type TaskCompletedPayloadV1 = z.infer<typeof taskCompletedPayloadV1Schema>;
@@ -140,3 +144,4 @@ export type TaskAddedToProjectPayloadV1 = z.infer<typeof taskAddedToProjectPaylo
 export type TaskRemovedFromProjectPayloadV1 = z.infer<
   typeof taskRemovedFromProjectPayloadV1Schema
 >;
+export type ProjectImportedPayloadV1 = z.infer<typeof projectImportedPayloadV1Schema>;

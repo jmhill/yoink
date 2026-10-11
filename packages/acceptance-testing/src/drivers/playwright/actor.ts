@@ -1928,6 +1928,13 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-project-history-entry]')).not.toHaveCount(count);
     },
 
+    async loadAllProjectHistory(): Promise<void> {
+      const more = page.locator('[data-project-history-more]');
+      while ((await more.count()) > 0) {
+        await this.clickProjectHistoryMore();
+      }
+    },
+
     async shouldSeeHistoryEntry(input: {
       kind: string;
       actor: string;
@@ -1944,6 +1951,16 @@ export const createPlaywrightActor = (
       }
     },
 
+    async shouldSeeHistoryEntryCount(count: number): Promise<void> {
+      await expect(page.locator('[data-project-history-entry]')).toHaveCount(count);
+    },
+
+    async shouldSeeHistoryMore(): Promise<void> {
+      const more = page.locator('[data-project-history-more]');
+      await more.scrollIntoViewIfNeeded();
+      await expect(more).toBeVisible();
+    },
+
     async shouldSeeHistoryStart(): Promise<void> {
       const start = page.locator('[data-project-history-start]');
       await start.scrollIntoViewIfNeeded();
@@ -1951,10 +1968,37 @@ export const createPlaywrightActor = (
       await expect(start).toHaveText(/History starts Oct 10, 2026/);
     },
 
+    async shouldNotSeeHistoryStart(): Promise<void> {
+      await expect(page.locator('[data-project-history-start]')).toHaveCount(0);
+    },
+
+    async shouldSeeHistoryLinesInOrder(texts: string[]): Promise<void> {
+      const lines = page.locator('[data-project-history-entry]');
+      await expect(lines).not.toHaveCount(0);
+      const found = await lines.allTextContents();
+      let searchFrom = 0;
+      for (const text of texts) {
+        const index = found.findIndex(
+          (line, lineIndex) => lineIndex >= searchFrom && line.includes(text)
+        );
+        expect(index).toBeGreaterThanOrEqual(0);
+        searchFrom = index + 1;
+      }
+    },
+
     async shouldSeeFinishedTask(title: string): Promise<void> {
       const row = page.locator(`[data-project-finished] [data-task-title="${title}"]`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
+    },
+
+    async shouldSeeFinishedBy(title: string, text: string): Promise<void> {
+      const item = page.locator('[data-project-finished-item]').filter({
+        has: page.locator(`[data-task-title="${title}"]`),
+      });
+      const line = item.locator('[data-finished-by]');
+      await line.scrollIntoViewIfNeeded();
+      await expect(line).toContainText(text);
     },
 
     async shouldNotSeeFinishedTask(title: string): Promise<void> {

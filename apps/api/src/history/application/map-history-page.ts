@@ -66,6 +66,23 @@ export const entriesFromHistoryPage = (
   for (const item of page.items) {
     const record = item.record;
     if (isUnparsedHistoryRow(record)) {
+      if (record.subjectType === 'list') {
+        logger.warn({
+          recordId: record.id,
+          kind: record.kind,
+          reason: 'List subject is not a timeline subject',
+        });
+        continue;
+      }
+      if (record.subjectType !== 'task' && record.subjectType !== 'project') {
+        logger.warn({
+          recordId: record.id,
+          kind: record.kind,
+          reason: 'Unrecognised change-log subject type',
+          subjectType: record.subjectType,
+        });
+        continue;
+      }
       logger.warn({
         recordId: record.id,
         kind: record.kind,
@@ -77,7 +94,7 @@ export const entriesFromHistoryPage = (
           occurredAt: record.occurredAt,
           actorUserId: record.actorUserId,
           actorKind: record.actorKind,
-          subjectType: record.subjectType === 'list' ? 'project' : record.subjectType,
+          subjectType: record.subjectType,
           subjectId: record.subjectId,
           lookups,
         })

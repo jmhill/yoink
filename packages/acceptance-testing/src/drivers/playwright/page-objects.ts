@@ -74,6 +74,10 @@ export class SignupPage {
     await this.page.getByLabel('Email').fill(email);
   }
 
+  async enterName(name: string): Promise<void> {
+    await this.page.getByLabel('Your name').fill(name);
+  }
+
   async enterDeviceName(name: string): Promise<void> {
     await this.page.getByLabel('Device Name').fill(name);
   }

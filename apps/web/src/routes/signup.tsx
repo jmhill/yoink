@@ -38,6 +38,7 @@ function SignupPage() {
   // Form state
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [invitation, setInvitation] = useState<InvitationInfo | null>(null);
 
@@ -87,6 +88,7 @@ function SignupPage() {
       code: code.trim(),
       email: email.trim(),
       deviceName: deviceName.trim() || undefined,
+      name: name.trim() || undefined,
     });
 
     setIsLoading(false);
@@ -151,6 +153,19 @@ function SignupPage() {
                 )}
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="display-name">Your name</Label>
+                <Input
+                  id="display-name"
+                  type="text"
+                  placeholder="Alice"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="name"
+                  data-signup-name=""
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="device-name">Device Name</Label>
                 <Input

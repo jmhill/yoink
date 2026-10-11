@@ -45,6 +45,8 @@ export const SignupVerifyRequestSchema = z.object({
   credential: z.unknown(), // RegistrationResponseJSON - complex nested type
   /** Optional name for the passkey credential */
   credentialName: z.string().optional(),
+  /** Optional display name stored on the user */
+  name: z.string().min(1).max(100).optional(),
 });
 
 export type SignupVerifyRequest = z.infer<typeof SignupVerifyRequestSchema>;

@@ -95,4 +95,51 @@ describe('Migration 33: add_change_log_seq', () => {
     });
     expect(indexes.rows).toHaveLength(1);
   });
+
+  it('adds a unique index on seq', async () => {
+    await runMigrations(db, migrations);
+
+    const indexes = await db.execute({
+      sql: `
+        SELECT name, sql FROM sqlite_master
+        WHERE type = 'index' AND name = 'idx_change_log_seq'
+      `,
+    });
+    expect(indexes.rows).toHaveLength(1);
+    expect(String(indexes.rows[0]?.sql)).toMatch(/UNIQUE/i);
+
+    await db.execute({
+      sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+      args: ['org-1', 'Org', '2026-10-10T12:00:00.000Z'],
+    });
+    await insertRecord(db, { id: 'first', occurredAt: '2026-10-11T12:00:00.000Z' });
+    await db.execute({ sql: `UPDATE change_log SET seq = 1 WHERE id = 'first'` });
+
+    await expect(
+      db.execute({
+        sql: `
+          INSERT INTO change_log (
+            id, organization_id, project_id, subject_type, subject_id,
+            kind, schema_version, payload_json, actor_user_id, actor_kind,
+            occurred_at, hidden, seq
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        args: [
+          'duplicate-seq',
+          'org-1',
+          'project-1',
+          'project',
+          'project-1',
+          'ProjectUpdated',
+          1,
+          '{}',
+          null,
+          null,
+          '2026-10-11T12:01:00.000Z',
+          0,
+          1,
+        ],
+      })
+    ).rejects.toThrow();
+  });
 });

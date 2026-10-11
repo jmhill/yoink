@@ -47,13 +47,38 @@ const taskUpdatedDetails = (payload: TaskUpdatedPayloadV1): TimelineDetails | nu
   return details;
 };
 
-const subjectFor = (record: ChangeLogRecord, lookups: TimelineLookups) => {
-  if (record.subjectType === 'list') {
-    return { type: 'project' as const, id: record.subjectId, title: null, deleted: false };
+const timelineSubjectTypeFor = (
+  kind: Exclude<TimelineEntryKind, 'Unknown'>
+): 'task' | 'project' => {
+  switch (kind) {
+    case 'ProjectCreated':
+    case 'ProjectUpdated':
+    case 'ProjectStatusChanged':
+    case 'ProjectWaitingChanged':
+    case 'ProjectNextActionSet':
+    case 'ProjectNextActionCleared':
+    case 'ProjectImported':
+      return 'project';
+    case 'TaskCreated':
+    case 'TaskUpdated':
+    case 'TaskCompleted':
+    case 'TaskUncompleted':
+    case 'TaskDeleted':
+    case 'TaskAddedToProject':
+    case 'TaskRemovedFromProject':
+      return 'task';
   }
-  const lookedUp = lookups.subjectOf(record.subjectType, record.subjectId);
+};
+
+const subjectFor = (
+  record: ChangeLogRecord,
+  lookups: TimelineLookups,
+  kind: Exclude<TimelineEntryKind, 'Unknown'>
+) => {
+  const type = timelineSubjectTypeFor(kind);
+  const lookedUp = lookups.subjectOf(type, record.subjectId);
   return {
-    type: record.subjectType,
+    type,
     id: record.subjectId,
     title: lookedUp.title,
     deleted: lookedUp.deleted,
@@ -74,7 +99,7 @@ const entry = (
     kind: record.actorKind,
     name: lookups.actorNameOf(record.actorUserId),
   },
-  subject: subjectFor(record, lookups),
+  subject: subjectFor(record, lookups, kind),
   details,
 });
 
@@ -168,6 +193,11 @@ export const toTimelineEntry = (
       return entry(record, lookups, 'TaskRemovedFromProject', {
         kind: 'TaskRemovedFromProject',
         projectId: record.payload.projectId,
+      });
+    case 'ProjectImported':
+      return entry(record, lookups, 'ProjectImported', {
+        kind: 'ProjectImported',
+        taskCount: record.payload.taskCount,
       });
   }
 };

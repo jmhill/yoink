@@ -87,6 +87,10 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
     kind: z.literal('TaskRemovedFromProject'),
     projectId: z.string(),
   }),
+  z.object({
+    kind: z.literal('ProjectImported'),
+    taskCount: z.number().int().min(0),
+  }),
 ]);
 
 export type TimelineDetails = z.infer<typeof TimelineDetailsSchema>;
@@ -106,6 +110,7 @@ export const TimelineEntryKindSchema = z.enum([
   'ProjectNextActionCleared',
   'TaskAddedToProject',
   'TaskRemovedFromProject',
+  'ProjectImported',
 ]);
 
 export type TimelineEntryKind = z.infer<typeof TimelineEntryKindSchema>;

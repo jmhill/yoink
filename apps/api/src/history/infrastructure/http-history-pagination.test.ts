@@ -8,7 +8,14 @@ import {
 } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
 import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
-import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../tests/helpers/test-app.js';
+import {
+  createTestApp,
+  createTestAppAndDatabase,
+  pagingTestConfig,
+  TEST_ORG_ID,
+  TEST_TOKEN,
+  TEST_USER_ID,
+} from '../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 
@@ -239,5 +246,118 @@ describe('history HTTP list completeness', () => {
     expect(missingTask.json<{ code: string }>()).toMatchObject({
       code: 'TASK_NOT_FOUND',
     });
+  });
+});
+
+describe('history HTTP fixtures', () => {
+  const nextSeq = async (database: { execute: (query: { sql: string }) => Promise<{ rows: Array<Record<string, unknown>> }> }) => {
+    const result = await database.execute({
+      sql: `SELECT COALESCE(MAX(seq), 0) AS seq FROM change_log`,
+    });
+    return Number(result.rows[0]?.seq ?? 0) + 1;
+  };
+
+  it('returns 200 Unknown for damaged JSON and counts that row', async () => {
+    const { app, database } = await createTestAppAndDatabase();
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: auth,
+      payload: { name: 'Damaged kitchen' },
+    });
+    expect(created.statusCode).toBe(201);
+    const kitchen = created.json<Project>();
+    const before = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${kitchen.id}/history`,
+      headers: auth,
+    });
+    expect(before.statusCode).toBe(200);
+    const beforePage = before.json<HistoryPage>();
+
+    await database.execute({
+      sql: `
+        INSERT INTO change_log (
+          id, organization_id, project_id, subject_type, subject_id,
+          kind, schema_version, payload_json, actor_user_id, actor_kind,
+          occurred_at, hidden, seq
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      args: [
+        '00000000-0000-4000-8000-00000000d0d0',
+        TEST_ORG_ID,
+        kitchen.id,
+        'project',
+        kitchen.id,
+        'ProjectUpdated',
+        1,
+        '{not-json',
+        TEST_USER_ID,
+        'user',
+        '2026-10-12T12:00:00.000Z',
+        0,
+        await nextSeq(database),
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${kitchen.id}/history`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    const page = response.json<HistoryPage>();
+    expect(page.total).toBe(beforePage.total + 1);
+    expect(page.entries.some((entry) => entry.kind === 'Unknown')).toBe(true);
+    expect(page.entries.filter((entry) => entry.kind === 'Unknown')).toHaveLength(1);
+  });
+
+  it('exposes a ProjectImported fixture as Moved in · N on the project timeline', async () => {
+    const { app, database } = await createTestAppAndDatabase();
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: auth,
+      payload: { name: 'Imported garden' },
+    });
+    expect(created.statusCode).toBe(201);
+    const garden = created.json<Project>();
+
+    await database.execute({
+      sql: `
+        INSERT INTO change_log (
+          id, organization_id, project_id, subject_type, subject_id,
+          kind, schema_version, payload_json, actor_user_id, actor_kind,
+          occurred_at, hidden, seq
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      args: [
+        '00000000-0000-4000-8000-00000000b0b0',
+        TEST_ORG_ID,
+        garden.id,
+        'project',
+        garden.id,
+        'ProjectImported',
+        1,
+        JSON.stringify({ taskCount: 2 }),
+        TEST_USER_ID,
+        'user',
+        '2026-10-12T12:00:00.000Z',
+        0,
+        await nextSeq(database),
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${garden.id}/history`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    const page = response.json<HistoryPage>();
+    const imported = page.entries.find((entry) => entry.kind === 'ProjectImported');
+    expect(imported?.details).toEqual({ kind: 'ProjectImported', taskCount: 2 });
+    expect(imported?.subject.type).toBe('project');
+    expect(page.entries.some((entry) => entry.kind === 'Unknown')).toBe(false);
   });
 });

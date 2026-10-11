@@ -2,7 +2,7 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
 import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { finishedProjectTaskCursor } from '../../listing/domain/list-keys.js';
+import { asFinishedTask, finishedProjectTaskCursor } from '../../listing/domain/list-keys.js';
 import { runListedQuery } from '../../listing/application/run-listed-query.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
 import {
@@ -37,14 +37,22 @@ export const handleListFinishedTasksOnProject = (
       cursorOf: finishedProjectTaskCursor,
       limit: resolveListLimit(query.limit, 'history'),
       load: (seek, fetchLimit) =>
-        deps.pageFinishedTasksInProject({
-          organizationId: query.organizationId,
-          projectId: query.projectId,
-          fetchLimit,
-          seek,
-          completedAfter: query.completedAfter,
-          completedBefore: query.completedBefore,
-        }),
+        deps
+          .pageFinishedTasksInProject({
+            organizationId: query.organizationId,
+            projectId: query.projectId,
+            fetchLimit,
+            seek,
+            completedAfter: query.completedAfter,
+            completedBefore: query.completedBefore,
+          })
+          .map((page) => ({
+            ...page,
+            rows: page.rows.flatMap((task) => {
+              const finished = asFinishedTask(task);
+              return finished ? [finished] : [];
+            }),
+          })),
     });
   });
 };

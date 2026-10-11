@@ -8,6 +8,7 @@ import {
   pageOrdered,
 } from '../../listing/domain/keyset-window.js';
 import {
+  asFinishedTask,
   completedTaskDirection,
   completedTaskKeys,
   finishedProjectTaskDirection,
@@ -143,19 +144,36 @@ export const createFakeTaskStore = (
           break;
       }
 
-      const keysOf = opts.filter === 'completed' ? completedTaskKeys : taskBoardKeys;
-      const direction =
-        opts.filter === 'completed' ? completedTaskDirection : taskBoardDirection;
+      if (opts.filter === 'completed') {
+        const finished = filtered.flatMap((task) => {
+          const next = asFinishedTask(task);
+          return next ? [next] : [];
+        });
+        const ordered = [...finished].sort((a, b) => {
+          const cmp = compareKeyset(completedTaskKeys(a), completedTaskKeys(b));
+          return -cmp;
+        });
+        return okAsync(
+          pageOrdered({
+            ordered,
+            keysOf: completedTaskKeys,
+            direction: completedTaskDirection,
+            fetchLimit: opts.fetchLimit,
+            seek: opts.seek,
+          })
+        );
+      }
+
       const ordered = [...filtered].sort((a, b) => {
-        const cmp = compareKeyset(keysOf(a), keysOf(b));
-        return direction === 'asc' ? cmp : -cmp;
+        const cmp = compareKeyset(taskBoardKeys(a), taskBoardKeys(b));
+        return -cmp;
       });
 
       return okAsync(
         pageOrdered({
           ordered,
-          keysOf,
-          direction,
+          keysOf: taskBoardKeys,
+          direction: taskBoardDirection,
           fetchLimit: opts.fetchLimit,
           seek: opts.seek,
         })
@@ -252,17 +270,16 @@ export const createFakeTaskStore = (
       const finished = tasks
         .filter((task) => task.organizationId === project.organizationId)
         .filter((task) => !deletedIds.has(task.id))
-        .filter((task) => Boolean(task.completedAt))
+        .flatMap((task) => {
+          const finished = asFinishedTask(task);
+          return finished ? [finished] : [];
+        })
         .filter((task) => task.projectId === project.projectId)
         .filter((task) =>
-          project.completedAfter
-            ? (task.completedAt ?? '') >= project.completedAfter
-            : true
+          project.completedAfter ? task.completedAt >= project.completedAfter : true
         )
         .filter((task) =>
-          project.completedBefore
-            ? (task.completedAt ?? '') < project.completedBefore
-            : true
+          project.completedBefore ? task.completedAt < project.completedBefore : true
         )
         .sort((a, b) => {
           const cmp = compareKeyset(finishedProjectTaskKeys(a), finishedProjectTaskKeys(b));

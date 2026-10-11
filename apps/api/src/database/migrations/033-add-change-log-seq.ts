@@ -25,6 +25,9 @@ export const migration: Migration = {
             ON change_log (organization_id, project_id, hidden, occurred_at, seq)
           `,
         },
+        {
+          sql: `CREATE UNIQUE INDEX idx_change_log_seq ON change_log (seq)`,
+        },
       ],
       'write'
     );

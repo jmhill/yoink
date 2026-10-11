@@ -3,7 +3,11 @@ import type { Task } from '@yoink/api-contracts';
 import type { ListTasksQuery } from '../domain/task-commands.js';
 import type { ListTasksError } from '../domain/task-errors.js';
 import { listKindForTaskFilter, resolveListLimit } from '../../listing/domain/list-kind.js';
-import { completedTaskCursor, taskBoardCursor } from '../../listing/domain/list-keys.js';
+import {
+  asFinishedTask,
+  completedTaskCursor,
+  taskBoardCursor,
+} from '../../listing/domain/list-keys.js';
 import { runListedQuery } from '../../listing/application/run-listed-query.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
 import type { ListTasks } from './ports.js';
@@ -19,9 +23,33 @@ export const handleListTasks = (
 ): ResultAsync<ListedPage<Task>, ListTasksError> => {
   const limit = resolveListLimit(query.limit, listKindForTaskFilter(query.filter));
   const completed = query.filter === 'completed';
+  if (completed) {
+    return runListedQuery({
+      cursor: query.cursor,
+      cursorOf: completedTaskCursor,
+      limit,
+      load: (seek, fetchLimit) =>
+        deps
+          .list({
+            organizationId: query.organizationId,
+            filter: query.filter,
+            today: deps.today(),
+            fetchLimit,
+            seek,
+            assigneeId: query.callerId,
+          })
+          .map((page) => ({
+            ...page,
+            rows: page.rows.flatMap((task) => {
+              const finished = asFinishedTask(task);
+              return finished ? [finished] : [];
+            }),
+          })),
+    });
+  }
   return runListedQuery({
     cursor: query.cursor,
-    cursorOf: completed ? completedTaskCursor : taskBoardCursor,
+    cursorOf: taskBoardCursor,
     limit,
     load: (seek, fetchLimit) =>
       deps.list({

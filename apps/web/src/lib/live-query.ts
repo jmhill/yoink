@@ -54,9 +54,15 @@ const isTaskListResult = (data: unknown): data is TaskListResult =>
  * named-pile `['lists', id, 'tasks']`, and unlisted.
  */
 export const isLiveOpenTaskListQueryKey = (queryKey: QueryKey): boolean => {
-  const [root, second, third] = queryKey;
+  const [root, second, third, fourth] = queryKey;
   if (root === 'tasks') {
-    return second !== 'completed';
+    if (second === 'completed') {
+      return false;
+    }
+    if (second === 'project' && fourth === 'finished') {
+      return false;
+    }
+    return true;
   }
   if (root === 'unlisted' && second === 'tasks') {
     return true;

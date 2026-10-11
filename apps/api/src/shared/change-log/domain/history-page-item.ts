@@ -13,7 +13,7 @@ export type UnparsedHistoryRow = {
   readonly occurredAt: string;
   readonly actorUserId: string | null;
   readonly actorKind: 'user' | 'bot' | null;
-  readonly subjectType: 'task' | 'project' | 'list';
+  readonly subjectType: 'task' | 'project' | 'list' | 'unrecognised';
   readonly subjectId: string;
 };
 

@@ -2,6 +2,15 @@ import type { Capture, NamedList, Project, Task } from '@yoink/api-contracts';
 import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
+export type FinishedTask = Task & { readonly completedAt: string };
+
+export const asFinishedTask = (task: Task): FinishedTask | null => {
+  if (typeof task.completedAt !== 'string' || task.completedAt.length === 0) {
+    return null;
+  }
+  return { ...task, completedAt: task.completedAt };
+};
+
 const UNPINNED_SENTINEL = '';
 const MISSING_OPEN_ORDER = 2_147_483_647;
 
@@ -13,11 +22,11 @@ export const taskBoardCursor: ListedCursor<Task, 'tasks.board'> = {
   }),
 };
 
-export const completedTaskCursor: ListedCursor<Task, 'tasks.completed'> = {
+export const completedTaskCursor: ListedCursor<FinishedTask, 'tasks.completed'> = {
   view: 'tasks.completed',
   of: (task) => ({
     view: 'tasks.completed',
-    keys: [task.completedAt ?? '', task.id],
+    keys: [task.completedAt, task.id],
   }),
 };
 
@@ -37,11 +46,11 @@ export const projectTaskCursor: ListedCursor<Task, 'tasks.project'> = {
   }),
 };
 
-export const finishedProjectTaskCursor: ListedCursor<Task, 'tasks.project.finished'> = {
+export const finishedProjectTaskCursor: ListedCursor<FinishedTask, 'tasks.project.finished'> = {
   view: 'tasks.project.finished',
   of: (task) => ({
     view: 'tasks.project.finished',
-    keys: [task.completedAt ?? '', task.id],
+    keys: [task.completedAt, task.id],
   }),
 };
 
@@ -99,10 +108,11 @@ export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
 };
 
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
-export const completedTaskKeys = (task: Task) => completedTaskCursor.of(task).keys;
+export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
 export const projectTaskKeys = (task: Task) => projectTaskCursor.of(task).keys;
-export const finishedProjectTaskKeys = (task: Task) => finishedProjectTaskCursor.of(task).keys;
+export const finishedProjectTaskKeys = (task: FinishedTask) =>
+  finishedProjectTaskCursor.of(task).keys;
 export const projectHistoryKeys = (row: HistoryCursorRow) => projectHistoryCursor.of(row).keys;
 export const taskHistoryKeys = (row: HistoryCursorRow) => taskHistoryCursor.of(row).keys;
 export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;

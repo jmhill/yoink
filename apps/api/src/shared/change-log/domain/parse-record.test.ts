@@ -193,6 +193,15 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         hidden: hiddenFor('TaskRemovedFromProject'),
         payload: { projectId: 'project-1' },
       };
+    case 'ProjectImported':
+      return {
+        ...base,
+        subjectType: 'project',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('ProjectImported'),
+        payload: { taskCount: 2 },
+      };
   }
 };
 

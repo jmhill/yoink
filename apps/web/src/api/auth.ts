@@ -302,6 +302,7 @@ const verifySignup = async (options: {
   email: string;
   credential: RegistrationResponseJSON;
   credentialName?: string;
+  name?: string;
 }): Promise<ApiResponse<SignupVerifyResponse>> => {
   const response = await fetch('/api/auth/signup/verify', {
     method: 'POST',
@@ -332,8 +333,9 @@ export const signupWithPasskey = async (options: {
   code: string;
   email: string;
   deviceName?: string;
+  name?: string;
 }): Promise<ApiResponse<SignupVerifyResponse>> => {
-  const { code, email, deviceName } = options;
+  const { code, email, deviceName, name } = options;
 
   // Step 1: Get signup options
   const optionsResult = await getSignupOptions({ code, email });
@@ -360,6 +362,7 @@ export const signupWithPasskey = async (options: {
     email,
     credential,
     credentialName: deviceName,
+    name,
   });
 };
 
@@ -388,7 +391,7 @@ export type MintedAgent = {
 };
 
 export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): string =>
-  member.kind === 'agent' ? (member.name ?? 'Agent') : member.email;
+  member.name ?? (member.kind === 'agent' ? 'Agent' : member.email);
 
 /**
  * List members of the current organization.

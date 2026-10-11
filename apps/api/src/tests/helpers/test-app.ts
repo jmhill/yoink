@@ -100,6 +100,13 @@ export const createTestApp = async (config: AppConfig = testConfig) => {
   return bootstrapApp({ config, infrastructure, silent: true });
 };
 
+export const createTestAppAndDatabase = async (config: AppConfig = pagingTestConfig) => {
+  const infrastructure = createInfrastructure(config);
+  await runMigrations(infrastructure.database, migrations);
+  const app = await bootstrapApp({ config, infrastructure, silent: true });
+  return { app, database: infrastructure.database };
+};
+
 /**
  * Creates an in-process Fastify app with admin routes enabled.
  * Uses in-memory SQLite and fake infrastructure (clock, ID generator, etc.)

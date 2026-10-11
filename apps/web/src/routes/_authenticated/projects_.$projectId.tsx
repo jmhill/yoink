@@ -27,14 +27,20 @@ import {
   tsrTasks,
 } from '@/api/client';
 import { memberLabel } from '@/api/auth';
-import { PILE_SAFETY_CAP, projectContract, type Task } from '@yoink/api-contracts';
+import {
+  PILE_SAFETY_CAP,
+  projectContract,
+  type Task,
+} from '@yoink/api-contracts';
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
 import { showsNoNextActionWarning, showsSomedaySetNextAction } from '@/lib/project-next-action';
 import {
+  formatFinishedByLine,
   formatHistoryStartsLine,
   formatTimelineLine,
+  shouldShowHistoryStartLine,
 } from '@/lib/format-timeline-entry';
 import {
   useProjectFinishedPages,
@@ -259,6 +265,14 @@ function ProjectPage() {
     if (!task.assigneeId || task.assigneeId === viewerId) return undefined;
     const member = members.find((item) => item.userId === task.assigneeId);
     return member ? memberLabel(member) : task.assigneeId;
+  };
+
+  const finishedByName = (task: Task): string => {
+    if (!task.completedBy) {
+      return 'Unknown';
+    }
+    const member = members.find((item) => item.userId === task.completedBy);
+    return member ? memberLabel(member) : 'Unknown';
   };
 
   const handleSaveEdit = (
@@ -538,6 +552,17 @@ function ProjectPage() {
                       isLoading={taskBusy}
                       assigneeLabel={assigneeLabelFor(task)}
                     />
+                    {task.completedAt ? (
+                      <p
+                        data-finished-by=""
+                        className="px-1 pt-1 text-xs text-muted-foreground"
+                      >
+                        {formatFinishedByLine({
+                          name: finishedByName(task),
+                          completedAt: task.completedAt,
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                 ))
               )}
@@ -546,6 +571,7 @@ function ProjectPage() {
                   <Button
                     type="button"
                     variant="outline"
+                    data-project-finished-more=""
                     onClick={() => void finished.fetchNextPage()}
                     disabled={finished.isFetchingNextPage}
                   >
@@ -604,14 +630,18 @@ function ProjectPage() {
                     {history.isFetchingNextPage ? 'Loading...' : 'Show more'}
                   </Button>
                 </div>
-              ) : (
+              ) : shouldShowHistoryStartLine({
+                  hasMore: history.hasMore,
+                  createdAt: project.createdAt,
+                  historyStartsAt: history.historyStartsAt,
+                }) ? (
                 <p
                   data-project-history-start=""
                   className="text-sm text-muted-foreground"
                 >
                   {formatHistoryStartsLine(history.historyStartsAt)}
                 </p>
-              )}
+              ) : null}
             </div>
           ) : null}
         </section>

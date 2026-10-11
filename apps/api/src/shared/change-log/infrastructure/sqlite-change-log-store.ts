@@ -8,7 +8,7 @@ import type {
   ChangeLogStorageError,
   HistoryPageItem,
 } from '../domain/history-page-item.js';
-import { VISIBLE_TIMELINE_SQL } from '../domain/visible-timeline-sql.js';
+import { VISIBLE_TIMELINE_SQL } from './sql.js';
 import type { KeysetCursor } from '../../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../listing/domain/listed-page.js';
 import { pageSqlite } from '../../../listing/infrastructure/page-sqlite.js';
@@ -40,8 +40,34 @@ const changeLogRowSchema = z.object({
   actor_kind: z.string().nullable(),
   occurred_at: z.string(),
   hidden: z.coerce.number(),
-  seq: z.coerce.number().optional(),
+  seq: z.coerce.number().int(),
 });
+
+/** Typed stand-in when a row's seq cannot be read. Not a silent default. */
+export const UNREADABLE_CHANGE_LOG_SEQ = Number.NaN;
+
+const readSeq = (raw: Record<string, unknown>): number => {
+  const value = raw.seq;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return UNREADABLE_CHANGE_LOG_SEQ;
+};
+
+const readSubjectType = (
+  value: string
+): 'task' | 'project' | 'list' | 'unrecognised' => {
+  if (value === 'task' || value === 'project' || value === 'list') {
+    return value;
+  }
+  return 'unrecognised';
+};
 
 const rowToUnknown = (raw: unknown): unknown => {
   const row = changeLogRowSchema.safeParse(raw);
@@ -75,17 +101,16 @@ const rowToUnknown = (raw: unknown): unknown => {
 const actorKindOf = (value: string | null): 'user' | 'bot' | null =>
   value === 'user' || value === 'bot' ? value : null;
 
-const subjectTypeOf = (value: string): 'task' | 'project' | 'list' =>
-  value === 'task' || value === 'project' || value === 'list' ? value : 'project';
-
 export const rowToHistoryItem = (raw: Record<string, unknown>): HistoryPageItem => {
   const row = changeLogRowSchema.safeParse(raw);
   const occurredAt = row.success ? row.data.occurred_at : String(raw.occurred_at ?? '');
-  const seq = row.success ? (row.data.seq ?? 0) : Number(raw.seq ?? 0);
+  const seq = row.success ? row.data.seq : readSeq(raw);
   const parsed = parseChangeLogRecord(rowToUnknown(raw));
   if (parsed.isOk()) {
     return { occurredAt, seq, record: parsed.value };
   }
+  const rawSubject = row.success ? row.data.subject_type : String(raw.subject_type ?? '');
+  const subjectType = readSubjectType(rawSubject);
   return {
     occurredAt,
     seq,
@@ -96,7 +121,7 @@ export const rowToHistoryItem = (raw: Record<string, unknown>): HistoryPageItem 
       occurredAt,
       actorUserId: row.success ? row.data.actor_user_id : null,
       actorKind: actorKindOf(row.success ? row.data.actor_kind : null),
-      subjectType: subjectTypeOf(row.success ? row.data.subject_type : 'project'),
+      subjectType,
       subjectId: row.success ? row.data.subject_id : String(raw.subject_id ?? ''),
     },
   };

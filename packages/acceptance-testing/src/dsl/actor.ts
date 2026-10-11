@@ -937,14 +937,20 @@ export type BrowserActorOperations = {
   expandProjectHistory(): Promise<void>;
   expandProjectFinished(): Promise<void>;
   clickProjectHistoryMore(): Promise<void>;
+  loadAllProjectHistory(): Promise<void>;
   shouldSeeHistoryEntry(input: {
     kind: string;
     actor: string;
     text: string;
     deleted?: boolean;
   }): Promise<void>;
+  shouldSeeHistoryEntryCount(count: number): Promise<void>;
+  shouldSeeHistoryMore(): Promise<void>;
   shouldSeeHistoryStart(): Promise<void>;
+  shouldNotSeeHistoryStart(): Promise<void>;
+  shouldSeeHistoryLinesInOrder(texts: string[]): Promise<void>;
   shouldSeeFinishedTask(title: string): Promise<void>;
+  shouldSeeFinishedBy(title: string, text: string): Promise<void>;
   shouldNotSeeFinishedTask(title: string): Promise<void>;
   reopenFinishedTask(title: string): Promise<void>;
 

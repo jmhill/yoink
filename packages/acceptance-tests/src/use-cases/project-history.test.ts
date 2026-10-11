@@ -82,6 +82,10 @@ usingDrivers(['http'] as const, (ctx) => {
       const taskC = await alice.createTask({ title: 'Old invoice', projectId: kitchen.id });
       await alice.deleteTask(taskC.id);
 
+      const doomed = await alice.createTask({ title: 'Doomed next', projectId: kitchen.id });
+      await alice.setNextAction(kitchen.id, { taskId: doomed.id });
+      await alice.deleteTask(doomed.id);
+
       const taskD = await alice.createTask({ title: 'Bot trash', projectId: kitchen.id });
       await bot.deleteTask(taskD.id);
 
@@ -120,7 +124,22 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(page2.tasks.map((task) => task.title)).toEqual(['Finish later B']);
       expect(page2.hasMore).toBe(true);
 
-      await alice.createTask({ title: 'Leftover', projectId: kitchen.id });
+      const leftover = await alice.createTask({ title: 'Leftover', projectId: kitchen.id });
+      await alice.setNextAction(kitchen.id, { taskId: leftover.id });
+
+      const beforeNoops = snapshot((await collectHistory(alice, kitchen.id, 3)).entries);
+      await alice.updateProject(kitchen.id, { name: 'Kitchen renovation' });
+      await alice.updateProject(kitchen.id, { objective: null });
+      await alice.changeProjectStatus(kitchen.id, {
+        status: 'waiting',
+        waitingOn: 'Contractor',
+        waitingSince: '2026-10-01',
+      });
+      await alice.setNextAction(kitchen.id, { taskId: leftover.id });
+      await alice.updateTask(leftover.id, { title: 'Leftover' });
+      await alice.updateTask(leftover.id, { projectId: kitchen.id });
+      expect(snapshot((await collectHistory(alice, kitchen.id, 3)).entries)).toEqual(beforeNoops);
+
       await alice.changeProjectStatus(kitchen.id, {
         status: 'done',
         openTasks: 'remove',
@@ -146,14 +165,15 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(kinds).not.toContain('TaskPinned');
       expect(kinds).not.toContain('TaskUpdated');
       const personName = entries.find((entry) => entry.kind === 'ProjectCreated')?.actor.name;
-      expect(personName).toBeTruthy();
+      expect(personName).toBe('Alice');
       expect(entries.filter((entry) => entry.kind === 'TaskDeleted').map((entry) => ({
         title: entry.subject.title,
         actor: entry.actor.name,
         kind: entry.actor.kind,
       }))).toEqual([
         { title: 'Bot trash', actor: 'Lane', kind: 'bot' },
-        { title: 'Old invoice', actor: personName, kind: 'user' },
+        { title: 'Doomed next', actor: 'Alice', kind: 'user' },
+        { title: 'Old invoice', actor: 'Alice', kind: 'user' },
       ]);
 
       const completed = entries.find(
@@ -162,9 +182,62 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(completed?.actor).toMatchObject({ name: 'Lane', kind: 'bot' });
       expect(completed?.subject.title).toBe('Call Trident');
 
-      const cleared = entries.find((entry) => entry.kind === 'ProjectNextActionCleared');
-      expect(cleared?.actor).toMatchObject({ name: 'Lane', kind: 'bot' });
-      expect(cleared?.details).toMatchObject({ reason: 'completed', taskTitle: 'Call Trident' });
+      expect(
+        entries
+          .filter((entry) => entry.kind === 'ProjectNextActionCleared')
+          .map((entry) => ({
+            actor: entry.actor.name,
+            kind: entry.actor.kind,
+            reason: 'reason' in entry.details ? entry.details.reason : null,
+            taskTitle: 'taskTitle' in entry.details ? entry.details.taskTitle : null,
+          }))
+      ).toEqual([
+        { actor: 'Alice', kind: 'user', reason: 'projectDone', taskTitle: 'Leftover' },
+        { actor: 'Alice', kind: 'user', reason: 'deleted', taskTitle: 'Doomed next' },
+        { actor: 'Lane', kind: 'bot', reason: 'completed', taskTitle: 'Call Trident' },
+      ]);
+
+      expect(
+        snapshot(entries).map((entry) => ({
+          kind: entry.kind,
+          subjectTitle: entry.subjectTitle,
+          actorName: entry.actorName,
+          actorKind: entry.actorKind,
+          reason: entry.details && 'reason' in entry.details ? entry.details.reason : undefined,
+        }))
+      ).toEqual([
+        { kind: 'ProjectStatusChanged', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user', reason: 'projectDone' },
+        { kind: 'TaskRemovedFromProject', subjectTitle: 'Leftover', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Leftover', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCompleted', subjectTitle: 'Finish later A', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCompleted', subjectTitle: 'Finish later B', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Finish later B', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Finish later A', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectWaitingChanged', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectStatusChanged', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskDeleted', subjectTitle: 'Bot trash', actorName: 'Lane', actorKind: 'bot' },
+        { kind: 'TaskCreated', subjectTitle: 'Bot trash', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user', reason: 'deleted' },
+        { kind: 'TaskDeleted', subjectTitle: 'Doomed next', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Doomed next', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskDeleted', subjectTitle: 'Old invoice', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Old invoice', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskRemovedFromProject', subjectTitle: 'Order lumber', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionCleared', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user', reason: 'completed' },
+        { kind: 'TaskCompleted', subjectTitle: 'Call Trident', actorName: 'Lane', actorKind: 'bot' },
+        { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectNextActionSet', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskCreated', subjectTitle: 'Order lumber', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'TaskAddedToProject', subjectTitle: 'Call Trident', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectUpdated', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+        { kind: 'ProjectCreated', subjectTitle: 'Kitchen renovation', actorName: 'Alice', actorKind: 'user' },
+      ].map((entry) => ({
+        ...entry,
+        reason: 'reason' in entry ? entry.reason : undefined,
+      })));
 
       const removedHere = entries.filter((entry) => entry.kind === 'TaskRemovedFromProject');
       expect(removedHere.map((entry) => entry.subject.title).sort()).toEqual(
@@ -313,9 +386,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
       it(`walks the project history on ${viewport.name}`, async () => {
         await viewport.apply(alice);
         const kitchen = await alice.createProject({ name: 'Kitchen renovation' });
-        await alice.createTask({ title: 'Pad one', projectId: kitchen.id });
-        await alice.createTask({ title: 'Pad two', projectId: kitchen.id });
-        await alice.createTask({ title: 'Pad three', projectId: kitchen.id });
+        for (const title of [
+          'Pad one',
+          'Pad two',
+          'Pad three',
+          'Pad four',
+          'Pad five',
+          'Pad six',
+          'Pad seven',
+          'Pad eight',
+        ]) {
+          await alice.createTask({ title, projectId: kitchen.id });
+        }
         const taskA = await alice.createTask({ title: 'Call Trident', projectId: kitchen.id });
         await alice.createTask({ title: 'Order lumber', projectId: kitchen.id });
         const extra = await alice.createTask({ title: 'Paint samples', projectId: kitchen.id });
@@ -341,11 +423,18 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
 
         await alice.expandProjectHistory();
+        await alice.shouldSeeHistoryEntryCount(10);
+        await alice.shouldSeeHistoryMore();
         await alice.shouldSeeHistoryEntry({
           kind: 'ProjectUpdated',
-          actor: alice.email,
-          text: 'edited this project',
+          actor: 'Alice',
+          text: 'changed objective',
         });
+        await alice.shouldSeeHistoryLinesInOrder([
+          'changed objective',
+          "deleted 'Old invoice'",
+          "completed 'Call Trident'",
+        ]);
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'history_open',
@@ -353,7 +442,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await alice.shouldSeeHistoryEntry({
           kind: 'TaskDeleted',
-          actor: alice.email,
+          actor: 'Alice',
           text: "deleted 'Old invoice'",
           deleted: true,
         });
@@ -372,24 +461,24 @@ usingDrivers(['playwright'] as const, (ctx) => {
           step: 'bot_credited',
         });
 
+        await alice.shouldSeeHistoryMore();
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'show_more_before',
         });
         await alice.clickProjectHistoryMore();
+        await alice.shouldSeeHistoryEntry({
+          kind: 'ProjectCreated',
+          actor: 'Alice',
+          text: 'created this project',
+        });
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'show_more_after',
         });
 
-        while (true) {
-          try {
-            await alice.clickProjectHistoryMore();
-          } catch {
-            break;
-          }
-        }
-        await alice.shouldSeeHistoryStart();
+        await alice.loadAllProjectHistory();
+        await alice.shouldNotSeeHistoryStart();
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'history_start',
@@ -397,6 +486,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await alice.expandProjectFinished();
         await alice.shouldSeeFinishedTask('Paint samples');
+        await alice.shouldSeeFinishedBy('Paint samples', 'Finished by Alice');
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'finished_open',

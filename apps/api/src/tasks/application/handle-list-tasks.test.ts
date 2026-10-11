@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Task } from '@yoink/api-contracts';
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
-import { completedTaskCursor } from '../../listing/domain/list-keys.js';
+import { asFinishedTask, completedTaskCursor } from '../../listing/domain/list-keys.js';
 import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
 
 const today = () => '2025-01-15';
@@ -164,7 +164,11 @@ describe('handleListTasks', () => {
     if (!page1.isOk()) return;
     expect(page1.value.items[0]?.id).toBe('done-1');
     const cursor = page1.value.nextCursor;
-    expect(cursor).toBe(encodeKeysetCursor(completedTaskCursor.of(first)));
+    const finishedFirst = asFinishedTask(first);
+    expect(finishedFirst).not.toBeNull();
+    if (finishedFirst) {
+      expect(cursor).toBe(encodeKeysetCursor(completedTaskCursor.of(finishedFirst)));
+    }
 
     store.applyReplace({ ...first, completedAt: undefined });
 

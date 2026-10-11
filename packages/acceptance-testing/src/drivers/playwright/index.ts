@@ -5,6 +5,7 @@ import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
+import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
 
 /**
@@ -115,9 +116,11 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
       
-      // Fill email and device name
+      // Fill email, display name, and device name
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
+      await signupPage.enterName(displayNameFromEmail(email));
+      debug('Filled name');
       await signupPage.enterDeviceName('Test Device');
       debug('Filled device name');
       
@@ -239,9 +242,11 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         throw new Error(`Signup validation failed: ${error}`);
       }
 
-      // Fill email and device name
+      // Fill email, display name, and device name
       await signupPage.enterEmail(uniqueEmail);
       debug('Filled email');
+      await signupPage.enterName(displayNameFromEmail(email));
+      debug('Filled name');
       await signupPage.enterDeviceName('Test Device');
       debug('Filled device name');
 

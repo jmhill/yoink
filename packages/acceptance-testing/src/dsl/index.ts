@@ -45,6 +45,8 @@ export {
   AlreadyMemberError,
 } from './errors.js';
 
+export { displayNameFromEmail } from './display-name.js';
+
 // Interfaces
 export type { Actor, CoreActor, BrowserActor, BrowserActorOperations, AnonymousActor } from './actor.js';
 export type { Admin } from './admin.js';

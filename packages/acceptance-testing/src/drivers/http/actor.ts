@@ -1121,6 +1121,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('clickProjectHistoryMore', 'http');
     },
 
+    async loadAllProjectHistory(): Promise<void> {
+      throw new UnsupportedOperationError('loadAllProjectHistory', 'http');
+    },
+
     async shouldSeeHistoryEntry(_input: {
       kind: string;
       actor: string;
@@ -1130,12 +1134,32 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeHistoryEntry', 'http');
     },
 
+    async shouldSeeHistoryEntryCount(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryEntryCount', 'http');
+    },
+
+    async shouldSeeHistoryMore(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryMore', 'http');
+    },
+
     async shouldSeeHistoryStart(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeHistoryStart', 'http');
     },
 
+    async shouldNotSeeHistoryStart(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeHistoryStart', 'http');
+    },
+
+    async shouldSeeHistoryLinesInOrder(_texts: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryLinesInOrder', 'http');
+    },
+
     async shouldSeeFinishedTask(_title: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeFinishedTask', 'http');
+    },
+
+    async shouldSeeFinishedBy(_title: string, _text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeFinishedBy', 'http');
     },
 
     async shouldNotSeeFinishedTask(_title: string): Promise<void> {

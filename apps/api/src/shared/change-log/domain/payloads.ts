@@ -19,6 +19,7 @@ export const taskCreatedPayloadV1Schema = z.object({
   projectId: z.string().optional(),
   openOrder: z.number().int(),
   createdById: z.string(),
+  projectName: z.string().optional(),
   ...importMarkerSchema,
 });
 
@@ -110,6 +111,7 @@ export const projectNextActionClearedPayloadV1Schema = z.object({
 
 export const taskAddedToProjectPayloadV1Schema = z.object({
   projectId: z.string(),
+  projectName: z.string().optional(),
   ...importMarkerSchema,
 });
 

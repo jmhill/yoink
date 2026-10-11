@@ -1,7 +1,12 @@
 import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptance-testing';
-import type { BrowserActor, CoreActor, HistoryPage, TimelineEntry } from '@yoink/acceptance-testing';
+import type {
+  BrowserActor,
+  CoreActor,
+  HistoryPage,
+  ImportProject,
+  TimelineEntry,
+} from '@yoink/acceptance-testing';
 import { ConflictError, ForbiddenError, ImportInvalidError } from '@yoink/acceptance-testing';
-import type { ImportProject } from '@yoink/api-contracts';
 
 const snapshot = (entries: TimelineEntry[]) =>
   entries.map((entry) => ({

@@ -276,7 +276,12 @@ const membershipRecords = (
       ];
     }
     case 'added': {
-      const payload: TaskAddedToProjectPayloadV1 = { projectId: membership.projectId };
+      const payload: TaskAddedToProjectPayloadV1 = {
+        projectId: membership.projectId,
+        ...(input.destinationProjectName !== undefined
+          ? { projectName: input.destinationProjectName }
+          : {}),
+      };
       return [
         {
           ...envelope(
@@ -300,7 +305,12 @@ const membershipRecords = (
           ? { toProjectName: input.destinationProjectName }
           : {}),
       };
-      const addedPayload: TaskAddedToProjectPayloadV1 = { projectId: membership.toProjectId };
+      const addedPayload: TaskAddedToProjectPayloadV1 = {
+        projectId: membership.toProjectId,
+        ...(input.destinationProjectName !== undefined
+          ? { projectName: input.destinationProjectName }
+          : {}),
+      };
       return [
         {
           ...envelope(

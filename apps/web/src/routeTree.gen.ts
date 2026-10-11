@@ -368,7 +368,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedListsListIdRoute: AuthenticatedListsListIdRoute,
   AuthenticatedListsUnlistedRoute: AuthenticatedListsUnlistedRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
-  AuthenticatedProjectsImportsImportIdRoute: AuthenticatedProjectsImportsImportIdRoute,
+  AuthenticatedProjectsImportsImportIdRoute:
+    AuthenticatedProjectsImportsImportIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

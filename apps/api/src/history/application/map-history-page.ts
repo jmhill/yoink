@@ -48,6 +48,18 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
     if (record.kind === 'ProjectNextActionCleared') {
       taskIds.add(record.payload.taskId);
     }
+    if (record.kind === 'TaskAddedToProject') {
+      projectIds.add(record.payload.projectId);
+    }
+    if (record.kind === 'TaskCreated' && record.payload.projectId) {
+      projectIds.add(record.payload.projectId);
+    }
+    if (record.kind === 'TaskRemovedFromProject') {
+      projectIds.add(record.payload.projectId);
+      if (record.payload.toProjectId) {
+        projectIds.add(record.payload.toProjectId);
+      }
+    }
   }
 
   return {

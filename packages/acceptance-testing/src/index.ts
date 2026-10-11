@@ -9,6 +9,7 @@ export type {
   UpdateCaptureInput,
   CreateTokenResult,
   HealthStatus,
+  ImportProject,
   PublicFileHeaders,
 } from './dsl/index.js';
 

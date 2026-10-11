@@ -24,7 +24,7 @@ const now = '2026-10-11T15:00:00.000Z';
 const person = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };
 
 const paint: Task = {
-  id: 'task-paint',
+  id: '00000000-0000-4000-8000-0000000000aa',
   organizationId: 'org-1',
   createdById: 'user-1',
   title: 'Paint the door',
@@ -163,10 +163,10 @@ describe('sqlite import persist', () => {
     const taskHistory = (await log.findBySubject('task', paint.id))._unsafeUnwrap();
     expect(taskHistory.map((record) => record.kind)).toEqual([
       'TaskCreated',
-      'TaskAddedToProject',
       'TaskUpdated',
+      'TaskAddedToProject',
     ]);
-    expect(taskHistory[1]?.payload).toMatchObject({ via: 'import' });
+    expect(taskHistory[2]?.payload).toMatchObject({ via: 'import' });
 
     const staged = (await imports.findById('import-1'))._unsafeUnwrap();
     expect(staged?.status).toBe('applied');
@@ -188,7 +188,8 @@ describe('sqlite import persist', () => {
 
     await db.execute({
       sql: `
-        CREATE TRIGGER fail_last_import BEFORE UPDATE ON project_imports
+        CREATE TRIGGER fail_last_import BEFORE INSERT ON change_log
+        WHEN NEW.kind = 'ProjectImported'
         BEGIN
           SELECT RAISE(ABORT, 'import apply failed');
         END
@@ -206,20 +207,24 @@ describe('sqlite import persist', () => {
     expect(result.isErr()).toBe(true);
 
     const projects = await createSqliteProjectStore(db);
-    expect((await projects.findByOrganization('org-1'))._unsafeUnwrap()).toEqual([]);
+    const remainingProjects = await projects.findByOrganization('org-1');
+    expect(remainingProjects.isOk()).toBe(true);
+    expect(remainingProjects.isOk() ? remainingProjects.value : remainingProjects.error).toEqual([]);
 
     const tasks = await createSqliteTaskStore(db);
-    const moved = (await tasks.findById(paint.id))._unsafeUnwrap();
-    expect(moved?.projectId).toBeUndefined();
+    const moved = await tasks.findById(paint.id);
+    expect(moved.isOk()).toBe(true);
+    expect(moved.isOk() ? moved.value?.projectId : moved.error).toBeUndefined();
 
     const remaining = await db.execute({
       sql: `SELECT kind FROM change_log ORDER BY seq ASC`,
     });
     expect(remaining.rows.map((row) => row.kind)).toEqual(['TaskCreated']);
 
-    const staged = (await imports.findById('import-1'))._unsafeUnwrap();
-    expect(staged?.status).toBe('pending');
-    expect(staged?.decidedById).toBeNull();
+    const staged = await imports.findById('import-1');
+    expect(staged.isOk()).toBe(true);
+    expect(staged.isOk() ? staged.value?.status : staged.error).toBe('pending');
+    expect(staged.isOk() ? staged.value?.decidedById : null).toBeNull();
   });
 });
 

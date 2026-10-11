@@ -15,13 +15,19 @@ export type ImportWritePlan = {
 
 const stampImport = (
   records: readonly ChangeLogRecord[],
-  importRecordId: string
+  importRecordId: string,
+  projectName: string
 ): ChangeLogRecord[] =>
   records.map((record) => {
     if (record.kind === 'TaskCreated') {
       return {
         ...record,
-        payload: { ...record.payload, via: 'import' as const, importRecordId },
+        payload: {
+          ...record.payload,
+          via: 'import' as const,
+          importRecordId,
+          projectName,
+        },
       };
     }
     if (record.kind === 'TaskUpdated') {
@@ -33,7 +39,12 @@ const stampImport = (
     if (record.kind === 'TaskAddedToProject') {
       return {
         ...record,
-        payload: { ...record.payload, via: 'import' as const, importRecordId },
+        payload: {
+          ...record.payload,
+          via: 'import' as const,
+          importRecordId,
+          projectName,
+        },
       };
     }
     return record;
@@ -96,7 +107,7 @@ export const planImport = (plan: ImportPlan, nextId: () => string): ImportWriteP
       });
       tasks.push({
         ...taskPlan,
-        records: stampImport(taskPlan.records, planned.importRecordId),
+        records: stampImport(taskPlan.records, planned.importRecordId, planned.view.name),
       });
     }
 
@@ -109,7 +120,7 @@ export const planImport = (plan: ImportPlan, nextId: () => string): ImportWriteP
       });
       tasks.push({
         ...taskPlan,
-        records: stampImport(taskPlan.records, planned.importRecordId),
+        records: stampImport(taskPlan.records, planned.importRecordId, planned.view.name),
       });
     }
   }

@@ -125,10 +125,11 @@ export const toTimelineEntry = (
     case 'NamedListDeleted':
       return null;
     case 'TaskCreated': {
-      const projectName =
+      const lookedUp =
         record.payload.via === 'import' && record.payload.projectId
           ? lookups.subjectOf('project', record.payload.projectId).title
           : null;
+      const projectName = record.payload.projectName ?? lookedUp;
       return entry(record, lookups, 'TaskCreated', {
         kind: 'TaskCreated',
         ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
@@ -203,7 +204,9 @@ export const toTimelineEntry = (
       return entry(record, lookups, 'TaskAddedToProject', {
         kind: 'TaskAddedToProject',
         projectId: record.payload.projectId,
-        projectName: lookups.subjectOf('project', record.payload.projectId).title,
+        projectName:
+          record.payload.projectName ??
+          lookups.subjectOf('project', record.payload.projectId).title,
         ...(record.payload.via === 'import' ? { via: 'import' as const } : {}),
       });
     case 'TaskRemovedFromProject': {

@@ -222,7 +222,7 @@ export const createSqliteChangeLogStore = (db: Database): ChangeLogStore => ({
             occurred_at, hidden, seq
           FROM change_log
           WHERE subject_type = ? AND subject_id = ?
-          ORDER BY occurred_at ASC, id ASC
+          ORDER BY seq ASC, occurred_at ASC, id ASC
         `,
         args: [subjectType, subjectId],
       }),

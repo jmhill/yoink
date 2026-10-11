@@ -88,6 +88,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('TaskRemovedFromProject'),
     projectId: z.string(),
+    toProjectName: z.string().nullable().optional(),
   }),
   z.object({
     kind: z.literal('ProjectImported'),

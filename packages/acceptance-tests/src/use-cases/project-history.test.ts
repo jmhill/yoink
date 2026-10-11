@@ -119,7 +119,7 @@ usingDrivers(['http'] as const, (ctx) => {
 
       await alice.changeProjectStatus(kitchen.id, {
         status: 'waiting',
-        waitingOn: "Don't know",
+        waitingOn: 'Mike',
         waitingSince: null,
       });
       await alice.changeProjectStatus(kitchen.id, {
@@ -347,7 +347,7 @@ usingDrivers(['http'] as const, (ctx) => {
             kind: 'ProjectStatusChanged',
             from: 'active',
             to: 'waiting',
-            waitingOn: "Don't know",
+            waitingOn: 'Mike',
             waitingSince: null,
           },
         },
@@ -430,7 +430,7 @@ usingDrivers(['http'] as const, (ctx) => {
           subjectDeleted: false,
           actorName: 'Alice',
           actorKind: 'user',
-          details: { kind: 'TaskRemovedFromProject' },
+          details: { kind: 'TaskRemovedFromProject', toProjectName: 'Other' },
         },
         {
           kind: 'ProjectNextActionCleared',
@@ -521,6 +521,17 @@ usingDrivers(['http'] as const, (ctx) => {
             entry.subject.title === 'Order lumber'
         )
       ).toBe(false);
+
+      const elsewhere = await alice.createProject({ name: 'Elsewhere' });
+      await alice.updateTask(taskB.id, { projectId: elsewhere.id });
+      const afterSecondMove = (await collectHistory(alice, kitchen.id, 3)).entries;
+      const lumberLeft = afterSecondMove.find(
+        (item) => item.kind === 'TaskRemovedFromProject' && item.subject.title === 'Order lumber'
+      );
+      expect(lumberLeft?.details).toMatchObject({
+        kind: 'TaskRemovedFromProject',
+        toProjectName: 'Other',
+      });
 
       const deletedC = entries.find(
         (entry) => entry.kind === 'TaskDeleted' && entry.subject.title === 'Old invoice'
@@ -803,18 +814,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
 
         await alice.expandProjectHistory();
-        await alice.shouldSeeHistoryEntryCount(10);
+        await alice.shouldSeeHistoryEntryCount(9);
         await alice.shouldSeeHistoryMore();
         await alice.shouldSeeHistoryEntry({
           kind: 'ProjectUpdated',
           actor: 'Alice',
-          text: 'changed objective',
+          text: 'changed the objective',
         });
         await alice.shouldSeeHistoryLinesInOrder([
-          'changed objective',
+          'changed the objective',
           "deleted 'Old invoice'",
           "added 'Old invoice'",
-          "cleared the next action 'Call Trident' (completed)",
           "completed 'Call Trident'",
         ]);
         await alice.saveWalkthroughScreenshot({
@@ -861,14 +871,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await alice.loadAllProjectHistory();
         await alice.shouldNotSeeHistoryStart();
-        await alice.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'history_start',
-        });
 
         await alice.expandProjectFinished();
         await alice.shouldSeeFinishedTask('Paint samples');
-        await alice.shouldSeeFinishedBy('Paint samples', 'Finished by Alice');
+        await alice.shouldSeeFinishedBy('Paint samples', 'Paint samples · Finished by Alice');
         await alice.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'finished_open',
@@ -881,7 +887,62 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'finished_reopened',
         });
+
+        const vintage = await alice.createProject({ name: 'Old garden' });
+        await ctx.admin.updateProjectCreatedAt(vintage.id, '2026-10-09T12:00:00.000Z');
+        await alice.goToProject(vintage.id);
+        await alice.expandProjectHistory();
+        await alice.shouldSeeHistoryStart();
+        await alice.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'history_start',
+        });
       }, 120_000);
     }
+
+    it('uses Polly wording for take-out, move, moved in, and waiting', async () => {
+      await alice.useDesktopViewport();
+      const kitchen = await alice.createProject({ name: 'Kitchen' });
+      const other = await alice.createProject({ name: 'Other' });
+      const call = await alice.createTask({ title: 'Call Trident' });
+      await alice.updateTask(call.id, { projectId: kitchen.id });
+      const lumber = await alice.createTask({ title: 'Order lumber', projectId: kitchen.id });
+      await alice.updateTask(lumber.id, { projectId: other.id });
+      const leftover = await alice.createTask({ title: 'Leftover', projectId: kitchen.id });
+      await alice.updateTask(leftover.id, { projectId: null });
+      await alice.changeProjectStatus(kitchen.id, {
+        status: 'waiting',
+        waitingOn: 'Mike',
+        waitingSince: null,
+      });
+      await alice.changeProjectStatus(kitchen.id, {
+        status: 'waiting',
+        waitingOn: 'Contractor',
+        waitingSince: '2026-10-01',
+      });
+
+      await alice.goToProject(kitchen.id);
+      await alice.expandProjectHistory();
+      await alice.shouldSeeHistoryLinesInOrder([
+        'Alice set waiting on Contractor since Oct 1',
+        'marked this project waiting',
+        "Alice took 'Leftover' out of the project",
+      ]);
+      await alice.shouldSeeHistoryEntry({
+        kind: 'ProjectStatusChanged',
+        actor: 'Alice',
+        text: 'marked this project waiting',
+      });
+      await alice.shouldSeeHistoryEntry({
+        kind: 'TaskRemovedFromProject',
+        actor: 'Alice',
+        text: "moved 'Order lumber' to Other",
+      });
+      await alice.shouldSeeHistoryEntry({
+        kind: 'TaskAddedToProject',
+        actor: 'Alice',
+        text: "moved 'Call Trident' into the project",
+      });
+    }, 120_000);
   });
 });

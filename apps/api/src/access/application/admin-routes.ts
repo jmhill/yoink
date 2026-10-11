@@ -245,6 +245,31 @@ export const registerAdminRoutes = async (
         );
       },
 
+      updateProjectCreatedAt: async ({
+        params,
+        body,
+      }: {
+        params: { id: string };
+        body: { createdAt: string };
+      }) => {
+        const result = await adminService.updateProjectCreatedAt(params.id, body.createdAt);
+        return result.match(
+          (project) => ({
+            status: 200 as const,
+            body: project,
+          }),
+          (error) => {
+            if (error.type === 'PROJECT_NOT_FOUND') {
+              return {
+                status: 404 as const,
+                body: { message: 'Project not found' },
+              };
+            }
+            return storageErrorResponse('Failed to update project');
+          }
+        );
+      },
+
       listTokens: async ({ params }: { params: { organizationId: string } }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);

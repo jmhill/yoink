@@ -40,6 +40,7 @@ export type UpdateTaskChangeInput = {
   current: Task;
   actor: Actor;
   ids: TaskUpdatedChangeLogIds;
+  destinationProjectName?: string;
 };
 
 export type MutateTaskChangeInput = {

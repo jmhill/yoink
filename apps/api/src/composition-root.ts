@@ -453,6 +453,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       organizationMembershipStore: membershipStore,
       userStore,
       tokenStore,
+      projectStore,
       clock,
       idGenerator,
       passwordHasher,

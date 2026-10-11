@@ -106,6 +106,10 @@ export const taskAddedToProjectPayloadV1Schema = z.object({
 
 export const taskRemovedFromProjectPayloadV1Schema = z.object({
   projectId: z.string(),
+  /** Optional; present when the task moved to another project. Older records lack it. */
+  toProjectId: z.string().optional(),
+  /** Destination name at write time. Older move records may have only toProjectId. */
+  toProjectName: z.string().optional(),
 });
 
 export const projectImportedPayloadV1Schema = z.object({

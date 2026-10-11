@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  formatFinishedByLine,
+  formatFinishedLine,
   formatHistoryStartsLine,
+  formatShortDate,
   formatTimelineLine,
+  formatTimelineStamp,
+  isAutomaticNextActionClear,
   joinChangedFields,
   shouldShowHistoryStartLine,
+  visibleWebTimelineEntries,
 } from './format-timeline-entry.js';
 import type { TimelineEntry } from '@yoink/api-contracts';
 
@@ -18,13 +22,12 @@ const entry = (overrides: Partial<TimelineEntry> & Pick<TimelineEntry, 'details'
 
 describe('formatTimelineLine', () => {
   it('formats a completion the way Polly reads it', () => {
-    const line = formatTimelineLine(
-      entry({ kind: 'TaskCompleted', details: { kind: 'TaskCompleted' } })
-    );
-    expect(line.startsWith("Lane completed 'Call Trident' ·")).toBe(true);
+    expect(
+      formatTimelineLine(entry({ kind: 'TaskCompleted', details: { kind: 'TaskCompleted' } }))
+    ).toBe("Lane completed 'Call Trident'");
   });
 
-  it('shows older title edits without previousTitle as changed title', () => {
+  it('shows older title edits without previousTitle as changed the title', () => {
     expect(
       formatTimelineLine(
         entry({
@@ -33,7 +36,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
         })
       )
-    ).toContain("Lane changed title on 'Pick paint colour'");
+    ).toBe("Lane changed the title on 'Pick paint colour'");
   });
 
   it('names a title-only edit as a rename from the payload', () => {
@@ -49,7 +52,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
         })
       )
-    ).toContain("Lane renamed 'Paint samples' to 'Pick paint colour'");
+    ).toBe("Lane renamed 'Paint samples' to 'Pick paint colour'");
   });
 
   it('adds other fields after a rename', () => {
@@ -66,7 +69,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
         })
       )
-    ).toContain("Lane renamed 'Paint samples' to 'Pick paint colour' and changed due date");
+    ).toBe("Lane renamed 'Paint samples' to 'Pick paint colour' and changed the due date");
   });
 
   it('names other edits on the current title', () => {
@@ -78,7 +81,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'task', id: 't1', title: 'Pick paint colour', deleted: false },
         })
       )
-    ).toContain("Lane changed due date on 'Pick paint colour'");
+    ).toBe("Lane changed the due date on 'Pick paint colour'");
     expect(
       formatTimelineLine(
         entry({
@@ -91,7 +94,7 @@ describe('formatTimelineLine', () => {
           },
         })
       )
-    ).toContain("Lane changed due date, owner and list on 'Call Trident'");
+    ).toBe("Lane changed the due date, the owner and the list on 'Call Trident'");
     expect(
       formatTimelineLine(
         entry({
@@ -99,7 +102,7 @@ describe('formatTimelineLine', () => {
           details: { kind: 'TaskUpdated', assigneeId: null, listId: null },
         })
       )
-    ).toContain("Lane changed owner and list on 'Call Trident'");
+    ).toBe("Lane changed the owner and the list on 'Call Trident'");
   });
 
   it('names each project field that changed', () => {
@@ -111,7 +114,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
         })
       )
-    ).toContain('Lane changed name');
+    ).toBe('Lane changed the name');
     expect(
       formatTimelineLine(
         entry({
@@ -120,7 +123,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
         })
       )
-    ).toContain('Lane changed objective');
+    ).toBe('Lane changed the objective');
     expect(
       formatTimelineLine(
         entry({
@@ -129,7 +132,7 @@ describe('formatTimelineLine', () => {
           subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
         })
       )
-    ).toContain('Lane changed name and objective');
+    ).toBe('Lane changed the name and the objective');
   });
 
   it.each([
@@ -151,47 +154,104 @@ describe('formatTimelineLine', () => {
         subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
       })
     );
-    expect(line).toContain(`cleared the next action 'Call Trident' (${copy})`);
+    expect(line).toBe(`Lane cleared the next action 'Call Trident' (${copy})`);
   });
 
   it('renders the import entry as actor · Moved in · N tasks', () => {
-    const two = formatTimelineLine(
-      entry({
-        kind: 'ProjectImported',
-        details: { kind: 'ProjectImported', taskCount: 2 },
-        subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
-      })
-    );
-    expect(two.startsWith('Lane · Moved in · 2 tasks ·')).toBe(true);
-    const one = formatTimelineLine(
-      entry({
-        kind: 'ProjectImported',
-        details: { kind: 'ProjectImported', taskCount: 1 },
-        subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
-      })
-    );
-    expect(one.startsWith('Lane · Moved in · 1 task ·')).toBe(true);
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectImported',
+          details: { kind: 'ProjectImported', taskCount: 2 },
+          subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
+        })
+      )
+    ).toBe('Lane · Moved in · 2 tasks');
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectImported',
+          details: { kind: 'ProjectImported', taskCount: 1 },
+          subject: { type: 'project', id: 'p1', title: 'Garden', deleted: false },
+        })
+      )
+    ).toBe('Lane · Moved in · 1 task');
+  });
+
+  it('sets the next action', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectNextActionSet',
+          details: {
+            kind: 'ProjectNextActionSet',
+            taskId: 't1',
+            taskTitle: 'Call Trident',
+            previousTaskId: null,
+            previousTaskTitle: null,
+          },
+          subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+        })
+      )
+    ).toBe("Lane set the next action to 'Call Trident'");
   });
 });
 
 describe('joinChangedFields', () => {
   it('joins one, two, and many fields', () => {
-    expect(joinChangedFields(['title'])).toBe('title');
-    expect(joinChangedFields(['title', 'due date'])).toBe('title and due date');
-    expect(joinChangedFields(['title', 'due date', 'owner'])).toBe(
-      'title, due date and owner'
+    expect(joinChangedFields(['the title'])).toBe('the title');
+    expect(joinChangedFields(['the title', 'the due date'])).toBe('the title and the due date');
+    expect(joinChangedFields(['the title', 'the due date', 'the owner'])).toBe(
+      'the title, the due date and the owner'
     );
   });
 });
 
-describe('formatFinishedByLine', () => {
-  it('prints Finished by name · date', () => {
+describe('formatFinishedLine', () => {
+  it('is one line with title, who, and a short date', () => {
     expect(
-      formatFinishedByLine({
+      formatFinishedLine({
+        title: 'Call Trident',
         name: 'Lane',
         completedAt: '2026-10-11T15:04:00.000Z',
+        now: new Date(2026, 9, 11),
       })
-    ).toBe('Finished by Lane · Oct 11, 2026');
+    ).toBe('Call Trident · Finished by Lane · Oct 11');
+  });
+
+  it('keeps the year when it is not the current year', () => {
+    expect(
+      formatFinishedLine({
+        title: 'Call Trident',
+        name: 'Lane',
+        completedAt: '2025-10-11T15:04:00.000Z',
+        now: new Date(2026, 9, 11),
+      })
+    ).toBe('Call Trident · Finished by Lane · Oct 11, 2025');
+  });
+});
+
+describe('formatShortDate', () => {
+  it('leaves the year off in the current year', () => {
+    expect(formatShortDate('2026-10-01', new Date(2026, 11, 1))).toBe('Oct 1');
+  });
+
+  it('keeps the year when it is not the current year', () => {
+    expect(formatShortDate('2025-10-01', new Date(2026, 11, 1))).toBe('Oct 1, 2025');
+  });
+});
+
+describe('formatTimelineStamp', () => {
+  it('leaves the year off in the current year', () => {
+    expect(formatTimelineStamp('2026-10-11T15:04:00.000Z', new Date(2026, 9, 11))).not.toMatch(
+      /2026/
+    );
+  });
+
+  it('keeps the year when it is not the current year', () => {
+    expect(formatTimelineStamp('2025-10-11T15:04:00.000Z', new Date(2026, 9, 11))).toMatch(
+      /2025/
+    );
   });
 });
 
@@ -228,13 +288,193 @@ describe('shouldShowHistoryStartLine', () => {
 });
 
 describe('formatTimelineLine for membership', () => {
-  it('says moved in for TaskAddedToProject', () => {
+  it('says moved into the project for TaskAddedToProject', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskAddedToProject',
+          details: { kind: 'TaskAddedToProject', projectId: 'p1' },
+        })
+      )
+    ).toBe("Lane moved 'Call Trident' into the project");
+  });
+
+  it('says took out when a task left with no destination', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskRemovedFromProject',
+          details: { kind: 'TaskRemovedFromProject', projectId: 'p1' },
+          subject: { type: 'task', id: 't1', title: 'Leftover', deleted: false },
+        })
+      )
+    ).toBe("Lane took 'Leftover' out of the project");
+  });
+
+  it('reads the destination name from the event', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskRemovedFromProject',
+          details: {
+            kind: 'TaskRemovedFromProject',
+            projectId: 'p1',
+            toProjectName: 'Other',
+          },
+          subject: { type: 'task', id: 't1', title: 'Order lumber', deleted: false },
+        })
+      )
+    ).toBe("Lane moved 'Order lumber' to Other");
+  });
+
+  it('falls back to another project when the old move has no name', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'TaskRemovedFromProject',
+          details: {
+            kind: 'TaskRemovedFromProject',
+            projectId: 'p1',
+            toProjectName: null,
+          },
+          subject: { type: 'task', id: 't1', title: 'Order lumber', deleted: false },
+        })
+      )
+    ).toBe("Lane moved 'Order lumber' to another project");
+  });
+});
+
+describe('formatTimelineLine for waiting', () => {
+  it('sets waiting on with the short date', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectWaitingChanged',
+          details: {
+            kind: 'ProjectWaitingChanged',
+            waitingOn: 'Contractor',
+            waitingSince: '2026-10-01',
+          },
+          subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+        })
+      )
+    ).toBe('Lane set waiting on Contractor since Oct 1');
+  });
+
+  it('says since unknown when the date is missing', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectWaitingChanged',
+          details: {
+            kind: 'ProjectWaitingChanged',
+            waitingOn: 'Contractor',
+            waitingSince: null,
+          },
+          subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+        })
+      )
+    ).toBe('Lane set waiting on Contractor since unknown');
+  });
+
+  it('drops the (no date) suffix on a status change to waiting', () => {
     const line = formatTimelineLine(
       entry({
-        kind: 'TaskAddedToProject',
-        details: { kind: 'TaskAddedToProject', projectId: 'p1' },
+        kind: 'ProjectStatusChanged',
+        details: {
+          kind: 'ProjectStatusChanged',
+          from: 'active',
+          to: 'waiting',
+          waitingOn: 'Mike',
+          waitingSince: null,
+        },
+        subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
       })
     );
-    expect(line.startsWith("Lane moved 'Call Trident' in ·")).toBe(true);
+    expect(line).toBe('Lane marked this project waiting');
+    expect(line).not.toContain('(no date)');
+    expect(line).not.toContain("Don't know");
   });
+});
+
+describe('visibleWebTimelineEntries', () => {
+  const completed = entry({
+    id: 'log-done',
+    kind: 'TaskCompleted',
+    details: { kind: 'TaskCompleted' },
+  });
+  const autoClear = entry({
+    id: 'log-clear',
+    kind: 'ProjectNextActionCleared',
+    details: {
+      kind: 'ProjectNextActionCleared',
+      taskId: 't1',
+      taskTitle: 'Call Trident',
+      reason: 'completed',
+    },
+    subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+  });
+  const manualClear = entry({
+    id: 'log-manual',
+    kind: 'ProjectNextActionCleared',
+    details: {
+      kind: 'ProjectNextActionCleared',
+      taskId: 't1',
+      taskTitle: 'Call Trident',
+      reason: 'cleared',
+    },
+    subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+  });
+
+  it('hides an automatic clear when the same save completed the task', () => {
+    expect(isAutomaticNextActionClear(autoClear, [autoClear, completed])).toBe(true);
+    expect(visibleWebTimelineEntries([autoClear, completed]).map((item) => item.id)).toEqual([
+      'log-done',
+    ]);
+  });
+
+  it('keeps a manual clear', () => {
+    expect(isAutomaticNextActionClear(manualClear, [manualClear])).toBe(false);
+    expect(visibleWebTimelineEntries([manualClear]).map((item) => item.id)).toEqual(['log-manual']);
+  });
+
+  it.each(['deleted', 'removedFromProject', 'projectDone'] as const)(
+    'hides a %s automatic clear when the companion event is in the same save',
+    (reason) => {
+      const companion =
+        reason === 'projectDone'
+          ? entry({
+              id: 'log-done-project',
+              kind: 'ProjectStatusChanged',
+              details: {
+                kind: 'ProjectStatusChanged',
+                from: 'active',
+                to: 'done',
+                waitingOn: null,
+                waitingSince: null,
+              },
+              subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+            })
+          : entry({
+              id: 'log-companion',
+              kind: reason === 'deleted' ? 'TaskDeleted' : 'TaskRemovedFromProject',
+              details:
+                reason === 'deleted'
+                  ? { kind: 'TaskDeleted' }
+                  : { kind: 'TaskRemovedFromProject', projectId: 'p1' },
+            });
+      const clear = entry({
+        id: 'log-auto',
+        kind: 'ProjectNextActionCleared',
+        details: {
+          kind: 'ProjectNextActionCleared',
+          taskId: 't1',
+          taskTitle: 'Call Trident',
+          reason,
+        },
+        subject: { type: 'project', id: 'p1', title: 'Kitchen', deleted: false },
+      });
+      expect(isAutomaticNextActionClear(clear, [clear, companion])).toBe(true);
+    }
+  );
 });

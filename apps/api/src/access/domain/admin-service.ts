@@ -15,12 +15,16 @@ import type {
   TokenStorageError,
 } from './admin-errors.js';
 import { userNotFoundError } from './admin-errors.js';
+import type { Project } from '@yoink/api-contracts';
+import type { ProjectStore } from '../../projects/domain/project-store.js';
+import { projectNotFoundError } from '../../projects/domain/project-errors.js';
 
 export type AdminServiceDependencies = {
   organizationStore: OrganizationStore;
   organizationMembershipStore: OrganizationMembershipStore;
   userStore: UserStore;
   tokenStore: TokenStore;
+  projectStore: ProjectStore;
   clock: Clock;
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;
@@ -64,6 +68,10 @@ export type AdminService = {
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
   createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError>;
   updateUser(id: string, name: string): ResultAsync<User, AdminServiceError>;
+  updateProjectCreatedAt(
+    id: string,
+    createdAt: string
+  ): ResultAsync<Project, AdminServiceError>;
 
   // Tokens (scoped to organizations)
   listTokens(organizationId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
@@ -84,6 +92,7 @@ export const createAdminService = (
     organizationMembershipStore,
     userStore,
     tokenStore,
+    projectStore,
     clock,
     idGenerator,
     passwordHasher,
@@ -143,6 +152,14 @@ export const createAdminService = (
       return userStore.updateName(id, name).andThen(() =>
         userStore.findById(id).andThen((user) =>
           user ? okAsync(user) : errAsync(userNotFoundError(id))
+        )
+      );
+    },
+
+    updateProjectCreatedAt(id: string, createdAt: string): ResultAsync<Project, AdminServiceError> {
+      return projectStore.updateCreatedAt(id, createdAt).andThen(() =>
+        projectStore.findById(id).andThen((project) =>
+          project ? okAsync(project) : errAsync(projectNotFoundError(id))
         )
       );
     },

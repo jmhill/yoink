@@ -164,7 +164,7 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         subjectType: 'project',
         kind,
         hidden: hiddenFor('ProjectStatusChanged'),
-        payload: { from: 'active', to: 'waiting', waitingOn: "Don't know", waitingSince: null },
+        payload: { from: 'active', to: 'waiting', waitingOn: 'Mike', waitingSince: null },
       };
     case 'ProjectWaitingChanged':
       return {
@@ -300,6 +300,45 @@ describe('toTimelineEntry', () => {
       userId: null,
       kind: null,
       name: UNKNOWN_ACTOR_NAME,
+    });
+  });
+
+  it('copies the destination name from the event payload', () => {
+    const record = recordForKind('TaskRemovedFromProject');
+    if (record.kind !== 'TaskRemovedFromProject') {
+      throw new Error('expected TaskRemovedFromProject');
+    }
+    const mapped = toTimelineEntry(
+      {
+        ...record,
+        payload: {
+          projectId: 'project-1',
+          toProjectId: 'project-other',
+          toProjectName: 'Other',
+        },
+      },
+      lookups
+    );
+    expect(mapped?.details).toEqual({
+      kind: 'TaskRemovedFromProject',
+      projectId: 'project-1',
+      toProjectName: 'Other',
+    });
+  });
+
+  it('falls back to a null destination name for an old move payload', () => {
+    const record = recordForKind('TaskRemovedFromProject');
+    if (record.kind !== 'TaskRemovedFromProject') {
+      throw new Error('expected TaskRemovedFromProject');
+    }
+    const mapped = toTimelineEntry(
+      { ...record, payload: { projectId: 'project-1', toProjectId: 'project-other' } },
+      lookups
+    );
+    expect(mapped?.details).toEqual({
+      kind: 'TaskRemovedFromProject',
+      projectId: 'project-1',
+      toProjectName: null,
     });
   });
 

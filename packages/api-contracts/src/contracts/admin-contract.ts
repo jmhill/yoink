@@ -7,6 +7,7 @@ import {
   UserSchema,
   CreateUserSchema,
   UpdateUserSchema,
+  UpdateProjectCreatedAtSchema,
   ApiTokenSchema,
   CreateTokenSchema,
   CreateTokenResponseSchema,
@@ -16,6 +17,7 @@ import {
   LoginResponseSchema,
   SessionResponseSchema,
 } from '../schemas/admin.js';
+import { ProjectSchema } from '../schemas/project.js';
 import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
@@ -189,6 +191,22 @@ export const adminProtectedContract = c.router(
         500: ErrorSchema,
       },
       summary: 'Update a user display name',
+    },
+
+    updateProjectCreatedAt: {
+      method: 'PATCH',
+      path: '/api/admin/projects/:id',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: UpdateProjectCreatedAtSchema,
+      responses: {
+        200: ProjectSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Back-date a project createdAt for history-start fixtures',
     },
 
     // Tokens (scoped to organizations)

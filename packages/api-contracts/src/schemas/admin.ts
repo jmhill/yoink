@@ -23,6 +23,7 @@ export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 export const UserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
+  name: z.string().min(1).max(100).optional(),
   createdAt: z.string().datetime(),
 });
 
@@ -65,9 +66,14 @@ export const CreateUserSchema = z.object({
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 
 export const UpdateUserSchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
 });
 export type UpdateUser = z.infer<typeof UpdateUserSchema>;
+
+export const UpdateProjectCreatedAtSchema = z.object({
+  createdAt: z.string().datetime(),
+});
+export type UpdateProjectCreatedAt = z.infer<typeof UpdateProjectCreatedAtSchema>;
 
 // Invitation schemas (admin can create invitations without being org member)
 // organizationId comes from URL path params, not body

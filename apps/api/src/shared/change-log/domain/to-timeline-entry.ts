@@ -192,11 +192,15 @@ export const toTimelineEntry = (
         kind: 'TaskAddedToProject',
         projectId: record.payload.projectId,
       });
-    case 'TaskRemovedFromProject':
+    case 'TaskRemovedFromProject': {
+      const moved =
+        record.payload.toProjectId !== undefined || record.payload.toProjectName !== undefined;
       return entry(record, lookups, 'TaskRemovedFromProject', {
         kind: 'TaskRemovedFromProject',
         projectId: record.payload.projectId,
+        ...(moved ? { toProjectName: record.payload.toProjectName ?? null } : {}),
       });
+    }
     case 'ProjectImported':
       return entry(record, lookups, 'ProjectImported', {
         kind: 'ProjectImported',

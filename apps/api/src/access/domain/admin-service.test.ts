@@ -4,6 +4,7 @@ import { createFakeOrganizationStore } from '../infrastructure/fake-organization
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
+import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import type { Organization } from './organization.js';
 import type { User } from './user.js';
 import {
@@ -30,6 +31,7 @@ describe('AdminService', () => {
       organizationMembershipStore,
       userStore,
       tokenStore,
+      projectStore: createFakeProjectStore(),
       clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
       idGenerator: createFakeIdGenerator(),
       passwordHasher: createFakePasswordHasher(),
@@ -426,6 +428,50 @@ describe('AdminService', () => {
       if (listResult.isOk()) {
         expect(listResult.value).toHaveLength(0);
       }
+    });
+  });
+
+  describe('projects', () => {
+    it('back-dates createdAt on a project', async () => {
+      const garden = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        organizationId: '550e8400-e29b-41d4-a716-446655440001',
+        createdById: '550e8400-e29b-41d4-a716-446655440002',
+        name: 'Old garden',
+        status: 'active' as const,
+        waitingOn: null,
+        waitingSince: null,
+        nextActionTaskId: null,
+        createdAt: '2026-10-11T12:00:00.000Z',
+        lastChangedAt: '2026-10-11T12:00:00.000Z',
+        lastChangedBy: '550e8400-e29b-41d4-a716-446655440002',
+      };
+      const projectStore = createFakeProjectStore([garden]);
+      const local = createAdminService({
+        organizationStore,
+        organizationMembershipStore,
+        userStore,
+        tokenStore,
+        projectStore,
+        clock: createFakeClock(new Date('2026-10-11T12:00:00.000Z')),
+        idGenerator: createFakeIdGenerator(),
+        passwordHasher: createFakePasswordHasher(),
+      });
+
+      const updated = await local.updateProjectCreatedAt(
+        garden.id,
+        '2026-10-09T12:00:00.000Z'
+      );
+      expect(updated.isOk()).toBe(true);
+      if (!updated.isOk()) return;
+      expect(updated.value.createdAt).toBe('2026-10-09T12:00:00.000Z');
+      expect(updated.value.name).toBe('Old garden');
+
+      const missing = await local.updateProjectCreatedAt(
+        '550e8400-e29b-41d4-a716-446655440099',
+        '2026-10-09T12:00:00.000Z'
+      );
+      expect(missing.isErr() && missing.error.type).toBe('PROJECT_NOT_FOUND');
     });
   });
 });

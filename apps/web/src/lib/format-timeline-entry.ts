@@ -1,17 +1,37 @@
 import { HISTORY_STARTS_AT, type TimelineEntry } from '@yoink/api-contracts';
+import { formatWaitingSinceLabel } from './format-waiting-line.js';
 
 const actorName = (entry: TimelineEntry): string => entry.actor.name ?? 'Unknown';
 
 const quoted = (title: string | null): string =>
   title && title.length > 0 ? `'${title}'` : 'a task';
 
-const when = (occurredAt: string): string =>
-  new Date(occurredAt).toLocaleString('en-US', {
+export const formatShortDate = (iso: string, now = new Date()): string => {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const date = dateOnly ? new Date(`${iso}T00:00:00`) : new Date(iso);
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+  };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleDateString('en-US', options);
+};
+
+export const formatTimelineStamp = (occurredAt: string, now = new Date()): string => {
+  const date = new Date(occurredAt);
+  const options: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  });
+  };
+  if (date.getFullYear() !== now.getFullYear()) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleString('en-US', options);
+};
 
 export const formatHistoryStartsLine = (iso: string = HISTORY_STARTS_AT): string => {
   const formatted = new Date(iso).toLocaleDateString('en-US', {
@@ -54,16 +74,16 @@ export const taskUpdatedFieldLabels = (details: {
 }): string[] => {
   const fields: string[] = [];
   if (details.title !== undefined) {
-    fields.push('title');
+    fields.push('the title');
   }
   if (details.dueDate !== undefined) {
-    fields.push('due date');
+    fields.push('the due date');
   }
   if (details.assigneeId !== undefined) {
-    fields.push('owner');
+    fields.push('the owner');
   }
   if (details.listId !== undefined) {
-    fields.push('list');
+    fields.push('the list');
   }
   return fields;
 };
@@ -74,10 +94,10 @@ export const projectUpdatedFieldLabels = (details: {
 }): string[] => {
   const fields: string[] = [];
   if (details.name !== undefined) {
-    fields.push('name');
+    fields.push('the name');
   }
   if (details.objective !== undefined) {
-    fields.push('objective');
+    fields.push('the objective');
   }
   return fields;
 };
@@ -90,28 +110,82 @@ export const NEXT_ACTION_CLEAR_REASON_COPY = {
   projectDone: 'project marked done',
 } as const;
 
+type NextActionClearedDetails = Extract<
+  TimelineEntry['details'],
+  { kind: 'ProjectNextActionCleared' }
+>;
+
+const sameSaveCompanion = (
+  entry: TimelineEntry,
+  details: NextActionClearedDetails,
+  other: TimelineEntry
+): boolean => {
+  if (other.id === entry.id || other.occurredAt !== entry.occurredAt) {
+    return false;
+  }
+  switch (details.reason) {
+    case 'completed':
+      return other.kind === 'TaskCompleted' && other.subject.id === details.taskId;
+    case 'deleted':
+      return other.kind === 'TaskDeleted' && other.subject.id === details.taskId;
+    case 'removedFromProject':
+      return other.kind === 'TaskRemovedFromProject' && other.subject.id === details.taskId;
+    case 'projectDone':
+      return (
+        other.details.kind === 'ProjectStatusChanged' && other.details.to === 'done'
+      );
+    case 'cleared':
+      return false;
+  }
+};
+
+/** Automatic clears stay in the API; the web timeline hides them when the companion event is here. */
+export const isAutomaticNextActionClear = (
+  entry: TimelineEntry,
+  entries: readonly TimelineEntry[]
+): boolean => {
+  if (entry.details.kind !== 'ProjectNextActionCleared') {
+    return false;
+  }
+  const details = entry.details;
+  if (details.reason === 'cleared') {
+    return false;
+  }
+  return entries.some((other) => sameSaveCompanion(entry, details, other));
+};
+
+export const visibleWebTimelineEntries = (
+  entries: readonly TimelineEntry[]
+): TimelineEntry[] => entries.filter((entry) => !isAutomaticNextActionClear(entry, entries));
+
+export const formatFinishedLine = (input: {
+  title: string;
+  name: string;
+  completedAt: string;
+  now?: Date;
+}): string => {
+  const date = formatShortDate(input.completedAt, input.now);
+  return `${input.title} · Finished by ${input.name} · ${date}`;
+};
+
 export const formatFinishedByLine = (input: {
   name: string;
   completedAt: string;
+  now?: Date;
 }): string => {
-  const date = new Date(input.completedAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const date = formatShortDate(input.completedAt, input.now);
   return `Finished by ${input.name} · ${date}`;
 };
 
 export const formatTimelineLine = (entry: TimelineEntry): string => {
   const who = actorName(entry);
   const title = entry.subject.title;
-  const stamp = when(entry.occurredAt);
 
   switch (entry.details.kind) {
     case 'Unknown':
-      return `${who} changed something · ${stamp}`;
+      return `${who} changed something`;
     case 'TaskCreated':
-      return `${who} added ${quoted(title)} · ${stamp}`;
+      return `${who} added ${quoted(title)}`;
     case 'TaskUpdated': {
       const newTitle = entry.details.title;
       const oldTitle = entry.details.previousTitle;
@@ -125,40 +199,51 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
       if (isRename) {
         const renamed = `${who} renamed ${quoted(oldTitle)} to ${quoted(newTitle)}`;
         if (otherFields.length === 0) {
-          return `${renamed} · ${stamp}`;
+          return renamed;
         }
-        return `${renamed} and changed ${joinChangedFields(otherFields)} · ${stamp}`;
+        return `${renamed} and changed ${joinChangedFields(otherFields)}`;
       }
-      return `${who} changed ${joinChangedFields(otherFields)} on ${quoted(title)} · ${stamp}`;
+      return `${who} changed ${joinChangedFields(otherFields)} on ${quoted(title)}`;
     }
     case 'TaskCompleted':
-      return `${who} completed ${quoted(title)} · ${stamp}`;
+      return `${who} completed ${quoted(title)}`;
     case 'TaskUncompleted':
-      return `${who} reopened ${quoted(title)} · ${stamp}`;
+      return `${who} reopened ${quoted(title)}`;
     case 'TaskDeleted':
-      return `${who} deleted ${quoted(title)} · ${stamp}`;
+      return `${who} deleted ${quoted(title)}`;
     case 'ProjectCreated':
-      return `${who} created this project · ${stamp}`;
+      return `${who} created this project`;
     case 'ProjectUpdated':
-      return `${who} changed ${joinChangedFields(projectUpdatedFieldLabels(entry.details))} · ${stamp}`;
+      return `${who} changed ${joinChangedFields(projectUpdatedFieldLabels(entry.details))}`;
     case 'ProjectStatusChanged':
-      return `${who} marked this project ${entry.details.to} · ${stamp}`;
-    case 'ProjectWaitingChanged':
-      return `${who} changed waiting on to '${entry.details.waitingOn}' · ${stamp}`;
+      return `${who} marked this project ${entry.details.to}`;
+    case 'ProjectWaitingChanged': {
+      const since = entry.details.waitingSince
+        ? formatWaitingSinceLabel(entry.details.waitingSince)
+        : 'unknown';
+      return `${who} set waiting on ${entry.details.waitingOn} since ${since}`;
+    }
     case 'ProjectNextActionSet':
-      return `${who} set next action to ${quoted(entry.details.taskTitle)} · ${stamp}`;
+      return `${who} set the next action to ${quoted(entry.details.taskTitle)}`;
     case 'ProjectNextActionCleared': {
       const reason = NEXT_ACTION_CLEAR_REASON_COPY[entry.details.reason];
-      return `${who} cleared the next action ${quoted(entry.details.taskTitle)} (${reason}) · ${stamp}`;
+      return `${who} cleared the next action ${quoted(entry.details.taskTitle)} (${reason})`;
     }
     case 'TaskAddedToProject':
-      return `${who} moved ${quoted(title)} in · ${stamp}`;
-    case 'TaskRemovedFromProject':
-      return `${who} moved ${quoted(title)} out · ${stamp}`;
+      return `${who} moved ${quoted(title)} into the project`;
+    case 'TaskRemovedFromProject': {
+      if (entry.details.toProjectName && entry.details.toProjectName.length > 0) {
+        return `${who} moved ${quoted(title)} to ${entry.details.toProjectName}`;
+      }
+      if (entry.details.toProjectName === null) {
+        return `${who} moved ${quoted(title)} to another project`;
+      }
+      return `${who} took ${quoted(title)} out of the project`;
+    }
     case 'ProjectImported': {
       const count = entry.details.taskCount;
       const tasks = count === 1 ? '1 task' : `${count} tasks`;
-      return `${who} · Moved in · ${tasks} · ${stamp}`;
+      return `${who} · Moved in · ${tasks}`;
     }
   }
 };

@@ -113,6 +113,7 @@ export const handleUpdateTask = (
                 current,
                 actor: command.actor,
                 ids: changeLogIdsForTaskUpdated(event, current, deps.nextId),
+                ...(project?.name !== undefined ? { destinationProjectName: project.name } : {}),
               });
               const projectPlan =
                 currentProject === null

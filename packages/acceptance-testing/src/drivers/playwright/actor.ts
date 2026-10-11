@@ -1998,6 +1998,15 @@ export const createPlaywrightActor = (
       await start.scrollIntoViewIfNeeded();
       await expect(start).toBeVisible();
       await expect(start).toHaveText(/History starts Oct 10, 2026/);
+      await page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await start.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+        el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
     },
 
     async shouldNotSeeHistoryStart(): Promise<void> {

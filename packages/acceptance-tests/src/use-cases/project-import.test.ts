@@ -451,11 +451,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
         await alice.shouldSeeImportPreviewProject('Permit desk');
         await alice.shouldSeeImportWarning('Assignee is not a member');
-        await alice.scrollImportPreviewProject('Permit desk');
-        await alice.saveWalkthroughScreenshot({
-          story: '139-project-import',
-          step: 'preview_permit',
-        });
         await alice.shouldSeeImportPreviewProject('Winter boat cover');
         await alice.scrollImportActionsIntoView();
         await alice.saveWalkthroughScreenshot({

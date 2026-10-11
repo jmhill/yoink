@@ -53,9 +53,10 @@ export const insertChangeLogQuery = (
       INSERT INTO change_log (
         id, organization_id, project_id, subject_type, subject_id,
         kind, schema_version, payload_json, actor_user_id, actor_kind,
-        occurred_at, hidden
+        occurred_at, hidden, seq
       )
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+             COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1
       WHERE EXISTS (${exists.sql})${alsoExists.sql}
     `,
     args: [

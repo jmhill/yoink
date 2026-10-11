@@ -397,6 +397,129 @@ export const createHttpActor = (
       return response.json<{ tasks: Task[] }>().tasks;
     },
 
+    async listFinishedTasksOnProject(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ) {
+      const qs = new URLSearchParams({ status: 'finished' });
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const response = await client.get(
+        `/api/projects/${projectId}/tasks?${qs.toString()}`,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list finished tasks: ${response.body}`);
+      }
+      return response.json<{
+        tasks: Task[];
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+      }>();
+    },
+
+    async listProjectHistory(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ) {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await client.get(
+        `/api/projects/${projectId}/history${suffix}`,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list project history: ${response.body}`);
+      }
+      return response.json<{
+        entries: Array<{
+          id: string;
+          kind: string;
+          occurredAt: string;
+          actor: { userId: string | null; kind: 'user' | 'bot' | null; name: string | null };
+          subject: { type: 'task' | 'project'; id: string; title: string | null; deleted: boolean };
+          details: { kind: string; [key: string]: unknown };
+        }>;
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+        historyStartsAt: string;
+      }>();
+    },
+
+    async listTaskHistory(taskId: string, query?: { limit?: number; cursor?: string }) {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await client.get(`/api/tasks/${taskId}/history${suffix}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', taskId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list task history: ${response.body}`);
+      }
+      return response.json<{
+        entries: Array<{
+          id: string;
+          kind: string;
+          occurredAt: string;
+          actor: { userId: string | null; kind: 'user' | 'bot' | null; name: string | null };
+          subject: { type: 'task' | 'project'; id: string; title: string | null; deleted: boolean };
+          details: { kind: string; [key: string]: unknown };
+        }>;
+        hasMore: boolean;
+        nextCursor: string | null;
+        total: number;
+        historyStartsAt: string;
+      }>();
+    },
+
+    async expectInvalidProjectHistoryCursor(projectId: string, cursor: string) {
+      const response = await client.get(
+        `/api/projects/${projectId}/history?cursor=${encodeURIComponent(cursor)}`,
+        authHeaders()
+      );
+      if (response.statusCode !== 400) {
+        throw new Error(`Expected 400 invalid_cursor, got ${response.statusCode}`);
+      }
+      const body = response.json<{ message: string; code: string }>();
+      if (body.code !== 'invalid_cursor') {
+        throw new Error(`Expected code invalid_cursor, got ${body.code}`);
+      }
+      return body;
+    },
+
     async createNamedList(name: string): Promise<NamedList> {
       const response = await client.post('/api/lists', { name }, authHeaders());
       if (response.statusCode === 401) {
@@ -984,6 +1107,43 @@ export const createHttpActor = (
 
     async shouldSeeHistoryPlaceholder(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeHistoryPlaceholder', 'http');
+    },
+
+    async expandProjectHistory(): Promise<void> {
+      throw new UnsupportedOperationError('expandProjectHistory', 'http');
+    },
+
+    async expandProjectFinished(): Promise<void> {
+      throw new UnsupportedOperationError('expandProjectFinished', 'http');
+    },
+
+    async clickProjectHistoryMore(): Promise<void> {
+      throw new UnsupportedOperationError('clickProjectHistoryMore', 'http');
+    },
+
+    async shouldSeeHistoryEntry(_input: {
+      kind: string;
+      actor: string;
+      text: string;
+      deleted?: boolean;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryEntry', 'http');
+    },
+
+    async shouldSeeHistoryStart(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHistoryStart', 'http');
+    },
+
+    async shouldSeeFinishedTask(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeFinishedTask', 'http');
+    },
+
+    async shouldNotSeeFinishedTask(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeFinishedTask', 'http');
+    },
+
+    async reopenFinishedTask(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('reopenFinishedTask', 'http');
     },
 
     async shouldSeeProjectOnRail(_name: string): Promise<void> {
@@ -2016,6 +2176,46 @@ export const createHttpAnonymousActor = (client: HttpClient): AnonymousActor => 
       throw new UnauthorizedError();
     }
     throw new Error(`Failed to list open tasks on project: ${response.body}`);
+  },
+
+  async listFinishedTasksOnProject(
+    projectId: string,
+    _query?: { limit?: number; cursor?: string }
+  ) {
+    const response = await client.get(`/api/projects/${projectId}/tasks?status=finished`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list finished tasks: ${response.body}`);
+  },
+
+  async listProjectHistory(
+    projectId: string,
+    _query?: { limit?: number; cursor?: string }
+  ) {
+    const response = await client.get(`/api/projects/${projectId}/history`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list project history: ${response.body}`);
+  },
+
+  async listTaskHistory(taskId: string, _query?: { limit?: number; cursor?: string }) {
+    const response = await client.get(`/api/tasks/${taskId}/history`);
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Failed to list task history: ${response.body}`);
+  },
+
+  async expectInvalidProjectHistoryCursor(projectId: string, cursor: string) {
+    const response = await client.get(
+      `/api/projects/${projectId}/history?cursor=${encodeURIComponent(cursor)}`
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    throw new Error(`Expected 400 invalid_cursor, got ${response.statusCode}`);
   },
 
   async reorderOpenTasksOnList(listId: string, _taskIds: string[]): Promise<Task[]> {

@@ -32,6 +32,36 @@ describe('listed cursor payload', () => {
     }
   });
 
+  it('parses a finished-project-task cursor with completedAt then id', () => {
+    const parsed = parseListedCursor(
+      { v: 1, view: 'tasks.project.finished', k: ['2025-01-15T10:00:00.000Z', 'id'] },
+      'tasks.project.finished'
+    );
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      expect(parsed.value.keys).toEqual(['2025-01-15T10:00:00.000Z', 'id']);
+    }
+  });
+
+  it('parses a project-history cursor with occurredAt then seq', () => {
+    const parsed = parseListedCursor(
+      { v: 1, view: 'history.project', k: ['2025-01-15T10:00:00.000Z', 4] },
+      'history.project'
+    );
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      expect(parsed.value.keys).toEqual(['2025-01-15T10:00:00.000Z', 4]);
+    }
+  });
+
+  it('rejects a history cursor from the other history view', () => {
+    const parsed = parseListedCursor(
+      { v: 1, view: 'history.project', k: ['2025-01-15T10:00:00.000Z', 4] },
+      'history.task'
+    );
+    expect(parsed.isErr()).toBe(true);
+  });
+
   it('parses a project-task cursor with createdAt then id', () => {
     const parsed = parseListedCursor(
       { v: 1, view: 'tasks.project', k: ['2025-01-15T10:00:00.000Z', 'id'] },

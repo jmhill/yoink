@@ -3,6 +3,7 @@ import { initServer } from '@ts-rest/fastify';
 import { projectContract } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { ProjectHandlers } from '../application/create-project-handlers.js';
+import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
 import {
   invalidCursorHttp,
   toProjectListBody,
@@ -12,6 +13,7 @@ import { projectRequestValidationError } from './project-http-errors.js';
 
 export type ProjectRoutesDependencies = {
   projectHandlers: ProjectHandlers;
+  historyHandlers: HistoryHandlers;
   authMiddleware: AuthMiddleware;
 };
 
@@ -24,7 +26,7 @@ export const registerProjectRoutes = async (
   app: FastifyInstance,
   deps: ProjectRoutesDependencies
 ) => {
-  const { projectHandlers, authMiddleware } = deps;
+  const { projectHandlers, historyHandlers, authMiddleware } = deps;
   const s = initServer();
 
   await app.register(async (authedApp) => {
@@ -127,13 +129,53 @@ export const registerProjectRoutes = async (
         );
       },
 
-      listOpenTasks: async ({ params, query, request }) => {
-        const result = await projectHandlers.listOpenTasks({
+      listHistory: async ({ params, query, request }) => {
+        const result = await historyHandlers.listProjectHistory({
           projectId: params.id,
           organizationId: request.authContext.organizationId,
           limit: query.limit,
           cursor: query.cursor,
         });
+
+        return result.match(
+          (page) => ({
+            status: 200 as const,
+            body: page,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error', code: 'STORAGE_ERROR' },
+                };
+            }
+          }
+        );
+      },
+
+      listOpenTasks: async ({ params, query, request }) => {
+        const result =
+          query.status === 'finished'
+            ? await historyHandlers.listFinishedTasks({
+                projectId: params.id,
+                organizationId: request.authContext.organizationId,
+                limit: query.limit,
+                cursor: query.cursor,
+              })
+            : await projectHandlers.listOpenTasks({
+                projectId: params.id,
+                organizationId: request.authContext.organizationId,
+                limit: query.limit,
+                cursor: query.cursor,
+              });
 
         return result.match(
           (page) => ({

@@ -10,6 +10,8 @@ import {
 import {
   completedTaskDirection,
   completedTaskKeys,
+  finishedProjectTaskDirection,
+  finishedProjectTaskKeys,
   openPileTaskDirection,
   openPileTaskKeys,
   projectTaskDirection,
@@ -92,6 +94,14 @@ export const createFakeTaskStore = (
       }
       if (deletedIds.has(id)) {
         return okAsync(null);
+      }
+      const found = tasks.find((t) => t.id === id);
+      return okAsync(found ?? null);
+    },
+
+    findByIdIncludingDeleted: (id: string): ResultAsync<Task | null, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
       }
       const found = tasks.find((t) => t.id === id);
       return okAsync(found ?? null);
@@ -222,6 +232,47 @@ export const createFakeTaskStore = (
           ordered: open,
           keysOf: projectTaskKeys,
           direction: projectTaskDirection,
+          fetchLimit: project.fetchLimit,
+          seek: project.seek,
+        })
+      );
+    },
+
+    pageFinishedInProject: (project: {
+      organizationId: string;
+      projectId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+      completedAfter?: string;
+      completedBefore?: string;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const finished = tasks
+        .filter((task) => task.organizationId === project.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .filter((task) => Boolean(task.completedAt))
+        .filter((task) => task.projectId === project.projectId)
+        .filter((task) =>
+          project.completedAfter
+            ? (task.completedAt ?? '') >= project.completedAfter
+            : true
+        )
+        .filter((task) =>
+          project.completedBefore
+            ? (task.completedAt ?? '') < project.completedBefore
+            : true
+        )
+        .sort((a, b) => {
+          const cmp = compareKeyset(finishedProjectTaskKeys(a), finishedProjectTaskKeys(b));
+          return -cmp;
+        });
+      return okAsync(
+        pageOrdered({
+          ordered: finished,
+          keysOf: finishedProjectTaskKeys,
+          direction: finishedProjectTaskDirection,
           fetchLimit: project.fetchLimit,
           seek: project.seek,
         })

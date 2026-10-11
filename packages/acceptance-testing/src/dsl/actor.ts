@@ -2,6 +2,8 @@ import type {
   Capture,
   NamedList,
   Project,
+  HistoryPage,
+  FinishedTaskPage,
   Task,
   PasskeyCredentialInfo,
   Member,
@@ -81,6 +83,22 @@ export type CoreActor = {
       | { newTask: { title: string; dueDate?: string; assigneeId?: string; listId?: string } }
   ): Promise<{ project: Project; task?: { id: string; title: string } }>;
   listOpenTasksOnProject(projectId: string): Promise<Task[]>;
+  listFinishedTasksOnProject(
+    projectId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<FinishedTaskPage>;
+  listProjectHistory(
+    projectId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<HistoryPage>;
+  listTaskHistory(
+    taskId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<HistoryPage>;
+  expectInvalidProjectHistoryCursor(
+    projectId: string,
+    cursor: string
+  ): Promise<{ message: string; code: string }>;
   listOpenTasksOnList(listId: string): Promise<Task[]>;
   reorderOpenTasksOnList(listId: string, taskIds: string[]): Promise<Task[]>;
   listUnlistedOpenTasks(): Promise<Task[]>;
@@ -913,9 +931,22 @@ export type BrowserActorOperations = {
   shouldSeeSingleStatusControl(): Promise<void>;
 
   /**
-   * Scroll the History placeholder into view on the project page.
+   * Scroll the History row into view on the project page.
    */
   shouldSeeHistoryPlaceholder(): Promise<void>;
+  expandProjectHistory(): Promise<void>;
+  expandProjectFinished(): Promise<void>;
+  clickProjectHistoryMore(): Promise<void>;
+  shouldSeeHistoryEntry(input: {
+    kind: string;
+    actor: string;
+    text: string;
+    deleted?: boolean;
+  }): Promise<void>;
+  shouldSeeHistoryStart(): Promise<void>;
+  shouldSeeFinishedTask(title: string): Promise<void>;
+  shouldNotSeeFinishedTask(title: string): Promise<void>;
+  reopenFinishedTask(title: string): Promise<void>;
 
   /**
    * Assert a project is in the rail's open (active/waiting) section.

@@ -44,6 +44,7 @@ import { migration as createProjects } from './029-create-projects.js';
 import { migration as addTaskProjectId } from './030-add-task-project-id.js';
 import { migration as addProjectWaiting } from './031-add-project-waiting.js';
 import { migration as addProjectNextAction } from './032-add-project-next-action.js';
+import { migration as addChangeLogSeq } from './033-add-change-log-seq.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -78,6 +79,7 @@ export const migrations: Migration[] = [
   addTaskProjectId,
   addProjectWaiting,
   addProjectNextAction,
+  addChangeLogSeq,
 ];
 
 export type { Migration };

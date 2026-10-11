@@ -27,6 +27,7 @@ import type { TokenHandlers } from './access/application/create-token-handlers.j
 import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { ProjectHandlers } from './projects/application/index.js';
+import type { HistoryHandlers } from './history/application/create-history-handlers.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
 import type { CaptureProcessingService } from './processing/domain/processing-service.js';
@@ -73,6 +74,7 @@ export type AppDependencies = {
   captureHandlers: CaptureHandlers;
   listHandlers: ListHandlers;
   projectHandlers: ProjectHandlers;
+  historyHandlers: HistoryHandlers;
   taskService: TaskService;
   taskHandlers: TaskHandlers;
   captureProcessingService: CaptureProcessingService;
@@ -141,11 +143,13 @@ export const createApp = async (deps: AppDependencies) => {
   });
   await registerProjectRoutes(app, {
     projectHandlers: deps.projectHandlers,
+    historyHandlers: deps.historyHandlers,
     authMiddleware: deps.authMiddleware,
   });
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
+    historyHandlers: deps.historyHandlers,
     authMiddleware: deps.authMiddleware,
   });
 

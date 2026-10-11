@@ -37,6 +37,35 @@ export const projectTaskCursor: ListedCursor<Task, 'tasks.project'> = {
   }),
 };
 
+export const finishedProjectTaskCursor: ListedCursor<Task, 'tasks.project.finished'> = {
+  view: 'tasks.project.finished',
+  of: (task) => ({
+    view: 'tasks.project.finished',
+    keys: [task.completedAt ?? '', task.id],
+  }),
+};
+
+export type HistoryCursorRow = {
+  occurredAt: string;
+  seq: number;
+};
+
+export const projectHistoryCursor: ListedCursor<HistoryCursorRow, 'history.project'> = {
+  view: 'history.project',
+  of: (row) => ({
+    view: 'history.project',
+    keys: [row.occurredAt, row.seq],
+  }),
+};
+
+export const taskHistoryCursor: ListedCursor<HistoryCursorRow, 'history.task'> = {
+  view: 'history.task',
+  of: (row) => ({
+    view: 'history.task',
+    keys: [row.occurredAt, row.seq],
+  }),
+};
+
 export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
   view: 'lists',
   of: (list) => ({
@@ -73,6 +102,9 @@ export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: Task) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
 export const projectTaskKeys = (task: Task) => projectTaskCursor.of(task).keys;
+export const finishedProjectTaskKeys = (task: Task) => finishedProjectTaskCursor.of(task).keys;
+export const projectHistoryKeys = (row: HistoryCursorRow) => projectHistoryCursor.of(row).keys;
+export const taskHistoryKeys = (row: HistoryCursorRow) => taskHistoryCursor.of(row).keys;
 export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
 export const projectKeys = (project: Project) => projectCursor.of(project).keys;
 export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
@@ -82,6 +114,9 @@ export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
 export const openPileTaskDirection: KeysetDirection = 'asc';
 export const projectTaskDirection: KeysetDirection = 'desc';
+export const finishedProjectTaskDirection: KeysetDirection = 'desc';
+export const projectHistoryDirection: KeysetDirection = 'desc';
+export const taskHistoryDirection: KeysetDirection = 'desc';
 export const namedListDirection: KeysetDirection = 'asc';
 export const projectDirection: KeysetDirection = 'asc';
 export const captureFeedDirection: KeysetDirection = 'desc';

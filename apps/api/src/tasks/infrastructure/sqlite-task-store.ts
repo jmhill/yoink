@@ -8,6 +8,7 @@ import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import {
   completedTaskDirection,
+  finishedProjectTaskDirection,
   openPileTaskDirection,
   projectTaskDirection,
   taskBoardDirection,
@@ -48,6 +49,23 @@ export const createSqliteTaskStore = async (
       return ResultAsync.fromPromise(
         db.execute({
           sql: `SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL`,
+          args: [id],
+        }),
+        (error) => storageError('Failed to find task', error)
+      ).andThen((result) => {
+        const row = result.rows[0];
+        if (!row) {
+          return okAsync(null);
+        }
+        const parsed = parseTaskRow(row);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+      });
+    },
+
+    findByIdIncludingDeleted: (id: string): ResultAsync<Task | null, StorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM tasks WHERE id = ?`,
           args: [id],
         }),
         (error) => storageError('Failed to find task', error)
@@ -208,6 +226,44 @@ export const createSqliteTaskStore = async (
         seek: options.seek,
         mapRow: (row) => row,
         errorMessage: 'Failed to list open tasks in project',
+      }).andThen(parsePage);
+    },
+
+    pageFinishedInProject: (options: {
+      organizationId: string;
+      projectId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+      completedAfter?: string;
+      completedBefore?: string;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      let whereSql = `
+        organization_id = ?
+          AND project_id = ?
+          AND completed_at IS NOT NULL
+          AND deleted_at IS NULL
+      `;
+      const whereArgs: (string | number)[] = [options.organizationId, options.projectId];
+      if (options.completedAfter) {
+        whereSql += ` AND completed_at >= ?`;
+        whereArgs.push(options.completedAfter);
+      }
+      if (options.completedBefore) {
+        whereSql += ` AND completed_at < ?`;
+        whereArgs.push(options.completedBefore);
+      }
+      return pageSqlite({
+        db,
+        from: 'tasks',
+        whereSql,
+        whereArgs,
+        orderSql: `ORDER BY completed_at DESC, id DESC`,
+        keyColumns: ['completed_at', 'id'],
+        direction: finishedProjectTaskDirection,
+        fetchLimit: options.fetchLimit,
+        seek: options.seek,
+        mapRow: (row) => row,
+        errorMessage: 'Failed to list finished tasks in project',
       }).andThen(parsePage);
     },
 

@@ -1,6 +1,7 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { TaskSchema, CreateTaskSchema, UpdateTaskSchema, TaskFilterSchema } from '../schemas/task.js';
+import { HistoryPageSchema } from '../schemas/history.js';
 import { ListPageQuerySchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema } from '../schemas/error.js';
 
@@ -133,6 +134,24 @@ export const taskContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Unpin a task',
+  },
+
+  listHistory: {
+    method: 'GET',
+    path: '/api/tasks/:id/history',
+    pathParams: z.object({
+      id: z.string().uuid(),
+    }),
+    query: ListPageQuerySchema,
+    responses: {
+      200: HistoryPageSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      404: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary:
+      "Read a task's visible change-log timeline in any project or none, including after delete",
   },
 
   // Deletion

@@ -4,11 +4,13 @@ import { taskContract } from '@yoink/api-contracts';
 import type { TaskService } from '../domain/task-service.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { TaskHandlers } from '../application/create-task-handlers.js';
+import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
 import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;
   taskHandlers: TaskHandlers;
+  historyHandlers: HistoryHandlers;
   authMiddleware: AuthMiddleware;
 };
 
@@ -16,7 +18,7 @@ export const registerTaskRoutes = async (
   app: FastifyInstance,
   deps: TaskRoutesDependencies
 ) => {
-  const { taskService, taskHandlers, authMiddleware } = deps;
+  const { taskService, taskHandlers, historyHandlers, authMiddleware } = deps;
   const s = initServer();
 
   // Authenticated routes - scoped plugin with auth hook
@@ -303,6 +305,38 @@ export const registerTaskRoutes = async (
                 return {
                   status: 500 as const,
                   body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      listHistory: async ({ params, query, request }) => {
+        const result = await historyHandlers.listTaskHistory({
+          taskId: params.id,
+          organizationId: request.authContext.organizationId,
+          limit: query.limit,
+          cursor: query.cursor,
+        });
+
+        return result.match(
+          (page) => ({
+            status: 200 as const,
+            body: page,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
+              case 'TASK_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Task not found', code: 'TASK_NOT_FOUND' },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error', code: 'STORAGE_ERROR' },
                 };
             }
           }

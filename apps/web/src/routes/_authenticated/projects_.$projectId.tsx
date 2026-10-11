@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ChevronLeft, Clock, History, Pencil } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, Clock, History, Pencil } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   Dialog,
@@ -32,6 +32,14 @@ import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query'
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
 import { showsNoNextActionWarning, showsSomedaySetNextAction } from '@/lib/project-next-action';
+import {
+  formatHistoryStartsLine,
+  formatTimelineLine,
+} from '@/lib/format-timeline-entry';
+import {
+  useProjectFinishedPages,
+  useProjectHistoryPages,
+} from '@/lib/use-project-history-pages';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 import type { AssignableProjectStatus } from '@yoink/api-contracts';
@@ -98,6 +106,10 @@ function ProjectPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [waitingFormOpen, setWaitingFormOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [finishedOpen, setFinishedOpen] = useState(false);
+  const history = useProjectHistoryPages(projectId, true);
+  const finished = useProjectFinishedPages(projectId, true);
 
   const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
@@ -495,19 +507,114 @@ function ProjectPage() {
           )}
         </section>
 
-        <div
-          data-part="history-placeholder"
-          data-project-history-placeholder=""
-          className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-muted-foreground"
-        >
-          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <History className="size-4" aria-hidden="true" />
-            History
-            <span className="rounded border border-dashed border-muted-foreground/50 px-1.5 text-[11px] font-medium lowercase text-muted-foreground">
-              placeholder · #138
+        <section data-project-finished="" className="space-y-2">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-left"
+            aria-expanded={finishedOpen}
+            onClick={() => setFinishedOpen((open) => !open)}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <CheckCircle2 className="size-4" aria-hidden="true" />
+              Finished ({finished.total})
             </span>
-          </span>
-        </div>
+            <ChevronDown
+              className={`size-4 text-muted-foreground transition-transform ${finishedOpen ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+          {finishedOpen ? (
+            <div className="space-y-2 px-1">
+              {finished.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No finished tasks</p>
+              ) : (
+                finished.items.map((task) => (
+                  <div key={task.id} data-project-finished-item={task.id}>
+                    <TaskCard
+                      task={task}
+                      onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+                      onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+                      onEdit={setEditingTask}
+                      isLoading={taskBusy}
+                      assigneeLabel={assigneeLabelFor(task)}
+                    />
+                  </div>
+                ))
+              )}
+              {finished.hasNextPage ? (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void finished.fetchNextPage()}
+                    disabled={finished.isFetchingNextPage}
+                  >
+                    {finished.isFetchingNextPage ? 'Loading...' : 'Show more'}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+
+        <section data-project-history="" data-part="history" className="space-y-2">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-muted px-4 py-3 text-left"
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen((open) => !open)}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <History className="size-4" aria-hidden="true" />
+              History
+            </span>
+            <ChevronDown
+              className={`size-4 text-muted-foreground transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+          {historyOpen ? (
+            <div className="space-y-2 px-1">
+              {history.entries.map((entry) => (
+                <p
+                  key={entry.id}
+                  data-project-history-entry={entry.id}
+                  data-history-kind={entry.kind}
+                  data-history-actor={entry.actor.name ?? 'Unknown'}
+                  data-history-deleted={entry.subject.deleted ? 'true' : 'false'}
+                  className="text-sm text-foreground"
+                >
+                  {formatTimelineLine(entry)}
+                  {entry.subject.deleted ? (
+                    <span className="ml-2 rounded border border-border px-1.5 text-[11px] font-medium lowercase text-muted-foreground">
+                      deleted
+                    </span>
+                  ) : null}
+                </p>
+              ))}
+              {history.hasMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    data-project-history-more=""
+                    onClick={() => void history.fetchNextPage()}
+                    disabled={history.isFetchingNextPage}
+                  >
+                    {history.isFetchingNextPage ? 'Loading...' : 'Show more'}
+                  </Button>
+                </div>
+              ) : (
+                <p
+                  data-project-history-start=""
+                  className="text-sm text-muted-foreground"
+                >
+                  {formatHistoryStartsLine(history.historyStartsAt)}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </section>
       </div>
 
       <EditProjectDialog

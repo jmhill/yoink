@@ -9,6 +9,10 @@ import {
   SetProjectNextActionSchema,
   UpdateProjectSchema,
 } from '../schemas/project.js';
+import {
+  HistoryPageSchema,
+  ProjectTasksStatusSchema,
+} from '../schemas/history.js';
 import { ListPageQuerySchema, ProjectListPageSchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema, ProjectHasOpenTasksErrorSchema } from '../schemas/error.js';
 
@@ -83,7 +87,9 @@ export const projectContract = c.router(
       pathParams: z.object({
         id: z.string().uuid(),
       }),
-      query: ListPageQuerySchema,
+      query: ListPageQuerySchema.extend({
+        status: ProjectTasksStatusSchema,
+      }),
       responses: {
         200: TaskListPageSchema,
         400: ErrorSchema,
@@ -91,7 +97,25 @@ export const projectContract = c.router(
         404: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: "List a project's open tasks, newest created first",
+      summary:
+        "List a project's open tasks (default) or finished tasks (?status=finished), newest first",
+    },
+
+    listHistory: {
+      method: 'GET',
+      path: '/api/projects/:id/history',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      query: ListPageQuerySchema,
+      responses: {
+        200: HistoryPageSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: "Read a project's visible change-log timeline, newest first",
     },
 
     changeStatus: {

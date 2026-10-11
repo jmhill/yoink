@@ -65,7 +65,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailReview();
       await alice.shouldSeeDesktopRailSections();
       await alice.shouldSeeRailItems(
-        desktopRailWith(['Chores', 'Groceries'], ['Garden', 'Later', 'Shed'])
+        desktopRailWith(['Chores', 'Groceries'], ['Garden', 'Shed', 'Later'])
       );
     }, 90_000);
 

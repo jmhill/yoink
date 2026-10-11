@@ -4,19 +4,32 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 
 const UPDATE_USER_NAME_SQL = 'UPDATE users SET name = ? WHERE id = ?';
+const BUSY_TIMEOUT_MS = 10_000;
+const MAX_ATTEMPTS = 8;
+
+const isBusyError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /SQLITE_BUSY|database is locked/i.test(message);
+};
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const DOCKER_UPDATE_SCRIPT = `
-import { createClient } from '@libsql/client';
+import { DatabaseSync } from 'node:sqlite';
 const path = process.env.TEST_DB_CONTAINER_PATH;
 const id = process.env.TEST_USER_ID;
 const name = process.env.TEST_USER_NAME;
-const client = createClient({ url: \`file:\${path}\` });
-const result = await client.execute({
-  sql: '${UPDATE_USER_NAME_SQL}',
-  args: [name, id],
-});
-if (result.rowsAffected !== 1) {
-  throw new Error(\`expected 1 user updated, got \${result.rowsAffected}\`);
+const db = new DatabaseSync(path, { timeout: ${BUSY_TIMEOUT_MS} });
+try {
+  const result = db.prepare(${JSON.stringify(UPDATE_USER_NAME_SQL)}).run(name, id);
+  if (result.changes !== 1) {
+    throw new Error(\`expected 1 user updated, got \${result.changes}\`);
+  }
+} finally {
+  db.close();
 }
 `.trim();
 
@@ -26,7 +39,7 @@ const updateViaSqliteFile = async (
   name: string
 ): Promise<void> => {
   const { DatabaseSync } = await import('node:sqlite');
-  const db = new DatabaseSync(dbPath);
+  const db = new DatabaseSync(dbPath, { timeout: BUSY_TIMEOUT_MS });
   try {
     const result = db.prepare(UPDATE_USER_NAME_SQL).run(name, userId);
     if (result.changes !== 1) {
@@ -60,12 +73,30 @@ const updateViaDockerCompose = async (
       `TEST_DB_CONTAINER_PATH=${containerPath}`,
       service,
       'node',
+      '--experimental-sqlite',
       '--input-type=module',
       '-e',
       DOCKER_UPDATE_SCRIPT,
     ],
     { encoding: 'utf8' }
   );
+};
+
+const withBusyRetry = async (run: () => Promise<void>): Promise<void> => {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isBusyError(error) || attempt === MAX_ATTEMPTS) {
+        throw error;
+      }
+      await delay(100 * attempt);
+    }
+  }
+  throw lastError;
 };
 
 /**
@@ -79,13 +110,13 @@ const updateViaDockerCompose = async (
 export const setUserDisplayName = async (userId: string, name: string): Promise<void> => {
   const dbPath = process.env.TEST_DB_PATH;
   if (dbPath) {
-    await updateViaSqliteFile(dbPath, userId, name);
+    await withBusyRetry(() => updateViaSqliteFile(dbPath, userId, name));
     return;
   }
 
   const composeFile = process.env.TEST_DB_COMPOSE_FILE;
   if (composeFile) {
-    await updateViaDockerCompose(composeFile, userId, name);
+    await withBusyRetry(() => updateViaDockerCompose(composeFile, userId, name));
     return;
   }
 

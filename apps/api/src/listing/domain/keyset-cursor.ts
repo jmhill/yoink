@@ -20,6 +20,7 @@ export const CursorViewSchema = z.enum([
   'work.due',
   'work.lists',
   'review',
+  'review.done',
 ]);
 
 export type CursorView = z.infer<typeof CursorViewSchema>;
@@ -46,6 +47,7 @@ const reviewKeysSchema = z.tuple([
   z.string(),
   z.string(),
 ]);
+const doneListKeysSchema = z.tuple([z.string(), z.string()]);
 
 const CursorEnvelopeSchema = z.object({
   v: z.literal(1),
@@ -68,7 +70,8 @@ export type KeysetCursor =
   | { view: 'work.next-actions'; keys: z.infer<typeof workNextActionsKeysSchema> }
   | { view: 'work.due'; keys: z.infer<typeof workDueKeysSchema> }
   | { view: 'work.lists'; keys: z.infer<typeof workListsKeysSchema> }
-  | { view: 'review'; keys: z.infer<typeof reviewKeysSchema> };
+  | { view: 'review'; keys: z.infer<typeof reviewKeysSchema> }
+  | { view: 'review.done'; keys: z.infer<typeof doneListKeysSchema> };
 
 export type ListedCursor<T, V extends CursorView> = {
   readonly view: V;
@@ -184,6 +187,12 @@ const parseKeys = (
       const keys = reviewKeysSchema.safeParse(rawKeys);
       return keys.success
         ? ok({ view: 'review', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'review.done': {
+      const keys = doneListKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'review.done', keys: keys.data })
         : err(invalidCursorError());
     }
   }

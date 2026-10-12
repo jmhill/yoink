@@ -14,6 +14,8 @@ import type {
   NowNextActionsPage,
   ReviewPage,
   ReviewQuery,
+  DoneListPage,
+  DoneListQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -1636,6 +1638,58 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openReviewChangeStatus', 'http');
     },
 
+    async shouldSeeDoneWeek(_monday: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneWeek', 'http');
+    },
+
+    async shouldSeeDoneGroup(_input: { name: string; titles: string[] }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneGroup', 'http');
+    },
+
+    async shouldSeeDoneTaskWhen(_input: {
+      projectName: string;
+      title: string;
+      copy: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneTaskWhen', 'http');
+    },
+
+    async shouldSeeDoneOther(_copy: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneOther', 'http');
+    },
+
+    async shouldSeeDoneEmpty(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneEmpty', 'http');
+    },
+
+    async shouldSeeDoneNext(_input: { projectName: string; title: string }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneNext', 'http');
+    },
+
+    async shouldSeeDoneSetNext(_projectName: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDoneSetNext', 'http');
+    },
+
+    async openDoneSetNextAction(_projectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openDoneSetNextAction', 'http');
+    },
+
+    async setDoneNextAction(_input: { projectName: string; title: string }): Promise<void> {
+      throw new UnsupportedOperationError('setDoneNextAction', 'http');
+    },
+
+    async goToPreviousDoneWeek(): Promise<void> {
+      throw new UnsupportedOperationError('goToPreviousDoneWeek', 'http');
+    },
+
+    async goToNextDoneWeek(): Promise<void> {
+      throw new UnsupportedOperationError('goToNextDoneWeek', 'http');
+    },
+
+    async scrollDoneIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollDoneIntoView', 'http');
+    },
+
     async scrollReviewWaitingIntoView(): Promise<void> {
       throw new UnsupportedOperationError('scrollReviewWaitingIntoView', 'http');
     },
@@ -2055,8 +2109,32 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeUndoToast', 'http');
     },
 
+    async shouldSeeToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeToast', 'http');
+    },
+
+    async shouldNotSeeToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeToast', 'http');
+    },
+
     async undoFromToast(_message: string): Promise<void> {
       throw new UnsupportedOperationError('undoFromToast', 'http');
+    },
+
+    async undoReviewNextActionFromToast(
+      _message: string,
+      _options?: { deleteFails?: boolean }
+    ): Promise<{
+      method: string;
+      url: string;
+      requestBody: unknown;
+      status: number;
+      deletedUrl: string | null;
+      deletedStatus: number | null;
+      deletedBody: string | null;
+      savedToastReappeared: boolean;
+    }> {
+      throw new UnsupportedOperationError('undoReviewNextActionFromToast', 'http');
     },
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {
@@ -2481,6 +2559,52 @@ export const createHttpActor = (
         throw new Error(`Failed to list review: ${response.body}`);
       }
       return response.json<ReviewPage>();
+    },
+
+    async listDone(query?: DoneListQuery): Promise<DoneListPage> {
+      const params = new URLSearchParams();
+      if (query?.week) {
+        params.set('week', query.week);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await client.get(`/api/review/done${encoded}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list done: ${response.body}`);
+      }
+      return response.json<DoneListPage>();
+    },
+
+    async finishTaskAt(taskId: string, completedAt: string): Promise<void> {
+      const response = await client.post(
+        '/api/test/review-fixture/finish-task',
+        { taskId, completedAt },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        throw new ValidationError('Invalid finish-task');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Task', taskId);
+      }
+      if (response.statusCode !== 204) {
+        throw new Error(`Failed to finish task at: ${response.body}`);
+      }
     },
 
     async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {

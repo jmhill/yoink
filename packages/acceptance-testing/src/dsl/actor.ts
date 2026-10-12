@@ -14,6 +14,8 @@ import type {
   NowNextActionsPage,
   ReviewPage,
   ReviewQuery,
+  DoneListPage,
+  DoneListQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -139,7 +141,9 @@ export type CoreActor = {
   listNowDue(query?: NowQuery): Promise<TaskListPage>;
   listWorkLists(): Promise<WorkListsPage>;
   listReview(query?: ReviewQuery): Promise<ReviewPage>;
+  listDone(query?: DoneListQuery): Promise<DoneListPage>;
   backdateReviewProject(projectId: string, occurredAt: string): Promise<void>;
+  finishTaskAt(taskId: string, completedAt: string): Promise<void>;
   getTask(id: string): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   completeTask(id: string): Promise<Task>;
@@ -1255,6 +1259,66 @@ export type BrowserActorOperations = {
   openReviewChangeStatus(projectName: string): Promise<void>;
 
   /**
+   * Assert the Done this week section has settled on this Monday.
+   */
+  shouldSeeDoneWeek(monday: string): Promise<void>;
+
+  /**
+   * Assert a Done this week project group and its task titles, newest first.
+   */
+  shouldSeeDoneGroup(input: { name: string; titles: string[] }): Promise<void>;
+
+  /**
+   * Assert a finished-task when line inside a Done group.
+   */
+  shouldSeeDoneTaskWhen(input: { projectName: string; title: string; copy: string }): Promise<void>;
+
+  /**
+   * Assert the "Plus N tasks not in a project" line.
+   */
+  shouldSeeDoneOther(copy: string): Promise<void>;
+
+  /**
+   * Assert the Done this week empty copy.
+   */
+  shouldSeeDoneEmpty(): Promise<void>;
+
+  /**
+   * Assert a project group shows Next: title.
+   */
+  shouldSeeDoneNext(input: { projectName: string; title: string }): Promise<void>;
+
+  /**
+   * Assert a project group shows Set next action.
+   */
+  shouldSeeDoneSetNext(projectName: string): Promise<void>;
+
+  /**
+   * Open Set next action from a Done this week group.
+   */
+  openDoneSetNextAction(projectName: string): Promise<void>;
+
+  /**
+   * Set a next action from Done this week by creating a new task.
+   */
+  setDoneNextAction(input: { projectName: string; title: string }): Promise<void>;
+
+  /**
+   * Go to the previous Done this week.
+   */
+  goToPreviousDoneWeek(): Promise<void>;
+
+  /**
+   * Go to the next Done this week.
+   */
+  goToNextDoneWeek(): Promise<void>;
+
+  /**
+   * Scroll Done this week into view above the phone tab bar.
+   */
+  scrollDoneIntoView(): Promise<void>;
+
+  /**
    * Scroll the Waiting section and its groups into view for a screenshot.
    */
   scrollReviewWaitingIntoView(): Promise<void>;
@@ -1814,9 +1878,41 @@ export type BrowserActorOperations = {
   shouldSeeUndoToast(message: string): Promise<void>;
 
   /**
+   * Assert a toast with this message is showing (Undo not required).
+   * Waits through the live-query refresh that Review Undo runs first.
+   */
+  shouldSeeToast(message: string): Promise<void>;
+
+  /**
+   * Assert no visible toast contains this message.
+   */
+  shouldNotSeeToast(message: string): Promise<void>;
+
+  /**
    * Click Undo on the toast with this message.
    */
   undoFromToast(message: string): Promise<void>;
+
+  /**
+   * Click Undo on a Review next-action toast and return the PUT
+   * `/api/projects/:id/next-action` plus the created-task DELETE.
+   * Settles on those network responses. The restore toast is asserted
+   * separately after the live-query refresh. Pass `deleteFails` to
+   * fulfill that DELETE with 500.
+   */
+  undoReviewNextActionFromToast(
+    message: string,
+    options?: { deleteFails?: boolean }
+  ): Promise<{
+    method: string;
+    url: string;
+    requestBody: unknown;
+    status: number;
+    deletedUrl: string | null;
+    deletedStatus: number | null;
+    deletedBody: string | null;
+    savedToastReappeared: boolean;
+  }>;
 
   /**
    * Assert Process moved on because the current capture was processed elsewhere.

@@ -3,6 +3,17 @@ import { createTestDatabase, type Database } from '../../database/test-utils.js'
 import { insertProjectQuery } from '../../projects/infrastructure/project-row-statements.js';
 import { insertTaskQuery, softDeleteTaskQuery } from '../../tasks/infrastructure/task-row-statements.js';
 import {
+  DONE_ORG,
+  DONE_OTHER_ORG,
+  DONE_OTHER_USER,
+  DONE_PROJECT,
+  DONE_TASK,
+  DONE_USER,
+  doneFixtureProjects,
+  doneFixtureTasks,
+  runDoneListStoreContractTests,
+} from '../domain/done-list-store.contract.js';
+import {
   REVIEW_CHANGE,
   REVIEW_CREATED_BY,
   REVIEW_ORG,
@@ -103,6 +114,36 @@ const seedFixture = async (db: Database): Promise<void> => {
   }
 };
 
+const seedDoneFixture = async (db: Database): Promise<void> => {
+  await db.execute({
+    sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+    args: [DONE_ORG, 'Done org', '2026-10-01T10:00:00.000Z'],
+  });
+  await db.execute({
+    sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+    args: [DONE_OTHER_ORG, 'Other org', '2026-10-01T10:00:00.000Z'],
+  });
+  await db.execute({
+    sql: `INSERT INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)`,
+    args: [DONE_USER, 'owner@example.com', 'Lane', '2026-10-01T10:00:00.000Z'],
+  });
+  await db.execute({
+    sql: `INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)`,
+    args: [DONE_OTHER_USER, 'other@example.com', '2026-10-01T10:00:00.000Z'],
+  });
+  for (const project of doneFixtureProjects()) {
+    await db.execute(insertProjectQuery({ ...project, nextActionTaskId: null }));
+  }
+  for (const task of doneFixtureTasks()) {
+    await db.execute(insertTaskQuery(task));
+  }
+  await db.execute(softDeleteTaskQuery(DONE_TASK.deleted, DONE_ORG, '2026-10-12T15:30:00.000Z'));
+  await db.execute({
+    sql: `UPDATE projects SET next_action_task_id = ? WHERE id = ?`,
+    args: [DONE_TASK.open, DONE_PROJECT.garden],
+  });
+};
+
 describe('SqliteReviewStore', () => {
   let db: Database;
 
@@ -129,6 +170,27 @@ describe('SqliteReviewStore', () => {
         args: [REVIEW_ORG, REVIEW_OTHER_ORG],
       });
       await seedFixture(db);
+    },
+  });
+
+  runDoneListStoreContractTests({
+    createHarness: () => ({
+      store: createSqliteReviewStore(db),
+    }),
+    beforeEach: async () => {
+      await db.execute({ sql: 'UPDATE projects SET next_action_task_id = NULL' });
+      await db.execute({ sql: 'DELETE FROM change_log' });
+      await db.execute({ sql: 'DELETE FROM tasks' });
+      await db.execute({ sql: 'DELETE FROM projects' });
+      await db.execute({
+        sql: 'DELETE FROM users WHERE id IN (?, ?)',
+        args: [DONE_USER, DONE_OTHER_USER],
+      });
+      await db.execute({
+        sql: 'DELETE FROM organizations WHERE id IN (?, ?)',
+        args: [DONE_ORG, DONE_OTHER_ORG],
+      });
+      await seedDoneFixture(db);
     },
   });
 });

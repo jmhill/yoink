@@ -220,16 +220,66 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeUndoToast('Next action saved');
       const created = await alice.listOpenTasksOnProject(seeded.house.id);
       expect(created.map((task) => task.title)).toContain('Box the attic');
-      await alice.undoFromToast('Next action saved');
+      const undo = await alice.undoReviewNextActionFromToast('Next action saved');
+      expect(undo.requestBody, JSON.stringify(undo)).toEqual({ taskId: null });
+      expect(undo.status).toBe(200);
+      expect(undo.deletedUrl, JSON.stringify(undo)).toMatch(/\/api\/tasks\//);
+      expect(undo.deletedStatus, JSON.stringify(undo)).toBe(204);
+      await alice.shouldSeeToast('Next action restored');
       await alice.shouldSeeReviewItem({
         name: 'House storage',
         section: 'noNextAction',
         reasons: 'noNextAction',
       });
       const afterUndo = await alice.listOpenTasksOnProject(seeded.house.id);
-      expect(afterUndo.map((task) => task.title)).not.toContain('Box the attic');
+      expect(afterUndo.map((task) => task.title), JSON.stringify(undo)).not.toContain(
+        'Box the attic'
+      );
       await alice.expandAllProjects();
       await alice.shouldSeeProjectOnAllProjects({ name: 'House storage', status: 'active' });
+    }, 90_000);
+
+    it('restores the earlier next action on Undo without a second saved toast', async () => {
+      const seeded = await seedReview(alice);
+      const prior = await alice.getProject(seeded.quiet.id);
+      expect(prior.nextActionTaskId).toBeTruthy();
+      await alice.useMobileViewport();
+      await alice.openReview();
+      await alice.setReviewNextAction({ projectName: 'Quiet garden', title: 'Mulch the beds' });
+      await alice.shouldSeeUndoToast('Next action saved');
+      const created = await alice.listOpenTasksOnProject(seeded.quiet.id);
+      expect(created.map((task) => task.title)).toContain('Water plants');
+      expect(created.map((task) => task.title)).toContain('Mulch the beds');
+      const undo = await alice.undoReviewNextActionFromToast('Next action saved');
+      expect(undo.requestBody, JSON.stringify(undo)).toEqual({ taskId: prior.nextActionTaskId });
+      expect(undo.status).toBe(200);
+      expect(undo.deletedUrl, JSON.stringify(undo)).toMatch(/\/api\/tasks\//);
+      expect(undo.deletedStatus, JSON.stringify(undo)).toBe(204);
+      expect(undo.savedToastReappeared, JSON.stringify(undo)).toBe(false);
+      await alice.shouldSeeToast('Next action restored');
+      await alice.shouldNotSeeToast('Next action saved');
+      const after = await alice.getProject(seeded.quiet.id);
+      expect(after.nextActionTaskId).toBe(prior.nextActionTaskId);
+      const afterUndo = await alice.listOpenTasksOnProject(seeded.quiet.id);
+      expect(afterUndo.map((task) => task.title)).toContain('Water plants');
+      expect(afterUndo.map((task) => task.title)).not.toContain('Mulch the beds');
+    }, 90_000);
+
+    it('shows an error toast when Undo cannot delete the created task', async () => {
+      const seeded = await seedReview(alice);
+      await alice.useMobileViewport();
+      await alice.openReview();
+      await alice.setReviewNextAction({ projectName: 'House storage', title: 'Box the attic' });
+      await alice.shouldSeeUndoToast('Next action saved');
+      const undo = await alice.undoReviewNextActionFromToast('Next action saved', {
+        deleteFails: true,
+      });
+      expect(undo.status).toBe(200);
+      expect(undo.deletedStatus, JSON.stringify(undo)).toBe(500);
+      await alice.shouldSeeToast('Failed to remove the created task');
+      await alice.shouldNotSeeToast('Next action restored');
+      const after = await alice.listOpenTasksOnProject(seeded.house.id);
+      expect(after.map((task) => task.title)).toContain('Box the attic');
     }, 90_000);
 
     it('moves a quiet project to Waiting under the right group', async () => {

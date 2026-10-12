@@ -8,6 +8,11 @@ const BackdateBodySchema = z.object({
   occurredAt: z.string().datetime(),
 });
 
+const FinishTaskBodySchema = z.object({
+  taskId: z.string().uuid(),
+  completedAt: z.string().datetime(),
+});
+
 export type ReviewFixtureRoutesDependencies = {
   authMiddleware: AuthMiddleware;
   db: Database;
@@ -58,6 +63,30 @@ export const registerReviewFixtureRoutes = async (
         `,
         args: [parsed.data.occurredAt, parsed.data.projectId, organizationId],
       });
+      return reply.status(204).send();
+    });
+
+    authedApp.post('/api/test/review-fixture/finish-task', async (request, reply) => {
+      const parsed = FinishTaskBodySchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          message: 'Request validation failed',
+          code: 'VALIDATION_FAILED',
+        });
+      }
+      const organizationId = request.authContext.organizationId;
+      const completedBy = request.authContext.userId;
+      const updated = await deps.db.execute({
+        sql: `
+          UPDATE tasks
+          SET completed_at = ?, completed_by = ?
+          WHERE id = ? AND organization_id = ? AND deleted_at IS NULL
+        `,
+        args: [parsed.data.completedAt, completedBy, parsed.data.taskId, organizationId],
+      });
+      if (updated.rowsAffected === 0) {
+        return reply.status(404).send({ message: 'Task not found' });
+      }
       return reply.status(204).send();
     });
   });

@@ -476,8 +476,15 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   const reviewStore = createSqliteReviewStore(database);
+  const reviewLookups = createSqliteTimelineLookups(database);
   const reviewHandlers = createReviewHandlers({
     pageReview: (options) => reviewStore.pageReview(options),
+    loadTimeZone: (organizationId) => reviewStore.loadTimeZone(organizationId),
+    pageDoneList: (options) => reviewStore.pageDoneList(options),
+    loadCompletedByNames: (userIds) =>
+      reviewLookups({ taskIds: [], userIds, projectIds: [] }).map(
+        (lookups) => (userId: string) => lookups.actorNameOf(userId)
+      ),
     now: () => clock.now(),
   });
 

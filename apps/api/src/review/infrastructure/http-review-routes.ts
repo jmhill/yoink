@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { reviewContract, type ReviewCounts, type ReviewProject } from '@yoink/api-contracts';
+import {
+  reviewContract,
+  type DoneListPage,
+  type ReviewCounts,
+  type ReviewProject,
+} from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import { invalidCursorHttp } from '../../listing/infrastructure/http-listed-page.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
@@ -60,6 +65,36 @@ export const registerReviewRoutes = async (
             switch (error.type) {
               case 'INVALID_CURSOR':
                 return invalidCursorHttp(error);
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+      done: async ({ query, request }) => {
+        const result = await reviewHandlers.done({
+          organizationId: request.authContext.organizationId,
+          week: query.week,
+          limit: query.limit,
+          cursor: query.cursor,
+        });
+        return result.match(
+          (page: DoneListPage) => ({
+            status: 200 as const,
+            body: page,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
+              case 'INVALID_WEEK':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message, code: 'INVALID_WEEK' },
+                };
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,

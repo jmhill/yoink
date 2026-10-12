@@ -213,6 +213,35 @@ export type ReviewQuery = {
   cursor?: string;
 };
 
+export type DoneListQuery = {
+  week?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type DoneListNextAction = {
+  id: string;
+  title: string;
+};
+
+export type DoneListGroup = {
+  project: Project;
+  nextAction: DoneListNextAction | null;
+  tasks: Task[];
+};
+
+export type DoneListPage = {
+  timeZone: string;
+  week: { start: string; end: string };
+  previousWeek: string;
+  nextWeek: string | null;
+  groups: DoneListGroup[];
+  otherTaskCount: number;
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
 export type ReviewNextAction = {
   id: string;
   title: string;

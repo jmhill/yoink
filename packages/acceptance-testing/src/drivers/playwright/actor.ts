@@ -5071,8 +5071,20 @@ export const createPlaywrightActor = (
       return response.json();
     },
 
-    async uncompleteTask(_id: string): Promise<Task> {
-      throw new UnsupportedOperationError('uncompleteTask', 'playwright');
+    async uncompleteTask(id: string): Promise<Task> {
+      const response = await page.request.post(`/api/tasks/${id}/uncomplete`, {
+        data: {},
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Task', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to uncomplete task: ${response.status()}`);
+      }
+      return response.json();
     },
 
     async pinTask(_id: string): Promise<Task> {

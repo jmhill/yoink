@@ -3919,16 +3919,28 @@ export const createPlaywrightActor = (
     async scrollReviewWaitingIntoView(): Promise<void> {
       const section = page.locator('[data-review-section="waiting"]');
       await expect(section).toBeVisible();
-      await section.evaluate((node) => {
+      const heading = section.getByRole('heading', { name: 'Waiting', exact: true });
+      await heading.evaluate((node) => {
         node.scrollIntoView({ block: 'start', inline: 'nearest' });
       });
       const groups = section.locator('[data-review-waiting-group]');
-      await expect(groups.first()).toBeVisible();
       await expect.poll(async () => groups.count()).toBeGreaterThan(1);
-      const box = await section.boundingBox();
-      expect(box, 'Waiting section should be in the viewport').not.toBeNull();
-      if (box !== null) {
-        expect(box.y).toBeLessThan(200);
+      await expect(groups.first()).toBeVisible();
+      await groups.first().evaluate((node) => {
+        node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      const viewport = page.viewportSize();
+      const headingBox = await heading.boundingBox();
+      const firstGroupBox = await groups.first().boundingBox();
+      expect(headingBox, 'Waiting heading should be in the viewport').not.toBeNull();
+      expect(firstGroupBox, 'Waiting groups should be in the viewport').not.toBeNull();
+      if (headingBox !== null && viewport !== null) {
+        expect(headingBox.y).toBeLessThan(viewport.height - 40);
+        expect(headingBox.y + headingBox.height).toBeGreaterThan(0);
+      }
+      if (firstGroupBox !== null && viewport !== null) {
+        expect(firstGroupBox.y).toBeLessThan(viewport.height - 40);
+        expect(firstGroupBox.y + firstGroupBox.height).toBeGreaterThan(0);
       }
     },
 

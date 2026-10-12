@@ -3709,7 +3709,7 @@ export const createPlaywrightActor = (
     async shouldSeeToast(message: string): Promise<void> {
       await expect(
         page.locator('[data-sonner-toast]:not([data-removed="true"])').filter({ hasText: message })
-      ).toBeVisible();
+      ).toBeVisible({ timeout: LIVE_OUT_OF_BAND_VISIBLE_MS });
     },
 
     async shouldNotSeeToast(message: string): Promise<void> {
@@ -3722,7 +3722,10 @@ export const createPlaywrightActor = (
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
     },
 
-    async undoReviewNextActionFromToast(message: string): Promise<{
+    async undoReviewNextActionFromToast(
+      message: string,
+      options?: { deleteFails?: boolean }
+    ): Promise<{
       method: string;
       url: string;
       requestBody: unknown;
@@ -3732,41 +3735,69 @@ export const createPlaywrightActor = (
       deletedBody: string | null;
       savedToastReappeared: boolean;
     }> {
-      const requestPromise = page.waitForRequest(
-        (request) =>
-          request.method() === 'PUT' && /\/api\/projects\/[^/]+\/next-action/.test(request.url())
-      );
-      const responsePromise = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PUT' &&
-          /\/api\/projects\/[^/]+\/next-action/.test(response.url())
-      );
-      const deletePromise = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'DELETE' && /\/api\/tasks\//.test(response.url())
-      );
-      await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
-      const request = await requestPromise;
-      const response = await responsePromise;
-      const requestBody: unknown = (() => {
-        try {
-          return request.postDataJSON();
-        } catch {
-          return request.postData();
+      const failDelete = async (route: {
+        request: () => { method: () => string };
+        continue: () => Promise<void>;
+        fulfill: (response: {
+          status: number;
+          contentType: string;
+          body: string;
+        }) => Promise<void>;
+      }): Promise<void> => {
+        if (route.request().method() !== 'DELETE') {
+          await route.continue();
+          return;
         }
-      })();
-      await expect(visibleUndoToast(message)).toHaveCount(0);
-      const deleted = await deletePromise;
-      return {
-        method: request.method(),
-        url: request.url(),
-        requestBody,
-        status: response.status(),
-        deletedUrl: deleted.url(),
-        deletedStatus: deleted.status(),
-        deletedBody: await deleted.text(),
-        savedToastReappeared: (await visibleUndoToast(message).count()) > 0,
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Failed to remove the created task' }),
+        });
       };
+      if (options?.deleteFails === true) {
+        await page.route('**/api/tasks/**', failDelete);
+      }
+      try {
+        const requestPromise = page.waitForRequest(
+          (request) =>
+            request.method() === 'PUT' && /\/api\/projects\/[^/]+\/next-action/.test(request.url())
+        );
+        const responsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'PUT' &&
+            /\/api\/projects\/[^/]+\/next-action/.test(response.url())
+        );
+        const deletePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'DELETE' && /\/api\/tasks\//.test(response.url())
+        );
+        await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
+        const request = await requestPromise;
+        const response = await responsePromise;
+        const requestBody: unknown = (() => {
+          try {
+            return request.postDataJSON();
+          } catch {
+            return request.postData();
+          }
+        })();
+        await expect(visibleUndoToast(message)).toHaveCount(0);
+        const deleted = await deletePromise;
+        return {
+          method: request.method(),
+          url: request.url(),
+          requestBody,
+          status: response.status(),
+          deletedUrl: deleted.url(),
+          deletedStatus: deleted.status(),
+          deletedBody: await deleted.text(),
+          savedToastReappeared: (await visibleUndoToast(message).count()) > 0,
+        };
+      } finally {
+        if (options?.deleteFails === true) {
+          await page.unroute('**/api/tasks/**', failDelete);
+        }
+      }
     },
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {

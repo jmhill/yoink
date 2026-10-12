@@ -2121,7 +2121,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('undoFromToast', 'http');
     },
 
-    async undoReviewNextActionFromToast(_message: string): Promise<{
+    async undoReviewNextActionFromToast(
+      _message: string,
+      _options?: { deleteFails?: boolean }
+    ): Promise<{
       method: string;
       url: string;
       requestBody: unknown;

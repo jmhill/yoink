@@ -1879,6 +1879,7 @@ export type BrowserActorOperations = {
 
   /**
    * Assert a toast with this message is showing (Undo not required).
+   * Waits through the live-query refresh that Review Undo runs first.
    */
   shouldSeeToast(message: string): Promise<void>;
 
@@ -1895,11 +1896,14 @@ export type BrowserActorOperations = {
   /**
    * Click Undo on a Review next-action toast and return the PUT
    * `/api/projects/:id/next-action` plus the created-task DELETE.
-   * Settles on those network responses. Do not wait on
-   * `data-review-version` (listed attention rows only) or the restore
-   * toast (it is shown after a full live-query refresh).
+   * Settles on those network responses. The restore toast is asserted
+   * separately after the live-query refresh. Pass `deleteFails` to
+   * fulfill that DELETE with 500.
    */
-  undoReviewNextActionFromToast(message: string): Promise<{
+  undoReviewNextActionFromToast(
+    message: string,
+    options?: { deleteFails?: boolean }
+  ): Promise<{
     method: string;
     url: string;
     requestBody: unknown;

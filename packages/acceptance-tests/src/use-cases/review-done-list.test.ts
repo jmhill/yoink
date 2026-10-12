@@ -241,6 +241,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(undo.url).toMatch(/\/api\/projects\/[^/]+\/next-action/);
       expect(undo.requestBody).toEqual({ taskId: null });
       expect(undo.status).toBe(200);
+      await alice.shouldSeeToast('Next action restored');
       await alice.shouldSeeDoneSetNext('House storage');
     }, 90_000);
 

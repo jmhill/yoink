@@ -55,3 +55,8 @@ export function processBadgeCount(total: number): number | null {
   }
   return total;
 }
+
+/** Badge on Review: hidden at 0. Same hide-at-0 rule as Process. */
+export function reviewBadgeCount(total: number): number | null {
+  return processBadgeCount(total);
+}

@@ -5,6 +5,7 @@ import {
   activeMobileTab,
   mobileTabLabels,
   processBadgeCount,
+  reviewBadgeCount,
 } from './mobile-tabs';
 
 describe('mobile tabs', () => {
@@ -70,5 +71,12 @@ describe('processBadgeCount', () => {
   it('hides the badge at zero and shows a positive inbox total', () => {
     expect(processBadgeCount(0)).toBeNull();
     expect(processBadgeCount(19)).toBe(19);
+  });
+});
+
+describe('reviewBadgeCount', () => {
+  it('hides the badge at zero and shows a positive attention total', () => {
+    expect(reviewBadgeCount(0)).toBeNull();
+    expect(reviewBadgeCount(2)).toBe(2);
   });
 });

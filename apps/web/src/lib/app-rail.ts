@@ -1,4 +1,10 @@
-import { MOBILE_TAB_DESTINATIONS, activeMobileTab, processBadgeCount, type MobileTabKey } from './mobile-tabs';
+import {
+  MOBILE_TAB_DESTINATIONS,
+  activeMobileTab,
+  processBadgeCount,
+  reviewBadgeCount,
+  type MobileTabKey,
+} from './mobile-tabs';
 import { showsNoNextActionWarning } from './project-next-action';
 
 /** Visible label for the Mine smart view. Now’s Mine toggle stays “Mine”. */
@@ -299,6 +305,7 @@ export function buildDesktopRailSections(input: {
   inboxCount: number;
   namedLists: RailNamedList[];
   projects?: RailProject[];
+  reviewBadge?: number;
 }): DesktopRailSection[] {
   const namedLists = input.namedLists;
   const projects = input.projects ?? [];
@@ -307,7 +314,12 @@ export function buildDesktopRailSections(input: {
     label: tab.label,
     to: tab.to,
     items: itemsForDesktopSection(tab.key, { namedLists, projects }),
-    badge: tab.key === 'process' ? processBadgeCount(input.inboxCount) : null,
+    badge:
+      tab.key === 'process'
+        ? processBadgeCount(input.inboxCount)
+        : tab.key === 'review'
+          ? reviewBadgeCount(input.reviewBadge ?? 0)
+          : null,
   }));
 }
 

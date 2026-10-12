@@ -21,7 +21,7 @@ import {
   partitionRailProjects,
   shouldShowProjectsHeadingBefore,
 } from './app-rail';
-import { MOBILE_TABS, processBadgeCount } from './mobile-tabs';
+import { MOBILE_TABS, processBadgeCount, reviewBadgeCount } from './mobile-tabs';
 
 const groceriesId = '00000000-0000-0000-0000-000000000010';
 const weekendId = '00000000-0000-0000-0000-000000000011';
@@ -376,6 +376,22 @@ describe('buildDesktopRailSections', () => {
     expect(processCounted?.badge).toBe(processBadgeCount(19));
     expect(processCounted?.badge).toBe(19);
     expect(empty.find((section) => section.key === 'capture')?.badge).toBeNull();
+  });
+
+  it('reuses reviewBadgeCount for the Review badge, null at 0', () => {
+    const empty = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
+    const counted = buildDesktopRailSections({
+      inboxCount: 0,
+      namedLists: [],
+      reviewBadge: 2,
+    });
+    const reviewEmpty = empty.find((section) => section.key === 'review');
+    const reviewCounted = counted.find((section) => section.key === 'review');
+
+    expect(reviewEmpty?.badge).toBe(reviewBadgeCount(0));
+    expect(reviewEmpty?.badge).toBeNull();
+    expect(reviewCounted?.badge).toBe(reviewBadgeCount(2));
+    expect(reviewCounted?.badge).toBe(2);
   });
 });
 

@@ -140,6 +140,7 @@ function ProjectPage() {
       toast.success('Project status saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
       if (isFetchError(err)) {
@@ -195,6 +196,7 @@ function ProjectPage() {
       toast.success('Next action saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
       if (isFetchError(err)) {

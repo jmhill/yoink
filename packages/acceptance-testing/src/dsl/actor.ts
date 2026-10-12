@@ -12,6 +12,8 @@ import type {
   NowOwner,
   NowQuery,
   NowNextActionsPage,
+  ReviewPage,
+  ReviewQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -136,6 +138,8 @@ export type CoreActor = {
   listNowNextActions(query?: NowQuery): Promise<NowNextActionsPage>;
   listNowDue(query?: NowQuery): Promise<TaskListPage>;
   listWorkLists(): Promise<WorkListsPage>;
+  listReview(query?: ReviewQuery): Promise<ReviewPage>;
+  backdateReviewProject(projectId: string, occurredAt: string): Promise<void>;
   getTask(id: string): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   completeTask(id: string): Promise<Task>;
@@ -1153,14 +1157,102 @@ export type BrowserActorOperations = {
   openSomedayGroup(): Promise<void>;
 
   /**
-   * Open the All projects page.
+   * Open Review and expand All projects.
    */
   goToAllProjects(): Promise<void>;
 
   /**
-   * Assert the All projects page lists this project and status.
+   * Assert the All projects list lists this project and status.
    */
   shouldSeeProjectOnAllProjects(input: { name: string; status: string }): Promise<void>;
+
+  /**
+   * Open Review and wait until `[data-review-ready]` is set.
+   */
+  openReview(): Promise<void>;
+
+  /**
+   * Assert Review has settled (`data-review-ready`).
+   */
+  shouldSeeReviewReady(): Promise<void>;
+
+  /**
+   * Assert Review's empty copy.
+   */
+  shouldSeeReviewEmpty(): Promise<void>;
+
+  /**
+   * Assert the Review heading subcopy string exactly.
+   */
+  shouldSeeReviewSubcopy(text: string): Promise<void>;
+
+  /**
+   * Assert a Review section is visible.
+   */
+  shouldSeeReviewSection(section: 'noNextAction' | 'quiet' | 'waiting'): Promise<void>;
+
+  /**
+   * Assert a Review row is in this section with these reasons.
+   */
+  shouldSeeReviewItem(input: {
+    name: string;
+    section: 'noNextAction' | 'quiet' | 'waiting';
+    reasons: string;
+  }): Promise<void>;
+
+  /**
+   * Assert a project is not on the Review attention list.
+   */
+  shouldNotSeeReviewItem(name: string): Promise<void>;
+
+  /**
+   * Assert a waiting group label and the project names under it.
+   */
+  shouldSeeReviewWaitingGroup(input: { label: string; names: string[] }): Promise<void>;
+
+  /**
+   * Assert a Review row's last-change or waiting copy.
+   */
+  shouldSeeReviewRowCopy(name: string, copy: string): Promise<void>;
+
+  /**
+   * Set a next action from Review by creating a new task.
+   */
+  setReviewNextAction(input: { projectName: string; title: string }): Promise<void>;
+
+  /**
+   * Change a Review project's status to waiting (who + since).
+   */
+  changeReviewStatusToWaiting(input: {
+    projectName: string;
+    waitingOn: string;
+    waitingSince: string;
+  }): Promise<void>;
+
+  /**
+   * Expand the collapsed All projects list on Review.
+   */
+  expandAllProjects(): Promise<void>;
+
+  /**
+   * Assert the Review tab/section badge.
+   */
+  shouldSeeReviewBadge(count: number): Promise<void>;
+
+  /**
+   * Assert the Review badge is hidden.
+   */
+  shouldNotSeeReviewBadge(): Promise<void>;
+
+  /**
+   * Open Set next action on this Review row without submitting.
+   */
+  openReviewSetNextAction(projectName: string): Promise<void>;
+
+  /**
+   * Open Change status on this Review row without submitting.
+   */
+  openReviewChangeStatus(projectName: string): Promise<void>;
 
   /**
    * Assert the edit-task dialog subtitle.

@@ -7,6 +7,7 @@ export * from './list-contract.js';
 export * from './organization-contract.js';
 export * from './passkey-contract.js';
 export * from './project-contract.js';
+export * from './review-contract.js';
 export * from './signup-contract.js';
 export * from './task-contract.js';
 export * from './token-contract.js';

@@ -14,7 +14,7 @@ import {
   Plus,
   User,
 } from 'lucide-react';
-import { tsr, tsrLists, tsrProjects, tsrWork } from '@/api/client';
+import { tsr, tsrLists, tsrProjects, tsrReview, tsrWork } from '@/api/client';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -44,6 +44,8 @@ import {
 } from '@/lib/app-rail';
 import { namedPileSearch, todaySearch, unlistedPileSearch } from '@/lib/all-tasks-piles';
 import { MOBILE_TABS, type MobileTabKey } from '@/lib/mobile-tabs';
+import { reviewAttentionCount } from '@/lib/review-sections';
+import { viewerTimeZone } from '@/lib/viewer-today';
 
 export type AppRailSurface = 'desktop' | 'mobile-tasks';
 
@@ -456,7 +458,8 @@ const DesktopSectionRow = ({
       </span>
       {section.badge !== null ? (
         <span
-          data-inbox-count={section.badge}
+          data-inbox-count={section.key === 'process' ? section.badge : undefined}
+          data-review-badge={section.key === 'review' ? section.badge : undefined}
           className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-foreground"
         >
           {section.badge}
@@ -658,6 +661,10 @@ export function AppRailPanel({
     queryKey: ['work', 'lists'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
   });
+  const { data: reviewData } = tsrReview.list.useQuery({
+    queryKey: ['review'],
+    queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
+  });
 
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
@@ -669,8 +676,15 @@ export function AppRailPanel({
   );
   const unlistedOpenCount =
     workListsData?.status === 200 ? workListsData.body.unlisted.openTaskCount : undefined;
+  const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
+  const reviewBadge = reviewAttentionCount(reviewProjects);
   const drawerItems = buildAppRailItems({ inboxCount, namedLists, projects });
-  const desktopSections = buildDesktopRailSections({ inboxCount, namedLists, projects });
+  const desktopSections = buildDesktopRailSections({
+    inboxCount,
+    namedLists,
+    projects,
+    reviewBadge,
+  });
   const location: RailLocation = {
     pathname,
     filter:

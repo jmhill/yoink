@@ -59,6 +59,7 @@ export function WhatsNextHost() {
       setPrompt(null);
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
       if (isFetchError(err)) {

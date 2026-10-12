@@ -144,6 +144,29 @@ export const workListCursor: ListedCursor<WorkListCursorRow, 'work.lists'> = {
   }),
 };
 
+export type ReviewCursorRow = {
+  readonly sectionRank: string;
+  readonly groupOldestSince: string;
+  readonly groupName: string;
+  readonly rowWaitingSince: string;
+  readonly project: { readonly id: string; readonly name: string };
+};
+
+export const reviewCursor: ListedCursor<ReviewCursorRow, 'review'> = {
+  view: 'review',
+  of: (item) => ({
+    view: 'review',
+    keys: [
+      item.sectionRank,
+      item.groupOldestSince,
+      item.groupName,
+      item.rowWaitingSince,
+      item.project.name.toLowerCase(),
+      item.project.id,
+    ],
+  }),
+};
+
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
@@ -159,6 +182,7 @@ export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(
 export const workNextActionKeys = (item: NowNextActionItem) => workNextActionCursor.of(item).keys;
 export const workDueKeys = (task: Task) => workDueCursor.of(task).keys;
 export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list).keys;
+export const reviewKeys = (item: ReviewCursorRow) => reviewCursor.of(item).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
@@ -174,3 +198,4 @@ export const snoozedCaptureDirection: KeysetDirection = 'asc';
 export const workNextActionDirection: KeysetDirection = 'asc';
 export const workDueDirection: KeysetDirection = 'asc';
 export const workListDirection: KeysetDirection = 'asc';
+export const reviewDirection: KeysetDirection = 'asc';

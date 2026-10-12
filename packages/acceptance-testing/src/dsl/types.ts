@@ -205,6 +205,38 @@ export type NowQuery = {
   cursor?: string;
 };
 
+export type ReviewReason = 'noNextAction' | 'quiet' | 'waiting';
+
+export type ReviewQuery = {
+  timeZone?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type ReviewNextAction = {
+  id: string;
+  title: string;
+  dueDate: string | null;
+};
+
+export type ReviewProjectItem = {
+  project: Project;
+  reasons: ReviewReason[];
+  lastChangeAt: string;
+  daysSinceChange: number;
+  daysWaiting: number | null;
+  nextAction: ReviewNextAction | null;
+};
+
+export type ReviewPage = {
+  today: string;
+  projects: ReviewProjectItem[];
+  counts: { noNextAction: number; quiet: number; waiting: number };
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
 export type NowNextActionItem = {
   task: Task;
   project: { id: string; name: string };

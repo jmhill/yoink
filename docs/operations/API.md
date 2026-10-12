@@ -140,6 +140,60 @@ Cursors are view-tagged (`work.next-actions`, `work.due`, `work.lists`). A
 cursor from another Now endpoint, or a malformed cursor, is `400` with
 `code: "invalid_cursor"`.
 
+## Review
+
+Review is the attention list for `/projects`. Loop while `hasMore` is true;
+omit `limit` (or pass `limit=1000`) so a bot gets the full pile in one
+request. Any token can read it.
+
+Viewer today is a pure function of `(now, timeZone)`. Send `timeZone`
+(IANA). When it is omitted, today is `(now, America/Chicago)`, not UTC.
+A sent `timeZone` wins. A bad `timeZone` is `400` with
+`code: "INVALID_TIME_ZONE"`. A cursor from another view is `400` with
+`code: "invalid_cursor"`.
+
+`GET /api/review` returns
+`{ today, projects, counts, hasMore, nextCursor, total }`.
+
+Each `projects[]` row is listed once even when it matches two reasons:
+
+- `noNextAction` — status is active or waiting and `nextActionTaskId` is null
+- `quiet` — status is active and `daysSinceChange >= 7`
+- `waiting` — status is waiting (always listed)
+
+Someday, done, and proposed never appear. `reasons` lists every match.
+`daysSinceChange` is calendar days between viewer today and the local date
+of `lastChangeAt` in `timeZone`. `daysWaiting` is viewer today minus
+`waitingSince`, or null when `waitingSince` is null.
+
+`lastChangeAt` is
+`MAX(projects.last_changed_at, projects.created_at, MAX(change_log.occurred_at))`
+for that project in the same org, including a task that was moved out or
+deleted (its change-log row still carries the old project id). One SQL
+query; no new column.
+
+Order is Needs a next action, then quiet, then waiting. Waiting rows are
+already in group order: `waitingOn` (case-insensitive trim), groups by
+oldest `waitingSince` (nulls last), then name. The grouping UI is the
+client's job.
+
+`counts` is `{ noNextAction, quiet, waiting }` — each project can increment
+more than one. The Review badge is the unique count of
+(active ∧ noNextAction) ∨ quiet; waiting is not counted.
+
+```bash
+# Attention list on the Chicago calendar day
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/review?timeZone=America/Chicago"
+
+# Bot: whole pile in one GET
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/review?limit=1000"
+```
+
+Cursors are view-tagged (`review`). A cursor from Work or another list, or
+a malformed cursor, is `400` with `code: "invalid_cursor"`.
+
 ## Projects
 
 Projects are a working set: `GET /api/projects` returns the full org set in

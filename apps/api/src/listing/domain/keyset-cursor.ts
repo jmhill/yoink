@@ -19,6 +19,7 @@ export const CursorViewSchema = z.enum([
   'work.next-actions',
   'work.due',
   'work.lists',
+  'review',
 ]);
 
 export type CursorView = z.infer<typeof CursorViewSchema>;
@@ -37,6 +38,14 @@ const snoozedCaptureKeysSchema = z.tuple([z.string(), z.string()]);
 const workNextActionsKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const workDueKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
 const workListsKeysSchema = z.tuple([z.string(), z.string(), z.string()]);
+const reviewKeysSchema = z.tuple([
+  z.string(),
+  z.string(),
+  z.string(),
+  z.string(),
+  z.string(),
+  z.string(),
+]);
 
 const CursorEnvelopeSchema = z.object({
   v: z.literal(1),
@@ -58,7 +67,8 @@ export type KeysetCursor =
   | { view: 'captures.snoozed'; keys: z.infer<typeof snoozedCaptureKeysSchema> }
   | { view: 'work.next-actions'; keys: z.infer<typeof workNextActionsKeysSchema> }
   | { view: 'work.due'; keys: z.infer<typeof workDueKeysSchema> }
-  | { view: 'work.lists'; keys: z.infer<typeof workListsKeysSchema> };
+  | { view: 'work.lists'; keys: z.infer<typeof workListsKeysSchema> }
+  | { view: 'review'; keys: z.infer<typeof reviewKeysSchema> };
 
 export type ListedCursor<T, V extends CursorView> = {
   readonly view: V;
@@ -168,6 +178,12 @@ const parseKeys = (
       const keys = workListsKeysSchema.safeParse(rawKeys);
       return keys.success
         ? ok({ view: 'work.lists', keys: keys.data })
+        : err(invalidCursorError());
+    }
+    case 'review': {
+      const keys = reviewKeysSchema.safeParse(rawKeys);
+      return keys.success
+        ? ok({ view: 'review', keys: keys.data })
         : err(invalidCursorError());
     }
   }

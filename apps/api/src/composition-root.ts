@@ -34,6 +34,8 @@ import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-his
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createWorkHandlers } from './work/application/create-work-handlers.js';
 import { createSqliteWorkStore } from './work/infrastructure/sqlite-work-store.js';
+import { createReviewHandlers } from './review/application/create-review-handlers.js';
+import { createSqliteReviewStore } from './review/infrastructure/sqlite-review-store.js';
 import { createProcessingHandlers } from './processing/application/create-processing-handlers.js';
 import {
   createSqliteProcessToProjectPersist,
@@ -473,6 +475,13 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     now: () => clock.now(),
   });
 
+  const reviewStore = createSqliteReviewStore(database);
+  const reviewHandlers = createReviewHandlers({
+    pageReview: (options) => reviewStore.pageReview(options),
+    countReview: (options) => reviewStore.countReview(options),
+    now: () => clock.now(),
+  });
+
   const processToTaskPersist = createSqliteProcessToTaskPersist({ db: database });
   const processToProjectPersist = createSqliteProcessToProjectPersist({ db: database });
   const captureProcessingService = createProcessingHandlers({
@@ -529,6 +538,9 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     taskService,
     taskHandlers,
     workHandlers,
+    reviewHandlers,
+    enableTestFixtures: process.env.YOINK_TEST_FIXTURES === 'true',
+    database,
     captureProcessingService,
     authMiddleware,
     healthChecker,

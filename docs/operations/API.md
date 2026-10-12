@@ -14,7 +14,7 @@ History (completed/Done tasks, trashed captures) stays paged (default 50).
 
 Cursors are opaque keysets tagged with the list view (board, completed, pile,
 lists, projects, capture feed, snoozed, project/task history, finished project
-tasks, work next-actions / due / lists) plus the sort keys for that view.
+tasks, work next-actions / due / lists, review, review done) plus the sort keys for that view.
 Resume with
 the previous page’s `nextCursor` on the **same** list. A malformed cursor,
 a cursor from another view, or the wrong key shape is `400` with
@@ -197,6 +197,61 @@ curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
 
 Cursors are view-tagged (`review`). A cursor from Work or another list, or
 a malformed cursor, is `400` with `code: "invalid_cursor"`.
+
+## Review: done list
+
+Done list is the finished-this-week pile for `/projects`. A week runs
+Monday 00:00 through Sunday 23:59:59 in the **stored** org time zone
+(`organizations.time_zone`, default `America/Chicago`). That zone is
+read-only on this response as `timeZone`. `#145` Review still uses the
+per-request `timeZone` query.
+
+`week` is the Monday as `YYYY-MM-DD`. Omit it for the current week in the
+stored zone. A date that is not a Monday, or a Monday after the current
+week, is `400` with `code: "INVALID_WEEK"`. A cursor from another view is
+`400` with `code: "invalid_cursor"`.
+
+`GET /api/review/done` returns
+`{ timeZone, week: { start, end }, previousWeek, nextWeek, groups, otherTaskCount, hasMore, nextCursor, total }`.
+
+`week.start` is Monday, `week.end` is Sunday. `nextWeek` is `null` on the
+current week. `groups[]` are projects that have at least one finished
+task this week, most recent finish first. Each group is
+`{ project, nextAction: { id, title } | null, tasks }`. Tasks are newest
+`completedAt` first and include `completedByName` when the completer is
+known. A reopened or deleted task drops off. Closed (done) projects still
+appear when they have finished tasks.
+
+`otherTaskCount` is how many completions that week have no project. They
+are not listed. The web links that line to the existing Done view
+(`/tasks?filter=completed`).
+
+Paging is over finished project tasks (`total` / `hasMore` / `nextCursor`,
+cap 1000). Omit `limit` (or pass `limit=1000`) so a bot gets the whole
+week in one GET.
+
+```bash
+# Current week in the stored zone
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/review/done"
+
+# Last week (Monday Oct 5, 2026)
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/review/done?week=2026-10-05"
+
+# Page if a week ever hits the cap
+cursor=""
+while :; do
+  page=$(curl -sS -H "Authorization: Bearer $TOKEN" \
+    "$API/api/review/done?week=2026-10-05${cursor:+&cursor=$cursor}")
+  echo "$page" | jq '.groups, .otherTaskCount, .hasMore'
+  more=$(echo "$page" | jq -r '.hasMore')
+  [ "$more" = "true" ] || break
+  cursor=$(echo "$page" | jq -r '.nextCursor')
+done
+```
+
+Cursors are view-tagged (`review.done`).
 
 ## Projects
 
@@ -635,6 +690,7 @@ the generic `[ts-rest] request validation failed` text.
 | `LIST_NOT_IN_ORGANIZATION` | New-task `listId` is unknown or in another org (`400`) |
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `INVALID_TIME_ZONE` | bad timeZone on /api/tasks and /api/work/due (`400`) |
+| `INVALID_WEEK` | `week` on `/api/review/done` is not a Monday or is after the current week (`400`) |
 | `VALIDATION_FAILED` | Other project request-body validation, and task and work list query validation (`400`) |
 | `IMPORT_INVALID` | Staging or apply failed all-or-nothing checks; body includes `errors` (`400`) |
 | `IMPORT_REQUIRES_PERSON` | A bot tried to apply or discard (`403`) |

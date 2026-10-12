@@ -17,6 +17,8 @@ export type {
   NowNextActionItem,
   NowNextActionsPage,
   ReviewQuery,
+  DoneListQuery,
+  DoneListPage,
   ReviewReason,
   ReviewNextAction,
   ReviewProjectItem,

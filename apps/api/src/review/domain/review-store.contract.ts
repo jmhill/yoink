@@ -213,15 +213,14 @@ export const runReviewStoreContractTests = (options: {
 }) => {
   let store: ReviewStore;
 
-  beforeEach(async () => {
-    if (options.beforeEach) {
-      await options.beforeEach();
-    }
-    const harness = await options.createHarness();
-    store = harness.store;
-  });
-
   describe('ReviewStore contract', () => {
+    beforeEach(async () => {
+      if (options.beforeEach) {
+        await options.beforeEach();
+      }
+      const harness = await options.createHarness();
+      store = harness.store;
+    });
     it('uses a task-only change-log record as last change and ignores other orgs and projects', async () => {
       const result = await pageAll(store);
       expect(result.isOk()).toBe(true);

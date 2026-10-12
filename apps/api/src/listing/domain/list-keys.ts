@@ -167,6 +167,14 @@ export const reviewCursor: ListedCursor<ReviewCursorRow, 'review'> = {
   }),
 };
 
+export const doneListCursor: ListedCursor<FinishedTask, 'review.done'> = {
+  view: 'review.done',
+  of: (task) => ({
+    view: 'review.done',
+    keys: [task.completedAt, task.id],
+  }),
+};
+
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
@@ -183,6 +191,7 @@ export const workNextActionKeys = (item: NowNextActionItem) => workNextActionCur
 export const workDueKeys = (task: Task) => workDueCursor.of(task).keys;
 export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list).keys;
 export const reviewKeys = (item: ReviewCursorRow) => reviewCursor.of(item).keys;
+export const doneListKeys = (task: FinishedTask) => doneListCursor.of(task).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
@@ -199,3 +208,4 @@ export const workNextActionDirection: KeysetDirection = 'asc';
 export const workDueDirection: KeysetDirection = 'asc';
 export const workListDirection: KeysetDirection = 'asc';
 export const reviewDirection: KeysetDirection = 'asc';
+export const doneListDirection: KeysetDirection = 'desc';

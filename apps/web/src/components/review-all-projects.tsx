@@ -1,6 +1,14 @@
 import { Link } from '@tanstack/react-router';
-import type { Project } from '@yoink/api-contracts';
+import type { DoneListPage, Project } from '@yoink/api-contracts';
 import { Button } from '@yoink/ui-base/components/button';
+import {
+  canSetDoneNextAction,
+  doneOtherLine,
+  doneVersionOf,
+  formatDoneTaskWhen,
+  formatDoneWeekRange,
+  showsDoneProjectChip,
+} from '@/lib/done-list';
 import { showsNoNextActionWarning } from '@/lib/project-next-action';
 
 type ReviewAllProjectsProps = {
@@ -61,6 +69,135 @@ export function ReviewAllProjects({ projects, onNewProject }: ReviewAllProjectsP
   );
 }
 
-export function ReviewDoneThisWeekSlot() {
-  return null;
+type ReviewDoneThisWeekSlotProps = {
+  page: DoneListPage | null;
+  onSetNextAction: (project: Project) => void;
+  onPreviousWeek: () => void;
+  onNextWeek: () => void;
+};
+
+export function ReviewDoneThisWeekSlot({
+  page,
+  onSetNextAction,
+  onPreviousWeek,
+  onNextWeek,
+}: ReviewDoneThisWeekSlotProps) {
+  if (page === null) {
+    return null;
+  }
+
+  return (
+    <section
+      data-review-section="done"
+      data-done-week={page.week.start}
+      data-done-version={doneVersionOf(page)}
+      className="mt-6 space-y-3"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-foreground">Done this week</h2>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-done-prev=""
+            aria-label="Previous week"
+            onClick={onPreviousWeek}
+          >
+            ‹
+          </Button>
+          <span data-done-week-label="" className="min-w-[7rem] text-center text-xs text-muted-foreground">
+            {formatDoneWeekRange(page.week.start, page.week.end)}
+          </span>
+          {page.nextWeek !== null ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-done-next=""
+              aria-label="Next week"
+              onClick={onNextWeek}
+            >
+              ›
+            </Button>
+          ) : (
+            <span className="inline-flex h-8 w-8" aria-hidden="true" />
+          )}
+        </div>
+      </div>
+
+      {page.groups.length === 0 ? (
+        <p data-done-empty="" className="text-sm text-muted-foreground">
+          Nothing finished this week
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {page.groups.map((group) => (
+            <li
+              key={group.project.id}
+              data-done-group={group.project.id}
+              data-done-group-next={group.nextAction?.id ?? ''}
+              className="space-y-2 rounded-md border border-border px-3 py-2"
+            >
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: group.project.id }}
+                  className="flex min-w-0 items-center gap-2 text-sm font-medium hover:underline"
+                >
+                  <span>{group.project.name}</span>
+                  {showsDoneProjectChip(group) ? (
+                    <span
+                      data-done-project-chip=""
+                      className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+                    >
+                      Project done
+                    </span>
+                  ) : null}
+                </Link>
+                {canSetDoneNextAction(group) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-done-set-next={group.project.id}
+                    onClick={() => onSetNextAction(group.project)}
+                  >
+                    Set next action
+                  </Button>
+                ) : group.nextAction !== null && !showsDoneProjectChip(group) ? (
+                  <span data-done-next-action="" className="text-xs text-muted-foreground">
+                    Next: {group.nextAction.title}
+                  </span>
+                ) : null}
+              </div>
+              <ul className="space-y-1">
+                {group.tasks.map((task) => (
+                  <li key={task.id} data-done-task={task.id} className="text-sm">
+                    <span className="block">{task.title}</span>
+                    {task.completedAt ? (
+                      <span data-done-task-when="" className="text-xs text-muted-foreground">
+                        {formatDoneTaskWhen(task.completedAt, page.timeZone, task.completedByName)}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {page.otherTaskCount > 0 ? (
+        <Link
+          to="/tasks"
+          search={{ filter: 'completed' }}
+          data-done-other=""
+          className="block text-sm text-muted-foreground hover:underline"
+        >
+          {doneOtherLine(page.otherTaskCount)}
+        </Link>
+      ) : null}
+    </section>
+  );
 }

@@ -14,6 +14,8 @@ import type {
   NowNextActionsPage,
   ReviewPage,
   ReviewQuery,
+  DoneListPage,
+  DoneListQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -139,7 +141,9 @@ export type CoreActor = {
   listNowDue(query?: NowQuery): Promise<TaskListPage>;
   listWorkLists(): Promise<WorkListsPage>;
   listReview(query?: ReviewQuery): Promise<ReviewPage>;
+  listDone(query?: DoneListQuery): Promise<DoneListPage>;
   backdateReviewProject(projectId: string, occurredAt: string): Promise<void>;
+  finishTaskAt(taskId: string, completedAt: string): Promise<void>;
   getTask(id: string): Promise<Task>;
   updateTask(id: string, input: UpdateTaskInput): Promise<Task>;
   completeTask(id: string): Promise<Task>;
@@ -1253,6 +1257,66 @@ export type BrowserActorOperations = {
    * Open Change status on this Review row without submitting.
    */
   openReviewChangeStatus(projectName: string): Promise<void>;
+
+  /**
+   * Assert the Done this week section has settled on this Monday.
+   */
+  shouldSeeDoneWeek(monday: string): Promise<void>;
+
+  /**
+   * Assert a Done this week project group and its task titles, newest first.
+   */
+  shouldSeeDoneGroup(input: { name: string; titles: string[] }): Promise<void>;
+
+  /**
+   * Assert a finished-task when line inside a Done group.
+   */
+  shouldSeeDoneTaskWhen(input: { projectName: string; title: string; copy: string }): Promise<void>;
+
+  /**
+   * Assert the "Plus N tasks not in a project" line.
+   */
+  shouldSeeDoneOther(copy: string): Promise<void>;
+
+  /**
+   * Assert the Done this week empty copy.
+   */
+  shouldSeeDoneEmpty(): Promise<void>;
+
+  /**
+   * Assert a project group shows Next: title.
+   */
+  shouldSeeDoneNext(input: { projectName: string; title: string }): Promise<void>;
+
+  /**
+   * Assert a project group shows Set next action.
+   */
+  shouldSeeDoneSetNext(projectName: string): Promise<void>;
+
+  /**
+   * Open Set next action from a Done this week group.
+   */
+  openDoneSetNextAction(projectName: string): Promise<void>;
+
+  /**
+   * Set a next action from Done this week by creating a new task.
+   */
+  setDoneNextAction(input: { projectName: string; title: string }): Promise<void>;
+
+  /**
+   * Go to the previous Done this week.
+   */
+  goToPreviousDoneWeek(): Promise<void>;
+
+  /**
+   * Go to the next Done this week.
+   */
+  goToNextDoneWeek(): Promise<void>;
+
+  /**
+   * Scroll Done this week into view above the phone tab bar.
+   */
+  scrollDoneIntoView(): Promise<void>;
 
   /**
    * Scroll the Waiting section and its groups into view for a screenshot.

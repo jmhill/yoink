@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { ListPageMetaSchema, ListPageQuerySchema } from './list-page.js';
 import { ProjectSchema } from './project.js';
-import { ViewerTodayQuerySchema } from './work.js';
+import { TaskSchema } from './task.js';
+import { TimeZoneSchema, ViewerTodayQuerySchema } from './work.js';
 
 export const ReviewReasonSchema = z.enum(['noNextAction', 'quiet', 'waiting']);
 export type ReviewReason = z.infer<typeof ReviewReasonSchema>;
@@ -39,3 +40,37 @@ export type ReviewPage = z.infer<typeof ReviewPageSchema>;
 
 export const ReviewQuerySchema = ListPageQuerySchema.merge(ViewerTodayQuerySchema);
 export type ReviewQuery = z.infer<typeof ReviewQuerySchema>;
+
+export const DoneListQuerySchema = ListPageQuerySchema.extend({
+  week: z.string().date().optional(),
+});
+export type DoneListQuery = z.infer<typeof DoneListQuerySchema>;
+
+export const DoneListWeekSchema = z.object({
+  start: z.string().date(),
+  end: z.string().date(),
+});
+export type DoneListWeek = z.infer<typeof DoneListWeekSchema>;
+
+export const DoneListNextActionSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1),
+});
+export type DoneListNextAction = z.infer<typeof DoneListNextActionSchema>;
+
+export const DoneListGroupSchema = z.object({
+  project: ProjectSchema,
+  nextAction: DoneListNextActionSchema.nullable(),
+  tasks: z.array(TaskSchema),
+});
+export type DoneListGroup = z.infer<typeof DoneListGroupSchema>;
+
+export const DoneListPageSchema = ListPageMetaSchema.extend({
+  timeZone: TimeZoneSchema,
+  week: DoneListWeekSchema,
+  previousWeek: z.string().date(),
+  nextWeek: z.string().date().nullable(),
+  groups: z.array(DoneListGroupSchema),
+  otherTaskCount: z.number().int().nonnegative(),
+});
+export type DoneListPage = z.infer<typeof DoneListPageSchema>;

@@ -16,6 +16,8 @@ import type {
   NowNextActionsPage,
   ReviewPage,
   ReviewQuery,
+  DoneListPage,
+  DoneListQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -3948,6 +3950,118 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-review-new-project]')).toBeVisible();
     },
 
+    async shouldSeeDoneWeek(monday: string): Promise<void> {
+      await waitForReviewReady(page);
+      await expect(page.locator('[data-done-week]')).toHaveAttribute('data-done-week', monday);
+    },
+
+    async shouldSeeDoneGroup(input: { name: string; titles: string[] }): Promise<void> {
+      const group = page.locator('[data-done-group]').filter({ hasText: input.name });
+      await expect(group).toBeVisible();
+      const titles = group.locator('[data-done-task]');
+      await expect(titles).toHaveCount(input.titles.length);
+      for (const [index, title] of input.titles.entries()) {
+        await expect(titles.nth(index)).toContainText(title);
+      }
+    },
+
+    async shouldSeeDoneTaskWhen(input: {
+      projectName: string;
+      title: string;
+      copy: string;
+    }): Promise<void> {
+      const group = page.locator('[data-done-group]').filter({ hasText: input.projectName });
+      const task = group.locator('[data-done-task]').filter({ hasText: input.title });
+      await expect(task.locator('[data-done-task-when]')).toHaveText(input.copy);
+    },
+
+    async shouldSeeDoneOther(copy: string): Promise<void> {
+      await expect(page.locator('[data-done-other]')).toHaveText(copy);
+    },
+
+    async shouldSeeDoneEmpty(): Promise<void> {
+      await expect(page.locator('[data-done-empty]')).toHaveText('Nothing finished this week');
+    },
+
+    async shouldSeeDoneNext(input: { projectName: string; title: string }): Promise<void> {
+      const group = page.locator('[data-done-group]').filter({ hasText: input.projectName });
+      await expect(group.locator('[data-done-next-action]')).toHaveText(`Next: ${input.title}`);
+    },
+
+    async shouldSeeDoneSetNext(projectName: string): Promise<void> {
+      const group = page.locator('[data-done-group]').filter({ hasText: projectName });
+      await expect(group.locator('[data-done-set-next]')).toBeVisible();
+    },
+
+    async openDoneSetNextAction(projectName: string): Promise<void> {
+      const group = page.locator('[data-done-group]').filter({ hasText: projectName });
+      await group.locator('[data-done-set-next]').click();
+      await expect(page.locator('[data-next-action-picker]')).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+    },
+
+    async setDoneNextAction(input: { projectName: string; title: string }): Promise<void> {
+      const section = page.locator('[data-done-week]');
+      const version = await section.getAttribute('data-done-version');
+      const picker = page.locator('[data-next-action-picker]');
+      if ((await picker.count()) === 0) {
+        await page
+          .locator('[data-done-group]')
+          .filter({ hasText: input.projectName })
+          .locator('[data-done-set-next]')
+          .click();
+      }
+      await expect(picker).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+      await page.locator('[data-next-action-new-title]').fill(input.title);
+      await page.locator('[data-next-action-create]').click();
+      await expect(picker).toHaveCount(0);
+      await expect(section).not.toHaveAttribute('data-done-version', version ?? '');
+      await expect(page).toHaveURL(/\/projects/);
+    },
+
+    async goToPreviousDoneWeek(): Promise<void> {
+      const current = await page.locator('[data-done-week]').getAttribute('data-done-week');
+      await page.locator('[data-done-prev]').click();
+      await expect(page).toHaveURL(/doneWeek=/);
+      await expect(page.locator('[data-done-week]')).not.toHaveAttribute(
+        'data-done-week',
+        current ?? ''
+      );
+    },
+
+    async goToNextDoneWeek(): Promise<void> {
+      const current = await page.locator('[data-done-week]').getAttribute('data-done-week');
+      await page.locator('[data-done-next]').click();
+      await expect(page.locator('[data-done-week]')).not.toHaveAttribute(
+        'data-done-week',
+        current ?? ''
+      );
+    },
+
+    async scrollDoneIntoView(): Promise<void> {
+      const section = page.locator('[data-review-section="done"]');
+      await expect(section).toBeVisible();
+      await section.evaluate((node) => {
+        node.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      const viewport = page.viewportSize();
+      const box = await section.boundingBox();
+      expect(box, 'Done this week should be in the viewport').not.toBeNull();
+      if (box !== null && viewport !== null) {
+        expect(box.y).toBeLessThan(viewport.height - 40);
+        expect(box.y + Math.min(box.height, 80)).toBeGreaterThan(0);
+      }
+    },
+
     async createProjectFromReview(input: {
       name: string;
       objective?: string;
@@ -4794,6 +4908,47 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to list review: ${response.status()}`);
       }
       return response.json();
+    },
+
+    async listDone(query?: DoneListQuery): Promise<DoneListPage> {
+      const params = new URLSearchParams();
+      if (query?.week) {
+        params.set('week', query.week);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/review/done${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list done: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async finishTaskAt(taskId: string, completedAt: string): Promise<void> {
+      const response = await page.request.post('/api/test/review-fixture/finish-task', {
+        data: { taskId, completedAt },
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid finish-task');
+      }
+      if (response.status() !== 204) {
+        throw new Error(`Failed to finish task at: ${response.status()}`);
+      }
     },
 
     async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {

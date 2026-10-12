@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   Dialog,
@@ -15,7 +16,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@yoink/ui-base/components/drawer';
-import { PILE_SAFETY_CAP, type ReviewProject } from '@yoink/api-contracts';
+import { PILE_SAFETY_CAP, type Project, type ReviewProject } from '@yoink/api-contracts';
 import { memberLabel } from '@/api/auth';
 import {
   tsrAuth,
@@ -44,16 +45,22 @@ import { useDesktopLayout } from '@/lib/use-desktop-layout';
 import { useReviewActions } from '@/lib/use-review-actions';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
+const searchSchema = z.object({
+  doneWeek: z.string().date().optional(),
+});
+
 export const Route = createFileRoute('/_authenticated/projects')({
+  validateSearch: searchSchema,
   component: ReviewPage,
 });
 
 function ReviewPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const timeZone = viewerTimeZone();
   const isDesktop = useDesktopLayout();
   const [createOpen, setCreateOpen] = useState(false);
-  const [nextActionFor, setNextActionFor] = useState<ReviewProject | null>(null);
+  const [nextActionFor, setNextActionFor] = useState<Project | null>(null);
   const [statusFor, setStatusFor] = useState<ReviewProject | null>(null);
   const [waitingFormOpen, setWaitingFormOpen] = useState(false);
   const queryClient = tsrReview.useQueryClient();
@@ -62,6 +69,15 @@ function ReviewPage() {
   const reviewQuery = tsrReview.list.useQuery({
     queryKey: ['review'],
     queryData: { query: { limit: PILE_SAFETY_CAP, timeZone } },
+  });
+  const doneQuery = tsrReview.done.useQuery({
+    queryKey: ['review', 'done', search.doneWeek ?? 'current'],
+    queryData: {
+      query: {
+        limit: PILE_SAFETY_CAP,
+        ...(search.doneWeek === undefined ? {} : { week: search.doneWeek }),
+      },
+    },
   });
   const projectsQuery = tsrProjects.list.useQuery({
     queryKey: ['projects'],
@@ -87,7 +103,7 @@ function ReviewPage() {
     refetchInterval: false,
   });
 
-  const sheetProjectId = nextActionFor?.project.id ?? statusFor?.project.id ?? '';
+  const sheetProjectId = nextActionFor?.id ?? statusFor?.project.id ?? '';
   const openTasksQuery = tsrProjects.listOpenTasks.useQuery({
     queryKey: ['tasks', 'project', sheetProjectId],
     queryData: {
@@ -103,6 +119,7 @@ function ReviewPage() {
 
   const reviewProjects = reviewQuery.data?.status === 200 ? reviewQuery.data.body.projects : [];
   const today = reviewQuery.data?.status === 200 ? reviewQuery.data.body.today : '';
+  const donePage = doneQuery.data?.status === 200 ? doneQuery.data.body : null;
   const allProjects = projectsQuery.data?.status === 200 ? projectsQuery.data.body.projects : [];
   const namedLists = listsQuery.data?.status === 200 ? listsQuery.data.body.lists : [];
   const members =
@@ -169,7 +186,7 @@ function ReviewPage() {
                 item={item}
                 today={today}
                 timeZone={timeZone}
-                onSetNextAction={setNextActionFor}
+                onSetNextAction={(item) => setNextActionFor(item.project)}
               />
             ))}
           </ul>
@@ -186,7 +203,7 @@ function ReviewPage() {
                 item={item}
                 today={today}
                 timeZone={timeZone}
-                onSetNextAction={setNextActionFor}
+                onSetNextAction={(item) => setNextActionFor(item.project)}
                 onChangeStatus={setStatusFor}
               />
             ))}
@@ -218,7 +235,28 @@ function ReviewPage() {
         </section>
       ) : null}
 
-      <ReviewDoneThisWeekSlot />
+      <ReviewDoneThisWeekSlot
+        page={donePage}
+        onSetNextAction={setNextActionFor}
+        onPreviousWeek={() => {
+          if (donePage === null) {
+            return;
+          }
+          void navigate({
+            to: '/projects',
+            search: { doneWeek: donePage.previousWeek },
+          });
+        }}
+        onNextWeek={() => {
+          if (donePage?.nextWeek === null || donePage === null) {
+            return;
+          }
+          void navigate({
+            to: '/projects',
+            search: { doneWeek: donePage.nextWeek },
+          });
+        }}
+      />
 
       <ReviewAllProjects
         projects={allProjects}
@@ -256,14 +294,14 @@ function ReviewPage() {
           if (!nextActionFor) {
             return;
           }
-          actions.setNextAction({ project: nextActionFor.project, body: { taskId } });
+          actions.setNextAction({ project: nextActionFor, body: { taskId } });
           closeNextAction();
         }}
         onCreateTask={(newTask) => {
           if (!nextActionFor) {
             return;
           }
-          actions.setNextAction({ project: nextActionFor.project, body: { newTask } });
+          actions.setNextAction({ project: nextActionFor, body: { newTask } });
           closeNextAction();
         }}
         extraActions={

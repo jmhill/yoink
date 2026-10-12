@@ -1883,6 +1883,17 @@ export type BrowserActorOperations = {
   undoFromToast(message: string): Promise<void>;
 
   /**
+   * Click Undo on a Review next-action toast and return the PUT
+   * `/api/projects/:id/next-action` that the handler must fire.
+   */
+  undoReviewNextActionFromToast(message: string): Promise<{
+    method: string;
+    url: string;
+    requestBody: unknown;
+    status: number;
+  }>;
+
+  /**
    * Assert Process moved on because the current capture was processed elsewhere.
    */
   shouldSeeAlreadyProcessedNotice(): Promise<void>;

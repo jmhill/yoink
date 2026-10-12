@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createdTaskIdFromNextAction, reviewStatusUndoEnabled } from './review-undo';
+import {
+  createdTaskIdFromNextAction,
+  nextActionUndoRestore,
+  reviewStatusUndoEnabled,
+} from './review-undo';
 
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440010';
 const TASK_ID = '550e8400-e29b-41d4-a716-446655440101';
@@ -45,6 +49,23 @@ describe('createdTaskIdFromNextAction', () => {
         result: { project },
       })
     ).toBeNull();
+  });
+});
+
+describe('nextActionUndoRestore', () => {
+  it('clears the pointer when the project had no next action at SET time', () => {
+    expect(nextActionUndoRestore(null)).toEqual({ taskId: null });
+  });
+
+  it('restores the SET-time task id, not a later next action', () => {
+    const laterTaskId = '550e8400-e29b-41d4-a716-446655440202';
+    const capturedAtSet = nextActionUndoRestore(project.nextActionTaskId);
+    const afterOptimisticOrInvalidate = { ...project, nextActionTaskId: laterTaskId };
+
+    expect(capturedAtSet).toEqual({ taskId: TASK_ID });
+    expect(capturedAtSet).not.toEqual({
+      taskId: afterOptimisticOrInvalidate.nextActionTaskId,
+    });
   });
 });
 

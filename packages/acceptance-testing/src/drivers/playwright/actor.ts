@@ -3710,6 +3710,51 @@ export const createPlaywrightActor = (
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
     },
 
+    async undoReviewNextActionFromToast(message: string): Promise<{
+      method: string;
+      url: string;
+      requestBody: unknown;
+      status: number;
+    }> {
+      const done = page.locator('[data-done-week]');
+      const ready = page.locator('[data-review-ready]');
+      const doneVersion =
+        (await done.count()) > 0 ? await done.getAttribute('data-done-version') : null;
+      const reviewVersion =
+        (await ready.count()) > 0 ? await ready.getAttribute('data-review-version') : null;
+      const requestPromise = page.waitForRequest(
+        (request) =>
+          request.method() === 'PUT' && /\/api\/projects\/[^/]+\/next-action/.test(request.url())
+      );
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          /\/api\/projects\/[^/]+\/next-action/.test(response.url())
+      );
+      await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
+      const request = await requestPromise;
+      const response = await responsePromise;
+      const requestBody: unknown = (() => {
+        try {
+          return request.postDataJSON();
+        } catch {
+          return request.postData();
+        }
+      })();
+      if (doneVersion !== null) {
+        await expect(done).not.toHaveAttribute('data-done-version', doneVersion);
+      }
+      if (reviewVersion !== null) {
+        await expect(ready).not.toHaveAttribute('data-review-version', reviewVersion);
+      }
+      return {
+        method: request.method(),
+        url: request.url(),
+        requestBody,
+        status: response.status(),
+      };
+    },
+
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {
       await expect(page.getByText('That capture was already processed')).toBeVisible();
     },

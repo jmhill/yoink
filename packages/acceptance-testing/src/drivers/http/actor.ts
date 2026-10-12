@@ -2113,6 +2113,15 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('undoFromToast', 'http');
     },
 
+    async undoReviewNextActionFromToast(_message: string): Promise<{
+      method: string;
+      url: string;
+      requestBody: unknown;
+      status: number;
+    }> {
+      throw new UnsupportedOperationError('undoReviewNextActionFromToast', 'http');
+    },
+
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeAlreadyProcessedNotice', 'http');
     },

@@ -9,7 +9,12 @@ import {
 import { tsrProjects, tsrTasks } from '@/api/client';
 import { invalidateLiveQueries } from '@/lib/live-query';
 import type { NewNextActionTask } from '@/components/next-action-picker';
-import { createdTaskIdFromNextAction, reviewStatusUndoEnabled } from '@/lib/review-undo';
+import {
+  createdTaskIdFromNextAction,
+  nextActionUndoRestore,
+  reviewStatusUndoEnabled,
+  type NextActionUndoRestore,
+} from '@/lib/review-undo';
 
 const REVIEW_TOAST_ID = 'review-inline-action';
 
@@ -25,7 +30,7 @@ export const useReviewActions = () => {
   const [statusError, setStatusError] = useState<string | null>(null);
   const undoNextRef = useRef(false);
   const undoStatusRef = useRef(false);
-  const priorNextById = useRef<ReadonlyMap<string, string | null>>(new Map());
+  const priorNextById = useRef<ReadonlyMap<string, NextActionUndoRestore>>(new Map());
   const priorStatusById = useRef<ReadonlyMap<string, Project>>(new Map());
   const createdNextById = useRef<ReadonlyMap<string, string>>(new Map());
 
@@ -35,8 +40,11 @@ export const useReviewActions = () => {
     await invalidateLiveQueries(queryClient);
   };
 
-  const rememberNext = (projectId: string, taskId: string | null) => {
-    priorNextById.current = new Map([...priorNextById.current, [projectId, taskId]]);
+  const rememberNext = (projectId: string, previousTaskId: string | null) => {
+    priorNextById.current = new Map([
+      ...priorNextById.current,
+      [projectId, nextActionUndoRestore(previousTaskId)],
+    ]);
   };
 
   const rememberStatus = (project: Project) => {
@@ -65,7 +73,10 @@ export const useReviewActions = () => {
         const createdId = createdNextById.current.get(variables.params.id);
         if (createdId !== undefined) {
           createdNextById.current = withoutKey(createdNextById.current, variables.params.id);
-          await deleteCreatedTask.mutateAsync({ params: { id: createdId } });
+          await deleteCreatedTask.mutateAsync({ params: { id: createdId } }).then(
+            () => undefined,
+            () => undefined
+          );
         }
         await refresh();
         toast.success('Next action restored', { id: REVIEW_TOAST_ID });
@@ -81,6 +92,8 @@ export const useReviewActions = () => {
           [variables.params.id, createdId],
         ]);
       }
+      const restore =
+        priorNextById.current.get(variables.params.id) ?? nextActionUndoRestore(null);
       await refresh();
       toast.success('Next action saved', {
         id: REVIEW_TOAST_ID,
@@ -88,11 +101,10 @@ export const useReviewActions = () => {
         action: {
           label: 'Undo',
           onClick: () => {
-            const prior = priorNextById.current.get(variables.params.id) ?? null;
             undoNextRef.current = true;
             nextActionMutation.mutate({
               params: { id: variables.params.id },
-              body: { taskId: prior },
+              body: restore,
             });
           },
         },

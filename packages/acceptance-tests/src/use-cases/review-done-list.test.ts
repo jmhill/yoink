@@ -236,7 +236,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.setDoneNextAction({ projectName: 'House storage', title: 'Label the bins' });
       await alice.shouldSeeUndoToast('Next action saved');
       await alice.shouldSeeDoneNext({ projectName: 'House storage', title: 'Label the bins' });
-      await alice.undoFromToast('Next action saved');
+      const undo = await alice.undoReviewNextActionFromToast('Next action saved');
+      expect(undo.method).toBe('PUT');
+      expect(undo.url).toMatch(/\/api\/projects\/[^/]+\/next-action/);
+      expect(undo.requestBody).toEqual({ taskId: null });
+      expect(undo.status).toBe(200);
       await alice.shouldSeeDoneSetNext('House storage');
     }, 90_000);
 

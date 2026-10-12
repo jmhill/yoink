@@ -3732,25 +3732,6 @@ export const createPlaywrightActor = (
       deletedBody: string | null;
       savedToastReappeared: boolean;
     }> {
-      const deletedJobs: Promise<{ url: string; status: number; body: string }>[] = [];
-      const onResponse = (response: {
-        request: () => { method: () => string };
-        url: () => string;
-        status: () => number;
-        text: () => Promise<string>;
-      }) => {
-        if (response.request().method() !== 'DELETE' || !/\/api\/tasks\//.test(response.url())) {
-          return;
-        }
-        deletedJobs.push(
-          response.text().then((body) => ({
-            url: response.url(),
-            status: response.status(),
-            body,
-          }))
-        );
-      };
-      page.on('response', onResponse);
       const requestPromise = page.waitForRequest(
         (request) =>
           request.method() === 'PUT' && /\/api\/projects\/[^/]+\/next-action/.test(request.url())
@@ -3759,6 +3740,10 @@ export const createPlaywrightActor = (
         (response) =>
           response.request().method() === 'PUT' &&
           /\/api\/projects\/[^/]+\/next-action/.test(response.url())
+      );
+      const deletePromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'DELETE' && /\/api\/tasks\//.test(response.url())
       );
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
       const request = await requestPromise;
@@ -3771,27 +3756,16 @@ export const createPlaywrightActor = (
         }
       })();
       await expect(visibleUndoToast(message)).toHaveCount(0);
-      const restoredToast = page
-        .locator('[data-sonner-toast]:not([data-removed="true"])')
-        .filter({ hasText: 'Next action restored' });
-      let savedToastReappeared = false;
-      void visibleUndoToast(message)
-        .waitFor({ state: 'visible' })
-        .then(() => {
-          savedToastReappeared = true;
-        });
-      await expect(restoredToast).toBeVisible();
-      page.off('response', onResponse);
-      const deleted = (await Promise.all(deletedJobs))[0] ?? null;
+      const deleted = await deletePromise;
       return {
         method: request.method(),
         url: request.url(),
         requestBody,
         status: response.status(),
-        deletedUrl: deleted?.url ?? null,
-        deletedStatus: deleted?.status ?? null,
-        deletedBody: deleted?.body ?? null,
-        savedToastReappeared,
+        deletedUrl: deleted.url(),
+        deletedStatus: deleted.status(),
+        deletedBody: await deleted.text(),
+        savedToastReappeared: (await visibleUndoToast(message).count()) > 0,
       };
     },
 

@@ -1894,9 +1894,10 @@ export type BrowserActorOperations = {
 
   /**
    * Click Undo on a Review next-action toast and return the PUT
-   * `/api/projects/:id/next-action` that the handler must fire.
-   * Settles on “Next action restored”, not `data-review-version`:
-   * that fingerprint only changes when a listed attention row changes.
+   * `/api/projects/:id/next-action` plus the created-task DELETE.
+   * Settles on those network responses. Do not wait on
+   * `data-review-version` (listed attention rows only) or the restore
+   * toast (it is shown after a full live-query refresh).
    */
   undoReviewNextActionFromToast(message: string): Promise<{
     method: string;

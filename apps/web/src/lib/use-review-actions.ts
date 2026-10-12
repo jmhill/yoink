@@ -84,6 +84,7 @@ export const useReviewActions = () => {
       await refresh();
       toast.success('Next action saved', {
         id: REVIEW_TOAST_ID,
+        duration: 10_000,
         action: {
           label: 'Undo',
           onClick: () => {

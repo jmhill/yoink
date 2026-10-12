@@ -2109,6 +2109,14 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeUndoToast', 'http');
     },
 
+    async shouldSeeToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeToast', 'http');
+    },
+
+    async shouldNotSeeToast(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeToast', 'http');
+    },
+
     async undoFromToast(_message: string): Promise<void> {
       throw new UnsupportedOperationError('undoFromToast', 'http');
     },
@@ -2121,6 +2129,7 @@ export const createHttpActor = (
       deletedUrl: string | null;
       deletedStatus: number | null;
       deletedBody: string | null;
+      savedToastReappeared: boolean;
     }> {
       throw new UnsupportedOperationError('undoReviewNextActionFromToast', 'http');
     },

@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  clearNextActionUndo,
   createdTaskIdFromNextAction,
   nextActionUndoRestore,
-  queueNextActionUndo,
+  nextActionUndoToast,
   reviewStatusUndoEnabled,
-  takeNextActionUndo,
+  runNextActionUndo,
+  settledResult,
 } from './review-undo';
 
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440010';
@@ -65,10 +65,6 @@ describe('createdTaskIdFromNextAction', () => {
 });
 
 describe('nextActionUndoRestore', () => {
-  afterEach(() => {
-    clearNextActionUndo();
-  });
-
   it('clears the pointer when the project had no next action at SET time', () => {
     expect(nextActionUndoRestore({ previousTaskId: null, createdTaskId: TASK_ID })).toEqual({
       body: { taskId: null },
@@ -92,23 +88,139 @@ describe('nextActionUndoRestore', () => {
       taskId: afterOptimisticOrInvalidate.nextActionTaskId,
     });
   });
+});
 
-  it('hands the queued restore to any later take, then clears', () => {
-    clearNextActionUndo();
-    const restore = nextActionUndoRestore({
-      previousTaskId: null,
-      createdTaskId: TASK_ID,
+describe('settledResult', () => {
+  it('wraps a resolved promise as ok', async () => {
+    await expect(settledResult(Promise.resolve(204))).resolves.toEqual({
+      ok: true,
+      value: 204,
     });
-    queueNextActionUndo({ projectId: PROJECT_ID, restore });
+  });
 
-    expect(takeNextActionUndo(PROJECT_ID, { newTask: { title: 'Later' } })).toBeNull();
-    expect(takeNextActionUndo('00000000-0000-0000-0000-000000000099', { taskId: null })).toBeNull();
-    expect(takeNextActionUndo(PROJECT_ID, { taskId: TASK_ID })).toBeNull();
-    expect(takeNextActionUndo(PROJECT_ID, { taskId: null })).toEqual({
-      projectId: PROJECT_ID,
+  it('wraps a rejected promise as an error without throwing', async () => {
+    await expect(settledResult(Promise.reject(new Error('no delete')))).resolves.toEqual({
+      ok: false,
+      error: new Error('no delete'),
+    });
+  });
+});
+
+describe('runNextActionUndo', () => {
+  const restore = nextActionUndoRestore({
+    previousTaskId: TASK_ID,
+    createdTaskId: '550e8400-e29b-41d4-a716-446655440303',
+  });
+
+  it('returns restored when the pointer PUT succeeds and nothing was created', async () => {
+    const calls: string[] = [];
+    const outcome = await runNextActionUndo({
+      restore: nextActionUndoRestore({ previousTaskId: TASK_ID, createdTaskId: null }),
+      restoreNextAction: async () => {
+        calls.push('restore');
+        return { status: 200 };
+      },
+      deleteCreatedTask: async () => {
+        calls.push('delete');
+        return { status: 204 };
+      },
+    });
+
+    expect(outcome).toEqual({ kind: 'restored' });
+    expect(calls).toEqual(['restore']);
+  });
+
+  it('returns restore-failed and does not delete when the pointer PUT rejects', async () => {
+    const error = new Error('restore failed');
+    const calls: string[] = [];
+    const outcome = await runNextActionUndo({
       restore,
+      restoreNextAction: async () => {
+        calls.push('restore');
+        return Promise.reject(error);
+      },
+      deleteCreatedTask: async () => {
+        calls.push('delete');
+        return { status: 204 };
+      },
     });
-    expect(takeNextActionUndo(PROJECT_ID, { taskId: null })).toBeNull();
+
+    expect(outcome).toEqual({ kind: 'restore-failed', error });
+    expect(calls).toEqual(['restore']);
+  });
+
+  it('returns delete-failed when the created-task DELETE rejects', async () => {
+    const error = new Error('delete failed');
+    const outcome = await runNextActionUndo({
+      restore,
+      restoreNextAction: async () => ({ status: 200 }),
+      deleteCreatedTask: async (taskId) => {
+        expect(taskId).toBe(restore.createdTaskId);
+        return Promise.reject(error);
+      },
+    });
+
+    expect(outcome).toEqual({ kind: 'delete-failed', error });
+  });
+
+  it('returns restored when the pointer PUT and created-task DELETE both succeed', async () => {
+    const deleted: string[] = [];
+    const outcome = await runNextActionUndo({
+      restore,
+      restoreNextAction: async () => ({ status: 200 }),
+      deleteCreatedTask: async (taskId) => {
+        deleted.push(taskId);
+        return { status: 204 };
+      },
+    });
+
+    expect(outcome).toEqual({ kind: 'restored' });
+    expect(deleted).toEqual([restore.createdTaskId]);
+  });
+});
+
+describe('nextActionUndoToast', () => {
+  it('shows restored only when both steps succeeded', () => {
+    expect(nextActionUndoToast({ outcome: { kind: 'restored' }, networkError: false })).toEqual({
+      type: 'success',
+      message: 'Next action restored',
+    });
+  });
+
+  it('shows the delete error instead of restored when DELETE fails', () => {
+    expect(
+      nextActionUndoToast({
+        outcome: { kind: 'delete-failed', error: new Error('no delete') },
+        networkError: false,
+      })
+    ).toEqual({
+      type: 'error',
+      message: 'Failed to remove the created task',
+    });
+  });
+
+  it('shows the restore error when the pointer PUT fails', () => {
+    expect(
+      nextActionUndoToast({
+        outcome: { kind: 'restore-failed', error: new Error('no put') },
+        networkError: false,
+      })
+    ).toEqual({
+      type: 'error',
+      message: 'Failed to restore next action',
+    });
+  });
+
+  it('shows the network copy for either failed step', () => {
+    expect(
+      nextActionUndoToast({
+        outcome: { kind: 'delete-failed', error: new Error('offline') },
+        networkError: true,
+      })
+    ).toEqual({
+      type: 'error',
+      message: 'Network error. Please check your connection.',
+    });
   });
 });
 

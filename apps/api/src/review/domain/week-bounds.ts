@@ -84,6 +84,13 @@ const asUtcMs = (
   second: number
 ): number => Date.UTC(year, month - 1, day, hour, minute, second);
 
+const shownOffsetMs = (utcMs: number, wanted: number, timeZone: string): number => {
+  const shown = zoneParts(new Date(utcMs), timeZone);
+  return (
+    wanted - asUtcMs(shown.year, shown.month, shown.day, shown.hour, shown.minute, shown.second)
+  );
+};
+
 /**
  * UTC instant for local midnight on `date` in `timeZone`. Two-pass offset
  * correction so DST spring-forward / fall-back weeks stay half-open
@@ -92,16 +99,9 @@ const asUtcMs = (
 export const localMidnightUtc = (date: CalendarDate, timeZone: string): string => {
   const { year, month, day } = calendarParts(date);
   const wanted = asUtcMs(year, month, day, 0, 0, 0);
-  let utcMs = wanted;
-  const shown1 = zoneParts(new Date(utcMs), timeZone);
-  utcMs +=
-    wanted -
-    asUtcMs(shown1.year, shown1.month, shown1.day, shown1.hour, shown1.minute, shown1.second);
-  const shown2 = zoneParts(new Date(utcMs), timeZone);
-  utcMs +=
-    wanted -
-    asUtcMs(shown2.year, shown2.month, shown2.day, shown2.hour, shown2.minute, shown2.second);
-  return new Date(utcMs).toISOString();
+  const afterFirst = wanted + shownOffsetMs(wanted, wanted, timeZone);
+  const afterSecond = afterFirst + shownOffsetMs(afterFirst, wanted, timeZone);
+  return new Date(afterSecond).toISOString();
 };
 
 export const weekUtcBounds = (monday: CalendarDate, timeZone: string): WeekUtcBounds => ({

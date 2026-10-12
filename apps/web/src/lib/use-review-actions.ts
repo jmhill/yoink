@@ -10,18 +10,29 @@ import { tsrProjects, tsrTasks } from '@/api/client';
 import { invalidateLiveQueries } from '@/lib/live-query';
 import type { NewNextActionTask } from '@/components/next-action-picker';
 import {
-  clearNextActionUndo,
   createdTaskIdFromNextAction,
   nextActionUndoRestore,
-  queueNextActionUndo,
+  nextActionUndoToast,
   reviewStatusUndoEnabled,
-  takeNextActionUndo,
+  runNextActionUndo,
 } from '@/lib/review-undo';
 
 const REVIEW_TOAST_ID = 'review-inline-action';
 
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
   status === 'proposed' ? 'active' : status;
+
+const showNextActionUndoToast = (outcome: Parameters<typeof nextActionUndoToast>[0]['outcome']) => {
+  const shown = nextActionUndoToast({
+    outcome,
+    networkError: outcome.kind !== 'restored' && isFetchError(outcome.error),
+  });
+  if (shown.type === 'success') {
+    toast.success(shown.message, { id: REVIEW_TOAST_ID });
+    return;
+  }
+  toast.error(shown.message);
+};
 
 export const useReviewActions = () => {
   const queryClient = tsrProjects.useQueryClient();
@@ -49,12 +60,12 @@ export const useReviewActions = () => {
     onSuccess: async () => {
       await refresh();
     },
-    onError: (err) => {
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-        return;
-      }
-      toast.error('Failed to remove the created task');
+  });
+
+  const restoreNextActionMutation = tsrProjects.setNextAction.useMutation({
+    onSuccess: async (result) => {
+      if (result.status !== 200) return;
+      await refresh();
     },
   });
 
@@ -62,10 +73,6 @@ export const useReviewActions = () => {
     onSuccess: async (result, variables) => {
       if (result.status !== 200) return;
       setNextActionError(null);
-      if ('taskId' in variables.body && variables.body.taskId === null) {
-        takeNextActionUndo(variables.params.id, variables.body);
-        return;
-      }
       const createdId = createdTaskIdFromNextAction({
         body: variables.body,
         result: result.body,
@@ -82,37 +89,23 @@ export const useReviewActions = () => {
         action: {
           label: 'Undo',
           onClick: () => {
-            queueNextActionUndo({
-              projectId: variables.params.id,
+            void runNextActionUndo({
               restore,
-            });
-            void (async () => {
-              try {
-                await nextActionMutation.mutateAsync({
+              restoreNextAction: () =>
+                restoreNextActionMutation.mutateAsync({
                   params: { id: variables.params.id },
                   body: restore.body,
-                });
-              } catch {
-                clearNextActionUndo();
-                return;
-              }
-              if (restore.createdTaskId !== null) {
-                await deleteCreatedTask.mutateAsync({
-                  params: { id: restore.createdTaskId },
-                }).then(
-                  () => undefined,
-                  () => undefined
-                );
-              }
-              await refresh();
-              toast.success('Next action restored', { id: REVIEW_TOAST_ID });
-            })();
+                }),
+              deleteCreatedTask: (taskId) =>
+                deleteCreatedTask.mutateAsync({
+                  params: { id: taskId },
+                }),
+            }).then(showNextActionUndoToast);
           },
         },
       });
     },
     onError: (err) => {
-      clearNextActionUndo();
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
         return;
@@ -190,7 +183,10 @@ export const useReviewActions = () => {
   return {
     nextActionError,
     statusError,
-    isNextActionPending: nextActionMutation.isPending || deleteCreatedTask.isPending,
+    isNextActionPending:
+      nextActionMutation.isPending ||
+      restoreNextActionMutation.isPending ||
+      deleteCreatedTask.isPending,
     isStatusPending: statusMutation.isPending,
     setNextAction: (input: {
       project: Project;

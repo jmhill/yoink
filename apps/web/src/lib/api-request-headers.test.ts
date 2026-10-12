@@ -20,4 +20,14 @@ describe('headersForApiRequest', () => {
 
     expect(headers.get('Content-Type')).toBe('application/json');
   });
+
+  it('omits Content-Type for an empty string body without mutating the input', () => {
+    const headers = headersForApiRequest(
+      { 'Content-Type': 'application/json', Accept: 'application/json' },
+      ''
+    );
+
+    expect(headers.get('Content-Type')).toBeNull();
+    expect(headers.get('Accept')).toBe('application/json');
+  });
 });

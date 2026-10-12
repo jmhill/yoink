@@ -9,6 +9,19 @@ export type NextActionUndoRestore = {
   readonly createdTaskId: string | null;
 };
 
+export type SettledResult<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: unknown };
+
+export type NextActionUndoOutcome =
+  | { readonly kind: 'restored' }
+  | { readonly kind: 'restore-failed'; readonly error: unknown }
+  | { readonly kind: 'delete-failed'; readonly error: unknown };
+
+export type NextActionUndoToast =
+  | { readonly type: 'success'; readonly message: 'Next action restored' }
+  | { readonly type: 'error'; readonly message: string };
+
 export const createdTaskIdFromNextAction = (input: {
   body: SetProjectNextAction;
   result: SetProjectNextActionResponse;
@@ -36,34 +49,49 @@ export const nextActionUndoRestore = (input: {
   createdTaskId: input.createdTaskId,
 });
 
-export type PendingNextActionUndo = {
-  readonly projectId: string;
-  readonly restore: NextActionUndoRestore;
-};
+export const settledResult = <T>(promise: Promise<T>): Promise<SettledResult<T>> =>
+  promise.then(
+    (value): SettledResult<T> => ({ ok: true, value }),
+    (error: unknown): SettledResult<T> => ({ ok: false, error })
+  );
 
-let pendingNextActionUndo: PendingNextActionUndo | null = null;
-
-export const queueNextActionUndo = (input: PendingNextActionUndo): void => {
-  pendingNextActionUndo = input;
-};
-
-export const takeNextActionUndo = (
-  projectId: string,
-  body: SetProjectNextAction
-): PendingNextActionUndo | null => {
-  if (pendingNextActionUndo === null || pendingNextActionUndo.projectId !== projectId) {
-    return null;
+/**
+ * Restore the SET-time pointer, then delete a SET-created task.
+ * Callers must not run this through the normal set-success path.
+ */
+export const runNextActionUndo = async (input: {
+  restore: NextActionUndoRestore;
+  restoreNextAction: () => Promise<unknown>;
+  deleteCreatedTask: (taskId: string) => Promise<unknown>;
+}): Promise<NextActionUndoOutcome> => {
+  const restored = await settledResult(input.restoreNextAction());
+  if (restored.ok === false) {
+    return { kind: 'restore-failed', error: restored.error };
   }
-  if ('newTask' in body || body.taskId !== pendingNextActionUndo.restore.body.taskId) {
-    return null;
+  if (input.restore.createdTaskId === null) {
+    return { kind: 'restored' };
   }
-  const pending = pendingNextActionUndo;
-  pendingNextActionUndo = null;
-  return pending;
+  const deleted = await settledResult(input.deleteCreatedTask(input.restore.createdTaskId));
+  if (deleted.ok === false) {
+    return { kind: 'delete-failed', error: deleted.error };
+  }
+  return { kind: 'restored' };
 };
 
-export const clearNextActionUndo = (): void => {
-  pendingNextActionUndo = null;
+export const nextActionUndoToast = (input: {
+  outcome: NextActionUndoOutcome;
+  networkError: boolean;
+}): NextActionUndoToast => {
+  if (input.outcome.kind === 'restored') {
+    return { type: 'success', message: 'Next action restored' };
+  }
+  if (input.networkError) {
+    return { type: 'error', message: 'Network error. Please check your connection.' };
+  }
+  if (input.outcome.kind === 'delete-failed') {
+    return { type: 'error', message: 'Failed to remove the created task' };
+  }
+  return { type: 'error', message: 'Failed to restore next action' };
 };
 
 export const reviewStatusUndoEnabled = (status: AssignableProjectStatus): boolean =>

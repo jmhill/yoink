@@ -3706,6 +3706,18 @@ export const createPlaywrightActor = (
       await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
     },
 
+    async shouldSeeToast(message: string): Promise<void> {
+      await expect(
+        page.locator('[data-sonner-toast]:not([data-removed="true"])').filter({ hasText: message })
+      ).toBeVisible();
+    },
+
+    async shouldNotSeeToast(message: string): Promise<void> {
+      await expect(
+        page.locator('[data-sonner-toast]:not([data-removed="true"])').filter({ hasText: message })
+      ).toHaveCount(0);
+    },
+
     async undoFromToast(message: string): Promise<void> {
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
     },
@@ -3718,6 +3730,7 @@ export const createPlaywrightActor = (
       deletedUrl: string | null;
       deletedStatus: number | null;
       deletedBody: string | null;
+      savedToastReappeared: boolean;
     }> {
       const ready = page.locator('[data-review-ready]');
       const reviewVersion =
@@ -3753,7 +3766,18 @@ export const createPlaywrightActor = (
           return request.postData();
         }
       })();
+      await expect(visibleUndoToast(message)).toHaveCount(0);
+      const restoredToast = page
+        .locator('[data-sonner-toast]:not([data-removed="true"])')
+        .filter({ hasText: 'Next action restored' });
+      const reappearedPromise = Promise.race([
+        visibleUndoToast(message)
+          .waitFor({ state: 'visible', timeout: 8_000 })
+          .then(() => true),
+        restoredToast.waitFor({ state: 'visible', timeout: 8_000 }).then(() => false),
+      ]).catch(() => false);
       const deleted = await deletePromise;
+      const savedToastReappeared = await reappearedPromise;
       if (reviewVersion !== null) {
         await expect(ready).not.toHaveAttribute('data-review-version', reviewVersion);
       }
@@ -3765,6 +3789,7 @@ export const createPlaywrightActor = (
         deletedUrl: deleted?.url ?? null,
         deletedStatus: deleted?.status ?? null,
         deletedBody: deleted?.body ?? null,
+        savedToastReappeared,
       };
     },
 

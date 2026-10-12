@@ -1878,6 +1878,16 @@ export type BrowserActorOperations = {
   shouldSeeUndoToast(message: string): Promise<void>;
 
   /**
+   * Assert a toast with this message is showing (Undo not required).
+   */
+  shouldSeeToast(message: string): Promise<void>;
+
+  /**
+   * Assert no visible toast contains this message.
+   */
+  shouldNotSeeToast(message: string): Promise<void>;
+
+  /**
    * Click Undo on the toast with this message.
    */
   undoFromToast(message: string): Promise<void>;
@@ -1894,6 +1904,7 @@ export type BrowserActorOperations = {
     deletedUrl: string | null;
     deletedStatus: number | null;
     deletedBody: string | null;
+    savedToastReappeared: boolean;
   }>;
 
   /**

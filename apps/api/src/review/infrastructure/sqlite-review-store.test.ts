@@ -8,7 +8,6 @@ import {
   REVIEW_ORG,
   REVIEW_OTHER_ORG,
   REVIEW_OTHER_USER,
-  REVIEW_PROJECT,
   REVIEW_TASK,
   reviewFixtureChangeLog,
   reviewFixtureProjects,

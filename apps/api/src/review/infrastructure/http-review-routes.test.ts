@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { Project, ReviewPage, Task } from '@yoink/api-contracts';
 import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';

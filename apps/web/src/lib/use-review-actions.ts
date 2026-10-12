@@ -10,10 +10,12 @@ import { tsrProjects, tsrTasks } from '@/api/client';
 import { invalidateLiveQueries } from '@/lib/live-query';
 import type { NewNextActionTask } from '@/components/next-action-picker';
 import {
+  clearNextActionUndo,
   createdTaskIdFromNextAction,
   nextActionUndoRestore,
+  queueNextActionUndo,
   reviewStatusUndoEnabled,
-  type NextActionUndoRestore,
+  takeNextActionUndo,
 } from '@/lib/review-undo';
 
 const REVIEW_TOAST_ID = 'review-inline-action';
@@ -21,18 +23,13 @@ const REVIEW_TOAST_ID = 'review-inline-action';
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
   status === 'proposed' ? 'active' : status;
 
-const withoutKey = <K, V>(map: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V> =>
-  new Map([...map].filter(([entryKey]) => entryKey !== key));
-
 export const useReviewActions = () => {
   const queryClient = tsrProjects.useQueryClient();
   const [nextActionError, setNextActionError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const undoNextRef = useRef(false);
   const undoStatusRef = useRef(false);
-  const priorNextById = useRef<ReadonlyMap<string, NextActionUndoRestore>>(new Map());
+  const priorNextById = useRef<ReadonlyMap<string, string | null>>(new Map());
   const priorStatusById = useRef<ReadonlyMap<string, Project>>(new Map());
-  const createdNextById = useRef<ReadonlyMap<string, string>>(new Map());
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['review'] });
@@ -41,10 +38,7 @@ export const useReviewActions = () => {
   };
 
   const rememberNext = (projectId: string, previousTaskId: string | null) => {
-    priorNextById.current = new Map([
-      ...priorNextById.current,
-      [projectId, nextActionUndoRestore(previousTaskId)],
-    ]);
+    priorNextById.current = new Map([...priorNextById.current, [projectId, previousTaskId]]);
   };
 
   const rememberStatus = (project: Project) => {
@@ -68,32 +62,19 @@ export const useReviewActions = () => {
     onSuccess: async (result, variables) => {
       if (result.status !== 200) return;
       setNextActionError(null);
-      if (undoNextRef.current) {
-        undoNextRef.current = false;
-        const createdId = createdNextById.current.get(variables.params.id);
-        if (createdId !== undefined) {
-          createdNextById.current = withoutKey(createdNextById.current, variables.params.id);
-          await deleteCreatedTask.mutateAsync({ params: { id: createdId } }).then(
-            () => undefined,
-            () => undefined
-          );
-        }
-        await refresh();
-        toast.success('Next action restored', { id: REVIEW_TOAST_ID });
+      if ('taskId' in variables.body && variables.body.taskId === null) {
+        takeNextActionUndo(variables.params.id, variables.body);
         return;
       }
       const createdId = createdTaskIdFromNextAction({
         body: variables.body,
         result: result.body,
       });
-      if (createdId !== null) {
-        createdNextById.current = new Map([
-          ...createdNextById.current,
-          [variables.params.id, createdId],
-        ]);
-      }
-      const restore =
-        priorNextById.current.get(variables.params.id) ?? nextActionUndoRestore(null);
+      const previousTaskId = priorNextById.current.get(variables.params.id) ?? null;
+      const restore = nextActionUndoRestore({
+        previousTaskId,
+        createdTaskId: createdId,
+      });
       await refresh();
       toast.success('Next action saved', {
         id: REVIEW_TOAST_ID,
@@ -101,17 +82,37 @@ export const useReviewActions = () => {
         action: {
           label: 'Undo',
           onClick: () => {
-            undoNextRef.current = true;
-            nextActionMutation.mutate({
-              params: { id: variables.params.id },
-              body: restore,
+            queueNextActionUndo({
+              projectId: variables.params.id,
+              restore,
             });
+            void (async () => {
+              try {
+                await nextActionMutation.mutateAsync({
+                  params: { id: variables.params.id },
+                  body: restore.body,
+                });
+              } catch {
+                clearNextActionUndo();
+                return;
+              }
+              if (restore.createdTaskId !== null) {
+                await deleteCreatedTask.mutateAsync({
+                  params: { id: restore.createdTaskId },
+                }).then(
+                  () => undefined,
+                  () => undefined
+                );
+              }
+              await refresh();
+              toast.success('Next action restored', { id: REVIEW_TOAST_ID });
+            })();
           },
         },
       });
     },
     onError: (err) => {
-      undoNextRef.current = false;
+      clearNextActionUndo();
       if (isFetchError(err)) {
         toast.error('Network error. Please check your connection.');
         return;

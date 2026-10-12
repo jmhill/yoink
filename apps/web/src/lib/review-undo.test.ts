@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
+  clearNextActionUndo,
   createdTaskIdFromNextAction,
   nextActionUndoRestore,
+  queueNextActionUndo,
   reviewStatusUndoEnabled,
+  takeNextActionUndo,
 } from './review-undo';
 
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440010';
@@ -42,30 +45,70 @@ describe('createdTaskIdFromNextAction', () => {
     ).toBeNull();
   });
 
-  it('returns null when a new-task response omitted the created task', () => {
+  it('falls back to the project pointer when a new-task response omitted the task', () => {
     expect(
       createdTaskIdFromNextAction({
         body: { newTask: { title: 'Box the attic' } },
         result: { project },
+      })
+    ).toBe(TASK_ID);
+  });
+
+  it('returns null when a new-task response has no created task and no pointer', () => {
+    expect(
+      createdTaskIdFromNextAction({
+        body: { newTask: { title: 'Box the attic' } },
+        result: { project: { ...project, nextActionTaskId: null } },
       })
     ).toBeNull();
   });
 });
 
 describe('nextActionUndoRestore', () => {
+  afterEach(() => {
+    clearNextActionUndo();
+  });
+
   it('clears the pointer when the project had no next action at SET time', () => {
-    expect(nextActionUndoRestore(null)).toEqual({ taskId: null });
+    expect(nextActionUndoRestore({ previousTaskId: null, createdTaskId: TASK_ID })).toEqual({
+      body: { taskId: null },
+      createdTaskId: TASK_ID,
+    });
   });
 
   it('restores the SET-time task id, not a later next action', () => {
     const laterTaskId = '550e8400-e29b-41d4-a716-446655440202';
-    const capturedAtSet = nextActionUndoRestore(project.nextActionTaskId);
+    const capturedAtSet = nextActionUndoRestore({
+      previousTaskId: project.nextActionTaskId,
+      createdTaskId: null,
+    });
     const afterOptimisticOrInvalidate = { ...project, nextActionTaskId: laterTaskId };
 
-    expect(capturedAtSet).toEqual({ taskId: TASK_ID });
-    expect(capturedAtSet).not.toEqual({
+    expect(capturedAtSet).toEqual({
+      body: { taskId: TASK_ID },
+      createdTaskId: null,
+    });
+    expect(capturedAtSet.body).not.toEqual({
       taskId: afterOptimisticOrInvalidate.nextActionTaskId,
     });
+  });
+
+  it('hands the queued restore to any later take, then clears', () => {
+    clearNextActionUndo();
+    const restore = nextActionUndoRestore({
+      previousTaskId: null,
+      createdTaskId: TASK_ID,
+    });
+    queueNextActionUndo({ projectId: PROJECT_ID, restore });
+
+    expect(takeNextActionUndo(PROJECT_ID, { newTask: { title: 'Later' } })).toBeNull();
+    expect(takeNextActionUndo('00000000-0000-0000-0000-000000000099', { taskId: null })).toBeNull();
+    expect(takeNextActionUndo(PROJECT_ID, { taskId: TASK_ID })).toBeNull();
+    expect(takeNextActionUndo(PROJECT_ID, { taskId: null })).toEqual({
+      projectId: PROJECT_ID,
+      restore,
+    });
+    expect(takeNextActionUndo(PROJECT_ID, { taskId: null })).toBeNull();
   });
 });
 

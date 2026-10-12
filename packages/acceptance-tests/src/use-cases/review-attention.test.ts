@@ -220,14 +220,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeUndoToast('Next action saved');
       const created = await alice.listOpenTasksOnProject(seeded.house.id);
       expect(created.map((task) => task.title)).toContain('Box the attic');
-      await alice.undoFromToast('Next action saved');
+      const undo = await alice.undoReviewNextActionFromToast('Next action saved');
+      expect(undo.requestBody, JSON.stringify(undo)).toEqual({ taskId: null });
+      expect(undo.status).toBe(200);
+      expect(undo.deletedUrl, JSON.stringify(undo)).toMatch(/\/api\/tasks\//);
+      expect(undo.deletedStatus, JSON.stringify(undo)).toBe(204);
       await alice.shouldSeeReviewItem({
         name: 'House storage',
         section: 'noNextAction',
         reasons: 'noNextAction',
       });
       const afterUndo = await alice.listOpenTasksOnProject(seeded.house.id);
-      expect(afterUndo.map((task) => task.title)).not.toContain('Box the attic');
+      expect(afterUndo.map((task) => task.title), JSON.stringify(undo)).not.toContain(
+        'Box the attic'
+      );
       await alice.expandAllProjects();
       await alice.shouldSeeProjectOnAllProjects({ name: 'House storage', status: 'active' });
     }, 90_000);

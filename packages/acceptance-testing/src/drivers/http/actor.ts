@@ -2118,6 +2118,9 @@ export const createHttpActor = (
       url: string;
       requestBody: unknown;
       status: number;
+      deletedUrl: string | null;
+      deletedStatus: number | null;
+      deletedBody: string | null;
     }> {
       throw new UnsupportedOperationError('undoReviewNextActionFromToast', 'http');
     },

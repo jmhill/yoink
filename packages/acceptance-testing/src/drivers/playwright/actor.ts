@@ -3715,11 +3715,11 @@ export const createPlaywrightActor = (
       url: string;
       requestBody: unknown;
       status: number;
+      deletedUrl: string | null;
+      deletedStatus: number | null;
+      deletedBody: string | null;
     }> {
-      const done = page.locator('[data-done-week]');
       const ready = page.locator('[data-review-ready]');
-      const doneVersion =
-        (await done.count()) > 0 ? await done.getAttribute('data-done-version') : null;
       const reviewVersion =
         (await ready.count()) > 0 ? await ready.getAttribute('data-review-version') : null;
       const requestPromise = page.waitForRequest(
@@ -3731,6 +3731,18 @@ export const createPlaywrightActor = (
           response.request().method() === 'PUT' &&
           /\/api\/projects\/[^/]+\/next-action/.test(response.url())
       );
+      const deletePromise = page
+        .waitForResponse(
+          (response) =>
+            response.request().method() === 'DELETE' && /\/api\/tasks\//.test(response.url()),
+          { timeout: 8_000 }
+        )
+        .then(async (response) => ({
+          url: response.url(),
+          status: response.status(),
+          body: await response.text(),
+        }))
+        .catch(() => null);
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
       const request = await requestPromise;
       const response = await responsePromise;
@@ -3741,9 +3753,7 @@ export const createPlaywrightActor = (
           return request.postData();
         }
       })();
-      if (doneVersion !== null) {
-        await expect(done).not.toHaveAttribute('data-done-version', doneVersion);
-      }
+      const deleted = await deletePromise;
       if (reviewVersion !== null) {
         await expect(ready).not.toHaveAttribute('data-review-version', reviewVersion);
       }
@@ -3752,6 +3762,9 @@ export const createPlaywrightActor = (
         url: request.url(),
         requestBody,
         status: response.status(),
+        deletedUrl: deleted?.url ?? null,
+        deletedStatus: deleted?.status ?? null,
+        deletedBody: deleted?.body ?? null,
       };
     },
 

@@ -1891,6 +1891,9 @@ export type BrowserActorOperations = {
     url: string;
     requestBody: unknown;
     status: number;
+    deletedUrl: string | null;
+    deletedStatus: number | null;
+    deletedBody: string | null;
   }>;
 
   /**

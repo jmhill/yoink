@@ -3707,10 +3707,16 @@ export const createPlaywrightActor = (
     },
 
     async undoFromToast(message: string): Promise<void> {
+      const ready = page.locator('[data-review-ready]');
       const done = page.locator('[data-done-week]');
+      const reviewVersion =
+        (await ready.count()) > 0 ? await ready.getAttribute('data-review-version') : null;
       const doneVersion =
         (await done.count()) > 0 ? await done.getAttribute('data-done-version') : null;
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
+      if (reviewVersion !== null) {
+        await expect(ready).not.toHaveAttribute('data-review-version', reviewVersion);
+      }
       if (doneVersion !== null) {
         await expect(done).not.toHaveAttribute('data-done-version', doneVersion);
       }

@@ -17,30 +17,37 @@ import {
   runNextActionUndo,
 } from '@/lib/review-undo';
 
-const REVIEW_TOAST_ID = 'review-inline-action';
+const REVIEW_TOAST_PREFIX = 'review-inline-action';
 
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
   status === 'proposed' ? 'active' : status;
-
-const showNextActionUndoToast = (outcome: Parameters<typeof nextActionUndoToast>[0]['outcome']) => {
-  const shown = nextActionUndoToast({
-    outcome,
-    networkError: outcome.kind !== 'restored' && isFetchError(outcome.error),
-  });
-  if (shown.type === 'success') {
-    toast.success(shown.message, { id: REVIEW_TOAST_ID });
-    return;
-  }
-  toast.error(shown.message);
-};
 
 export const useReviewActions = () => {
   const queryClient = tsrProjects.useQueryClient();
   const [nextActionError, setNextActionError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const undoStatusRef = useRef(false);
+  const toastGeneration = useRef(0);
   const priorNextById = useRef<ReadonlyMap<string, string | null>>(new Map());
   const priorStatusById = useRef<ReadonlyMap<string, Project>>(new Map());
+  const reviewToastId = () => `${REVIEW_TOAST_PREFIX}-${String(toastGeneration.current)}`;
+  const beginNextReviewToast = () => {
+    toast.dismiss(reviewToastId());
+    toastGeneration.current += 1;
+  };
+  const showNextActionUndoToast = (
+    outcome: Parameters<typeof nextActionUndoToast>[0]['outcome']
+  ) => {
+    const shown = nextActionUndoToast({
+      outcome,
+      networkError: outcome.kind !== 'restored' && isFetchError(outcome.error),
+    });
+    if (shown.type === 'success') {
+      toast.success(shown.message, { id: reviewToastId() });
+      return;
+    }
+    toast.error(shown.message);
+  };
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['review'] });
@@ -84,11 +91,12 @@ export const useReviewActions = () => {
       });
       await refresh();
       toast.success('Next action saved', {
-        id: REVIEW_TOAST_ID,
+        id: reviewToastId(),
         duration: 10_000,
         action: {
           label: 'Undo',
           onClick: () => {
+            beginNextReviewToast();
             void runNextActionUndo({
               restore,
               restoreNextAction: () =>
@@ -131,15 +139,15 @@ export const useReviewActions = () => {
       await refresh();
       if (undoStatusRef.current) {
         undoStatusRef.current = false;
-        toast.success('Project status restored', { id: REVIEW_TOAST_ID });
+        toast.success('Project status restored', { id: reviewToastId() });
         return;
       }
       if (!reviewStatusUndoEnabled(variables.body.status)) {
-        toast.success('Project status saved', { id: REVIEW_TOAST_ID });
+        toast.success('Project status saved', { id: reviewToastId() });
         return;
       }
       toast.success('Project status saved', {
-        id: REVIEW_TOAST_ID,
+        id: reviewToastId(),
         action: {
           label: 'Undo',
           onClick: () => {
@@ -147,6 +155,7 @@ export const useReviewActions = () => {
             if (prior === undefined) {
               return;
             }
+            beginNextReviewToast();
             undoStatusRef.current = true;
             statusMutation.mutate({
               params: { id: variables.params.id },

@@ -3633,17 +3633,24 @@ export const createPlaywrightActor = (
         await route.continue();
       };
 
-      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      const ready = page.locator('[data-process-ready]');
+      const firstId = await ready.getAttribute('data-process-current');
       if (!firstId) {
         throw new Error('Process should show a current capture before Delete');
       }
       await page.route(isCaptureTrashPost, trashRoute);
       try {
-        await page.keyboard.press('Delete');
-        await expect(page.locator('[data-process-ready]')).toHaveAttribute(
-          'data-process-current',
-          firstId
+        const firstFail = page.waitForResponse(
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) &&
+            response.request().method() === 'POST' &&
+            response.status() === 500
         );
+        await page.keyboard.press('Delete');
+        await expect(ready).toHaveAttribute('data-process-key-lock', '');
+        await firstFail;
+        await expect(ready).toHaveAttribute('data-process-current', firstId);
+        await expect(ready).not.toHaveAttribute('data-process-key-lock');
         const second = page.waitForResponse(
           (response) =>
             isCaptureTrashPost(new URL(response.url())) &&
@@ -3906,6 +3913,22 @@ export const createPlaywrightActor = (
         await waitForSettledOpenDialog({ page });
       } else {
         await waitForSettledOpenDrawer({ page });
+      }
+    },
+
+    async scrollReviewWaitingIntoView(): Promise<void> {
+      const section = page.locator('[data-review-section="waiting"]');
+      await expect(section).toBeVisible();
+      await section.evaluate((node) => {
+        node.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      const groups = section.locator('[data-review-waiting-group]');
+      await expect(groups.first()).toBeVisible();
+      await expect.poll(async () => groups.count()).toBeGreaterThan(1);
+      const box = await section.boundingBox();
+      expect(box, 'Waiting section should be in the viewport').not.toBeNull();
+      if (box !== null) {
+        expect(box.y).toBeLessThan(200);
       }
     },
 

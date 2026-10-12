@@ -301,19 +301,15 @@ export const runReviewStoreContractTests = (options: {
       expect(ids).toHaveLength(firstPage.total);
     });
 
-    it('returns reason counts for the full set', async () => {
-      const counts = await store.countReview({
-        organizationId: REVIEW_ORG,
-        today: REVIEW_TODAY,
-        timeZone: REVIEW_TIME_ZONE,
-      });
-      expect(counts.isOk()).toBe(true);
-      if (!counts.isOk()) {
+    it('returns reason counts for the full set from the same page load', async () => {
+      const page = await pageAll(store);
+      expect(page.isOk()).toBe(true);
+      if (!page.isOk()) {
         return;
       }
-      expect(counts.value.noNextAction).toBe(3);
-      expect(counts.value.quiet).toBe(1);
-      expect(counts.value.waiting).toBe(4);
+      expect(page.value.counts.noNextAction).toBe(1);
+      expect(page.value.counts.quiet).toBe(1);
+      expect(page.value.counts.waiting).toBe(4);
     });
   });
 };

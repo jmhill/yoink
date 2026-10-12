@@ -1,8 +1,7 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Project, ReviewCounts, Task } from '@yoink/api-contracts';
+import type { Project, Task } from '@yoink/api-contracts';
 import { pageOrdered } from '../../listing/domain/keyset-window.js';
 import { reviewDirection, reviewKeys } from '../../listing/domain/list-keys.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import {
   buildReviewItems,
   latestIsoInstant,
@@ -11,7 +10,6 @@ import {
 import { countReviewReasons } from '../domain/review-order.js';
 import { storageError, type StorageError } from '../domain/review-errors.js';
 import type {
-  CountReviewOptions,
   PageReviewOptions,
   ReviewChangeLogEntry,
   ReviewStore,
@@ -85,9 +83,7 @@ export const createFakeReviewStore = (
     errAsync(storageError('Review store failed'));
 
   return {
-    pageReview: (
-      page: PageReviewOptions
-    ): ResultAsync<KeysetRows<ReturnType<typeof buildReviewItems>[number]>, StorageError> => {
+    pageReview: (page: PageReviewOptions) => {
       if (options.shouldFail) {
         return fail();
       }
@@ -95,26 +91,16 @@ export const createFakeReviewStore = (
         today: page.today,
         timeZone: page.timeZone,
       });
-      return okAsync(
-        pageOrdered({
+      return okAsync({
+        ...pageOrdered({
           ordered,
           keysOf: reviewKeys,
           direction: reviewDirection,
           fetchLimit: page.fetchLimit,
           seek: page.seek,
-        })
-      );
-    },
-
-    countReview: (count: CountReviewOptions): ResultAsync<ReviewCounts, StorageError> => {
-      if (options.shouldFail) {
-        return fail();
-      }
-      const items = buildReviewItems(candidatesFor(options, count.organizationId), {
-        today: count.today,
-        timeZone: count.timeZone,
+        }),
+        counts: countReviewReasons(ordered),
       });
-      return okAsync(countReviewReasons(items));
     },
   };
 };

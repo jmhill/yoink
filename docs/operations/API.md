@@ -158,6 +158,7 @@ A sent `timeZone` wins. A bad `timeZone` is `400` with
 Each `projects[]` row is listed once even when it matches two reasons:
 
 - `noNextAction` — status is active or waiting and `nextActionTaskId` is null
+  (`counts.noNextAction` still counts active projects only)
 - `quiet` — status is active and `daysSinceChange >= 7`
 - `waiting` — status is waiting (always listed)
 
@@ -177,9 +178,12 @@ already in group order: `waitingOn` (case-insensitive trim), groups by
 oldest `waitingSince` (nulls last), then name. The grouping UI is the
 client's job.
 
-`counts` is `{ noNextAction, quiet, waiting }` — each project can increment
-more than one. The Review badge is the unique count of
-(active ∧ noNextAction) ∨ quiet; waiting is not counted.
+`counts` is `{ noNextAction, quiet, waiting }`. `noNextAction` counts
+**active** projects with no next action only — a waiting project with no
+next action still has `noNextAction` in `reasons` and a chip, but does
+not increment this count. That matches the Review badge:
+`counts.noNextAction + counts.quiet` (waiting is not counted). Counts
+come from the same Review load as the page, not a second query.
 
 ```bash
 # Attention list on the Chicago calendar day

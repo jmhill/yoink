@@ -73,7 +73,9 @@ export const compareReview = (
 ): number => compareKeyset(reviewKeys(left), reviewKeys(right));
 
 export const countReviewReasons = (items: readonly ReviewProject[]): ReviewCounts => ({
-  noNextAction: items.filter((item) => item.reasons.includes('noNextAction')).length,
+  noNextAction: items.filter(
+    (item) => item.project.status === 'active' && item.reasons.includes('noNextAction')
+  ).length,
   quiet: items.filter((item) => item.reasons.includes('quiet')).length,
   waiting: items.filter((item) => item.reasons.includes('waiting')).length,
 });

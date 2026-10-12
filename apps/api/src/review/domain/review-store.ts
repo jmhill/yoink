@@ -13,10 +13,8 @@ export type PageReviewOptions = {
   seek?: KeysetCursor;
 };
 
-export type CountReviewOptions = {
-  organizationId: string;
-  today: string;
-  timeZone: string;
+export type ReviewPageRows = KeysetRows<RankedReviewProject> & {
+  counts: ReviewCounts;
 };
 
 export type ReviewChangeLogEntry = {
@@ -26,8 +24,5 @@ export type ReviewChangeLogEntry = {
 };
 
 export type ReviewStore = {
-  pageReview(
-    options: PageReviewOptions
-  ): ResultAsync<KeysetRows<RankedReviewProject>, StorageError>;
-  countReview(options: CountReviewOptions): ResultAsync<ReviewCounts, StorageError>;
+  pageReview(options: PageReviewOptions): ResultAsync<ReviewPageRows, StorageError>;
 };

@@ -1,17 +1,11 @@
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
-import type { ReviewCounts } from '@yoink/api-contracts';
 import type { Database } from '../../database/types.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
 import { pageOrdered } from '../../listing/domain/keyset-window.js';
 import { reviewDirection, reviewKeys } from '../../listing/domain/list-keys.js';
 import { buildReviewItems, type ReviewCandidate } from '../domain/build-review.js';
-import { countReviewReasons, type RankedReviewProject } from '../domain/review-order.js';
+import { countReviewReasons } from '../domain/review-order.js';
 import { storageError, type StorageError } from '../domain/review-errors.js';
-import type {
-  CountReviewOptions,
-  PageReviewOptions,
-  ReviewStore,
-} from '../domain/review-store.js';
+import type { PageReviewOptions, ReviewStore } from '../domain/review-store.js';
 import { parseReviewCandidateRow } from './parse-review-row.js';
 
 const CANDIDATE_SQL = `
@@ -67,30 +61,21 @@ const loadCandidates = (
   });
 
 export const createSqliteReviewStore = (db: Database): ReviewStore => ({
-  pageReview: (
-    options: PageReviewOptions
-  ): ResultAsync<KeysetRows<RankedReviewProject>, StorageError> =>
+  pageReview: (options: PageReviewOptions) =>
     loadCandidates(db, options.organizationId).map((candidates) => {
       const ordered = buildReviewItems(candidates, {
         today: options.today,
         timeZone: options.timeZone,
       });
-      return pageOrdered({
-        ordered,
-        keysOf: reviewKeys,
-        direction: reviewDirection,
-        fetchLimit: options.fetchLimit,
-        seek: options.seek,
-      });
+      return {
+        ...pageOrdered({
+          ordered,
+          keysOf: reviewKeys,
+          direction: reviewDirection,
+          fetchLimit: options.fetchLimit,
+          seek: options.seek,
+        }),
+        counts: countReviewReasons(ordered),
+      };
     }),
-
-  countReview: (options: CountReviewOptions): ResultAsync<ReviewCounts, StorageError> =>
-    loadCandidates(db, options.organizationId).map((candidates) =>
-      countReviewReasons(
-        buildReviewItems(candidates, {
-          today: options.today,
-          timeZone: options.timeZone,
-        })
-      )
-    ),
 });

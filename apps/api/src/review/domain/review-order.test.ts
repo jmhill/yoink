@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Project, ReviewProject } from '@yoink/api-contracts';
 import {
   compareReview,
+  countReviewReasons,
   rankReviewProject,
   reviewSectionRank,
   waitingGroupKey,
@@ -117,6 +118,34 @@ describe('waiting groups', () => {
       'Boat',
       'Unknown',
     ]);
+  });
+
+  it('counts noNextAction for active projects only', () => {
+    const active = item({
+      project: project({ id: '550e8400-e29b-41d4-a716-446655440041', name: 'House' }),
+      reasons: ['noNextAction'],
+    });
+    const waitingNoNext = item({
+      project: project({
+        id: '550e8400-e29b-41d4-a716-446655440042',
+        name: 'Wait',
+        status: 'waiting',
+      }),
+      reasons: ['noNextAction', 'waiting'],
+    });
+    const quiet = item({
+      project: project({
+        id: '550e8400-e29b-41d4-a716-446655440043',
+        name: 'Quiet',
+        nextActionTaskId: '550e8400-e29b-41d4-a716-446655440101',
+      }),
+      reasons: ['quiet'],
+    });
+    expect(countReviewReasons([active, waitingNoNext, quiet])).toEqual({
+      noNextAction: 1,
+      quiet: 1,
+      waiting: 1,
+    });
   });
 
   it('sorts a row with no since date last within its group', () => {

@@ -53,6 +53,7 @@ function ProcessPage() {
   const keyLock = useRef(false);
   const keyLockId = useRef<string | null>(null);
   const [keyLockNonce, setKeyLockNonce] = useState(0);
+  const [keyLocked, setKeyLocked] = useState(false);
 
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
@@ -98,6 +99,7 @@ function ProcessPage() {
     }
     keyLock.current = false;
     keyLockId.current = null;
+    setKeyLocked(false);
   }, [actionPending, keyLockNonce, current?.id]);
 
   useEffect(() => {
@@ -137,6 +139,7 @@ function ProcessPage() {
       if (action === 'trash') {
         keyLock.current = true;
         keyLockId.current = current.id;
+        setKeyLocked(true);
         setKeyLockNonce((nonce) => nonce + 1);
       }
       switch (action) {
@@ -174,6 +177,7 @@ function ProcessPage() {
       data-process-ready={ready ? '' : undefined}
       data-process-current={current?.id}
       data-process-left={ready ? String(left) : undefined}
+      data-process-key-lock={keyLocked ? '' : undefined}
       className="container mx-auto max-w-2xl p-4"
     >
       <Header />

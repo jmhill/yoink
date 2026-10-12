@@ -6,14 +6,18 @@ import {
   type AssignableProjectStatus,
   type Project,
 } from '@yoink/api-contracts';
-import { tsrProjects } from '@/api/client';
+import { tsrProjects, tsrTasks } from '@/api/client';
 import { invalidateLiveQueries } from '@/lib/live-query';
 import type { NewNextActionTask } from '@/components/next-action-picker';
+import { createdTaskIdFromNextAction, reviewStatusUndoEnabled } from '@/lib/review-undo';
 
 const REVIEW_TOAST_ID = 'review-inline-action';
 
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
   status === 'proposed' ? 'active' : status;
+
+const withoutKey = <K, V>(map: ReadonlyMap<K, V>, key: K): ReadonlyMap<K, V> =>
+  new Map([...map].filter(([entryKey]) => entryKey !== key));
 
 export const useReviewActions = () => {
   const queryClient = tsrProjects.useQueryClient();
@@ -23,6 +27,7 @@ export const useReviewActions = () => {
   const undoStatusRef = useRef(false);
   const priorNextById = useRef<ReadonlyMap<string, string | null>>(new Map());
   const priorStatusById = useRef<ReadonlyMap<string, Project>>(new Map());
+  const createdNextById = useRef<ReadonlyMap<string, string>>(new Map());
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['review'] });
@@ -37,16 +42,45 @@ export const useReviewActions = () => {
     priorStatusById.current = new Map([...priorStatusById.current, [project.id, project]]);
   };
 
+  const deleteCreatedTask = tsrTasks.delete.useMutation({
+    onSuccess: async () => {
+      await refresh();
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        toast.error('Network error. Please check your connection.');
+        return;
+      }
+      toast.error('Failed to remove the created task');
+    },
+  });
+
   const nextActionMutation = tsrProjects.setNextAction.useMutation({
     onSuccess: async (result, variables) => {
       if (result.status !== 200) return;
       setNextActionError(null);
-      await refresh();
       if (undoNextRef.current) {
         undoNextRef.current = false;
+        const createdId = createdNextById.current.get(variables.params.id);
+        if (createdId !== undefined) {
+          createdNextById.current = withoutKey(createdNextById.current, variables.params.id);
+          await deleteCreatedTask.mutateAsync({ params: { id: createdId } });
+        }
+        await refresh();
         toast.success('Next action restored', { id: REVIEW_TOAST_ID });
         return;
       }
+      const createdId = createdTaskIdFromNextAction({
+        body: variables.body,
+        result: result.body,
+      });
+      if (createdId !== null) {
+        createdNextById.current = new Map([
+          ...createdNextById.current,
+          [variables.params.id, createdId],
+        ]);
+      }
+      await refresh();
       toast.success('Next action saved', {
         id: REVIEW_TOAST_ID,
         action: {
@@ -90,6 +124,10 @@ export const useReviewActions = () => {
       if (undoStatusRef.current) {
         undoStatusRef.current = false;
         toast.success('Project status restored', { id: REVIEW_TOAST_ID });
+        return;
+      }
+      if (!reviewStatusUndoEnabled(variables.body.status)) {
+        toast.success('Project status saved', { id: REVIEW_TOAST_ID });
         return;
       }
       toast.success('Project status saved', {
@@ -137,7 +175,7 @@ export const useReviewActions = () => {
   return {
     nextActionError,
     statusError,
-    isNextActionPending: nextActionMutation.isPending,
+    isNextActionPending: nextActionMutation.isPending || deleteCreatedTask.isPending,
     isStatusPending: statusMutation.isPending,
     setNextAction: (input: {
       project: Project;

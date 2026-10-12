@@ -1636,6 +1636,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openReviewChangeStatus', 'http');
     },
 
+    async scrollReviewWaitingIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollReviewWaitingIntoView', 'http');
+    },
+
     async shouldSeeEditTaskDialogSubtitle(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeEditTaskDialogSubtitle', 'http');
     },

@@ -478,7 +478,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const reviewStore = createSqliteReviewStore(database);
   const reviewHandlers = createReviewHandlers({
     pageReview: (options) => reviewStore.pageReview(options),
-    countReview: (options) => reviewStore.countReview(options),
     now: () => clock.now(),
   });
 

@@ -155,7 +155,7 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(person.projects.map((item) => item.project.name)).toContain('Trusts');
       expect(person.projects.map((item) => item.project.name)).not.toContain('Fresh edit');
       expect(person.projects.map((item) => item.project.name)).not.toContain('Umbrella');
-      expect(person.counts.noNextAction).toBeGreaterThanOrEqual(1);
+      expect(person.counts.noNextAction).toBe(1);
       expect(person.counts.quiet).toBe(1);
       expect(person.counts.waiting).toBe(4);
       expect(person.hasMore).toBe(false);
@@ -212,12 +212,22 @@ usingDrivers(['playwright'] as const, (ctx) => {
     }, 90_000);
 
     it('sets a next action inline, stays on Review, and offers Undo', async () => {
-      await seedReview(alice);
+      const seeded = await seedReview(alice);
       await alice.useMobileViewport();
       await alice.openReview();
       await alice.setReviewNextAction({ projectName: 'House storage', title: 'Box the attic' });
       await alice.shouldNotSeeReviewItem('House storage');
       await alice.shouldSeeUndoToast('Next action saved');
+      const created = await alice.listOpenTasksOnProject(seeded.house.id);
+      expect(created.map((task) => task.title)).toContain('Box the attic');
+      await alice.undoFromToast('Next action saved');
+      await alice.shouldSeeReviewItem({
+        name: 'House storage',
+        section: 'noNextAction',
+        reasons: 'noNextAction',
+      });
+      const afterUndo = await alice.listOpenTasksOnProject(seeded.house.id);
+      expect(afterUndo.map((task) => task.title)).not.toContain('Box the attic');
       await alice.expandAllProjects();
       await alice.shouldSeeProjectOnAllProjects({ name: 'House storage', status: 'active' });
     }, 90_000);
@@ -284,6 +294,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'review_sections',
       });
+      await alice.shouldSeeReviewWaitingGroup({
+        label: 'Mike',
+        names: ['Trusts', 'Other Mike'],
+      });
+      await alice.scrollReviewWaitingIntoView();
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_waiting_groups',
@@ -329,6 +344,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
         story: WALKTHROUGH_STORY,
         step: 'review_sections',
       });
+      await desktop.shouldSeeReviewWaitingGroup({
+        label: 'Mike',
+        names: ['Trusts', 'Other Mike'],
+      });
+      await desktop.scrollReviewWaitingIntoView();
       await desktop.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_waiting_groups',

@@ -1255,6 +1255,11 @@ export type BrowserActorOperations = {
   openReviewChangeStatus(projectName: string): Promise<void>;
 
   /**
+   * Scroll the Waiting section and its groups into view for a screenshot.
+   */
+  scrollReviewWaitingIntoView(): Promise<void>;
+
+  /**
    * Assert the edit-task dialog subtitle.
    */
   shouldSeeEditTaskDialogSubtitle(text: string): Promise<void>;
@@ -1787,8 +1792,9 @@ export type BrowserActorOperations = {
   pressProcessDeleteWhileTrashHeld(): Promise<void>;
 
   /**
-   * Press Delete against a 500 trash POST, wait for the card to come
-   * back, press Delete again, and assert the second trash POST happens.
+   * Press Delete against a 500 trash POST, wait for that 500 and for
+   * the key lock to release, press Delete again, and assert the second
+   * trash POST happens.
    */
   pressProcessDeleteAfterTrashError(): Promise<void>;
 

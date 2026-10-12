@@ -185,6 +185,25 @@ describe('GET /api/review', () => {
     expect(utc.json<ReviewPage>().today).toBe('2026-10-12');
   });
 
+  it('counts noNextAction for active projects only', async () => {
+    const app = await createTestApp();
+    await createProject(app, 'House storage');
+    const waitingNoNext = await createProject(app, 'Waiting empty');
+    await setWaiting(app, waitingNoNext.id, 'Pat');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/review',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json<ReviewPage>();
+    expect(body.counts).toEqual({ noNextAction: 1, quiet: 0, waiting: 1 });
+    expect(
+      body.projects.find((item) => item.project.id === waitingNoNext.id)?.reasons
+    ).toEqual(['noNextAction', 'waiting']);
+  });
+
   it('lets a bot token read the same body as a person token', async () => {
     const { app } = await createTestAppWithWebAuthnAndDatabase();
     await createProject(app, 'House storage');

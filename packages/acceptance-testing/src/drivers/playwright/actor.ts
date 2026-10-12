@@ -3707,7 +3707,13 @@ export const createPlaywrightActor = (
     },
 
     async undoFromToast(message: string): Promise<void> {
+      const done = page.locator('[data-done-week]');
+      const doneVersion =
+        (await done.count()) > 0 ? await done.getAttribute('data-done-version') : null;
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
+      if (doneVersion !== null) {
+        await expect(done).not.toHaveAttribute('data-done-version', doneVersion);
+      }
     },
 
     async shouldSeeAlreadyProcessedNotice(): Promise<void> {

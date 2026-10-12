@@ -31,6 +31,7 @@ export const useReviewActions = () => {
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['review'] });
+    await queryClient.invalidateQueries({ queryKey: ['review', 'done'] });
     await invalidateLiveQueries(queryClient);
   };
 

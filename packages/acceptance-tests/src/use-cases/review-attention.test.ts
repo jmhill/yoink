@@ -240,15 +240,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('restores the earlier next action on Undo without a second saved toast', async () => {
       const seeded = await seedReview(alice);
-      const prior = await alice.getProject(seeded.quiet.id);
+      const prior = await alice.getProject(seeded.trusts.id);
       expect(prior.nextActionTaskId).toBeTruthy();
       await alice.useMobileViewport();
       await alice.openReview();
-      await alice.setReviewNextAction({ projectName: 'Quiet garden', title: 'Mulch the beds' });
+      await alice.setReviewNextAction({ projectName: 'Trusts', title: 'Email Mike' });
       await alice.shouldSeeUndoToast('Next action saved');
-      const created = await alice.listOpenTasksOnProject(seeded.quiet.id);
-      expect(created.map((task) => task.title)).toContain('Water plants');
-      expect(created.map((task) => task.title)).toContain('Mulch the beds');
+      const created = await alice.listOpenTasksOnProject(seeded.trusts.id);
+      expect(created.map((task) => task.title)).toContain('Call Mike');
+      expect(created.map((task) => task.title)).toContain('Email Mike');
       const undo = await alice.undoReviewNextActionFromToast('Next action saved');
       expect(undo.requestBody, JSON.stringify(undo)).toEqual({ taskId: prior.nextActionTaskId });
       expect(undo.status).toBe(200);
@@ -257,11 +257,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(undo.savedToastReappeared, JSON.stringify(undo)).toBe(false);
       await alice.shouldSeeToast('Next action restored');
       await alice.shouldNotSeeToast('Next action saved');
-      const after = await alice.getProject(seeded.quiet.id);
+      await alice.shouldSeeReviewItem({
+        name: 'Trusts',
+        section: 'waiting',
+        reasons: 'waiting',
+      });
+      const after = await alice.getProject(seeded.trusts.id);
       expect(after.nextActionTaskId).toBe(prior.nextActionTaskId);
-      const afterUndo = await alice.listOpenTasksOnProject(seeded.quiet.id);
-      expect(afterUndo.map((task) => task.title)).toContain('Water plants');
-      expect(afterUndo.map((task) => task.title)).not.toContain('Mulch the beds');
+      const afterUndo = await alice.listOpenTasksOnProject(seeded.trusts.id);
+      expect(afterUndo.map((task) => task.title)).toContain('Call Mike');
+      expect(afterUndo.map((task) => task.title)).not.toContain('Email Mike');
+      const listed = await alice.listReview();
+      const trusts = listed.projects.find((item) => item.project.name === 'Trusts');
+      expect(trusts?.nextAction?.title).toBe('Call Mike');
     }, 90_000);
 
     it('moves a quiet project to Waiting under the right group', async () => {

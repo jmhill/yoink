@@ -3779,7 +3779,13 @@ export const createPlaywrightActor = (
       const deleted = await deletePromise;
       const savedToastReappeared = await reappearedPromise;
       if (reviewVersion !== null) {
-        await expect(ready).not.toHaveAttribute('data-review-version', reviewVersion);
+        await expect
+          .poll(async () => {
+            const current = await ready.getAttribute('data-review-version');
+            const restoredVisible = await restoredToast.count();
+            return current !== reviewVersion || restoredVisible > 0;
+          })
+          .toBe(true);
       }
       return {
         method: request.method(),

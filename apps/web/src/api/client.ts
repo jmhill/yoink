@@ -1,6 +1,6 @@
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
 import { authContract, captureContract, listContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
-import { headersForApiRequest } from '@/lib/api-request-headers';
+import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
 import { tokenStorage } from '@/lib/token';
 
 /**
@@ -28,14 +28,10 @@ const redirectToLogin = () => {
  * See docs/PLAN.md Phase 7.7c for removal criteria.
  */
 const createApi = () => async (args: { path: string; method: string; headers: HeadersInit; body?: BodyInit | null }) => {
-  const headers = headersForApiRequest(args.headers, args.body);
-  
-  // Backwards compatibility: Include Bearer token if configured
-  // The server's combinedAuthMiddleware will prefer session cookies over tokens
-  const token = tokenStorage.get();
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+  const headers = withBearerAuthorization(
+    headersForApiRequest(args.headers, args.body),
+    tokenStorage.get()
+  );
 
   const response = await fetch(args.path, {
     method: args.method,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headersForApiRequest } from './api-request-headers';
+import { headersForApiRequest, withBearerAuthorization } from './api-request-headers';
 
 describe('headersForApiRequest', () => {
   it('drops Content-Type when the body is missing so Fastify accepts DELETE', () => {
@@ -28,6 +28,24 @@ describe('headersForApiRequest', () => {
     );
 
     expect(headers.get('Content-Type')).toBeNull();
+    expect(headers.get('Accept')).toBe('application/json');
+  });
+});
+
+describe('withBearerAuthorization', () => {
+  it('builds Authorization without mutating the input headers', () => {
+    const input = new Headers({ Accept: 'application/json' });
+    const headers = withBearerAuthorization(input, 'secret-token');
+
+    expect(headers.get('Authorization')).toBe('Bearer secret-token');
+    expect(headers.get('Accept')).toBe('application/json');
+    expect(input.get('Authorization')).toBeNull();
+  });
+
+  it('omits Authorization when there is no token', () => {
+    const headers = withBearerAuthorization(new Headers({ Accept: 'application/json' }), null);
+
+    expect(headers.get('Authorization')).toBeNull();
     expect(headers.get('Accept')).toBe('application/json');
   });
 });

@@ -3732,9 +3732,25 @@ export const createPlaywrightActor = (
       deletedBody: string | null;
       savedToastReappeared: boolean;
     }> {
-      const ready = page.locator('[data-review-ready]');
-      const reviewVersion =
-        (await ready.count()) > 0 ? await ready.getAttribute('data-review-version') : null;
+      const deletedJobs: Promise<{ url: string; status: number; body: string }>[] = [];
+      const onResponse = (response: {
+        request: () => { method: () => string };
+        url: () => string;
+        status: () => number;
+        text: () => Promise<string>;
+      }) => {
+        if (response.request().method() !== 'DELETE' || !/\/api\/tasks\//.test(response.url())) {
+          return;
+        }
+        deletedJobs.push(
+          response.text().then((body) => ({
+            url: response.url(),
+            status: response.status(),
+            body,
+          }))
+        );
+      };
+      page.on('response', onResponse);
       const requestPromise = page.waitForRequest(
         (request) =>
           request.method() === 'PUT' && /\/api\/projects\/[^/]+\/next-action/.test(request.url())
@@ -3744,18 +3760,6 @@ export const createPlaywrightActor = (
           response.request().method() === 'PUT' &&
           /\/api\/projects\/[^/]+\/next-action/.test(response.url())
       );
-      const deletePromise = page
-        .waitForResponse(
-          (response) =>
-            response.request().method() === 'DELETE' && /\/api\/tasks\//.test(response.url()),
-          { timeout: 8_000 }
-        )
-        .then(async (response) => ({
-          url: response.url(),
-          status: response.status(),
-          body: await response.text(),
-        }))
-        .catch(() => null);
       await visibleUndoToast(message).getByRole('button', { name: 'Undo' }).click();
       const request = await requestPromise;
       const response = await responsePromise;
@@ -3770,23 +3774,15 @@ export const createPlaywrightActor = (
       const restoredToast = page
         .locator('[data-sonner-toast]:not([data-removed="true"])')
         .filter({ hasText: 'Next action restored' });
-      const reappearedPromise = Promise.race([
-        visibleUndoToast(message)
-          .waitFor({ state: 'visible', timeout: 8_000 })
-          .then(() => true),
-        restoredToast.waitFor({ state: 'visible', timeout: 8_000 }).then(() => false),
-      ]).catch(() => false);
-      const deleted = await deletePromise;
-      const savedToastReappeared = await reappearedPromise;
-      if (reviewVersion !== null) {
-        await expect
-          .poll(async () => {
-            const current = await ready.getAttribute('data-review-version');
-            const restoredVisible = await restoredToast.count();
-            return current !== reviewVersion || restoredVisible > 0;
-          })
-          .toBe(true);
-      }
+      let savedToastReappeared = false;
+      void visibleUndoToast(message)
+        .waitFor({ state: 'visible' })
+        .then(() => {
+          savedToastReappeared = true;
+        });
+      await expect(restoredToast).toBeVisible();
+      page.off('response', onResponse);
+      const deleted = (await Promise.all(deletedJobs))[0] ?? null;
       return {
         method: request.method(),
         url: request.url(),

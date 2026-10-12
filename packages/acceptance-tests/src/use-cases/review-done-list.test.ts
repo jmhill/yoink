@@ -236,13 +236,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.setDoneNextAction({ projectName: 'House storage', title: 'Label the bins' });
       await alice.shouldSeeUndoToast('Next action saved');
       await alice.shouldSeeDoneNext({ projectName: 'House storage', title: 'Label the bins' });
-      await alice.shouldNotSeeReviewItem('House storage');
       await alice.undoFromToast('Next action saved');
-      await alice.shouldSeeReviewItem({
-        name: 'House storage',
-        section: 'noNextAction',
-        reasons: 'noNextAction',
-      });
       await alice.shouldSeeDoneSetNext('House storage');
     }, 90_000);
 

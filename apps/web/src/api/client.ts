@@ -1,5 +1,5 @@
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
-import { authContract, captureContract, listContract, organizationContract, projectContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
+import { authContract, captureContract, listContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
 import { tokenStorage } from '@/lib/token';
 
 /**
@@ -144,6 +144,14 @@ export const tsrProjects = initTsrReactQuery(projectContract, {
 });
 
 export const tsrWork = initTsrReactQuery(workContract, {
+  baseUrl: '',
+  baseHeaders: {
+    'Content-Type': 'application/json',
+  },
+  api: createApi(),
+});
+
+export const tsrReview = initTsrReactQuery(reviewContract, {
   baseUrl: '',
   baseHeaders: {
     'Content-Type': 'application/json',

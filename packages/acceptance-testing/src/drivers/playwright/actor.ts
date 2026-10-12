@@ -14,6 +14,8 @@ import type {
   NowOwner,
   NowQuery,
   NowNextActionsPage,
+  ReviewPage,
+  ReviewQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -243,6 +245,25 @@ const asNamedLists = (
       typeof (list as { name?: unknown }).name === 'string'
   );
 };
+
+const waitForReviewReady = async (page: Page): Promise<void> => {
+  await page.waitForURL((url) => new URL(url).pathname === '/projects');
+  await expect(page.locator('[data-review-ready]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
+};
+
+const expandAllProjectsList = async (page: Page): Promise<void> => {
+  const details = page.locator('[data-review-all-projects]');
+  await expect(details).toBeVisible();
+  const open = await details.getAttribute('open');
+  if (open === null) {
+    await details.locator('summary').click();
+  }
+  await expect(page.locator('[data-projects-index]')).toBeVisible();
+};
+
+const reviewItemByName = (page: Page, name: string) =>
+  page.locator('[data-review-item]').filter({ hasText: name });
 
 const asInboxCaptures = (
   body: unknown
@@ -2114,8 +2135,8 @@ export const createPlaywrightActor = (
       heldImportDiscardRelease = undefined;
       release?.();
       await page.waitForURL(/\/projects$/);
-      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
-      await expect(page.getByText('0 projects')).toBeVisible();
+      await waitForReviewReady(page);
+      await expect(page.getByText('Nothing needs attention')).toBeVisible();
       await page.unroute('**/api/projects/imports/*/discard');
     },
 
@@ -2475,6 +2496,7 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeNoNextActionOnAllProjects(name: string): Promise<void> {
+      await expandAllProjectsList(page);
       const row = page.locator('[data-projects-index] a').filter({ hasText: name });
       await expect(row.locator('[data-project-no-next-action]')).toBeVisible();
     },
@@ -2744,13 +2766,15 @@ export const createPlaywrightActor = (
 
     async goToAllProjects(): Promise<void> {
       await page.goto('/projects');
-      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+      await waitForReviewReady(page);
+      await expandAllProjectsList(page);
     },
 
     async shouldSeeProjectOnAllProjects(input: {
       name: string;
       status: string;
     }): Promise<void> {
+      await expandAllProjectsList(page);
       const item = page.locator('[data-projects-index] a').filter({ hasText: input.name });
       await expect(item).toBeVisible();
       await expect(item.locator('[data-project-index-status]')).toHaveAttribute(
@@ -3609,17 +3633,24 @@ export const createPlaywrightActor = (
         await route.continue();
       };
 
-      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      const ready = page.locator('[data-process-ready]');
+      const firstId = await ready.getAttribute('data-process-current');
       if (!firstId) {
         throw new Error('Process should show a current capture before Delete');
       }
       await page.route(isCaptureTrashPost, trashRoute);
       try {
-        await page.keyboard.press('Delete');
-        await expect(page.locator('[data-process-ready]')).toHaveAttribute(
-          'data-process-current',
-          firstId
+        const firstFail = page.waitForResponse(
+          (response) =>
+            isCaptureTrashPost(new URL(response.url())) &&
+            response.request().method() === 'POST' &&
+            response.status() === 500
         );
+        await page.keyboard.press('Delete');
+        await expect(ready).toHaveAttribute('data-process-key-lock', '');
+        await firstFail;
+        await expect(ready).toHaveAttribute('data-process-current', firstId);
+        await expect(ready).not.toHaveAttribute('data-process-key-lock');
         const second = page.waitForResponse(
           (response) =>
             isCaptureTrashPost(new URL(response.url())) &&
@@ -3752,6 +3783,167 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-now-ready]')).toBeVisible();
     },
 
+    async openReview(): Promise<void> {
+      await page.goto('/projects');
+      await waitForReviewReady(page);
+    },
+
+    async shouldSeeReviewReady(): Promise<void> {
+      await waitForReviewReady(page);
+    },
+
+    async shouldSeeReviewEmpty(): Promise<void> {
+      await expect(page.locator('[data-review-empty]')).toHaveText('Nothing needs attention');
+    },
+
+    async shouldSeeReviewSubcopy(text: string): Promise<void> {
+      await expect(page.getByTestId('review-subcopy')).toHaveText(text);
+    },
+
+    async shouldSeeReviewSection(section: 'noNextAction' | 'quiet' | 'waiting'): Promise<void> {
+      await expect(page.locator(`[data-review-section="${section}"]`)).toBeVisible();
+    },
+
+    async shouldSeeReviewItem(input: {
+      name: string;
+      section: 'noNextAction' | 'quiet' | 'waiting';
+      reasons: string;
+    }): Promise<void> {
+      const section = page.locator(`[data-review-section="${input.section}"]`);
+      const row = section.locator('[data-review-item]').filter({ hasText: input.name });
+      await expect(row).toBeVisible();
+      await expect(row).toHaveAttribute('data-review-reasons', input.reasons);
+    },
+
+    async shouldNotSeeReviewItem(name: string): Promise<void> {
+      await expect(reviewItemByName(page, name)).toHaveCount(0);
+    },
+
+    async shouldSeeReviewWaitingGroup(input: { label: string; names: string[] }): Promise<void> {
+      const group = page.locator('[data-review-waiting-group]').filter({ hasText: input.label });
+      await expect(group).toBeVisible();
+      for (const name of input.names) {
+        await expect(group.locator('[data-review-item]').filter({ hasText: name })).toBeVisible();
+      }
+    },
+
+    async shouldSeeReviewRowCopy(name: string, copy: string): Promise<void> {
+      await expect(reviewItemByName(page, name).locator('[data-review-row-copy]')).toHaveText(copy);
+    },
+
+    async setReviewNextAction(input: { projectName: string; title: string }): Promise<void> {
+      const ready = page.locator('[data-review-ready]');
+      const version = await ready.getAttribute('data-review-version');
+      const picker = page.locator('[data-next-action-picker]');
+      if ((await picker.count()) === 0) {
+        await reviewItemByName(page, input.projectName)
+          .locator('[data-review-set-next]')
+          .click();
+      }
+      await expect(picker).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+      await page.locator('[data-next-action-new-title]').fill(input.title);
+      await page.locator('[data-next-action-create]').click();
+      await expect(picker).toHaveCount(0);
+      await expect(ready).not.toHaveAttribute('data-review-version', version ?? '');
+      await expect(page).toHaveURL(/\/projects$/);
+    },
+
+    async changeReviewStatusToWaiting(input: {
+      projectName: string;
+      waitingOn: string;
+      waitingSince: string;
+    }): Promise<void> {
+      const ready = page.locator('[data-review-ready]');
+      const version = await ready.getAttribute('data-review-version');
+      const sheet = page.locator('[data-review-change-status-sheet]');
+      if ((await sheet.count()) === 0) {
+        await reviewItemByName(page, input.projectName)
+          .locator('[data-review-change-status]')
+          .click();
+      }
+      await expect(sheet).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+      await sheet.locator('[data-project-status-trigger]').click();
+      await waitForSettledOpenSelect({ page, visibleOptionName: 'Waiting' });
+      await page.locator('[data-project-status-option="waiting"]').click();
+      const waitingOn = page.locator('[data-project-waiting-on]');
+      await expect(waitingOn).toBeVisible();
+      await waitingOn.fill(input.waitingOn);
+      await page.locator('[data-project-waiting-since]').fill(input.waitingSince);
+      await page.locator('[data-project-waiting-save]').click();
+      await expect(ready).not.toHaveAttribute('data-review-version', version ?? '');
+      await expect(page).toHaveURL(/\/projects$/);
+    },
+
+    async expandAllProjects(): Promise<void> {
+      await expandAllProjectsList(page);
+    },
+
+    async shouldSeeReviewBadge(count: number): Promise<void> {
+      await expect(page.locator('[data-review-badge]').first()).toHaveText(String(count));
+    },
+
+    async shouldNotSeeReviewBadge(): Promise<void> {
+      await expect(page.locator('[data-review-badge]')).toHaveCount(0);
+    },
+
+    async openReviewSetNextAction(projectName: string): Promise<void> {
+      await reviewItemByName(page, projectName).locator('[data-review-set-next]').click();
+      await expect(page.locator('[data-next-action-picker]')).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+    },
+
+    async openReviewChangeStatus(projectName: string): Promise<void> {
+      await reviewItemByName(page, projectName).locator('[data-review-change-status]').click();
+      await expect(page.locator('[data-review-change-status-sheet]')).toBeVisible();
+      if (await page.locator('[data-slot="dialog-content"][data-state="open"]').isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page });
+      } else {
+        await waitForSettledOpenDrawer({ page });
+      }
+    },
+
+    async scrollReviewWaitingIntoView(): Promise<void> {
+      const section = page.locator('[data-review-section="waiting"]');
+      await expect(section).toBeVisible();
+      const heading = section.getByRole('heading', { name: 'Waiting', exact: true });
+      await heading.evaluate((node) => {
+        node.scrollIntoView({ block: 'start', inline: 'nearest' });
+      });
+      const groups = section.locator('[data-review-waiting-group]');
+      await expect.poll(async () => groups.count()).toBeGreaterThan(1);
+      await expect(groups.first()).toBeVisible();
+      await groups.first().evaluate((node) => {
+        node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      const viewport = page.viewportSize();
+      const headingBox = await heading.boundingBox();
+      const firstGroupBox = await groups.first().boundingBox();
+      expect(headingBox, 'Waiting heading should be in the viewport').not.toBeNull();
+      expect(firstGroupBox, 'Waiting groups should be in the viewport').not.toBeNull();
+      if (headingBox !== null && viewport !== null) {
+        expect(headingBox.y).toBeLessThan(viewport.height - 40);
+        expect(headingBox.y + headingBox.height).toBeGreaterThan(0);
+      }
+      if (firstGroupBox !== null && viewport !== null) {
+        expect(firstGroupBox.y).toBeLessThan(viewport.height - 40);
+        expect(firstGroupBox.y + firstGroupBox.height).toBeGreaterThan(0);
+      }
+    },
+
     async shouldSeeReviewNewProject(): Promise<void> {
       await expect(page.locator('[data-review-new-project]')).toBeVisible();
     },
@@ -3794,14 +3986,19 @@ export const createPlaywrightActor = (
     },
 
     async openProjectFromIndex(name: string): Promise<void> {
-      await page.locator('[data-projects-index] a').filter({ hasText: name }).click();
+      const reviewRow = reviewItemByName(page, name).locator('a').first();
+      if (await reviewRow.isVisible().catch(() => false)) {
+        await reviewRow.click();
+      } else {
+        await expandAllProjectsList(page);
+        await page.locator('[data-projects-index] a').filter({ hasText: name }).click();
+      }
       await projectPage.waitForVisible();
     },
 
     async openAllProjectsBackLink(): Promise<void> {
       await page.locator('[data-part="back-link"]').click();
-      await page.waitForURL((url) => new URL(url).pathname === '/projects');
-      await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+      await waitForReviewReady(page);
     },
 
     async openProcess(): Promise<void> {
@@ -4571,6 +4768,47 @@ export const createPlaywrightActor = (
         throw new Error(`Failed to list work lists: ${response.status()}`);
       }
       return response.json();
+    },
+
+    async listReview(query?: ReviewQuery): Promise<ReviewPage> {
+      const params = new URLSearchParams();
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await page.request.get(`/api/review${encoded}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to list review: ${response.status()}`);
+      }
+      return response.json();
+    },
+
+    async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {
+      const response = await page.request.post('/api/test/review-fixture/backdate', {
+        data: { projectId, occurredAt },
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid backdate');
+      }
+      if (response.status() !== 204) {
+        throw new Error(`Failed to backdate review project: ${response.status()}`);
+      }
     },
 
     async getTask(id: string): Promise<Task> {

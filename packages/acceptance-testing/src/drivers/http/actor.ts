@@ -12,6 +12,8 @@ import type {
   NowOwner,
   NowQuery,
   NowNextActionsPage,
+  ReviewPage,
+  ReviewQuery,
   TaskListPage,
   WorkListsPage,
   NowNextActionRow,
@@ -1560,6 +1562,84 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeProjectOnAllProjects', 'http');
     },
 
+    async openReview(): Promise<void> {
+      throw new UnsupportedOperationError('openReview', 'http');
+    },
+
+    async shouldSeeReviewReady(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewReady', 'http');
+    },
+
+    async shouldSeeReviewEmpty(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewEmpty', 'http');
+    },
+
+    async shouldSeeReviewSubcopy(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewSubcopy', 'http');
+    },
+
+    async shouldSeeReviewSection(
+      _section: 'noNextAction' | 'quiet' | 'waiting'
+    ): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewSection', 'http');
+    },
+
+    async shouldSeeReviewItem(_input: {
+      name: string;
+      section: 'noNextAction' | 'quiet' | 'waiting';
+      reasons: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewItem', 'http');
+    },
+
+    async shouldNotSeeReviewItem(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeReviewItem', 'http');
+    },
+
+    async shouldSeeReviewWaitingGroup(_input: { label: string; names: string[] }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewWaitingGroup', 'http');
+    },
+
+    async shouldSeeReviewRowCopy(_name: string, _copy: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewRowCopy', 'http');
+    },
+
+    async setReviewNextAction(_input: { projectName: string; title: string }): Promise<void> {
+      throw new UnsupportedOperationError('setReviewNextAction', 'http');
+    },
+
+    async changeReviewStatusToWaiting(_input: {
+      projectName: string;
+      waitingOn: string;
+      waitingSince: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('changeReviewStatusToWaiting', 'http');
+    },
+
+    async expandAllProjects(): Promise<void> {
+      throw new UnsupportedOperationError('expandAllProjects', 'http');
+    },
+
+    async shouldSeeReviewBadge(_count: number): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewBadge', 'http');
+    },
+
+    async shouldNotSeeReviewBadge(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeReviewBadge', 'http');
+    },
+
+    async openReviewSetNextAction(_projectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openReviewSetNextAction', 'http');
+    },
+
+    async openReviewChangeStatus(_projectName: string): Promise<void> {
+      throw new UnsupportedOperationError('openReviewChangeStatus', 'http');
+    },
+
+    async scrollReviewWaitingIntoView(): Promise<void> {
+      throw new UnsupportedOperationError('scrollReviewWaitingIntoView', 'http');
+    },
+
     async shouldSeeEditTaskDialogSubtitle(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeEditTaskDialogSubtitle', 'http');
     },
@@ -2375,6 +2455,52 @@ export const createHttpActor = (
         throw new Error(`Failed to list work lists: ${response.body}`);
       }
       return response.json<WorkListsPage>();
+    },
+
+    async listReview(query?: ReviewQuery): Promise<ReviewPage> {
+      const params = new URLSearchParams();
+      if (query?.timeZone) {
+        params.set('timeZone', query.timeZone);
+      }
+      if (query?.limit !== undefined) {
+        params.set('limit', String(query.limit));
+      }
+      if (query?.cursor) {
+        params.set('cursor', query.cursor);
+      }
+      const encoded = params.toString() ? `?${params.toString()}` : '';
+      const response = await client.get(`/api/review${encoded}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list review: ${response.body}`);
+      }
+      return response.json<ReviewPage>();
+    },
+
+    async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {
+      const response = await client.post(
+        '/api/test/review-fixture/backdate',
+        { projectId, occurredAt },
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        throw new ValidationError('Invalid backdate');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode !== 204) {
+        throw new Error(`Failed to backdate review project: ${response.body}`);
+      }
     },
 
     async getTask(id: string): Promise<Task> {

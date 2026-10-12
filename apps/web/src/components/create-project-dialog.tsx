@@ -41,6 +41,7 @@ export function CreateProjectDialog({
       setFormError(null);
       onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['review'] });
       onCreated({ id: result.body.id, name: result.body.name });
     },
     onError: (err) => {

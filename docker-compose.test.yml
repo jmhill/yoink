@@ -19,6 +19,7 @@ services:
       - WEBAUTHN_RP_NAME=Yoink Test
       - WEBAUTHN_ORIGIN=http://localhost:3333
       - WEBAUTHN_CHALLENGE_SECRET=test-challenge-secret-min-32-chars-long-for-hmac
+      - YOINK_TEST_FIXTURES=true
     ports:
       - "3333:3000"
     volumes:

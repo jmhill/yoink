@@ -13,6 +13,8 @@ import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
 import { registerProjectRoutes } from './projects/infrastructure/http-project-routes.js';
 import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
 import { registerWorkRoutes } from './work/infrastructure/http-work-routes.js';
+import { registerReviewRoutes } from './review/infrastructure/http-review-routes.js';
+import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
 import {
   registerAdminRoutes,
   registerInvitationRoutes,
@@ -32,6 +34,7 @@ import type { HistoryHandlers } from './history/application/create-history-handl
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
 import type { WorkHandlers } from './work/application/create-work-handlers.js';
+import type { ReviewHandlers } from './review/application/create-review-handlers.js';
 import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
 import type { HealthChecker } from './health/domain/health-checker.js';
 import type {
@@ -51,6 +54,7 @@ import type {
 // auth-routes should stop needing an OrganizationStore dependency
 import type { OrganizationStore } from './access/domain/organization-store.js';
 import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
+import type { Database } from './database/types.js';
 import { createLoggerOptions } from './logging/index.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -80,6 +84,9 @@ export type AppDependencies = {
   taskService: TaskService;
   taskHandlers: TaskHandlers;
   workHandlers: WorkHandlers;
+  reviewHandlers: ReviewHandlers;
+  enableTestFixtures?: boolean;
+  database?: Database;
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
   healthChecker: HealthChecker;
@@ -159,6 +166,16 @@ export const createApp = async (deps: AppDependencies) => {
     workHandlers: deps.workHandlers,
     authMiddleware: deps.authMiddleware,
   });
+  await registerReviewRoutes(app, {
+    reviewHandlers: deps.reviewHandlers,
+    authMiddleware: deps.authMiddleware,
+  });
+  if (deps.enableTestFixtures && deps.database) {
+    await registerReviewFixtureRoutes(app, {
+      authMiddleware: deps.authMiddleware,
+      db: deps.database,
+    });
+  }
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {

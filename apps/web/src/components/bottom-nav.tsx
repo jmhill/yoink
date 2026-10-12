@@ -1,9 +1,16 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { cn } from '@yoink/ui-base/lib/utils';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
-import { tsr } from '@/api/client';
+import { tsr, tsrReview } from '@/api/client';
 import { AppRailPanel } from '@/components/app-rail-panel';
-import { MOBILE_TABS, activeMobileTab, processBadgeCount } from '@/lib/mobile-tabs';
+import {
+  MOBILE_TABS,
+  activeMobileTab,
+  processBadgeCount,
+  reviewBadgeCount,
+} from '@/lib/mobile-tabs';
+import { reviewAttentionCount } from '@/lib/review-sections';
+import { viewerTimeZone } from '@/lib/viewer-today';
 
 export function AppNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -14,6 +21,12 @@ export function AppNav() {
   });
   const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const processBadge = processBadgeCount(inboxCount);
+  const { data: reviewData } = tsrReview.list.useQuery({
+    queryKey: ['review'],
+    queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
+  });
+  const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
+  const reviewBadge = reviewBadgeCount(reviewAttentionCount(reviewProjects));
 
   return (
     <>
@@ -27,7 +40,12 @@ export function AppNav() {
             {MOBILE_TABS.map((item) => {
               const lit = active === item.key;
               const Icon = item.icon;
-              const badge = item.key === 'process' ? processBadge : null;
+              const badge =
+                item.key === 'process'
+                  ? processBadge
+                  : item.key === 'review'
+                    ? reviewBadge
+                    : null;
 
               return (
                 <Link
@@ -47,7 +65,8 @@ export function AppNav() {
                     <Icon className="h-6 w-6" />
                     {badge !== null ? (
                       <span
-                        data-process-badge={badge}
+                        data-process-badge={item.key === 'process' ? badge : undefined}
+                        data-review-badge={item.key === 'review' ? badge : undefined}
                         className="absolute -right-3 -top-1 min-w-4 rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground tabular-nums"
                       >
                         {badge}

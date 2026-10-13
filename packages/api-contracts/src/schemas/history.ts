@@ -120,12 +120,14 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('NoteCreated'),
     title: z.string(),
+    origin: z.literal('obsidian').optional(),
   }),
   z.object({
     kind: z.literal('NoteUpdated'),
     title: z.string(),
     titleChanged: z.boolean(),
     bodyChanged: z.boolean(),
+    origin: z.literal('obsidian').optional(),
   }),
   z.object({
     kind: z.literal('NoteDeleted'),

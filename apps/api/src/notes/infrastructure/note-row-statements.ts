@@ -14,6 +14,19 @@ export const NOTE_FROM = `
   LEFT JOIN users updated ON updated.id = n.updated_by
 `;
 
+export const NOTE_CHANGE_SELECT_COLUMNS = `
+  ${NOTE_SELECT_COLUMNS},
+  n.deleted_at,
+  p.name AS project_name
+`;
+
+export const NOTE_CHANGE_FROM = `
+  project_notes n
+  LEFT JOIN users created ON created.id = n.created_by
+  LEFT JOIN users updated ON updated.id = n.updated_by
+  JOIN projects p ON p.id = n.project_id
+`;
+
 export const insertNoteQuery = (note: Note): SqlQuery => ({
   sql: `
     INSERT INTO project_notes (

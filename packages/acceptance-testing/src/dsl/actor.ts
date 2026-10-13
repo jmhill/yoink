@@ -9,6 +9,7 @@ import type {
   ImportProject,
   Note,
   NoteListPage,
+  NoteChangePage,
   StagedImport,
   Task,
   NowOwner,
@@ -144,6 +145,14 @@ export type CoreActor = {
     input: { title?: string; body?: string; expectedVersion: string }
   ): Promise<Note>;
   deleteNote(projectId: string, noteId: string): Promise<void>;
+  listNotesChanged(query: { since: string; limit?: number; cursor?: string }): Promise<NoteChangePage>;
+  importNoteFromObsidian(input: {
+    projectId: string;
+    noteId?: string;
+    title: string;
+    body: string;
+    baseVersion?: string;
+  }): Promise<Note>;
   listTaskHistory(
     taskId: string,
     query?: { limit?: number; cursor?: string }

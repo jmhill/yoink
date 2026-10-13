@@ -13,6 +13,7 @@ import { createSqliteListPersist } from './lists/infrastructure/store-backed-per
 import { createProjectHandlers } from './projects/application/create-project-handlers.js';
 import { createNoteHandlers } from './notes/application/create-note-handlers.js';
 import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
+import { loadOrgPersonFromSqlite } from './notes/infrastructure/load-org-person.js';
 import { storageError as noteStorageError } from './notes/domain/note-errors.js';
 import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
 import {
@@ -450,6 +451,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
             'message' in error && typeof error.message === 'string' ? error.message : error.type
           )
         ),
+    loadOrgPerson: loadOrgPersonFromSqlite(database),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
     logger: commandLogger,

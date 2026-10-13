@@ -49,6 +49,7 @@ import { migration as addNotebookPagesAndProjectImports } from './034-add-notebo
 import { migration as addOrganizationTimeZone } from './035-add-organization-time-zone.js';
 import { migration as addProjectNotes } from './036-add-project-notes.js';
 import { migration as addProjectProposals } from './037-add-project-proposals.js';
+import { migration as notesChangedSinceIndex } from './038-notes-changed-since-index.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -88,6 +89,7 @@ export const migrations: Migration[] = [
   addOrganizationTimeZone,
   addProjectNotes,
   addProjectProposals,
+  notesChangedSinceIndex,
 ];
 
 export type { Migration };

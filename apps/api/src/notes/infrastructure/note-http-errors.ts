@@ -48,6 +48,12 @@ export const noteRequestValidationError = (err: RequestValidationErr): NoteHttpE
   if (issue.path === 'expectedVersion') {
     return { message: 'expectedVersion is required', code: 'VALIDATION_FAILED' };
   }
+  if (issue.path === 'baseVersion') {
+    return { message: 'baseVersion is required when updating an existing note', code: 'VALIDATION_FAILED' };
+  }
+  if (issue.path === 'since') {
+    return { message: 'since must be an ISO timestamp', code: 'VALIDATION_FAILED' };
+  }
 
   return { message: 'Request validation failed', code: 'VALIDATION_FAILED' };
 };

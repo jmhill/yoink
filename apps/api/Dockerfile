@@ -27,6 +27,7 @@ COPY packages/ui-base/package.json ./packages/ui-base/
 COPY apps/api/package.json ./apps/api/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/web/package.json ./apps/web/
+COPY tools/notes-mirror/package.json ./tools/notes-mirror/
 
 # Install dependencies with cache mount for pnpm store
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
@@ -39,6 +40,7 @@ COPY packages/ui-base/ ./packages/ui-base/
 COPY apps/api/ ./apps/api/
 COPY apps/admin/ ./apps/admin/
 COPY apps/web/ ./apps/web/
+COPY tools/notes-mirror/ ./tools/notes-mirror/
 
 # Build all packages using Turborepo with cache mount
 RUN --mount=type=cache,id=turbo,target=/app/.turbo \
@@ -60,6 +62,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/infrastructure/package.json ./packages/infrastructure/
 COPY packages/api-contracts/package.json ./packages/api-contracts/
 COPY apps/api/package.json ./apps/api/
+COPY tools/notes-mirror/package.json ./tools/notes-mirror/
 
 # Install production dependencies only (ignore prepare script which runs husky)
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \

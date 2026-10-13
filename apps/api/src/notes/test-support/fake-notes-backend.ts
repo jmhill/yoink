@@ -2,6 +2,7 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Note, NoteListItem } from '@yoink/api-contracts';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { NoteChangeRow } from '../domain/note-change-row.js';
 import {
   staleNoteError,
   type StaleNoteError,
@@ -19,6 +20,13 @@ const byRecency = (left: StoredNote, right: StoredNote): number => {
     return right.updatedAt < left.updatedAt ? -1 : 1;
   }
   return right.id < left.id ? -1 : 1;
+};
+
+const byOldestChange = (left: StoredNote, right: StoredNote): number => {
+  if (left.updatedAt !== right.updatedAt) {
+    return left.updatedAt < right.updatedAt ? -1 : 1;
+  }
+  return left.id < right.id ? -1 : 1;
 };
 
 const visible = (notes: readonly StoredNote[], organizationId: string, projectId: string) =>
@@ -49,7 +57,10 @@ const pageNotes = (
   };
 };
 
-export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
+export const createFakeNotesBackend = (
+  initial: Note[] = [],
+  options: { projectNameOf?: (projectId: string) => string } = {}
+): NotesBackend => {
   let notes: readonly StoredNote[] = initial.map((note) => ({
     ...note,
     deletedAt: null,
@@ -78,7 +89,9 @@ export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
 
     if (plan.action === 'delete') {
       notes = notes.map((note) =>
-        note.id === current.id ? { ...current, deletedAt: plan.deletedAt } : note
+        note.id === current.id
+          ? { ...current, deletedAt: plan.deletedAt, updatedAt: plan.deletedAt }
+          : note
       );
       return okAsync(undefined);
     }
@@ -102,12 +115,46 @@ export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
 
   return {
     nextVersion: nextBuiltInNoteVersion,
-    list: (options) => {
-      const items = visible(notes, options.organizationId, options.projectId)
+    list: (listOptions) => {
+      const items = visible(notes, listOptions.organizationId, listOptions.projectId)
         .slice()
         .sort(byRecency)
         .map(toNoteListItem);
-      return okAsync(pageNotes(items, options.fetchLimit, options.seek));
+      return okAsync(pageNotes(items, listOptions.fetchLimit, listOptions.seek));
+    },
+    listChangedSince: (changeOptions) => {
+      const matching = notes
+        .filter(
+          (note) =>
+            note.organizationId === changeOptions.organizationId &&
+            note.updatedAt >= changeOptions.since
+        )
+        .slice()
+        .sort(byOldestChange);
+      const afterSeek = matching.filter((note) => {
+        if (!changeOptions.seek || changeOptions.seek.view !== 'notes.changed') {
+          return true;
+        }
+        const [updatedAt, id] = changeOptions.seek.keys;
+        return note.updatedAt > updatedAt || (note.updatedAt === updatedAt && note.id > id);
+      });
+      const rows: NoteChangeRow[] = afterSeek.slice(0, changeOptions.fetchLimit).map((note) => ({
+        id: note.id,
+        organizationId: note.organizationId,
+        projectId: note.projectId,
+        projectName: options.projectNameOf?.(note.projectId) ?? 'Project',
+        title: note.title,
+        body: note.body,
+        version: note.version,
+        createdAt: note.createdAt,
+        createdById: note.createdById,
+        createdByName: note.createdByName,
+        updatedAt: note.updatedAt,
+        updatedById: note.updatedById,
+        updatedByName: note.updatedByName,
+        deletedAt: note.deletedAt,
+      }));
+      return okAsync({ rows, total: matching.length });
     },
     get: (input) =>
       okAsync(

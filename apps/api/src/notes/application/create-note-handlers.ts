@@ -3,7 +3,9 @@ import { handleUpdateNote } from './handle-update-note.js';
 import { handleDeleteNote } from './handle-delete-note.js';
 import { handleListNotes } from './handle-list-notes.js';
 import { handleGetNote } from './handle-get-note.js';
-import type { LoadActorName, LoadProject, NotesBackend } from './ports.js';
+import { handleListNotesChanged } from './handle-list-notes-changed.js';
+import { handleImportNote } from './handle-import-note.js';
+import type { LoadActorName, LoadOrgPerson, LoadProject, NotesBackend } from './ports.js';
 import {
   withCommandLog,
   type CommandLogger,
@@ -13,6 +15,7 @@ export type NoteHandlerDeps = {
   backend: NotesBackend;
   loadProject: LoadProject;
   loadActorName: LoadActorName;
+  loadOrgPerson: LoadOrgPerson;
   nextId: () => string;
   now: () => string;
   logger: CommandLogger;
@@ -53,6 +56,19 @@ export const createNoteHandlers = (deps: NoteHandlerDeps) => ({
       },
       (result) => [result.event.type],
       () => handleDeleteNote(command, deps)
+    ),
+  listChanged: (query: Parameters<typeof handleListNotesChanged>[0]) =>
+    handleListNotesChanged(query, deps),
+  importFromObsidian: (command: Parameters<typeof handleImportNote>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'ImportNoteFromObsidian',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => (result.event.type === 'unchanged' ? [] : [result.event.type]),
+      () => handleImportNote(command, deps)
     ),
 });
 

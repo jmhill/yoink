@@ -278,8 +278,14 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
       return `${who} · Moved in · ${tasks}`;
     }
     case 'NoteCreated':
+      if (entry.details.origin === 'obsidian') {
+        return `${who} edited this note in Obsidian`;
+      }
       return `${who} added the note ${quoted(entry.details.title)}`;
     case 'NoteUpdated': {
+      if (entry.details.origin === 'obsidian') {
+        return `${who} edited this note in Obsidian`;
+      }
       const fields = [
         ...(entry.details.titleChanged ? ['the title'] : []),
         ...(entry.details.bodyChanged ? ['the body'] : []),

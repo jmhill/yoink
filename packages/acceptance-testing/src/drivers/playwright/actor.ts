@@ -10,6 +10,7 @@ import type {
   NamedList,
   Note,
   NoteListPage,
+  NoteChangePage,
   Project,
   StagedImport,
   Task,
@@ -54,6 +55,7 @@ import {
   ImportInvalidError,
   ConflictError,
   StaleNoteError,
+  NoteSyncConflictError,
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
   LastAdminError,
@@ -1234,6 +1236,66 @@ export const createPlaywrightActor = (
       if (response.status() !== 204) {
         throw new Error(`Failed to delete note: ${response.status()}`);
       }
+    },
+
+    async listNotesChanged(query: {
+      since: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<NoteChangePage> {
+      const qs = new URLSearchParams({ since: query.since });
+      if (query.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query.cursor) qs.set('cursor', query.cursor);
+      const response = await page.request.get(`/api/notes/changed?${qs.toString()}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list notes changed: ${response.status()}`);
+      }
+      return (await response.json()) as NoteChangePage;
+    },
+
+    async importNoteFromObsidian(input: {
+      projectId: string;
+      noteId?: string;
+      title: string;
+      body: string;
+      baseVersion?: string;
+    }): Promise<Note> {
+      const response = await page.request.post('/api/notes/import', { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        const body = (await response.json()) as { message?: string };
+        throw new ForbiddenError(body.message ?? 'Forbidden');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Note', input.noteId ?? input.projectId);
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as {
+          message?: string;
+          currentVersion?: string;
+          title?: string;
+          body?: string;
+          updatedAt?: string;
+          updatedByName?: string;
+        };
+        throw new NoteSyncConflictError({
+          message: body.message ?? 'This note changed in Yoink since the Obsidian file was last synced',
+          currentVersion: body.currentVersion ?? '',
+          title: body.title ?? '',
+          body: body.body ?? '',
+          updatedAt: body.updatedAt ?? '',
+          updatedByName: body.updatedByName ?? '',
+        });
+      }
+      if (response.status() !== 200 && response.status() !== 201) {
+        throw new Error(`Failed to import note: ${response.status()}`);
+      }
+      return (await response.json()) as Note;
     },
 
     async createNamedList(name: string): Promise<NamedList> {

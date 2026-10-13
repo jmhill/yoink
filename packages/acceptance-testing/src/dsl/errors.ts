@@ -89,6 +89,30 @@ export class ConflictError extends DslError {
   }
 }
 
+export class NoteSyncConflictError extends ConflictError {
+  readonly currentVersion: string;
+  readonly title: string;
+  readonly body: string;
+  readonly updatedAt: string;
+  readonly updatedByName: string;
+
+  constructor(input: {
+    message: string;
+    currentVersion: string;
+    title: string;
+    body: string;
+    updatedAt: string;
+    updatedByName: string;
+  }) {
+    super(input.message);
+    this.currentVersion = input.currentVersion;
+    this.title = input.title;
+    this.body = input.body;
+    this.updatedAt = input.updatedAt;
+    this.updatedByName = input.updatedByName;
+  }
+}
+
 export class StaleNoteError extends ConflictError {
   readonly currentVersion: string;
   readonly updatedAt: string;

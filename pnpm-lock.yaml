@@ -436,6 +436,16 @@ importers:
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.31)
 
+  tools/notes-mirror:
+    dependencies:
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.7
+        version: 22.20.1
+
 packages:
 
   '@ampproject/remapping@2.3.0':

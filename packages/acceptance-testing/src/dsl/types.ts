@@ -83,6 +83,24 @@ export type NoteListPage = {
   total: number;
 };
 
+export type NoteChange =
+  | (Note & { kind: 'upserted'; projectName: string })
+  | {
+      kind: 'deleted';
+      id: string;
+      projectId: string;
+      projectName: string;
+      createdAt: string;
+      deletedAt: string;
+    };
+
+export type NoteChangePage = {
+  changes: NoteChange[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+};
+
 export type TimelineEntry = {
   id: string;
   kind: string;

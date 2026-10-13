@@ -177,6 +177,92 @@ export const registerNoteRoutes = async (
         );
       },
 
+      listChanged: async ({ query, request }) => {
+        const result = await noteHandlers.listChanged({
+          organizationId: request.authContext.organizationId,
+          since: query.since,
+          limit: query.limit,
+          cursor: query.cursor,
+        });
+        return result.match(
+          (page) => ({
+            status: 200 as const,
+            body: page,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'INVALID_CURSOR':
+                return invalidCursorHttp(error);
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      importFromObsidian: async ({ body, request }) => {
+        const result = await noteHandlers.importFromObsidian({
+          organizationId: request.authContext.organizationId,
+          projectId: body.projectId,
+          noteId: body.noteId,
+          title: body.title,
+          body: body.body,
+          baseVersion: body.baseVersion,
+          actor: request.authContext.actor,
+        });
+        return result.match(
+          ({ view, created }) => ({
+            status: created ? (201 as const) : (200 as const),
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'NOTE_TITLE_BLANK':
+              case 'NOTE_TITLE_TOO_LONG':
+              case 'NOTE_BODY_TOO_LONG':
+                return {
+                  status: 400 as const,
+                  body: noteErrorBody(error),
+                };
+              case 'NOTE_IMPORT_REQUIRES_BOT':
+              case 'NOTE_SYNC_NO_PERSON':
+                return {
+                  status: 403 as const,
+                  body: noteErrorBody(error),
+                };
+              case 'NOTE_NOT_FOUND':
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: noteErrorBody(error),
+                };
+              case 'NOTE_SYNC_CONFLICT':
+                return {
+                  status: 409 as const,
+                  body: {
+                    message: error.message,
+                    code: 'NOTE_SYNC_CONFLICT' as const,
+                    currentVersion: error.currentVersion,
+                    title: error.title,
+                    body: error.body,
+                    updatedAt: error.updatedAt,
+                    updatedById: error.updatedById,
+                    updatedByName: error.updatedByName,
+                  },
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
       delete: async ({ params, request }) => {
         const result = await noteHandlers.delete({
           noteId: params.noteId,

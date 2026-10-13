@@ -1,0 +1,28 @@
+{
+  "name": "@yoink/notes-mirror",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "yoink-notes-mirror": "./dist/infrastructure/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "neverthrow": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7"
+  }
+}

@@ -58,6 +58,7 @@ const runNotesBackendContract = (
         backend,
         loadProject: (id) => okAsync(id === projectId ? project : null),
         loadActorName: () => okAsync('Lane'),
+        loadOrgPerson: () => okAsync({ userId, name: 'Lane' }),
         nextId: () => {
           ids += 1;
           return `00000000-0000-4000-8000-${String(ids).padStart(12, '0')}`;
@@ -200,6 +201,135 @@ const runNotesBackendContract = (
       expect(listed.isOk()).toBe(true);
       if (listed.isOk()) {
         expect(listed.value.total).toBe(0);
+      }
+    });
+
+    it('lists changes since a timestamp including tombstones in stable order', async () => {
+      const api = handlers();
+      const first = await api.create({
+        projectId,
+        organizationId: orgId,
+        title: 'Older',
+        actor,
+      });
+      const second = await api.create({
+        projectId,
+        organizationId: orgId,
+        title: 'Newer',
+        actor,
+      });
+      expect(first.isOk() && second.isOk()).toBe(true);
+      if (!first.isOk() || !second.isOk()) {
+        return;
+      }
+      await api.delete({
+        noteId: first.value.view.id,
+        projectId,
+        organizationId: orgId,
+        actor,
+      });
+
+      const page = await api.listChanged({
+        organizationId: orgId,
+        since: '2026-10-12T18:00:00.000Z',
+        limit: 1,
+      });
+      expect(page.isOk()).toBe(true);
+      if (page.isOk()) {
+        expect(page.value.total).toBe(2);
+        expect(page.value.hasMore).toBe(true);
+        expect(page.value.nextCursor).toBeTruthy();
+        const next = await api.listChanged({
+          organizationId: orgId,
+          since: '2026-10-12T18:00:00.000Z',
+          limit: 1,
+          cursor: page.value.nextCursor ?? undefined,
+        });
+        expect(next.isOk()).toBe(true);
+        if (next.isOk()) {
+          const kinds = [page.value.changes[0]?.kind, next.value.changes[0]?.kind];
+          expect(kinds).toContain('deleted');
+          expect(kinds).toContain('upserted');
+          expect(next.value.hasMore).toBe(false);
+        }
+      }
+
+      const foreign = await api.listChanged({
+        organizationId: otherOrg,
+        since: '2020-01-01T00:00:00.000Z',
+      });
+      expect(foreign.isOk()).toBe(true);
+      if (foreign.isOk()) {
+        expect(foreign.value.total).toBe(0);
+      }
+    });
+
+    it('imports from Obsidian as the org person and refuses a stale base version', async () => {
+      const api = handlers();
+      const created = await api.create({
+        projectId,
+        organizationId: orgId,
+        title: 'Meeting notes',
+        body: 'Draft',
+        actor,
+      });
+      expect(created.isOk()).toBe(true);
+      if (!created.isOk()) {
+        return;
+      }
+
+      const bot = {
+        kind: 'bot' as const,
+        tokenId: 'tok',
+        userId: 'bot-1',
+        name: 'Libby',
+        via: 'token' as const,
+      };
+      const imported = await api.importFromObsidian({
+        organizationId: orgId,
+        projectId,
+        noteId: created.value.view.id,
+        title: 'Meeting notes',
+        body: 'From Obsidian',
+        baseVersion: created.value.view.version,
+        actor: bot,
+      });
+      expect(imported.isOk()).toBe(true);
+      if (imported.isOk()) {
+        expect(imported.value.view.body).toBe('From Obsidian');
+        expect(imported.value.view.updatedByName).toBe('Lane');
+        expect(imported.value.event.type).toBe('NoteUpdated');
+        if (imported.value.event.type === 'NoteUpdated') {
+          expect(imported.value.event.origin).toBe('obsidian');
+        }
+      }
+
+      const conflict = await api.importFromObsidian({
+        organizationId: orgId,
+        projectId,
+        noteId: created.value.view.id,
+        title: 'Meeting notes',
+        body: 'Stale',
+        baseVersion: created.value.view.version,
+        actor: bot,
+      });
+      expect(conflict.isErr()).toBe(true);
+      if (conflict.isErr()) {
+        expect(conflict.error.type).toBe('NOTE_SYNC_CONFLICT');
+      }
+
+      const refused = await api.importFromObsidian({
+        organizationId: orgId,
+        projectId,
+        noteId: created.value.view.id,
+        title: 'Meeting notes',
+        body: 'Nope',
+        baseVersion: '99',
+        actor,
+      });
+      expect(refused.isErr()).toBe(true);
+      if (refused.isErr()) {
+        expect(refused.error.type).toBe('NOTE_IMPORT_REQUIRES_BOT');
       }
     });
 

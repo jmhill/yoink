@@ -254,10 +254,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'proposal_confirmed_in_review',
       });
 
+      await alice.openMobileBottomTab('process');
+      await alice.shouldSeeProcessCurrent('Paint the door');
+      await alice.trashProcessCurrent();
+      await alice.shouldSeeProcessEmpty();
+
       const second = await lane.createProject({
         name: 'Kitchen wall',
         status: 'proposed',
       });
+      await alice.openMobileBottomTab('capture');
       await alice.openMobileBottomTab('process');
       await alice.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
       await alice.turnDownProcessProposal();
@@ -267,8 +273,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'proposal_turned_down',
         includeToasts: true,
       });
-      await alice.shouldSeeProcessCurrent('Paint the door');
-      await alice.trashProcessCurrent();
       await alice.shouldSeeProcessEmpty();
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
@@ -326,8 +330,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'proposal_confirmed_in_review',
       });
 
+      await alice.openProcess();
+      await alice.shouldSeeProcessCurrent('Paint the door');
+      await alice.trashProcessCurrent();
+      await alice.shouldSeeProcessEmpty();
+
       await lane.createProject({ name: 'Kitchen wall', status: 'proposed' });
       await alice.openProcess();
+      await alice.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
       await alice.turnDownProcessProposal();
       await alice.shouldSeeUndoToast('Turned down');
       await alice.saveWalkthroughScreenshot({
@@ -335,7 +345,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'proposal_turned_down',
         includeToasts: true,
       });
-      await alice.trashProcessCurrent();
       await alice.shouldSeeProcessEmpty();
       await alice.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,

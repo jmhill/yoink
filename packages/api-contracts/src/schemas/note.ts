@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ListPageMetaSchema } from './list-page.js';
+import { ListPageMetaSchema, ListPageQuerySchema } from './list-page.js';
 
 export const NOTE_TITLE_MAX_LENGTH = 120;
 export const NOTE_BODY_MAX_LENGTH = 50_000;
@@ -71,3 +71,57 @@ export const UpdateNoteSchema = z
   });
 
 export type UpdateNote = z.infer<typeof UpdateNoteSchema>;
+
+export const NOTE_SYNC_ORIGIN = 'obsidian' as const;
+
+export const NoteUpsertedChangeSchema = NoteSchema.extend({
+  kind: z.literal('upserted'),
+  projectName: z.string(),
+});
+
+export type NoteUpsertedChange = z.infer<typeof NoteUpsertedChangeSchema>;
+
+export const NoteDeletedChangeSchema = z.object({
+  kind: z.literal('deleted'),
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  projectName: z.string(),
+  createdAt: z.string().datetime(),
+  deletedAt: z.string().datetime(),
+});
+
+export type NoteDeletedChange = z.infer<typeof NoteDeletedChangeSchema>;
+
+export const NoteChangeSchema = z.discriminatedUnion('kind', [
+  NoteUpsertedChangeSchema,
+  NoteDeletedChangeSchema,
+]);
+
+export type NoteChange = z.infer<typeof NoteChangeSchema>;
+
+export const NoteChangePageSchema = ListPageMetaSchema.extend({
+  changes: z.array(NoteChangeSchema),
+});
+
+export type NoteChangePage = z.infer<typeof NoteChangePageSchema>;
+
+export const ListNotesChangedQuerySchema = ListPageQuerySchema.extend({
+  since: z.string().datetime(),
+});
+
+export type ListNotesChangedQuery = z.infer<typeof ListNotesChangedQuerySchema>;
+
+export const ImportNoteFromObsidianSchema = z
+  .object({
+    projectId: z.string().uuid(),
+    noteId: z.string().uuid().optional(),
+    title: NoteTitleSchema,
+    body: z.string().max(NOTE_BODY_MAX_LENGTH),
+    baseVersion: z.string().min(1).optional(),
+  })
+  .refine((body) => body.noteId === undefined || body.baseVersion !== undefined, {
+    message: 'baseVersion is required when updating an existing note',
+    path: ['baseVersion'],
+  });
+
+export type ImportNoteFromObsidian = z.infer<typeof ImportNoteFromObsidianSchema>;

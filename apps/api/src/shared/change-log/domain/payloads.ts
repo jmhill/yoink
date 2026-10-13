@@ -130,12 +130,14 @@ export const taskRemovedFromProjectPayloadV1Schema = z.object({
 
 export const noteCreatedPayloadV1Schema = z.object({
   title: z.string(),
+  origin: z.literal('obsidian').optional(),
 });
 
 export const noteUpdatedPayloadV1Schema = z.object({
   title: z.string(),
   titleChanged: z.boolean(),
   bodyChanged: z.boolean(),
+  origin: z.literal('obsidian').optional(),
 });
 
 export const noteDeletedPayloadV1Schema = z.object({

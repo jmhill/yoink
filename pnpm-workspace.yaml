@@ -1,6 +1,7 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+  - 'tools/*'
 
 overrides:
   minimatch: '>=10.2.3'

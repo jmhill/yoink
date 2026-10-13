@@ -24,3 +24,13 @@ export type DeleteNoteCommand = {
   organizationId: string;
   actor: Actor;
 };
+
+export type ImportNoteFromObsidianCommand = {
+  organizationId: string;
+  projectId: string;
+  noteId?: string;
+  title: string;
+  body: string;
+  baseVersion?: string;
+  actor: Actor;
+};

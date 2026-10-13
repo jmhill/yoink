@@ -10,3 +10,10 @@ export type GetNoteQuery = {
   projectId: string;
   organizationId: string;
 };
+
+export type ListNotesChangedQuery = {
+  organizationId: string;
+  since: string;
+  limit?: number;
+  cursor?: string;
+};

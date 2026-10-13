@@ -693,6 +693,58 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID/notes/$NOTE_ID"
 ```
 
+## Notes mirror (Obsidian)
+
+Yoink stays the source of truth. There is no Obsidian backend on Fly.
+Libby’s notes-mirror bot pulls a changed-since feed and pushes Justin’s
+Obsidian edits through a dedicated import route. Only that bot token
+should call import — it is not a general impersonation feature. Justin
+adds the bot member from a signed-in web session (#132) and stores the
+token on the box, never in the vault or this repo.
+
+`GET /api/notes/changed?since=<ISO>` is org-scoped to the caller’s token
+(people and bots). It is a working set (`hasMore` / `nextCursor` /
+`total`, cap 1000), oldest change first, stable on `(updated_at, id)` so
+two edits at the same instant are not missed. Live notes are
+`kind: "upserted"` with body, version, and `projectName`. Deletes are
+tombstones `{ kind: "deleted", id, projectId, projectName, createdAt,
+deletedAt }`. Soft-deleted notes stay hidden from the normal note list
+and GET.
+
+`POST /api/notes/import` creates or updates a note from the mirror.
+Updates require `noteId` and `baseVersion` (the version the Obsidian
+file was derived from). If Yoink’s version differs, the response is
+`409 NOTE_SYNC_CONFLICT` with `currentVersion` plus the current `title`
+and `body` — nothing is overwritten or merged. A successful import is
+authored as the organization’s person (Justin) and the timeline reads
+“Justin edited this note in Obsidian”. Person tokens get
+`403 NOTE_IMPORT_REQUIRES_BOT`. Any bot that is not the designated
+notes-mirror bot gets `403 NOTE_IMPORT_REQUIRES_MIRROR_BOT`. Normal
+PATCH still uses `409 STALE_NOTE`.
+
+The designated bot is one member id per organization, stored on
+`organizations.notes_mirror_bot_user_id`. Justin designates it by minting
+a bot named `Libby notes-mirror` from a signed-in web session (#132) —
+the first such mint is recorded. If that column is empty, the API
+resolves the first org agent with that name and stores it, or uses
+`NOTES_MIRROR_BOT_USER_ID` when set. Other bots may still read the
+changed-since feed; only the designated bot may import.
+
+```bash
+# Everything changed since the last successful pull (full set or page)
+curl -sS -H "Authorization: Bearer $LIBBY_BOT_TOKEN" \
+  "$API/api/notes/changed?since=2026-10-13T18:00:00.000Z"
+
+# Push an Obsidian edit (Libby’s notes-mirror bot only)
+curl -sS -H "Authorization: Bearer $LIBBY_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"projectId":"'"$PROJECT_ID"'","noteId":"'"$NOTE_ID"'","title":"Meeting notes","body":"From Obsidian","baseVersion":"1"}' \
+  "$API/api/notes/import"
+```
+
+See `tools/notes-mirror/README.md` for the vault layout, conflict
+folder, and how Libby runs the script.
+
 A bad cursor (wrong view, wrong arity, or garbage) fails loudly:
 
 ```bash
@@ -822,5 +874,9 @@ the generic `[ts-rest] request validation failed` text.
 | `NOTE_BODY_TOO_LONG` | Note body is longer than 50,000 characters (`400`) |
 | `NOTE_UNCHANGED` | PATCH sent the current title and body (`400`) |
 | `STALE_NOTE` | `expectedVersion` no longer matches; body includes `currentVersion` (`409`) |
+| `NOTE_SYNC_CONFLICT` | Obsidian import `baseVersion` no longer matches; body includes `currentVersion` plus current title and body (`409`) |
+| `NOTE_IMPORT_REQUIRES_BOT` | A person token called `POST /api/notes/import` (`403`) |
+| `NOTE_IMPORT_REQUIRES_MIRROR_BOT` | A bot token that is not the designated notes-mirror bot called `POST /api/notes/import` (`403`) |
+| `NOTE_SYNC_NO_PERSON` | Import has no human member in the org to attribute the edit to (`403`) |
 | `NOTE_NOT_FOUND` | Note is missing, soft-deleted, or in another project/org (`404`) |
 

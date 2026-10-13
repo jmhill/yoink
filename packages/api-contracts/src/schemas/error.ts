@@ -40,3 +40,15 @@ export const StaleNoteErrorSchema = ErrorSchema.extend({
 });
 
 export type StaleNoteError = z.infer<typeof StaleNoteErrorSchema>;
+
+export const NoteSyncConflictErrorSchema = ErrorSchema.extend({
+  code: z.literal('NOTE_SYNC_CONFLICT'),
+  currentVersion: z.string().min(1),
+  title: z.string(),
+  body: z.string(),
+  updatedAt: z.string().datetime(),
+  updatedById: z.string().uuid(),
+  updatedByName: z.string(),
+});
+
+export type NoteSyncConflictError = z.infer<typeof NoteSyncConflictErrorSchema>;

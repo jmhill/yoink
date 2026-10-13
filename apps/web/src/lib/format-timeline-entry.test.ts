@@ -48,6 +48,22 @@ describe('formatTimelineLine', () => {
     expect(
       formatTimelineLine(
         entry({
+          kind: 'NoteUpdated',
+          details: {
+            kind: 'NoteUpdated',
+            title: 'Meeting notes',
+            titleChanged: false,
+            bodyChanged: true,
+            origin: 'obsidian',
+          },
+          actor: { userId: 'u1', kind: 'user', name: 'Justin' },
+          subject: { type: 'note', id: 'n1', title: 'Meeting notes', deleted: false },
+        })
+      )
+    ).toBe('Justin edited this note in Obsidian');
+    expect(
+      formatTimelineLine(
+        entry({
           kind: 'NoteDeleted',
           details: { kind: 'NoteDeleted', title: 'Meeting notes' },
           subject: { type: 'note', id: 'n1', title: 'Meeting notes', deleted: true },

@@ -22,6 +22,7 @@ export {
   UnsupportedOperationError,
   ConflictError,
   StaleNoteError,
+  NoteSyncConflictError,
   CannotDeleteLastPasskeyError,
   CannotLeavePersonalOrgError,
   LastAdminError,

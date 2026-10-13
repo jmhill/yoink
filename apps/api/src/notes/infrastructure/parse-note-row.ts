@@ -4,6 +4,7 @@ import type { Note } from '@yoink/api-contracts';
 import { storageError, type StorageError } from '../domain/note-errors.js';
 import { noteExcerpt } from '../domain/parse-note-fields.js';
 import type { NoteListItem } from '@yoink/api-contracts';
+import type { NoteChangeRow } from '../domain/note-change-row.js';
 
 const NoteRowSchema = z.object({
   id: z.string().min(1),
@@ -20,6 +21,8 @@ const NoteRowSchema = z.object({
   created_by_email: z.string().nullable().optional(),
   updated_by_name: z.string().nullable().optional(),
   updated_by_email: z.string().nullable().optional(),
+  project_name: z.string().min(1).optional(),
+  deleted_at: z.string().nullable().optional(),
 });
 
 const displayName = (name: string | null | undefined, email: string | null | undefined): string =>
@@ -43,6 +46,31 @@ export const parseNoteRow = (row: Record<string, unknown>): Result<Note, Storage
     updatedAt: parsed.data.updated_at,
     updatedById: parsed.data.updated_by,
     updatedByName: displayName(parsed.data.updated_by_name, parsed.data.updated_by_email),
+  });
+};
+
+export const parseNoteChangeRow = (
+  row: Record<string, unknown>
+): Result<NoteChangeRow, StorageError> => {
+  const parsed = NoteRowSchema.safeParse(row);
+  if (!parsed.success || parsed.data.project_name === undefined) {
+    return err(storageError('Invalid note change row', parsed.success ? undefined : parsed.error));
+  }
+  return ok({
+    id: parsed.data.id,
+    organizationId: parsed.data.organization_id,
+    projectId: parsed.data.project_id,
+    projectName: parsed.data.project_name,
+    title: parsed.data.title,
+    body: parsed.data.body,
+    version: parsed.data.version,
+    createdAt: parsed.data.created_at,
+    createdById: parsed.data.created_by,
+    createdByName: displayName(parsed.data.created_by_name, parsed.data.created_by_email),
+    updatedAt: parsed.data.updated_at,
+    updatedById: parsed.data.updated_by,
+    updatedByName: displayName(parsed.data.updated_by_name, parsed.data.updated_by_email),
+    deletedAt: parsed.data.deleted_at ?? null,
   });
 };
 

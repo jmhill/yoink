@@ -241,6 +241,7 @@ export const toTimelineEntry = (
       return entry(record, lookups, 'NoteCreated', {
         kind: 'NoteCreated',
         title: record.payload.title,
+        ...(record.payload.origin === 'obsidian' ? { origin: 'obsidian' as const } : {}),
       });
     case 'NoteUpdated':
       return entry(record, lookups, 'NoteUpdated', {
@@ -248,6 +249,7 @@ export const toTimelineEntry = (
         title: record.payload.title,
         titleChanged: record.payload.titleChanged,
         bodyChanged: record.payload.bodyChanged,
+        ...(record.payload.origin === 'obsidian' ? { origin: 'obsidian' as const } : {}),
       });
     case 'NoteDeleted':
       return entry(record, lookups, 'NoteDeleted', {

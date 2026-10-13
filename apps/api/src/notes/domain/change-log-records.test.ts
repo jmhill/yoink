@@ -57,6 +57,30 @@ describe('changeLogRecordsFromNoteEvent', () => {
     }
   });
 
+  it('marks an Obsidian-origin update in the payload', () => {
+    const event: NoteUpdated = {
+      type: 'NoteUpdated',
+      id: 'note-1',
+      organizationId: 'org-1',
+      projectId: 'project-1',
+      title: 'Meeting notes',
+      titleChanged: false,
+      bodyChanged: true,
+      version: '2',
+      occurredAt: '2026-10-13T18:10:00.000Z',
+      origin: 'obsidian',
+    };
+    const [record] = changeLogRecordsFromNoteEvent({
+      event,
+      actor,
+      ids: { recordId: 'log-obsidian' },
+    });
+    expect(record?.kind).toBe('NoteUpdated');
+    if (record?.kind === 'NoteUpdated') {
+      expect(record.payload.origin).toBe('obsidian');
+    }
+  });
+
   it('builds a NoteDeleted record with the last title', () => {
     const event: NoteDeleted = {
       type: 'NoteDeleted',

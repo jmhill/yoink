@@ -1,3 +1,5 @@
+export type NoteOrigin = 'obsidian';
+
 export type NoteCreated = {
   type: 'NoteCreated';
   id: string;
@@ -9,6 +11,7 @@ export type NoteCreated = {
   createdById: string;
   createdAt: string;
   occurredAt: string;
+  origin?: NoteOrigin;
 };
 
 export type NoteUpdated = {
@@ -22,6 +25,7 @@ export type NoteUpdated = {
   bodyChanged: boolean;
   version: string;
   occurredAt: string;
+  origin?: NoteOrigin;
 };
 
 export type NoteDeleted = {

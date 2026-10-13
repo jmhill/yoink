@@ -10,17 +10,24 @@ import {
 import { staleNoteError, storageError, type StorageError } from '../domain/note-errors.js';
 import { nextBuiltInNoteVersion } from '../domain/parse-note-fields.js';
 import type { NotesBackend } from '../application/ports.js';
-import { parseNoteListItemRow, parseNoteRow } from './parse-note-row.js';
+import { parseNoteChangeRow, parseNoteListItemRow, parseNoteRow } from './parse-note-row.js';
 import {
   deleteNoteQuery,
   insertNoteQuery,
+  NOTE_CHANGE_FROM,
+  NOTE_CHANGE_SELECT_COLUMNS,
   NOTE_FROM,
   NOTE_SELECT_COLUMNS,
   updateNoteQuery,
 } from './note-row-statements.js';
+import { notesChangedDirection } from '../../listing/domain/list-keys.js';
+import type { NoteChangeRow } from '../domain/note-change-row.js';
 
 const parseNotes = (rows: Record<string, unknown>[]): Result<NoteListItem[], StorageError> =>
   Result.combine(rows.map(parseNoteListItemRow));
+
+const parseNoteChanges = (rows: Record<string, unknown>[]): Result<NoteChangeRow[], StorageError> =>
+  Result.combine(rows.map(parseNoteChangeRow));
 
 const loadNote = (
   db: Database,
@@ -68,6 +75,27 @@ export const createSqliteNotesBackend = (db: Database): NotesBackend => ({
       errorMessage: 'Failed to list notes',
     }).andThen((page) => {
       const parsed = parseNotes(page.rows);
+      return parsed.isOk()
+        ? okAsync({ rows: parsed.value, total: page.total })
+        : errAsync(parsed.error);
+    }),
+
+  listChangedSince: (options) =>
+    pageSqlite({
+      db,
+      from: NOTE_CHANGE_FROM,
+      selectSql: `SELECT ${NOTE_CHANGE_SELECT_COLUMNS}`,
+      whereSql: 'n.organization_id = ? AND n.updated_at >= ?',
+      whereArgs: [options.organizationId, options.since],
+      orderSql: 'ORDER BY n.updated_at ASC, n.id ASC',
+      keyColumns: ['n.updated_at', 'n.id'],
+      direction: notesChangedDirection,
+      fetchLimit: options.fetchLimit,
+      seek: options.seek,
+      mapRow: (row) => row,
+      errorMessage: 'Failed to list notes changed since',
+    }).andThen((page) => {
+      const parsed = parseNoteChanges(page.rows);
       return parsed.isOk()
         ? okAsync({ rows: parsed.value, total: page.total })
         : errAsync(parsed.error);

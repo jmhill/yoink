@@ -47,6 +47,51 @@ export type NoteUnchangedError = {
   readonly message: string;
 };
 
+export type NoteSyncConflictError = {
+  readonly type: 'NOTE_SYNC_CONFLICT';
+  readonly message: string;
+  readonly currentVersion: string;
+  readonly title: string;
+  readonly body: string;
+  readonly updatedAt: string;
+  readonly updatedById: string;
+  readonly updatedByName: string;
+};
+
+export type NoteImportRequiresBotError = {
+  readonly type: 'NOTE_IMPORT_REQUIRES_BOT';
+  readonly message: string;
+};
+
+export type NoteImportRequiresMirrorBotError = {
+  readonly type: 'NOTE_IMPORT_REQUIRES_MIRROR_BOT';
+  readonly message: string;
+};
+
+export type NoteSyncNoPersonError = {
+  readonly type: 'NOTE_SYNC_NO_PERSON';
+  readonly message: string;
+};
+
+export type NoteMarkdownError = {
+  readonly type: 'NOTE_MARKDOWN_INVALID';
+  readonly message: string;
+};
+
+export type ListNotesChangedError = StorageError | InvalidCursorError;
+
+export type ImportNoteError =
+  | StorageError
+  | NoteTitleBlankError
+  | NoteTitleTooLongError
+  | NoteBodyTooLongError
+  | NoteNotFoundError
+  | ProjectNotFoundError
+  | NoteSyncConflictError
+  | NoteImportRequiresBotError
+  | NoteImportRequiresMirrorBotError
+  | NoteSyncNoPersonError;
+
 export type ListNotesError = StorageError | InvalidCursorError | ProjectNotFoundError;
 export type GetNoteError = StorageError | NoteNotFoundError | ProjectNotFoundError;
 export type CreateNoteError =
@@ -119,4 +164,42 @@ export const staleNoteError = (current: {
 export const noteUnchangedError = (): NoteUnchangedError => ({
   type: 'NOTE_UNCHANGED',
   message: 'Provide a title or body',
+});
+
+export const noteSyncConflictError = (current: {
+  version: string;
+  title: string;
+  body: string;
+  updatedAt: string;
+  updatedById: string;
+  updatedByName: string;
+}): NoteSyncConflictError => ({
+  type: 'NOTE_SYNC_CONFLICT',
+  message: 'This note changed in Yoink since the Obsidian file was last synced',
+  currentVersion: current.version,
+  title: current.title,
+  body: current.body,
+  updatedAt: current.updatedAt,
+  updatedById: current.updatedById,
+  updatedByName: current.updatedByName,
+});
+
+export const noteImportRequiresBotError = (): NoteImportRequiresBotError => ({
+  type: 'NOTE_IMPORT_REQUIRES_BOT',
+  message: 'Only the notes-mirror bot token may import Obsidian edits',
+});
+
+export const noteImportRequiresMirrorBotError = (): NoteImportRequiresMirrorBotError => ({
+  type: 'NOTE_IMPORT_REQUIRES_MIRROR_BOT',
+  message: 'Only the designated notes-mirror bot may import Obsidian edits',
+});
+
+export const noteSyncNoPersonError = (): NoteSyncNoPersonError => ({
+  type: 'NOTE_SYNC_NO_PERSON',
+  message: 'This organization has no person to attribute an Obsidian edit to',
+});
+
+export const noteMarkdownError = (message: string): NoteMarkdownError => ({
+  type: 'NOTE_MARKDOWN_INVALID',
+  message,
 });

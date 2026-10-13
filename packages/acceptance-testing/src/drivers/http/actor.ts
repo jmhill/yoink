@@ -8,6 +8,7 @@ import type {
   NamedList,
   Note,
   NoteListPage,
+  NoteChangePage,
   Project,
   StagedImport,
   Task,
@@ -49,6 +50,7 @@ import {
   UnsupportedOperationError,
   ConflictError,
   StaleNoteError,
+  NoteSyncConflictError,
   ForbiddenError,
   CannotDeleteLastPasskeyError,
   TokenLimitReachedError,
@@ -906,6 +908,73 @@ export const createHttpActor = (
       if (response.statusCode !== 204) {
         throw new Error(`Failed to delete note: ${response.body}`);
       }
+    },
+
+    async listNotesChanged(query: {
+      since: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<NoteChangePage> {
+      const qs = new URLSearchParams({ since: query.since });
+      if (query.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query.cursor) qs.set('cursor', query.cursor);
+      const response = await client.get(`/api/notes/changed?${qs.toString()}`, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list notes changed: ${response.body}`);
+      }
+      return response.json<NoteChangePage>();
+    },
+
+    async importNoteFromObsidian(input: {
+      projectId: string;
+      noteId?: string;
+      title: string;
+      body: string;
+      baseVersion?: string;
+    }): Promise<Note> {
+      const response = await client.post('/api/notes/import', input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError(response.json<{ message?: string }>().message ?? 'Forbidden');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Note', input.noteId ?? input.projectId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{
+          message?: string;
+          currentVersion?: string;
+          title?: string;
+          body?: string;
+          updatedAt?: string;
+          updatedByName?: string;
+        }>();
+        throw new NoteSyncConflictError({
+          message: error.message ?? 'This note changed in Yoink since the Obsidian file was last synced',
+          currentVersion: error.currentVersion ?? '',
+          title: error.title ?? '',
+          body: error.body ?? '',
+          updatedAt: error.updatedAt ?? '',
+          updatedByName: error.updatedByName ?? '',
+        });
+      }
+      if (response.statusCode !== 200 && response.statusCode !== 201) {
+        throw new Error(`Failed to import note: ${response.body}`);
+      }
+      return response.json<Note>();
     },
 
     async createNamedList(name: string): Promise<NamedList> {

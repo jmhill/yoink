@@ -190,6 +190,19 @@ export const projectNotesCursor: ListedCursor<NoteListItem, 'notes.project'> = {
   }),
 };
 
+export type NotesChangedCursorRow = {
+  readonly updatedAt: string;
+  readonly id: string;
+};
+
+export const notesChangedCursor: ListedCursor<NotesChangedCursorRow, 'notes.changed'> = {
+  view: 'notes.changed',
+  of: (row) => ({
+    view: 'notes.changed',
+    keys: [row.updatedAt, row.id],
+  }),
+};
+
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
@@ -208,6 +221,7 @@ export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list)
 export const reviewKeys = (item: ReviewCursorRow) => reviewCursor.of(item).keys;
 export const doneListKeys = (task: FinishedTask) => doneListCursor.of(task).keys;
 export const projectNotesKeys = (note: NoteListItem) => projectNotesCursor.of(note).keys;
+export const notesChangedKeys = (row: NotesChangedCursorRow) => notesChangedCursor.of(row).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
@@ -226,3 +240,4 @@ export const workListDirection: KeysetDirection = 'asc';
 export const reviewDirection: KeysetDirection = 'asc';
 export const doneListDirection: KeysetDirection = 'desc';
 export const projectNotesDirection: KeysetDirection = 'desc';
+export const notesChangedDirection: KeysetDirection = 'asc';

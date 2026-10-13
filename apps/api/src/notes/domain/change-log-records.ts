@@ -47,7 +47,10 @@ export const changeLogRecordsFromNoteEvent = (
 
   switch (event.type) {
     case 'NoteCreated': {
-      const payload: NoteCreatedPayloadV1 = { title: event.title };
+      const payload: NoteCreatedPayloadV1 = {
+        title: event.title,
+        ...(event.origin === 'obsidian' ? { origin: 'obsidian' as const } : {}),
+      };
       return [
         {
           ...envelope(input, event.organizationId, event.projectId, event.id, event.occurredAt),
@@ -62,6 +65,7 @@ export const changeLogRecordsFromNoteEvent = (
         title: event.title,
         titleChanged: event.titleChanged,
         bodyChanged: event.bodyChanged,
+        ...(event.origin === 'obsidian' ? { origin: 'obsidian' as const } : {}),
       };
       return [
         {

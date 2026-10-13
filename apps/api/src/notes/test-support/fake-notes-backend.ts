@@ -50,23 +50,25 @@ const pageNotes = (
 };
 
 export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
-  const notes: StoredNote[] = initial.map((note) => ({ ...note, deletedAt: null }));
+  let notes: readonly StoredNote[] = initial.map((note) => ({
+    ...note,
+    deletedAt: null,
+  }));
 
   const persist = (
     plan: NoteChangePlan
   ): ResultAsync<void, StorageError | StaleNoteError> => {
     if (plan.action === 'insert') {
-      notes.push({ ...plan.view, deletedAt: null });
+      notes = [...notes, { ...plan.view, deletedAt: null }];
       return okAsync(undefined);
     }
 
-    const index = notes.findIndex(
+    const current = notes.find(
       (note) =>
         note.id === plan.noteId &&
         note.organizationId === plan.organizationId &&
         note.projectId === plan.projectId
     );
-    const current = index === -1 ? undefined : notes[index];
     if (!current || current.deletedAt !== null) {
       return errAsync({
         type: 'STORAGE_ERROR',
@@ -75,7 +77,9 @@ export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
     }
 
     if (plan.action === 'delete') {
-      notes[index] = { ...current, deletedAt: plan.deletedAt };
+      notes = notes.map((note) =>
+        note.id === current.id ? { ...current, deletedAt: plan.deletedAt } : note
+      );
       return okAsync(undefined);
     }
 
@@ -90,7 +94,9 @@ export const createFakeNotesBackend = (initial: Note[] = []): NotesBackend => {
       );
     }
 
-    notes[index] = { ...plan.view, deletedAt: null };
+    notes = notes.map((note) =>
+      note.id === current.id ? { ...plan.view, deletedAt: null } : note
+    );
     return okAsync(undefined);
   };
 

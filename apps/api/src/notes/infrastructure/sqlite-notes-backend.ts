@@ -7,14 +7,8 @@ import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,
 } from '../../shared/change-log/infrastructure/sql.js';
-import {
-  staleNoteError,
-  storageError,
-  type StaleNoteError,
-  type StorageError,
-} from '../domain/note-errors.js';
+import { staleNoteError, storageError, type StorageError } from '../domain/note-errors.js';
 import { nextBuiltInNoteVersion } from '../domain/parse-note-fields.js';
-import type { NoteChangePlan } from '../domain/plan-note-change.js';
 import type { NotesBackend } from '../application/ports.js';
 import { parseNoteListItemRow, parseNoteRow } from './parse-note-row.js';
 import {
@@ -52,20 +46,8 @@ const loadNote = (
     return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
   });
 
-const persistFailure = (
-  plan: NoteChangePlan,
-  error: unknown
-): StorageError | StaleNoteError => {
-  if (plan.action === 'update' && /STALE_NOTE/.test(String(error))) {
-    return staleNoteError({
-      version: plan.view.version,
-      updatedAt: plan.view.updatedAt,
-      updatedById: plan.view.updatedById,
-      updatedByName: plan.view.updatedByName,
-    });
-  }
-  return storageError('Failed to persist note change', error);
-};
+const persistFailure = (error: unknown): StorageError =>
+  storageError('Failed to persist note change', error);
 
 export const createSqliteNotesBackend = (db: Database): NotesBackend => ({
   nextVersion: nextBuiltInNoteVersion,
@@ -101,7 +83,7 @@ export const createSqliteNotesBackend = (db: Database): NotesBackend => ({
       ];
       return ResultAsync.fromPromise(
         db.batch(queries, 'write'),
-        (error) => persistFailure(plan, error)
+        persistFailure
       ).map(() => undefined);
     }
 
@@ -118,7 +100,7 @@ export const createSqliteNotesBackend = (db: Database): NotesBackend => ({
       ];
       return ResultAsync.fromPromise(
         db.batch(queries, 'write'),
-        (error) => persistFailure(plan, error)
+        persistFailure
       ).map(() => undefined);
     }
 
@@ -128,28 +110,27 @@ export const createSqliteNotesBackend = (db: Database): NotesBackend => ({
     ];
     return ResultAsync.fromPromise(
       db.batch(queries, 'write'),
-      (error) => persistFailure(plan, error)
-    ).andThen(() =>
-      loadNote(db, {
+      persistFailure
+    ).andThen((results) => {
+      if ((results[0]?.rowsAffected ?? 0) > 0) {
+        return okAsync(undefined);
+      }
+      return loadNote(db, {
         organizationId: plan.organizationId,
         projectId: plan.projectId,
         noteId: plan.noteId,
-      }).andThen((loaded) => {
-        if (!loaded) {
-          return errAsync(storageError('Note disappeared during update'));
-        }
-        if (loaded.version !== plan.view.version) {
-          return errAsync(
-            staleNoteError({
-              version: loaded.version,
-              updatedAt: loaded.updatedAt,
-              updatedById: loaded.updatedById,
-              updatedByName: loaded.updatedByName,
-            })
-          );
-        }
-        return okAsync(undefined);
-      })
-    );
+      }).andThen((loaded) =>
+        loaded
+          ? errAsync(
+              staleNoteError({
+                version: loaded.version,
+                updatedAt: loaded.updatedAt,
+                updatedById: loaded.updatedById,
+                updatedByName: loaded.updatedByName,
+              })
+            )
+          : errAsync(storageError('Note disappeared during update'))
+      );
+    });
   },
 });

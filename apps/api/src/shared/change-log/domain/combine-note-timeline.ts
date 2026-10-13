@@ -5,24 +5,42 @@ export const NOTE_SAVE_COMBINE_WINDOW_MS = 10 * 60 * 1000;
 const isCombinableNoteKind = (kind: string): boolean =>
   kind === 'NoteCreated' || kind === 'NoteUpdated';
 
+type CombineState = {
+  readonly lastSeen: ReadonlyMap<string, string>;
+  readonly kept: TimelineEntry[];
+};
+
+const withLastSeen = (
+  previous: ReadonlyMap<string, string>,
+  key: string,
+  occurredAt: string
+): ReadonlyMap<string, string> => new Map([...previous, [key, occurredAt]]);
+
+const keepEntry = (state: CombineState, entry: TimelineEntry): CombineState => ({
+  ...state,
+  kept: state.kept.concat(entry),
+});
+
 /**
  * Newest-first: keep the latest save and drop older same-person, same-note
  * create/update entries that sit within 10 minutes of the previous one.
  */
 export const combineNoteTimelineEntries = (
   entries: readonly TimelineEntry[]
-): TimelineEntry[] => {
-  const lastSeen = new Map<string, string>();
-  return entries.filter((entry) => {
+): TimelineEntry[] =>
+  entries.reduce<CombineState>((state, entry) => {
     if (!isCombinableNoteKind(entry.kind)) {
-      return true;
+      return keepEntry(state, entry);
     }
     const key = `${entry.subject.id}:${entry.actor.userId ?? ''}`;
-    const previous = lastSeen.get(key);
-    lastSeen.set(key, entry.occurredAt);
+    const previous = state.lastSeen.get(key);
+    const next = {
+      lastSeen: withLastSeen(state.lastSeen, key, entry.occurredAt),
+      kept: state.kept,
+    };
     if (previous === undefined) {
-      return true;
+      return keepEntry(next, entry);
     }
-    return Date.parse(previous) - Date.parse(entry.occurredAt) > NOTE_SAVE_COMBINE_WINDOW_MS;
-  });
-};
+    const gapMs = Date.parse(previous) - Date.parse(entry.occurredAt);
+    return gapMs > NOTE_SAVE_COMBINE_WINDOW_MS ? keepEntry(next, entry) : next;
+  }, { lastSeen: new Map(), kept: [] }).kept;

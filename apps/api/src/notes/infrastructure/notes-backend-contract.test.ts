@@ -5,7 +5,7 @@ import { createTestDatabase } from '../../database/test-utils.js';
 import type { Database } from '../../database/types.js';
 import { createNoteHandlers } from '../application/create-note-handlers.js';
 import type { NotesBackend } from '../application/ports.js';
-import { createFakeNotesBackend } from './fake-notes-backend.js';
+import { createFakeNotesBackend } from '../test-support/fake-notes-backend.js';
 import { createSqliteNotesBackend } from './sqlite-notes-backend.js';
 
 const orgId = '11111111-1111-4111-8111-111111111111';

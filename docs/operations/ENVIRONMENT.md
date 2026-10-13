@@ -30,6 +30,6 @@ fly secrets set SENTRY_LOGS_ENABLED=false -a jhtc-yoink-api
 3. Filter by `environment:production` and, if needed, `severity:error` / `severity:warn` or a message substring.
 4. Open a line to jump to the related trace, spans, and errors.
 
-Authorization headers, cookies, and token values are redacted before a log is serialized, so they should not appear in Sentry.
+Authorization headers, cookies, `x-api-key`, session / `yoink_session` values, and token values are redacted before a log is serialized, so they should not appear in Sentry.
 
 Sentry keeps logs for **30 days** on Developer, Team, and Business plans. The searchable query window is shorter on some plans (7 days on Developer, 14 days on Team, 30 days on Business).

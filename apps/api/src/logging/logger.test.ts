@@ -69,7 +69,20 @@ describe('createLoggerOptions', () => {
       expect(options.redact).toContain('req.headers.cookie');
     });
 
-    it('does not write authorization, cookie, or token values to serialized logs', async () => {
+    it('redacts x-api-key header', () => {
+      const options = createLoggerOptions(logConfig());
+
+      expect(options.redact).toContain('req.headers["x-api-key"]');
+    });
+
+    it('redacts session and yoink_session cookies', () => {
+      const options = createLoggerOptions(logConfig());
+
+      expect(options.redact).toContain('req.cookies.session');
+      expect(options.redact).toContain('req.cookies.yoink_session');
+    });
+
+    it('does not write authorization, cookie, x-api-key, or session values to serialized logs', async () => {
       const lines: string[] = [];
       const stream = new Writable({
         write(chunk, _encoding, callback) {
@@ -89,6 +102,7 @@ describe('createLoggerOptions', () => {
             req: (req) => ({
               method: req.method,
               headers: req.headers,
+              cookies: req.cookies,
             }),
           },
         },
@@ -102,6 +116,11 @@ describe('createLoggerOptions', () => {
             headers: {
               authorization: 'Bearer tokenId:super-secret-token',
               cookie: 'yoink_session=cookie-secret-value',
+              'x-api-key': 'api-key-secret-value',
+            },
+            cookies: {
+              session: 'session-secret-value',
+              yoink_session: 'yoink-session-secret-value',
             },
           },
         },
@@ -113,12 +132,20 @@ describe('createLoggerOptions', () => {
       expect(output).not.toContain('super-secret-token');
       expect(output).not.toContain('cookie-secret-value');
       expect(output).not.toContain('tokenId:super-secret-token');
+      expect(output).not.toContain('api-key-secret-value');
+      expect(output).not.toContain('session-secret-value');
+      expect(output).not.toContain('yoink-session-secret-value');
       expect(output).toContain('[Redacted]');
       expect(JSON.parse(output)).toMatchObject({
         req: {
           headers: {
             authorization: '[Redacted]',
             cookie: '[Redacted]',
+            'x-api-key': '[Redacted]',
+          },
+          cookies: {
+            session: '[Redacted]',
+            yoink_session: '[Redacted]',
           },
         },
       });

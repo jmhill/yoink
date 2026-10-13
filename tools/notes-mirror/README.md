@@ -31,9 +31,14 @@ The agent that ships this story cannot create that token.
    `/home/box/yoink-notes-mirror.token`, mode `600`.
 4. Never put the token in the vault or in git.
 
-Only that bot token should call the import route. It is not a general
-impersonation feature. Imports are attributed to the organization's
-person (Justin) and show as "Justin edited this note in Obsidian".
+Only the designated notes-mirror bot may call the import route. Justin
+designates it by minting a bot named `Libby notes-mirror` from a
+signed-in web session — Yoink stores that member id on the organization
+(`notes_mirror_bot_user_id`). Operators can also set
+`NOTES_MIRROR_BOT_USER_ID`. Any other bot token gets
+`403 NOTE_IMPORT_REQUIRES_MIRROR_BOT`. It is not a general impersonation
+feature. Imports are attributed to the organization's person (Justin)
+and show as "Justin edited this note in Obsidian".
 
 ## Run
 

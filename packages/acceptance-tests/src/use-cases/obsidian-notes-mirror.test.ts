@@ -90,6 +90,23 @@ usingDrivers(['http'] as const, (ctx) => {
           baseVersion: imported.version,
         })
       ).rejects.toThrow(ForbiddenError);
+
+      const otherMinted = await justin.mintAgent('Other helper');
+      const other = ctx.createActorWithCredentials({
+        email: otherMinted.agent.name,
+        userId: otherMinted.agent.userId,
+        organizationId: justin.organizationId,
+        token: otherMinted.rawToken,
+      });
+      await expect(
+        other.importNoteFromObsidian({
+          projectId: garden.id,
+          noteId: note.id,
+          title: 'Meeting',
+          body: 'Other bot must not import',
+          baseVersion: imported.version,
+        })
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 });

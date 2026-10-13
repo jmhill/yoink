@@ -228,6 +228,7 @@ export const registerNoteRoutes = async (
                   body: noteErrorBody(error),
                 };
               case 'NOTE_IMPORT_REQUIRES_BOT':
+              case 'NOTE_IMPORT_REQUIRES_MIRROR_BOT':
               case 'NOTE_SYNC_NO_PERSON':
                 return {
                   status: 403 as const,

@@ -1,5 +1,10 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { ChangedPage, ImportedNote, NotesMirrorApi } from '../application/run-mirror.js';
+import type {
+  ChangedPage,
+  ImportFailure,
+  ImportedNote,
+  NotesMirrorApi,
+} from '../application/run-mirror.js';
 import type { FeedChange } from '../domain/plan-mirror-pass.js';
 
 type Json = Record<string, unknown>;
@@ -71,14 +76,14 @@ const toImported = (value: unknown): ImportedNote | null => {
 export const createYoinkApi = (input: {
   baseUrl: string;
   token: string;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: (url: URL, init?: RequestInit) => Promise<unknown>;
 }): NotesMirrorApi => {
   const fetchImpl = input.fetchImpl ?? fetch;
   const request = async (
     method: string,
     urlPath: string,
     body?: Record<string, unknown>
-  ): Promise<Result<unknown, string>> => {
+  ): Promise<Result<unknown, ImportFailure>> => {
     const response = await fetchImpl(new URL(urlPath, input.baseUrl), {
       method,
       headers: {
@@ -89,10 +94,13 @@ export const createYoinkApi = (input: {
     }).catch((cause: unknown) => cause);
 
     if (response instanceof Error || typeof response === 'string') {
-      return err(response instanceof Error ? response.message : response);
+      return err({
+        type: 'failed',
+        message: response instanceof Error ? response.message : response,
+      });
     }
     if (!isResponseLike(response)) {
-      return err('Yoink API request failed');
+      return err({ type: 'failed', message: 'Yoink API request failed' });
     }
 
     const json: unknown = await response.json().catch(() => null);
@@ -101,7 +109,10 @@ export const createYoinkApi = (input: {
         isRecord(json) && typeof json.message === 'string'
           ? json.message
           : `Yoink API ${response.status}`;
-      return err(message);
+      if (response.status === 409) {
+        return err({ type: 'NOTE_SYNC_CONFLICT', message });
+      }
+      return err({ type: 'failed', message });
     }
     return ok(json);
   };
@@ -114,7 +125,7 @@ export const createYoinkApi = (input: {
       }
       const result = await request('GET', `/api/notes/changed?${query.toString()}`);
       if (result.isErr()) {
-        return err(result.error);
+        return err(result.error.message);
       }
       if (!isRecord(result.value) || !Array.isArray(result.value.changes)) {
         return err('Changed-since response was not a page of note changes');
@@ -135,7 +146,9 @@ export const createYoinkApi = (input: {
         return err(result.error);
       }
       const imported = toImported(result.value);
-      return imported ? ok(imported) : err('Import response was not a note');
+      return imported
+        ? ok(imported)
+        : err({ type: 'failed', message: 'Import response was not a note' });
     },
   };
 };

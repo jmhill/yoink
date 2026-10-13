@@ -194,8 +194,45 @@ describe('planMirrorPass', () => {
         title: 'Meeting notes',
         body: 'Justin edited in Obsidian',
         baseVersion: '1',
+        currentPath: livePath,
       },
     ]);
+  });
+
+  it('moves a note into the renamed project folder instead of copying', () => {
+    const first = planMirrorPass({
+      state: emptyMirrorState(),
+      changes: [upsert()],
+      vaultFiles: [],
+    });
+    const renamed = vaultNotePath({
+      projectName: 'Harbor shed',
+      createdAt: '2026-10-13T18:00:00.000Z',
+      noteId: upsert().id,
+    });
+    const plan = planMirrorPass({
+      state: first.nextState,
+      changes: [upsert({ projectName: 'Harbor shed' })],
+      vaultFiles: [
+        {
+          relativePath: livePath,
+          markdown: noteToMarkdown({
+            id: upsert().id,
+            projectId: upsert().projectId,
+            version: '1',
+            updatedAt: '2026-10-13T18:00:00.000Z',
+            title: 'Meeting notes',
+            body: 'First line',
+          }),
+        },
+      ],
+    });
+    expect(plan.actions).toEqual([
+      { type: 'move', from: livePath, to: renamed },
+      expect.objectContaining({ type: 'write', relativePath: renamed }),
+    ]);
+    expect(plan.nextState.notes[upsert().id]?.relativePath).toBe(renamed);
+    expect(plan.nextState.notes[upsert().id]?.projectName).toBe('Harbor shed');
   });
 
   it('creates a new Obsidian file that has no Yoink id yet', () => {

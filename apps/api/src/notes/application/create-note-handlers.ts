@@ -5,7 +5,7 @@ import { handleListNotes } from './handle-list-notes.js';
 import { handleGetNote } from './handle-get-note.js';
 import { handleListNotesChanged } from './handle-list-notes-changed.js';
 import { handleImportNote } from './handle-import-note.js';
-import type { LoadActorName, LoadOrgPerson, LoadProject, NotesBackend } from './ports.js';
+import type { LoadActorName, LoadNotesMirrorBot, LoadOrgPerson, LoadProject, NotesBackend } from './ports.js';
 import {
   withCommandLog,
   type CommandLogger,
@@ -16,6 +16,7 @@ export type NoteHandlerDeps = {
   loadProject: LoadProject;
   loadActorName: LoadActorName;
   loadOrgPerson: LoadOrgPerson;
+  loadNotesMirrorBot: LoadNotesMirrorBot;
   nextId: () => string;
   now: () => string;
   logger: CommandLogger;

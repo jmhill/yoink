@@ -4,20 +4,23 @@ import type { ImportNoteFromObsidianCommand } from '../domain/note-commands.js';
 import type { NoteCreated, NoteUpdated } from '../domain/events.js';
 import {
   noteImportRequiresBotError,
+  noteImportRequiresMirrorBotError,
   noteNotFoundError,
+  noteSyncConflictError,
   noteSyncNoPersonError,
   projectNotFoundError,
-  storageError,
   type ImportNoteError,
 } from '../domain/note-errors.js';
+import { isDesignatedMirrorBot } from '../domain/mirror-bot.js';
 import { decideImportNote } from '../domain/decide-import.js';
 import { planNoteChange } from '../domain/plan-note-change.js';
-import type { LoadOrgPerson, LoadProject, NotesBackend } from './ports.js';
+import type { LoadNotesMirrorBot, LoadOrgPerson, LoadProject, NotesBackend } from './ports.js';
 
 export type HandleImportNoteDeps = {
   backend: NotesBackend;
   loadProject: LoadProject;
   loadOrgPerson: LoadOrgPerson;
+  loadNotesMirrorBot: LoadNotesMirrorBot;
   nextId: () => string;
   now: () => string;
 };
@@ -36,91 +39,117 @@ export const handleImportNote = (
     return errAsync(noteImportRequiresBotError());
   }
 
-  return deps.loadProject(command.projectId).andThen((project) => {
-    if (!project || project.organizationId !== command.organizationId) {
-      return errAsync(projectNotFoundError(command.projectId));
+  return deps.loadNotesMirrorBot(command.organizationId).andThen((designatedUserId) => {
+    if (!isDesignatedMirrorBot({ actorUserId: command.actor.userId, designatedUserId })) {
+      return errAsync(noteImportRequiresMirrorBotError());
     }
 
-    return deps.loadOrgPerson(command.organizationId).andThen((person) => {
-      if (!person) {
-        return errAsync(noteSyncNoPersonError());
+    return deps.loadProject(command.projectId).andThen((project) => {
+      if (!project || project.organizationId !== command.organizationId) {
+        return errAsync(projectNotFoundError(command.projectId));
       }
 
-      const loadCurrent =
-        command.noteId === undefined
-          ? okAsync(null)
-          : deps.backend.get({
-              organizationId: command.organizationId,
-              projectId: command.projectId,
-              noteId: command.noteId,
-            });
-
-      return loadCurrent.andThen((loaded) => {
-        if (command.noteId !== undefined && loaded === null) {
-          return errAsync(noteNotFoundError(command.noteId));
+      return deps.loadOrgPerson(command.organizationId).andThen((person) => {
+        if (!person) {
+          return errAsync(noteSyncNoPersonError());
         }
 
-        const now = deps.now();
-        const decision = decideImportNote({
-          command,
-          current: loaded,
-          authorUserId: person.userId,
-          nextId: deps.nextId(),
-          nextVersion: loaded ? deps.backend.nextVersion(loaded.version) : '1',
-          now,
-        });
-        if (decision.isErr()) {
-          return errAsync(decision.error);
-        }
+        const loadCurrent =
+          command.noteId === undefined
+            ? okAsync(null)
+            : deps.backend.get({
+                organizationId: command.organizationId,
+                projectId: command.projectId,
+                noteId: command.noteId,
+              });
 
-        if (decision.value.type === 'unchanged') {
-          return okAsync({
-            event: { type: 'unchanged' as const },
-            view: decision.value.view,
-            created: false,
+        return loadCurrent.andThen((loaded) => {
+          if (command.noteId !== undefined && loaded === null) {
+            return errAsync(noteNotFoundError(command.noteId));
+          }
+
+          const now = deps.now();
+          const decision = decideImportNote({
+            command,
+            current: loaded,
+            authorUserId: person.userId,
+            nextId: deps.nextId(),
+            nextVersion: loaded ? deps.backend.nextVersion(loaded.version) : '1',
+            now,
           });
-        }
+          if (decision.isErr()) {
+            return errAsync(decision.error);
+          }
 
-        const author = {
-          kind: 'user' as const,
-          userId: person.userId,
-          via: 'token' as const,
-        };
-        const event = decision.value;
-        const ids = { recordId: deps.nextId() };
-        const plan =
-          event.type === 'NoteCreated'
-            ? planNoteChange({
-                event,
-                current: null,
-                actor: author,
-                actorName: person.name,
-                ids,
-              })
-            : loaded
+          if (decision.value.type === 'unchanged') {
+            return okAsync({
+              event: { type: 'unchanged' as const },
+              view: decision.value.view,
+              created: false,
+            });
+          }
+
+          const author = {
+            kind: 'user' as const,
+            userId: person.userId,
+            via: 'token' as const,
+          };
+          const event = decision.value;
+          const ids = { recordId: deps.nextId() };
+          const plan =
+            event.type === 'NoteCreated'
               ? planNoteChange({
                   event,
-                  current: loaded,
+                  current: null,
                   actor: author,
                   actorName: person.name,
                   ids,
                 })
-              : null;
-        if (plan === null) {
-          return errAsync(noteNotFoundError(command.noteId ?? event.id));
-        }
-        return deps.backend
-          .persist(plan)
-          .mapErr((error) =>
-            error.type === 'STALE_NOTE'
-              ? storageError('Unexpected stale note on Obsidian import')
-              : error
-          )
-          .map(() => ({
-            event,
-            view: plan.view,
-            created: event.type === 'NoteCreated',
-          }));
+              : loaded
+                ? planNoteChange({
+                    event,
+                    current: loaded,
+                    actor: author,
+                    actorName: person.name,
+                    ids,
+                  })
+                : null;
+          if (plan === null) {
+            return errAsync(noteNotFoundError(command.noteId ?? event.id));
+          }
+          return deps.backend
+            .persist(plan)
+            .orElse((error) => {
+              if (error.type !== 'STALE_NOTE') {
+                return errAsync(error);
+              }
+              return deps.backend
+                .get({
+                  organizationId: command.organizationId,
+                  projectId: command.projectId,
+                  noteId: plan.view.id,
+                })
+                .andThen((current) =>
+                  current
+                    ? errAsync(
+                        noteSyncConflictError({
+                          version: current.version,
+                          title: current.title,
+                          body: current.body,
+                          updatedAt: current.updatedAt,
+                          updatedById: current.updatedById,
+                          updatedByName: current.updatedByName,
+                        })
+                      )
+                    : errAsync(noteNotFoundError(plan.view.id))
+                );
+            })
+            .map(() => ({
+              event,
+              view: plan.view,
+              created: event.type === 'NoteCreated',
+            }));
+        });
       });
     });
   });

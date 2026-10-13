@@ -14,6 +14,10 @@ import { createProjectHandlers } from './projects/application/create-project-han
 import { createNoteHandlers } from './notes/application/create-note-handlers.js';
 import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
 import { loadOrgPersonFromSqlite } from './notes/infrastructure/load-org-person.js';
+import {
+  designateNotesMirrorBotFromSqlite,
+  loadNotesMirrorBotFromSqlite,
+} from './notes/infrastructure/load-notes-mirror-bot.js';
 import { storageError as noteStorageError } from './notes/domain/note-errors.js';
 import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
 import {
@@ -309,7 +313,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         now: () => clock.now().toISOString(),
       });
 
-    const agentService = createAgentService({
+    const mintedAgentService = createAgentService({
       userService,
       membershipService,
       createToken: (command) =>
@@ -317,6 +321,19 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       clock,
       idGenerator,
     });
+    const designateNotesMirrorBot = designateNotesMirrorBotFromSqlite(database);
+    const agentService: typeof mintedAgentService = {
+      mintAgent: (command) =>
+        mintedAgentService.mintAgent(command).andThen((minted) =>
+          designateNotesMirrorBot({
+            organizationId: command.organizationId,
+            userId: minted.user.id,
+            name: minted.user.name ?? command.name,
+          })
+            .mapErr((error) => tokenStorageError(error.message, error.cause))
+            .map(() => minted)
+        ),
+    };
 
     signupConfig = {
       signupService,
@@ -452,6 +469,10 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
           )
         ),
     loadOrgPerson: loadOrgPersonFromSqlite(database),
+    loadNotesMirrorBot: loadNotesMirrorBotFromSqlite(
+      database,
+      config.notesMirrorBotUserId ?? null
+    ),
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
     logger: commandLogger,

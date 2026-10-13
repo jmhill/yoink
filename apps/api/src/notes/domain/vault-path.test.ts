@@ -25,7 +25,18 @@ describe('vault path rule', () => {
     expect(safeProjectFolderName('Harbor/shed: "dock"?')).toBe('Harbor-shed-dock');
     expect(safeProjectFolderName('A\\B:*?"<>|')).toBe('A-B');
     expect(safeProjectFolderName('...')).toBe('project');
+    expect(safeProjectFolderName('...', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')).toBe(
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    );
     expect(safeProjectFolderName('Café')).toBe('Café');
+    expect(
+      vaultNotePath({
+        projectName: '...',
+        projectId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        createdAt: '2026-10-13T18:04:00.000Z',
+        noteId,
+      })
+    ).toBe('Yoink notes/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/2026-10-13 a1b2c3.md');
   });
 
   it('keeps the same path when the title changes', () => {

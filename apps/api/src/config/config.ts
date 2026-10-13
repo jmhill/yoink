@@ -239,6 +239,14 @@ const loadCookieConfig = (): CookieConfig => {
  * Load application configuration from environment variables.
  * Returns production-ready defaults (file-based LibSQL, system clock, uuid, bcrypt).
  */
+const loadNotesMirrorBotUserId = (): string | undefined => {
+  const raw = process.env.NOTES_MIRROR_BOT_USER_ID;
+  if (!raw || raw.length === 0) {
+    return undefined;
+  }
+  return parseNamedEnv(z.string().uuid(), raw, 'NOTES_MIRROR_BOT_USER_ID');
+};
+
 export const loadConfig = async (): Promise<AppConfig> => {
   return {
     server: {
@@ -259,6 +267,7 @@ export const loadConfig = async (): Promise<AppConfig> => {
     sentry: loadSentryConfig(),
     webauthn: loadWebAuthnConfig(),
     cookie: loadCookieConfig(),
+    notesMirrorBotUserId: loadNotesMirrorBotUserId(),
   };
 };
 

@@ -12,11 +12,9 @@ const parseState = (value: unknown): MirrorState => {
   }
   const lastSince =
     typeof value.lastSince === 'string' ? value.lastSince : emptyMirrorState().lastSince;
-  const lastNoteId = typeof value.lastNoteId === 'string' ? value.lastNoteId : null;
   const notes = isRecord(value.notes) ? value.notes : {};
   return {
     lastSince,
-    lastNoteId,
     notes: Object.fromEntries(
       Object.entries(notes).flatMap(([id, note]) => {
         if (!isRecord(note) || typeof note.noteId !== 'string') {

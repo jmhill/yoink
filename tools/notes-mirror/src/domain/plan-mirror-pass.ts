@@ -44,7 +44,6 @@ export type TrackedNote = {
 
 export type MirrorState = {
   readonly lastSince: string;
-  readonly lastNoteId: string | null;
   readonly notes: Readonly<Record<string, TrackedNote>>;
 };
 
@@ -55,6 +54,7 @@ export type VaultFile = {
 
 export type PlannedAction =
   | { readonly type: 'write'; readonly relativePath: string; readonly markdown: string; readonly note: TrackedNote }
+  | { readonly type: 'move'; readonly from: string; readonly to: string }
   | { readonly type: 'archive'; readonly from: string; readonly to: string; readonly noteId: string }
   | {
       readonly type: 'conflict';
@@ -72,6 +72,7 @@ export type PlannedAction =
       readonly title: string;
       readonly body: string;
       readonly baseVersion: string;
+      readonly currentPath: string;
     }
   | {
       readonly type: 'push-create';
@@ -89,7 +90,6 @@ export type MirrorPlan = {
 
 export const emptyMirrorState = (): MirrorState => ({
   lastSince: '1970-01-01T00:00:00.000Z',
-  lastNoteId: null,
   notes: {},
 });
 
@@ -102,6 +102,7 @@ const trackedFromUpsert = (change: UpsertedChange): TrackedNote => ({
   noteId: change.id,
   relativePath: vaultNotePath({
     projectName: change.projectName,
+    projectId: change.projectId,
     createdAt: change.createdAt,
     noteId: change.id,
   }),
@@ -141,7 +142,7 @@ const omitNote = (
 
 const projectIdByFolder = (notes: Readonly<Record<string, TrackedNote>>): Readonly<Record<string, string>> =>
   Object.values(notes).reduce<Readonly<Record<string, string>>>((acc, note) => {
-    const folder = safeProjectFolderName(note.projectName);
+    const folder = safeProjectFolderName(note.projectName, note.projectId);
     return { ...acc, [folder]: note.projectId };
   }, {});
 
@@ -178,6 +179,7 @@ const planUpsert = (state: PlanState, change: UpsertedChange, vaultByNoteId: Rea
           title: local.title,
           body: local.body,
           baseVersion,
+          currentPath: vault?.relativePath ?? note.relativePath,
         }),
         seen: new Set([...state.seen, change.id]),
         notes: setNote(state.notes, {
@@ -213,8 +215,13 @@ const planUpsert = (state: PlanState, change: UpsertedChange, vaultByNoteId: Rea
     };
   }
 
+  const currentPath = vault?.relativePath ?? tracked?.relativePath;
+  const relocated =
+    currentPath && currentPath !== note.relativePath
+      ? withAction(state, { type: 'move', from: currentPath, to: note.relativePath })
+      : state;
   return {
-    ...withAction(state, writeAction(note)),
+    ...withAction(relocated, writeAction(note)),
     seen: new Set([...state.seen, change.id]),
     notes: setNote(state.notes, note),
   };
@@ -232,6 +239,7 @@ const planDelete = (
     tracked?.relativePath ??
     vaultNotePath({
       projectName: change.projectName,
+      projectId: change.projectId,
       createdAt: change.createdAt,
       noteId: change.id,
     });
@@ -266,6 +274,7 @@ const planVaultOnly = (
         title: parsed.value.title,
         body: parsed.value.body,
         baseVersion: tracked.version,
+        currentPath: file.relativePath,
       });
     }
     return state;
@@ -303,17 +312,12 @@ const planVaultOnly = (
   });
 };
 
-const lastChangeStamp = (
-  changes: readonly FeedChange[]
-): { lastSince: string; lastNoteId: string | null } | null => {
+const lastChangeStamp = (changes: readonly FeedChange[]): string | null => {
   const last = changes[changes.length - 1];
   if (!last) {
     return null;
   }
-  if (last.kind === 'upserted') {
-    return { lastSince: last.updatedAt, lastNoteId: last.id };
-  }
-  return { lastSince: last.deletedAt, lastNoteId: last.id };
+  return last.kind === 'upserted' ? last.updatedAt : last.deletedAt;
 };
 
 export const planMirrorPass = (input: {
@@ -357,8 +361,7 @@ export const planMirrorPass = (input: {
   return {
     actions: missingLocal.actions,
     nextState: {
-      lastSince: stamp?.lastSince ?? input.state.lastSince,
-      lastNoteId: stamp?.lastNoteId ?? input.state.lastNoteId,
+      lastSince: stamp ?? input.state.lastSince,
       notes: missingLocal.notes,
     },
   };

@@ -56,3 +56,13 @@ export type OrgPerson = {
 export type LoadOrgPerson = (
   organizationId: string
 ) => ResultAsync<OrgPerson | null, StorageError>;
+
+export type LoadNotesMirrorBot = (
+  organizationId: string
+) => ResultAsync<string | null, StorageError>;
+
+export type DesignateNotesMirrorBot = (input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+}) => ResultAsync<void, StorageError>;

@@ -59,6 +59,7 @@ const runNotesBackendContract = (
         loadProject: (id) => okAsync(id === projectId ? project : null),
         loadActorName: () => okAsync('Lane'),
         loadOrgPerson: () => okAsync({ userId, name: 'Lane' }),
+        loadNotesMirrorBot: () => okAsync('bot-1'),
         nextId: () => {
           ids += 1;
           return `00000000-0000-4000-8000-${String(ids).padStart(12, '0')}`;
@@ -330,6 +331,27 @@ const runNotesBackendContract = (
       expect(refused.isErr()).toBe(true);
       if (refused.isErr()) {
         expect(refused.error.type).toBe('NOTE_IMPORT_REQUIRES_BOT');
+      }
+
+      const otherBot = {
+        kind: 'bot' as const,
+        tokenId: 'tok-2',
+        userId: 'bot-2',
+        name: 'Other helper',
+        via: 'token' as const,
+      };
+      const notMirror = await api.importFromObsidian({
+        organizationId: orgId,
+        projectId,
+        noteId: created.value.view.id,
+        title: 'Meeting notes',
+        body: 'Other bot',
+        baseVersion: created.value.view.version,
+        actor: otherBot,
+      });
+      expect(notMirror.isErr()).toBe(true);
+      if (notMirror.isErr()) {
+        expect(notMirror.error.type).toBe('NOTE_IMPORT_REQUIRES_MIRROR_BOT');
       }
     });
 

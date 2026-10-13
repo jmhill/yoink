@@ -56,6 +56,7 @@ describe('sqlite notes persist rollback', () => {
       loadProject: (id) => okAsync(id === projectId ? project : null),
       loadActorName: () => okAsync('Lane'),
       loadOrgPerson: () => okAsync({ userId, name: 'Lane' }),
+      loadNotesMirrorBot: () => okAsync('bot-1'),
       nextId: (() => {
         let n = 0;
         return () => {

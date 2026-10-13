@@ -50,6 +50,7 @@ import { migration as addOrganizationTimeZone } from './035-add-organization-tim
 import { migration as addProjectNotes } from './036-add-project-notes.js';
 import { migration as addProjectProposals } from './037-add-project-proposals.js';
 import { migration as notesChangedSinceIndex } from './038-notes-changed-since-index.js';
+import { migration as notesMirrorBot } from './039-notes-mirror-bot.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -90,6 +91,7 @@ export const migrations: Migration[] = [
   addProjectNotes,
   addProjectProposals,
   notesChangedSinceIndex,
+  notesMirrorBot,
 ];
 
 export type { Migration };

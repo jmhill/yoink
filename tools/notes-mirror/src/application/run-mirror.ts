@@ -27,6 +27,14 @@ export type ChangedPage = {
   readonly nextCursor: string | null;
 };
 
+export type ImportFailure =
+  | { readonly type: 'NOTE_SYNC_CONFLICT'; readonly message: string }
+  | { readonly type: 'failed'; readonly message: string };
+
+export type VaultMoveError =
+  | { readonly type: 'SOURCE_MISSING'; readonly from: string }
+  | { readonly type: 'MOVE_FAILED'; readonly from: string; readonly to: string; readonly message: string };
+
 export type NotesMirrorApi = {
   listChanged: (input: {
     since: string;
@@ -38,13 +46,13 @@ export type NotesMirrorApi = {
     title: string;
     body: string;
     baseVersion?: string;
-  }) => Promise<Result<ImportedNote, string>>;
+  }) => Promise<Result<ImportedNote, ImportFailure>>;
 };
 
 export type VaultStore = {
   listNoteFiles: () => Promise<readonly VaultFile[]>;
   writeFile: (relativePath: string, contents: string) => Promise<void>;
-  moveFile: (from: string, to: string) => Promise<void>;
+  moveFile: (from: string, to: string) => Promise<Result<void, VaultMoveError>>;
 };
 
 export type StateStore = {
@@ -61,6 +69,7 @@ const trackedFromImported = (note: ImportedNote, projectName: string): TrackedNo
   noteId: note.id,
   relativePath: vaultNotePath({
     projectName,
+    projectId: note.projectId,
     createdAt: note.createdAt,
     noteId: note.id,
   }),
@@ -75,22 +84,71 @@ const trackedFromImported = (note: ImportedNote, projectName: string): TrackedNo
 
 const projectNameOf = (state: MirrorState, projectId: string): string => {
   const found = Object.values(state.notes).find((note) => note.projectId === projectId);
-  return found?.projectName ?? 'project';
+  return found?.projectName ?? projectId;
 };
 
-const applyFileAction = async (action: PlannedAction, vault: VaultStore): Promise<void> => {
+const markdownFor = (note: TrackedNote): string =>
+  noteToMarkdown({
+    id: note.noteId,
+    projectId: note.projectId,
+    version: note.version,
+    updatedAt: note.updatedAt,
+    title: note.title,
+    body: note.body,
+  });
+
+const relocate = async (
+  vault: VaultStore,
+  from: string,
+  to: string
+): Promise<Result<void, VaultMoveError>> => {
+  if (from === to) {
+    return ok(undefined);
+  }
+  return vault.moveFile(from, to);
+};
+
+const applyFileAction = async (
+  action: PlannedAction,
+  vault: VaultStore
+): Promise<Result<void, VaultMoveError>> => {
   if (action.type === 'write') {
     await vault.writeFile(action.relativePath, action.markdown);
-    return;
+    return ok(undefined);
+  }
+  if (action.type === 'move') {
+    return relocate(vault, action.from, action.to);
   }
   if (action.type === 'archive') {
-    await vault.moveFile(action.from, action.to);
-    return;
+    return relocate(vault, action.from, action.to);
   }
   if (action.type === 'conflict') {
-    await vault.moveFile(action.from, action.to);
+    const moved = await relocate(vault, action.from, action.to);
+    if (moved.isErr() && moved.error.type !== 'SOURCE_MISSING') {
+      return moved;
+    }
     await vault.writeFile(action.yoinkPath, action.yoinkMarkdown);
+    return ok(undefined);
   }
+  return ok(undefined);
+};
+
+const writeImported = async (
+  vault: VaultStore,
+  note: TrackedNote,
+  currentPath: string
+): Promise<Result<void, VaultMoveError>> => {
+  const moved = await relocate(vault, currentPath, note.relativePath);
+  if (moved.isErr() && moved.error.type !== 'SOURCE_MISSING') {
+    return moved;
+  }
+  await vault.writeFile(note.relativePath, markdownFor(note));
+  return ok(undefined);
+};
+
+type PushState = {
+  readonly state: MirrorState;
+  readonly extras: readonly PlannedAction[];
 };
 
 export const runMirror = async (deps: {
@@ -117,74 +175,89 @@ export const runMirror = async (deps: {
       vaultFiles,
     });
 
-    for (const action of plan.actions) {
-      await applyFileAction(action, deps.vault);
-    }
-
-    const afterPushes = await plan.actions.reduce<Promise<Result<MirrorState, string>>>(
+    const afterFiles = await plan.actions.reduce<Promise<Result<readonly PlannedAction[], string>>>(
       async (previous, action) => {
         const current = await previous;
         if (current.isErr()) {
           return current;
         }
-        if (action.type === 'push-update') {
-          const imported = await deps.api.importNote(action);
-          if (imported.isErr()) {
-            return err(imported.error);
-          }
-          const note = trackedFromImported(
-            imported.value,
-            projectNameOf(current.value, action.projectId)
-          );
-          await deps.vault.writeFile(note.relativePath, noteToMarkdown({
-            id: note.noteId,
-            projectId: note.projectId,
-            version: note.version,
-            updatedAt: note.updatedAt,
-            title: note.title,
-            body: note.body,
-          }));
-          return ok({
-            ...current.value,
-            notes: { ...current.value.notes, [note.noteId]: note },
-          });
+        const applied = await applyFileAction(action, deps.vault);
+        if (applied.isOk()) {
+          return ok(current.value);
         }
-        if (action.type === 'push-create') {
-          const imported = await deps.api.importNote(action);
-          if (imported.isErr()) {
-            return err(imported.error);
-          }
-          const note = trackedFromImported(
-            imported.value,
-            projectNameOf(current.value, action.projectId)
-          );
-          await deps.vault.writeFile(note.relativePath, noteToMarkdown({
-            id: note.noteId,
-            projectId: note.projectId,
-            version: note.version,
-            updatedAt: note.updatedAt,
-            title: note.title,
-            body: note.body,
-          }));
-          return ok({
+        if (applied.error.type === 'SOURCE_MISSING') {
+          return ok([
             ...current.value,
-            notes: { ...current.value.notes, [note.noteId]: note },
-          });
+            {
+              type: 'report' as const,
+              level: 'warn' as const,
+              message: `Skipped move of missing file ${applied.error.from}`,
+            },
+          ]);
         }
-        return current;
+        return err(applied.error.message);
       },
-      Promise.resolve(ok(plan.nextState))
+      Promise.resolve(ok<readonly PlannedAction[], string>([]))
+    );
+    if (afterFiles.isErr()) {
+      return err(afterFiles.error);
+    }
+
+    const afterPushes = await plan.actions.reduce<Promise<Result<PushState, string>>>(
+      async (previous, action) => {
+        const current = await previous;
+        if (current.isErr()) {
+          return current;
+        }
+        if (action.type !== 'push-update' && action.type !== 'push-create') {
+          return current;
+        }
+        const imported = await deps.api.importNote(action);
+        if (imported.isErr()) {
+          if (imported.error.type === 'NOTE_SYNC_CONFLICT') {
+            return ok({
+              state: current.value.state,
+              extras: [
+                ...current.value.extras,
+                {
+                  type: 'report' as const,
+                  level: 'warn' as const,
+                  message: `Conflict on ${action.type === 'push-update' ? action.noteId : action.relativePath}; left Yoink as-is and continued`,
+                },
+              ],
+            });
+          }
+          return err(imported.error.message);
+        }
+        const note = trackedFromImported(
+          imported.value,
+          projectNameOf(current.value.state, action.projectId)
+        );
+        const currentPath = action.type === 'push-create' ? action.relativePath : action.currentPath;
+        const written = await writeImported(deps.vault, note, currentPath);
+        if (written.isErr() && written.error.type !== 'SOURCE_MISSING') {
+          return err(written.error.message);
+        }
+        return ok({
+          state: {
+            ...current.value.state,
+            notes: { ...current.value.state.notes, [note.noteId]: note },
+          },
+          extras: current.value.extras,
+        });
+      },
+      Promise.resolve(ok<PushState, string>({ state: plan.nextState, extras: afterFiles.value }))
     );
 
     if (afterPushes.isErr()) {
       return err(afterPushes.error);
     }
 
-    const nextActions = [...collected, ...plan.actions];
+    const nextActions = [...collected, ...plan.actions, ...afterPushes.value.extras];
     if (page.value.hasMore && page.value.nextCursor) {
-      return walk(afterPushes.value, page.value.nextCursor, nextActions);
+      return walk(afterPushes.value.state, page.value.nextCursor, nextActions);
     }
-    return ok({ state: afterPushes.value, actions: nextActions });
+    return ok({ state: afterPushes.value.state, actions: nextActions });
   };
 
   const finished = await walk(initial, undefined, []);
@@ -195,7 +268,10 @@ export const runMirror = async (deps: {
   return ok({
     actions: finished.value.actions,
     warnings: finished.value.actions
-      .filter((action) => action.type === 'report' || action.type === 'flag-obsidian-delete' || action.type === 'conflict')
+      .filter(
+        (action) =>
+          action.type === 'report' || action.type === 'flag-obsidian-delete' || action.type === 'conflict'
+      )
       .map((action) => {
         if (action.type === 'report') {
           return action.message;

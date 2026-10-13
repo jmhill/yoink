@@ -718,7 +718,17 @@ file was derived from). If Yoink’s version differs, the response is
 and `body` — nothing is overwritten or merged. A successful import is
 authored as the organization’s person (Justin) and the timeline reads
 “Justin edited this note in Obsidian”. Person tokens get
-`403 NOTE_IMPORT_REQUIRES_BOT`. Normal PATCH still uses `409 STALE_NOTE`.
+`403 NOTE_IMPORT_REQUIRES_BOT`. Any bot that is not the designated
+notes-mirror bot gets `403 NOTE_IMPORT_REQUIRES_MIRROR_BOT`. Normal
+PATCH still uses `409 STALE_NOTE`.
+
+The designated bot is one member id per organization, stored on
+`organizations.notes_mirror_bot_user_id`. Justin designates it by minting
+a bot named `Libby notes-mirror` from a signed-in web session (#132) —
+the first such mint is recorded. If that column is empty, the API
+resolves the first org agent with that name and stores it, or uses
+`NOTES_MIRROR_BOT_USER_ID` when set. Other bots may still read the
+changed-since feed; only the designated bot may import.
 
 ```bash
 # Everything changed since the last successful pull (full set or page)
@@ -866,6 +876,7 @@ the generic `[ts-rest] request validation failed` text.
 | `STALE_NOTE` | `expectedVersion` no longer matches; body includes `currentVersion` (`409`) |
 | `NOTE_SYNC_CONFLICT` | Obsidian import `baseVersion` no longer matches; body includes `currentVersion` plus current title and body (`409`) |
 | `NOTE_IMPORT_REQUIRES_BOT` | A person token called `POST /api/notes/import` (`403`) |
+| `NOTE_IMPORT_REQUIRES_MIRROR_BOT` | A bot token that is not the designated notes-mirror bot called `POST /api/notes/import` (`403`) |
 | `NOTE_SYNC_NO_PERSON` | Import has no human member in the org to attribute the edit to (`403`) |
 | `NOTE_NOT_FOUND` | Note is missing, soft-deleted, or in another project/org (`404`) |
 

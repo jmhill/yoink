@@ -63,6 +63,11 @@ export type NoteImportRequiresBotError = {
   readonly message: string;
 };
 
+export type NoteImportRequiresMirrorBotError = {
+  readonly type: 'NOTE_IMPORT_REQUIRES_MIRROR_BOT';
+  readonly message: string;
+};
+
 export type NoteSyncNoPersonError = {
   readonly type: 'NOTE_SYNC_NO_PERSON';
   readonly message: string;
@@ -84,6 +89,7 @@ export type ImportNoteError =
   | ProjectNotFoundError
   | NoteSyncConflictError
   | NoteImportRequiresBotError
+  | NoteImportRequiresMirrorBotError
   | NoteSyncNoPersonError;
 
 export type ListNotesError = StorageError | InvalidCursorError | ProjectNotFoundError;
@@ -181,6 +187,11 @@ export const noteSyncConflictError = (current: {
 export const noteImportRequiresBotError = (): NoteImportRequiresBotError => ({
   type: 'NOTE_IMPORT_REQUIRES_BOT',
   message: 'Only the notes-mirror bot token may import Obsidian edits',
+});
+
+export const noteImportRequiresMirrorBotError = (): NoteImportRequiresMirrorBotError => ({
+  type: 'NOTE_IMPORT_REQUIRES_MIRROR_BOT',
+  message: 'Only the designated notes-mirror bot may import Obsidian edits',
 });
 
 export const noteSyncNoPersonError = (): NoteSyncNoPersonError => ({

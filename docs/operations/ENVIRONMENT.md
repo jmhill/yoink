@@ -10,6 +10,7 @@
 | `SENTRY_DSN` | Sentry project DSN for API crash reporting and (when enabled) logs | Fly secret, already set by `fly ext sentry create`. Skip Sentry init when unset. |
 | `SENTRY_LOGS_ENABLED` | Forward Pino logs to Sentry Logs | Optional. `true` / `false`. Default: `true` in production, `false` in tests and local dev. |
 | `SENTRY_LOGS_LEVEL` | Minimum Pino level forwarded to Sentry (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | Optional. Default: `info`. |
+| `NOTES_MIRROR_BOT_USER_ID` | Fallback user id of the designated notes-mirror bot when `organizations.notes_mirror_bot_user_id` is empty | Optional UUID. Used only for `POST /api/notes/import`. |
 
 ## Sentry Logs
 

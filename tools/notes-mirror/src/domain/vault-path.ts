@@ -22,7 +22,7 @@ export const noteShortId = (noteId: string): string =>
 
 export const noteCreatedDate = (createdAt: string): string => createdAt.slice(0, 10);
 
-export const safeProjectFolderName = (projectName: string): string => {
+export const safeProjectFolderName = (projectName: string, fallbackId?: string): string => {
   const replaced = [...projectName]
     .map((char) => (isIllegalFolderChar(char) ? '-' : char))
     .join('')
@@ -30,7 +30,10 @@ export const safeProjectFolderName = (projectName: string): string => {
     .replace(/-+/g, '-')
     .replace(/\s+/g, ' ');
   const trimmed = replaced.replace(/^[-.\s]+|[-.\s]+$/g, '');
-  return trimmed.length > 0 ? trimmed : 'project';
+  if (trimmed.length > 0) {
+    return trimmed;
+  }
+  return fallbackId && fallbackId.length > 0 ? fallbackId : 'project';
 };
 
 export const vaultNoteFileName = (input: { createdAt: string; noteId: string }): string =>
@@ -38,10 +41,11 @@ export const vaultNoteFileName = (input: { createdAt: string; noteId: string }):
 
 export const vaultNotePath = (input: {
   projectName: string;
+  projectId?: string;
   createdAt: string;
   noteId: string;
 }): string =>
-  `${YOINK_NOTES_FOLDER}/${safeProjectFolderName(input.projectName)}/${vaultNoteFileName(input)}`;
+  `${YOINK_NOTES_FOLDER}/${safeProjectFolderName(input.projectName, input.projectId)}/${vaultNoteFileName(input)}`;
 
 export const vaultArchivePath = (relativePath: string): string => `archive/${relativePath}`;
 

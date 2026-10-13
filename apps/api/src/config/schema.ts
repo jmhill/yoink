@@ -170,6 +170,8 @@ export const AppConfigSchema = z.object({
   sentry: SentryConfigSchema,
   webauthn: WebAuthnConfigSchema.optional(),
   cookie: CookieConfigSchema,
+  /** Designated notes-mirror bot member id. Import is allowed only for this user. */
+  notesMirrorBotUserId: z.string().uuid().optional(),
 });
 
 // Export inferred types

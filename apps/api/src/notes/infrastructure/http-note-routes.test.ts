@@ -325,6 +325,30 @@ describe('note HTTP routes', () => {
     expect(personImport.statusCode).toBe(403);
     expect(personImport.json<{ code: string }>().code).toBe('NOTE_IMPORT_REQUIRES_BOT');
 
+    const otherMinted = await app.inject({
+      method: 'POST',
+      url: `/api/organizations/${TEST_ORG_ID}/agents`,
+      cookies: session.cookies,
+      payload: { name: 'Other helper' },
+    });
+    expect(otherMinted.statusCode).toBe(201);
+    const otherToken = otherMinted.json<{ rawToken: string }>().rawToken;
+    const otherBot = { authorization: `Bearer ${otherToken}` };
+    const otherImport = await app.inject({
+      method: 'POST',
+      url: '/api/notes/import',
+      headers: otherBot,
+      payload: {
+        projectId: project.id,
+        noteId: note.id,
+        title: 'Meeting notes',
+        body: 'Other bot must not import',
+        baseVersion: view.version,
+      },
+    });
+    expect(otherImport.statusCode).toBe(403);
+    expect(otherImport.json<{ code: string }>().code).toBe('NOTE_IMPORT_REQUIRES_MIRROR_BOT');
+
     const missingProject = await app.inject({
       method: 'POST',
       url: '/api/notes/import',

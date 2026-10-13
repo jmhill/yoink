@@ -50,6 +50,10 @@ export type {
   CreateInvitationInput,
   AcceptInvitationResult,
   MintedAgent,
+  CreateProjectInput,
+  ListProjectsQuery,
+  ConfirmProjectProposalInput,
+  ConfirmProjectProposalResult,
   HealthStatus,
   PublicFileHeaders,
 } from './types.js';

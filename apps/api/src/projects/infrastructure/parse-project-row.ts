@@ -16,7 +16,9 @@ const ProjectRowSchema = z.object({
   created_by_id: z.string().min(1),
   name: z.string().min(1),
   objective: z.string().nullable().optional(),
-  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']),
+  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']),
+  reason: z.string().nullable().optional(),
+  suggested_next_action: z.string().nullable().optional(),
   waiting_on: z.string().nullable().optional(),
   waiting_since: isoDate.optional(),
   next_action_task_id: z.string().nullable().optional(),
@@ -39,7 +41,7 @@ export const parseProjectRow = (
     return err(pages.error);
   }
 
-  const project: Project = {
+  return ok({
     id: parsed.data.id,
     organizationId: parsed.data.organization_id,
     createdById: parsed.data.created_by_id,
@@ -52,13 +54,12 @@ export const parseProjectRow = (
     createdAt: parsed.data.created_at,
     lastChangedAt: parsed.data.last_changed_at ?? null,
     lastChangedBy: parsed.data.last_changed_by ?? null,
-  };
-
-  if (parsed.data.objective) {
-    project.objective = parsed.data.objective;
-  }
-
-  return ok(project);
+    ...(parsed.data.objective ? { objective: parsed.data.objective } : {}),
+    ...(parsed.data.reason ? { reason: parsed.data.reason } : {}),
+    ...(parsed.data.suggested_next_action
+      ? { suggestedNextAction: parsed.data.suggested_next_action }
+      : {}),
+  });
 };
 
 const notebookPagesJsonSchema = z.array(z.string());

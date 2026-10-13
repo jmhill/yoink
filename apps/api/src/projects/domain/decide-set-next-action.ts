@@ -4,6 +4,7 @@ import type { SetProjectNextActionCommand } from './project-commands.js';
 import type { ProjectNextActionCleared, ProjectNextActionSet } from './events.js';
 import {
   projectDoneError,
+  projectProposedError,
   taskNotFoundError,
   taskNotInProjectError,
   taskNotOpenError,
@@ -55,6 +56,10 @@ export const decideSetNextAction = ({
 
   if (project.status === 'done') {
     return err(projectDoneError(project.id));
+  }
+
+  if (project.status === 'proposed' || project.status === 'declined') {
+    return err(projectProposedError(project.id));
   }
 
   if (task.completedAt) {

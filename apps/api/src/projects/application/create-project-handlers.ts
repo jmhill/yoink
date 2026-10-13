@@ -1,4 +1,7 @@
+import { handleConfirmProposal } from './handle-confirm-proposal.js';
 import { handleCreateProject } from './handle-create-project.js';
+import { handleDeclineProposal } from './handle-decline-proposal.js';
+import { handleRestoreProposal } from './handle-restore-proposal.js';
 import { handleUpdateProject } from './handle-update-project.js';
 import { handleListProjects } from './handle-list-projects.js';
 import { handleGetProject } from './handle-get-project.js';
@@ -155,6 +158,39 @@ export const createProjectHandlers = (deps: ProjectHandlerDeps) => ({
       },
       () => [],
       () => handleDiscardImport(command, deps)
+    ),
+  confirmProposal: (command: Parameters<typeof handleConfirmProposal>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'ConfirmProposedProject',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => result.eventKinds,
+      () => handleConfirmProposal(command, deps)
+    ),
+  declineProposal: (command: Parameters<typeof handleDeclineProposal>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'DeclineProposedProject',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => result.eventKinds,
+      () => handleDeclineProposal(command, deps)
+    ),
+  restoreProposal: (command: Parameters<typeof handleRestoreProposal>[0]) =>
+    withCommandLog(
+      deps.logger,
+      {
+        command: 'RestoreDeclinedProject',
+        organizationId: command.organizationId,
+        actor: command.actor,
+      },
+      (result) => result.eventKinds,
+      () => handleRestoreProposal(command, deps)
     ),
 });
 

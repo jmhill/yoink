@@ -79,21 +79,28 @@ export type ProjectChangePlan =
  * Always returns a plan — create/update project without a null fallback.
  */
 export function planProjectChange(
-  input: Extract<ProjectChangePlanInput, { event: ProjectCreated }>
+  input: {
+    event: ProjectCreated;
+    current: null;
+  } & ProjectPlanBase
 ): Extract<ProjectChangePlan, { action: 'insert' }>;
 export function planProjectChange(
-  input: Extract<
-    ProjectChangePlanInput,
-    {
-      event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged;
-    }
-  >
+  input: {
+    event: ProjectUpdated | ProjectStatusChanged | ProjectWaitingChanged;
+    current: Project;
+  } & ProjectPlanBase
 ): Extract<ProjectChangePlan, { action: 'update' }>;
 export function planProjectChange(
-  input: Extract<ProjectChangePlanInput, { event: ProjectNextActionSet }>
+  input: {
+    event: ProjectNextActionSet;
+    current: Project;
+  } & ProjectPlanBase
 ): Extract<ProjectChangePlan, { action: 'setNextAction' }>;
 export function planProjectChange(
-  input: Extract<ProjectChangePlanInput, { event: ProjectNextActionCleared }>
+  input: {
+    event: ProjectNextActionCleared;
+    current: Project;
+  } & ProjectPlanBase
 ): Extract<ProjectChangePlan, { action: 'clearNextAction' }>;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan;
 export function planProjectChange(input: ProjectChangePlanInput): ProjectChangePlan {

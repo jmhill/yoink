@@ -219,12 +219,32 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
     case 'TaskDeleted':
       return `${who} deleted ${quoted(title)}`;
     case 'ProjectCreated':
+      if (entry.details.status === 'proposed') {
+        return `${who} proposed this project`;
+      }
       return entry.details.captureId
         ? `${who} created this project from a capture`
         : `${who} created this project`;
     case 'ProjectUpdated':
       return `${who} changed ${joinChangedFields(projectUpdatedFieldLabels(entry.details))}`;
     case 'ProjectStatusChanged':
+      if (entry.details.from === 'proposed' && entry.details.to === 'declined') {
+        return `${who} turned it down`;
+      }
+      if (entry.details.from === 'declined' && entry.details.to === 'proposed') {
+        return `${who} restored it`;
+      }
+      if (entry.details.from === 'proposed') {
+        const confirmedAs =
+          entry.details.to === 'active'
+            ? 'Active'
+            : entry.details.to === 'someday'
+              ? 'Someday'
+              : entry.details.to === 'waiting'
+                ? 'Waiting'
+                : entry.details.to;
+        return `${who} confirmed it as ${confirmedAs}`;
+      }
       return `${who} marked this project ${entry.details.to}`;
     case 'ProjectWaitingChanged': {
       const since = entry.details.waitingSince

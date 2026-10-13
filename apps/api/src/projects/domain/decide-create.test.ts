@@ -192,9 +192,83 @@ describe('decideCreateProject', () => {
     expect(result.isOk()).toBe(true);
   });
 
-  it('refuses a bot actor', () => {
+  it('refuses a bot actor without proposed', () => {
     const result = decideCreateProject({
       command: botCommand(),
+      existingNames: [],
+      id: 'project-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_CREATE_REQUIRES_PERSON');
+    }
+  });
+
+  it('lets a bot propose with reason and suggested next action', () => {
+    const result = decideCreateProject({
+      command: {
+        ...botCommand(),
+        status: 'proposed',
+        reason: 'Dock needs work',
+        suggestedNextAction: 'Call the mill',
+        objective: 'Keep the dock usable',
+      },
+      existingNames: [],
+      id: 'project-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        type: 'ProjectCreated',
+        id: 'project-id-1',
+        organizationId: 'org-123',
+        createdById: 'user-lane',
+        name: 'Garden',
+        objective: 'Keep the dock usable',
+        status: 'proposed',
+        reason: 'Dock needs work',
+        suggestedNextAction: 'Call the mill',
+        createdAt: '2025-01-15T10:00:00.000Z',
+        occurredAt: '2025-01-15T10:00:00.000Z',
+      });
+    }
+  });
+
+  it('lets a person create someday', () => {
+    const result = decideCreateProject({
+      command: { ...personCommand(), status: 'someday' },
+      existingNames: [],
+      id: 'project-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe('someday');
+    }
+  });
+
+  it('refuses a person creating proposed', () => {
+    const result = decideCreateProject({
+      command: { ...personCommand(), status: 'proposed' },
+      existingNames: [],
+      id: 'project-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('PROJECT_PROPOSE_REQUIRES_BOT');
+    }
+  });
+
+  it('refuses a bot creating active', () => {
+    const result = decideCreateProject({
+      command: { ...botCommand(), status: 'active' },
       existingNames: [],
       id: 'project-id-1',
       now: '2025-01-15T10:00:00.000Z',

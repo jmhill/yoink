@@ -38,7 +38,14 @@ describe('ProjectSchema', () => {
   });
 
   it('accepts every status', () => {
-    for (const status of ['active', 'waiting', 'someday', 'done', 'proposed'] as const) {
+    for (const status of [
+      'active',
+      'waiting',
+      'someday',
+      'done',
+      'proposed',
+      'declined',
+    ] as const) {
       expect(ProjectSchema.safeParse({ ...garden, status }).success).toBe(true);
     }
   });
@@ -85,6 +92,21 @@ describe('CreateProjectSchema', () => {
 
   it('rejects a blank name', () => {
     expect(CreateProjectSchema.safeParse({ name: '   ' }).success).toBe(false);
+  });
+
+  it('accepts a proposal with reason and suggested next action', () => {
+    const parsed = CreateProjectSchema.safeParse({
+      name: 'Harbor shed',
+      status: 'proposed',
+      reason: 'Dock needs work this season',
+      suggestedNextAction: 'Call the mill about lumber',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.status).toBe('proposed');
+      expect(parsed.data.reason).toBe('Dock needs work this season');
+      expect(parsed.data.suggestedNextAction).toBe('Call the mill about lumber');
+    }
   });
 });
 

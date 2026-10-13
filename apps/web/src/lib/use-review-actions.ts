@@ -20,7 +20,7 @@ import {
 const REVIEW_TOAST_PREFIX = 'review-inline-action';
 
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
-  status === 'proposed' ? 'active' : status;
+  status === 'proposed' || status === 'declined' ? 'active' : status;
 
 export const useReviewActions = () => {
   const queryClient = tsrProjects.useQueryClient();

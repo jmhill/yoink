@@ -27,7 +27,9 @@ export const handleCreateProject = (
     const now = deps.now();
     const decision = decideCreateProject({
       command,
-      existingNames: existing.map((project) => project.name),
+      existingNames: existing
+        .filter((project) => project.status !== 'declined')
+        .map((project) => project.name),
       id: deps.nextId(),
       now,
     });

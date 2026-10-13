@@ -28,7 +28,10 @@ export const ProcessCaptureBodySchema = ProcessCaptureToTaskSchema;
 
 export type ProcessCaptureBody = z.infer<typeof ProcessCaptureBodySchema>;
 
-export const ProcessCaptureToProjectSchema = CreateProjectSchema.extend({
+export const ProcessCaptureToProjectSchema = CreateProjectSchema.omit({
+  reason: true,
+  suggestedNextAction: true,
+}).extend({
   status: z.enum(['active', 'someday']),
 });
 

@@ -52,7 +52,9 @@ export const handleProcessCaptureToProject = (
       const decision = decideProcessCaptureToProject({
         command,
         capture,
-        existingNames: existing.map((project) => project.name),
+        existingNames: existing
+          .filter((project) => project.status !== 'declined')
+          .map((project) => project.name),
         ids: { projectId: deps.nextId() },
         now,
       });

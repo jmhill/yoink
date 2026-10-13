@@ -365,6 +365,16 @@ describe('buildDesktopRailSections', () => {
     expect(review?.items[0]).toMatchObject({ kind: 'someday-project', projectId: laterId });
   });
 
+  it('adds proposed projects to the Process badge', () => {
+    const counted = buildDesktopRailSections({
+      inboxCount: 2,
+      proposalCount: 1,
+      namedLists: [],
+    });
+    const processCounted = counted.find((section) => section.key === 'process');
+    expect(processCounted?.badge).toBe(3);
+  });
+
   it('reuses processBadgeCount for the Process badge, null at 0', () => {
     const empty = buildDesktopRailSections({ inboxCount: 0, namedLists: [] });
     const counted = buildDesktopRailSections({ inboxCount: 19, namedLists: [] });

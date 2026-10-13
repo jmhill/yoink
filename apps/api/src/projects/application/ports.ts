@@ -19,6 +19,8 @@ export type PageProjects = (options: {
   organizationId: string;
   fetchLimit: number;
   seek?: KeysetCursor;
+  statuses?: readonly Project['status'][];
+  createdById?: string;
 }) => ResultAsync<KeysetRows<Project>, StorageError>;
 
 export type LoadProject = (id: string) => ResultAsync<Project | null, StorageError>;

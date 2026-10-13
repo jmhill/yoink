@@ -5,6 +5,7 @@ import {
   reviewBadgeCount,
   type MobileTabKey,
 } from './mobile-tabs';
+import { processBadgeTotal } from './process-queue';
 import { showsNoNextActionWarning } from './project-next-action';
 
 /** Visible label for the Mine smart view. Now’s Mine toggle stays “Mine”. */
@@ -22,7 +23,7 @@ export type RailNamedList = {
 export type RailProject = {
   id: string;
   name: string;
-  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed' | 'declined';
   nextActionTaskId?: string | null;
 };
 
@@ -303,6 +304,7 @@ const itemsForDesktopSection = (
  */
 export function buildDesktopRailSections(input: {
   inboxCount: number;
+  proposalCount?: number;
   namedLists: RailNamedList[];
   projects?: RailProject[];
   reviewBadge?: number;
@@ -316,7 +318,7 @@ export function buildDesktopRailSections(input: {
     items: itemsForDesktopSection(tab.key, { namedLists, projects }),
     badge:
       tab.key === 'process'
-        ? processBadgeCount(input.inboxCount)
+        ? processBadgeCount(processBadgeTotal(input.inboxCount, input.proposalCount ?? 0))
         : tab.key === 'review'
           ? reviewBadgeCount(input.reviewBadge ?? 0)
           : null,

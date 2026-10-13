@@ -6,8 +6,11 @@ import {
   duplicateProjectNameError,
   type DuplicateProjectNameError,
   type InvalidProjectNameError,
+  type InvalidProjectReasonError,
+  type InvalidSuggestedNextActionError,
   type ProjectNameBlankError,
 } from './project-errors.js';
+import { parseProjectReason, parseSuggestedNextAction } from './project-proposal-fields.js';
 import { normalizeProjectName, parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
 import { notebookPagesEqual, parseNotebookPages } from './notebook-pages.js';
@@ -30,7 +33,9 @@ export type DecideUpdateProjectError =
   | DuplicateProjectNameError
   | InvalidNotebookPathError
   | NotebookPageDuplicateError
-  | NotebookPagesTooManyError;
+  | NotebookPagesTooManyError
+  | InvalidProjectReasonError
+  | InvalidSuggestedNextActionError;
 
 export type DecideUpdateProjectResult =
   | { type: 'changed'; event: ProjectUpdated }
@@ -42,38 +47,34 @@ export const decideUpdateProject = ({
   existingNames,
   now,
 }: DecideUpdateProjectInput): Result<DecideUpdateProjectResult, DecideUpdateProjectError> => {
-  const event: ProjectUpdated = {
-    type: 'ProjectUpdated',
-    id: current.id,
-    organizationId: current.organizationId,
-    occurredAt: now,
-  };
-
+  let name: string | undefined;
   if (command.name !== undefined) {
     const parsed = parseProjectName(command.name);
     if (parsed.isErr()) {
       return err(parsed.error);
     }
 
-    const name = parsed.value;
-    if (name !== current.name) {
+    const parsedName = parsed.value;
+    if (parsedName !== current.name) {
       const others = existingNames.filter(
         (existing) => normalizeProjectName(existing) !== normalizeProjectName(current.name)
       );
-      if (projectNameIsTaken(name, others)) {
-        return err(duplicateProjectNameError(name));
+      if (projectNameIsTaken(parsedName, others)) {
+        return err(duplicateProjectNameError(parsedName));
       }
-      event.name = name;
+      name = parsedName;
     }
   }
 
+  let objective: string | null | undefined;
   if (command.objective !== undefined) {
-    const objective = parseProjectObjective(command.objective);
-    if (objective !== current.objective) {
-      event.objective = objective ?? null;
+    const parsedObjective = parseProjectObjective(command.objective);
+    if (parsedObjective !== current.objective) {
+      objective = parsedObjective ?? null;
     }
   }
 
+  let notebookPages: string[] | undefined;
   if (command.notebookPages !== undefined) {
     const parsed = parseNotebookPages(command.notebookPages);
     if (parsed.isErr()) {
@@ -81,17 +82,55 @@ export const decideUpdateProject = ({
     }
     const currentPaths = current.notebookPages.map((page) => page.path);
     if (!notebookPagesEqual(parsed.value, currentPaths)) {
-      event.notebookPages = parsed.value;
+      notebookPages = parsed.value;
+    }
+  }
+
+  let reason: string | null | undefined;
+  if (command.reason !== undefined) {
+    const parsed = parseProjectReason(command.reason);
+    if (parsed.isErr()) {
+      return err(parsed.error);
+    }
+    const parsedReason = parsed.value ?? null;
+    if (parsedReason !== (current.reason ?? null)) {
+      reason = parsedReason;
+    }
+  }
+
+  let suggestedNextAction: string | null | undefined;
+  if (command.suggestedNextAction !== undefined) {
+    const parsed = parseSuggestedNextAction(command.suggestedNextAction);
+    if (parsed.isErr()) {
+      return err(parsed.error);
+    }
+    const suggested = parsed.value ?? null;
+    if (suggested !== (current.suggestedNextAction ?? null)) {
+      suggestedNextAction = suggested;
     }
   }
 
   if (
-    event.name === undefined &&
-    event.objective === undefined &&
-    event.notebookPages === undefined
+    name === undefined &&
+    objective === undefined &&
+    notebookPages === undefined &&
+    reason === undefined &&
+    suggestedNextAction === undefined
   ) {
     return ok({ type: 'unchanged' });
   }
+
+  const event: ProjectUpdated = {
+    type: 'ProjectUpdated',
+    id: current.id,
+    organizationId: current.organizationId,
+    occurredAt: now,
+    ...(name !== undefined ? { name } : {}),
+    ...(objective !== undefined ? { objective } : {}),
+    ...(notebookPages !== undefined ? { notebookPages } : {}),
+    ...(reason !== undefined ? { reason } : {}),
+    ...(suggestedNextAction !== undefined ? { suggestedNextAction } : {}),
+  };
 
   return ok({ type: 'changed', event });
 };

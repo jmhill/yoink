@@ -66,6 +66,11 @@ export const registerTaskRoutes = async (
                   status: 400 as const,
                   body: { message: 'Cannot add a task to a done project' },
                 };
+              case 'PROJECT_PROPOSED':
+                return {
+                  status: 400 as const,
+                  body: { message: 'A proposed project cannot have tasks' },
+                };
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,
@@ -176,6 +181,11 @@ export const registerTaskRoutes = async (
                 return {
                   status: 400 as const,
                   body: { message: 'Cannot add a task to a done project' },
+                };
+              case 'PROJECT_PROPOSED':
+                return {
+                  status: 400 as const,
+                  body: { message: 'A proposed project cannot have tasks' },
                 };
               case 'TASK_NOT_OPEN':
                 return {

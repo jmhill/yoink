@@ -36,6 +36,10 @@ import type {
   ProcessCaptureToProjectResult,
   MintedAgent,
   Member,
+  CreateProjectInput,
+  ListProjectsQuery,
+  ConfirmProjectProposalInput,
+  ConfirmProjectProposalResult,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -292,7 +296,7 @@ export const createHttpActor = (
       return response.json<{ lists: NamedList[] }>().lists;
     },
 
-    async createProject(input: { name: string; objective?: string }): Promise<Project> {
+    async createProject(input: CreateProjectInput): Promise<Project> {
       const response = await client.post('/api/projects', input, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
@@ -314,10 +318,25 @@ export const createHttpActor = (
       return response.json<Project>();
     },
 
-    async listProjects(): Promise<Project[]> {
-      const response = await client.get('/api/projects', authHeaders());
+    async listProjects(query?: ListProjectsQuery): Promise<Project[]> {
+      const params = new URLSearchParams();
+      if (query?.status !== undefined) {
+        params.set('status', query.status);
+      }
+      if (query?.createdById !== undefined) {
+        params.set('createdById', query.createdById);
+      }
+      const suffix = params.toString();
+      const response = await client.get(
+        suffix === '' ? '/api/projects' : `/api/projects?${suffix}`,
+        authHeaders()
+      );
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
       }
       if (response.statusCode !== 200) {
         throw new Error(`Failed to list projects: ${response.body}`);
@@ -360,6 +379,80 @@ export const createHttpActor = (
       }
       if (response.statusCode !== 200) {
         throw new Error(`Failed to update project: ${response.body}`);
+      }
+      return response.json<Project>();
+    },
+
+    async confirmProjectProposal(
+      id: string,
+      input: ConfirmProjectProposalInput = {}
+    ): Promise<ConfirmProjectProposalResult> {
+      const response = await client.post(`/api/projects/${id}/confirm`, input, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Confirming a proposal requires a person');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A project with this name already exists');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to confirm proposal: ${response.body}`);
+      }
+      return response.json<ConfirmProjectProposalResult>();
+    },
+
+    async declineProjectProposal(id: string): Promise<Project> {
+      const response = await client.post(`/api/projects/${id}/decline`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Turning down a proposal requires a person');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to decline proposal: ${response.body}`);
+      }
+      return response.json<Project>();
+    },
+
+    async restoreProjectProposal(id: string): Promise<Project> {
+      const response = await client.post(`/api/projects/${id}/restore`, {}, authHeaders());
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 403) {
+        throw new ForbiddenError('Restoring a proposal requires a person');
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{ message?: string }>();
+        throw new ConflictError(error.message ?? 'A project with this name already exists');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to restore proposal: ${response.body}`);
       }
       return response.json<Project>();
     },
@@ -2258,6 +2351,44 @@ export const createHttpActor = (
 
     async shouldSeeProcessCurrent(_content: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeProcessCurrent', 'http');
+    },
+
+    async shouldSeeProcessProposal(_input: {
+      name: string;
+      proposedBy: string;
+      reason?: string;
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProcessProposal', 'http');
+    },
+
+    async openProcessProposalConfirm(): Promise<void> {
+      throw new UnsupportedOperationError('openProcessProposalConfirm', 'http');
+    },
+
+    async openProcessProposalEdit(): Promise<void> {
+      throw new UnsupportedOperationError('openProcessProposalEdit', 'http');
+    },
+
+    async turnDownProcessProposal(): Promise<void> {
+      throw new UnsupportedOperationError('turnDownProcessProposal', 'http');
+    },
+
+    async fillConfirmProposal(_input: {
+      name?: string;
+      objective?: string;
+      status?: 'active' | 'someday' | 'waiting';
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('fillConfirmProposal', 'http');
+    },
+
+    async confirmProcessProposal(): Promise<ConfirmProjectProposalResult> {
+      throw new UnsupportedOperationError('confirmProcessProposal', 'http');
+    },
+
+    async shouldSeeProposalBanner(_input: { proposedBy: string; reason?: string }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProposalBanner', 'http');
     },
 
     async shouldSeeProcessLeft(_count: number): Promise<void> {

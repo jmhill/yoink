@@ -39,6 +39,10 @@ import type {
   CreateInvitationInput,
   AcceptInvitationResult,
   MintedAgent,
+  CreateProjectInput,
+  ListProjectsQuery,
+  ConfirmProjectProposalInput,
+  ConfirmProjectProposalResult,
 } from './types.js';
 
 /**
@@ -79,8 +83,10 @@ export type CoreActor = {
   deleteNamedList(id: string): Promise<void>;
 
   // Projects. Creating requires a person; agents may list, read, and edit.
-  createProject(input: { name: string; objective?: string }): Promise<Project>;
-  listProjects(): Promise<Project[]>;
+  // Bots propose with status "proposed". List defaults to the working set;
+  // pass status=proposed,declined (and optional createdById) to read proposals.
+  createProject(input: CreateProjectInput): Promise<Project>;
+  listProjects(query?: ListProjectsQuery): Promise<Project[]>;
   getProject(id: string): Promise<Project>;
   updateProject(
     id: string,
@@ -104,6 +110,12 @@ export type CoreActor = {
     completedTaskCount: number;
     removedTaskCount: number;
   }>;
+  confirmProjectProposal(
+    id: string,
+    input?: ConfirmProjectProposalInput
+  ): Promise<ConfirmProjectProposalResult>;
+  declineProjectProposal(id: string): Promise<Project>;
+  restoreProjectProposal(id: string): Promise<Project>;
   setNextAction(
     projectId: string,
     input:
@@ -1815,6 +1827,51 @@ export type BrowserActorOperations = {
    * Assert Process shows this capture as the current card.
    */
   shouldSeeProcessCurrent(content: string): Promise<void>;
+
+  /**
+   * Assert Process shows this proposed project as the current card.
+   */
+  shouldSeeProcessProposal(input: {
+    name: string;
+    proposedBy: string;
+    reason?: string;
+    suggestedNextAction?: string;
+  }): Promise<void>;
+
+  /**
+   * Open Confirm on the current Process proposal card.
+   */
+  openProcessProposalConfirm(): Promise<void>;
+
+  /**
+   * Open Edit on the current Process proposal card.
+   */
+  openProcessProposalEdit(): Promise<void>;
+
+  /**
+   * Turn down the current Process proposal card.
+   */
+  turnDownProcessProposal(): Promise<void>;
+
+  /**
+   * Edit the confirm-proposal sheet fields.
+   */
+  fillConfirmProposal(input: {
+    name?: string;
+    objective?: string;
+    status?: 'active' | 'someday' | 'waiting';
+    suggestedNextAction?: string;
+  }): Promise<void>;
+
+  /**
+   * Submit the confirm-proposal sheet.
+   */
+  confirmProcessProposal(): Promise<ConfirmProjectProposalResult>;
+
+  /**
+   * Assert the project page proposal banner.
+   */
+  shouldSeeProposalBanner(input: { proposedBy: string; reason?: string }): Promise<void>;
 
   /**
    * Assert Process subcopy and marker say this many are left, including the current card.

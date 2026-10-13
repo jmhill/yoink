@@ -6,8 +6,9 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
     INSERT INTO projects (
       id, organization_id, created_by_id, name, objective, status,
       waiting_on, waiting_since, next_action_task_id, notebook_pages,
+      reason, suggested_next_action,
       created_at, last_changed_at, last_changed_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
   args: [
     project.id,
@@ -20,6 +21,8 @@ export const insertProjectQuery = (project: Project): SqlQuery => ({
     project.waitingSince,
     project.nextActionTaskId,
     JSON.stringify(project.notebookPages.map((page) => page.path)),
+    project.reason ?? null,
+    project.suggestedNextAction ?? null,
     project.createdAt,
     project.lastChangedAt,
     project.lastChangedBy,
@@ -95,7 +98,8 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
   sql: `
     UPDATE projects
     SET name = ?, objective = ?, status = ?, waiting_on = ?, waiting_since = ?,
-        next_action_task_id = ?, notebook_pages = ?, last_changed_at = ?, last_changed_by = ?
+        next_action_task_id = ?, notebook_pages = ?, reason = ?,
+        suggested_next_action = ?, last_changed_at = ?, last_changed_by = ?
     WHERE id = ? AND organization_id = ?
   `,
   args: [
@@ -106,6 +110,8 @@ export const updateProjectQuery = (project: Project): SqlQuery => ({
     project.waitingSince,
     project.nextActionTaskId,
     JSON.stringify(project.notebookPages.map((page) => page.path)),
+    project.reason ?? null,
+    project.suggestedNextAction ?? null,
     project.lastChangedAt,
     project.lastChangedBy,
     project.id,

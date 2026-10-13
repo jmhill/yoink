@@ -506,7 +506,7 @@ usingDrivers(['http'] as const, (ctx) => {
           subjectDeleted: false,
           actorName: 'Alice',
           actorKind: 'user',
-          details: { kind: 'ProjectCreated', name: 'Kitchen' },
+          details: { kind: 'ProjectCreated', name: 'Kitchen', status: 'active' },
         },
       ]);
 
@@ -701,7 +701,7 @@ usingDrivers(['http'] as const, (ctx) => {
           subjectDeleted: false,
           actorName: 'Alice',
           actorKind: 'user',
-          details: { kind: 'ProjectCreated', name: 'Imported garden' },
+          details: { kind: 'ProjectCreated', name: 'Imported garden', status: 'active' },
         },
       ]);
       expect(createdByImport.title).toBe('New from import');

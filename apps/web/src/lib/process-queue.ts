@@ -3,14 +3,30 @@ export type ProcessQueueCapture = {
   capturedAt: string;
 };
 
-export type ProcessQueueItem<TCapture extends ProcessQueueCapture = ProcessQueueCapture> = {
-  kind: 'capture';
-  capture: TCapture;
+export type ProcessQueueProposal = {
+  id: string;
+  createdAt: string;
 };
 
-export type ProcessQueue<TCapture extends ProcessQueueCapture = ProcessQueueCapture> = {
-  current: ProcessQueueItem<TCapture> | null;
+export type ProcessQueueItem<
+  TCapture extends ProcessQueueCapture = ProcessQueueCapture,
+  TProposal extends ProcessQueueProposal = ProcessQueueProposal,
+> =
+  | { kind: 'capture'; capture: TCapture }
+  | { kind: 'proposal'; project: TProposal };
+
+export type ProcessQueue<
+  TCapture extends ProcessQueueCapture = ProcessQueueCapture,
+  TProposal extends ProcessQueueProposal = ProcessQueueProposal,
+> = {
+  current: ProcessQueueItem<TCapture, TProposal> | null;
   left: number;
+};
+
+type QueueSource<TCapture extends ProcessQueueCapture, TProposal extends ProcessQueueProposal> = {
+  at: string;
+  id: string;
+  item: ProcessQueueItem<TCapture, TProposal>;
 };
 
 export function compareProcessQueueCaptures(
@@ -30,17 +46,41 @@ export function sortProcessQueue<T extends ProcessQueueCapture>(
   return captures.slice().sort(compareProcessQueueCaptures);
 }
 
-export function processQueue<TCapture extends ProcessQueueCapture>(
-  captures: readonly TCapture[]
-): ProcessQueue<TCapture> {
-  const ordered = sortProcessQueue(captures);
-  const first = ordered[0];
+const compareSources = (left: { at: string; id: string }, right: { at: string; id: string }): number => {
+  const byTime = left.at.localeCompare(right.at);
+  if (byTime !== 0) {
+    return byTime;
+  }
+  return left.id.localeCompare(right.id);
+};
+
+export function processQueue<
+  TCapture extends ProcessQueueCapture,
+  TProposal extends ProcessQueueProposal,
+>(
+  captures: readonly TCapture[],
+  proposals: readonly TProposal[] = []
+): ProcessQueue<TCapture, TProposal> {
+  const sources: Array<QueueSource<TCapture, TProposal>> = [
+    ...captures.map((capture) => ({
+      at: capture.capturedAt,
+      id: capture.id,
+      item: { kind: 'capture' as const, capture },
+    })),
+    ...proposals.map((project) => ({
+      at: project.createdAt,
+      id: project.id,
+      item: { kind: 'proposal' as const, project },
+    })),
+  ].toSorted(compareSources);
+
+  const first = sources[0];
   if (first === undefined) {
     return { current: null, left: 0 };
   }
   return {
-    current: { kind: 'capture', capture: first },
-    left: ordered.length,
+    current: first.item,
+    left: sources.length,
   };
 }
 
@@ -53,4 +93,8 @@ export function processEmptySnoozedCopy(snoozedCount: number): string | null {
     return null;
   }
   return `${snoozedCount} snoozed will come back`;
+}
+
+export function processBadgeTotal(inboxCount: number, proposalCount: number): number {
+  return inboxCount + proposalCount;
 }

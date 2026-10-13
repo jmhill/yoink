@@ -267,7 +267,10 @@ export function TaskEditModal({
                 {projects
                   .filter(
                     (project) =>
-                      project.status !== 'done' || project.id === task?.projectId
+                      ((project.status !== 'done' &&
+                        project.status !== 'proposed' &&
+                        project.status !== 'declined') ||
+                        project.id === task?.projectId)
                   )
                   .map((project) => (
                     <SelectItem key={project.id} value={project.id}>

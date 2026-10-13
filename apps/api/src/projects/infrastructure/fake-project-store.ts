@@ -1,7 +1,7 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
-import { projectNotFoundError, storageError, type StorageError } from '../domain/project-errors.js';
+import { projectNotFoundError, type StorageError } from '../domain/project-errors.js';
 import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../listing/domain/listed-page.js';
 
@@ -86,11 +86,29 @@ export const createFakeProjectStore = (initial: Project[] = []): FakeProjectStor
     },
     findByOrganization: (organizationId: string): ResultAsync<Project[], StorageError> =>
       okAsync(projects.filter((project) => project.organizationId === organizationId)),
-    pageByOrganization: (_options: {
+    pageByOrganization: (options: {
       organizationId: string;
       fetchLimit: number;
       seek?: KeysetCursor;
-    }): ResultAsync<KeysetRows<Project>, StorageError> =>
-      errAsync(storageError('Fake project store does not page')),
+      statuses?: readonly Project['status'][];
+      createdById?: string;
+    }): ResultAsync<KeysetRows<Project>, StorageError> => {
+      const matching = projects.filter((project) => {
+        if (project.organizationId !== options.organizationId) {
+          return false;
+        }
+        if (options.statuses && !options.statuses.some((status) => status === project.status)) {
+          return false;
+        }
+        if (options.createdById !== undefined && project.createdById !== options.createdById) {
+          return false;
+        }
+        return true;
+      });
+      return okAsync({
+        rows: matching.slice(0, options.fetchLimit),
+        total: matching.length,
+      });
+    },
   };
 };

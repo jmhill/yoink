@@ -1,4 +1,4 @@
-import type { AssignableProjectStatus, ProjectStatus } from '@yoink/api-contracts';
+import type { ProjectStatus } from '@yoink/api-contracts';
 
 export type ProjectCreated = {
   type: 'ProjectCreated';
@@ -7,8 +7,10 @@ export type ProjectCreated = {
   createdById: string;
   name: string;
   objective?: string;
-  status: 'active' | 'someday';
+  status: 'active' | 'someday' | 'proposed';
   captureId?: string;
+  reason?: string;
+  suggestedNextAction?: string;
   createdAt: string;
   occurredAt: string;
 };
@@ -20,6 +22,8 @@ export type ProjectUpdated = {
   name?: string;
   objective?: string | null;
   notebookPages?: string[];
+  reason?: string | null;
+  suggestedNextAction?: string | null;
   occurredAt: string;
 };
 
@@ -28,7 +32,7 @@ export type ProjectStatusChanged = {
   id: string;
   organizationId: string;
   from: ProjectStatus;
-  to: AssignableProjectStatus;
+  to: ProjectStatus;
   waitingOn: string | null;
   waitingSince: string | null;
   occurredAt: string;

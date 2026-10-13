@@ -16,7 +16,7 @@ const ProjectAliasSchema = z.object({
   p_created_by_id: z.string().min(1),
   p_name: z.string().min(1),
   p_objective: z.string().nullable().optional(),
-  p_status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']),
+  p_status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']),
   p_waiting_on: z.string().nullable().optional(),
   p_waiting_since: z.string().nullable().optional(),
   p_next_action_task_id: z.string().nullable().optional(),

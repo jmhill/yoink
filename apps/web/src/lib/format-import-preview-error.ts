@@ -28,7 +28,7 @@ export const formatImportPreviewError = (error: ImportEntryError): string => {
     case 'PROJECT_NAME_BLANK':
       return `${name}: name can't be blank`;
     case 'INVALID_PROJECT_STATUS':
-      return `${name}: imported projects cannot be done or proposed`;
+      return `${name}: imported projects cannot be done, proposed, or declined`;
     case 'PROJECT_WAITING_ON_REQUIRED':
       return `${name}: waiting on is required`;
     case 'NEXT_ACTION_NOT_IN_ENTRY':

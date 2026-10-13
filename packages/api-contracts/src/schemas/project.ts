@@ -4,6 +4,8 @@ import { ImportEntryErrorSchema } from './error.js';
 export const PROJECT_NAME_MAX_LENGTH = 200;
 export const PROJECT_OBJECTIVE_MAX_LENGTH = 2000;
 export const PROJECT_WAITING_ON_MAX_LENGTH = 200;
+export const PROJECT_REASON_MAX_LENGTH = 200;
+export const PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH = 500;
 export const NOTEBOOK_PAGE_PATH_MAX_LENGTH = 500;
 export const NOTEBOOK_PAGES_MAX = 20;
 export const IMPORT_PROJECTS_MAX = 50;
@@ -15,6 +17,7 @@ export const ProjectStatusSchema = z.enum([
   'someday',
   'done',
   'proposed',
+  'declined',
 ]);
 
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
@@ -27,6 +30,22 @@ export const AssignableProjectStatusSchema = z.enum([
 ]);
 
 export type AssignableProjectStatus = z.infer<typeof AssignableProjectStatusSchema>;
+
+export const CreateProjectStatusSchema = z.enum(['active', 'someday', 'proposed']);
+
+export type CreateProjectStatus = z.infer<typeof CreateProjectStatusSchema>;
+
+export const ConfirmableProjectStatusSchema = z.enum(['active', 'someday', 'waiting']);
+
+export type ConfirmableProjectStatus = z.infer<typeof ConfirmableProjectStatusSchema>;
+
+/** Default GET /api/projects statuses. Proposed and declined are opt-in via ?status=. */
+export const WORKING_PROJECT_STATUSES = [
+  'active',
+  'waiting',
+  'someday',
+  'done',
+] as const satisfies readonly ProjectStatus[];
 
 export const NotebookPageSchema = z.object({
   path: z.string().min(1).max(NOTEBOOK_PAGE_PATH_MAX_LENGTH),
@@ -45,6 +64,8 @@ export const ProjectSchema = z.object({
   waitingSince: z.string().date().nullable(),
   nextActionTaskId: z.string().uuid().nullable(),
   notebookPages: z.array(NotebookPageSchema),
+  reason: z.string().max(PROJECT_REASON_MAX_LENGTH).optional(),
+  suggestedNextAction: z.string().max(PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH).optional(),
   createdById: z.string().uuid(),
   createdAt: z.string().datetime(),
   lastChangedAt: z.string().datetime().nullable(),
@@ -58,6 +79,9 @@ const ProjectNameSchema = z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH);
 export const CreateProjectSchema = z.object({
   name: ProjectNameSchema,
   objective: z.string().max(PROJECT_OBJECTIVE_MAX_LENGTH).optional(),
+  status: CreateProjectStatusSchema.optional(),
+  reason: z.string().max(PROJECT_REASON_MAX_LENGTH).optional(),
+  suggestedNextAction: z.string().max(PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH).optional(),
 });
 
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
@@ -67,14 +91,22 @@ export const UpdateProjectSchema = z
     name: ProjectNameSchema.optional(),
     objective: z.string().max(PROJECT_OBJECTIVE_MAX_LENGTH).nullable().optional(),
     notebookPages: z.array(z.string()).max(NOTEBOOK_PAGES_MAX).optional(),
+    reason: z.string().max(PROJECT_REASON_MAX_LENGTH).nullable().optional(),
+    suggestedNextAction: z
+      .string()
+      .max(PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH)
+      .nullable()
+      .optional(),
   })
   .refine(
     (body) =>
       body.name !== undefined ||
       body.objective !== undefined ||
-      body.notebookPages !== undefined,
+      body.notebookPages !== undefined ||
+      body.reason !== undefined ||
+      body.suggestedNextAction !== undefined,
     {
-      message: 'Provide a name, objective, or notebook pages',
+      message: 'Provide a name, objective, notebook pages, reason, or suggested next action',
     }
   );
 
@@ -88,6 +120,21 @@ export const ChangeProjectStatusSchema = z.object({
 });
 
 export type ChangeProjectStatus = z.infer<typeof ChangeProjectStatusSchema>;
+
+export const ConfirmProposedProjectSchema = z.object({
+  name: ProjectNameSchema.optional(),
+  objective: z.string().max(PROJECT_OBJECTIVE_MAX_LENGTH).nullable().optional(),
+  status: ConfirmableProjectStatusSchema.optional(),
+  waitingOn: z.string().max(PROJECT_WAITING_ON_MAX_LENGTH).nullable().optional(),
+  waitingSince: z.string().date().nullable().optional(),
+  suggestedNextAction: z
+    .string()
+    .max(PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH)
+    .nullable()
+    .optional(),
+});
+
+export type ConfirmProposedProject = z.infer<typeof ConfirmProposedProjectSchema>;
 
 export const ChangeProjectStatusResponseSchema = z.object({
   project: ProjectSchema,

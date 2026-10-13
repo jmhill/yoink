@@ -159,6 +159,7 @@ export const toTimelineEntry = (
         ...(record.payload.objective !== undefined
           ? { objective: record.payload.objective }
           : {}),
+        ...(record.payload.status !== undefined ? { status: record.payload.status } : {}),
         ...(record.payload.captureId !== undefined
           ? { captureId: record.payload.captureId }
           : {}),

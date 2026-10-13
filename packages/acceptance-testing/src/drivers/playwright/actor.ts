@@ -42,6 +42,10 @@ import type {
   CreateInvitationInput,
   MintedAgent,
   MobileTabKey,
+  CreateProjectInput,
+  ListProjectsQuery,
+  ConfirmProjectProposalInput,
+  ConfirmProjectProposalResult,
 } from '../../dsl/index.js';
 import {
   UnauthorizedError,
@@ -650,7 +654,7 @@ export const createPlaywrightActor = (
       }));
     },
 
-    async createProject(input: { name: string; objective?: string }): Promise<Project> {
+    async createProject(input: CreateProjectInput): Promise<Project> {
       const response = await page.request.post('/api/projects', { data: input });
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -675,10 +679,28 @@ export const createPlaywrightActor = (
       return (await response.json()) as Project;
     },
 
-    async listProjects(): Promise<Project[]> {
-      const response = await page.request.get('/api/projects');
+    async listProjects(query?: ListProjectsQuery): Promise<Project[]> {
+      const params = new URLSearchParams();
+      if (query?.status !== undefined) {
+        params.set('status', query.status);
+      }
+      if (query?.createdById !== undefined) {
+        params.set('createdById', query.createdById);
+      }
+      const suffix = params.toString();
+      const response = await page.request.get(
+        suffix === '' ? '/api/projects' : `/api/projects?${suffix}`
+      );
       if (response.status() === 401) {
         throw new UnauthorizedError();
+      }
+      if (response.status() === 400) {
+        const body = await response.json();
+        const message =
+          typeof body === 'object' && body !== null && 'message' in body
+            ? String(body.message)
+            : 'Invalid request';
+        throw new ValidationError(message);
       }
       if (response.status() !== 200) {
         throw new Error(`Failed to list projects: ${response.status()}`);
@@ -723,6 +745,75 @@ export const createPlaywrightActor = (
       }
       if (response.status() !== 200) {
         throw new Error(`Failed to update project: ${response.status()}`);
+      }
+      return (await response.json()) as Project;
+    },
+
+    async confirmProjectProposal(
+      id: string,
+      input: ConfirmProjectProposalInput = {}
+    ): Promise<ConfirmProjectProposalResult> {
+      const response = await page.request.post(`/api/projects/${id}/confirm`, { data: input });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Confirming a proposal requires a person');
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() === 409) {
+        throw new ConflictError('A project with this name already exists');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to confirm proposal: ${response.status()}`);
+      }
+      return (await response.json()) as ConfirmProjectProposalResult;
+    },
+
+    async declineProjectProposal(id: string): Promise<Project> {
+      const response = await page.request.post(`/api/projects/${id}/decline`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Turning down a proposal requires a person');
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to decline proposal: ${response.status()}`);
+      }
+      return (await response.json()) as Project;
+    },
+
+    async restoreProjectProposal(id: string): Promise<Project> {
+      const response = await page.request.post(`/api/projects/${id}/restore`, { data: {} });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        throw new ForbiddenError('Restoring a proposal requires a person');
+      }
+      if (response.status() === 400) {
+        throw new ValidationError('Invalid request');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', id);
+      }
+      if (response.status() === 409) {
+        throw new ConflictError('A project with this name already exists');
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to restore proposal: ${response.status()}`);
       }
       return (await response.json()) as Project;
     },
@@ -3818,6 +3909,93 @@ export const createPlaywrightActor = (
       await expect.poll(async () => {
         return ((await card.getByTestId('capture-content').textContent()) ?? '').trim();
       }).toBe(content);
+    },
+
+    async shouldSeeProcessProposal(input: {
+      name: string;
+      proposedBy: string;
+      reason?: string;
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      await expect(page.locator('[data-process-ready]')).toBeVisible();
+      const card = page.locator('[data-process-item-kind="proposal"]');
+      await expect(card).toBeVisible();
+      await expect(page.locator('[data-process-kind]')).toHaveAttribute(
+        'data-process-kind',
+        'proposal'
+      );
+      await expect(card.locator('[data-process-proposal-name]')).toHaveText(input.name);
+      await expect(card.locator('[data-process-proposal-meta]')).toContainText(
+        `Proposed by ${input.proposedBy}`
+      );
+      if (input.reason !== undefined) {
+        await expect(card.locator('[data-process-proposal-reason]')).toHaveText(input.reason);
+      }
+      if (input.suggestedNextAction !== undefined) {
+        await expect(card.locator('[data-process-proposal-next]')).toContainText(
+          input.suggestedNextAction
+        );
+      }
+    },
+
+    async openProcessProposalConfirm(): Promise<void> {
+      await page.locator('[data-process-proposal-confirm]').click();
+      await expect(page.locator('[data-confirm-proposal-sheet]')).toBeVisible();
+    },
+
+    async openProcessProposalEdit(): Promise<void> {
+      await page.locator('[data-process-proposal-edit]').click();
+      await expect(page.locator('[data-proposal-edit-sheet]')).toBeVisible();
+    },
+
+    async turnDownProcessProposal(): Promise<void> {
+      await page.locator('[data-process-proposal-decline]').click();
+    },
+
+    async fillConfirmProposal(input: {
+      name?: string;
+      objective?: string;
+      status?: 'active' | 'someday' | 'waiting';
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      if (input.name !== undefined) {
+        await page.locator('[data-confirm-proposal-name]').fill(input.name);
+      }
+      if (input.objective !== undefined) {
+        await page.locator('[data-confirm-proposal-objective]').fill(input.objective);
+      }
+      if (input.status !== undefined) {
+        await page.locator(`[data-confirm-proposal-status="${input.status}"]`).click();
+      }
+      if (input.suggestedNextAction !== undefined) {
+        await page.locator('[data-confirm-proposal-next]').fill(input.suggestedNextAction);
+      }
+    },
+
+    async confirmProcessProposal(): Promise<ConfirmProjectProposalResult> {
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          /\/api\/projects\/[^/]+\/confirm$/.test(new URL(response.url()).pathname) &&
+          response.request().method() === 'POST'
+      );
+      await page.locator('[data-confirm-proposal-submit]').click();
+      const response = await responsePromise;
+      if (response.status() !== 200) {
+        throw new Error(`Failed to confirm proposal: ${response.status()}`);
+      }
+      await expect(page.locator('[data-confirm-proposal-sheet]')).toBeHidden();
+      return response.json();
+    },
+
+    async shouldSeeProposalBanner(input: { proposedBy: string; reason?: string }): Promise<void> {
+      const banner = page.locator('[data-proposal-banner]');
+      await expect(banner).toBeVisible();
+      await expect(banner.locator('[data-proposal-banner-meta]')).toContainText(
+        `Proposed by ${input.proposedBy}`
+      );
+      if (input.reason !== undefined) {
+        await expect(banner.locator('[data-proposal-banner-reason]')).toHaveText(input.reason);
+      }
     },
 
     async shouldSeeProcessLeft(count: number): Promise<void> {

@@ -6,10 +6,12 @@ import {
   listNotInOrganizationError,
   projectDoneError,
   projectNotInOrganizationError,
+  projectProposedError,
   type AssigneeNotInOrganizationError,
   type ListNotInOrganizationError,
   type ProjectDoneError,
   type ProjectNotInOrganizationError,
+  type ProjectProposedError,
 } from './task-errors.js';
 
 export type DecideCreateTaskInput = {
@@ -33,12 +35,16 @@ export type DecideCreateTaskError =
   | ListNotInOrganizationError
   | AssigneeNotInOrganizationError
   | ProjectNotInOrganizationError
-  | ProjectDoneError;
+  | ProjectDoneError
+  | ProjectProposedError;
 
 const projectForCreate = (
   command: CreateTaskCommand,
   project: LoadedProject | null
-): Result<string | undefined, ProjectNotInOrganizationError | ProjectDoneError> => {
+): Result<
+  string | undefined,
+  ProjectNotInOrganizationError | ProjectDoneError | ProjectProposedError
+> => {
   if (command.projectId === undefined) {
     return ok(undefined);
   }
@@ -51,6 +57,9 @@ const projectForCreate = (
   }
   if (project.status === 'done') {
     return err(projectDoneError(command.projectId));
+  }
+  if (project.status === 'proposed' || project.status === 'declined') {
+    return err(projectProposedError(command.projectId));
   }
   return ok(command.projectId);
 };

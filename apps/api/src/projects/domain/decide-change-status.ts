@@ -47,6 +47,10 @@ export const decideChangeProjectStatus = ({
     return err(invalidProjectStatusError());
   }
 
+  if (project.status === 'proposed' || project.status === 'declined') {
+    return err(invalidProjectStatusError());
+  }
+
   const statusChanging = command.status !== project.status;
 
   if (statusChanging && command.status === 'done') {

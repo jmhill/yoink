@@ -152,7 +152,12 @@ export function PromoteSheet({
                 <SelectContent>
                   <SelectItem value="none">No project</SelectItem>
                   {projects
-                    .filter((project) => project.status !== 'done')
+                    .filter(
+                      (project) =>
+                        project.status !== 'done' &&
+                        project.status !== 'proposed' &&
+                        project.status !== 'declined'
+                    )
                     .map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.name}

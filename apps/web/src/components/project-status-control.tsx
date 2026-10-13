@@ -83,7 +83,7 @@ export function ProjectStatusControl({
   }, [project, waitingFormOpen]);
 
   const selectValue: AssignableProjectStatus =
-    project.status === 'proposed' ? 'active' : project.status;
+    project.status === 'proposed' || project.status === 'declined' ? 'active' : project.status;
 
   const handleStatus = (next: string) => {
     if (

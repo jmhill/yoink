@@ -12,6 +12,7 @@ import { parseProjectRow } from './parse-project-row.js';
 const PROJECT_COLUMNS = `
   id, organization_id, created_by_id, name, objective, status,
   waiting_on, waiting_since, next_action_task_id, notebook_pages,
+  reason, suggested_next_action,
   created_at, last_changed_at, last_changed_by
 `;
 
@@ -90,12 +91,24 @@ export const createSqliteProjectStore = async (db: Database): Promise<ProjectSto
       organizationId: string;
       fetchLimit: number;
       seek?: KeysetCursor;
+      statuses?: readonly Project['status'][];
+      createdById?: string;
     }): ResultAsync<KeysetRows<Project>, StorageError> => {
+      const statusList = options.statuses ?? [];
+      const statusSql =
+        statusList.length > 0
+          ? ` AND status IN (${statusList.map(() => '?').join(', ')})`
+          : '';
+      const createdBySql = options.createdById !== undefined ? ' AND created_by_id = ?' : '';
       return pageSqlite({
         db,
         from: 'projects',
-        whereSql: 'organization_id = ?',
-        whereArgs: [options.organizationId],
+        whereSql: `organization_id = ?${statusSql}${createdBySql}`,
+        whereArgs: [
+          options.organizationId,
+          ...statusList,
+          ...(options.createdById !== undefined ? [options.createdById] : []),
+        ],
         orderSql: 'ORDER BY name ASC, created_at ASC, id ASC',
         keyColumns: ['name', 'created_at', 'id'],
         direction: projectDirection,

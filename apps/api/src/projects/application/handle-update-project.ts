@@ -33,7 +33,9 @@ export const handleUpdateProject = (
       const decision = decideUpdateProject({
         command,
         current: loaded,
-        existingNames: existing.map((project) => project.name),
+        existingNames: existing
+          .filter((project) => project.status !== 'declined')
+          .map((project) => project.name),
         now: deps.now(),
       });
 

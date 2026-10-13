@@ -385,6 +385,11 @@ export const registerCaptureRoutes = async (
                   status: 400 as const,
                   body: { message: 'Cannot add a task to a done project' },
                 };
+              case 'PROJECT_PROPOSED':
+                return {
+                  status: 400 as const,
+                  body: { message: 'A proposed project cannot have tasks' },
+                };
               case 'ASSIGNEE_NOT_IN_ORGANIZATION':
                 return {
                   status: 400 as const,

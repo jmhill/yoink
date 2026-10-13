@@ -7,11 +7,13 @@ import {
   listNotInOrganizationError,
   projectDoneError,
   projectNotInOrganizationError,
+  projectProposedError,
   taskNotOpenError,
   type AssigneeNotInOrganizationError,
   type ListNotInOrganizationError,
   type ProjectDoneError,
   type ProjectNotInOrganizationError,
+  type ProjectProposedError,
   type TaskNotOpenError,
 } from './task-errors.js';
 
@@ -37,6 +39,7 @@ export type DecideUpdateTaskError =
   | AssigneeNotInOrganizationError
   | ProjectNotInOrganizationError
   | ProjectDoneError
+  | ProjectProposedError
   | TaskNotOpenError;
 
 const changedTitle = (current: Task, command: UpdateTaskCommand): string | undefined =>
@@ -95,7 +98,7 @@ const projectForUpdate = (
   project: LoadedProject | null
 ): Result<
   { projectId?: string | null },
-  ProjectNotInOrganizationError | ProjectDoneError | TaskNotOpenError
+  ProjectNotInOrganizationError | ProjectDoneError | ProjectProposedError | TaskNotOpenError
 > => {
   if (command.projectId === undefined) {
     return ok({});
@@ -119,6 +122,9 @@ const projectForUpdate = (
   }
   if (project.status === 'done') {
     return err(projectDoneError(command.projectId));
+  }
+  if (project.status === 'proposed' || project.status === 'declined') {
+    return err(projectProposedError(command.projectId));
   }
   return ok({ projectId: command.projectId });
 };

@@ -15,5 +15,7 @@ export type ProjectStore = {
     organizationId: string;
     fetchLimit: number;
     seek?: KeysetCursor;
+    statuses?: readonly Project['status'][];
+    createdById?: string;
   }): ResultAsync<KeysetRows<Project>, StorageError>;
 };

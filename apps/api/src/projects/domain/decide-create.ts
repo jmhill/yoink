@@ -4,14 +4,14 @@ import type { CreateProjectCommand } from './project-commands.js';
 import type { ProjectCreated } from './events.js';
 import {
   duplicateProjectNameError,
+  invalidProjectStatusError,
   projectCreateRequiresPersonError,
-  type DuplicateProjectNameError,
-  type InvalidProjectNameError,
-  type ProjectCreateRequiresPersonError,
-  type ProjectNameBlankError,
+  projectProposeRequiresBotError,
+  type CreateProjectError,
 } from './project-errors.js';
 import { parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
+import { parseProjectReason, parseSuggestedNextAction } from './project-proposal-fields.js';
 
 export type DecideCreateProjectInput = {
   command: CreateProjectCommand;
@@ -20,11 +20,29 @@ export type DecideCreateProjectInput = {
   now: string;
 };
 
-export type DecideCreateProjectError =
-  | InvalidProjectNameError
-  | ProjectNameBlankError
-  | DuplicateProjectNameError
-  | ProjectCreateRequiresPersonError;
+export type DecideCreateProjectError = Exclude<CreateProjectError, { type: 'STORAGE_ERROR' }>;
+
+const statusForActor = (
+  command: CreateProjectCommand
+): Result<'active' | 'someday' | 'proposed', DecideCreateProjectError> => {
+  const requested = command.status;
+  const person = requirePerson(command.actor);
+
+  if (person.isOk()) {
+    if (requested === 'proposed') {
+      return err(projectProposeRequiresBotError());
+    }
+    if (requested !== undefined && requested !== 'active' && requested !== 'someday') {
+      return err(invalidProjectStatusError());
+    }
+    return ok(requested ?? 'active');
+  }
+
+  if (requested !== 'proposed') {
+    return err(projectCreateRequiresPersonError());
+  }
+  return ok('proposed');
+};
 
 export const decideCreateProject = ({
   command,
@@ -32,9 +50,9 @@ export const decideCreateProject = ({
   id,
   now,
 }: DecideCreateProjectInput): Result<ProjectCreated, DecideCreateProjectError> => {
-  const person = requirePerson(command.actor);
-  if (person.isErr()) {
-    return err(projectCreateRequiresPersonError());
+  const status = statusForActor(command);
+  if (status.isErr()) {
+    return err(status.error);
   }
 
   const parsed = parseProjectName(command.name);
@@ -48,6 +66,14 @@ export const decideCreateProject = ({
   }
 
   const objective = parseProjectObjective(command.objective);
+  const reason = parseProjectReason(command.reason);
+  if (reason.isErr()) {
+    return err(reason.error);
+  }
+  const suggestedNextAction = parseSuggestedNextAction(command.suggestedNextAction);
+  if (suggestedNextAction.isErr()) {
+    return err(suggestedNextAction.error);
+  }
 
   return ok({
     type: 'ProjectCreated',
@@ -55,9 +81,13 @@ export const decideCreateProject = ({
     organizationId: command.organizationId,
     createdById: command.createdById,
     name,
-    status: 'active',
+    status: status.value,
     createdAt: now,
     occurredAt: now,
     ...(objective !== undefined ? { objective } : {}),
+    ...(reason.value !== undefined ? { reason: reason.value } : {}),
+    ...(suggestedNextAction.value !== undefined
+      ? { suggestedNextAction: suggestedNextAction.value }
+      : {}),
   });
 };

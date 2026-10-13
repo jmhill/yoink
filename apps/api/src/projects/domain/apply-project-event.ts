@@ -40,6 +40,10 @@ export const applyProjectCreated = (
   lastChangedAt: event.occurredAt,
   lastChangedBy: meta.actorUserId,
   ...(event.objective !== undefined ? { objective: event.objective } : {}),
+  ...(event.reason !== undefined ? { reason: event.reason } : {}),
+  ...(event.suggestedNextAction !== undefined
+    ? { suggestedNextAction: event.suggestedNextAction }
+    : {}),
 });
 
 export const applyProjectUpdated = (
@@ -47,27 +51,45 @@ export const applyProjectUpdated = (
   event: ProjectUpdated,
   meta: ApplyProjectMeta
 ): Project => {
-  const next = withLastChanged(current, event.occurredAt, meta);
+  const next: Project = {
+    ...withLastChanged(current, event.occurredAt, meta),
+    ...(event.name !== undefined ? { name: event.name } : {}),
+    ...(event.notebookPages !== undefined
+      ? { notebookPages: notebookPagesFromPaths(event.notebookPages) }
+      : {}),
+  };
 
-  if (event.name !== undefined) {
-    next.name = event.name;
-  }
+  const withReason =
+    event.reason === undefined
+      ? next
+      : event.reason === null
+        ? omitField(next, 'reason')
+        : { ...next, reason: event.reason };
 
-  if (event.notebookPages !== undefined) {
-    next.notebookPages = notebookPagesFromPaths(event.notebookPages);
-  }
+  const withSuggested =
+    event.suggestedNextAction === undefined
+      ? withReason
+      : event.suggestedNextAction === null
+        ? omitField(withReason, 'suggestedNextAction')
+        : { ...withReason, suggestedNextAction: event.suggestedNextAction };
 
   if (event.objective === undefined) {
-    return next;
+    return withSuggested;
   }
 
   if (event.objective === null) {
-    const { objective: _cleared, ...rest } = next;
-    return rest;
+    return omitField(withSuggested, 'objective');
   }
 
-  next.objective = event.objective;
-  return next;
+  return { ...withSuggested, objective: event.objective };
+};
+
+const omitField = <T extends Project, K extends keyof Project>(
+  project: T,
+  key: K
+): Omit<T, K> => {
+  const { [key]: _removed, ...rest } = project;
+  return rest;
 };
 
 export const applyProjectStatusChanged = (

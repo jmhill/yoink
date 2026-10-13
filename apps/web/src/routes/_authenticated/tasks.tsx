@@ -293,7 +293,12 @@ function TasksPage() {
     refetchInterval: false,
   });
   const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
-  const pickableProjects = projects.filter((project) => project.status !== 'done');
+  const pickableProjects = projects.filter(
+    (project) =>
+      project.status !== 'done' &&
+      project.status !== 'proposed' &&
+      project.status !== 'declined'
+  );
   const namedPileList =
     allPile?.kind === 'named'
       ? namedLists.find((list) => list.id === allPile.listId)

@@ -28,8 +28,22 @@ export const TimelineSubjectSchema = z.object({
 
 export type TimelineSubject = z.infer<typeof TimelineSubjectSchema>;
 
-const projectStatusSchema = z.enum(['active', 'waiting', 'someday', 'done']);
-const projectStatusFromSchema = z.enum(['active', 'waiting', 'someday', 'done', 'proposed']);
+const projectStatusSchema = z.enum([
+  'active',
+  'waiting',
+  'someday',
+  'done',
+  'proposed',
+  'declined',
+]);
+const projectStatusFromSchema = z.enum([
+  'active',
+  'waiting',
+  'someday',
+  'done',
+  'proposed',
+  'declined',
+]);
 
 export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('Unknown') }),
@@ -54,6 +68,7 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
     kind: z.literal('ProjectCreated'),
     name: z.string(),
     objective: z.string().optional(),
+    status: z.enum(['active', 'someday', 'proposed']).optional(),
     captureId: z.string().uuid().optional(),
   }),
   z.object({

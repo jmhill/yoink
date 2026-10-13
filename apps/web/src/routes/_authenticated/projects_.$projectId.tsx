@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, CircleCheck, Clock, History, Pencil } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
@@ -14,10 +14,12 @@ import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
 import { TaskCard } from '@/components/task-card';
 import { TaskEditModal } from '@/components/task-edit-modal';
+import { ConfirmProposalSheet } from '@/components/confirm-proposal-sheet';
 import { PlaceHeading } from '@/components/place-heading';
 import { ProjectStatusControl } from '@/components/project-status-control';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { ProjectNotesSection } from '@/components/project-notes-section';
+import { ProposalBanner } from '@/components/proposal-banner';
 import { NextActionPicker, type NewNextActionTask } from '@/components/next-action-picker';
 import {
   tsr,
@@ -36,7 +38,9 @@ import {
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
+import { proposerLabel } from '@/lib/proposal-copy';
 import { showsNoNextActionWarning, showsSomedaySetNextAction } from '@/lib/project-next-action';
+import { useProposalActions } from '@/lib/use-proposal-actions';
 import {
   formatFinishedLine,
   formatHistoryStartsLine,
@@ -59,6 +63,7 @@ export const Route = createFileRoute('/_authenticated/projects_/$projectId')({
 
 function ProjectPage() {
   const { projectId } = Route.useParams();
+  const navigate = useNavigate();
   const queryClient = tsrProjects.useQueryClient();
   const { data, error, isPending, refetch } = tsrProjects.get.useQuery({
     queryKey: ['projects', projectId],
@@ -104,6 +109,16 @@ function ProjectPage() {
     refetchInterval: false,
   });
   const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const viewerEmail = sessionData?.status === 200 ? sessionData.body.user.email : undefined;
+  const restoredByName = proposerLabel(
+    members.find((member) => member.userId === viewerId) ??
+      (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
+  );
+  const proposalActions = useProposalActions(restoredByName, {
+    onDeclined: () => {
+      void navigate({ to: '/process' });
+    },
+  });
 
   const project = data?.status === 200 ? data.body : undefined;
   const openTasks = openTasksData?.status === 200 ? openTasksData.body.tasks : [];
@@ -340,49 +355,65 @@ function ProjectPage() {
         <PlaceHeading
           title={project.name}
           meta={
-            <ProjectStatusControl
-              project={project}
-              openTaskCount={openTasks.length}
-              isPending={statusMutation.isPending}
-              error={statusError}
-              waitingFormOpen={waitingFormOpen}
-              onWaitingFormOpenChange={setWaitingFormOpen}
-              onChangeStatus={(input: {
-                status: AssignableProjectStatus;
-                waitingOn?: string | null;
-                waitingSince?: string | null;
-                openTasks?: 'complete' | 'remove';
-              }) => {
-                setStatusError(null);
-                statusMutation.mutate({
-                  params: { id: projectId },
-                  body: input,
-                });
-              }}
-            />
+            project.status === 'proposed' ? undefined : (
+              <ProjectStatusControl
+                project={project}
+                openTaskCount={openTasks.length}
+                isPending={statusMutation.isPending}
+                error={statusError}
+                waitingFormOpen={waitingFormOpen}
+                onWaitingFormOpenChange={setWaitingFormOpen}
+                onChangeStatus={(input: {
+                  status: AssignableProjectStatus;
+                  waitingOn?: string | null;
+                  waitingSince?: string | null;
+                  openTasks?: 'complete' | 'remove';
+                }) => {
+                  setStatusError(null);
+                  statusMutation.mutate({
+                    params: { id: projectId },
+                    body: input,
+                  });
+                }}
+              />
+            )
           }
           action={
-            <Button
-              type="button"
-              variant="outline"
-              data-project-edit=""
-              data-part="edit-button"
-              onClick={() => {
-                setFormError(null);
-                setEditOpen(true);
-              }}
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Button>
+            project.status === 'proposed' ? undefined : (
+              <Button
+                type="button"
+                variant="outline"
+                data-project-edit=""
+                data-part="edit-button"
+                onClick={() => {
+                  setFormError(null);
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+            )
           }
         />
+
+        {project.status === 'proposed' ? (
+          <ProposalBanner
+            project={project}
+            proposerName={proposerLabel(
+              members.find((member) => member.userId === project.createdById)
+            )}
+            onConfirm={() => proposalActions.openConfirm(project)}
+            onTurnDown={() => proposalActions.handleTurnDown(project)}
+            disabled={proposalActions.isBusy}
+          />
+        ) : null}
 
         {project.objective ? (
           <p data-part="objective" className="text-base leading-6">
             {project.objective}
           </p>
-        ) : (
+        ) : project.status === 'proposed' ? null : (
           <Button
             type="button"
             variant="link"
@@ -740,6 +771,15 @@ function ProjectPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmProposalSheet
+        open={proposalActions.confirmOpen}
+        onOpenChange={proposalActions.setConfirmOpen}
+        project={proposalActions.activeProject}
+        onConfirm={proposalActions.handleConfirm}
+        isLoading={proposalActions.isBusy}
+        error={proposalActions.confirmError}
+      />
 
       <TaskEditModal
         open={editingTask !== null}

@@ -14,7 +14,8 @@ import {
   Plus,
   User,
 } from 'lucide-react';
-import { tsr, tsrLists, tsrProjects, tsrReview, tsrWork } from '@/api/client';
+import { tsrLists, tsrProjects, tsrReview, tsrWork } from '@/api/client';
+import { useProcessCounts } from '@/lib/use-process-counts';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -645,10 +646,7 @@ export function AppRailPanel({
     setCreateProjectOpen(true);
   };
 
-  const { data: inboxData } = tsr.list.useQuery({
-    queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
-  });
+  const { inboxCount, proposalCount } = useProcessCounts();
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
@@ -666,7 +664,6 @@ export function AppRailPanel({
     queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
   });
 
-  const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
   const listOpenCounts = new Map(
@@ -681,6 +678,7 @@ export function AppRailPanel({
   const drawerItems = buildAppRailItems({ inboxCount, namedLists, projects });
   const desktopSections = buildDesktopRailSections({
     inboxCount,
+    proposalCount,
     namedLists,
     projects,
     reviewBadge,

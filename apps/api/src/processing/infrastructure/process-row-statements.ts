@@ -20,9 +20,10 @@ export const insertProjectIfCaptureInInboxQuery = (
       INSERT INTO projects (
         id, organization_id, created_by_id, name, objective, status,
         waiting_on, waiting_since, next_action_task_id, notebook_pages,
+        reason, suggested_next_action,
         created_at, last_changed_at, last_changed_by
       )
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       WHERE ${inboxExistsSql}
     `,
     args: [...(base.args ?? []), captureId, project.organizationId],

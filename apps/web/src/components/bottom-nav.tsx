@@ -1,26 +1,21 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { cn } from '@yoink/ui-base/lib/utils';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
-import { tsr, tsrReview } from '@/api/client';
+import { tsrReview } from '@/api/client';
 import { AppRailPanel } from '@/components/app-rail-panel';
 import {
   MOBILE_TABS,
   activeMobileTab,
-  processBadgeCount,
   reviewBadgeCount,
 } from '@/lib/mobile-tabs';
 import { reviewAttentionCount } from '@/lib/review-sections';
+import { useProcessCounts } from '@/lib/use-process-counts';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
 export function AppNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const active = activeMobileTab(pathname);
-  const { data: inboxData } = tsr.list.useQuery({
-    queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP } },
-  });
-  const inboxCount = inboxData?.status === 200 ? inboxData.body.total : 0;
-  const processBadge = processBadgeCount(inboxCount);
+  const { badge: processBadge } = useProcessCounts();
   const { data: reviewData } = tsrReview.list.useQuery({
     queryKey: ['review'],
     queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },

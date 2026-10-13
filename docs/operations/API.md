@@ -256,12 +256,18 @@ Cursors are view-tagged (`review.done`).
 
 ## Projects
 
-Projects are a working set: `GET /api/projects` returns the full org set in
-one request, up to the 1000-item safety cap, with `hasMore` / `nextCursor` /
-`total` like named lists. Read one with `GET /api/projects/:id`. Edit name or
-objective with `PATCH /api/projects/:id`. Creating a project needs a person
-(session or that person's own token) via the shared `requirePerson` guard.
-An agent token gets `403` (`PROJECT_CREATE_REQUIRES_PERSON`).
+Projects are a working set: `GET /api/projects` returns the org's working
+projects (`active`, `waiting`, `someday`, `done`) in one request, up to the
+1000-item safety cap, with `hasMore` / `nextCursor` / `total` like named
+lists. Proposed and declined projects are omitted unless you pass
+`?status=`. `status` is a comma-separated list of statuses
+(`proposed,declined`). `createdById` filters to that proposer's projects.
+A bot that lists proposal statuses without `createdById` is scoped to its
+own proposals. Read one with `GET /api/projects/:id`. Edit name,
+objective, reason, or suggested next action with `PATCH /api/projects/:id`.
+Creating an active project needs a person (session or that person's own
+token). An agent token gets `403` (`PROJECT_CREATE_REQUIRES_PERSON`) unless
+it sends `status: "proposed"`.
 
 ```bash
 # Create (person session or the person's own token)
@@ -270,9 +276,17 @@ curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
   -d '{"name":"Garden","objective":"Grow tomatoes"}' \
   "$API/api/projects"
 
-# Full set
+# Working set (active, waiting, someday, done)
 curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects"
+
+# A bot's pending and declined proposals in one call
+curl -sS -H "Authorization: Bearer $BOT_TOKEN" \
+  "$API/api/projects?status=proposed,declined"
+
+# The same list, filtered to one proposer
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects?status=proposed,declined&createdById=$BOT_USER_ID"
 
 # Read one
 curl -sS -H "Authorization: Bearer $TOKEN" \
@@ -286,11 +300,54 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
   "$API/api/projects/$PROJECT_ID"
 ```
 
-Responses include `status` (`active` on create; later `waiting`, `someday`,
-or `done`), `waitingOn` / `waitingSince` (both `null` unless status is
-waiting), optional `objective`, `notebookPages` (`{ path, url }[]`, vault
-`jmhill-personal`), and `lastChangedAt` / `lastChangedBy` (user ids; resolve
-names from members).
+Responses include `status` (`active` on person create; `proposed` when a bot
+proposes; later `waiting`, `someday`, `done`, or `declined`),
+`waitingOn` / `waitingSince` (both `null` unless status is waiting), optional
+`objective`, `reason`, `suggestedNextAction`, `notebookPages`
+(`{ path, url }[]`, vault `jmhill-personal`), and `lastChangedAt` /
+`lastChangedBy` (user ids; resolve names from members).
+
+## Bots propose projects
+
+A bot proposes with `POST /api/projects` and `status: "proposed"`. Optional
+`reason` (max 200) and `suggestedNextAction` (max 500) travel with the
+proposal. People cannot create `proposed` (`403 PROJECT_PROPOSE_REQUIRES_BOT`).
+Bots cannot create `active` / `someday` (`403 PROJECT_CREATE_REQUIRES_PERSON`).
+
+Pending proposals hold their name. Declining frees it. Confirming a
+duplicate name is `409 DUPLICATE_PROJECT_NAME`. A pending proposal has no
+tasks; the suggested next action becomes a real next-action task on confirm
+unless the person clears it.
+
+Person-only outcomes:
+
+```bash
+# Confirm as Active (default), Someday, or Waiting. Name, objective, and
+# suggested next action are editable.
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"active"}' \
+  "$API/api/projects/$PROJECT_ID/confirm"
+
+# Turn down (status becomes declined; hidden from default lists)
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  "$API/api/projects/$PROJECT_ID/decline"
+
+# Undo a turn-down (declined → proposed). Fails 409 if the name is taken.
+curl -sS -H "Authorization: Bearer $PERSON_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  "$API/api/projects/$PROJECT_ID/restore"
+```
+
+`PUT /api/projects/:id/status` cannot enter or leave `proposed` or
+`declined`. Confirm returns `{ project, task? }` like set-next-action when
+the suggested next action becomes a task. Bots learn the outcome from
+`status` and the project timeline (`Lane proposed this project`,
+`Justin confirmed it as Active`, `Justin turned it down`,
+`Justin restored it`).
 
 ## Import projects
 
@@ -414,7 +471,8 @@ capture's processed mark land in one batch, or neither does.
 
 `POST /api/captures/:id/process-to-project` creates an `active` or `someday`
 project from an inbox capture and marks the capture processed, in one batch.
-Bots cannot use it (story 16 gives them `proposed`). A web session or a
+Bots cannot use it (they propose with `POST /api/projects` and
+`status: "proposed"`). A web session or a
 person's own token may. The existing `process` route stays a Task response so
 bot clients do not change.
 
@@ -711,10 +769,18 @@ the generic `[ts-rest] request validation failed` text.
 | `PROJECT_NAME_BLANK` | Create/update name is blank after trim (`400`) |
 | `INVALID_PROJECT_NAME` | Name is too long (`400`) |
 | `DUPLICATE_PROJECT_NAME` | Another project in the org already has that name (`409`) |
-| `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create a project, or called `POST /api/captures/:id/process-to-project` (`403`) |
+| `PROJECT_CREATE_REQUIRES_PERSON` | A bot tried to create an active/someday project, or called `POST /api/captures/:id/process-to-project` (`403`) |
+| `PROJECT_PROPOSE_REQUIRES_BOT` | A person sent `status: "proposed"` on create (`403`) |
+| `PROJECT_CONFIRM_REQUIRES_PERSON` | A bot called confirm (`403`) |
+| `PROJECT_DECLINE_REQUIRES_PERSON` | A bot called decline (`403`) |
+| `PROJECT_RESTORE_REQUIRES_PERSON` | A bot called restore (`403`) |
+| `PROJECT_NOT_PROPOSED` | Confirm or decline on a project that is not proposed (`400`) |
+| `PROJECT_NOT_DECLINED` | Restore on a project that is not declined (`400`) |
+| `INVALID_PROJECT_REASON` | Reason is longer than 200 characters (`400`) |
+| `INVALID_SUGGESTED_NEXT_ACTION` | Suggested next action is longer than 500 characters (`400`) |
 | `CAPTURE_NOT_IN_INBOX` | Process-to-project when the capture is not in the inbox; nothing is written (`409`) |
 | `PROJECT_NOT_FOUND` | No project with that id in this org (`404`) |
-| `INVALID_PROJECT_STATUS` | Status is not `active`, `waiting`, `someday`, or `done`; imported projects also refuse `done` and `proposed` (`400`) |
+| `INVALID_PROJECT_STATUS` | Status is not a known project status, including a bad `?status=` list filter; imported projects also refuse `done` and `proposed` (`400`) |
 | `PROJECT_WAITING_ON_REQUIRED` | Status is waiting and `waitingOn` was omitted, including on import (`400`) |
 | `PROJECT_WAITING_ON_BLANK` | Status is waiting and `waitingOn` is blank after trim (`400`) |
 | `PROJECT_WAITING_ON_TOO_LONG` | `waitingOn` is longer than 200 characters (`400`) |

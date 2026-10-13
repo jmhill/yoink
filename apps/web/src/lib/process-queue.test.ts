@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  processBadgeTotal,
   processEmptySnoozedCopy,
   processQueue,
   processQueueSubcopy,
@@ -35,6 +36,15 @@ describe('processQueue', () => {
     expect(queue.left).toBe(2);
   });
 
+  it('mixes proposals with captures oldest first', () => {
+    const capture = { id: 'c', capturedAt: '2026-10-13T14:00:00.000Z' };
+    const proposal = { id: 'p', createdAt: '2026-10-13T12:00:00.000Z' };
+    const queue = processQueue([capture], [proposal]);
+
+    expect(queue.current).toEqual({ kind: 'proposal', project: proposal });
+    expect(queue.left).toBe(2);
+  });
+
   it('is empty when there is nothing to process', () => {
     expect(processQueue([])).toEqual({ current: null, left: 0 });
   });
@@ -44,6 +54,13 @@ describe('processQueueSubcopy', () => {
   it('reads N left, including the current capture', () => {
     expect(processQueueSubcopy(0)).toBe('0 left');
     expect(processQueueSubcopy(3)).toBe('3 left');
+  });
+});
+
+describe('processBadgeTotal', () => {
+  it('sums inbox and proposals', () => {
+    expect(processBadgeTotal(2, 1)).toBe(3);
+    expect(processBadgeTotal(0, 0)).toBe(0);
   });
 });
 

@@ -6,8 +6,11 @@ import {
   duplicateProjectNameError,
   type DuplicateProjectNameError,
   type InvalidProjectNameError,
+  type InvalidProjectReasonError,
+  type InvalidSuggestedNextActionError,
   type ProjectNameBlankError,
 } from './project-errors.js';
+import { parseProjectReason, parseSuggestedNextAction } from './project-proposal-fields.js';
 import { normalizeProjectName, parseProjectName, projectNameIsTaken } from './project-name.js';
 import { parseProjectObjective } from './project-objective.js';
 import { notebookPagesEqual, parseNotebookPages } from './notebook-pages.js';
@@ -30,7 +33,9 @@ export type DecideUpdateProjectError =
   | DuplicateProjectNameError
   | InvalidNotebookPathError
   | NotebookPageDuplicateError
-  | NotebookPagesTooManyError;
+  | NotebookPagesTooManyError
+  | InvalidProjectReasonError
+  | InvalidSuggestedNextActionError;
 
 export type DecideUpdateProjectResult =
   | { type: 'changed'; event: ProjectUpdated }
@@ -85,10 +90,34 @@ export const decideUpdateProject = ({
     }
   }
 
+  if (command.reason !== undefined) {
+    const parsed = parseProjectReason(command.reason);
+    if (parsed.isErr()) {
+      return err(parsed.error);
+    }
+    const reason = parsed.value ?? null;
+    if (reason !== (current.reason ?? null)) {
+      event.reason = reason;
+    }
+  }
+
+  if (command.suggestedNextAction !== undefined) {
+    const parsed = parseSuggestedNextAction(command.suggestedNextAction);
+    if (parsed.isErr()) {
+      return err(parsed.error);
+    }
+    const suggested = parsed.value ?? null;
+    if (suggested !== (current.suggestedNextAction ?? null)) {
+      event.suggestedNextAction = suggested;
+    }
+  }
+
   if (
     event.name === undefined &&
     event.objective === undefined &&
-    event.notebookPages === undefined
+    event.notebookPages === undefined &&
+    event.reason === undefined &&
+    event.suggestedNextAction === undefined
   ) {
     return ok({ type: 'unchanged' });
   }

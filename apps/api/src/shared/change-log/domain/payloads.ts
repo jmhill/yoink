@@ -77,20 +77,24 @@ export const namedListDeletedPayloadV1Schema = z.object({});
 export const projectCreatedPayloadV1Schema = z.object({
   name: z.string(),
   objective: z.string().optional(),
-  status: z.enum(['active', 'someday']),
+  status: z.enum(['active', 'someday', 'proposed']),
   createdById: z.string(),
   captureId: z.string().uuid().optional(),
+  reason: z.string().optional(),
+  suggestedNextAction: z.string().optional(),
 });
 
 export const projectUpdatedPayloadV1Schema = z.object({
   name: z.string().optional(),
   objective: z.string().nullable().optional(),
   notebookPages: z.array(z.string()).optional(),
+  reason: z.string().nullable().optional(),
+  suggestedNextAction: z.string().nullable().optional(),
 });
 
 export const projectStatusChangedPayloadV1Schema = z.object({
-  from: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']),
-  to: z.enum(['active', 'waiting', 'someday', 'done']),
+  from: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']),
+  to: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']),
   waitingOn: z.string().nullable().optional(),
   waitingSince: z.string().nullable().optional(),
 });
@@ -142,7 +146,7 @@ export const projectImportedPayloadV1Schema = z.object({
   taskCount: z.number().int().min(0),
   name: z.string().optional(),
   objective: z.string().optional(),
-  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']).optional(),
+  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']).optional(),
   waitingOn: z.string().nullable().optional(),
   waitingSince: z.string().nullable().optional(),
   nextActionTaskId: z.string().nullable().optional(),

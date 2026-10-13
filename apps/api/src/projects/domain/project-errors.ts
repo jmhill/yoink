@@ -38,6 +38,54 @@ export type ProjectCreateRequiresPersonError = {
   readonly message: string;
 };
 
+export type ProjectProposeRequiresBotError = {
+  readonly type: 'PROJECT_PROPOSE_REQUIRES_BOT';
+  readonly message: string;
+};
+
+export type ProjectNotProposedError = {
+  readonly type: 'PROJECT_NOT_PROPOSED';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type ProjectNotDeclinedError = {
+  readonly type: 'PROJECT_NOT_DECLINED';
+  readonly id: string;
+  readonly message: string;
+};
+
+export type ProjectConfirmRequiresPersonError = {
+  readonly type: 'PROJECT_CONFIRM_REQUIRES_PERSON';
+  readonly message: string;
+};
+
+export type ProjectDeclineRequiresPersonError = {
+  readonly type: 'PROJECT_DECLINE_REQUIRES_PERSON';
+  readonly message: string;
+};
+
+export type ProjectRestoreRequiresPersonError = {
+  readonly type: 'PROJECT_RESTORE_REQUIRES_PERSON';
+  readonly message: string;
+};
+
+export type InvalidProjectReasonError = {
+  readonly type: 'INVALID_PROJECT_REASON';
+  readonly message: string;
+};
+
+export type InvalidSuggestedNextActionError = {
+  readonly type: 'INVALID_SUGGESTED_NEXT_ACTION';
+  readonly message: string;
+};
+
+export type ProjectProposedError = {
+  readonly type: 'PROJECT_PROPOSED';
+  readonly id: string;
+  readonly message: string;
+};
+
 export type InvalidProjectStatusError = {
   readonly type: 'INVALID_PROJECT_STATUS';
   readonly message: string;
@@ -173,7 +221,7 @@ export type ImportInvalidError = {
   readonly errors: readonly ImportEntryError[];
 };
 
-export type ListProjectsError = StorageError | InvalidCursorError;
+export type ListProjectsError = StorageError | InvalidCursorError | InvalidProjectStatusError;
 export type GetProjectError = StorageError | ProjectNotFoundError;
 export type ListOpenTasksOnProjectError =
   | StorageError
@@ -184,7 +232,11 @@ export type CreateProjectError =
   | InvalidProjectNameError
   | ProjectNameBlankError
   | DuplicateProjectNameError
-  | ProjectCreateRequiresPersonError;
+  | ProjectCreateRequiresPersonError
+  | ProjectProposeRequiresBotError
+  | InvalidProjectStatusError
+  | InvalidProjectReasonError
+  | InvalidSuggestedNextActionError;
 export type UpdateProjectError =
   | StorageError
   | InvalidProjectNameError
@@ -193,7 +245,9 @@ export type UpdateProjectError =
   | ProjectNotFoundError
   | InvalidNotebookPathError
   | NotebookPageDuplicateError
-  | NotebookPagesTooManyError;
+  | NotebookPagesTooManyError
+  | InvalidProjectReasonError
+  | InvalidSuggestedNextActionError;
 export type StageImportError = StorageError | ImportInvalidError;
 export type ListImportsError = StorageError;
 export type GetImportError = StorageError | ImportNotFoundError;
@@ -213,6 +267,7 @@ export type ChangeProjectStatusError =
   | StorageError
   | ProjectNotFoundError
   | InvalidProjectStatusError
+  | ProjectNotProposedError
   | ProjectWaitingOnRequiredError
   | ProjectWaitingOnBlankError
   | ProjectWaitingOnTooLongError
@@ -222,6 +277,45 @@ export type ChangeProjectStatusError =
   | ProjectHasOpenTasksError
   | OpenTasksUnreadError
   | OpenTaskPlanFailedError;
+
+export type ConfirmProposedProjectError =
+  | StorageError
+  | ProjectNotFoundError
+  | ProjectNotProposedError
+  | ProjectConfirmRequiresPersonError
+  | InvalidProjectNameError
+  | ProjectNameBlankError
+  | DuplicateProjectNameError
+  | InvalidProjectStatusError
+  | ProjectWaitingOnRequiredError
+  | ProjectWaitingOnBlankError
+  | ProjectWaitingOnTooLongError
+  | InvalidWaitingSinceError
+  | InvalidSuggestedNextActionError
+  | TaskTitleBlankError
+  | TaskTitleTooLongError
+  | ListNotInOrganizationError
+  | AssigneeNotInOrganizationError
+  | OpenTaskPlanFailedError
+  | ProjectDoneError
+  | ProjectProposedError
+  | TaskNotFoundError
+  | TaskNotOpenError
+  | TaskNotInProjectError;
+
+export type DeclineProposedProjectError =
+  | StorageError
+  | ProjectNotFoundError
+  | ProjectNotProposedError
+  | ProjectDeclineRequiresPersonError
+  | DuplicateProjectNameError;
+
+export type RestoreDeclinedProjectError =
+  | StorageError
+  | ProjectNotFoundError
+  | ProjectNotDeclinedError
+  | ProjectRestoreRequiresPersonError
+  | DuplicateProjectNameError;
 export type SetProjectNextActionError =
   | StorageError
   | ProjectNotFoundError
@@ -229,6 +323,7 @@ export type SetProjectNextActionError =
   | TaskNotOpenError
   | TaskNotInProjectError
   | ProjectDoneError
+  | ProjectProposedError
   | TaskTitleBlankError
   | TaskTitleTooLongError
   | ListNotInOrganizationError
@@ -266,6 +361,54 @@ export const projectNotFoundError = (id: string): ProjectNotFoundError => ({
 export const projectCreateRequiresPersonError = (): ProjectCreateRequiresPersonError => ({
   type: 'PROJECT_CREATE_REQUIRES_PERSON',
   message: 'Creating a project requires a person',
+});
+
+export const projectProposeRequiresBotError = (): ProjectProposeRequiresBotError => ({
+  type: 'PROJECT_PROPOSE_REQUIRES_BOT',
+  message: 'Only a bot can propose a project',
+});
+
+export const projectNotProposedError = (id: string): ProjectNotProposedError => ({
+  type: 'PROJECT_NOT_PROPOSED',
+  id,
+  message: 'This project is not a pending proposal',
+});
+
+export const projectNotDeclinedError = (id: string): ProjectNotDeclinedError => ({
+  type: 'PROJECT_NOT_DECLINED',
+  id,
+  message: 'This project is not a declined proposal',
+});
+
+export const projectConfirmRequiresPersonError = (): ProjectConfirmRequiresPersonError => ({
+  type: 'PROJECT_CONFIRM_REQUIRES_PERSON',
+  message: 'Confirming a proposal requires a person',
+});
+
+export const projectDeclineRequiresPersonError = (): ProjectDeclineRequiresPersonError => ({
+  type: 'PROJECT_DECLINE_REQUIRES_PERSON',
+  message: 'Turning down a proposal requires a person',
+});
+
+export const projectRestoreRequiresPersonError = (): ProjectRestoreRequiresPersonError => ({
+  type: 'PROJECT_RESTORE_REQUIRES_PERSON',
+  message: 'Restoring a proposal requires a person',
+});
+
+export const invalidProjectReasonError = (): InvalidProjectReasonError => ({
+  type: 'INVALID_PROJECT_REASON',
+  message: 'Reason must be 200 characters or fewer',
+});
+
+export const invalidSuggestedNextActionError = (): InvalidSuggestedNextActionError => ({
+  type: 'INVALID_SUGGESTED_NEXT_ACTION',
+  message: 'Suggested next action must be 500 characters or fewer',
+});
+
+export const projectProposedError = (id: string): ProjectProposedError => ({
+  type: 'PROJECT_PROPOSED',
+  id,
+  message: 'A proposed project cannot have tasks',
 });
 
 export const invalidProjectStatusError = (): InvalidProjectStatusError => ({

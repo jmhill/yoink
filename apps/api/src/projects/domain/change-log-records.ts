@@ -52,6 +52,10 @@ const projectPayloadByType = {
       createdById: event.createdById,
       ...(event.objective !== undefined ? { objective: event.objective } : {}),
       ...(event.captureId !== undefined ? { captureId: event.captureId } : {}),
+      ...(event.reason !== undefined ? { reason: event.reason } : {}),
+      ...(event.suggestedNextAction !== undefined
+        ? { suggestedNextAction: event.suggestedNextAction }
+        : {}),
     };
     return payload;
   },
@@ -67,6 +71,12 @@ const projectPayloadByType = {
     }
     if (event.notebookPages !== undefined) {
       payload.notebookPages = event.notebookPages;
+    }
+    if (event.reason !== undefined) {
+      payload.reason = event.reason;
+    }
+    if (event.suggestedNextAction !== undefined) {
+      payload.suggestedNextAction = event.suggestedNextAction;
     }
     return payload;
   },

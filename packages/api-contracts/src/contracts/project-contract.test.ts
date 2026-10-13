@@ -29,6 +29,12 @@ describe('projectContract', () => {
     expect(projectContract.applyImport.path).toBe('/api/projects/imports/:id/apply');
     expect(projectContract.discardImport.method).toBe('POST');
     expect(projectContract.discardImport.path).toBe('/api/projects/imports/:id/discard');
+    expect(projectContract.confirmProposal.method).toBe('POST');
+    expect(projectContract.confirmProposal.path).toBe('/api/projects/:id/confirm');
+    expect(projectContract.declineProposal.method).toBe('POST');
+    expect(projectContract.declineProposal.path).toBe('/api/projects/:id/decline');
+    expect(projectContract.restoreProposal.method).toBe('POST');
+    expect(projectContract.restoreProposal.path).toBe('/api/projects/:id/restore');
   });
 
   it('requires hasMore and an explicit nextCursor on list', () => {

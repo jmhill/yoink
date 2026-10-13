@@ -16,7 +16,9 @@ const ProjectRowSchema = z.object({
   created_by_id: z.string().min(1),
   name: z.string().min(1),
   objective: z.string().nullable().optional(),
-  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']),
+  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed', 'declined']),
+  reason: z.string().nullable().optional(),
+  suggested_next_action: z.string().nullable().optional(),
   waiting_on: z.string().nullable().optional(),
   waiting_since: isoDate.optional(),
   next_action_task_id: z.string().nullable().optional(),
@@ -56,6 +58,12 @@ export const parseProjectRow = (
 
   if (parsed.data.objective) {
     project.objective = parsed.data.objective;
+  }
+  if (parsed.data.reason) {
+    project.reason = parsed.data.reason;
+  }
+  if (parsed.data.suggested_next_action) {
+    project.suggestedNextAction = parsed.data.suggested_next_action;
   }
 
   return ok(project);

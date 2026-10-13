@@ -89,6 +89,8 @@ const createTaskError = (
       return { code: error.type, message: 'Project is not in this organization' };
     case 'PROJECT_DONE':
       return { code: error.type, message: 'That project is done' };
+    case 'PROJECT_PROPOSED':
+      return { code: error.type, message: 'That project is a proposal' };
   }
 };
 
@@ -185,7 +187,11 @@ const decideOneEntry = (
   };
 
   if (entry.status === 'done' || entry.status === 'proposed') {
-    add('status', 'INVALID_PROJECT_STATUS', 'Imported projects cannot be done or proposed');
+    add(
+      'status',
+      'INVALID_PROJECT_STATUS',
+      'Imported projects cannot be done or proposed'
+    );
   }
 
   const parsedName = parseProjectName(entry.name);

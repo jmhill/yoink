@@ -162,6 +162,63 @@ describe('formatTimelineLine', () => {
         })
       )
     ).toBe('Lane created this project');
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectCreated',
+          details: { kind: 'ProjectCreated', name: 'Harbor', status: 'proposed' },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane proposed this project');
+  });
+
+  it('names propose, confirm, turn down, and restore', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectStatusChanged',
+          details: {
+            kind: 'ProjectStatusChanged',
+            from: 'proposed',
+            to: 'active',
+            waitingOn: null,
+            waitingSince: null,
+          },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane confirmed it as Active');
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectStatusChanged',
+          details: {
+            kind: 'ProjectStatusChanged',
+            from: 'proposed',
+            to: 'declined',
+            waitingOn: null,
+            waitingSince: null,
+          },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane turned it down');
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'ProjectStatusChanged',
+          details: {
+            kind: 'ProjectStatusChanged',
+            from: 'declined',
+            to: 'proposed',
+            waitingOn: null,
+            waitingSince: null,
+          },
+          subject: { type: 'project', id: 'p1', title: 'Harbor', deleted: false },
+        })
+      )
+    ).toBe('Lane restored it');
   });
 
   it('names each project field that changed', () => {

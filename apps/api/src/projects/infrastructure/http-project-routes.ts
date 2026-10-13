@@ -50,6 +50,9 @@ export const registerProjectRoutes = async (
           organizationId: request.authContext.organizationId,
           limit: query.limit,
           cursor: query.cursor,
+          status: query.status,
+          createdById: query.createdById,
+          actor: request.authContext.actor,
         });
 
         return result.match(
@@ -61,6 +64,11 @@ export const registerProjectRoutes = async (
             switch (error.type) {
               case 'INVALID_CURSOR':
                 return invalidCursorHttp(error);
+              case 'INVALID_PROJECT_STATUS':
+                return {
+                  status: 400 as const,
+                  body: projectErrorBody(error),
+                };
               case 'STORAGE_ERROR':
                 return {
                   status: 500 as const,
@@ -75,6 +83,9 @@ export const registerProjectRoutes = async (
         const result = await projectHandlers.create({
           name: body.name,
           objective: body.objective,
+          status: body.status,
+          reason: body.reason,
+          suggestedNextAction: body.suggestedNextAction,
           organizationId: request.authContext.organizationId,
           createdById: request.authContext.userId,
           actor: request.authContext.actor,
@@ -89,6 +100,9 @@ export const registerProjectRoutes = async (
             switch (error.type) {
               case 'PROJECT_NAME_BLANK':
               case 'INVALID_PROJECT_NAME':
+              case 'INVALID_PROJECT_STATUS':
+              case 'INVALID_PROJECT_REASON':
+              case 'INVALID_SUGGESTED_NEXT_ACTION':
                 return {
                   status: 400 as const,
                   body: projectErrorBody(error),
@@ -99,6 +113,7 @@ export const registerProjectRoutes = async (
                   body: projectErrorBody(error),
                 };
               case 'PROJECT_CREATE_REQUIRES_PERSON':
+              case 'PROJECT_PROPOSE_REQUIRES_BOT':
                 return {
                   status: 403 as const,
                   body: projectErrorBody(error),
@@ -384,6 +399,8 @@ export const registerProjectRoutes = async (
           name: body.name,
           objective: body.objective,
           notebookPages: body.notebookPages,
+          reason: body.reason,
+          suggestedNextAction: body.suggestedNextAction,
           actor: request.authContext.actor,
         });
 
@@ -396,6 +413,8 @@ export const registerProjectRoutes = async (
             switch (error.type) {
               case 'PROJECT_NAME_BLANK':
               case 'INVALID_PROJECT_NAME':
+              case 'INVALID_PROJECT_REASON':
+              case 'INVALID_SUGGESTED_NEXT_ACTION':
               case 'INVALID_NOTEBOOK_PATH':
               case 'NOTEBOOK_PAGE_DUPLICATE':
               case 'NOTEBOOK_PAGES_TOO_MANY':
@@ -446,6 +465,7 @@ export const registerProjectRoutes = async (
           (error) => {
             switch (error.type) {
               case 'INVALID_PROJECT_STATUS':
+              case 'PROJECT_NOT_PROPOSED':
               case 'PROJECT_WAITING_ON_REQUIRED':
               case 'PROJECT_WAITING_ON_BLANK':
               case 'PROJECT_WAITING_ON_TOO_LONG':
@@ -485,6 +505,157 @@ export const registerProjectRoutes = async (
         );
       },
 
+      confirmProposal: async ({ params, body, request }) => {
+        const result = await projectHandlers.confirmProposal({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          name: body.name,
+          objective: body.objective,
+          status: body.status,
+          waitingOn: body.waitingOn,
+          waitingSince: body.waitingSince,
+          suggestedNextAction: body.suggestedNextAction,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          ({ view, task }) => ({
+            status: 200 as const,
+            body: {
+              project: view,
+              ...(task ? { task: { id: task.id, title: task.title } } : {}),
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'PROJECT_NAME_BLANK':
+              case 'INVALID_PROJECT_NAME':
+              case 'INVALID_PROJECT_STATUS':
+              case 'INVALID_SUGGESTED_NEXT_ACTION':
+              case 'PROJECT_WAITING_ON_REQUIRED':
+              case 'PROJECT_WAITING_ON_BLANK':
+              case 'PROJECT_WAITING_ON_TOO_LONG':
+              case 'INVALID_WAITING_SINCE':
+              case 'TASK_TITLE_BLANK':
+              case 'TASK_TITLE_TOO_LONG':
+              case 'LIST_NOT_IN_ORGANIZATION':
+              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
+              case 'PROJECT_DONE':
+              case 'PROJECT_PROPOSED':
+              case 'TASK_NOT_OPEN':
+              case 'TASK_NOT_IN_PROJECT':
+                return {
+                  status: 400 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_CONFIRM_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+              case 'TASK_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_PROPOSED':
+              case 'DUPLICATE_PROJECT_NAME':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+              case 'OPEN_TASK_PLAN_FAILED':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      declineProposal: async ({ params, request }) => {
+        const result = await projectHandlers.declineProposal({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          ({ view }) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'PROJECT_DECLINE_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_PROPOSED':
+              case 'DUPLICATE_PROJECT_NAME':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
+      restoreProposal: async ({ params, request }) => {
+        const result = await projectHandlers.restoreProposal({
+          id: params.id,
+          organizationId: request.authContext.organizationId,
+          actor: request.authContext.actor,
+        });
+
+        return result.match(
+          ({ view }) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'PROJECT_RESTORE_REQUIRES_PERSON':
+                return {
+                  status: 403 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'PROJECT_NOT_DECLINED':
+              case 'DUPLICATE_PROJECT_NAME':
+                return {
+                  status: 409 as const,
+                  body: projectErrorBody(error),
+                };
+              case 'STORAGE_ERROR':
+                return {
+                  status: 500 as const,
+                  body: { message: 'Internal server error' },
+                };
+            }
+          }
+        );
+      },
+
       setNextAction: async ({ params, body, request }) => {
         const base = {
           id: params.id,
@@ -512,6 +683,7 @@ export const registerProjectRoutes = async (
               case 'TASK_NOT_OPEN':
               case 'TASK_NOT_IN_PROJECT':
               case 'PROJECT_DONE':
+              case 'PROJECT_PROPOSED':
               case 'TASK_TITLE_BLANK':
               case 'TASK_TITLE_TOO_LONG':
               case 'LIST_NOT_IN_ORGANIZATION':

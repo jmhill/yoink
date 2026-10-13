@@ -119,13 +119,42 @@ export type Project = {
   createdById: string;
   createdAt: string;
   objective?: string;
-  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed';
+  status: 'active' | 'waiting' | 'someday' | 'done' | 'proposed' | 'declined';
   waitingOn?: string | null;
   waitingSince?: string | null;
   nextActionTaskId?: string | null;
   notebookPages?: NotebookPage[];
+  reason?: string;
+  suggestedNextAction?: string;
   lastChangedAt?: string | null;
   lastChangedBy?: string | null;
+};
+
+export type CreateProjectInput = {
+  name: string;
+  objective?: string;
+  status?: 'active' | 'someday' | 'proposed';
+  reason?: string;
+  suggestedNextAction?: string;
+};
+
+export type ListProjectsQuery = {
+  status?: string;
+  createdById?: string;
+};
+
+export type ConfirmProjectProposalInput = {
+  name?: string;
+  objective?: string | null;
+  status?: 'active' | 'someday' | 'waiting';
+  waitingOn?: string | null;
+  waitingSince?: string | null;
+  suggestedNextAction?: string | null;
+};
+
+export type ConfirmProjectProposalResult = {
+  project: Project;
+  task?: { id: string; title: string };
 };
 
 export type ImportNewTask = {

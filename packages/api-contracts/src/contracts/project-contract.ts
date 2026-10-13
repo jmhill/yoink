@@ -4,6 +4,7 @@ import {
   AppliedImportSchema,
   ChangeProjectStatusResponseSchema,
   ChangeProjectStatusSchema,
+  ConfirmProposedProjectSchema,
   CreateProjectSchema,
   DiscardedImportSchema,
   ProjectSchema,
@@ -32,7 +33,10 @@ export const projectContract = c.router(
     list: {
       method: 'GET',
       path: '/api/projects',
-      query: ListPageQuerySchema,
+      query: ListPageQuerySchema.extend({
+        status: z.string().min(1).optional(),
+        createdById: z.string().uuid().optional(),
+      }),
       responses: {
         200: ProjectListPageSchema,
         400: ErrorSchema,
@@ -54,7 +58,8 @@ export const projectContract = c.router(
         409: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: 'Create a project in this organization (person only)',
+      summary:
+        'Create a project (person) or propose one with status proposed (bot)',
     },
 
     stageImport: {
@@ -220,6 +225,63 @@ export const projectContract = c.router(
         500: ErrorSchema,
       },
       summary: "Change a project's status, including waiting on / since",
+    },
+
+    confirmProposal: {
+      method: 'POST',
+      path: '/api/projects/:id/confirm',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: ConfirmProposedProjectSchema,
+      responses: {
+        200: SetProjectNextActionResponseSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Confirm a proposed project (person only)',
+    },
+
+    declineProposal: {
+      method: 'POST',
+      path: '/api/projects/:id/decline',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: z.object({}),
+      responses: {
+        200: ProjectSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Turn down a proposed project (person only)',
+    },
+
+    restoreProposal: {
+      method: 'POST',
+      path: '/api/projects/:id/restore',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: z.object({}),
+      responses: {
+        200: ProjectSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        403: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Restore a declined proposal to proposed (person only)',
     },
 
     setNextAction: {

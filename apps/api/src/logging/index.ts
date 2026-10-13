@@ -1,4 +1,4 @@
-export { createLoggerOptions } from './logger.js';
+export { createLoggerOptions, PINO_REDACT_PATHS } from './logger.js';
 export { createPinoCommandLogger } from './command-logger.js';
 export {
   createPinoHistoryReadLogger,

@@ -257,5 +257,16 @@ export const formatTimelineLine = (entry: TimelineEntry): string => {
       const tasks = count === 1 ? '1 task' : `${count} tasks`;
       return `${who} · Moved in · ${tasks}`;
     }
+    case 'NoteCreated':
+      return `${who} added the note ${quoted(entry.details.title)}`;
+    case 'NoteUpdated': {
+      const fields = [
+        ...(entry.details.titleChanged ? ['the title'] : []),
+        ...(entry.details.bodyChanged ? ['the body'] : []),
+      ];
+      return `${who} changed ${joinChangedFields(fields)} on ${quoted(entry.details.title)}`;
+    }
+    case 'NoteDeleted':
+      return `${who} deleted the note ${quoted(entry.details.title)}`;
   }
 };

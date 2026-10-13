@@ -28,6 +28,9 @@ const lookups: TimelineLookups = {
     if (type === 'project') {
       return { title: 'Kitchen renovation', deleted: false };
     }
+    if (type === 'note') {
+      return { title: 'Meeting notes', deleted: false };
+    }
     return { title: null, deleted: false };
   },
   taskTitleOf: (id) => {
@@ -213,6 +216,30 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         kind,
         hidden: hiddenFor('ProjectImported'),
         payload: { taskCount: 2 },
+      };
+    case 'NoteCreated':
+      return {
+        ...base,
+        subjectType: 'note',
+        kind,
+        hidden: hiddenFor('NoteCreated'),
+        payload: { title: 'Meeting notes' },
+      };
+    case 'NoteUpdated':
+      return {
+        ...base,
+        subjectType: 'note',
+        kind,
+        hidden: hiddenFor('NoteUpdated'),
+        payload: { title: 'Meeting notes', titleChanged: true, bodyChanged: false },
+      };
+    case 'NoteDeleted':
+      return {
+        ...base,
+        subjectType: 'note',
+        kind,
+        hidden: hiddenFor('NoteDeleted'),
+        payload: { title: 'Meeting notes' },
       };
   }
 };

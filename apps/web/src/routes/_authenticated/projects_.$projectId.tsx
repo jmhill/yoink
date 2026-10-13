@@ -17,6 +17,7 @@ import { TaskEditModal } from '@/components/task-edit-modal';
 import { PlaceHeading } from '@/components/place-heading';
 import { ProjectStatusControl } from '@/components/project-status-control';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
+import { ProjectNotesSection } from '@/components/project-notes-section';
 import { NextActionPicker, type NewNextActionTask } from '@/components/next-action-picker';
 import {
   tsr,
@@ -396,27 +397,6 @@ function ProjectPage() {
           </Button>
         )}
 
-        {project.notebookPages.length > 0 ? (
-          <section data-project-notebook="" className="space-y-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Notebook
-            </h2>
-            <ul className="space-y-2">
-              {project.notebookPages.map((page, index) => (
-                <li key={page.path} data-project-notebook-page={index} className="text-sm">
-                  <a
-                    href={page.url}
-                    className="font-medium underline underline-offset-2"
-                  >
-                    {page.path.split('/').at(-1) ?? page.path}
-                  </a>
-                  <span className="ml-2 text-muted-foreground">{page.path}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {waitingParts ? (
           <button
             type="button"
@@ -506,6 +486,29 @@ function ProjectPage() {
           >
             Set next action
           </Button>
+        ) : null}
+
+        <ProjectNotesSection projectId={projectId} />
+
+        {project.notebookPages.length > 0 ? (
+          <section data-project-notebook="" className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Notebook links
+            </h2>
+            <ul className="space-y-2">
+              {project.notebookPages.map((page, index) => (
+                <li key={page.path} data-project-notebook-page={index} className="text-sm">
+                  <a
+                    href={page.url}
+                    className="font-medium underline underline-offset-2"
+                  >
+                    {page.path.split('/').at(-1) ?? page.path}
+                  </a>
+                  <span className="ml-2 text-muted-foreground">{page.path}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         <section className="space-y-3" data-project-open-tasks="">

@@ -8,6 +8,8 @@ import type {
   DiscardedImport,
   ImportProject,
   NamedList,
+  Note,
+  NoteListPage,
   Project,
   StagedImport,
   Task,
@@ -47,6 +49,7 @@ import {
   ValidationError,
   ImportInvalidError,
   ConflictError,
+  StaleNoteError,
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
   LastAdminError,
@@ -1027,6 +1030,119 @@ export const createPlaywrightActor = (
         throw new Error(`Expected code invalid_cursor, got ${body.code}`);
       }
       return body;
+    },
+
+    async listNotes(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ): Promise<NoteListPage> {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await page.request.get(`/api/projects/${projectId}/notes${suffix}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to list notes: ${response.status()}`);
+      }
+      return (await response.json()) as NoteListPage;
+    },
+
+    async getNote(projectId: string, noteId: string): Promise<Note> {
+      const response = await page.request.get(`/api/projects/${projectId}/notes/${noteId}`);
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to get note: ${response.status()}`);
+      }
+      return (await response.json()) as Note;
+    },
+
+    async createNote(
+      projectId: string,
+      input: { title: string; body?: string }
+    ): Promise<Note> {
+      const response = await page.request.post(`/api/projects/${projectId}/notes`, {
+        data: input,
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() !== 201) {
+        throw new Error(`Failed to create note: ${response.status()}`);
+      }
+      return (await response.json()) as Note;
+    },
+
+    async updateNote(
+      projectId: string,
+      noteId: string,
+      input: { title?: string; body?: string; expectedVersion: string }
+    ): Promise<Note> {
+      const response = await page.request.patch(
+        `/api/projects/${projectId}/notes/${noteId}`,
+        { data: input }
+      );
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.status() === 400) {
+        const body = (await response.json()) as { message?: string };
+        throw new ValidationError(body.message ?? 'Invalid request');
+      }
+      if (response.status() === 409) {
+        const body = (await response.json()) as {
+          message?: string;
+          currentVersion?: string;
+          updatedAt?: string;
+          updatedByName?: string;
+        };
+        throw new StaleNoteError({
+          message: body.message ?? 'This note changed since you opened it',
+          currentVersion: body.currentVersion ?? '',
+          updatedAt: body.updatedAt ?? '',
+          updatedByName: body.updatedByName ?? '',
+        });
+      }
+      if (response.status() !== 200) {
+        throw new Error(`Failed to update note: ${response.status()}`);
+      }
+      return (await response.json()) as Note;
+    },
+
+    async deleteNote(projectId: string, noteId: string): Promise<void> {
+      const response = await page.request.fetch(`/api/projects/${projectId}/notes/${noteId}`, {
+        method: 'DELETE',
+        data: {},
+      });
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.status() !== 204) {
+        throw new Error(`Failed to delete note: ${response.status()}`);
+      }
     },
 
     async createNamedList(name: string): Promise<NamedList> {
@@ -2698,6 +2814,239 @@ export const createPlaywrightActor = (
       for (const [index, text] of texts.entries()) {
         expect(found[index], `history line ${index}`).toContain(text);
       }
+    },
+
+    async shouldSeeNotesReady(): Promise<void> {
+      const section = page.locator('[data-project-notes][data-notes-ready]');
+      await section.scrollIntoViewIfNeeded();
+      await expect(section).toBeVisible();
+    },
+
+    async shouldSeeNotesEmpty(): Promise<void> {
+      await this.shouldSeeNotesReady();
+      await expect(page.locator('[data-project-notes-empty]')).toBeVisible();
+    },
+
+    async shouldSeeNoteOnProject(input: {
+      title: string;
+      excerpt?: string;
+      stamp?: string;
+    }): Promise<void> {
+      await this.shouldSeeNotesReady();
+      const row = page.locator(`[data-project-note][data-note-title="${input.title}"]`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await expect(row).toContainText(input.title);
+      if (input.excerpt !== undefined) {
+        await expect(row).toContainText(input.excerpt);
+      }
+      if (input.stamp !== undefined) {
+        await expect(row).toContainText(input.stamp);
+      }
+    },
+
+    async shouldNotSeeNoteOnProject(title: string): Promise<void> {
+      await this.shouldSeeNotesReady();
+      await expect(page.locator(`[data-project-note][data-note-title="${title}"]`)).toHaveCount(0);
+    },
+
+    async shouldSeeNotesBetweenNextActionAndNotebook(): Promise<void> {
+      await this.shouldSeeNotesReady();
+      const order = (await page.evaluate(`(() => {
+        const notes = document.querySelector('[data-project-notes]');
+        const notebook = document.querySelector('[data-project-notebook]');
+        const next =
+          document.querySelector('[data-next-action-card]') ||
+          document.querySelector('[data-next-action-empty]') ||
+          document.querySelector('[data-set-next-action]');
+        if (!notes || !next) {
+          return { ok: false, reason: 'missing notes or next action' };
+        }
+        const following = 4;
+        const nextBeforeNotes = Boolean(next.compareDocumentPosition(notes) & following);
+        const notesBeforeNotebook =
+          notebook === null
+            ? true
+            : Boolean(notes.compareDocumentPosition(notebook) & following);
+        return { ok: nextBeforeNotes && notesBeforeNotebook, reason: '' };
+      })()`)) as { ok: boolean; reason: string };
+      expect(order.ok, order.reason).toBe(true);
+    },
+
+    async addNoteOnProject(input: { title: string; body?: string }): Promise<Note> {
+      await this.shouldSeeNotesReady();
+      await page.locator('[data-note-add]').click();
+      await expect(page.locator('[data-note-editor]')).toBeVisible();
+      await waitForSettledOpenSheet({ page });
+      await page.locator('[data-note-title-input]').fill(input.title);
+      if (input.body !== undefined) {
+        await page.locator('[data-note-body-input]').fill(input.body);
+      }
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/notes') &&
+          response.request().method() === 'POST' &&
+          response.status() === 201
+      );
+      await page.locator('[data-note-save]').click();
+      const response = await responsePromise;
+      const created = (await response.json()) as Note;
+      await expect(page.locator('[data-note-read]')).toBeVisible();
+      await expect(page.locator(`[data-project-note][data-note-title="${input.title}"]`)).toBeVisible();
+      return created;
+    },
+
+    async openNoteOnProject(title: string): Promise<void> {
+      await this.shouldSeeNotesReady();
+      const row = page.locator(`[data-project-note][data-note-title="${title}"]`);
+      await row.scrollIntoViewIfNeeded();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
+      );
+      await row.click();
+      await responsePromise;
+      await expect(page.locator('[data-note-read]')).toBeVisible();
+      await waitForSettledOpenSheet({ page });
+    },
+
+    async shouldSeeOpenNote(input: { title: string; bodyText?: string }): Promise<void> {
+      const sheet = page.locator('[data-note-read], [data-note-editor]');
+      await expect(sheet).toBeVisible();
+      const titleInput = page.locator('[data-note-title-input]');
+      if ((await titleInput.count()) > 0 && (await titleInput.isVisible())) {
+        await expect(titleInput).toHaveValue(input.title);
+        if (input.bodyText !== undefined) {
+          await expect(page.locator('[data-note-body-input]')).toHaveValue(input.bodyText);
+        }
+        return;
+      }
+      await expect(sheet).toContainText(input.title);
+      if (input.bodyText !== undefined) {
+        await expect(sheet).toContainText(input.bodyText);
+      }
+    },
+
+    async shouldNotSeeRawHtmlInNote(_text: string): Promise<void> {
+      await expect(page.locator('[data-note-markdown]')).toBeVisible();
+      await expect(page.locator('[data-note-markdown] script')).toHaveCount(0);
+      await expect(page.locator('[data-note-markdown] img')).toHaveCount(0);
+      await expect(page.locator('[data-note-markdown] iframe')).toHaveCount(0);
+    },
+
+    async startEditingOpenNote(): Promise<void> {
+      await expect(page.locator('[data-note-read]')).toBeVisible();
+      await page.locator('[data-note-edit]').click();
+      await expect(page.locator('[data-note-editor]')).toBeVisible();
+    },
+
+    async editOpenNote(input: { title?: string; body?: string }): Promise<void> {
+      await expect(page.locator('[data-note-editor]')).toBeVisible();
+      if (input.title !== undefined) {
+        await page.locator('[data-note-title-input]').fill(input.title);
+      }
+      if (input.body !== undefined) {
+        await page.locator('[data-note-body-input]').fill(input.body);
+      }
+    },
+
+    async saveOpenNote(): Promise<void> {
+      const responsePromise = page.waitForResponse((response) => {
+        const path = new URL(response.url()).pathname;
+        const method = response.request().method();
+        return (
+          path.includes('/notes') &&
+          (method === 'POST' || method === 'PATCH') &&
+          (response.status() === 200 || response.status() === 201 || response.status() === 409)
+        );
+      });
+      await page.locator('[data-note-save]').click();
+      await responsePromise;
+    },
+
+    async cancelOpenNote(): Promise<void> {
+      const cancel = page.locator('[data-note-cancel]');
+      if ((await cancel.count()) > 0 && (await cancel.isVisible())) {
+        await cancel.click();
+        return;
+      }
+      await page.locator('[data-note-close]').click();
+      await expect(page.locator('[data-note-read], [data-note-editor]')).toHaveCount(0);
+    },
+
+    async shouldSeeNoteEditor(): Promise<void> {
+      await expect(page.locator('[data-note-editor]')).toBeVisible();
+    },
+
+    async shouldSeeNoteStale(): Promise<void> {
+      await expect(page.locator('[data-note-stale]')).toBeVisible();
+      await expect(page.locator('[data-note-stale]')).toContainText(
+        'This note changed since you opened it'
+      );
+    },
+
+    async seeNewerNoteVersion(): Promise<void> {
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
+      );
+      await page.locator('[data-note-see-newer]').click();
+      await responsePromise;
+      await expect(page.locator('[data-note-stale]')).toHaveCount(0);
+    },
+
+    async saveOpenNoteAsCopy(): Promise<void> {
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/notes') &&
+          response.request().method() === 'POST' &&
+          response.status() === 201
+      );
+      await page.locator('[data-note-save-copy]').click();
+      await responsePromise;
+      await expect(page.locator('[data-note-stale]')).toHaveCount(0);
+    },
+
+    async deleteOpenNote(): Promise<void> {
+      await page.locator('[data-note-delete]').click();
+      await expect(page.locator('[data-note-delete-confirm]')).toBeVisible();
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          response.request().method() === 'DELETE' &&
+          response.status() === 204
+      );
+      await page.locator('[data-note-delete-confirm-button]').click();
+      await responsePromise;
+      await expect(page.locator('[data-note-read], [data-note-editor]')).toHaveCount(0);
+    },
+
+    async toggleNotePreview(): Promise<void> {
+      await page.locator('[data-note-preview-toggle]').click();
+    },
+
+    async shouldSeeNotePreview(): Promise<void> {
+      await expect(page.locator('[data-note-preview]')).toBeVisible();
+    },
+
+    async shouldSeeDiscardChangesPrompt(): Promise<void> {
+      await expect(page.locator('[data-note-discard]')).toBeVisible();
+      await expect(page.locator('[data-note-discard]')).toContainText('Discard changes?');
+    },
+
+    async keepEditingNote(): Promise<void> {
+      await page.locator('[data-note-keep-editing]').click();
+      await expect(page.locator('[data-note-discard]')).toHaveCount(0);
+      await expect(page.locator('[data-note-editor]')).toBeVisible();
+    },
+
+    async discardNoteChanges(): Promise<void> {
+      await page.locator('[data-note-discard-confirm]').click();
+      await expect(page.locator('[data-note-editor]')).toHaveCount(0);
     },
 
     async shouldSeeFinishedTask(title: string): Promise<void> {

@@ -47,6 +47,7 @@ import { migration as addProjectNextAction } from './032-add-project-next-action
 import { migration as addChangeLogSeq } from './033-add-change-log-seq.js';
 import { migration as addNotebookPagesAndProjectImports } from './034-add-notebook-pages-and-project-imports.js';
 import { migration as addOrganizationTimeZone } from './035-add-organization-time-zone.js';
+import { migration as addProjectNotes } from './036-add-project-notes.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -84,6 +85,7 @@ export const migrations: Migration[] = [
   addChangeLogSeq,
   addNotebookPagesAndProjectImports,
   addOrganizationTimeZone,
+  addProjectNotes,
 ];
 
 export type { Migration };

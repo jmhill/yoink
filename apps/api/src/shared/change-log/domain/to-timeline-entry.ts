@@ -12,7 +12,7 @@ export type SubjectLookup = {
 };
 
 export type TimelineLookups = {
-  subjectOf: (type: 'task' | 'project', id: string) => SubjectLookup;
+  subjectOf: (type: 'task' | 'project' | 'note', id: string) => SubjectLookup;
   taskTitleOf: (id: string) => string | null;
   actorNameOf: (userId: string | null) => string;
 };
@@ -52,7 +52,7 @@ const taskUpdatedDetails = (payload: TaskUpdatedPayloadV1): TimelineDetails | nu
 
 const timelineSubjectTypeFor = (
   kind: Exclude<TimelineEntryKind, 'Unknown'>
-): 'task' | 'project' => {
+): 'task' | 'project' | 'note' => {
   switch (kind) {
     case 'ProjectCreated':
     case 'ProjectUpdated':
@@ -62,6 +62,10 @@ const timelineSubjectTypeFor = (
     case 'ProjectNextActionCleared':
     case 'ProjectImported':
       return 'project';
+    case 'NoteCreated':
+    case 'NoteUpdated':
+    case 'NoteDeleted':
+      return 'note';
     case 'TaskCreated':
     case 'TaskUpdated':
     case 'TaskCompleted':
@@ -232,6 +236,23 @@ export const toTimelineEntry = (
         kind: 'ProjectImported',
         taskCount: record.payload.taskCount,
       });
+    case 'NoteCreated':
+      return entry(record, lookups, 'NoteCreated', {
+        kind: 'NoteCreated',
+        title: record.payload.title,
+      });
+    case 'NoteUpdated':
+      return entry(record, lookups, 'NoteUpdated', {
+        kind: 'NoteUpdated',
+        title: record.payload.title,
+        titleChanged: record.payload.titleChanged,
+        bodyChanged: record.payload.bodyChanged,
+      });
+    case 'NoteDeleted':
+      return entry(record, lookups, 'NoteDeleted', {
+        kind: 'NoteDeleted',
+        title: record.payload.title,
+      });
   }
 };
 
@@ -240,7 +261,7 @@ export const unknownTimelineEntry = (input: {
   occurredAt: string;
   actorUserId: string | null;
   actorKind: 'user' | 'bot' | null;
-  subjectType: 'task' | 'project';
+  subjectType: 'task' | 'project' | 'note';
   subjectId: string;
   lookups: TimelineLookups;
 }): TimelineEntry => {

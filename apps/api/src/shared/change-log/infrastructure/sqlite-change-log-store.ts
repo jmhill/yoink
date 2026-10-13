@@ -59,8 +59,8 @@ const readSeq = (raw: Record<string, unknown>): Result<number, ChangeLogStorageE
 
 const readSubjectType = (
   value: string
-): 'task' | 'project' | 'list' | 'unrecognised' => {
-  if (value === 'task' || value === 'project' || value === 'list') {
+): 'task' | 'project' | 'note' | 'list' | 'unrecognised' => {
+  if (value === 'task' || value === 'project' || value === 'note' || value === 'list') {
     return value;
   }
   return 'unrecognised';

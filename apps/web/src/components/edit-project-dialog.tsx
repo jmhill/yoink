@@ -81,7 +81,7 @@ export function EditProjectDialog({
       <DialogContent data-project-edit-dialog="">
         <DialogHeader>
           <DialogTitle>Edit project</DialogTitle>
-          <DialogDescription>Change the name, objective, or notebook pages.</DialogDescription>
+          <DialogDescription>Change the name, objective, or notebook links.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -113,7 +113,7 @@ export function EditProjectDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Notebook pages</Label>
+            <Label>Notebook links</Label>
             <ul className="space-y-2">
               {pages.map((path, index) => (
                 <li key={index} className="flex items-center gap-2">

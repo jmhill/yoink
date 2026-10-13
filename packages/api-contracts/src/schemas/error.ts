@@ -30,3 +30,13 @@ export const ImportInvalidErrorSchema = ErrorSchema.extend({
 });
 
 export type ImportInvalidError = z.infer<typeof ImportInvalidErrorSchema>;
+
+export const StaleNoteErrorSchema = ErrorSchema.extend({
+  code: z.literal('STALE_NOTE'),
+  currentVersion: z.string().min(1),
+  updatedAt: z.string().datetime(),
+  updatedById: z.string().uuid(),
+  updatedByName: z.string(),
+});
+
+export type StaleNoteError = z.infer<typeof StaleNoteErrorSchema>;

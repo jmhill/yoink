@@ -21,6 +21,7 @@ export {
   ImportInvalidError,
   UnsupportedOperationError,
   ConflictError,
+  StaleNoteError,
   CannotDeleteLastPasskeyError,
   CannotLeavePersonalOrgError,
   LastAdminError,

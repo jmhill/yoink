@@ -72,6 +72,7 @@ describe('sqlite timeline lookups', () => {
       taskIds: ['task-open', 'task-deleted'],
       userIds: ['user-named', 'user-email'],
       projectIds: ['project-1'],
+      noteIds: [],
     });
 
     expect(lookups.isOk()).toBe(true);

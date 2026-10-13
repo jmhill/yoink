@@ -89,6 +89,19 @@ export class ConflictError extends DslError {
   }
 }
 
+export class StaleNoteError extends ConflictError {
+  readonly currentVersion: string;
+  readonly updatedAt: string;
+  readonly updatedByName: string;
+
+  constructor(input: { message: string; currentVersion: string; updatedAt: string; updatedByName: string }) {
+    super(input.message);
+    this.currentVersion = input.currentVersion;
+    this.updatedAt = input.updatedAt;
+    this.updatedByName = input.updatedByName;
+  }
+}
+
 /**
  * Thrown when attempting to delete the user's last passkey.
  * Users must always have at least one passkey for security.

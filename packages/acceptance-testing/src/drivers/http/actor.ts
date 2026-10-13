@@ -6,6 +6,8 @@ import type {
   DiscardedImport,
   ImportProject,
   NamedList,
+  Note,
+  NoteListPage,
   Project,
   StagedImport,
   Task,
@@ -42,6 +44,7 @@ import {
   ImportInvalidError,
   UnsupportedOperationError,
   ConflictError,
+  StaleNoteError,
   ForbiddenError,
   CannotDeleteLastPasskeyError,
   TokenLimitReachedError,
@@ -682,6 +685,134 @@ export const createHttpActor = (
         throw new Error(`Expected code invalid_cursor, got ${body.code}`);
       }
       return body;
+    },
+
+    async listNotes(
+      projectId: string,
+      query?: { limit?: number; cursor?: string }
+    ): Promise<NoteListPage> {
+      const qs = new URLSearchParams();
+      if (query?.limit !== undefined) qs.set('limit', String(query.limit));
+      if (query?.cursor) qs.set('cursor', query.cursor);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const response = await client.get(
+        `/api/projects/${projectId}/notes${suffix}`,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to list notes: ${response.body}`);
+      }
+      return response.json<NoteListPage>();
+    },
+
+    async getNote(projectId: string, noteId: string): Promise<Note> {
+      const response = await client.get(
+        `/api/projects/${projectId}/notes/${noteId}`,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to get note: ${response.body}`);
+      }
+      return response.json<Note>();
+    },
+
+    async createNote(
+      projectId: string,
+      input: { title: string; body?: string }
+    ): Promise<Note> {
+      const response = await client.post(
+        `/api/projects/${projectId}/notes`,
+        input,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Project', projectId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode !== 201) {
+        throw new Error(`Failed to create note: ${response.body}`);
+      }
+      return response.json<Note>();
+    },
+
+    async updateNote(
+      projectId: string,
+      noteId: string,
+      input: { title?: string; body?: string; expectedVersion: string }
+    ): Promise<Note> {
+      const response = await client.patch(
+        `/api/projects/${projectId}/notes/${noteId}`,
+        input,
+        authHeaders()
+      );
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.statusCode === 400) {
+        const error = response.json<{ message?: string }>();
+        throw new ValidationError(error.message ?? 'Invalid request');
+      }
+      if (response.statusCode === 409) {
+        const error = response.json<{
+          message?: string;
+          currentVersion?: string;
+          updatedAt?: string;
+          updatedByName?: string;
+        }>();
+        throw new StaleNoteError({
+          message: error.message ?? 'This note changed since you opened it',
+          currentVersion: error.currentVersion ?? '',
+          updatedAt: error.updatedAt ?? '',
+          updatedByName: error.updatedByName ?? '',
+        });
+      }
+      if (response.statusCode !== 200) {
+        throw new Error(`Failed to update note: ${response.body}`);
+      }
+      return response.json<Note>();
+    },
+
+    async deleteNote(projectId: string, noteId: string): Promise<void> {
+      const response = await client.request({
+        method: 'DELETE',
+        url: `/api/projects/${projectId}/notes/${noteId}`,
+        headers: authHeaders(),
+        payload: {},
+      });
+      if (response.statusCode === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.statusCode === 404) {
+        throw new NotFoundError('Note', noteId);
+      }
+      if (response.statusCode !== 204) {
+        throw new Error(`Failed to delete note: ${response.body}`);
+      }
     },
 
     async createNamedList(name: string): Promise<NamedList> {
@@ -1519,6 +1650,102 @@ export const createHttpActor = (
 
     async shouldSeeHistoryLinesInOrder(_texts: string[]): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeHistoryLinesInOrder', 'http');
+    },
+
+    async shouldSeeNotesReady(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotesReady', 'http');
+    },
+
+    async shouldSeeNotesEmpty(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotesEmpty', 'http');
+    },
+
+    async shouldSeeNoteOnProject(_input: {
+      title: string;
+      excerpt?: string;
+      stamp?: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoteOnProject', 'http');
+    },
+
+    async shouldNotSeeNoteOnProject(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeNoteOnProject', 'http');
+    },
+
+    async shouldSeeNotesBetweenNextActionAndNotebook(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotesBetweenNextActionAndNotebook', 'http');
+    },
+
+    async addNoteOnProject(_input: { title: string; body?: string }): Promise<Note> {
+      throw new UnsupportedOperationError('addNoteOnProject', 'http');
+    },
+
+    async openNoteOnProject(_title: string): Promise<void> {
+      throw new UnsupportedOperationError('openNoteOnProject', 'http');
+    },
+
+    async shouldSeeOpenNote(_input: { title: string; bodyText?: string }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOpenNote', 'http');
+    },
+
+    async shouldNotSeeRawHtmlInNote(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeRawHtmlInNote', 'http');
+    },
+
+    async startEditingOpenNote(): Promise<void> {
+      throw new UnsupportedOperationError('startEditingOpenNote', 'http');
+    },
+
+    async editOpenNote(_input: { title?: string; body?: string }): Promise<void> {
+      throw new UnsupportedOperationError('editOpenNote', 'http');
+    },
+
+    async saveOpenNote(): Promise<void> {
+      throw new UnsupportedOperationError('saveOpenNote', 'http');
+    },
+
+    async cancelOpenNote(): Promise<void> {
+      throw new UnsupportedOperationError('cancelOpenNote', 'http');
+    },
+
+    async shouldSeeNoteEditor(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoteEditor', 'http');
+    },
+
+    async shouldSeeNoteStale(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNoteStale', 'http');
+    },
+
+    async seeNewerNoteVersion(): Promise<void> {
+      throw new UnsupportedOperationError('seeNewerNoteVersion', 'http');
+    },
+
+    async saveOpenNoteAsCopy(): Promise<void> {
+      throw new UnsupportedOperationError('saveOpenNoteAsCopy', 'http');
+    },
+
+    async deleteOpenNote(): Promise<void> {
+      throw new UnsupportedOperationError('deleteOpenNote', 'http');
+    },
+
+    async toggleNotePreview(): Promise<void> {
+      throw new UnsupportedOperationError('toggleNotePreview', 'http');
+    },
+
+    async shouldSeeNotePreview(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNotePreview', 'http');
+    },
+
+    async shouldSeeDiscardChangesPrompt(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDiscardChangesPrompt', 'http');
+    },
+
+    async keepEditingNote(): Promise<void> {
+      throw new UnsupportedOperationError('keepEditingNote', 'http');
+    },
+
+    async discardNoteChanges(): Promise<void> {
+      throw new UnsupportedOperationError('discardNoteChanges', 'http');
     },
 
     async shouldSeeFinishedTask(_title: string): Promise<void> {

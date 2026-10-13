@@ -1,5 +1,6 @@
+import { initClient } from '@ts-rest/core';
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
-import { authContract, captureContract, listContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
+import { authContract, captureContract, listContract, noteContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
 import { tokenStorage } from '@/lib/token';
 
@@ -149,6 +150,22 @@ export const tsrWork = initTsrReactQuery(workContract, {
 });
 
 export const tsrReview = initTsrReactQuery(reviewContract, {
+  baseUrl: '',
+  baseHeaders: {
+    'Content-Type': 'application/json',
+  },
+  api: createApi(),
+});
+
+export const tsrNotes = initTsrReactQuery(noteContract, {
+  baseUrl: '',
+  baseHeaders: {
+    'Content-Type': 'application/json',
+  },
+  api: createApi(),
+});
+
+export const notesClient = initClient(noteContract, {
   baseUrl: '',
   baseHeaders: {
     'Content-Type': 'application/json',

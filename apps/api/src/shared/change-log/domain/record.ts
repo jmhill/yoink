@@ -12,6 +12,9 @@ import {
   taskAddedToProjectPayloadV1Schema,
   taskRemovedFromProjectPayloadV1Schema,
   projectImportedPayloadV1Schema,
+  noteCreatedPayloadV1Schema,
+  noteUpdatedPayloadV1Schema,
+  noteDeletedPayloadV1Schema,
   openTasksRenumberedPayloadV1Schema,
   openTasksReorderedPayloadV1Schema,
   taskCompletedPayloadV1Schema,
@@ -28,7 +31,7 @@ const envelope = {
   organizationId: z.string().min(1),
   /** The subject's project at the time of the change; a project's own records use its id. */
   projectId: z.string().nullable(),
-  subjectType: z.enum(['task', 'list', 'project']),
+  subjectType: z.enum(['task', 'list', 'project', 'note']),
   subjectId: z.string().min(1),
   actorUserId: z.string().nullable(),
   actorKind: z.enum(['user', 'bot']).nullable(),
@@ -193,6 +196,27 @@ export const projectImportedRecordSchema = z.object({
   payload: projectImportedPayloadV1Schema,
 });
 
+export const noteCreatedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('NoteCreated'),
+  ...visibleV1,
+  payload: noteCreatedPayloadV1Schema,
+});
+
+export const noteUpdatedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('NoteUpdated'),
+  ...visibleV1,
+  payload: noteUpdatedPayloadV1Schema,
+});
+
+export const noteDeletedRecordSchema = z.object({
+  ...envelope,
+  kind: z.literal('NoteDeleted'),
+  ...visibleV1,
+  payload: noteDeletedPayloadV1Schema,
+});
+
 export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   taskCreatedRecordSchema,
   taskUpdatedRecordSchema,
@@ -215,6 +239,9 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   taskAddedToProjectRecordSchema,
   taskRemovedFromProjectRecordSchema,
   projectImportedRecordSchema,
+  noteCreatedRecordSchema,
+  noteUpdatedRecordSchema,
+  noteDeletedRecordSchema,
 ]);
 
 export type ChangeLogRecord = z.infer<typeof changeLogRecordSchema>;
@@ -245,6 +272,9 @@ export type TaskRemovedFromProjectRecord = z.infer<
   typeof taskRemovedFromProjectRecordSchema
 >;
 export type ProjectImportedRecord = z.infer<typeof projectImportedRecordSchema>;
+export type NoteCreatedRecord = z.infer<typeof noteCreatedRecordSchema>;
+export type NoteUpdatedRecord = z.infer<typeof noteUpdatedRecordSchema>;
+export type NoteDeletedRecord = z.infer<typeof noteDeletedRecordSchema>;
 
 export type ChangeLogParseError = {
   readonly type: 'CHANGE_LOG_PARSE_ERROR';

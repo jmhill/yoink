@@ -6,15 +6,16 @@ List endpoints never omit a page marker: every list response includes `hasMore`
 last). They also include `total` (the matching row count).
 
 Working-set reads — a named list’s pile, Unlisted, Today, Upcoming, Mine, the
-open-task feed (`filter=all`), Inbox, Snoozed, named lists, and Now
-(`GET /api/work/next-actions`, `GET /api/work/due`, `GET /api/work/lists`) —
+open-task feed (`filter=all`), Inbox, Snoozed, named lists, Now
+(`GET /api/work/next-actions`, `GET /api/work/due`, `GET /api/work/lists`),
+and project notes (`GET /api/projects/:id/notes`) —
 return the whole pile in **one request**, up to a safety cap of 1000. If that
 cap is hit, `hasMore` is `true` and `nextCursor` points at the next page.
 History (completed/Done tasks, trashed captures) stays paged (default 50).
 
 Cursors are opaque keysets tagged with the list view (board, completed, pile,
 lists, projects, capture feed, snoozed, project/task history, finished project
-tasks, work next-actions / due / lists, review, review done) plus the sort keys for that view.
+tasks, work next-actions / due / lists, review, review done, project notes) plus the sort keys for that view.
 Resume with
 the previous page’s `nextCursor` on the **same** list. A malformed cursor,
 a cursor from another view, or the wrong key shape is `400` with
@@ -587,6 +588,53 @@ while :; do
 done
 ```
 
+## Project notes
+
+A project can have any number of notes. People and bots share the same
+routes. The list is a working set (`hasMore` / `nextCursor` / `total`, cap
+1000), most recently edited first, without bodies. Read one note for the
+markdown body and opaque `version`. Soft-deleted notes keep their row
+(`deleted_at`) and are hidden from every list and read — a direct GET is
+`404`. The note id is the stable key; titles are not turned into filenames.
+
+`POST` creates. `PATCH` requires `expectedVersion` and returns `409
+STALE_NOTE` (with `currentVersion`, `updatedAt`, `updatedById`,
+`updatedByName`) instead of overwriting. Title is required, trimmed, max
+120 characters. Body may be empty, max 50,000 characters. Every successful
+write stores `created_at` and `updated_at` and returns both. Every change
+writes `NoteCreated` / `NoteUpdated` / `NoteDeleted` on the project
+timeline. Same-person, same-note create/update rows within 10 minutes are
+combined at read time.
+
+```bash
+# Full set (no bodies)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects/$PROJECT_ID/notes"
+
+# Create
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Meeting notes","body":"First line"}' \
+  "$API/api/projects/$PROJECT_ID/notes"
+
+# Read one (body + version)
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  "$API/api/projects/$PROJECT_ID/notes/$NOTE_ID"
+
+# Edit when the version still matches
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"body":"Updated","expectedVersion":"1"}' \
+  "$API/api/projects/$PROJECT_ID/notes/$NOTE_ID"
+
+# Soft-delete. Later reads return 404.
+curl -sS -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  -X DELETE \
+  "$API/api/projects/$PROJECT_ID/notes/$NOTE_ID"
+```
+
 A bad cursor (wrong view, wrong arity, or garbage) fails loudly:
 
 ```bash
@@ -703,4 +751,10 @@ the generic `[ts-rest] request validation failed` text.
 | `TASK_ALREADY_IN_PROJECT` | An existing task already belongs to a project (`400`) |
 | `NEXT_ACTION_NOT_IN_ENTRY` | `nextAction` is not one of that entry's tasks (`400`) |
 | `IMPORT_WAITING_FIELDS_NOT_ALLOWED` | `waitingOn` / `waitingSince` sent when status is not waiting (`400`) |
+| `NOTE_TITLE_BLANK` | Note title is blank after trim (`400`) |
+| `NOTE_TITLE_TOO_LONG` | Note title is longer than 120 characters (`400`) |
+| `NOTE_BODY_TOO_LONG` | Note body is longer than 50,000 characters (`400`) |
+| `NOTE_UNCHANGED` | PATCH sent the current title and body (`400`) |
+| `STALE_NOTE` | `expectedVersion` no longer matches; body includes `currentVersion` (`409`) |
+| `NOTE_NOT_FOUND` | Note is missing, soft-deleted, or in another project/org (`404`) |
 

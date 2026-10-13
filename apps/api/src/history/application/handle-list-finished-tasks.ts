@@ -72,7 +72,7 @@ export const handleListFinishedTasksOnProject = (
         ),
       ];
       return deps
-        .loadLookups({ taskIds: [], userIds, projectIds: [] })
+        .loadLookups({ taskIds: [], userIds, projectIds: [], noteIds: [] })
         .map((lookups) => ({
           ...page,
           items: page.items.map((task) => ({

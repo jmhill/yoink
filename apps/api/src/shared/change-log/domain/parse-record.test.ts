@@ -202,6 +202,33 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         hidden: hiddenFor('ProjectImported'),
         payload: { taskCount: 2 },
       };
+    case 'NoteCreated':
+      return {
+        ...base,
+        subjectType: 'note',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('NoteCreated'),
+        payload: { title: 'Meeting notes' },
+      };
+    case 'NoteUpdated':
+      return {
+        ...base,
+        subjectType: 'note',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('NoteUpdated'),
+        payload: { title: 'Meeting notes', titleChanged: true, bodyChanged: false },
+      };
+    case 'NoteDeleted':
+      return {
+        ...base,
+        subjectType: 'note',
+        projectId: 'project-1',
+        kind,
+        hidden: hiddenFor('NoteDeleted'),
+        payload: { title: 'Meeting notes' },
+      };
   }
 };
 

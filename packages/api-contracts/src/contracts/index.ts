@@ -4,6 +4,7 @@ export * from './capture-contract.js';
 export * from './health-contract.js';
 export * from './invitation-contract.js';
 export * from './list-contract.js';
+export * from './note-contract.js';
 export * from './organization-contract.js';
 export * from './passkey-contract.js';
 export * from './project-contract.js';

@@ -11,6 +11,9 @@ import { createListHandlers } from './lists/application/create-list-handlers.js'
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
 import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
 import { createProjectHandlers } from './projects/application/create-project-handlers.js';
+import { createNoteHandlers } from './notes/application/create-note-handlers.js';
+import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
+import { storageError as noteStorageError } from './notes/domain/note-errors.js';
 import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
 import {
   createSqliteImportDiscard,
@@ -434,6 +437,24 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     logger: commandLogger,
   });
 
+  const noteHandlers = createNoteHandlers({
+    backend: createSqliteNotesBackend(database),
+    loadProject: (id) =>
+      projectStore.findById(id).mapErr((error) => noteStorageError(error.message, error.cause)),
+    loadActorName: (userId) =>
+      userStore
+        .findById(userId)
+        .map((user) => user?.name ?? user?.email ?? 'Unknown')
+        .mapErr((error) =>
+          noteStorageError(
+            'message' in error && typeof error.message === 'string' ? error.message : error.type
+          )
+        ),
+    nextId: () => idGenerator.generate(),
+    now: () => clock.now().toISOString(),
+    logger: commandLogger,
+  });
+
   const changeLogStore = createSqliteChangeLogStore(database);
   const historyHandlers = createHistoryHandlers({
     loadProject: (id) => projectStore.findById(id),
@@ -482,7 +503,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     loadTimeZone: (organizationId) => reviewStore.loadTimeZone(organizationId),
     pageDoneList: (options) => reviewStore.pageDoneList(options),
     loadCompletedByNames: (userIds) =>
-      reviewLookups({ taskIds: [], userIds, projectIds: [] }).map(
+      reviewLookups({ taskIds: [], userIds, projectIds: [], noteIds: [] }).map(
         (lookups) => (userId: string) => lookups.actorNameOf(userId)
       ),
     now: () => clock.now(),
@@ -540,6 +561,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     captureHandlers,
     listHandlers,
     projectHandlers,
+    noteHandlers,
     historyHandlers,
     taskService,
     taskHandlers,

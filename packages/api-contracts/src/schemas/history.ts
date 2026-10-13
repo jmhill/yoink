@@ -17,7 +17,7 @@ export const TimelineActorSchema = z.object({
 
 export type TimelineActor = z.infer<typeof TimelineActorSchema>;
 
-export const TimelineSubjectTypeSchema = z.enum(['task', 'project']);
+export const TimelineSubjectTypeSchema = z.enum(['task', 'project', 'note']);
 
 export const TimelineSubjectSchema = z.object({
   type: TimelineSubjectTypeSchema,
@@ -102,6 +102,20 @@ export const TimelineDetailsSchema = z.discriminatedUnion('kind', [
     kind: z.literal('ProjectImported'),
     taskCount: z.number().int().min(0),
   }),
+  z.object({
+    kind: z.literal('NoteCreated'),
+    title: z.string(),
+  }),
+  z.object({
+    kind: z.literal('NoteUpdated'),
+    title: z.string(),
+    titleChanged: z.boolean(),
+    bodyChanged: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal('NoteDeleted'),
+    title: z.string(),
+  }),
 ]);
 
 export type TimelineDetails = z.infer<typeof TimelineDetailsSchema>;
@@ -122,6 +136,9 @@ export const TimelineEntryKindSchema = z.enum([
   'TaskAddedToProject',
   'TaskRemovedFromProject',
   'ProjectImported',
+  'NoteCreated',
+  'NoteUpdated',
+  'NoteDeleted',
 ]);
 
 export type TimelineEntryKind = z.infer<typeof TimelineEntryKindSchema>;

@@ -53,7 +53,7 @@ usingDrivers(['http'] as const, (ctx) => {
         await alice.createTask({ title: 'Due today', dueDate: today });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const todayTasks = await alice.listTasks('today');
+        const todayTasks = await alice.listTasks('today', { timeZone: 'UTC' });
 
         expect(todayTasks.some((t) => t.title === 'Due today')).toBe(true);
         expect(todayTasks.some((t) => t.title === 'Due tomorrow')).toBe(false);
@@ -66,7 +66,7 @@ usingDrivers(['http'] as const, (ctx) => {
         await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
         await alice.createTask({ title: 'Due today', dueDate: today });
 
-        const todayTasks = await alice.listTasks('today');
+        const todayTasks = await alice.listTasks('today', { timeZone: 'UTC' });
 
         expect(todayTasks.some((t) => t.title === 'Overdue task')).toBe(true);
         expect(todayTasks.some((t) => t.title === 'Due today')).toBe(true);
@@ -79,7 +79,7 @@ usingDrivers(['http'] as const, (ctx) => {
         await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const upcomingTasks = await alice.listTasks('upcoming');
+        const upcomingTasks = await alice.listTasks('upcoming', { timeZone: 'UTC' });
 
         expect(upcomingTasks.some((t) => t.title === 'Overdue task')).toBe(false);
         expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);
@@ -92,7 +92,7 @@ usingDrivers(['http'] as const, (ctx) => {
         await alice.createTask({ title: 'Due today', dueDate: today });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const upcomingTasks = await alice.listTasks('upcoming');
+        const upcomingTasks = await alice.listTasks('upcoming', { timeZone: 'UTC' });
 
         expect(upcomingTasks.some((t) => t.title === 'Due today')).toBe(false);
         expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);

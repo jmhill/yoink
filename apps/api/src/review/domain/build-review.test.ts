@@ -73,6 +73,27 @@ describe('buildReviewItems', () => {
     expect(items[2]?.daysWaiting).toBe(17);
   });
 
+  it('clamps a future waitingSince to 0 days waiting', () => {
+    const items = buildReviewItems(
+      [
+        {
+          project: project({
+            id: '550e8400-e29b-41d4-a716-446655440014',
+            name: 'Future wait',
+            status: 'waiting',
+            waitingOn: 'Pat',
+            waitingSince: '2026-10-13',
+          }),
+          lastChangeAt: '2026-10-12T01:00:00.000Z',
+          nextAction: null,
+        },
+      ],
+      { today: '2026-10-12', timeZone: 'America/Chicago' }
+    );
+
+    expect(items[0]?.daysWaiting).toBe(0);
+  });
+
   it('counts a 11:30pm CT change as that CT day, not the UTC day', () => {
     expect(
       lastChangeLocalDate({

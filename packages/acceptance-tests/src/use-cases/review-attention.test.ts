@@ -211,16 +211,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReviewItem('Fresh edit');
       await alice.shouldNotSeeReviewItem('Umbrella');
       await alice.shouldSeeReviewWaitingGroup({ label: 'Mike', names: ['Trusts', 'Other Mike'] });
-      const listed = await alice.listReview({
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
+      const today = viewerToday();
+      const listed = await alice.listReview({ timeZone: 'America/Chicago' });
       await alice.shouldSeeReviewRowCopy(
         'Trusts',
-        formatWaitingSinceCopy(seeded.waitingSince, listed.today)
+        formatWaitingSinceCopy(seeded.waitingSince, today)
       );
       await alice.shouldSeeReviewRowCopy(
         'Other Mike',
-        formatWaitingSinceCopy(seeded.today, listed.today)
+        formatWaitingSinceCopy(seeded.today, today)
       );
       await alice.shouldSeeReviewRowCopy('Unknown wait', 'Waiting');
       const quiet = listed.projects.find((item) => item.project.name === 'Quiet garden');
@@ -228,7 +227,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       if (quiet) {
         await alice.shouldSeeReviewRowCopy(
           'Quiet garden',
-          formatLastChange(quiet.lastChangeAt, quiet.daysSinceChange, Intl.DateTimeFormat().resolvedOptions().timeZone)
+          formatLastChange(quiet.lastChangeAt, quiet.daysSinceChange, 'America/Chicago')
         );
       }
       await alice.shouldSeeReviewBadge(2);

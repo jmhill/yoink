@@ -126,6 +126,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const context = await browser.newContext({
         baseURL: config.baseUrl,
         reducedMotion: 'reduce',
+        timezoneId: 'America/Chicago',
       });
       actorContexts.push(context);
       debug('Created isolated browser context');
@@ -241,6 +242,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const context = await browser.newContext({
         baseURL: config.baseUrl,
         reducedMotion: 'reduce',
+        timezoneId: 'America/Chicago',
       });
       actorContexts.push(context);
       debug('Created isolated browser context');
@@ -339,6 +341,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
             context = await browser!.newContext({
               baseURL: config.baseUrl,
               reducedMotion: 'reduce',
+              timezoneId: 'America/Chicago',
             });
             actorContexts.push(context);
           }

@@ -49,6 +49,43 @@ describe('sqlite timeline lookups', () => {
         '2026-10-11T16:00:00.000Z',
       ],
     });
+    await db.execute({
+      sql: `INSERT INTO project_notes (
+              id, organization_id, project_id, title, body, version,
+              created_at, created_by, updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'note-open',
+        'org-1',
+        'project-1',
+        'Kickoff',
+        'First line',
+        '1',
+        now,
+        'user-email',
+        now,
+        'user-email',
+      ],
+    });
+    await db.execute({
+      sql: `INSERT INTO project_notes (
+              id, organization_id, project_id, title, body, version,
+              created_at, created_by, updated_at, updated_by, deleted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'note-deleted',
+        'org-1',
+        'project-1',
+        'Old draft',
+        'Gone',
+        '2',
+        now,
+        'user-email',
+        now,
+        'user-email',
+        '2026-10-11T16:00:00.000Z',
+      ],
+    });
   });
 
   afterEach(async () => {
@@ -72,6 +109,7 @@ describe('sqlite timeline lookups', () => {
       taskIds: ['task-open', 'task-deleted'],
       userIds: ['user-named', 'user-email'],
       projectIds: ['project-1'],
+      noteIds: [],
     });
 
     expect(lookups.isOk()).toBe(true);
@@ -94,6 +132,32 @@ describe('sqlite timeline lookups', () => {
       expect(lookups.value.actorNameOf('user-email')).toBe('owner@example.com');
       expect(lookups.value.actorNameOf(null)).toBe(UNKNOWN_ACTOR_NAME);
       expect(lookups.value.actorNameOf('missing')).toBe(UNKNOWN_ACTOR_NAME);
+    }
+  });
+
+  it('loads note titles including soft-deleted notes', async () => {
+    const load = createSqliteTimelineLookups(db);
+    const lookups = await load({
+      taskIds: [],
+      userIds: [],
+      projectIds: [],
+      noteIds: ['note-open', 'note-deleted'],
+    });
+
+    expect(lookups.isOk()).toBe(true);
+    if (lookups.isOk()) {
+      expect(lookups.value.subjectOf('note', 'note-open')).toEqual({
+        title: 'Kickoff',
+        deleted: false,
+      });
+      expect(lookups.value.subjectOf('note', 'note-deleted')).toEqual({
+        title: 'Old draft',
+        deleted: true,
+      });
+      expect(lookups.value.subjectOf('note', 'missing')).toEqual({
+        title: null,
+        deleted: false,
+      });
     }
   });
 });

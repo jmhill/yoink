@@ -7,6 +7,8 @@ import type {
   HistoryPage,
   FinishedTaskPage,
   ImportProject,
+  Note,
+  NoteListPage,
   StagedImport,
   Task,
   NowOwner,
@@ -118,6 +120,18 @@ export type CoreActor = {
     projectId: string,
     query?: { limit?: number; cursor?: string }
   ): Promise<HistoryPage>;
+  listNotes(
+    projectId: string,
+    query?: { limit?: number; cursor?: string }
+  ): Promise<NoteListPage>;
+  getNote(projectId: string, noteId: string): Promise<Note>;
+  createNote(projectId: string, input: { title: string; body?: string }): Promise<Note>;
+  updateNote(
+    projectId: string,
+    noteId: string,
+    input: { title?: string; body?: string; expectedVersion: string }
+  ): Promise<Note>;
+  deleteNote(projectId: string, noteId: string): Promise<void>;
   listTaskHistory(
     taskId: string,
     query?: { limit?: number; cursor?: string }
@@ -1135,6 +1149,29 @@ export type BrowserActorOperations = {
   shouldSeeHistoryStart(): Promise<void>;
   shouldNotSeeHistoryStart(): Promise<void>;
   shouldSeeHistoryLinesInOrder(texts: string[]): Promise<void>;
+  shouldSeeNotesReady(): Promise<void>;
+  shouldSeeNotesEmpty(): Promise<void>;
+  shouldSeeNoteOnProject(input: { title: string; excerpt?: string; stamp?: string }): Promise<void>;
+  shouldNotSeeNoteOnProject(title: string): Promise<void>;
+  shouldSeeNotesBetweenNextActionAndNotebook(): Promise<void>;
+  addNoteOnProject(input: { title: string; body?: string }): Promise<Note>;
+  openNoteOnProject(title: string): Promise<void>;
+  shouldSeeOpenNote(input: { title: string; bodyText?: string }): Promise<void>;
+  shouldNotSeeRawHtmlInNote(text: string): Promise<void>;
+  startEditingOpenNote(): Promise<void>;
+  editOpenNote(input: { title?: string; body?: string }): Promise<void>;
+  saveOpenNote(): Promise<void>;
+  cancelOpenNote(): Promise<void>;
+  shouldSeeNoteEditor(): Promise<void>;
+  shouldSeeNoteStale(): Promise<void>;
+  seeNewerNoteVersion(): Promise<void>;
+  saveOpenNoteAsCopy(): Promise<void>;
+  deleteOpenNote(): Promise<void>;
+  toggleNotePreview(): Promise<void>;
+  shouldSeeNotePreview(): Promise<void>;
+  shouldSeeDiscardChangesPrompt(): Promise<void>;
+  keepEditingNote(): Promise<void>;
+  discardNoteChanges(): Promise<void>;
   shouldSeeFinishedTask(title: string): Promise<void>;
   shouldSeeFinishedBy(title: string, text: string): Promise<void>;
   shouldNotSeeFinishedTask(title: string): Promise<void>;

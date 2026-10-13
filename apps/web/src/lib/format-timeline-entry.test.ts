@@ -21,6 +21,40 @@ const entry = (overrides: Partial<TimelineEntry> & Pick<TimelineEntry, 'details'
 });
 
 describe('formatTimelineLine', () => {
+  it('formats note create, update, and delete', () => {
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'NoteCreated',
+          details: { kind: 'NoteCreated', title: 'Meeting notes' },
+          subject: { type: 'note', id: 'n1', title: 'Meeting notes', deleted: false },
+        })
+      )
+    ).toBe("Lane added the note 'Meeting notes'");
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'NoteUpdated',
+          details: {
+            kind: 'NoteUpdated',
+            title: 'Meeting notes',
+            titleChanged: false,
+            bodyChanged: true,
+          },
+          subject: { type: 'note', id: 'n1', title: 'Meeting notes', deleted: false },
+        })
+      )
+    ).toBe("Lane changed the body on 'Meeting notes'");
+    expect(
+      formatTimelineLine(
+        entry({
+          kind: 'NoteDeleted',
+          details: { kind: 'NoteDeleted', title: 'Meeting notes' },
+          subject: { type: 'note', id: 'n1', title: 'Meeting notes', deleted: true },
+        })
+      )
+    ).toBe("Lane deleted the note 'Meeting notes'");
+  });
   it('formats a completion the way Polly reads it', () => {
     expect(
       formatTimelineLine(entry({ kind: 'TaskCompleted', details: { kind: 'TaskCompleted' } }))

@@ -1,4 +1,11 @@
-import type { Capture, NamedList, NowNextActionItem, Project, Task } from '@yoink/api-contracts';
+import type {
+  Capture,
+  NamedList,
+  NoteListItem,
+  NowNextActionItem,
+  Project,
+  Task,
+} from '@yoink/api-contracts';
 import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
@@ -175,6 +182,14 @@ export const doneListCursor: ListedCursor<FinishedTask, 'review.done'> = {
   }),
 };
 
+export const projectNotesCursor: ListedCursor<NoteListItem, 'notes.project'> = {
+  view: 'notes.project',
+  of: (note) => ({
+    view: 'notes.project',
+    keys: [note.updatedAt, note.id],
+  }),
+};
+
 export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
 export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
 export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
@@ -192,6 +207,7 @@ export const workDueKeys = (task: Task) => workDueCursor.of(task).keys;
 export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list).keys;
 export const reviewKeys = (item: ReviewCursorRow) => reviewCursor.of(item).keys;
 export const doneListKeys = (task: FinishedTask) => doneListCursor.of(task).keys;
+export const projectNotesKeys = (note: NoteListItem) => projectNotesCursor.of(note).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';
 export const completedTaskDirection: KeysetDirection = 'desc';
@@ -209,3 +225,4 @@ export const workDueDirection: KeysetDirection = 'asc';
 export const workListDirection: KeysetDirection = 'asc';
 export const reviewDirection: KeysetDirection = 'asc';
 export const doneListDirection: KeysetDirection = 'desc';
+export const projectNotesDirection: KeysetDirection = 'desc';

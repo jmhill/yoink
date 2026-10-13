@@ -18,7 +18,7 @@ export type SqlQuery = {
  */
 export const VISIBLE_TIMELINE_SQL = `
   hidden = 0
-  AND subject_type IN ('task', 'project')
+  AND subject_type IN ('task', 'project', 'note')
   AND CASE
     WHEN json_valid(payload_json) = 0 THEN 1
     WHEN kind = 'TaskUpdated'
@@ -55,6 +55,12 @@ const existsClause = (
   if (record.subjectType === 'project') {
     return {
       sql: `SELECT 1 FROM projects WHERE id = ? AND organization_id = ?`,
+      args: [record.subjectId, record.organizationId],
+    };
+  }
+  if (record.subjectType === 'note') {
+    return {
+      sql: `SELECT 1 FROM project_notes WHERE id = ? AND organization_id = ?`,
       args: [record.subjectId, record.organizationId],
     };
   }

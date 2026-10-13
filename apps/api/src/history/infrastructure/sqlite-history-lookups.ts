@@ -25,6 +25,12 @@ const projectLookupRowSchema = z.object({
   name: z.string(),
 });
 
+const noteLookupRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  deleted_at: z.string().nullable(),
+});
+
 const placeholders = (count: number): string =>
   Array.from({ length: count }, () => '?').join(', ');
 
@@ -52,6 +58,12 @@ export const createSqliteTimelineLookups = (db: Database): LoadTimelineLookups =
             args: [...ids.projectIds],
           }
         : null,
+      ids.noteIds.length > 0
+        ? {
+            sql: `SELECT id, title, deleted_at FROM project_notes WHERE id IN (${placeholders(ids.noteIds.length)})`,
+            args: [...ids.noteIds],
+          }
+        : null,
     ].filter((query): query is { sql: string; args: string[] } => query !== null);
 
     if (queries.length === 0) {
@@ -66,45 +78,58 @@ export const createSqliteTimelineLookups = (db: Database): LoadTimelineLookups =
       db.batch(queries, 'read'),
       (cause) => storageError('Failed to load history lookups', cause)
     ).map((results) => {
-      const taskTitles = new Map<string, { title: string; deleted: boolean }>();
-      const actorNames = new Map<string, string>();
-      const projectTitles = new Map<string, string>();
+      const lookupSlots = (
+        [
+          ids.taskIds.length > 0 ? 'task' : null,
+          ids.userIds.length > 0 ? 'user' : null,
+          ids.projectIds.length > 0 ? 'project' : null,
+          ids.noteIds.length > 0 ? 'note' : null,
+        ] as const
+      ).filter((slot): slot is 'task' | 'user' | 'project' | 'note' => slot !== null);
 
-      let resultIndex = 0;
-      if (ids.taskIds.length > 0) {
-        for (const raw of results[resultIndex]?.rows ?? []) {
-          const parsed = taskLookupRowSchema.safeParse(raw);
-          if (parsed.success) {
-            taskTitles.set(parsed.data.id, {
-              title: parsed.data.title,
-              deleted: parsed.data.deleted_at !== null,
-            });
-          }
-        }
-        resultIndex += 1;
-      }
-      if (ids.userIds.length > 0) {
-        for (const raw of results[resultIndex]?.rows ?? []) {
-          const parsed = userLookupRowSchema.safeParse(raw);
-          if (parsed.success) {
-            actorNames.set(parsed.data.id, actorNameFromUser(parsed.data));
-          }
-        }
-        resultIndex += 1;
-      }
-      if (ids.projectIds.length > 0) {
-        for (const raw of results[resultIndex]?.rows ?? []) {
-          const parsed = projectLookupRowSchema.safeParse(raw);
-          if (parsed.success) {
-            projectTitles.set(parsed.data.id, parsed.data.name);
-          }
-        }
-      }
+      const rowsFor = (kind: 'task' | 'user' | 'project' | 'note') => {
+        const index = lookupSlots.indexOf(kind);
+        return index === -1 ? [] : (results[index]?.rows ?? []);
+      };
+
+      const parsedRows = <T>(
+        kind: 'task' | 'user' | 'project' | 'note',
+        schema: z.ZodType<T>
+      ): readonly T[] =>
+        rowsFor(kind).flatMap((raw) => {
+          const parsed = schema.safeParse(raw);
+          return parsed.success ? [parsed.data] : [];
+        });
+
+      const taskTitles = new Map(
+        parsedRows('task', taskLookupRowSchema).map((row) => [
+          row.id,
+          { title: row.title, deleted: row.deleted_at !== null },
+        ])
+      );
+      const actorNames = new Map(
+        parsedRows('user', userLookupRowSchema).map((row) => [row.id, actorNameFromUser(row)])
+      );
+      const projectTitles = new Map(
+        parsedRows('project', projectLookupRowSchema).map((row) => [row.id, row.name])
+      );
+      const noteTitles = new Map(
+        parsedRows('note', noteLookupRowSchema).map((row) => [
+          row.id,
+          { title: row.title, deleted: row.deleted_at !== null },
+        ])
+      );
 
       const lookups: TimelineLookups = {
         subjectOf: (type, id) => {
           if (type === 'task') {
             const found = taskTitles.get(id);
+            return found
+              ? { title: found.title, deleted: found.deleted }
+              : { title: null, deleted: false };
+          }
+          if (type === 'note') {
+            const found = noteTitles.get(id);
             return found
               ? { title: found.title, deleted: found.deleted }
               : { title: null, deleted: false };

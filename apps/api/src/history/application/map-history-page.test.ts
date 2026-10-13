@@ -32,6 +32,7 @@ describe('entriesFromHistoryPage', () => {
       taskIds: ['task-1'],
       userIds: ['user-1'],
       projectIds: [],
+      noteIds: [],
     });
 
     const page = entriesFromHistoryPage(

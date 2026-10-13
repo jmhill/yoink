@@ -7,6 +7,7 @@ export * from './history.js';
 export * from './invitation.js';
 export * from './list.js';
 export * from './list-page.js';
+export * from './note.js';
 export * from './organization.js';
 export * from './passkey.js';
 export * from './project.js';

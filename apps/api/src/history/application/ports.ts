@@ -46,4 +46,5 @@ export type LoadTimelineLookups = (ids: {
   taskIds: readonly string[];
   userIds: readonly string[];
   projectIds: readonly string[];
+  noteIds: readonly string[];
 }) => ResultAsync<TimelineLookups, StorageError>;

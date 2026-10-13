@@ -1,5 +1,6 @@
 import { HISTORY_STARTS_AT, type HistoryPage, type TimelineEntry } from '@yoink/api-contracts';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { combineNoteTimelineEntries } from '../../shared/change-log/domain/combine-note-timeline.js';
 import {
   isUnparsedHistoryRow,
   type HistoryPageItem,
@@ -15,6 +16,7 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
   const taskIds = new Set<string>();
   const userIds = new Set<string>();
   const projectIds = new Set<string>();
+  const noteIds = new Set<string>();
 
   for (const item of items) {
     const record = item.record;
@@ -24,6 +26,9 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
       }
       if (record.subjectType === 'project') {
         projectIds.add(record.subjectId);
+      }
+      if (record.subjectType === 'note') {
+        noteIds.add(record.subjectId);
       }
       if (record.actorUserId) {
         userIds.add(record.actorUserId);
@@ -35,6 +40,9 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
     }
     if (record.subjectType === 'project') {
       projectIds.add(record.subjectId);
+    }
+    if (record.subjectType === 'note') {
+      noteIds.add(record.subjectId);
     }
     if (record.actorUserId) {
       userIds.add(record.actorUserId);
@@ -66,6 +74,7 @@ export const collectLookupIds = (items: readonly HistoryPageItem[]) => {
     taskIds: [...taskIds],
     userIds: [...userIds],
     projectIds: [...projectIds],
+    noteIds: [...noteIds],
   };
 };
 
@@ -86,7 +95,11 @@ export const entriesFromHistoryPage = (
         });
         continue;
       }
-      if (record.subjectType !== 'task' && record.subjectType !== 'project') {
+      if (
+        record.subjectType !== 'task' &&
+        record.subjectType !== 'project' &&
+        record.subjectType !== 'note'
+      ) {
         logger.warn({
           recordId: record.id,
           kind: record.kind,
@@ -119,7 +132,7 @@ export const entriesFromHistoryPage = (
   }
 
   return {
-    entries,
+    entries: combineNoteTimelineEntries(entries),
     hasMore: page.hasMore,
     nextCursor: page.nextCursor,
     total: page.total,

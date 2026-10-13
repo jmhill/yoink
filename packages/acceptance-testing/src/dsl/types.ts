@@ -40,10 +40,47 @@ export type TimelineActor = {
 };
 
 export type TimelineSubject = {
-  type: 'task' | 'project';
+  type: 'task' | 'project' | 'note';
   id: string;
   title: string | null;
   deleted: boolean;
+};
+
+export type Note = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  body: string;
+  version: string;
+  createdAt: string;
+  createdById: string;
+  createdByName: string;
+  updatedAt: string;
+  updatedById: string;
+  updatedByName: string;
+};
+
+export type NoteListItem = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  excerpt: string;
+  version: string;
+  createdAt: string;
+  createdById: string;
+  createdByName: string;
+  updatedAt: string;
+  updatedById: string;
+  updatedByName: string;
+};
+
+export type NoteListPage = {
+  notes: NoteListItem[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
 };
 
 export type TimelineEntry = {

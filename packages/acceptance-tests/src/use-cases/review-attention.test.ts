@@ -22,10 +22,23 @@ const dateOffset = (today: string, days: number): string => {
 
 const dayLabel = (days: number): string => (days === 1 ? '1 day' : `${days} days`);
 
+const calendarDaysBetween = (today: string, date: string): number => {
+  const start = Date.parse(`${date}T00:00:00.000Z`);
+  const end = Date.parse(`${today}T00:00:00.000Z`);
+  return Math.round((end - start) / 86_400_000);
+};
+
 const formatMonthDay = (date: string): string =>
   new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(
     new Date(`${date}T00:00:00`)
   );
+
+const formatWaitingSinceCopy = (waitingSince: string, today: string): string => {
+  if (waitingSince === today) {
+    return 'Since today';
+  }
+  return `Since ${formatMonthDay(waitingSince)} · ${dayLabel(calendarDaysBetween(today, waitingSince))}`;
+};
 
 const formatLastChange = (lastChangeAt: string, daysSinceChange: number, timeZone: string): string => {
   const label = new Intl.DateTimeFormat('en-US', {
@@ -37,10 +50,15 @@ const formatLastChange = (lastChangeAt: string, daysSinceChange: number, timeZon
 };
 
 const viewerToday = (): string => {
-  const now = new Date();
-  const year = String(now.getFullYear()).padStart(4, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
   return `${year}-${month}-${day}`;
 };
 
@@ -193,19 +211,28 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldNotSeeReviewItem('Fresh edit');
       await alice.shouldNotSeeReviewItem('Umbrella');
       await alice.shouldSeeReviewWaitingGroup({ label: 'Mike', names: ['Trusts', 'Other Mike'] });
+      const listed = await alice.listReview({
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       await alice.shouldSeeReviewRowCopy(
         'Trusts',
-        `Since ${formatMonthDay(seeded.waitingSince)} · 19 days`
+        formatWaitingSinceCopy(seeded.waitingSince, listed.today)
       );
-      await alice.shouldSeeReviewRowCopy('Other Mike', 'Since today');
+      await alice.shouldSeeReviewRowCopy(
+        'Other Mike',
+        formatWaitingSinceCopy(seeded.today, listed.today)
+      );
       await alice.shouldSeeReviewRowCopy('Unknown wait', 'Waiting');
-      const listed = await alice.listReview();
       const quiet = listed.projects.find((item) => item.project.name === 'Quiet garden');
       expect(quiet).toBeDefined();
       if (quiet) {
         await alice.shouldSeeReviewRowCopy(
           'Quiet garden',
-          formatLastChange(quiet.lastChangeAt, quiet.daysSinceChange, Intl.DateTimeFormat().resolvedOptions().timeZone)
+          formatLastChange(
+            quiet.lastChangeAt,
+            quiet.daysSinceChange,
+            Intl.DateTimeFormat().resolvedOptions().timeZone
+          )
         );
       }
       await alice.shouldSeeReviewBadge(2);

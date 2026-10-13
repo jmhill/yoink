@@ -2,7 +2,11 @@ import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 import type { DeclineProposedProjectCommand } from '../domain/project-commands.js';
-import { projectNotFoundError, type DeclineProposedProjectError } from '../domain/project-errors.js';
+import {
+  projectNotFoundError,
+  storageError,
+  type DeclineProposedProjectError,
+} from '../domain/project-errors.js';
 import { decideDeclineProposal } from '../domain/decide-decline-proposal.js';
 import { planProjectChange } from '../domain/plan-project-change.js';
 import type { LoadProject, PersistProjectChange } from './ports.js';
@@ -44,9 +48,16 @@ export const handleDeclineProposal = (
       ids: { recordId: deps.nextId() },
     });
 
-    return deps.persist(plan).map(() => ({
-      view: plan.view,
-      eventKinds: plan.records.map((record) => record.kind),
-    }));
+    return deps
+      .persist(plan)
+      .mapErr((error) =>
+        error.type === 'DUPLICATE_PROJECT_NAME'
+          ? storageError('Decline cannot conflict on name')
+          : error
+      )
+      .map(() => ({
+        view: plan.view,
+        eventKinds: plan.records.map((record) => record.kind),
+      }));
   });
 };

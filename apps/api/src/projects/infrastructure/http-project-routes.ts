@@ -601,7 +601,6 @@ export const registerProjectRoutes = async (
                   body: projectErrorBody(error),
                 };
               case 'PROJECT_NOT_PROPOSED':
-              case 'DUPLICATE_PROJECT_NAME':
                 return {
                   status: 409 as const,
                   body: projectErrorBody(error),

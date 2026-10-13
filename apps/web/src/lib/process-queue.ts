@@ -72,7 +72,7 @@ export function processQueue<
       id: project.id,
       item: { kind: 'proposal' as const, project },
     })),
-  ].sort(compareSources);
+  ].toSorted(compareSources);
 
   const first = sources[0];
   if (first === undefined) {

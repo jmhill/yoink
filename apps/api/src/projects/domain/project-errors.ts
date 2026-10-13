@@ -307,8 +307,7 @@ export type DeclineProposedProjectError =
   | StorageError
   | ProjectNotFoundError
   | ProjectNotProposedError
-  | ProjectDeclineRequiresPersonError
-  | DuplicateProjectNameError;
+  | ProjectDeclineRequiresPersonError;
 
 export type RestoreDeclinedProjectError =
   | StorageError

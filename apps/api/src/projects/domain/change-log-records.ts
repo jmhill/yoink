@@ -61,25 +61,15 @@ const projectPayloadByType = {
   },
   ProjectUpdated: (
     event: Extract<ProjectEvent, { type: 'ProjectUpdated' }>
-  ): ProjectUpdatedPayloadV1 => {
-    const payload: ProjectUpdatedPayloadV1 = {};
-    if (event.name !== undefined) {
-      payload.name = event.name;
-    }
-    if (event.objective !== undefined) {
-      payload.objective = event.objective;
-    }
-    if (event.notebookPages !== undefined) {
-      payload.notebookPages = event.notebookPages;
-    }
-    if (event.reason !== undefined) {
-      payload.reason = event.reason;
-    }
-    if (event.suggestedNextAction !== undefined) {
-      payload.suggestedNextAction = event.suggestedNextAction;
-    }
-    return payload;
-  },
+  ): ProjectUpdatedPayloadV1 => ({
+    ...(event.name !== undefined ? { name: event.name } : {}),
+    ...(event.objective !== undefined ? { objective: event.objective } : {}),
+    ...(event.notebookPages !== undefined ? { notebookPages: event.notebookPages } : {}),
+    ...(event.reason !== undefined ? { reason: event.reason } : {}),
+    ...(event.suggestedNextAction !== undefined
+      ? { suggestedNextAction: event.suggestedNextAction }
+      : {}),
+  }),
   ProjectStatusChanged: (
     event: Extract<ProjectEvent, { type: 'ProjectStatusChanged' }>
   ): ProjectStatusChangedPayloadV1 => ({

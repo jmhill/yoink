@@ -86,34 +86,29 @@ export const decideConfirmProposal = ({
     return err(waiting.error);
   }
 
-  const updated: ProjectUpdated = {
-    type: 'ProjectUpdated',
-    id: project.id,
-    organizationId: project.organizationId,
-    occurredAt: now,
-  };
-
+  let name: string | undefined;
   if (command.name !== undefined) {
     const parsed = parseProjectName(command.name);
     if (parsed.isErr()) {
       return err(parsed.error);
     }
-    const name = parsed.value;
-    if (name !== project.name) {
+    const parsedName = parsed.value;
+    if (parsedName !== project.name) {
       const others = existingNames.filter(
         (existing) => normalizeProjectName(existing) !== normalizeProjectName(project.name)
       );
-      if (projectNameIsTaken(name, others)) {
-        return err(duplicateProjectNameError(name));
+      if (projectNameIsTaken(parsedName, others)) {
+        return err(duplicateProjectNameError(parsedName));
       }
-      updated.name = name;
+      name = parsedName;
     }
   }
 
+  let objective: string | null | undefined;
   if (command.objective !== undefined) {
-    const objective = parseProjectObjective(command.objective);
-    if (objective !== project.objective) {
-      updated.objective = objective ?? null;
+    const parsedObjective = parseProjectObjective(command.objective);
+    if (parsedObjective !== project.objective) {
+      objective = parsedObjective ?? null;
     }
   }
 
@@ -125,17 +120,26 @@ export const decideConfirmProposal = ({
     return err(suggested.error);
   }
 
-  if (suggested.value !== project.suggestedNextAction) {
-    updated.suggestedNextAction = suggested.value ?? null;
-  }
+  const suggestedNextAction =
+    suggested.value !== project.suggestedNextAction ? (suggested.value ?? null) : undefined;
 
   const hasUpdate =
-    updated.name !== undefined ||
-    updated.objective !== undefined ||
-    updated.suggestedNextAction !== undefined;
+    name !== undefined || objective !== undefined || suggestedNextAction !== undefined;
+
+  const updated: ProjectUpdated | null = hasUpdate
+    ? {
+        type: 'ProjectUpdated',
+        id: project.id,
+        organizationId: project.organizationId,
+        occurredAt: now,
+        ...(name !== undefined ? { name } : {}),
+        ...(objective !== undefined ? { objective } : {}),
+        ...(suggestedNextAction !== undefined ? { suggestedNextAction } : {}),
+      }
+    : null;
 
   return ok({
-    updated: hasUpdate ? updated : null,
+    updated,
     statusChanged: {
       type: 'ProjectStatusChanged',
       id: project.id,

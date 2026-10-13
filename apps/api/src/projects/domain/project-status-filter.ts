@@ -28,15 +28,7 @@ export const parseProjectStatusFilter = (
     return err(invalidProjectStatusError());
   }
 
-  const unique: ProjectStatus[] = [];
-  for (const item of parsed) {
-    if (!item.success) {
-      return err(invalidProjectStatusError());
-    }
-    if (!unique.some((status) => status === item.data)) {
-      unique.push(item.data);
-    }
-  }
+  const unique = [...new Set(parsed.flatMap((item) => (item.success ? [item.data] : [])))];
 
   if (unique.length < 1) {
     return err(invalidProjectStatusError());

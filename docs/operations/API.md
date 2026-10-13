@@ -774,7 +774,7 @@ the generic `[ts-rest] request validation failed` text.
 | `PROJECT_CONFIRM_REQUIRES_PERSON` | A bot called confirm (`403`) |
 | `PROJECT_DECLINE_REQUIRES_PERSON` | A bot called decline (`403`) |
 | `PROJECT_RESTORE_REQUIRES_PERSON` | A bot called restore (`403`) |
-| `PROJECT_NOT_PROPOSED` | Confirm or decline on a project that is not proposed (`400`) |
+| `PROJECT_NOT_PROPOSED` | Confirm or decline on a project that is not proposed (`409`) |
 | `PROJECT_NOT_DECLINED` | Restore on a project that is not declined (`400`) |
 | `INVALID_PROJECT_REASON` | Reason is longer than 200 characters (`400`) |
 | `INVALID_SUGGESTED_NEXT_ACTION` | Suggested next action is longer than 500 characters (`400`) |

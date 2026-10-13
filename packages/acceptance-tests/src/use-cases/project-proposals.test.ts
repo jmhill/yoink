@@ -124,12 +124,12 @@ usingDrivers(['http'] as const, (ctx) => {
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Bots propose projects [${ctx.driverName}]`, () => {
-    let alice: BrowserActor;
+    let justin: BrowserActor;
     let lane: CoreActor;
 
     beforeEach(async () => {
-      alice = await ctx.createActor('alice-148-process@example.com');
-      lane = await laneFrom(alice, ctx);
+      justin = await ctx.createActor('justin-148-process@example.com');
+      lane = await laneFrom(justin, ctx);
     });
 
     it('shows a proposal on Process, mixed with captures, and confirms it', async () => {
@@ -140,44 +140,44 @@ usingDrivers(['playwright'] as const, (ctx) => {
         reason: 'Dock needs work',
         suggestedNextAction: 'Call the mill',
       });
-      await alice.createCapture({ content: 'Paint the door' });
+      await justin.createCapture({ content: 'Paint the door' });
 
-      await alice.useMobileViewport();
-      await alice.openMobileBottomTab('process');
-      await alice.shouldSeeProcessReady();
-      await alice.shouldSeeProcessProposal({
+      await justin.useMobileViewport();
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessReady();
+      await justin.shouldSeeProcessProposal({
         name: 'Harbor shed',
         proposedBy: 'Lane',
         reason: 'Dock needs work',
         suggestedNextAction: 'Call the mill',
       });
-      await alice.shouldSeeProcessLeft(2);
-      await alice.shouldSeeProcessBadge(2);
+      await justin.shouldSeeProcessLeft(2);
+      await justin.shouldSeeProcessBadge(2);
 
-      await alice.openProcessProposalConfirm();
-      const confirmed = await alice.confirmProcessProposal();
+      await justin.openProcessProposalConfirm();
+      const confirmed = await justin.confirmProcessProposal();
       expect(confirmed.project.id).toBe(proposed.id);
       expect(confirmed.project.status).toBe('active');
       expect(confirmed.task?.title).toBe('Call the mill');
 
-      await alice.shouldSeeProcessCurrent('Paint the door');
-      await alice.shouldSeeProcessLeft(1);
+      await justin.shouldSeeProcessCurrent('Paint the door');
+      await justin.shouldSeeProcessLeft(1);
 
-      await alice.goToProject(proposed.id);
-      await alice.expandProjectHistory();
-      await alice.shouldSeeHistoryEntry({
+      await justin.goToProject(proposed.id);
+      await justin.expandProjectHistory();
+      await justin.shouldSeeHistoryEntry({
         kind: 'ProjectCreated',
         actor: 'Lane',
         text: 'proposed this project',
       });
-      await alice.shouldSeeHistoryEntry({
+      await justin.shouldSeeHistoryEntry({
         kind: 'ProjectStatusChanged',
-        actor: 'Alice',
+        actor: 'Justin',
         text: 'confirmed it as Active',
       });
 
-      await alice.goToAllProjects();
-      await alice.shouldSeeProjectOnAllProjects({ name: 'Harbor shed', status: 'active' });
+      await justin.goToAllProjects();
+      await justin.shouldSeeProjectOnAllProjects({ name: 'Harbor shed', status: 'active' });
     }, 90_000);
 
     it('turns a proposal down and Undo restores it', async () => {
@@ -187,19 +187,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
         reason: 'Dock needs work',
       });
 
-      await alice.useMobileViewport();
-      await alice.openMobileBottomTab('process');
-      await alice.shouldSeeProcessProposal({
+      await justin.useMobileViewport();
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessProposal({
         name: 'Harbor shed',
         proposedBy: 'Lane',
         reason: 'Dock needs work',
       });
-      await alice.turnDownProcessProposal();
-      await alice.shouldSeeProcessEmpty();
-      await alice.shouldSeeUndoToast('Turned down');
-      await alice.undoFromToast('Turned down');
-      await alice.shouldSeeToast('Alice restored it');
-      await alice.shouldSeeProcessProposal({
+      await justin.turnDownProcessProposal();
+      await justin.shouldSeeProcessEmpty();
+      await justin.shouldSeeUndoToast('Turned down');
+      await justin.undoFromToast('Turned down');
+      await justin.shouldSeeToast('Justin restored it');
+      await justin.shouldSeeProcessProposal({
         name: 'Harbor shed',
         proposedBy: 'Lane',
       });
@@ -207,15 +207,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('hides proposals from the default list and rail', async () => {
       await lane.createProject({ name: 'Harbor shed', status: 'proposed' });
-      const garden = await alice.createProject({ name: 'Garden' });
+      const garden = await justin.createProject({ name: 'Garden' });
 
-      const working = await alice.listProjects();
+      const working = await justin.listProjects();
       expect(working.map((project) => project.name)).toEqual(['Garden']);
 
-      await alice.useDesktopViewport(DESKTOP);
-      await alice.goToAllProjects();
-      await alice.shouldSeeProjectOnAllProjects({ name: 'Garden', status: 'active' });
-      await alice.shouldSeeProjectOnRail(garden.name);
+      await justin.useDesktopViewport(DESKTOP);
+      await justin.goToAllProjects();
+      await justin.shouldSeeProjectOnAllProjects({ name: 'Garden', status: 'active' });
+      await justin.shouldSeeProjectOnRail(garden.name);
     }, 60_000);
 
     it('saves phone walkthrough shots', async () => {
@@ -226,69 +226,82 @@ usingDrivers(['playwright'] as const, (ctx) => {
         reason: 'Dock needs work',
         suggestedNextAction: 'Call the mill',
       });
-      await alice.createCapture({ content: 'Paint the door' });
 
-      await alice.useMobileViewport();
-      await alice.openMobileBottomTab('process');
-      await alice.shouldSeeProcessProposal({
+      await justin.useMobileViewport();
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessProposal({
         name: 'Harbor shed',
         proposedBy: 'Lane',
         reason: 'Dock needs work',
       });
-      await alice.shouldSeeProcessLeft(2);
-      await alice.saveWalkthroughScreenshot({
+      await justin.shouldSeeProcessLeft(1);
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_proposal_card',
       });
-      await alice.saveWalkthroughScreenshot({
+
+      await justin.createCapture({ content: 'Paint the door' });
+      await justin.createCapture({ content: 'Fix the hinge' });
+      await justin.openMobileBottomTab('capture');
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessProposal({
+        name: 'Harbor shed',
+        proposedBy: 'Lane',
+        reason: 'Dock needs work',
+      });
+      await justin.shouldSeeProcessLeft(3);
+      await justin.shouldSeeProcessBadge(3);
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_mixed_count',
       });
 
-      await alice.openProcessProposalConfirm();
-      await alice.confirmProcessProposal();
-      await alice.goToAllProjects();
-      await alice.shouldSeeProjectOnAllProjects({ name: 'Harbor shed', status: 'active' });
-      await alice.saveWalkthroughScreenshot({
+      await justin.openProcessProposalConfirm();
+      await justin.confirmProcessProposal();
+      await justin.goToAllProjects();
+      await justin.shouldSeeProjectOnAllProjects({ name: 'Harbor shed', status: 'active' });
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'proposal_confirmed_in_review',
       });
 
-      await alice.openMobileBottomTab('process');
-      await alice.shouldSeeProcessCurrent('Paint the door');
-      await alice.trashProcessCurrent();
-      await alice.shouldSeeProcessEmpty();
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessCurrent('Paint the door');
+      await justin.trashProcessCurrent();
+      await justin.shouldSeeProcessCurrent('Fix the hinge');
+      await justin.trashProcessCurrent();
+      await justin.shouldSeeProcessEmpty();
 
       const second = await lane.createProject({
         name: 'Kitchen wall',
         status: 'proposed',
       });
-      await alice.openMobileBottomTab('capture');
-      await alice.openMobileBottomTab('process');
-      await alice.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
-      await alice.turnDownProcessProposal();
-      await alice.shouldSeeUndoToast('Turned down');
-      await alice.saveWalkthroughScreenshot({
+      await justin.openMobileBottomTab('capture');
+      await justin.openMobileBottomTab('process');
+      await justin.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
+      await justin.turnDownProcessProposal();
+      await justin.shouldSeeUndoToast('Turned down');
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'proposal_turned_down',
         includeToasts: true,
       });
-      await alice.shouldSeeProcessEmpty();
-      await alice.saveWalkthroughScreenshot({
+      await justin.shouldSeeProcessEmpty();
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_empty',
       });
 
-      await alice.restoreProjectProposal(second.id);
-      await alice.goToProject(second.id);
-      await alice.shouldSeeProposalBanner({ proposedBy: 'Lane' });
-      await alice.expandProjectHistory();
-      await alice.shouldSeeHistoryEntry({
+      await justin.restoreProjectProposal(second.id);
+      await justin.goToProject(second.id);
+      await justin.shouldSeeProposalBanner({ proposedBy: 'Lane' });
+      await justin.expandProjectHistory();
+      await justin.shouldSeeHistoryEntry({
         kind: 'ProjectCreated',
         actor: 'Lane',
         text: 'proposed this project',
       });
-      await alice.saveWalkthroughScreenshot({
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'project_timeline_proposal',
       });
@@ -303,50 +316,61 @@ usingDrivers(['playwright'] as const, (ctx) => {
         reason: 'Dock needs work',
         suggestedNextAction: 'Call the mill',
       });
-      await alice.createCapture({ content: 'Paint the door' });
 
-      await alice.useDesktopViewport(DESKTOP);
-      await alice.openProcess();
-      await alice.shouldSeeProcessProposal({
+      await justin.useDesktopViewport(DESKTOP);
+      await justin.openProcess();
+      await justin.shouldSeeProcessProposal({
         name: 'Harbor shed',
         proposedBy: 'Lane',
         reason: 'Dock needs work',
       });
-      await alice.shouldSeeProcessLeft(2);
-      await alice.saveWalkthroughScreenshot({
+      await justin.shouldSeeProcessLeft(1);
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_proposal_card',
       });
-      await alice.saveWalkthroughScreenshot({
+
+      await justin.createCapture({ content: 'Paint the door' });
+      await justin.createCapture({ content: 'Fix the hinge' });
+      await justin.openProcess();
+      await justin.shouldSeeProcessProposal({
+        name: 'Harbor shed',
+        proposedBy: 'Lane',
+        reason: 'Dock needs work',
+      });
+      await justin.shouldSeeProcessLeft(3);
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_mixed_count',
       });
 
-      await alice.openProcessProposalConfirm();
-      await alice.confirmProcessProposal();
-      await alice.goToAllProjects();
-      await alice.saveWalkthroughScreenshot({
+      await justin.openProcessProposalConfirm();
+      await justin.confirmProcessProposal();
+      await justin.goToAllProjects();
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'proposal_confirmed_in_review',
       });
 
-      await alice.openProcess();
-      await alice.shouldSeeProcessCurrent('Paint the door');
-      await alice.trashProcessCurrent();
-      await alice.shouldSeeProcessEmpty();
+      await justin.openProcess();
+      await justin.shouldSeeProcessCurrent('Paint the door');
+      await justin.trashProcessCurrent();
+      await justin.shouldSeeProcessCurrent('Fix the hinge');
+      await justin.trashProcessCurrent();
+      await justin.shouldSeeProcessEmpty();
 
       await lane.createProject({ name: 'Kitchen wall', status: 'proposed' });
-      await alice.openProcess();
-      await alice.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
-      await alice.turnDownProcessProposal();
-      await alice.shouldSeeUndoToast('Turned down');
-      await alice.saveWalkthroughScreenshot({
+      await justin.openProcess();
+      await justin.shouldSeeProcessProposal({ name: 'Kitchen wall', proposedBy: 'Lane' });
+      await justin.turnDownProcessProposal();
+      await justin.shouldSeeUndoToast('Turned down');
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'proposal_turned_down',
         includeToasts: true,
       });
-      await alice.shouldSeeProcessEmpty();
-      await alice.saveWalkthroughScreenshot({
+      await justin.shouldSeeProcessEmpty();
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'process_empty',
       });
@@ -355,14 +379,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
         name: 'Garden wall',
         status: 'proposed',
       });
-      await alice.goToProject(leftover.id);
-      await alice.expandProjectHistory();
-      await alice.shouldSeeHistoryEntry({
+      await justin.goToProject(leftover.id);
+      await justin.expandProjectHistory();
+      await justin.shouldSeeHistoryEntry({
         kind: 'ProjectCreated',
         actor: 'Lane',
         text: 'proposed this project',
       });
-      await alice.saveWalkthroughScreenshot({
+      await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'project_timeline_proposal',
       });

@@ -76,6 +76,9 @@ describe('redactSensitiveLogValue', () => {
     ['credential', 'passkey-credential'],
     ['attestationObject', 'attestation-bytes'],
     ['clientDataJSON', 'client-data-json'],
+    ['x-api-key', 'api-key-secret-value'],
+    ['session', 'session-secret-value'],
+    ['yoink_session', 'yoink-session-secret-value'],
   ] as const)('redacts %s', (key, secret) => {
     const redacted = redactSensitiveLogValue({ nested: { [key]: secret } });
 
@@ -104,7 +107,7 @@ describe('maskBearerTokens', () => {
 });
 
 describe('scrubSentryLog', () => {
-  it('redacts auth headers, cookies, and token values before a log is sent', () => {
+  it('redacts auth headers, cookies, x-api-key, and session values before a log is sent', () => {
     const scrubbed = scrubSentryLog({
       level: 'info',
       message: 'incoming request with Bearer tokenId:super-secret-token',
@@ -113,15 +116,25 @@ describe('scrubSentryLog', () => {
           headers: {
             authorization: 'Bearer tokenId:super-secret-token',
             cookie: 'yoink_session=cookie-secret-value',
+            'x-api-key': 'api-key-secret-value',
+          },
+          cookies: {
+            session: 'session-secret-value',
+            yoink_session: 'yoink-session-secret-value',
           },
         },
         token: 'tokenId:super-secret-token',
+        session: 'top-level-session-secret',
       },
     });
 
     const serialized = JSON.stringify(scrubbed);
     expect(serialized).not.toContain('super-secret-token');
     expect(serialized).not.toContain('cookie-secret-value');
+    expect(serialized).not.toContain('api-key-secret-value');
+    expect(serialized).not.toContain('session-secret-value');
+    expect(serialized).not.toContain('yoink-session-secret-value');
+    expect(serialized).not.toContain('top-level-session-secret');
     expect(scrubbed.message).toBe('incoming request with Bearer [Redacted]');
     expect(serialized).toContain('[Redacted]');
   });

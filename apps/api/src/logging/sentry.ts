@@ -17,6 +17,9 @@ const SENSITIVE_KEYS = new Set([
   'credential',
   'attestationobject',
   'clientdatajson',
+  'x-api-key',
+  'session',
+  'yoink_session',
 ]);
 
 const BEARER_TOKEN = /Bearer \S+/gi;

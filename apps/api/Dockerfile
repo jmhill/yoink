@@ -93,9 +93,10 @@ WORKDIR /app/apps/api
 # Switch to non-root user
 USER nodejs
 
-# Start the application directly.
+# Start the application the same way as `pnpm start`.
+# --import loads Sentry before any other module. fly.toml does not override CMD.
 # Migrations are handled separately:
 # - Fly.io: release_command in fly.toml runs migrations before deploy
 # - E2E tests: e2e-test.sh runs migrations via docker compose run
 # - Local dev: pnpm run dev runs migrate:dev script
-CMD ["node", "dist/index.js"]
+CMD ["node", "--experimental-sqlite", "--import", "./dist/instrument.js", "dist/index.js"]

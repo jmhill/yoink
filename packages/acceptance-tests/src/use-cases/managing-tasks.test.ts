@@ -2,6 +2,25 @@ import { usingDrivers, describe, it, expect, beforeEach } from '@yoink/acceptanc
 import type { CoreActor } from '@yoink/acceptance-testing';
 import { NotFoundError, ValidationError } from '@yoink/acceptance-testing';
 
+const chicagoToday = (): string => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+  return `${year}-${month}-${day}`;
+};
+
+const dateOffset = (today: string, days: number): string => {
+  const [year, month, day] = today.split('-').map(Number);
+  const next = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, (day ?? 1) + days));
+  return next.toISOString().slice(0, 10);
+};
+
 // HTTP-only tests for now (Playwright will be enabled when UI is built)
 usingDrivers(['http'] as const, (ctx) => {
   describe(`Managing tasks [${ctx.driverName}]`, () => {
@@ -47,52 +66,52 @@ usingDrivers(['http'] as const, (ctx) => {
       });
 
       it('filters tasks by today', async () => {
-        const today = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const today = chicagoToday();
+        const tomorrow = dateOffset(today, 1);
 
         await alice.createTask({ title: 'Due today', dueDate: today });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const todayTasks = await alice.listTasks('today', { timeZone: 'UTC' });
+        const todayTasks = await alice.listTasks('today');
 
         expect(todayTasks.some((t) => t.title === 'Due today')).toBe(true);
         expect(todayTasks.some((t) => t.title === 'Due tomorrow')).toBe(false);
       });
 
       it('includes overdue tasks in today filter', async () => {
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        const today = new Date().toISOString().split('T')[0];
+        const yesterday = dateOffset(chicagoToday(), -1);
+        const today = chicagoToday();
 
         await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
         await alice.createTask({ title: 'Due today', dueDate: today });
 
-        const todayTasks = await alice.listTasks('today', { timeZone: 'UTC' });
+        const todayTasks = await alice.listTasks('today');
 
         expect(todayTasks.some((t) => t.title === 'Overdue task')).toBe(true);
         expect(todayTasks.some((t) => t.title === 'Due today')).toBe(true);
       });
 
       it('excludes overdue tasks from upcoming filter', async () => {
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const yesterday = dateOffset(chicagoToday(), -1);
+        const tomorrow = dateOffset(chicagoToday(), 1);
 
         await alice.createTask({ title: 'Overdue task', dueDate: yesterday });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const upcomingTasks = await alice.listTasks('upcoming', { timeZone: 'UTC' });
+        const upcomingTasks = await alice.listTasks('upcoming');
 
         expect(upcomingTasks.some((t) => t.title === 'Overdue task')).toBe(false);
         expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);
       });
 
       it('filters tasks by upcoming', async () => {
-        const today = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const today = chicagoToday();
+        const tomorrow = dateOffset(today, 1);
 
         await alice.createTask({ title: 'Due today', dueDate: today });
         await alice.createTask({ title: 'Due tomorrow', dueDate: tomorrow });
 
-        const upcomingTasks = await alice.listTasks('upcoming', { timeZone: 'UTC' });
+        const upcomingTasks = await alice.listTasks('upcoming');
 
         expect(upcomingTasks.some((t) => t.title === 'Due today')).toBe(false);
         expect(upcomingTasks.some((t) => t.title === 'Due tomorrow')).toBe(true);

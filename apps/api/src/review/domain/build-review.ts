@@ -28,17 +28,14 @@ export const toReviewProject = (
   candidate: ReviewCandidate,
   input: { readonly today: string; readonly timeZone: string }
 ): ReviewProject | null => {
-  const daysSinceChange = Math.max(
-    0,
-    calendarDaysBetween(
-      input.today,
-      lastChangeLocalDate({ lastChangeAt: candidate.lastChangeAt, timeZone: input.timeZone })
-    )
+  const daysSinceChange = calendarDaysBetween(
+    input.today,
+    lastChangeLocalDate({ lastChangeAt: candidate.lastChangeAt, timeZone: input.timeZone })
   );
   const daysWaiting =
     candidate.project.waitingSince === null
       ? null
-      : Math.max(0, calendarDaysBetween(input.today, candidate.project.waitingSince));
+      : calendarDaysBetween(input.today, candidate.project.waitingSince);
   const reasons = reviewReasons({
     status: candidate.project.status,
     nextActionTaskId: candidate.project.nextActionTaskId,

@@ -114,12 +114,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           step: 'member_admin_switch',
         });
 
-        await ctx.admin.makeAdmin(lane.id);
-        await ctx.admin.shouldSeeMemberError(lane.id, /cannot be an admin/i);
-        await ctx.admin.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'bot_admin_refusal',
-        });
+        await ctx.admin.shouldNotSeeMakeAdmin(lane.id);
       };
 
       await drivePanel('phone');

@@ -83,8 +83,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async makeAdmin(userId: string): Promise<void> {
       const adminPage = browserPage();
-      const button = memberRow(adminPage, userId).locator('[data-action="toggle-admin"]');
-      await button.click({ force: true });
+      await memberRow(adminPage, userId).locator('[data-action="toggle-admin"]').click();
     },
 
     async shouldSeeMemberRole(userId: string, role: string): Promise<void> {

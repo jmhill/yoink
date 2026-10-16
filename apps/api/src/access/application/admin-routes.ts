@@ -68,7 +68,8 @@ const setOrganizationOwnerErrorResponse = (error: AdminServiceError) => {
       return storageErrorResponse('Failed to set owner');
     default: {
       const _never: never = error;
-      return storageErrorResponse(_never);
+      void _never;
+      return storageErrorResponse('Failed to set owner');
     }
   }
 };
@@ -114,7 +115,8 @@ const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
       return storageErrorResponse('Failed to change member role');
     default: {
       const _never: never = error;
-      return storageErrorResponse(_never);
+      void _never;
+      return storageErrorResponse('Failed to change member role');
     }
   }
 };

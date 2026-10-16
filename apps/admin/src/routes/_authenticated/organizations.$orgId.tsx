@@ -512,13 +512,12 @@ function OrganizationDetailPage() {
                             Make owner
                           </Button>
                         ) : null}
-                        {!isOwner ? (
+                        {isHuman && !isOwner ? (
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
                             data-action="toggle-admin"
-                            hidden={!isHuman}
                             disabled={changeRoleMutation.isPending}
                             onClick={() =>
                               changeRoleMutation.mutate({

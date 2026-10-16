@@ -9,12 +9,17 @@ import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
+import {
+  withAuthenticatedRateLimit,
+  type AuthenticatedRateLimitConsume,
+} from './with-authenticated-rate-limit.js';
 
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;
   sessionService: SessionService;
   tokenService: TokenService;
   sessionCookieName: string;
+  applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
 export const registerTokenRoutes = async (
@@ -30,7 +35,11 @@ export const registerTokenRoutes = async (
     sessionCookieName,
   };
 
-  const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const authMiddleware =
+    deps.applyAuthenticatedRateLimit === undefined
+      ? resolvedAuth
+      : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
   await app.register(async (protectedApp) => {
     protectedApp.addHook('preHandler', authMiddleware);

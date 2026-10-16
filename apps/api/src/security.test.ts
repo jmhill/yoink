@@ -9,6 +9,7 @@ const defaultRateLimitConfig: RateLimitConfig = {
   enabled: true,
   globalMax: 100,
   globalTimeWindow: '1 minute',
+  ipMax: 2000,
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
   authLoginMax: 10,

@@ -10,6 +10,10 @@ import {
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import {
+  withAuthenticatedRateLimit,
+  type AuthenticatedRateLimitConsume,
+} from './with-authenticated-rate-limit.js';
 
 export type PasskeyRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -23,6 +27,7 @@ export type PasskeyRoutesDependencies = {
     path: string;
     maxAge: number; // in seconds
   };
+  applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
 /**
@@ -68,7 +73,11 @@ export const registerPasskeyRoutes = async (
         sessionCookieName,
       };
 
-  const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const authMiddleware =
+    deps.applyAuthenticatedRateLimit === undefined
+      ? resolvedAuth
+      : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
   // All passkey routes require authentication
   await app.register(async (protectedApp) => {

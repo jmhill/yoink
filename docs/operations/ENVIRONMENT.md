@@ -12,8 +12,9 @@
 | `SENTRY_LOGS_LEVEL` | Minimum Pino level forwarded to Sentry (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | Optional. Default: `info`. |
 | `NOTES_MIRROR_BOT_USER_ID` | Fallback user id of the designated notes-mirror bot when `organizations.notes_mirror_bot_user_id` is empty | Optional UUID. Used only for `POST /api/notes/import`. |
 | `RATE_LIMIT_ENABLED` | Master switch for API rate limiting | Optional. `false` disables all limiters (tests). Default: enabled. |
-| `RATE_LIMIT_GLOBAL_MAX` | General API requests per key per window | Optional. Default: `600`. A cheap derived-IP bucket is enforced on every request (no credential lookups). After auth, the same budget also applies per validated `user:<id>`. `Fly-Client-IP` is used only when the process is running on Fly (`FLY_ALLOC_ID` / `FLY_APP_NAME`); otherwise the socket address. Raw session cookies, Bearer strings, and client-set `X-Forwarded-For` are not keys. |
-| `RATE_LIMIT_GLOBAL_WINDOW` | Window for the general API limit | Optional. Default: `1 minute`. |
+| `RATE_LIMIT_GLOBAL_MAX` | Per-user API requests after authentication | Optional. Default: `600`. Keyed `user:<id>` from the principal auth already resolved. |
+| `RATE_LIMIT_IP_MAX` | Per-IP DoS cap (no credential lookups) | Optional. Default: `2000`. All clients on one IP (including Justin's bots) share this bucket. `Fly-Client-IP` is used only when the process is running on Fly (`FLY_ALLOC_ID` / `FLY_APP_NAME`); otherwise the socket address. Raw session cookies, Bearer strings, and client-set `X-Forwarded-For` are not keys. |
+| `RATE_LIMIT_GLOBAL_WINDOW` | Window for the general API and IP limits | Optional. Default: `1 minute`. |
 | `RATE_LIMIT_ADMIN_LOGIN_MAX` | Admin login attempts per IP per window | Optional. Default: `5`. |
 | `RATE_LIMIT_ADMIN_LOGIN_WINDOW` | Window for admin login | Optional. Default: `15 minutes`. |
 | `RATE_LIMIT_AUTH_LOGIN_MAX` | Passkey login verify attempts per IP per window | Optional. Default: `10`. |

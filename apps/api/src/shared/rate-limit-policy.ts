@@ -158,6 +158,20 @@ export type RateLimitConsumeResult = {
   retryAfterSeconds: number;
 };
 
+export type RateLimitExceededMessageQuery = {
+  retryAfterSeconds: number;
+};
+
+export type RateLimitExceededMessageResult = {
+  message: string;
+};
+
+export const decideRateLimitExceededMessage = (
+  query: RateLimitExceededMessageQuery
+): RateLimitExceededMessageResult => ({
+  message: `Rate limit exceeded, retry in ${query.retryAfterSeconds} seconds`,
+});
+
 export const decideRateLimitConsume = (
   query: RateLimitConsumeQuery
 ): RateLimitConsumeResult => {

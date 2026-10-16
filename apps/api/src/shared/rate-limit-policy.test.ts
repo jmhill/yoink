@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decideClientIp,
   decideRateLimitConsume,
+  decideRateLimitExceededMessage,
   decideRateLimitExempt,
   decideRateLimitKey,
   decideTimeWindowMs,
@@ -123,6 +124,17 @@ describe('decideRateLimitConsume', () => {
       nextCount: 3,
       nextResetAt: 61_000,
       retryAfterSeconds: 60,
+    });
+  });
+});
+
+describe('decideRateLimitExceededMessage', () => {
+  it('names the same seconds as Retry-After', () => {
+    expect(decideRateLimitExceededMessage({ retryAfterSeconds: 47 })).toEqual({
+      message: 'Rate limit exceeded, retry in 47 seconds',
+    });
+    expect(decideRateLimitExceededMessage({ retryAfterSeconds: 1 })).toEqual({
+      message: 'Rate limit exceeded, retry in 1 seconds',
     });
   });
 });

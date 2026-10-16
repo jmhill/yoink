@@ -13,16 +13,27 @@ import {
   TEST_ORG_ID,
 } from './tests/helpers/test-app.js';
 
-const tightGlobalLimit: RateLimitConfig = {
+const rateLimitBase = {
   enabled: true,
-  globalMax: 3,
-  globalTimeWindow: '1 minute',
+  globalTimeWindow: '1 minute' as const,
   adminLoginMax: 5,
-  adminLoginTimeWindow: '15 minutes',
+  adminLoginTimeWindow: '15 minutes' as const,
   authLoginMax: 10,
-  authLoginTimeWindow: '15 minutes',
+  authLoginTimeWindow: '15 minutes' as const,
   signupMax: 5,
-  signupTimeWindow: '1 hour',
+  signupTimeWindow: '1 hour' as const,
+};
+
+const tightIpLimit: RateLimitConfig = {
+  ...rateLimitBase,
+  globalMax: 600,
+  ipMax: 3,
+};
+
+const tightUserLimit: RateLimitConfig = {
+  ...rateLimitBase,
+  globalMax: 3,
+  ipMax: 2000,
 };
 
 const TEST_TOKEN_SECRET = 'test-token-for-acceptance';
@@ -127,7 +138,7 @@ describe('General API rate limit', () => {
   });
 
   it('puts forged X-Forwarded-For and Fly-Client-IP in one bucket', async () => {
-    app = await startApp(tightGlobalLimit);
+    app = await startApp(tightIpLimit);
 
     expect(
       (await health(app, { 'x-forwarded-for': '203.0.113.10' })).statusCode
@@ -153,7 +164,7 @@ describe('General API rate limit', () => {
   });
 
   it('uses Fly-Client-IP only when the process is running on Fly', async () => {
-    app = await startApp(tightGlobalLimit, { viaFly: true });
+    app = await startApp(tightIpLimit, { viaFly: true });
 
     for (let i = 0; i < 3; i += 1) {
       const allowed = await health(app, {
@@ -177,7 +188,7 @@ describe('General API rate limit', () => {
   });
 
   it('puts random cookies and bearer strings in one IP bucket', async () => {
-    app = await startApp(tightGlobalLimit);
+    app = await startApp(tightIpLimit);
 
     expect(
       (
@@ -210,7 +221,7 @@ describe('General API rate limit', () => {
 
   it('does not call validateToken for forged tokens once the IP bucket is full', async () => {
     let validateCalls = 0;
-    app = await startApp(tightGlobalLimit, {
+    app = await startApp(tightIpLimit, {
       wrapTokenService: (tokenService) => ({
         validateToken: (query) => {
           validateCalls += 1;
@@ -233,7 +244,7 @@ describe('General API rate limit', () => {
   it('validates a real token once per request after the IP check passes', async () => {
     let validateCalls = 0;
     app = await startApp(
-      { ...tightGlobalLimit, globalMax: 100 },
+      { ...tightUserLimit, globalMax: 100 },
       {
         seedToken: true,
         wrapTokenService: (tokenService) => ({
@@ -259,7 +270,7 @@ describe('General API rate limit', () => {
   });
 
   it('limits a validated user after auth, including across Fly client IPs', async () => {
-    app = await startApp(tightGlobalLimit, {
+    app = await startApp(tightUserLimit, {
       seedToken: true,
       webauthn: true,
       viaFly: true,
@@ -284,6 +295,10 @@ describe('General API rate limit', () => {
       'fly-client-ip': '198.51.100.20',
     });
     expect(otherIpSameUser.statusCode).toBe(429);
+    expect(otherIpSameUser.headers['retry-after']).toBeDefined();
+    expect(otherIpSameUser.json().message).toBe(
+      `Rate limit exceeded, retry in ${otherIpSameUser.headers['retry-after']} seconds`
+    );
 
     const sameUserSession = await projects(app, {
       cookie: `${TEST_SESSION_COOKIE}=${TEST_SESSION_ID}`,
@@ -293,7 +308,7 @@ describe('General API rate limit', () => {
   });
 
   it('does not count sw.js, Workbox, /assets, or index.html against the API budget', async () => {
-    app = await startApp(tightGlobalLimit);
+    app = await startApp(tightIpLimit);
 
     for (let i = 0; i < 3; i += 1) {
       const allowed = await health(app);
@@ -310,7 +325,7 @@ describe('General API rate limit', () => {
   });
 
   it('keeps the strict admin login limit on the derived IP, not X-Forwarded-For', async () => {
-    app = await startApp({ ...tightGlobalLimit, globalMax: 100 });
+    app = await startApp({ ...tightUserLimit, globalMax: 100 });
 
     for (let i = 0; i < 5; i += 1) {
       await app.inject({

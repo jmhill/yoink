@@ -58,6 +58,7 @@ import type {
 import type { OrganizationStore } from './access/domain/organization-store.js';
 import {
   DEFAULT_GLOBAL_RATE_LIMIT_MAX,
+  DEFAULT_IP_RATE_LIMIT_MAX,
   type RateLimitConfig,
   type LogConfig,
   type CookieConfig,
@@ -132,6 +133,7 @@ const defaultRateLimitConfig: RateLimitConfig = {
   enabled: true,
   globalMax: DEFAULT_GLOBAL_RATE_LIMIT_MAX,
   globalTimeWindow: '1 minute',
+  ipMax: DEFAULT_IP_RATE_LIMIT_MAX,
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
   authLoginMax: 10,
@@ -170,7 +172,7 @@ export const createApp = async (deps: AppDependencies) => {
   if (rateLimitConfig.enabled) {
     await app.register(rateLimit, {
       global: true,
-      max: rateLimitConfig.globalMax,
+      max: rateLimitConfig.ipMax,
       timeWindow: rateLimitConfig.globalTimeWindow,
       keyGenerator: (request) =>
         decideRateLimitKey({ clientIp: clientIpOf(request) }).key,
@@ -264,6 +266,7 @@ export const createApp = async (deps: AppDependencies) => {
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,
+      applyAuthenticatedRateLimit,
     });
 
     // Auth routes (login, logout, session)
@@ -296,6 +299,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       tokenService: deps.signup.tokenService,
       sessionCookieName,
+      applyAuthenticatedRateLimit,
     });
   }
 

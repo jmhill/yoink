@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthMiddleware } from './auth-middleware.js';
+import { decideRateLimitExceededMessage } from '../../shared/rate-limit-policy.js';
 
 export type AuthenticatedRateLimitConsume = (userId: string) => {
   limited: boolean;
@@ -30,7 +31,9 @@ export const withAuthenticatedRateLimit = (
       .send({
         statusCode: 429,
         error: 'Too Many Requests',
-        message: 'Rate limit exceeded, retry in 1 minute',
+        message: decideRateLimitExceededMessage({
+          retryAfterSeconds: result.retryAfterSeconds,
+        }).message,
       });
   };
 };

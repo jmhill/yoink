@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig, loadLogConfig, loadSentryConfig } from './config.js';
-import { DEFAULT_GLOBAL_RATE_LIMIT_MAX } from './schema.js';
+import { DEFAULT_GLOBAL_RATE_LIMIT_MAX, DEFAULT_IP_RATE_LIMIT_MAX } from './schema.js';
 
 const ENV_KEYS = [
   'NODE_ENV',
@@ -9,6 +9,7 @@ const ENV_KEYS = [
   'SENTRY_LOGS_ENABLED',
   'SENTRY_LOGS_LEVEL',
   'RATE_LIMIT_GLOBAL_MAX',
+  'RATE_LIMIT_IP_MAX',
 ] as const;
 
 const originalEnv = Object.fromEntries(
@@ -168,9 +169,10 @@ describe('loadConfig rate limits', () => {
   });
 
   it('defaults the general API limit to 600 per minute', async () => {
-    setEnv({ RATE_LIMIT_GLOBAL_MAX: undefined });
+    setEnv({ RATE_LIMIT_GLOBAL_MAX: undefined, RATE_LIMIT_IP_MAX: undefined });
     const config = await loadConfig();
     expect(config.rateLimit?.globalMax).toBe(DEFAULT_GLOBAL_RATE_LIMIT_MAX);
+    expect(config.rateLimit?.ipMax).toBe(DEFAULT_IP_RATE_LIMIT_MAX);
     expect(config.rateLimit?.authLoginMax).toBe(10);
     expect(config.rateLimit?.signupMax).toBe(5);
   });

@@ -9,6 +9,104 @@ import type { AuthMiddleware } from './auth-middleware.js';
 import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 import { principalKindOf } from '../domain/user.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import type { MembershipServiceError } from '../domain/organization-errors.js';
+
+const storageFailure = (message: string) => ({
+  status: 500 as const,
+  body: { message },
+});
+
+const leaveErrorResponse = (error: MembershipServiceError) => {
+  switch (error.type) {
+    case 'MEMBERSHIP_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Not a member of this organization' },
+      };
+    case 'CANNOT_LEAVE_PERSONAL_ORG':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot leave your personal organization' },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot leave as the last admin' },
+      };
+    case 'OWNER_MUST_TRANSFER':
+    case 'OWNER_CANNOT_BE_REMOVED':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'INSUFFICIENT_PERMISSIONS':
+    case 'ALREADY_MEMBER':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'NOT_CURRENT_OWNER':
+    case 'SECOND_OWNER':
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'USER_NOT_FOUND':
+    case 'ORGANIZATION_NOT_FOUND':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return storageFailure('Failed to leave organization');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageFailure('Failed to leave organization');
+    }
+  }
+};
+
+const removeMemberErrorResponse = (error: MembershipServiceError) => {
+  switch (error.type) {
+    case 'MEMBERSHIP_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Member not found' },
+      };
+    case 'CANNOT_LEAVE_PERSONAL_ORG':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot remove a member from a personal workspace' },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot remove the last admin' },
+      };
+    case 'OWNER_MUST_TRANSFER':
+    case 'OWNER_CANNOT_BE_REMOVED':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'INSUFFICIENT_PERMISSIONS':
+      return {
+        status: 403 as const,
+        body: { message: 'Insufficient permissions to remove members' },
+      };
+    case 'ALREADY_MEMBER':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'NOT_CURRENT_OWNER':
+    case 'SECOND_OWNER':
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'USER_NOT_FOUND':
+    case 'ORGANIZATION_NOT_FOUND':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return storageFailure('Failed to remove member');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageFailure('Failed to remove member');
+    }
+  }
+};
 
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
@@ -92,36 +190,7 @@ export const registerOrganizationRoutes = async (
             status: 200 as const,
             body: { success: true as const },
           }),
-          (error) => {
-            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
-              return {
-                status: 404 as const,
-                body: { message: 'Not a member of this organization' },
-              };
-            }
-            if (error.type === 'CANNOT_LEAVE_PERSONAL_ORG') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot leave your personal organization' },
-              };
-            }
-            if (error.type === 'LAST_ADMIN') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot leave as the last admin' },
-              };
-            }
-            if (error.type === 'OWNER_MUST_TRANSFER') {
-              return {
-                status: 409 as const,
-                body: { message: error.message, code: error.type },
-              };
-            }
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to leave organization' },
-            };
-          }
+          (error) => leaveErrorResponse(error)
         );
       },
 
@@ -225,42 +294,7 @@ export const registerOrganizationRoutes = async (
             status: 204 as const,
             body: undefined,
           }),
-          (error) => {
-            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
-              return {
-                status: 404 as const,
-                body: { message: 'Member not found' },
-              };
-            }
-            if (error.type === 'CANNOT_LEAVE_PERSONAL_ORG') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot remove a member from a personal workspace' },
-              };
-            }
-            if (error.type === 'LAST_ADMIN') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot remove the last admin' },
-              };
-            }
-            if (error.type === 'OWNER_MUST_TRANSFER') {
-              return {
-                status: 409 as const,
-                body: { message: error.message, code: error.type },
-              };
-            }
-            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
-              return {
-                status: 403 as const,
-                body: { message: 'Insufficient permissions to remove members' },
-              };
-            }
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to remove member' },
-            };
-          }
+          (error) => removeMemberErrorResponse(error)
         );
       },
 

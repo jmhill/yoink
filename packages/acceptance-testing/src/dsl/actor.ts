@@ -333,7 +333,7 @@ export type BrowserActorOperations = {
 
   /**
    * Settings User tab: click Leave on this organization, confirm, and
-   * leave the dialog open showing the refusal (e.g. Transfer ownership first).
+   * leave the dialog open showing the refusal (Transfer ownership first…).
    */
   tryLeaveOrganizationFromSettings(orgName: string): Promise<void>;
 

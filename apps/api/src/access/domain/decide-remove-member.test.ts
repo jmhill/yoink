@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { decideRemoveMember } from './decide-remove-member.js';
-import { OWNER_MUST_TRANSFER_MESSAGE } from './organization-errors.js';
+import {
+  OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  OWNER_MUST_TRANSFER_MESSAGE,
+} from './organization-errors.js';
 import type { OrganizationMembership } from './organization-membership.js';
 
 const orgId = '550e8400-e29b-41d4-a716-446655440001';
@@ -49,20 +52,26 @@ describe('decideRemoveMember', () => {
     }
   });
 
-  it('refuses a member removing the owner with INSUFFICIENT_PERMISSIONS (permission before owner)', () => {
+  it('refuses a member removing the owner with OWNER_CANNOT_BE_REMOVED, not INSUFFICIENT_PERMISSIONS', () => {
     const result = decideRemoveMember({
       command: { userId: owner.userId, organizationId: orgId, actorUserId: member().userId },
       members: [owner, member()],
     });
-    expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
+    expect(result.isErr() && result.error.type).toBe('OWNER_CANNOT_BE_REMOVED');
+    if (result.isErr() && result.error.type === 'OWNER_CANNOT_BE_REMOVED') {
+      expect(result.error.message).toBe(OWNER_CANNOT_BE_REMOVED_MESSAGE);
+    }
   });
 
-  it('refuses an admin removing the owner with INSUFFICIENT_PERMISSIONS (permission before owner)', () => {
+  it('refuses an admin removing the owner with OWNER_CANNOT_BE_REMOVED, not INSUFFICIENT_PERMISSIONS', () => {
     const result = decideRemoveMember({
       command: { userId: owner.userId, organizationId: orgId, actorUserId: admin.userId },
       members: [owner, admin],
     });
-    expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
+    expect(result.isErr() && result.error.type).toBe('OWNER_CANNOT_BE_REMOVED');
+    if (result.isErr() && result.error.type === 'OWNER_CANNOT_BE_REMOVED') {
+      expect(result.error.message).toBe(OWNER_CANNOT_BE_REMOVED_MESSAGE);
+    }
   });
 
   it('refuses leaving a personal workspace', () => {
@@ -82,9 +91,17 @@ describe('decideRemoveMember', () => {
     expect(result.isErr() && result.error.type).toBe('LAST_ADMIN');
   });
 
-  it('allows an admin to leave when an owner remains', () => {
+  it('allows the last admin to leave when an owner remains (zero admins allowed)', () => {
     const result = decideRemoveMember({
       command: { userId: admin.userId, organizationId: orgId },
+      members: [owner, admin],
+    });
+    expect(result.isOk()).toBe(true);
+  });
+
+  it('allows the owner to remove the last admin (zero admins allowed)', () => {
+    const result = decideRemoveMember({
+      command: { userId: admin.userId, organizationId: orgId, actorUserId: owner.userId },
       members: [owner, admin],
     });
     expect(result.isOk()).toBe(true);

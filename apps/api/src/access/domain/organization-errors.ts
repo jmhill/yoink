@@ -144,7 +144,8 @@ export type OwnerMustTransferError = {
   readonly message: string;
 };
 
-export const OWNER_MUST_TRANSFER_MESSAGE = 'Transfer ownership first';
+export const OWNER_MUST_TRANSFER_MESSAGE =
+  'Transfer ownership first. Ask an admin of the whole app to change the owner.';
 
 export const ownerMustTransferError = (
   organizationId: string,
@@ -154,6 +155,27 @@ export const ownerMustTransferError = (
   organizationId,
   userId,
   message: OWNER_MUST_TRANSFER_MESSAGE,
+});
+
+/** Anyone removing the owner — dedicated, not INSUFFICIENT_PERMISSIONS */
+export type OwnerCannotBeRemovedError = {
+  readonly type: 'OWNER_CANNOT_BE_REMOVED';
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const OWNER_CANNOT_BE_REMOVED_MESSAGE =
+  "The owner can't be removed. Ownership has to be handed over first.";
+
+export const ownerCannotBeRemovedError = (
+  organizationId: string,
+  userId: string
+): OwnerCannotBeRemovedError => ({
+  type: 'OWNER_CANNOT_BE_REMOVED',
+  organizationId,
+  userId,
+  message: OWNER_CANNOT_BE_REMOVED_MESSAGE,
 });
 
 /** A workspace already has an owner; a second owner cannot be saved */
@@ -239,6 +261,7 @@ export type MembershipError =
   | CannotLeavePersonalOrgError
   | CannotAssignOwnerRoleError
   | OwnerMustTransferError
+  | OwnerCannotBeRemovedError
   | NotCurrentOwnerError
   | SecondOwnerError
   | BotCannotHavePrivilegedRoleError

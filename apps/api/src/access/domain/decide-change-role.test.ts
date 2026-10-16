@@ -39,7 +39,7 @@ describe('decideChangeRole', () => {
     }
   });
 
-  it('demotes a human admin to member when an owner remains', () => {
+  it('demotes the last admin to member when an owner remains (zero admins allowed)', () => {
     const result = decideChangeRole({
       command: { organizationId: orgId, userId: admin.userId, newRole: 'member' },
       members: [owner, admin],

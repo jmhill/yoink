@@ -601,7 +601,11 @@ export class SettingsPage {
       .filter({ hasText: orgName });
     await row.getByTitle('Leave organization').click();
     await this.page.getByRole('button', { name: 'Leave Organization' }).click();
-    await expect(this.page.getByText('Transfer ownership first')).toBeVisible();
+    await expect(
+      this.page.getByText(
+        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
+      )
+    ).toBeVisible();
   }
 
   tokenRow(name: string) {

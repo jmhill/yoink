@@ -8,10 +8,12 @@ import {
   insufficientPermissionsError,
   lastAdminError,
   membershipNotFoundError,
+  ownerCannotBeRemovedError,
   type CannotLeavePersonalOrgError,
   type InsufficientPermissionsError,
   type LastAdminError,
   type MembershipNotFoundError,
+  type OwnerCannotBeRemovedError,
   type OwnerMustTransferError,
 } from './organization-errors.js';
 
@@ -27,6 +29,7 @@ export type RemoveMemberPlan = {
 export type DecideRemoveMemberError =
   | MembershipNotFoundError
   | CannotLeavePersonalOrgError
+  | OwnerCannotBeRemovedError
   | OwnerMustTransferError
   | LastAdminError
   | InsufficientPermissionsError;
@@ -45,10 +48,11 @@ const decideRemoveOthersPermission = (
 };
 
 /**
- * Leave or remove. Permission is checked before owner/last-admin so a
- * member gets INSUFFICIENT_PERMISSIONS, not OWNER_MUST_TRANSFER.
- * Owner cannot leave or be removed (decideOwnerRemains).
- * Personal-workspace rule is unchanged. Last-admin only on ownerless workspaces.
+ * Leave or remove. Removing the owner (anyone) is OWNER_CANNOT_BE_REMOVED
+ * before permission. Permission is first for everything else, so a member
+ * removing a last-admin still gets INSUFFICIENT_PERMISSIONS. Owner leave
+ * is decideOwnerRemains → OWNER_MUST_TRANSFER. Last-admin only on
+ * ownerless workspaces — once an owner exists, zero admins is allowed.
  */
 export const decideRemoveMember = ({
   command,
@@ -66,7 +70,12 @@ export const decideRemoveMember = ({
   }
 
   const actorUserId = command.actorUserId;
-  if (actorUserId !== undefined && actorUserId !== command.userId) {
+  const isLeave = actorUserId === undefined || actorUserId === command.userId;
+  if (!isLeave && membership.role === 'owner') {
+    return err(ownerCannotBeRemovedError(membership.organizationId, membership.userId));
+  }
+
+  if (!isLeave) {
     const actor = members.find((entry) => entry.userId === actorUserId) ?? null;
     if (!actor) {
       return err(insufficientPermissionsError('member', 'none'));

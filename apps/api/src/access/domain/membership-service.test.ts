@@ -272,7 +272,7 @@ describe('MembershipService', () => {
       expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');
     });
 
-    it('returns INSUFFICIENT_PERMISSIONS when another member tries to remove the owner', async () => {
+    it('returns OWNER_CANNOT_BE_REMOVED when another member tries to remove the owner', async () => {
       const org = createTestOrg();
       const owner = createTestUser();
       const member = createTestUser({ id: 'plain-member', email: 'member@example.com' });
@@ -301,10 +301,13 @@ describe('MembershipService', () => {
         actorUserId: member.id,
       });
 
-      expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
+      expect(result.isErr() && result.error.type).toBe('OWNER_CANNOT_BE_REMOVED');
+      if (result.isErr() && result.error.type === 'OWNER_CANNOT_BE_REMOVED') {
+        expect(result.error.message).toContain("The owner can't be removed");
+      }
     });
 
-    it('allows an admin to leave when an owner remains', async () => {
+    it('allows the last admin to leave when an owner remains', async () => {
       const org = createTestOrg();
       const owner = createTestUser();
       const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
@@ -330,6 +333,38 @@ describe('MembershipService', () => {
       const result = await service.removeMember({
         userId: admin.id,
         organizationId: org.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it('allows the owner to remove the last admin', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(admin);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+      await membershipStore.save(
+        createTestMembership({
+          id: 'admin-membership',
+          userId: admin.id,
+          organizationId: org.id,
+          role: 'admin',
+        })
+      );
+
+      const result = await service.removeMember({
+        userId: admin.id,
+        organizationId: org.id,
+        actorUserId: owner.id,
       });
 
       expect(result.isOk()).toBe(true);
@@ -443,6 +478,38 @@ describe('MembershipService', () => {
       });
 
       expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    });
+
+    it('allows demoting the last admin when an owner remains', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser({ id: 'owner-user', email: 'owner@example.com' });
+      const admin = createTestUser();
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(admin);
+      await membershipStore.save(
+        createTestMembership({
+          id: 'owner-membership',
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+      await membershipStore.save(
+        createTestMembership({
+          userId: admin.id,
+          organizationId: org.id,
+          role: 'admin',
+        })
+      );
+
+      const result = await service.changeRole({
+        organizationId: org.id,
+        userId: admin.id,
+        newRole: 'member',
+      });
+
+      expect(result.isOk() && result.value.role).toBe('member');
     });
 
     it('returns LAST_ADMIN when demoting the only admin of an ownerless workspace', async () => {

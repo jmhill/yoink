@@ -158,7 +158,7 @@ export class LastAdminError extends DslError {
 
 export class OwnerMustTransferError extends DslError {
   constructor() {
-    super('Transfer ownership first');
+    super('Transfer ownership first. Ask an admin of the whole app to change the owner.');
   }
 }
 

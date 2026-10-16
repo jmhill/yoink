@@ -108,7 +108,7 @@ export const registerOrganizationRoutes = async (
             if (error.type === 'LAST_ADMIN') {
               return {
                 status: 400 as const,
-                body: { message: 'Cannot leave as the last admin. Transfer ownership first.' },
+                body: { message: 'Cannot leave as the last admin' },
               };
             }
             if (error.type === 'OWNER_MUST_TRANSFER') {
@@ -232,6 +232,12 @@ export const registerOrganizationRoutes = async (
                 body: { message: 'Member not found' },
               };
             }
+            if (error.type === 'CANNOT_LEAVE_PERSONAL_ORG') {
+              return {
+                status: 400 as const,
+                body: { message: 'Cannot remove a member from a personal workspace' },
+              };
+            }
             if (error.type === 'LAST_ADMIN') {
               return {
                 status: 400 as const,
@@ -240,7 +246,7 @@ export const registerOrganizationRoutes = async (
             }
             if (error.type === 'OWNER_MUST_TRANSFER') {
               return {
-                status: 403 as const,
+                status: 409 as const,
                 body: { message: error.message, code: error.type },
               };
             }

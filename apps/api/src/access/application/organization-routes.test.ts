@@ -503,7 +503,7 @@ describe('organization routes', () => {
   });
 
   describe('DELETE /api/organizations/:organizationId/members/:userId', () => {
-    it('returns 403 with Transfer ownership first when an admin removes the owner', async () => {
+    it('returns 403 with insufficient permissions when an admin removes the owner', async () => {
       const response = await app.inject({
         method: 'DELETE',
         url: `/api/organizations/${teamOrg.id}/members/${teamOwner.id}`,
@@ -511,7 +511,18 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Transfer ownership first');
+      expect(response.json().message).toContain('Insufficient permissions');
+    });
+
+    it('returns 400 when removing a member from a personal workspace', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${personalOrg.id}/members/${testUser.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toMatch(/personal/i);
     });
   });
 

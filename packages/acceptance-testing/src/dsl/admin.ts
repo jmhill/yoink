@@ -50,4 +50,17 @@ export type Admin = {
 
   // Invitation management
   createInvitation(organizationId: string, input?: CreateInvitationInput): Promise<Invitation>;
+
+  /**
+   * Admin-panel UI. Playwright only — HTTP throws UnsupportedOperationError.
+   */
+  openOrganization(organizationId: string): Promise<void>;
+  makeOwner(userId: string): Promise<void>;
+  makeAdmin(userId: string): Promise<void>;
+  shouldSeeMemberRole(userId: string, role: string): Promise<void>;
+  shouldSeeMemberError(userId: string, pattern: string | RegExp): Promise<void>;
+  shouldNotSeeMakeAdmin(userId: string): Promise<void>;
+  useMobileViewport(): Promise<void>;
+  useDesktopViewport(): Promise<void>;
+  saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
 };

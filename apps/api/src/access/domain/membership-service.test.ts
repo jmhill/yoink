@@ -272,13 +272,13 @@ describe('MembershipService', () => {
       expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');
     });
 
-    it('returns OWNER_MUST_TRANSFER when another member tries to remove the owner', async () => {
+    it('returns INSUFFICIENT_PERMISSIONS when another member tries to remove the owner', async () => {
       const org = createTestOrg();
       const owner = createTestUser();
-      const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
+      const member = createTestUser({ id: 'plain-member', email: 'member@example.com' });
       await organizationStore.save(org);
       await userStore.save(owner);
-      await userStore.save(admin);
+      await userStore.save(member);
       await membershipStore.save(
         createTestMembership({
           userId: owner.id,
@@ -288,19 +288,20 @@ describe('MembershipService', () => {
       );
       await membershipStore.save(
         createTestMembership({
-          id: 'admin-membership',
-          userId: admin.id,
+          id: 'member-membership',
+          userId: member.id,
           organizationId: org.id,
-          role: 'admin',
+          role: 'member',
         })
       );
 
       const result = await service.removeMember({
         userId: owner.id,
         organizationId: org.id,
+        actorUserId: member.id,
       });
 
-      expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
+      expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
     });
 
     it('allows an admin to leave when an owner remains', async () => {

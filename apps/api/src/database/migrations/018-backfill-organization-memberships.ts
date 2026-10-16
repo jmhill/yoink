@@ -8,8 +8,8 @@ import type { Migration } from '../types.js';
  *
  * For each user without any memberships:
  * - Creates a membership in their organization_id
- * - Sets role to 'owner' (existing users own their workspace; one owner per org)
- * - Sets is_personal_org to true (treat as personal workspace)
+ * - Sets role to 'owner' (existing users own their org)
+ * - Sets is_personal_org to true (treat as personal org)
  * - Uses their created_at as joined_at
  *
  * This migration is idempotent - users who already have memberships are skipped.

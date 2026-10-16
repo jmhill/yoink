@@ -518,6 +518,7 @@ function OrganizationDetailPage() {
                             size="sm"
                             variant="outline"
                             data-action="toggle-admin"
+                            hidden={!isHuman}
                             disabled={changeRoleMutation.isPending}
                             onClick={() =>
                               changeRoleMutation.mutate({

@@ -199,8 +199,11 @@ export const createAdminService = (
         if (!org) {
           return errAsync(organizationNotFoundError(organizationId));
         }
-        return userStore.findById(userId).andThen((targetUser) =>
-          organizationMembershipStore.findByOrganizationId(organizationId).andThen((members) => {
+        return userStore.findById(userId).andThen((targetUser) => {
+          if (!targetUser) {
+            return errAsync(userNotFoundError(userId));
+          }
+          return organizationMembershipStore.findByOrganizationId(organizationId).andThen((members) => {
             const decision = decideSetOwner({
               command: { organizationId, userId },
               members,
@@ -209,14 +212,11 @@ export const createAdminService = (
             if (decision.isErr()) {
               return errAsync(decision.error);
             }
-            return organizationMembershipStore.setOwner(decision.value).andThen(() => {
-              if (!targetUser) {
-                return errAsync(userNotFoundError(userId));
-              }
-              return okAsync({ ...targetUser, role: decision.value.promote.role });
-            });
-          })
-        );
+            return organizationMembershipStore
+              .setOwner(decision.value)
+              .map(() => ({ ...targetUser, role: decision.value.promote.role }));
+          });
+        });
       });
     },
 

@@ -49,12 +49,20 @@ describe('decideRemoveMember', () => {
     }
   });
 
-  it('refuses removing the owner even when another admin exists', () => {
+  it('refuses a member removing the owner with INSUFFICIENT_PERMISSIONS (permission before owner)', () => {
+    const result = decideRemoveMember({
+      command: { userId: owner.userId, organizationId: orgId, actorUserId: member().userId },
+      members: [owner, member()],
+    });
+    expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
+  });
+
+  it('refuses an admin removing the owner with INSUFFICIENT_PERMISSIONS (permission before owner)', () => {
     const result = decideRemoveMember({
       command: { userId: owner.userId, organizationId: orgId, actorUserId: admin.userId },
       members: [owner, admin],
     });
-    expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
+    expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
   });
 
   it('refuses leaving a personal workspace', () => {
@@ -80,6 +88,14 @@ describe('decideRemoveMember', () => {
       members: [owner, admin],
     });
     expect(result.isOk()).toBe(true);
+  });
+
+  it('refuses a member removing the last admin of an ownerless workspace with INSUFFICIENT_PERMISSIONS', () => {
+    const result = decideRemoveMember({
+      command: { userId: admin.userId, organizationId: orgId, actorUserId: member().userId },
+      members: [admin, member()],
+    });
+    expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
   });
 
   it('refuses a member removing anyone', () => {

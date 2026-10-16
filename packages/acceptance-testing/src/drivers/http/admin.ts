@@ -7,7 +7,12 @@ import type {
   CreateTokenResult,
   CreateInvitationInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  UnsupportedOperationError,
+} from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
 /**
@@ -267,5 +272,33 @@ export const createHttpAdmin = (
       throw new Error(`Failed to create invitation: ${response.body}`);
     }
     return response.json<Invitation>();
+  },
+
+  async openOrganization() {
+    throw new UnsupportedOperationError('openOrganization', 'http');
+  },
+  async makeOwner() {
+    throw new UnsupportedOperationError('makeOwner', 'http');
+  },
+  async makeAdmin() {
+    throw new UnsupportedOperationError('makeAdmin', 'http');
+  },
+  async shouldSeeMemberRole() {
+    throw new UnsupportedOperationError('shouldSeeMemberRole', 'http');
+  },
+  async shouldSeeMemberError() {
+    throw new UnsupportedOperationError('shouldSeeMemberError', 'http');
+  },
+  async shouldNotSeeMakeAdmin() {
+    throw new UnsupportedOperationError('shouldNotSeeMakeAdmin', 'http');
+  },
+  async useMobileViewport() {
+    throw new UnsupportedOperationError('useMobileViewport', 'http');
+  },
+  async useDesktopViewport() {
+    throw new UnsupportedOperationError('useDesktopViewport', 'http');
+  },
+  async saveWalkthroughScreenshot() {
+    throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
   },
 });

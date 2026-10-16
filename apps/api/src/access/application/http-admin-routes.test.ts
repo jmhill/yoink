@@ -408,6 +408,47 @@ describe('admin HTTP routes', () => {
       ).toEqual(expect.arrayContaining([expect.objectContaining({ id: userId, role: 'owner' })]));
     });
 
+    it('returns 404 when the set-owner target user does not exist', async () => {
+      const cookies = await loginAdmin();
+      const org = await app.inject({
+        method: 'POST',
+        url: '/api/admin/organizations',
+        cookies,
+        payload: { name: 'Missing user' },
+      });
+      const { id: orgId } = org.json<{ id: string }>();
+
+      const missing = await app.inject({
+        method: 'PUT',
+        url: `/api/admin/organizations/${orgId}/owner`,
+        cookies,
+        payload: { userId: UNKNOWN_USER_ID },
+      });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json().message).toBe('User not found');
+    });
+
+    it('returns 400 when the set-owner target is not a workspace member', async () => {
+      const cookies = await loginAdmin();
+      const org = await app.inject({
+        method: 'POST',
+        url: '/api/admin/organizations',
+        cookies,
+        payload: { name: 'Non-member owner' },
+      });
+      const { id: orgId } = org.json<{ id: string }>();
+
+      const outsider = await app.inject({
+        method: 'PUT',
+        url: `/api/admin/organizations/${orgId}/owner`,
+        cookies,
+        payload: { userId: TEST_USER_ID },
+      });
+      expect(outsider.statusCode).toBe(400);
+      expect(outsider.json().code).toBe('TARGET_NOT_WORKSPACE_MEMBER');
+      expect(outsider.json().message).toMatch(/member/i);
+    });
+
     it('switches a member to admin and back when an owner remains', async () => {
       const cookies = await loginAdmin();
       const org = await app.inject({

@@ -45,7 +45,9 @@ const decideRemoveOthersPermission = (
 };
 
 /**
- * Leave or remove. Owner cannot leave or be removed (decideOwnerRemains).
+ * Leave or remove. Permission is checked before owner/last-admin so a
+ * member gets INSUFFICIENT_PERMISSIONS, not OWNER_MUST_TRANSFER.
+ * Owner cannot leave or be removed (decideOwnerRemains).
  * Personal-workspace rule is unchanged. Last-admin only on ownerless workspaces.
  */
 export const decideRemoveMember = ({
@@ -63,15 +65,6 @@ export const decideRemoveMember = ({
     return err(cannotLeavePersonalOrgError(membership.userId, membership.organizationId));
   }
 
-  const ownerCheck = decideOwnerRemains(members, membershipsWithout(members, membership.userId));
-  if (ownerCheck.isErr()) {
-    return err(ownerCheck.error);
-  }
-
-  if (lastAdminBlocksChange(membership, members)) {
-    return err(lastAdminError(membership.organizationId));
-  }
-
   const actorUserId = command.actorUserId;
   if (actorUserId !== undefined && actorUserId !== command.userId) {
     const actor = members.find((entry) => entry.userId === actorUserId) ?? null;
@@ -82,6 +75,15 @@ export const decideRemoveMember = ({
     if (permission.isErr()) {
       return err(permission.error);
     }
+  }
+
+  const ownerCheck = decideOwnerRemains(members, membershipsWithout(members, membership.userId));
+  if (ownerCheck.isErr()) {
+    return err(ownerCheck.error);
+  }
+
+  if (lastAdminBlocksChange(membership, members)) {
+    return err(lastAdminError(membership.organizationId));
   }
 
   return ok({ membership });

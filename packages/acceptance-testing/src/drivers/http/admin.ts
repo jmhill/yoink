@@ -295,6 +295,21 @@ export const createHttpAdmin = (
   async shouldNotSeeMakeOwner() {
     throw new UnsupportedOperationError('shouldNotSeeMakeOwner', 'http');
   },
+  async shouldSeeMakeOwner() {
+    throw new UnsupportedOperationError('shouldSeeMakeOwner', 'http');
+  },
+  async shouldNotSeeNamedUser() {
+    throw new UnsupportedOperationError('shouldNotSeeNamedUser', 'http');
+  },
+  async openCreateUser() {
+    throw new UnsupportedOperationError('openCreateUser', 'http');
+  },
+  async submitCreateUser() {
+    throw new UnsupportedOperationError('submitCreateUser', 'http');
+  },
+  async shouldSeeCreateUserError() {
+    throw new UnsupportedOperationError('shouldSeeCreateUserError', 'http');
+  },
   async revealMember() {
     throw new UnsupportedOperationError('revealMember', 'http');
   },

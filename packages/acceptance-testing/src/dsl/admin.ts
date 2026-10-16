@@ -61,6 +61,16 @@ export type Admin = {
   shouldSeeMemberError(userId: string, pattern: string | RegExp): Promise<void>;
   shouldNotSeeMakeAdmin(userId: string): Promise<void>;
   shouldNotSeeMakeOwner(userId: string): Promise<void>;
+  shouldSeeMakeOwner(userId: string): Promise<void>;
+  shouldNotSeeNamedUser(name: string): Promise<void>;
+  openCreateUser(): Promise<void>;
+  submitCreateUser(input: {
+    email: string;
+    name?: string;
+    kind: 'human' | 'agent';
+    role: 'member' | 'admin';
+  }): Promise<void>;
+  shouldSeeCreateUserError(pattern: string | RegExp): Promise<void>;
   revealMember(userId: string): Promise<void>;
   useMobileViewport(): Promise<void>;
   useDesktopViewport(): Promise<void>;

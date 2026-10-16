@@ -21,7 +21,7 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { tsrAdmin } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { WifiOff, Mail } from 'lucide-react';
+import { WifiOff, Mail, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
@@ -38,6 +38,12 @@ function OrganizationDetailPage() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [memberErrors, setMemberErrors] = useState<Record<string, string>>({});
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [createUserEmail, setCreateUserEmail] = useState('');
+  const [createUserName, setCreateUserName] = useState('');
+  const [createUserKind, setCreateUserKind] = useState<'human' | 'agent'>('human');
+  const [createUserRole, setCreateUserRole] = useState<'member' | 'admin'>('member');
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
   const tsrQueryClient = tsrAdmin.useQueryClient();
 
   const invalidateMembers = () => {
@@ -103,6 +109,44 @@ function OrganizationDetailPage() {
       body: {
         role: 'member',
         ...(inviteEmail ? { email: inviteEmail } : {}),
+      },
+    });
+  };
+
+  const resetCreateUserForm = () => {
+    setCreateUserEmail('');
+    setCreateUserName('');
+    setCreateUserKind('human');
+    setCreateUserRole('member');
+    setCreateUserError(null);
+  };
+
+  const createUserMutation = tsrAdmin.createUser.useMutation({
+    onSuccess: (data) => {
+      if (data.status === 201) {
+        invalidateMembers();
+        resetCreateUserForm();
+        setIsCreateUserDialogOpen(false);
+        toast.success('User created');
+        return;
+      }
+      setCreateUserError(errorMessage(data.body, 'Failed to create user'));
+    },
+    onError: (err) => {
+      setCreateUserError(mutationErrorMessage(err, 'Failed to create user'));
+    },
+  });
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateUserError(null);
+    createUserMutation.mutate({
+      params: { organizationId: orgId },
+      body: {
+        email: createUserEmail,
+        role: createUserRole,
+        kind: createUserKind,
+        ...(createUserName.trim() ? { name: createUserName.trim() } : {}),
       },
     });
   };
@@ -344,7 +388,90 @@ function OrganizationDetailPage() {
           <h1 className="text-2xl font-bold">{organization.name}</h1>
           <p className="text-gray-500">Created {formatDate(organization.createdAt)}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Dialog
+            open={isCreateUserDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateUserDialogOpen(open);
+              if (!open) {
+                resetCreateUserForm();
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" data-action="create-user">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleCreateUser}>
+                <DialogHeader>
+                  <DialogTitle>Create User</DialogTitle>
+                  <DialogDescription>
+                    Add a person or bot to {organization.name}. A bot cannot be an admin or owner.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserEmail">Email</Label>
+                    <Input
+                      id="createUserEmail"
+                      type="email"
+                      value={createUserEmail}
+                      onChange={(e) => setCreateUserEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserName">Name (optional)</Label>
+                    <Input
+                      id="createUserName"
+                      type="text"
+                      value={createUserName}
+                      onChange={(e) => setCreateUserName(e.target.value)}
+                      placeholder="Display name"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserKind">Kind</Label>
+                    <select
+                      id="createUserKind"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={createUserKind}
+                      onChange={(e) => setCreateUserKind(e.target.value as 'human' | 'agent')}
+                    >
+                      <option value="human">Human</option>
+                      <option value="agent">Bot</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserRole">Role</Label>
+                    <select
+                      id="createUserRole"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={createUserRole}
+                      onChange={(e) => setCreateUserRole(e.target.value as 'member' | 'admin')}
+                    >
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  {createUserError ? (
+                    <p className="text-sm text-red-600" data-create-user-error="">
+                      {createUserError}
+                    </p>
+                  ) : null}
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={createUserMutation.isPending}>
+                    {createUserMutation.isPending ? 'Creating...' : 'Create User'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={openRenameDialog}>

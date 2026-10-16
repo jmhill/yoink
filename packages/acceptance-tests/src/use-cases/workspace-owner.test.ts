@@ -113,11 +113,23 @@ usingDrivers(['playwright'] as const, (ctx) => {
           kind: 'agent',
           name: 'Lane',
         });
+        const otherOrg = await ctx.admin.createOrganization(`other-${stamp}`);
+        await ctx.admin.createUser(otherOrg.id, `outsider-${stamp}@example.com`, {
+          name: 'Outsider',
+          role: 'member',
+        });
 
         await ctx.admin.openOrganization(org.id);
+        await ctx.admin.shouldNotSeeNamedUser('Outsider');
+        await ctx.admin.shouldSeeMakeOwner(justin.id);
+        await ctx.admin.shouldSeeMakeOwner(polly.id);
         await ctx.admin.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'admin_before_no_owner',
+        });
+        await ctx.admin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'non_member_no_make_owner',
         });
 
         await ctx.admin.makeOwner(justin.id);
@@ -149,10 +161,99 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'bot_row_no_buttons',
         });
+
+        await ctx.admin.openCreateUser();
+        await ctx.admin.submitCreateUser({
+          email: `bot-admin-${stamp}@example.com`,
+          name: 'Nope',
+          kind: 'agent',
+          role: 'admin',
+        });
+        await ctx.admin.shouldSeeCreateUserError('A bot cannot be an admin');
+        await ctx.admin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'bot_create_admin_refused',
+        });
       };
 
       await drivePanel('phone');
       await drivePanel('desktop');
+    }, 180_000);
+
+    it('hides Remove on the owner and other admins, and hides all Remove for members', async () => {
+      const stamp = Date.now();
+      const org = await ctx.admin.createOrganization(`members-remove-${stamp}`);
+      const ownerUser = await ctx.admin.createUser(org.id, `owner-${stamp}@example.com`, {
+        name: 'Owner Pat',
+        role: 'member',
+      });
+      await ctx.admin.setOrganizationOwner(org.id, ownerUser.id);
+      const otherAdminUser = await ctx.admin.createUser(org.id, `other-admin-${stamp}@example.com`, {
+        name: 'Other Admin',
+        role: 'admin',
+      });
+      const removableUser = await ctx.admin.createUser(org.id, `removable-${stamp}@example.com`, {
+        name: 'Removable',
+        role: 'member',
+      });
+
+      const adminInvite = await ctx.admin.createInvitation(org.id, { role: 'admin' });
+      const workspaceAdmin = await ctx.createActorWithInvitation(
+        adminInvite.code,
+        `ws-admin-${stamp}@example.com`
+      );
+      const memberInvite = await ctx.admin.createInvitation(org.id, { role: 'member' });
+      const member = await ctx.createActorWithInvitation(
+        memberInvite.code,
+        `ws-member-${stamp}@example.com`
+      );
+
+      await workspaceAdmin.switchOrganization(org.id);
+      await member.switchOrganization(org.id);
+
+      const driveAdminMembers = async (viewport: 'phone' | 'desktop') => {
+        if (viewport === 'phone') {
+          await workspaceAdmin.useMobileViewport();
+        } else {
+          await workspaceAdmin.useDesktopViewport();
+        }
+        await workspaceAdmin.openOrganizationSettings();
+        await workspaceAdmin.shouldSeeMemberRow(ownerUser.email);
+        await workspaceAdmin.shouldNotSeeRemoveOnMember(ownerUser.email);
+        await workspaceAdmin.shouldNotSeeRemoveOnMember(otherAdminUser.email);
+        await workspaceAdmin.shouldSeeRemoveOnMember(removableUser.email);
+        await workspaceAdmin.shouldSeeOwnerCannotBeRemoved();
+        await workspaceAdmin.revealMembersSection();
+        await workspaceAdmin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'admin_members_no_remove',
+        });
+        await workspaceAdmin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'owner_cannot_be_removed',
+        });
+      };
+
+      const driveMemberMembers = async (viewport: 'phone' | 'desktop') => {
+        if (viewport === 'phone') {
+          await member.useMobileViewport();
+        } else {
+          await member.useDesktopViewport();
+        }
+        await member.openOrganizationSettings();
+        await member.shouldSeeMemberRow(ownerUser.email);
+        await member.shouldNotSeeAnyRemoveButtons();
+        await member.revealMembersSection();
+        await member.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'member_members_no_remove',
+        });
+      };
+
+      await driveAdminMembers('phone');
+      await driveAdminMembers('desktop');
+      await driveMemberMembers('phone');
+      await driveMemberMembers('desktop');
     }, 180_000);
   });
 });

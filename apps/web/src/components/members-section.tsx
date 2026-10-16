@@ -216,6 +216,14 @@ export function MembersSection({
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {member.role === 'owner' && currentUserRole !== 'member' ? (
+                        <p
+                          className="max-w-[14rem] text-right text-sm text-muted-foreground"
+                          data-owner-cannot-remove=""
+                        >
+                          The owner can&apos;t be removed. Ownership has to be handed over first.
+                        </p>
+                      ) : null}
                       {canReissue && member.kind === 'agent' && (
                         <Button
                           variant="ghost"

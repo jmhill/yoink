@@ -2,7 +2,12 @@ import { fileURLToPath } from 'node:url';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import type { Admin } from '../../dsl/index.js';
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './page-objects.js';
-import { saveWalkthroughPng, type WalkthroughViewport } from './walkthrough-screenshots.js';
+import {
+  OPEN_DIALOG_CONTENT,
+  saveWalkthroughPng,
+  waitForSettledOpenDialog,
+  type WalkthroughViewport,
+} from './walkthrough-screenshots.js';
 
 export type PlaywrightAdminDependencies = {
   http: Admin;
@@ -108,6 +113,47 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       );
     },
 
+    async shouldSeeMakeOwner(userId: string): Promise<void> {
+      await expect(memberRow(browserPage(), userId).locator('[data-action="make-owner"]')).toBeVisible();
+    },
+
+    async shouldNotSeeNamedUser(name: string): Promise<void> {
+      await expect(browserPage().getByText(name, { exact: true })).toHaveCount(0);
+    },
+
+    async openCreateUser(): Promise<void> {
+      const adminPage = browserPage();
+      await adminPage.locator('[data-action="create-user"]').click();
+      await expect(adminPage.getByRole('heading', { name: 'Create User' })).toBeVisible();
+      await waitForSettledOpenDialog({ page: adminPage });
+    },
+
+    async submitCreateUser(input: {
+      email: string;
+      name?: string;
+      kind: 'human' | 'agent';
+      role: 'member' | 'admin';
+    }): Promise<void> {
+      const adminPage = browserPage();
+      const dialog = adminPage.locator(OPEN_DIALOG_CONTENT);
+      await dialog.getByLabel('Email').fill(input.email);
+      if (input.name !== undefined) {
+        await dialog.getByLabel('Name (optional)').fill(input.name);
+      }
+      await dialog.getByLabel('Kind').selectOption(input.kind);
+      await dialog.getByLabel('Role').selectOption(input.role);
+      await dialog.getByRole('button', { name: 'Create User' }).click();
+    },
+
+    async shouldSeeCreateUserError(pattern: string | RegExp): Promise<void> {
+      const error = browserPage().locator('[data-create-user-error]');
+      await expect(error).toHaveText(pattern);
+      await error.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+      await error.scrollIntoViewIfNeeded();
+    },
+
     async revealMember(userId: string): Promise<void> {
       await memberRow(browserPage(), userId).scrollIntoViewIfNeeded();
     },
@@ -126,6 +172,10 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void> {
       const adminPage = browserPage();
+      const openDialog = adminPage.locator(OPEN_DIALOG_CONTENT);
+      if (await openDialog.isVisible().catch(() => false)) {
+        await waitForSettledOpenDialog({ page: adminPage });
+      }
       await adminPage.mouse.move(0, 0);
       await saveWalkthroughPng({
         page: adminPage,

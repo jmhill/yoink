@@ -3388,6 +3388,30 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('tryLeaveOrganizationFromSettings', 'http');
     },
 
+    async shouldSeeMemberRow(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeMemberRow', 'http');
+    },
+
+    async shouldNotSeeRemoveOnMember(_email: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeRemoveOnMember', 'http');
+    },
+
+    async shouldSeeRemoveOnMember(_email: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRemoveOnMember', 'http');
+    },
+
+    async shouldNotSeeAnyRemoveButtons(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAnyRemoveButtons', 'http');
+    },
+
+    async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOwnerCannotBeRemoved', 'http');
+    },
+
+    async revealMembersSection(): Promise<void> {
+      throw new UnsupportedOperationError('revealMembersSection', 'http');
+    },
+
     async leaveOrganization(_organizationId: string): Promise<void> {
       // Leaving an organization requires session-based auth (not token auth).
       // The HTTP driver uses token auth, so this operation is not supported.

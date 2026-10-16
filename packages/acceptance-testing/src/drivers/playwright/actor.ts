@@ -6140,6 +6140,30 @@ export const createPlaywrightActor = (
       await settingsPage.tryLeaveOrganization(orgName);
     },
 
+    async shouldSeeMemberRow(label: string): Promise<void> {
+      await settingsPage.shouldSeeMemberRow(label);
+    },
+
+    async shouldNotSeeRemoveOnMember(email: string): Promise<void> {
+      await settingsPage.shouldNotSeeRemoveOnMember(email);
+    },
+
+    async shouldSeeRemoveOnMember(email: string): Promise<void> {
+      await settingsPage.shouldSeeRemoveOnMember(email);
+    },
+
+    async shouldNotSeeAnyRemoveButtons(): Promise<void> {
+      await settingsPage.shouldNotSeeAnyRemoveButtons();
+    },
+
+    async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
+      await settingsPage.shouldSeeOwnerCannotBeRemoved();
+    },
+
+    async revealMembersSection(): Promise<void> {
+      await settingsPage.revealMembersSection();
+    },
+
     async leaveOrganization(organizationId: string): Promise<void> {
       const response = await page.request.post(`/api/organizations/${organizationId}/leave`);
 

@@ -338,6 +338,37 @@ export type BrowserActorOperations = {
   tryLeaveOrganizationFromSettings(orgName: string): Promise<void>;
 
   /**
+   * Settings Organization tab: assert this member row is visible.
+   * Human rows are keyed by email.
+   */
+  shouldSeeMemberRow(label: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: this member has no Remove control.
+   */
+  shouldNotSeeRemoveOnMember(email: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: this member has a Remove control.
+   */
+  shouldSeeRemoveOnMember(email: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: no Remove controls on any member.
+   */
+  shouldNotSeeAnyRemoveButtons(): Promise<void>;
+
+  /**
+   * Settings Organization tab: owner row shows the cannot-remove copy.
+   */
+  shouldSeeOwnerCannotBeRemoved(): Promise<void>;
+
+  /**
+   * Scroll the Members list into view for a walkthrough shot.
+   */
+  revealMembersSection(): Promise<void>;
+
+  /**
    * Log out of the current session.
    * Clears credentials and returns to unconfigured state.
    */

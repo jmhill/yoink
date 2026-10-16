@@ -72,7 +72,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     async openOrganization(organizationId: string): Promise<void> {
       const adminPage = await ensureLoggedIn();
       await adminPage.goto(`/admin/organizations/${organizationId}`);
-      await expect(adminPage.getByRole('heading', { name: 'Users' })).toBeVisible();
+      await expect(adminPage.locator('[data-user-id]').first()).toBeVisible();
     },
 
     async makeOwner(userId: string): Promise<void> {

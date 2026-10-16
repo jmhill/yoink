@@ -332,6 +332,48 @@ export type BrowserActorOperations = {
   leaveOrganization(organizationId: string): Promise<void>;
 
   /**
+   * Settings User tab: click Leave on this organization, confirm, and
+   * leave the dialog open showing the refusal (Transfer ownership first…).
+   */
+  tryLeaveOrganizationFromSettings(orgName: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: assert this member row is visible.
+   * Human rows are keyed by email.
+   */
+  shouldSeeMemberRow(label: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: this member has no Remove control.
+   */
+  shouldNotSeeRemoveOnMember(email: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: this member has a Remove control.
+   */
+  shouldSeeRemoveOnMember(email: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: no Remove controls on any member.
+   */
+  shouldNotSeeAnyRemoveButtons(): Promise<void>;
+
+  /**
+   * Settings Organization tab: owner row shows the cannot-remove copy.
+   */
+  shouldSeeOwnerCannotBeRemoved(): Promise<void>;
+
+  /**
+   * Frame the owner-cannot-remove copy for a walkthrough shot.
+   */
+  frameOwnerCannotBeRemoved(): Promise<void>;
+
+  /**
+   * Scroll the Members list into view for a walkthrough shot.
+   */
+  revealMembersSection(): Promise<void>;
+
+  /**
    * Log out of the current session.
    * Clears credentials and returns to unconfigured state.
    */

@@ -82,8 +82,8 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> 
     throw new Error('Failed to seed user');
   }
 
-  // Create membership for the user in the organization
-  // This is the user's personal org, so they are the owner
+  // Create membership for the user in the organization.
+  // This is the user's personal workspace; they are its owner.
   const membershipId = idGenerator.generate();
   const saveMembershipResult = await membershipStore.save({
     id: membershipId,

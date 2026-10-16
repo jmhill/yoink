@@ -9,6 +9,104 @@ import type { AuthMiddleware } from './auth-middleware.js';
 import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 import { principalKindOf } from '../domain/user.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import type { MembershipServiceError } from '../domain/organization-errors.js';
+
+const storageFailure = (message: string) => ({
+  status: 500 as const,
+  body: { message },
+});
+
+const leaveErrorResponse = (error: MembershipServiceError) => {
+  switch (error.type) {
+    case 'MEMBERSHIP_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Not a member of this organization' },
+      };
+    case 'CANNOT_LEAVE_PERSONAL_ORG':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot leave your personal organization' },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot leave as the last admin' },
+      };
+    case 'OWNER_MUST_TRANSFER':
+    case 'OWNER_CANNOT_BE_REMOVED':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'INSUFFICIENT_PERMISSIONS':
+    case 'ALREADY_MEMBER':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'NOT_CURRENT_OWNER':
+    case 'SECOND_OWNER':
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'USER_NOT_FOUND':
+    case 'ORGANIZATION_NOT_FOUND':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return storageFailure('Failed to leave organization');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageFailure('Failed to leave organization');
+    }
+  }
+};
+
+const removeMemberErrorResponse = (error: MembershipServiceError) => {
+  switch (error.type) {
+    case 'MEMBERSHIP_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Member not found' },
+      };
+    case 'CANNOT_LEAVE_PERSONAL_ORG':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot remove a member from a personal workspace' },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 400 as const,
+        body: { message: 'Cannot remove the last admin' },
+      };
+    case 'OWNER_MUST_TRANSFER':
+    case 'OWNER_CANNOT_BE_REMOVED':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'INSUFFICIENT_PERMISSIONS':
+      return {
+        status: 403 as const,
+        body: { message: 'Insufficient permissions to remove members' },
+      };
+    case 'ALREADY_MEMBER':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'NOT_CURRENT_OWNER':
+    case 'SECOND_OWNER':
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'USER_NOT_FOUND':
+    case 'ORGANIZATION_NOT_FOUND':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return storageFailure('Failed to remove member');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageFailure('Failed to remove member');
+    }
+  }
+};
 
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
@@ -92,30 +190,7 @@ export const registerOrganizationRoutes = async (
             status: 200 as const,
             body: { success: true as const },
           }),
-          (error) => {
-            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
-              return {
-                status: 404 as const,
-                body: { message: 'Not a member of this organization' },
-              };
-            }
-            if (error.type === 'CANNOT_LEAVE_PERSONAL_ORG') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot leave your personal organization' },
-              };
-            }
-            if (error.type === 'LAST_ADMIN') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot leave as the last admin. Transfer ownership first.' },
-              };
-            }
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to leave organization' },
-            };
-          }
+          (error) => leaveErrorResponse(error)
         );
       },
 
@@ -201,7 +276,6 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        // Cannot remove self - use leave instead
         if (targetUserId === session.userId) {
           return {
             status: 400 as const,
@@ -209,73 +283,10 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        // Get caller's membership to check permissions
-        const callerMembershipResult = await membershipService.getMembership({
-          userId: session.userId,
-          organizationId,
-        });
-
-        if (callerMembershipResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to check membership' },
-          };
-        }
-
-        const callerMembership = callerMembershipResult.value;
-        if (!callerMembership) {
-          return {
-            status: 403 as const,
-            body: { message: 'Not a member of this organization' },
-          };
-        }
-
-        // Get target's membership
-        const targetMembershipResult = await membershipService.getMembership({
-          userId: targetUserId,
-          organizationId,
-        });
-
-        if (targetMembershipResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to check target membership' },
-          };
-        }
-
-        const targetMembership = targetMembershipResult.value;
-        if (!targetMembership) {
-          return {
-            status: 404 as const,
-            body: { message: 'User is not a member of this organization' },
-          };
-        }
-
-        // Permission checks:
-        // - owner can remove anyone (except themselves, already checked)
-        // - admin can only remove members (not other admins)
-        // - member cannot remove anyone
-        const callerRole = callerMembership.role;
-        const targetRole = targetMembership.role;
-
-        if (callerRole === 'member') {
-          return {
-            status: 403 as const,
-            body: { message: 'Insufficient permissions to remove members' },
-          };
-        }
-
-        if (callerRole === 'admin' && (targetRole === 'admin' || targetRole === 'owner')) {
-          return {
-            status: 403 as const,
-            body: { message: 'Admins can only remove members, not other admins or owners' },
-          };
-        }
-
-        // Perform removal
         const result = await membershipService.removeMember({
           organizationId,
           userId: targetUserId,
+          actorUserId: session.userId,
         });
 
         return result.match(
@@ -283,24 +294,7 @@ export const registerOrganizationRoutes = async (
             status: 204 as const,
             body: undefined,
           }),
-          (error) => {
-            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
-              return {
-                status: 404 as const,
-                body: { message: 'Member not found' },
-              };
-            }
-            if (error.type === 'LAST_ADMIN') {
-              return {
-                status: 400 as const,
-                body: { message: 'Cannot remove the last admin' },
-              };
-            }
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to remove member' },
-            };
-          }
+          (error) => removeMemberErrorResponse(error)
         );
       },
 

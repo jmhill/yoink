@@ -34,6 +34,12 @@ export type Admin = {
   ): Promise<User>;
   listUsers(organizationId: string): Promise<User[]>;
   getUser(id: string): Promise<User>;
+  setOrganizationOwner(organizationId: string, userId: string): Promise<User>;
+  changeMemberRole(
+    organizationId: string,
+    userId: string,
+    role: 'admin' | 'member'
+  ): Promise<User>;
   updateUser(id: string, options: { name: string }): Promise<User>;
   updateProjectCreatedAt(id: string, createdAt: string): Promise<{ id: string; createdAt: string }>;
 
@@ -44,4 +50,30 @@ export type Admin = {
 
   // Invitation management
   createInvitation(organizationId: string, input?: CreateInvitationInput): Promise<Invitation>;
+
+  /**
+   * Admin-panel UI. Playwright only — HTTP throws UnsupportedOperationError.
+   */
+  openOrganization(organizationId: string): Promise<void>;
+  makeOwner(userId: string): Promise<void>;
+  makeAdmin(userId: string): Promise<void>;
+  shouldSeeMemberRole(userId: string, role: string): Promise<void>;
+  shouldSeeMemberError(userId: string, pattern: string | RegExp): Promise<void>;
+  shouldNotSeeMakeAdmin(userId: string): Promise<void>;
+  shouldNotSeeMakeOwner(userId: string): Promise<void>;
+  shouldSeeMakeOwner(userId: string): Promise<void>;
+  shouldNotSeeNamedUser(name: string): Promise<void>;
+  openCreateUser(): Promise<void>;
+  submitCreateUser(input: {
+    email: string;
+    name?: string;
+    kind: 'human' | 'agent';
+    role: 'member' | 'admin';
+  }): Promise<void>;
+  shouldSeeCreateUserError(pattern: string | RegExp): Promise<void>;
+  revealMember(userId: string): Promise<void>;
+  frameMember(userId: string): Promise<void>;
+  useMobileViewport(): Promise<void>;
+  useDesktopViewport(): Promise<void>;
+  saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
 };

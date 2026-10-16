@@ -11,14 +11,6 @@ import {
   CardTitle,
 } from '@yoink/ui-base/components/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@yoink/ui-base/components/table';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -28,8 +20,9 @@ import {
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
 import { tsrAdmin } from '@/api/client';
+import { parseCreateUserKind, parseCreateUserRole } from '@/lib/parse-create-user-fields';
 import { isFetchError } from '@ts-rest/react-query/v5';
-import { WifiOff, Mail } from 'lucide-react';
+import { WifiOff, Mail, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/organizations/$orgId')({
@@ -45,7 +38,40 @@ function OrganizationDetailPage() {
   const [isInviteResultDialogOpen, setIsInviteResultDialogOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [memberErrors, setMemberErrors] = useState<Record<string, string>>({});
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [createUserEmail, setCreateUserEmail] = useState('');
+  const [createUserName, setCreateUserName] = useState('');
+  const [createUserKind, setCreateUserKind] = useState<'human' | 'agent'>('human');
+  const [createUserRole, setCreateUserRole] = useState<'member' | 'admin'>('member');
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
   const tsrQueryClient = tsrAdmin.useQueryClient();
+
+  const invalidateMembers = () => {
+    tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
+  };
+
+  const errorMessage = (body: unknown, fallback: string): string => {
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'message' in body &&
+      typeof body.message === 'string'
+    ) {
+      return body.message;
+    }
+    return fallback;
+  };
+
+  const mutationErrorMessage = (err: unknown, fallback: string): string => {
+    if (isFetchError(err)) {
+      return 'Network error. Please check your connection.';
+    }
+    if (typeof err === 'object' && err !== null && 'body' in err) {
+      return errorMessage(err.body, fallback);
+    }
+    return fallback;
+  };
 
   const { data: orgData, isPending: orgPending, error: orgError } = tsrAdmin.getOrganization.useQuery({
     queryKey: ['organizations', orgId],
@@ -84,6 +110,44 @@ function OrganizationDetailPage() {
       body: {
         role: 'member',
         ...(inviteEmail ? { email: inviteEmail } : {}),
+      },
+    });
+  };
+
+  const resetCreateUserForm = () => {
+    setCreateUserEmail('');
+    setCreateUserName('');
+    setCreateUserKind('human');
+    setCreateUserRole('member');
+    setCreateUserError(null);
+  };
+
+  const createUserMutation = tsrAdmin.createUser.useMutation({
+    onSuccess: (data) => {
+      if (data.status === 201) {
+        invalidateMembers();
+        resetCreateUserForm();
+        setIsCreateUserDialogOpen(false);
+        toast.success('User created');
+        return;
+      }
+      setCreateUserError(errorMessage(data.body, 'Failed to create user'));
+    },
+    onError: (err) => {
+      setCreateUserError(mutationErrorMessage(err, 'Failed to create user'));
+    },
+  });
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateUserError(null);
+    createUserMutation.mutate({
+      params: { organizationId: orgId },
+      body: {
+        email: createUserEmail,
+        role: createUserRole,
+        kind: createUserKind,
+        ...(createUserName.trim() ? { name: createUserName.trim() } : {}),
       },
     });
   };
@@ -181,6 +245,56 @@ function OrganizationDetailPage() {
     },
   });
 
+  const setOwnerMutation = tsrAdmin.setOrganizationOwner.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.status === 200) {
+        setMemberErrors((current) => {
+          const next = { ...current };
+          delete next[variables.body.userId];
+          return next;
+        });
+        invalidateMembers();
+        toast.success('Owner updated');
+        return;
+      }
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.body.userId]: errorMessage(data.body, 'Failed to set owner'),
+      }));
+    },
+    onError: (err, variables) => {
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.body.userId]: mutationErrorMessage(err, 'Failed to set owner'),
+      }));
+    },
+  });
+
+  const changeRoleMutation = tsrAdmin.changeMemberRole.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.status === 200) {
+        setMemberErrors((current) => {
+          const next = { ...current };
+          delete next[variables.params.userId];
+          return next;
+        });
+        invalidateMembers();
+        toast.success('Role updated');
+        return;
+      }
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.params.userId]: errorMessage(data.body, 'Failed to change role'),
+      }));
+    },
+    onError: (err, variables) => {
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.params.userId]: mutationErrorMessage(err, 'Failed to change role'),
+      }));
+    },
+  });
+
   const handleRenameOrganization = (e: React.FormEvent) => {
     e.preventDefault();
     updateOrgMutation.mutate({
@@ -275,7 +389,100 @@ function OrganizationDetailPage() {
           <h1 className="text-2xl font-bold">{organization.name}</h1>
           <p className="text-gray-500">Created {formatDate(organization.createdAt)}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Dialog
+            open={isCreateUserDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateUserDialogOpen(open);
+              if (!open) {
+                resetCreateUserForm();
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" data-action="create-user">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleCreateUser}>
+                <DialogHeader>
+                  <DialogTitle>Create User</DialogTitle>
+                  <DialogDescription>
+                    Add a person or bot to {organization.name}. A bot cannot be an admin or owner.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserEmail">Email</Label>
+                    <Input
+                      id="createUserEmail"
+                      type="email"
+                      value={createUserEmail}
+                      onChange={(e) => setCreateUserEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserName">Name (optional)</Label>
+                    <Input
+                      id="createUserName"
+                      type="text"
+                      value={createUserName}
+                      onChange={(e) => setCreateUserName(e.target.value)}
+                      placeholder="Display name"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserKind">Kind</Label>
+                    <select
+                      id="createUserKind"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={createUserKind}
+                      onChange={(e) => {
+                        const kind = parseCreateUserKind(e.target.value);
+                        if (kind) {
+                          setCreateUserKind(kind);
+                        }
+                      }}
+                    >
+                      <option value="human">Human</option>
+                      <option value="agent">Bot</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="createUserRole">Role</Label>
+                    <select
+                      id="createUserRole"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={createUserRole}
+                      onChange={(e) => {
+                        const role = parseCreateUserRole(e.target.value);
+                        if (role) {
+                          setCreateUserRole(role);
+                        }
+                      }}
+                    >
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  {createUserError ? (
+                    <p className="text-sm text-red-600" data-create-user-error="">
+                      {createUserError}
+                    </p>
+                  ) : null}
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={createUserMutation.isPending}>
+                    {createUserMutation.isPending ? 'Creating...' : 'Create User'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" onClick={openRenameDialog}>
@@ -376,7 +583,7 @@ function OrganizationDetailPage() {
         <CardHeader>
           <CardTitle>Users</CardTitle>
           <CardDescription>
-            Click on a user to manage their API tokens. Invite new users with the button above.
+            Each workspace has at most one owner. Set the owner here; the previous owner becomes an admin.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -385,32 +592,92 @@ function OrganizationDetailPage() {
               No users yet. Invite someone to get started.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow
+            <div className="space-y-3">
+              <div className="hidden text-sm font-medium text-muted-foreground md:grid md:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,1fr)] md:gap-3">
+                <div>Email</div>
+                <div>Kind</div>
+                <div>Role</div>
+                <div>Actions</div>
+              </div>
+              {users.map((user) => {
+                const kind = user.kind ?? 'human';
+                const isHuman = kind !== 'agent';
+                const isOwner = user.role === 'owner';
+                return (
+                  <div
                     key={user.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() =>
-                      navigate({
-                        to: '/users/$userId',
-                        params: { userId: user.id },
-                        search: { orgId },
-                      })
-                    }
+                    data-user-id={user.id}
+                    data-role={user.role ?? ''}
+                    className="grid gap-2 rounded-md border p-3 md:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,1fr)] md:items-start md:border-0 md:p-0 md:py-3"
                   >
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    <button
+                      type="button"
+                      className="break-all text-left font-medium hover:underline"
+                      onClick={() =>
+                        navigate({
+                          to: '/users/$userId',
+                          params: { userId: user.id },
+                          search: { orgId },
+                        })
+                      }
+                    >
+                      {user.name ?? user.email}
+                    </button>
+                    <div className="text-sm text-gray-500 md:text-gray-900">
+                      <span className="md:hidden">Kind: </span>
+                      {isHuman ? 'Human' : 'Bot'}
+                    </div>
+                    <div className="text-sm capitalize text-gray-500 md:text-gray-900">
+                      <span className="md:hidden">Role: </span>
+                      {user.role ?? '—'}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {isHuman && !isOwner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-action="make-owner"
+                            disabled={setOwnerMutation.isPending}
+                            onClick={() =>
+                              setOwnerMutation.mutate({
+                                params: { id: orgId },
+                                body: { userId: user.id },
+                              })
+                            }
+                          >
+                            Make owner
+                          </Button>
+                        ) : null}
+                        {isHuman && !isOwner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-action="toggle-admin"
+                            disabled={changeRoleMutation.isPending}
+                            onClick={() =>
+                              changeRoleMutation.mutate({
+                                params: { id: orgId, userId: user.id },
+                                body: { role: user.role === 'admin' ? 'member' : 'admin' },
+                              })
+                            }
+                          >
+                            {user.role === 'admin' ? 'Make member' : 'Make admin'}
+                          </Button>
+                        ) : null}
+                      </div>
+                      {memberErrors[user.id] ? (
+                        <p className="text-sm text-red-600" data-member-error={user.id}>
+                          {memberErrors[user.id]}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>

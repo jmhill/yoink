@@ -3,6 +3,7 @@ import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import { adminPublicContract, adminProtectedContract } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
+import type { AdminServiceError } from '../domain/admin-errors.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
 import type { InvitationService } from '../domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
@@ -25,6 +26,100 @@ const storageErrorResponse = (message: string) => ({
   status: 500 as const,
   body: { message },
 });
+
+const setOrganizationOwnerErrorResponse = (error: AdminServiceError) => {
+  switch (error.type) {
+    case 'ORGANIZATION_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Organization not found' },
+      };
+    case 'USER_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'User not found' },
+      };
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'OWNER_MUST_TRANSFER':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+    case 'TOKEN_STORAGE_ERROR':
+    case 'TOKEN_NOT_FOUND':
+    case 'INVALID_TOKEN_NAME':
+    case 'PROJECT_NOT_FOUND':
+    case 'STORAGE_ERROR':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'LAST_ADMIN':
+    case 'MEMBERSHIP_NOT_FOUND':
+      return storageErrorResponse('Failed to set owner');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageErrorResponse('Failed to set owner');
+    }
+  }
+};
+
+const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
+  switch (error.type) {
+    case 'ORGANIZATION_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Organization not found' },
+      };
+    case 'USER_NOT_FOUND':
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'MEMBERSHIP_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Member not found' },
+      };
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'OWNER_MUST_TRANSFER':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 409 as const,
+        body: { message: 'Cannot change the last admin', code: error.type },
+      };
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+    case 'TOKEN_STORAGE_ERROR':
+    case 'TOKEN_NOT_FOUND':
+    case 'INVALID_TOKEN_NAME':
+    case 'PROJECT_NOT_FOUND':
+    case 'STORAGE_ERROR':
+      return storageErrorResponse('Failed to change member role');
+    default: {
+      const _never: never = error;
+      void _never;
+      return storageErrorResponse('Failed to change member role');
+    }
+  }
+};
 
 export const registerAdminRoutes = async (
   app: FastifyInstance,
@@ -205,8 +300,45 @@ export const registerAdminRoutes = async (
                 body: { message: 'Organization not found' },
               };
             }
+            if (error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+              return {
+                status: 400 as const,
+                body: { message: error.message, code: error.type },
+              };
+            }
             return storageErrorResponse('Failed to create user');
           }
+        );
+      },
+
+      setOrganizationOwner: async ({ params, body }) => {
+        const result = await adminService.setOrganizationOwner({
+          organizationId: params.id,
+          userId: body.userId,
+        });
+
+        return result.match(
+          (member) => ({
+            status: 200 as const,
+            body: member,
+          }),
+          (error) => setOrganizationOwnerErrorResponse(error)
+        );
+      },
+
+      changeMemberRole: async ({ params, body }) => {
+        const result = await adminService.changeMemberRole({
+          organizationId: params.id,
+          userId: params.userId,
+          role: body.role,
+        });
+
+        return result.match(
+          (member) => ({
+            status: 200 as const,
+            body: member,
+          }),
+          (error) => changeMemberRoleErrorResponse(error)
         );
       },
 

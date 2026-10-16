@@ -594,6 +594,20 @@ export class SettingsPage {
     await this.page.getByText('Current Organization').waitFor({ state: 'visible' });
   }
 
+  async tryLeaveOrganization(orgName: string): Promise<void> {
+    await this.page.getByText(orgName, { exact: true }).waitFor({ state: 'visible' });
+    const row = this.page
+      .locator('div.flex.items-center.justify-between')
+      .filter({ hasText: orgName });
+    await row.getByTitle('Leave organization').click();
+    await this.page.getByRole('button', { name: 'Leave Organization' }).click();
+    await expect(
+      this.page.getByText(
+        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
+      )
+    ).toBeVisible();
+  }
+
   tokenRow(name: string) {
     return this.page.locator(`[data-token-row="${name}"]`);
   }
@@ -618,6 +632,50 @@ export class SettingsPage {
 
   memberRow(name: string) {
     return this.page.locator(`[data-member-row="${name}"]`);
+  }
+
+  async shouldSeeMemberRow(label: string): Promise<void> {
+    await expect(this.memberRow(label)).toBeVisible();
+  }
+
+  async shouldNotSeeRemoveOnMember(email: string): Promise<void> {
+    const row = this.memberRow(email);
+    await expect(row).toBeVisible();
+    await expect(row.getByTitle(`Remove ${email}`)).toHaveCount(0);
+  }
+
+  async shouldSeeRemoveOnMember(email: string): Promise<void> {
+    await expect(this.memberRow(email).getByTitle(`Remove ${email}`)).toBeVisible();
+  }
+
+  async shouldNotSeeAnyRemoveButtons(): Promise<void> {
+    await expect(this.page.locator('button[title^="Remove "]')).toHaveCount(0);
+  }
+
+  async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
+    const copy = this.page.locator('[data-owner-cannot-remove]');
+    await expect(copy).toHaveText(
+      "The owner can't be removed. Ownership has to be handed over first."
+    );
+  }
+
+  async frameOwnerCannotBeRemoved(): Promise<void> {
+    const copy = this.page.locator('[data-owner-cannot-remove]');
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+    await copy.evaluate((el) => {
+      el.setAttribute('data-screenshot-focus', '');
+    });
+    await copy.scrollIntoViewIfNeeded();
+  }
+
+  async revealMembersSection(): Promise<void> {
+    const first = this.page.locator('[data-member-row]').first();
+    await first.waitFor({ state: 'visible' });
+    await first.scrollIntoViewIfNeeded();
   }
 
   async issueNewTokenForAgent(name: string): Promise<string> {

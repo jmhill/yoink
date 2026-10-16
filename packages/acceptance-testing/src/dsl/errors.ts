@@ -156,6 +156,12 @@ export class LastAdminError extends DslError {
   }
 }
 
+export class OwnerMustTransferError extends DslError {
+  constructor() {
+    super('Transfer ownership first. Ask an admin of the whole app to change the owner.');
+  }
+}
+
 /**
  * Thrown when a user is not a member of the specified organization.
  */

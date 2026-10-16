@@ -1,4 +1,13 @@
-import type { OrganizationStorageError, MembershipStorageError } from './organization-errors.js';
+import type {
+  OrganizationStorageError,
+  MembershipStorageError,
+  BotCannotHavePrivilegedRoleError,
+  CannotAssignOwnerRoleError,
+  LastAdminError,
+  MembershipNotFoundError,
+  OwnerMustTransferError,
+  TargetNotWorkspaceMemberError,
+} from './organization-errors.js';
 import type { UserStorageError } from './user-errors.js';
 import type { TokenStorageError } from './auth-errors.js';
 import type { InvalidTokenNameError } from './token-errors.js';
@@ -34,7 +43,13 @@ export type AdminServiceError =
   | TokenNotFoundError
   | InvalidTokenNameError
   | ProjectNotFoundError
-  | ProjectStorageError;
+  | ProjectStorageError
+  | BotCannotHavePrivilegedRoleError
+  | CannotAssignOwnerRoleError
+  | LastAdminError
+  | MembershipNotFoundError
+  | OwnerMustTransferError
+  | TargetNotWorkspaceMemberError;
 
 // Factory functions
 export const organizationNotFoundError = (

@@ -49,6 +49,7 @@ export const organizationContract = c.router({
       400: ErrorSchema, // Cannot leave personal org or last admin
       401: ErrorSchema, // Not authenticated
       404: ErrorSchema, // Not a member
+      409: ErrorSchema, // Owner must transfer first
       500: ErrorSchema,
     },
     summary: 'Leave an organization',
@@ -80,7 +81,7 @@ export const organizationContract = c.router({
    * - Admins can remove members (but not other admins)
    * - Owners can remove admins and members
    * - Cannot remove self (use leave instead)
-   * - Cannot remove the last owner
+   * - Cannot remove the owner (OWNER_CANNOT_BE_REMOVED)
    * Requires auth (token or session).
    */
   removeMember: {
@@ -93,10 +94,11 @@ export const organizationContract = c.router({
     body: z.undefined(),
     responses: {
       204: z.undefined(), // Success, no content
-      400: ErrorSchema, // Cannot remove self, last admin, etc.
+      400: ErrorSchema, // Cannot remove self, last admin of an ownerless workspace
       401: ErrorSchema, // Not authenticated
       403: ErrorSchema, // Insufficient permissions
       404: ErrorSchema, // Member not found
+      409: ErrorSchema, // Owner cannot be removed / owner must transfer
       500: ErrorSchema,
     },
     summary: 'Remove a member from an organization',

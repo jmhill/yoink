@@ -403,6 +403,31 @@ describe('organization routes', () => {
       expect(response.json().message).toContain('Not a member');
     });
 
+    it('returns 409 when the owner tries to leave', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().message).toBe(
+        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
+      );
+      expect(response.json().code).toBe('OWNER_MUST_TRANSFER');
+    });
+
+    it('allows the last admin to leave when an owner remains', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ success: true });
+    });
+
     it('returns 400 when trying to leave personal organization', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -487,6 +512,65 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('DELETE /api/organizations/:organizationId/members/:userId', () => {
+    it('returns 409 OWNER_CANNOT_BE_REMOVED when an admin removes the owner', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${teamOwner.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe('OWNER_CANNOT_BE_REMOVED');
+      expect(response.json().message).toBe(
+        "The owner can't be removed. Ownership has to be handed over first."
+      );
+    });
+
+    it('returns 409 OWNER_CANNOT_BE_REMOVED when a member removes the owner', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${teamOwner.id}`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe('OWNER_CANNOT_BE_REMOVED');
+    });
+
+    it('returns 403 when a member removes another member (permission first)', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Insufficient permissions');
+    });
+
+    it('allows the owner to remove the last admin', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${teamAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(204);
+    });
+
+    it('returns 400 when removing a member from a personal workspace', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${personalOrg.id}/members/${testUser.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toMatch(/personal/i);
     });
   });
 

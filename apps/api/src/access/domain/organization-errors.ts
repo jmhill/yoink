@@ -1,4 +1,15 @@
+import {
+  OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+  OWNER_MUST_TRANSFER_MESSAGE,
+} from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
+
+export {
+  OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+  OWNER_MUST_TRANSFER_MESSAGE,
+};
 
 // ============================================================================
 // Organization Storage Errors
@@ -109,17 +120,116 @@ export const cannotLeavePersonalOrgError = (
   organizationId,
 });
 
-/** Cannot change owner role */
-export type CannotChangeOwnerRoleError = {
-  readonly type: 'CANNOT_CHANGE_OWNER_ROLE';
-  readonly membershipId: string;
+/** #190: fromUserId is not the current owner */
+export type NotCurrentOwnerError = {
+  readonly type: 'NOT_CURRENT_OWNER';
+  readonly organizationId: string;
+  readonly userId: string;
 };
 
-export const cannotChangeOwnerRoleError = (
-  membershipId: string
-): CannotChangeOwnerRoleError => ({
-  type: 'CANNOT_CHANGE_OWNER_ROLE',
-  membershipId,
+export const notCurrentOwnerError = (
+  organizationId: string,
+  userId: string
+): NotCurrentOwnerError => ({
+  type: 'NOT_CURRENT_OWNER',
+  organizationId,
+  userId,
+});
+
+/** Owner can only be assigned via the admin-panel set-owner command */
+export type CannotAssignOwnerRoleError = {
+  readonly type: 'CANNOT_ASSIGN_OWNER_ROLE';
+  readonly message: string;
+};
+
+export const cannotAssignOwnerRoleError = (): CannotAssignOwnerRoleError => ({
+  type: 'CANNOT_ASSIGN_OWNER_ROLE',
+  message: 'Owner can only be set from the admin panel',
+});
+
+/** Owner cannot leave or be removed until ownership is transferred */
+export type OwnerMustTransferError = {
+  readonly type: 'OWNER_MUST_TRANSFER';
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const ownerMustTransferError = (
+  organizationId: string,
+  userId: string
+): OwnerMustTransferError => ({
+  type: 'OWNER_MUST_TRANSFER',
+  organizationId,
+  userId,
+  message: OWNER_MUST_TRANSFER_MESSAGE,
+});
+
+/** Anyone removing the owner — dedicated, not INSUFFICIENT_PERMISSIONS */
+export type OwnerCannotBeRemovedError = {
+  readonly type: 'OWNER_CANNOT_BE_REMOVED';
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const ownerCannotBeRemovedError = (
+  organizationId: string,
+  userId: string
+): OwnerCannotBeRemovedError => ({
+  type: 'OWNER_CANNOT_BE_REMOVED',
+  organizationId,
+  userId,
+  message: OWNER_CANNOT_BE_REMOVED_MESSAGE,
+});
+
+/** A workspace already has an owner; a second owner cannot be saved */
+export type SecondOwnerError = {
+  readonly type: 'SECOND_OWNER';
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const secondOwnerError = (organizationId: string): SecondOwnerError => ({
+  type: 'SECOND_OWNER',
+  organizationId,
+  message: 'A workspace can have at most one owner',
+});
+
+/** Bots can never be admin or owner */
+export type BotCannotHavePrivilegedRoleError = {
+  readonly type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE';
+  readonly role: 'admin' | 'owner';
+  readonly message: string;
+};
+
+export const botCannotHavePrivilegedRoleError = (
+  role: 'admin' | 'owner'
+): BotCannotHavePrivilegedRoleError => ({
+  type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE',
+  role,
+  message:
+    role === 'owner'
+      ? 'A bot cannot be the workspace owner'
+      : 'A bot cannot be an admin',
+});
+
+/** Set-owner target is not already a member of the workspace */
+export type TargetNotWorkspaceMemberError = {
+  readonly type: 'TARGET_NOT_WORKSPACE_MEMBER';
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const targetNotWorkspaceMemberError = (
+  userId: string,
+  organizationId: string
+): TargetNotWorkspaceMemberError => ({
+  type: 'TARGET_NOT_WORKSPACE_MEMBER',
+  userId,
+  organizationId,
+  message: 'Owner must already be a member of the workspace',
 });
 
 /** Organization must have at least one admin */
@@ -149,15 +259,25 @@ export const insufficientPermissionsError = (
   actualRole,
 });
 
-export type MembershipServiceError =
+/** Closed union of membership command errors (no storage). */
+export type MembershipError =
   | AlreadyMemberError
   | MembershipNotFoundError
   | CannotLeavePersonalOrgError
-  | CannotChangeOwnerRoleError
+  | CannotAssignOwnerRoleError
+  | OwnerMustTransferError
+  | OwnerCannotBeRemovedError
+  | NotCurrentOwnerError
+  | SecondOwnerError
+  | BotCannotHavePrivilegedRoleError
+  | TargetNotWorkspaceMemberError
   | LastAdminError
   | InsufficientPermissionsError
   | UserNotFoundError
-  | OrganizationNotFoundError
+  | OrganizationNotFoundError;
+
+export type MembershipServiceError =
+  | MembershipError
   | MembershipStorageError
   | OrganizationStorageError
   | UserServiceError;

@@ -7,6 +7,8 @@ import {
   UserSchema,
   CreateUserSchema,
   UpdateUserSchema,
+  SetOrganizationOwnerSchema,
+  PatchMemberRoleSchema,
   UpdateProjectCreatedAtSchema,
   ApiTokenSchema,
   CreateTokenSchema,
@@ -157,9 +159,47 @@ export const adminProtectedContract = c.router(
         400: ErrorSchema,
         401: ErrorSchema,
         404: ErrorSchema,
+        409: ErrorSchema,
         500: ErrorSchema,
       },
       summary: 'Create a system user in an organization (for API integrations)',
+    },
+
+    setOrganizationOwner: {
+      method: 'PUT',
+      path: '/api/admin/organizations/:id/owner',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: SetOrganizationOwnerSchema,
+      responses: {
+        200: UserSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Set the workspace owner. The previous owner becomes admin in the same save.',
+    },
+
+    changeMemberRole: {
+      method: 'PATCH',
+      path: '/api/admin/organizations/:id/members/:userId',
+      pathParams: z.object({
+        id: z.string().uuid(),
+        userId: z.string().uuid(),
+      }),
+      body: PatchMemberRoleSchema,
+      responses: {
+        200: UserSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Change a member between admin and member. Cannot assign or change owner.',
     },
 
     getUser: {

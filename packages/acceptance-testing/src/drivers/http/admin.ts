@@ -7,7 +7,12 @@ import type {
   CreateTokenResult,
   CreateInvitationInput,
 } from '../../dsl/index.js';
-import { UnauthorizedError, NotFoundError, ValidationError } from '../../dsl/index.js';
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  UnsupportedOperationError,
+} from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
 
 /**
@@ -120,6 +125,51 @@ export const createHttpAdmin = (
     return response.json<{ users: User[] }>().users;
   },
 
+  async setOrganizationOwner(organizationId: string, userId: string): Promise<User> {
+    const response = await client.put(`/api/admin/organizations/${organizationId}/owner`, {
+      userId,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    if (response.statusCode === 400 || response.statusCode === 409) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to set owner: ${response.body}`);
+    }
+    return response.json<User>();
+  },
+
+  async changeMemberRole(
+    organizationId: string,
+    userId: string,
+    role: 'admin' | 'member'
+  ): Promise<User> {
+    const response = await client.patch(
+      `/api/admin/organizations/${organizationId}/members/${userId}`,
+      { role }
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    if (response.statusCode === 400 || response.statusCode === 409) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to change member role: ${response.body}`);
+    }
+    return response.json<User>();
+  },
+
   async getUser(id: string): Promise<User> {
     const response = await client.get(`/api/admin/users/${id}`);
     if (response.statusCode === 401) {
@@ -222,5 +272,57 @@ export const createHttpAdmin = (
       throw new Error(`Failed to create invitation: ${response.body}`);
     }
     return response.json<Invitation>();
+  },
+
+  async openOrganization() {
+    throw new UnsupportedOperationError('openOrganization', 'http');
+  },
+  async makeOwner() {
+    throw new UnsupportedOperationError('makeOwner', 'http');
+  },
+  async makeAdmin() {
+    throw new UnsupportedOperationError('makeAdmin', 'http');
+  },
+  async shouldSeeMemberRole() {
+    throw new UnsupportedOperationError('shouldSeeMemberRole', 'http');
+  },
+  async shouldSeeMemberError() {
+    throw new UnsupportedOperationError('shouldSeeMemberError', 'http');
+  },
+  async shouldNotSeeMakeAdmin() {
+    throw new UnsupportedOperationError('shouldNotSeeMakeAdmin', 'http');
+  },
+  async shouldNotSeeMakeOwner() {
+    throw new UnsupportedOperationError('shouldNotSeeMakeOwner', 'http');
+  },
+  async shouldSeeMakeOwner() {
+    throw new UnsupportedOperationError('shouldSeeMakeOwner', 'http');
+  },
+  async shouldNotSeeNamedUser() {
+    throw new UnsupportedOperationError('shouldNotSeeNamedUser', 'http');
+  },
+  async openCreateUser() {
+    throw new UnsupportedOperationError('openCreateUser', 'http');
+  },
+  async submitCreateUser() {
+    throw new UnsupportedOperationError('submitCreateUser', 'http');
+  },
+  async shouldSeeCreateUserError() {
+    throw new UnsupportedOperationError('shouldSeeCreateUserError', 'http');
+  },
+  async revealMember() {
+    throw new UnsupportedOperationError('revealMember', 'http');
+  },
+  async frameMember() {
+    throw new UnsupportedOperationError('frameMember', 'http');
+  },
+  async useMobileViewport() {
+    throw new UnsupportedOperationError('useMobileViewport', 'http');
+  },
+  async useDesktopViewport() {
+    throw new UnsupportedOperationError('useDesktopViewport', 'http');
+  },
+  async saveWalkthroughScreenshot() {
+    throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
   },
 });

@@ -3,6 +3,7 @@ import type { Driver, DriverConfig } from '../types.js';
 import type { Actor, Admin, AnonymousActor } from '../../dsl/index.js';
 import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
+import { createPlaywrightAdmin } from './admin.js';
 import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
 import { displayNameFromEmail } from '../../dsl/display-name.js';
@@ -79,12 +80,17 @@ const finishSignupOnHome = async (
  * - Each actor gets its own browser context for session cookie isolation
  */
 export const createPlaywrightDriver = (config: DriverConfig): Driver => {
+  let browser: Browser | null = null;
   // HTTP client for admin/health operations (no browser UI for these)
   const httpClient = createHttpClient(config.baseUrl);
-  const admin = createHttpAdmin(httpClient, config.adminPassword);
+  const httpAdmin = createHttpAdmin(httpClient, config.adminPassword);
+  const admin = createPlaywrightAdmin({
+    http: httpAdmin,
+    password: config.adminPassword,
+    baseUrl: config.baseUrl,
+    getBrowser: () => browser,
+  });
   const health = createHttpHealth(httpClient);
-
-  let browser: Browser | null = null;
   
   // Each actor gets its own browser context for cookie isolation
   const actorContexts: BrowserContext[] = [];

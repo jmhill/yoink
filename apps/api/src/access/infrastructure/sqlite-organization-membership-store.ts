@@ -147,5 +147,26 @@ export const createSqliteOrganizationMembershipStore = async (
         (error) => membershipStorageError('Failed to delete membership', error)
       ).map(() => undefined);
     },
+
+    setOwner: ({ demote, promote }): ResultAsync<void, MembershipStorageError> => {
+      const queries = [
+        ...(demote
+          ? [
+              {
+                sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
+                args: [demote.role, demote.id],
+              },
+            ]
+          : []),
+        {
+          sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
+          args: [promote.role, promote.id],
+        },
+      ];
+      return ResultAsync.fromPromise(
+        db.batch(queries, 'write'),
+        (error) => membershipStorageError('Failed to set owner', error)
+      ).map(() => undefined);
+    },
   };
 };

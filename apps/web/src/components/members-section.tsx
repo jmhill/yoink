@@ -14,6 +14,7 @@ import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { listMembers, removeMember, mintAgent, memberLabel, type Member } from '@/api/auth';
 import { tsrOrganizations } from '@/api/client';
+import { OWNER_CANNOT_BE_REMOVED_MESSAGE } from '@yoink/api-contracts';
 
 const errorBodyMessage = (body: unknown): string | null => {
   if (
@@ -63,8 +64,9 @@ const getRoleLabel = (role: 'owner' | 'admin' | 'member') => {
 
 /**
  * Check if the current user can remove the target member.
- * - Owners can remove anyone (except themselves)
- * - Admins can only remove members (not other admins or owners)
+ * - Nobody can remove the owner (transfer ownership first)
+ * - Owners can remove admins and members (except themselves)
+ * - Admins can only remove members (not other admins)
  * - Members cannot remove anyone
  */
 const canRemove = (
@@ -73,8 +75,9 @@ const canRemove = (
   isSelf: boolean
 ): boolean => {
   if (isSelf) return false;
+  if (targetRole === 'owner') return false;
   if (currentRole === 'member') return false;
-  if (currentRole === 'admin' && (targetRole === 'admin' || targetRole === 'owner')) return false;
+  if (currentRole === 'admin' && targetRole === 'admin') return false;
   return true;
 };
 
@@ -214,6 +217,14 @@ export function MembersSection({
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {member.role === 'owner' && currentUserRole !== 'member' ? (
+                        <p
+                          className="max-w-[14rem] text-right text-sm text-muted-foreground"
+                          data-owner-cannot-remove=""
+                        >
+                          {OWNER_CANNOT_BE_REMOVED_MESSAGE}
+                        </p>
+                      ) : null}
                       {canReissue && member.kind === 'agent' && (
                         <Button
                           variant="ghost"

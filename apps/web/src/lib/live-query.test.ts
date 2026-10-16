@@ -104,29 +104,29 @@ describe('live query interval', () => {
     ).toEqual({ waitMs: 8_000 });
   });
 
-  it('skips a focus refetch when the 10-second refresh is already due', () => {
+  it('refetches on focus so a hidden tab can catch up, and sits out Retry-After', () => {
     expect(
       decideFocusRefetch({
-        dataUpdatedAt: 1_000,
         nowMs: 11_000,
-        intervalMs: 10_000,
-      })
-    ).toEqual({ refetch: false });
-    expect(
-      decideFocusRefetch({
-        dataUpdatedAt: 1_000,
-        nowMs: 5_000,
-        intervalMs: 10_000,
       })
     ).toEqual({ refetch: true });
     expect(
       decideFocusRefetch({
-        dataUpdatedAt: 1_000,
         nowMs: 5_000,
-        intervalMs: 10_000,
+      })
+    ).toEqual({ refetch: true });
+    expect(
+      decideFocusRefetch({
+        nowMs: 5_000,
         retryAfterUntilMs: 8_000,
       })
     ).toEqual({ refetch: false });
+    expect(
+      decideFocusRefetch({
+        nowMs: 8_000,
+        retryAfterUntilMs: 8_000,
+      })
+    ).toEqual({ refetch: true });
     expect(
       decideLiveRefetchInterval({
         visibilityState: 'visible',

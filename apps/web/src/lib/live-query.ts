@@ -327,9 +327,7 @@ export type RetryAfterResult = {
 };
 
 export type FocusRefetchQuery = {
-  dataUpdatedAt: number;
   nowMs: number;
-  intervalMs: number;
   retryAfterUntilMs?: number;
 };
 
@@ -434,20 +432,16 @@ export const liveQueryRetryDelayMs = (input: {
 };
 
 /**
- * Skip the extra focus refetch when the 10s poll is already due (or we are
- * sitting out a 429 Retry-After). The interval timer covers the refresh.
+ * Refetch on focus unless we are sitting out a 429 Retry-After.
+ * Skipping when the 10s poll is "already due" is wrong after a hidden tab:
+ * `refetchIntervalInBackground: false` stops the timer, and TanStack Query
+ * does not restart it on focus unless a refetch runs.
  */
 export const decideFocusRefetch = (query: FocusRefetchQuery): FocusRefetchResult => {
   if (
     query.retryAfterUntilMs !== undefined &&
     query.nowMs < query.retryAfterUntilMs
   ) {
-    return { refetch: false };
-  }
-  if (query.dataUpdatedAt === 0) {
-    return { refetch: true };
-  }
-  if (query.nowMs >= query.dataUpdatedAt + query.intervalMs) {
     return { refetch: false };
   }
   return { refetch: true };
@@ -495,9 +489,7 @@ export const liveQueryRefetchInterval = (
 
 export const liveQueryRefetchOnWindowFocus = (query: LiveQuerySnapshot): boolean =>
   decideFocusRefetch({
-    dataUpdatedAt: query.state.dataUpdatedAt,
     nowMs: Date.now(),
-    intervalMs: readLiveQueryIntervalMs(),
     retryAfterUntilMs: retryAfterUntilMsFromQuery(query, Date.now()),
   }).refetch;
 

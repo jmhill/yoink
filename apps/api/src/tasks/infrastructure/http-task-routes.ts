@@ -6,7 +6,7 @@ import type { AuthMiddleware } from '../../access/application/index.js';
 import type { TaskHandlers } from '../application/create-task-handlers.js';
 import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
 import { invalidCursorHttp, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
-import { listedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
+import { listedRequestValidationError } from '../../shared/request-validation.js';
 
 export type TaskRoutesDependencies = {
   taskService: TaskService;

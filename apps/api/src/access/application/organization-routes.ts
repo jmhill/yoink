@@ -8,6 +8,7 @@ import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
 import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 import { principalKindOf } from '../domain/user.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
@@ -423,7 +424,7 @@ export const registerOrganizationRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

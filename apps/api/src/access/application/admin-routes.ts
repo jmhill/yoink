@@ -7,12 +7,15 @@ import type { AdminSessionService } from '../domain/admin-session-service.js';
 import type { InvitationService } from '../domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
 import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
+import type { ClientIpOf } from '../../shared/request-client-ip.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
   cookieConfig: CookieConfig;
+  clientIpOf: ClientIpOf;
 };
 
 /**
@@ -28,7 +31,7 @@ export const registerAdminRoutes = async (
   deps: AdminRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { adminService, adminSessionService, invitationService, cookieConfig } = deps;
+  const { adminService, adminSessionService, invitationService, cookieConfig, clientIpOf } = deps;
   const s = initServer();
 
   // Register public admin routes with strict rate limiting
@@ -39,7 +42,7 @@ export const registerAdminRoutes = async (
       await publicApp.register(rateLimit, {
         max: rateLimitConfig.adminLoginMax,
         timeWindow: rateLimitConfig.adminLoginTimeWindow,
-        keyGenerator: (request) => request.ip,
+        keyGenerator: (request) => clientIpOf(request),
       });
     }
 
@@ -83,7 +86,7 @@ export const registerAdminRoutes = async (
     s.registerRouter(adminPublicContract, publicRouter, publicApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });
@@ -379,7 +382,7 @@ export const registerAdminRoutes = async (
     s.registerRouter(adminProtectedContract, protectedRouter, protectedApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

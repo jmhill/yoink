@@ -13,3 +13,9 @@ export {
   scrubSentryLog,
   type SentryInitOptions,
 } from './sentry.js';
+export {
+  decideShouldReportFastifyError,
+  shouldHandleError,
+  type ReportFastifyErrorQuery,
+  type ReportFastifyErrorResult,
+} from './should-handle-error.js';

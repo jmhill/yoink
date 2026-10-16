@@ -8,7 +8,7 @@ import {
   toWorkListsBody,
   toWorkNextActionsBody,
 } from '../../listing/infrastructure/http-listed-page.js';
-import { listedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
+import { listedRequestValidationError } from '../../shared/request-validation.js';
 import type { WorkHandlers } from '../application/create-work-handlers.js';
 
 export type WorkRoutesDependencies = {

@@ -54,6 +54,7 @@ import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
 } from './access/application/index.js';
+import { decideViaFly } from './shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,
@@ -76,6 +77,7 @@ import {
 } from './access/infrastructure/index.js';
 import {
   createTokenService,
+  type TokenService,
   createPasskeyService,
   createSessionService,
   createSignupService,
@@ -161,10 +163,20 @@ export type BootstrapOptions = {
   config: AppConfig;
   infrastructure?: Infrastructure;
   silent?: boolean;
+  /** Override Fly detection. Defaults to FLY_ALLOC_ID / FLY_APP_NAME. */
+  viaFly?: boolean;
+  /** Test seam: count or wrap validateToken without a second production lookup. */
+  wrapTokenService?: (tokenService: TokenService) => TokenService;
 };
 
 export const bootstrapApp = async (options: BootstrapOptions) => {
   const { config, infrastructure, silent } = options;
+  const viaFly =
+    options.viaFly ??
+    decideViaFly({
+      flyAllocId: process.env.FLY_ALLOC_ID,
+      flyAppName: process.env.FLY_APP_NAME,
+    }).viaFly;
   const { database, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);
 
@@ -193,13 +205,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // Create auth services
-  const tokenService = createTokenService({
+  const createdTokenService = createTokenService({
     organizationStore,
     userStore,
     tokenStore,
     passwordHasher,
     clock,
   });
+  const tokenService =
+    options.wrapTokenService === undefined
+      ? createdTokenService
+      : options.wrapTokenService(createdTokenService);
 
   // Create UserService to be used by other services
   const userService = createUserService({ userStore });
@@ -604,5 +620,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     rateLimit: config.rateLimit,
     log: config.log,
     cookie: config.cookie,
+    viaFly,
   });
 };

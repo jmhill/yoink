@@ -26,6 +26,7 @@ import {
   registerTokenRoutes,
   type AuthMiddleware,
   type ReissueAgentToken,
+  withAuthenticatedRateLimit,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
@@ -55,11 +56,28 @@ import type {
 // TODO(8.5.4): store interfaces are not part of the access public API;
 // auth-routes should stop needing an OrganizationStore dependency
 import type { OrganizationStore } from './access/domain/organization-store.js';
-import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
+import {
+  DEFAULT_GLOBAL_RATE_LIMIT_MAX,
+  DEFAULT_IP_RATE_LIMIT_MAX,
+  type RateLimitConfig,
+  type LogConfig,
+  type CookieConfig,
+} from './config/schema.js';
 import type { Database } from './database/types.js';
 import { createLoggerOptions } from './logging/index.js';
+import { shouldHandleError } from './logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
+import {
+  decideRateLimitExempt,
+  decideRateLimitKey,
+  decideTimeWindowMs,
+} from './shared/rate-limit-policy.js';
+import { createInMemoryRateLimitConsume } from './shared/in-memory-rate-limit-consume.js';
+import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** Trust only the last proxy hop (Fly). Do not trust client-set X-Forwarded-For. */
+export const TRUST_PROXY_HOPS = 1;
 
 export type AdminConfig = {
   adminService: AdminService;
@@ -103,16 +121,19 @@ export type AppDependencies = {
   log: LogConfig;
   cookie: CookieConfig;
   app?: FastifyInstance;
+  /** True only when the process is running behind Fly (FLY_ALLOC_ID / FLY_APP_NAME). */
+  viaFly?: boolean;
 };
 
 export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log) });
+  Fastify({ logger: createLoggerOptions(log), trustProxy: TRUST_PROXY_HOPS });
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {
   enabled: true,
-  globalMax: 100,
+  globalMax: DEFAULT_GLOBAL_RATE_LIMIT_MAX,
   globalTimeWindow: '1 minute',
+  ipMax: DEFAULT_IP_RATE_LIMIT_MAX,
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
   authLoginMax: 10,
@@ -124,6 +145,19 @@ const defaultRateLimitConfig: RateLimitConfig = {
 export const createApp = async (deps: AppDependencies) => {
   const app = deps.app ?? createFastifyInstance(deps.log);
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
+  const viaFly = deps.viaFly ?? false;
+  const clientIpOf: ClientIpOf = (request) => clientIpOfRequest(request, viaFly);
+  const applyAuthenticatedRateLimit = rateLimitConfig.enabled
+    ? createInMemoryRateLimitConsume({
+        max: rateLimitConfig.globalMax,
+        windowMs: decideTimeWindowMs({ timeWindow: rateLimitConfig.globalTimeWindow }).windowMs,
+        now: () => Date.now(),
+      })
+    : undefined;
+  const authMiddleware =
+    applyAuthenticatedRateLimit === undefined
+      ? deps.authMiddleware
+      : withAuthenticatedRateLimit(deps.authMiddleware, applyAuthenticatedRateLimit);
 
   // Register security plugins
   await app.register(helmet, {
@@ -131,62 +165,69 @@ export const createApp = async (deps: AppDependencies) => {
     contentSecurityPolicy: false, // Disable CSP for now (SPA needs inline scripts from Vite)
   });
 
-  // Only register global rate limiting if enabled
+  await app.register(cookie);
+
+  // Cheap IP bucket first: no session/token lookups. Forged credentials cannot
+  // add hash work or mint a new bucket once this IP is over the limit.
   if (rateLimitConfig.enabled) {
     await app.register(rateLimit, {
       global: true,
-      max: rateLimitConfig.globalMax,
+      max: rateLimitConfig.ipMax,
       timeWindow: rateLimitConfig.globalTimeWindow,
+      keyGenerator: (request) =>
+        decideRateLimitKey({ clientIp: clientIpOf(request) }).key,
+      allowList: (request) => decideRateLimitExempt({ url: request.url }).exempt,
     });
   }
-
-  // Register other plugins
-  await app.register(cookie);
 
   // Register routes
   await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
   await registerCaptureRoutes(app, {
     captureHandlers: deps.captureHandlers,
     captureProcessingService: deps.captureProcessingService,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerListRoutes(app, {
     listHandlers: deps.listHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerProjectRoutes(app, {
     projectHandlers: deps.projectHandlers,
     historyHandlers: deps.historyHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerNoteRoutes(app, {
     noteHandlers: deps.noteHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
     historyHandlers: deps.historyHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerWorkRoutes(app, {
     workHandlers: deps.workHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerReviewRoutes(app, {
     reviewHandlers: deps.reviewHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   if (deps.enableTestFixtures && deps.database) {
     await registerReviewFixtureRoutes(app, {
-      authMiddleware: deps.authMiddleware,
+      authMiddleware,
       db: deps.database,
     });
   }
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
-    await registerAdminRoutes(app, { ...deps.admin, cookieConfig: deps.cookie }, rateLimitConfig);
+    await registerAdminRoutes(
+      app,
+      { ...deps.admin, cookieConfig: deps.cookie, clientIpOf },
+      rateLimitConfig
+    );
   }
 
   // Invitation routes
@@ -194,7 +235,7 @@ export const createApp = async (deps: AppDependencies) => {
     invitationService: deps.invitationService,
     membershipService: deps.membershipService,
     organizationService: deps.organizationService,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
 
   // Session cookie configuration (shared between signup and passkey routes)
@@ -215,6 +256,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       sessionCookieName,
       cookieOptions,
+      clientIpOf,
     }, rateLimitConfig);
 
     // Passkey management routes (for existing users to add/manage passkeys)
@@ -224,6 +266,7 @@ export const createApp = async (deps: AppDependencies) => {
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,
+      applyAuthenticatedRateLimit,
     });
 
     // Auth routes (login, logout, session)
@@ -236,6 +279,8 @@ export const createApp = async (deps: AppDependencies) => {
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,
+      clientIpOf,
+      applyAuthenticatedRateLimit,
     }, rateLimitConfig);
 
     // Organization routes (switch, leave, members)
@@ -245,7 +290,7 @@ export const createApp = async (deps: AppDependencies) => {
       userService: deps.signup.userService,
       agentService: deps.signup.agentService,
       reissueAgentToken: deps.signup.reissueAgentToken,
-      authMiddleware: deps.authMiddleware,
+      authMiddleware,
     });
 
     // User token self-service routes
@@ -254,6 +299,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       tokenService: deps.signup.tokenService,
       sessionCookieName,
+      applyAuthenticatedRateLimit,
     });
   }
 
@@ -290,7 +336,7 @@ export const createApp = async (deps: AppDependencies) => {
   }
 
   // Register Sentry error handler (must be after routes but before other error handlers)
-  Sentry.setupFastifyErrorHandler(app);
+  Sentry.setupFastifyErrorHandler(app, { shouldHandleError });
 
   // SPA fallback - serve index.html for unmatched routes
   app.setNotFoundHandler((request, reply) => {

@@ -193,8 +193,9 @@ describe('project HTTP routes', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({
-      message: 'Request validation failed',
+      message: 'Request validation failed: name',
       code: 'VALIDATION_FAILED',
+      fields: ['name'],
     });
   });
 

@@ -4,16 +4,22 @@ import { tokenContract } from '@yoink/api-contracts';
 import type { SessionService } from '../domain/session-service.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { TokenHandlers } from './create-token-handlers.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
+import {
+  withAuthenticatedRateLimit,
+  type AuthenticatedRateLimitConsume,
+} from './with-authenticated-rate-limit.js';
 
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;
   sessionService: SessionService;
   tokenService: TokenService;
   sessionCookieName: string;
+  applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
 export const registerTokenRoutes = async (
@@ -29,7 +35,11 @@ export const registerTokenRoutes = async (
     sessionCookieName,
   };
 
-  const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const authMiddleware =
+    deps.applyAuthenticatedRateLimit === undefined
+      ? resolvedAuth
+      : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
   await app.register(async (protectedApp) => {
     protectedApp.addHook('preHandler', authMiddleware);
@@ -146,7 +156,7 @@ export const registerTokenRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

@@ -9,7 +9,7 @@ import {
 import type { AuthMiddleware } from '../../access/application/index.js';
 import { invalidCursorHttp } from '../../listing/infrastructure/http-listed-page.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
-import { listedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
+import { listedRequestValidationError } from '../../shared/request-validation.js';
 import type { RankedReviewProject } from '../domain/review-order.js';
 import type { ReviewHandlers } from '../application/create-review-handlers.js';
 

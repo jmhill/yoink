@@ -811,7 +811,8 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 Project, task, work list, and `POST /api/captures/:id/process-to-project`
 return `{ "message": "…", "code": "…" }`. `code` is stable; `message` is for
 humans. On those routes, request validation uses a specific code instead of
-the generic `[ts-rest] request validation failed` text.
+the generic `[ts-rest] request validation failed` text. Those
+`VALIDATION_FAILED` bodies name the failing fields in `message` and `fields`.
 
 `PROJECT_HAS_OPEN_TASKS` and `OPEN_TASKS_UNREAD` also include
 `openTaskCount`.
@@ -857,7 +858,7 @@ the generic `[ts-rest] request validation failed` text.
 | `ASSIGNEE_NOT_IN_ORGANIZATION` | New-task `assigneeId` is not a member of this org (`400`) |
 | `INVALID_TIME_ZONE` | bad timeZone on /api/tasks and /api/work/due (`400`) |
 | `INVALID_WEEK` | `week` on `/api/review/done` is not a Monday or is after the current week (`400`) |
-| `VALIDATION_FAILED` | Other project request-body validation, and task and work list query validation (`400`) |
+| `VALIDATION_FAILED` | Other project request-body validation, and task and work list query validation (`400`). `message` and `fields` name the failing fields. |
 | `IMPORT_INVALID` | Staging or apply failed all-or-nothing checks; body includes `errors` (`400`) |
 | `IMPORT_REQUIRES_PERSON` | A bot tried to apply or discard (`403`) |
 | `IMPORT_NOT_FOUND` | No staged import with that id in this org (`404`) |

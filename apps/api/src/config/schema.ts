@@ -85,12 +85,20 @@ export const AdminConfigSchema = z.object({
   sessionSecret: z.string().min(32),
 });
 
+/** Per-user API budget after authentication. */
+export const DEFAULT_GLOBAL_RATE_LIMIT_MAX = 600;
+
+/** Cheap per-IP DoS cap. Justin's bots share one IP, so this stays well above 600. */
+export const DEFAULT_IP_RATE_LIMIT_MAX = 2000;
+
 // Rate limiting configuration
 export const RateLimitConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  // General rate limit for all endpoints
-  globalMax: z.number().default(100),
+  // Per-user budget after authentication
+  globalMax: z.number().default(DEFAULT_GLOBAL_RATE_LIMIT_MAX),
   globalTimeWindow: z.string().default('1 minute'),
+  // Cheap IP bucket (no credential lookups) — DoS protection only
+  ipMax: z.number().default(DEFAULT_IP_RATE_LIMIT_MAX),
   // Strict rate limit for admin login (brute force protection)
   adminLoginMax: z.number().default(5),
   adminLoginTimeWindow: z.string().default('15 minutes'),

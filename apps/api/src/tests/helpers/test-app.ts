@@ -45,13 +45,14 @@ export const testConfig: AppConfig = {
   cookie: { secure: false, sessionName: 'yoink_session', maxAge: 7 * 24 * 60 * 60 },
 };
 
-/** Production caps at 100 req/min. Pagination suites create 120–1001 rows via inject. */
+/** Production caps at 600 req/min. Pagination suites create 120–1001 rows via inject. */
 export const pagingTestConfig: AppConfig = {
   ...testConfig,
   rateLimit: {
     enabled: false,
     globalMax: 100,
     globalTimeWindow: '1 minute',
+    ipMax: 2000,
     adminLoginMax: 5,
     adminLoginTimeWindow: '15 minutes',
     authLoginMax: 10,

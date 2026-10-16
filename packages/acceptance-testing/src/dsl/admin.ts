@@ -60,6 +60,8 @@ export type Admin = {
   shouldSeeMemberRole(userId: string, role: string): Promise<void>;
   shouldSeeMemberError(userId: string, pattern: string | RegExp): Promise<void>;
   shouldNotSeeMakeAdmin(userId: string): Promise<void>;
+  shouldNotSeeMakeOwner(userId: string): Promise<void>;
+  revealMember(userId: string): Promise<void>;
   useMobileViewport(): Promise<void>;
   useDesktopViewport(): Promise<void>;
   saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;

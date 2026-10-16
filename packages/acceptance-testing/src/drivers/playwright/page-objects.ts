@@ -594,6 +594,16 @@ export class SettingsPage {
     await this.page.getByText('Current Organization').waitFor({ state: 'visible' });
   }
 
+  async tryLeaveOrganization(orgName: string): Promise<void> {
+    await this.page.getByText(orgName, { exact: true }).waitFor({ state: 'visible' });
+    const row = this.page
+      .locator('div.flex.items-center.justify-between')
+      .filter({ hasText: orgName });
+    await row.getByTitle('Leave organization').click();
+    await this.page.getByRole('button', { name: 'Leave Organization' }).click();
+    await expect(this.page.getByText('Transfer ownership first')).toBeVisible();
+  }
+
   tokenRow(name: string) {
     return this.page.locator(`[data-token-row="${name}"]`);
   }

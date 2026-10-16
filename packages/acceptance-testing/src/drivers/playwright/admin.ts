@@ -72,7 +72,9 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     async openOrganization(organizationId: string): Promise<void> {
       const adminPage = await ensureLoggedIn();
       await adminPage.goto(`/admin/organizations/${organizationId}`);
-      await expect(adminPage.locator('[data-user-id]').first()).toBeVisible();
+      await expect(
+        adminPage.getByText('Each workspace has at most one owner')
+      ).toBeVisible();
     },
 
     async makeOwner(userId: string): Promise<void> {
@@ -98,6 +100,16 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       await expect(memberRow(browserPage(), userId).locator('[data-action="toggle-admin"]')).toHaveCount(
         0
       );
+    },
+
+    async shouldNotSeeMakeOwner(userId: string): Promise<void> {
+      await expect(memberRow(browserPage(), userId).locator('[data-action="make-owner"]')).toHaveCount(
+        0
+      );
+    },
+
+    async revealMember(userId: string): Promise<void> {
+      await memberRow(browserPage(), userId).scrollIntoViewIfNeeded();
     },
 
     async useMobileViewport(): Promise<void> {

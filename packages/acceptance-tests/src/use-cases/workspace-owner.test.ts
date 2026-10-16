@@ -51,7 +51,23 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       const users = await ctx.admin.listUsers(org.id);
       expect(users.find((entry) => entry.id === owner.userId)?.role).toBe('owner');
-    });
+
+      const driveLeave = async (viewport: 'phone' | 'desktop') => {
+        if (viewport === 'phone') {
+          await owner.useMobileViewport();
+        } else {
+          await owner.useDesktopViewport();
+        }
+        await owner.tryLeaveOrganizationFromSettings(org.name);
+        await owner.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'owner_leave_refused',
+        });
+      };
+
+      await driveLeave('phone');
+      await driveLeave('desktop');
+    }, 120_000);
 
     it('refuses making a bot an admin from the panel', async () => {
       const org = await ctx.admin.createOrganization(`bot-admin-${Date.now()}`);
@@ -68,6 +84,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const drivePanel = async (viewport: 'phone' | 'desktop') => {
         const stamp = `${viewport}-${Date.now()}`;
         const org = await ctx.admin.createOrganization(`panel-${stamp}`);
+
+        if (viewport === 'phone') {
+          await ctx.admin.useMobileViewport();
+        } else {
+          await ctx.admin.useDesktopViewport();
+        }
+
+        await ctx.admin.openOrganization(org.id);
+        await ctx.admin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'empty_workspace',
+        });
+
         const justin = await ctx.admin.createUser(org.id, `justin-${stamp}@example.com`, {
           name: 'Justin',
           role: 'member',
@@ -85,12 +114,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
           name: 'Lane',
         });
 
-        if (viewport === 'phone') {
-          await ctx.admin.useMobileViewport();
-        } else {
-          await ctx.admin.useDesktopViewport();
-        }
-
         await ctx.admin.openOrganization(org.id);
         await ctx.admin.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
@@ -99,6 +122,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await ctx.admin.makeOwner(justin.id);
         await ctx.admin.shouldSeeMemberRole(justin.id, 'owner');
+        await ctx.admin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'make_owner',
+        });
+
         await ctx.admin.makeOwner(polly.id);
         await ctx.admin.shouldSeeMemberRole(polly.id, 'owner');
         await ctx.admin.shouldSeeMemberRole(justin.id, 'admin');
@@ -115,10 +143,16 @@ usingDrivers(['playwright'] as const, (ctx) => {
         });
 
         await ctx.admin.shouldNotSeeMakeAdmin(lane.id);
+        await ctx.admin.shouldNotSeeMakeOwner(lane.id);
+        await ctx.admin.revealMember(lane.id);
+        await ctx.admin.saveWalkthroughScreenshot({
+          story: WALKTHROUGH_STORY,
+          step: 'bot_row_no_buttons',
+        });
       };
 
       await drivePanel('phone');
       await drivePanel('desktop');
-    }, 120_000);
+    }, 180_000);
   });
 });

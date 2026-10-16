@@ -292,6 +292,12 @@ export const createHttpAdmin = (
   async shouldNotSeeMakeAdmin() {
     throw new UnsupportedOperationError('shouldNotSeeMakeAdmin', 'http');
   },
+  async shouldNotSeeMakeOwner() {
+    throw new UnsupportedOperationError('shouldNotSeeMakeOwner', 'http');
+  },
+  async revealMember() {
+    throw new UnsupportedOperationError('revealMember', 'http');
+  },
   async useMobileViewport() {
     throw new UnsupportedOperationError('useMobileViewport', 'http');
   },

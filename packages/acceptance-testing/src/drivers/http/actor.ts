@@ -3384,6 +3384,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeOrgSwitchFailureToast', 'http');
     },
 
+    async tryLeaveOrganizationFromSettings(_orgName: string): Promise<void> {
+      throw new UnsupportedOperationError('tryLeaveOrganizationFromSettings', 'http');
+    },
+
     async leaveOrganization(_organizationId: string): Promise<void> {
       // Leaving an organization requires session-based auth (not token auth).
       // The HTTP driver uses token auth, so this operation is not supported.

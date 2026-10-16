@@ -6135,6 +6135,11 @@ export const createPlaywrightActor = (
       await orgSwitcher.expectSwitchFailureToast(orgName);
     },
 
+    async tryLeaveOrganizationFromSettings(orgName: string): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.tryLeaveOrganization(orgName);
+    },
+
     async leaveOrganization(organizationId: string): Promise<void> {
       const response = await page.request.post(`/api/organizations/${organizationId}/leave`);
 

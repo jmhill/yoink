@@ -381,6 +381,23 @@ describe('admin HTTP routes', () => {
       expect(botAdmin.statusCode).toBe(400);
       expect(botAdmin.json().message).toMatch(/admin/i);
 
+      const botMember = await app.inject({
+        method: 'POST',
+        url: `/api/admin/organizations/${orgId}/users`,
+        cookies,
+        payload: { email: 'lane@example.com', kind: 'agent', name: 'Lane' },
+      });
+      expect(botMember.statusCode).toBe(201);
+      const botId = botMember.json<{ id: string }>().id;
+      const promoteBot = await app.inject({
+        method: 'PATCH',
+        url: `/api/admin/organizations/${orgId}/members/${botId}`,
+        cookies,
+        payload: { role: 'admin' },
+      });
+      expect(promoteBot.statusCode).toBe(400);
+      expect(promoteBot.json().message).toBe('A bot cannot be an admin');
+
       const still = await app.inject({
         method: 'GET',
         url: `/api/admin/organizations/${orgId}/users`,

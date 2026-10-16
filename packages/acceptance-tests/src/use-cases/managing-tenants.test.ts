@@ -153,6 +153,54 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(rawToken).toContain(':');
     });
 
+    it('can set the owner of a zero-owner workspace', async () => {
+      const org = await ctx.admin.createOrganization(`owner-set-org-${Date.now()}`);
+      const user = await ctx.admin.createUser(org.id, `owner-set-${Date.now()}@example.com`);
+
+      const before = await ctx.admin.listUsers(org.id);
+      expect(before.find((entry) => entry.id === user.id)?.role).toBe('member');
+
+      const owner = await ctx.admin.setOrganizationOwner(org.id, user.id);
+      expect(owner.role).toBe('owner');
+
+      const after = await ctx.admin.listUsers(org.id);
+      expect(after.find((entry) => entry.id === user.id)?.role).toBe('owner');
+    });
+
+    it('makes the old owner an admin when setting a new owner', async () => {
+      const org = await ctx.admin.createOrganization(`owner-handover-${Date.now()}`);
+      const first = await ctx.admin.createUser(org.id, `first-owner-${Date.now()}@example.com`);
+      const second = await ctx.admin.createUser(org.id, `next-owner-${Date.now()}@example.com`);
+
+      await ctx.admin.setOrganizationOwner(org.id, first.id);
+      await ctx.admin.setOrganizationOwner(org.id, second.id);
+
+      const users = await ctx.admin.listUsers(org.id);
+      expect(users.find((entry) => entry.id === first.id)?.role).toBe('admin');
+      expect(users.find((entry) => entry.id === second.id)?.role).toBe('owner');
+    });
+
+    it('refuses demoting the owner and refuses making a bot an admin', async () => {
+      const org = await ctx.admin.createOrganization(`owner-guards-${Date.now()}`);
+      const owner = await ctx.admin.createUser(org.id, `keep-owner-${Date.now()}@example.com`);
+      await ctx.admin.setOrganizationOwner(org.id, owner.id);
+
+      await expect(ctx.admin.changeMemberRole(org.id, owner.id, 'member')).rejects.toThrow(
+        ValidationError
+      );
+
+      await expect(
+        ctx.admin.createUser(org.id, `bot-admin-${Date.now()}@example.com`, {
+          kind: 'agent',
+          role: 'admin',
+          name: 'Nope',
+        })
+      ).rejects.toThrow(ValidationError);
+
+      const users = await ctx.admin.listUsers(org.id);
+      expect(users.find((entry) => entry.id === owner.id)?.role).toBe('owner');
+    });
+
     it('rejects invalid email format when creating user', async () => {
       const org = await ctx.admin.createOrganization(`validation-test-org-${Date.now()}`);
 

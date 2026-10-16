@@ -11,14 +11,6 @@ import {
   CardTitle,
 } from '@yoink/ui-base/components/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@yoink/ui-base/components/table';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -60,6 +52,16 @@ function OrganizationDetailPage() {
       typeof body.message === 'string'
     ) {
       return body.message;
+    }
+    return fallback;
+  };
+
+  const mutationErrorMessage = (err: unknown, fallback: string): string => {
+    if (isFetchError(err)) {
+      return 'Network error. Please check your connection.';
+    }
+    if (typeof err === 'object' && err !== null && 'body' in err) {
+      return errorMessage(err.body, fallback);
     }
     return fallback;
   };
@@ -218,9 +220,7 @@ function OrganizationDetailPage() {
     onError: (err, variables) => {
       setMemberErrors((current) => ({
         ...current,
-        [variables.body.userId]: isFetchError(err)
-          ? 'Network error. Please check your connection.'
-          : 'Failed to set owner',
+        [variables.body.userId]: mutationErrorMessage(err, 'Failed to set owner'),
       }));
     },
   });
@@ -245,9 +245,7 @@ function OrganizationDetailPage() {
     onError: (err, variables) => {
       setMemberErrors((current) => ({
         ...current,
-        [variables.params.userId]: isFetchError(err)
-          ? 'Network error. Please check your connection.'
-          : 'Failed to change role',
+        [variables.params.userId]: mutationErrorMessage(err, 'Failed to change role'),
       }));
     },
   });
@@ -456,89 +454,92 @@ function OrganizationDetailPage() {
               No users yet. Invite someone to get started.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Kind</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => {
-                  const kind = user.kind ?? 'human';
-                  const isHuman = kind !== 'agent';
-                  const isOwner = user.role === 'owner';
-                  return (
-                    <TableRow key={user.id} data-user-id={user.id} data-role={user.role ?? ''}>
-                      <TableCell className="font-medium">
-                        <button
-                          type="button"
-                          className="text-left hover:underline"
-                          onClick={() =>
-                            navigate({
-                              to: '/users/$userId',
-                              params: { userId: user.id },
-                              search: { orgId },
-                            })
-                          }
-                        >
-                          {user.email}
-                        </button>
-                      </TableCell>
-                      <TableCell>{isHuman ? 'Human' : 'Bot'}</TableCell>
-                      <TableCell className="capitalize">{user.role ?? '—'}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex flex-wrap gap-2">
-                            {isHuman && !isOwner ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                data-action="make-owner"
-                                disabled={setOwnerMutation.isPending}
-                                onClick={() =>
-                                  setOwnerMutation.mutate({
-                                    params: { id: orgId },
-                                    body: { userId: user.id },
-                                  })
-                                }
-                              >
-                                Make owner
-                              </Button>
-                            ) : null}
-                            {!isOwner ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                data-action="toggle-admin"
-                                disabled={changeRoleMutation.isPending}
-                                onClick={() =>
-                                  changeRoleMutation.mutate({
-                                    params: { id: orgId, userId: user.id },
-                                    body: { role: user.role === 'admin' ? 'member' : 'admin' },
-                                  })
-                                }
-                              >
-                                {user.role === 'admin' ? 'Make member' : 'Make admin'}
-                              </Button>
-                            ) : null}
-                          </div>
-                          {memberErrors[user.id] ? (
-                            <p className="text-sm text-red-600" data-member-error={user.id}>
-                              {memberErrors[user.id]}
-                            </p>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="space-y-3">
+              <div className="hidden text-sm font-medium text-muted-foreground md:grid md:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,1fr)] md:gap-3">
+                <div>Email</div>
+                <div>Kind</div>
+                <div>Role</div>
+                <div>Actions</div>
+              </div>
+              {users.map((user) => {
+                const kind = user.kind ?? 'human';
+                const isHuman = kind !== 'agent';
+                const isOwner = user.role === 'owner';
+                return (
+                  <div
+                    key={user.id}
+                    data-user-id={user.id}
+                    data-role={user.role ?? ''}
+                    className="grid gap-2 rounded-md border p-3 md:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,1fr)] md:items-start md:border-0 md:p-0 md:py-3"
+                  >
+                    <button
+                      type="button"
+                      className="break-all text-left font-medium hover:underline"
+                      onClick={() =>
+                        navigate({
+                          to: '/users/$userId',
+                          params: { userId: user.id },
+                          search: { orgId },
+                        })
+                      }
+                    >
+                      {user.name ?? user.email}
+                    </button>
+                    <div className="text-sm text-gray-500 md:text-gray-900">
+                      <span className="md:hidden">Kind: </span>
+                      {isHuman ? 'Human' : 'Bot'}
+                    </div>
+                    <div className="text-sm capitalize text-gray-500 md:text-gray-900">
+                      <span className="md:hidden">Role: </span>
+                      {user.role ?? '—'}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {isHuman && !isOwner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-action="make-owner"
+                            disabled={setOwnerMutation.isPending}
+                            onClick={() =>
+                              setOwnerMutation.mutate({
+                                params: { id: orgId },
+                                body: { userId: user.id },
+                              })
+                            }
+                          >
+                            Make owner
+                          </Button>
+                        ) : null}
+                        {!isOwner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-action="toggle-admin"
+                            disabled={changeRoleMutation.isPending}
+                            onClick={() =>
+                              changeRoleMutation.mutate({
+                                params: { id: orgId, userId: user.id },
+                                body: { role: user.role === 'admin' ? 'member' : 'admin' },
+                              })
+                            }
+                          >
+                            {user.role === 'admin' ? 'Make member' : 'Make admin'}
+                          </Button>
+                        ) : null}
+                      </div>
+                      {memberErrors[user.id] ? (
+                        <p className="text-sm text-red-600" data-member-error={user.id}>
+                          {memberErrors[user.id]}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>

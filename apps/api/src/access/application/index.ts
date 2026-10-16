@@ -5,6 +5,10 @@
 export { createAuthMiddleware, type AuthMiddleware } from './auth-middleware.js';
 export { createCombinedAuthMiddleware } from './combined-auth-middleware.js';
 export { createUserSessionMiddleware } from './user-session-middleware.js';
+export {
+  createRateLimitPrincipalResolver,
+  type ResolveRateLimitPrincipal,
+} from './rate-limit-principal-resolver.js';
 
 // Route registration
 export { registerAuthRoutes } from './auth-routes.js';

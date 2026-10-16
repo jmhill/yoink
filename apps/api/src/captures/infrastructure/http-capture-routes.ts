@@ -9,7 +9,7 @@ import {
   toCaptureListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
 import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
-import { namedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type CaptureRoutesDependencies = {
   captureHandlers: CaptureHandlers;

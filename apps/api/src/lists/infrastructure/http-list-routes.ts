@@ -8,7 +8,7 @@ import {
   toNamedListListBody,
   toTaskListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
-import { namedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type ListRoutesDependencies = {
   listHandlers: ListHandlers;

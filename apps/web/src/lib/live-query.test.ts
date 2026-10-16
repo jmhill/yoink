@@ -96,6 +96,12 @@ describe('live query interval', () => {
         failureCount: 0,
       })
     ).toBe(5_000);
+    expect(
+      decideRetryAfterMs({
+        error: { status: 429, headers: new Headers({ 'retry-after': '8' }) },
+        nowMs: 0,
+      })
+    ).toEqual({ waitMs: 8_000 });
   });
 
   it('skips a focus refetch when the 10-second refresh is already due', () => {

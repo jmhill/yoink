@@ -65,6 +65,7 @@ describe('namedRequestValidationError', () => {
       })
     ).toEqual({
       message: 'Request validation failed: name',
+      code: 'VALIDATION_FAILED',
       fields: ['name'],
     });
   });

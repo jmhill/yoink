@@ -1,14 +1,30 @@
-export type RateLimitKeyQuery = {
-  ip: string;
+export type ViaFlyQuery = {
+  flyAllocId?: string;
+  flyAppName?: string;
+};
+
+export type ViaFlyResult = {
+  viaFly: boolean;
+};
+
+export type ClientIpQuery = {
+  remoteAddress: string | undefined;
   flyClientIp?: string;
-  authorization?: string;
-  cookieHeader?: string;
-  sessionCookieName: string;
+  viaFly: boolean;
+};
+
+export type ClientIpResult = {
+  ip: string;
+};
+
+export type RateLimitKeyQuery = {
+  clientIp: string;
+  userId?: string;
 };
 
 export type RateLimitKeyResult = {
   key: string;
-  source: 'session' | 'token' | 'ip';
+  source: 'user' | 'ip';
 };
 
 export type RateLimitExemptQuery = {
@@ -19,7 +35,17 @@ export type RateLimitExemptResult = {
   exempt: boolean;
 };
 
-const WORKBOX_SCRIPT = /^workbox-.+\.js$/;
+export const UNKNOWN_CLIENT_IP = '0.0.0.0';
+
+const WORKBOX_AT_ROOT = /^\/workbox-.+\.js$/;
+
+const nonempty = (value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
 
 export const firstHeaderValue = (
   value: string | string[] | undefined
@@ -29,12 +55,42 @@ export const firstHeaderValue = (
   }
   if (Array.isArray(value)) {
     const first = value[0];
-    return first === undefined || first.length === 0 ? undefined : first;
+    return first === undefined ? undefined : nonempty(first);
   }
-  return value.length === 0 ? undefined : value;
+  return nonempty(value);
 };
 
-const cookieValue = (header: string | undefined, name: string): string | undefined => {
+export const decideViaFly = (query: ViaFlyQuery): ViaFlyResult => ({
+  viaFly:
+    nonempty(query.flyAllocId) !== undefined || nonempty(query.flyAppName) !== undefined,
+});
+
+export const decideClientIp = (query: ClientIpQuery): ClientIpResult => {
+  if (query.viaFly) {
+    const flyClientIp = nonempty(query.flyClientIp);
+    if (flyClientIp !== undefined) {
+      return { ip: flyClientIp };
+    }
+  }
+  const remoteAddress = nonempty(query.remoteAddress);
+  if (remoteAddress !== undefined) {
+    return { ip: remoteAddress };
+  }
+  return { ip: UNKNOWN_CLIENT_IP };
+};
+
+export const decideRateLimitKey = (query: RateLimitKeyQuery): RateLimitKeyResult => {
+  const userId = nonempty(query.userId);
+  if (userId !== undefined) {
+    return { key: `user:${userId}`, source: 'user' };
+  }
+  return { key: `ip:${query.clientIp}`, source: 'ip' };
+};
+
+export const sessionIdFromCookieHeader = (
+  header: string | undefined,
+  name: string
+): string | undefined => {
   if (header === undefined || header.length === 0) {
     return undefined;
   }
@@ -50,12 +106,11 @@ const cookieValue = (header: string | undefined, name: string): string | undefin
     if (trimmed.slice(0, eq) !== name) {
       return undefined;
     }
-    const value = trimmed.slice(eq + 1);
-    return value.length > 0 ? value : undefined;
+    return nonempty(trimmed.slice(eq + 1));
   }, undefined);
 };
 
-const tokenIdFromAuthorization = (authorization: string | undefined): string | undefined => {
+export const bearerPlaintext = (authorization: string | undefined): string | undefined => {
   if (authorization === undefined || !authorization.startsWith('Bearer ')) {
     return undefined;
   }
@@ -69,58 +124,52 @@ const tokenIdFromAuthorization = (authorization: string | undefined): string | u
   if (tokenId.length === 0 || secret.length === 0) {
     return undefined;
   }
-  return tokenId;
+  return plaintext;
 };
 
-export const decideRateLimitKey = (query: RateLimitKeyQuery): RateLimitKeyResult => {
-  const sessionId = cookieValue(query.cookieHeader, query.sessionCookieName);
-  if (sessionId !== undefined) {
-    return { key: `session:${sessionId}`, source: 'session' };
-  }
-  const tokenId = tokenIdFromAuthorization(query.authorization);
-  if (tokenId !== undefined) {
-    return { key: `token:${tokenId}`, source: 'token' };
-  }
-  const ip =
-    query.flyClientIp !== undefined && query.flyClientIp.length > 0
-      ? query.flyClientIp
-      : query.ip;
-  return { key: `ip:${ip}`, source: 'ip' };
+const beforeDelimiter = (value: string, delimiter: string): string => {
+  const index = value.indexOf(delimiter);
+  return index < 0 ? value : value.slice(0, index);
 };
 
-const pathnameOf = (url: string): string => {
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return new URL(url).pathname;
+/**
+ * Pathname only. Never throws: request.url can be absolute, relative,
+ * or malformed, and `new URL()` would take the process down.
+ */
+export const pathnameOf = (url: string): string => {
+  const withoutHash = beforeDelimiter(url, '#');
+  const withoutQuery = beforeDelimiter(withoutHash, '?');
+  const scheme = withoutQuery.indexOf('://');
+  if (scheme <= 0) {
+    return withoutQuery.startsWith('/') ? withoutQuery : `/${withoutQuery}`;
   }
-  const query = url.indexOf('?');
-  const hash = url.indexOf('#');
-  const end = [query, hash]
-    .filter((index) => index >= 0)
-    .reduce((earliest, index) => Math.min(earliest, index), url.length);
-  return url.slice(0, end);
+  const afterHost = withoutQuery.slice(scheme + 3);
+  const slash = afterHost.indexOf('/');
+  return slash < 0 ? '/' : afterHost.slice(slash);
 };
 
-const filenameOf = (pathname: string): string => {
-  const parts = pathname.split('/');
-  return parts[parts.length - 1] ?? '';
-};
+const isHashedAssetPath = (pathname: string): boolean =>
+  pathname === '/assets' ||
+  pathname.startsWith('/assets/') ||
+  pathname === '/admin/assets' ||
+  pathname.startsWith('/admin/assets/');
 
 /**
  * PWA entry files and hashed bundles must not share the API budget.
  * A 429 on sw.js is a failed update check, not abuse.
+ * Only the web/admin roots are exempt — not `/admin/index.html` or nested copies.
  */
 export const decideRateLimitExempt = (
   query: RateLimitExemptQuery
 ): RateLimitExemptResult => {
   const pathname = pathnameOf(query.url);
-  const filename = filenameOf(pathname);
-  if (pathname === '/' || filename === 'index.html') {
+  if (pathname === '/' || pathname === '/index.html') {
     return { exempt: true };
   }
-  if (filename === 'sw.js' || filename === 'registerSW.js' || WORKBOX_SCRIPT.test(filename)) {
+  if (pathname === '/sw.js' || pathname === '/registerSW.js' || WORKBOX_AT_ROOT.test(pathname)) {
     return { exempt: true };
   }
-  if (pathname === '/assets' || pathname.startsWith('/assets/') || pathname.includes('/assets/')) {
+  if (isHashedAssetPath(pathname)) {
     return { exempt: true };
   }
   return { exempt: false };

@@ -1,6 +1,7 @@
 import { initClient } from '@ts-rest/core';
 import { initTsrReactQuery } from '@ts-rest/react-query/v5';
 import { authContract, captureContract, listContract, noteContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
+import { apiResultFromResponse } from '@/lib/api-result';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
 import { tokenStorage } from '@/lib/token';
 
@@ -46,15 +47,7 @@ const createApi = () => async (args: { path: string; method: string; headers: He
     redirectToLogin();
   }
 
-  // Handle empty responses (204 No Content)
-  const text = await response.text();
-  const body = text ? JSON.parse(text) : undefined;
-
-  return {
-    status: response.status,
-    body,
-    headers: response.headers,
-  };
+  return apiResultFromResponse(response);
 };
 
 /**

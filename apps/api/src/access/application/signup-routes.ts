@@ -8,6 +8,7 @@ import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../config/schema.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import { clientIpOfRequest, type ClientIpOf } from '../../shared/request-client-ip.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;
@@ -23,6 +24,7 @@ export type SignupRoutesDependencies = {
     path: string;
     maxAge: number; // in seconds
   };
+  clientIpOf?: ClientIpOf;
 };
 
 export const registerSignupRoutes = async (
@@ -31,6 +33,8 @@ export const registerSignupRoutes = async (
   rateLimitConfig: RateLimitConfig
 ) => {
   const { signupService, passkeyService, sessionService, sessionCookieName, cookieOptions } = deps;
+  const clientIpOf: ClientIpOf =
+    deps.clientIpOf ?? ((request) => clientIpOfRequest(request, false));
   const s = initServer();
 
   // All signup routes are public (no auth required)
@@ -41,7 +45,7 @@ export const registerSignupRoutes = async (
       await publicApp.register(rateLimit, {
         max: rateLimitConfig.signupMax,
         timeWindow: rateLimitConfig.signupTimeWindow,
-        keyGenerator: (request) => request.ip,
+        keyGenerator: (request) => clientIpOf(request),
       });
     }
 

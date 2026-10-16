@@ -53,7 +53,9 @@ import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health
 import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
+  createRateLimitPrincipalResolver,
 } from './access/application/index.js';
+import { decideViaFly } from './shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,
@@ -161,10 +163,18 @@ export type BootstrapOptions = {
   config: AppConfig;
   infrastructure?: Infrastructure;
   silent?: boolean;
+  /** Override Fly detection. Defaults to FLY_ALLOC_ID / FLY_APP_NAME. */
+  viaFly?: boolean;
 };
 
 export const bootstrapApp = async (options: BootstrapOptions) => {
   const { config, infrastructure, silent } = options;
+  const viaFly =
+    options.viaFly ??
+    decideViaFly({
+      flyAllocId: process.env.FLY_ALLOC_ID,
+      flyAppName: process.env.FLY_APP_NAME,
+    }).viaFly;
   const { database, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);
 
@@ -356,6 +366,11 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         sessionCookieName: config.cookie.sessionName,
       })
     : createAuthMiddleware({ tokenService });
+
+  const resolveRateLimitPrincipal = createRateLimitPrincipalResolver({
+    tokenService,
+    sessionService: signupConfig?.sessionService,
+  });
 
   // Create health checker
   const healthChecker = createSqliteHealthChecker({ tokenStore });
@@ -604,5 +619,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     rateLimit: config.rateLimit,
     log: config.log,
     cookie: config.cookie,
+    viaFly,
+    resolveRateLimitPrincipal,
   });
 };

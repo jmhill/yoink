@@ -65,12 +65,17 @@ import type { Database } from './database/types.js';
 import { createLoggerOptions } from './logging/index.js';
 import { shouldHandleError } from './logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
+import type { ResolveRateLimitPrincipal } from './access/application/index.js';
 import {
   decideRateLimitExempt,
   decideRateLimitKey,
   firstHeaderValue,
 } from './shared/rate-limit-policy.js';
+import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** Trust only the last proxy hop (Fly). Do not trust client-set X-Forwarded-For. */
+export const TRUST_PROXY_HOPS = 1;
 
 export type AdminConfig = {
   adminService: AdminService;
@@ -114,10 +119,13 @@ export type AppDependencies = {
   log: LogConfig;
   cookie: CookieConfig;
   app?: FastifyInstance;
+  /** True only when the process is running behind Fly (FLY_ALLOC_ID / FLY_APP_NAME). */
+  viaFly?: boolean;
+  resolveRateLimitPrincipal?: ResolveRateLimitPrincipal;
 };
 
 export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log), trustProxy: true });
+  Fastify({ logger: createLoggerOptions(log), trustProxy: TRUST_PROXY_HOPS });
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {
@@ -135,6 +143,8 @@ const defaultRateLimitConfig: RateLimitConfig = {
 export const createApp = async (deps: AppDependencies) => {
   const app = deps.app ?? createFastifyInstance(deps.log);
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
+  const viaFly = deps.viaFly ?? false;
+  const clientIpOf: ClientIpOf = (request) => clientIpOfRequest(request, viaFly);
 
   // Register security plugins
   await app.register(helmet, {
@@ -147,18 +157,23 @@ export const createApp = async (deps: AppDependencies) => {
   // Only register global rate limiting if enabled
   if (rateLimitConfig.enabled) {
     const sessionCookieName = deps.cookie.sessionName;
+    const resolvePrincipal = deps.resolveRateLimitPrincipal;
     await app.register(rateLimit, {
       global: true,
       max: rateLimitConfig.globalMax,
       timeWindow: rateLimitConfig.globalTimeWindow,
-      keyGenerator: (request) =>
-        decideRateLimitKey({
-          ip: request.ip,
-          flyClientIp: firstHeaderValue(request.headers['fly-client-ip']),
-          authorization: firstHeaderValue(request.headers.authorization),
-          cookieHeader: firstHeaderValue(request.headers.cookie),
-          sessionCookieName,
-        }).key,
+      keyGenerator: async (request) => {
+        const clientIp = clientIpOf(request);
+        const userId =
+          resolvePrincipal === undefined
+            ? undefined
+            : await resolvePrincipal({
+                cookieHeader: firstHeaderValue(request.headers.cookie),
+                authorization: firstHeaderValue(request.headers.authorization),
+                sessionCookieName,
+              });
+        return decideRateLimitKey({ clientIp, userId }).key;
+      },
       allowList: (request) => decideRateLimitExempt({ url: request.url }).exempt,
     });
   }
@@ -206,7 +221,11 @@ export const createApp = async (deps: AppDependencies) => {
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
-    await registerAdminRoutes(app, { ...deps.admin, cookieConfig: deps.cookie }, rateLimitConfig);
+    await registerAdminRoutes(
+      app,
+      { ...deps.admin, cookieConfig: deps.cookie, clientIpOf },
+      rateLimitConfig
+    );
   }
 
   // Invitation routes
@@ -235,6 +254,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionService: deps.signup.sessionService,
       sessionCookieName,
       cookieOptions,
+      clientIpOf,
     }, rateLimitConfig);
 
     // Passkey management routes (for existing users to add/manage passkeys)
@@ -256,6 +276,7 @@ export const createApp = async (deps: AppDependencies) => {
       tokenService: deps.signup.tokenService,
       sessionCookieName,
       cookieOptions,
+      clientIpOf,
     }, rateLimitConfig);
 
     // Organization routes (switch, leave, members)

@@ -49,10 +49,11 @@ export const namedValidationFailedMessage = (fields: string[]): string =>
 
 export const namedRequestValidationError = (
   err: RequestValidationErr
-): { message: string; fields: string[] } => {
+): RequestValidationHttpError => {
   const fields = validationIssuePaths(err);
   return {
     message: namedValidationFailedMessage(fields),
+    code: 'VALIDATION_FAILED',
     fields,
   };
 };

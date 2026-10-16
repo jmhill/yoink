@@ -15,6 +15,7 @@ import {
 import type { TokenService } from '../domain/token-service.js';
 import type { RateLimitConfig } from '../../config/schema.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import { clientIpOfRequest, type ClientIpOf } from '../../shared/request-client-ip.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -31,6 +32,7 @@ export type AuthRoutesDependencies = {
     path: string;
     maxAge: number; // in seconds
   };
+  clientIpOf?: ClientIpOf;
 };
 
 // Helper to check if a route is public (no auth required)
@@ -50,6 +52,8 @@ export const registerAuthRoutes = async (
   rateLimitConfig: RateLimitConfig
 ) => {
   const { passkeyService, sessionService, userService, membershipService, organizationStore, tokenService, sessionCookieName, cookieOptions } = deps;
+  const clientIpOf: ClientIpOf =
+    deps.clientIpOf ?? ((request) => clientIpOfRequest(request, false));
   const s = initServer();
 
   // Create combined auth middleware if tokenService is provided
@@ -78,7 +82,7 @@ export const registerAuthRoutes = async (
       await authApp.register(rateLimit, {
         max: rateLimitConfig.authLoginMax,
         timeWindow: rateLimitConfig.authLoginTimeWindow,
-        keyGenerator: (request) => request.ip,
+        keyGenerator: (request) => clientIpOf(request),
         // Only apply rate limiting to the login verify endpoint
         allowList: (request) => !isLoginVerifyRoute(request),
       });

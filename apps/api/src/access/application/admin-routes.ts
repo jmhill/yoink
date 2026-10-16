@@ -8,12 +8,14 @@ import type { InvitationService } from '../domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
 import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import { clientIpOfRequest, type ClientIpOf } from '../../shared/request-client-ip.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
   cookieConfig: CookieConfig;
+  clientIpOf?: ClientIpOf;
 };
 
 /**
@@ -30,6 +32,8 @@ export const registerAdminRoutes = async (
   rateLimitConfig: RateLimitConfig
 ) => {
   const { adminService, adminSessionService, invitationService, cookieConfig } = deps;
+  const clientIpOf: ClientIpOf =
+    deps.clientIpOf ?? ((request) => clientIpOfRequest(request, false));
   const s = initServer();
 
   // Register public admin routes with strict rate limiting
@@ -40,7 +44,7 @@ export const registerAdminRoutes = async (
       await publicApp.register(rateLimit, {
         max: rateLimitConfig.adminLoginMax,
         timeWindow: rateLimitConfig.adminLoginTimeWindow,
-        keyGenerator: (request) => request.ip,
+        keyGenerator: (request) => clientIpOf(request),
       });
     }
 

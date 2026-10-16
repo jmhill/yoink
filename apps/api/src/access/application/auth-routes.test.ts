@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerAuthRoutes } from './auth-routes.js';
+import { clientIpOfRequest } from '../../shared/request-client-ip.js';
 import { createPasskeyService } from '../domain/passkey-service.js';
 import { createSessionService } from '../domain/session-service.js';
 import { createUserService } from '../domain/user-service.js';
@@ -168,6 +169,7 @@ describe('auth routes', () => {
         path: '/',
         maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
       },
+      clientIpOf: (request) => clientIpOfRequest(request, false),
     }, rateLimitConfig);
 
     await app.ready();

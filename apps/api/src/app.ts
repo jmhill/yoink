@@ -26,6 +26,7 @@ import {
   registerTokenRoutes,
   type AuthMiddleware,
   type ReissueAgentToken,
+  withAuthenticatedRateLimit,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
@@ -65,12 +66,12 @@ import type { Database } from './database/types.js';
 import { createLoggerOptions } from './logging/index.js';
 import { shouldHandleError } from './logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
-import type { ResolveRateLimitPrincipal } from './access/application/index.js';
 import {
   decideRateLimitExempt,
   decideRateLimitKey,
-  firstHeaderValue,
+  decideTimeWindowMs,
 } from './shared/rate-limit-policy.js';
+import { createInMemoryRateLimitConsume } from './shared/in-memory-rate-limit-consume.js';
 import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -121,7 +122,6 @@ export type AppDependencies = {
   app?: FastifyInstance;
   /** True only when the process is running behind Fly (FLY_ALLOC_ID / FLY_APP_NAME). */
   viaFly?: boolean;
-  resolveRateLimitPrincipal?: ResolveRateLimitPrincipal;
 };
 
 export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
@@ -145,6 +145,17 @@ export const createApp = async (deps: AppDependencies) => {
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
   const viaFly = deps.viaFly ?? false;
   const clientIpOf: ClientIpOf = (request) => clientIpOfRequest(request, viaFly);
+  const applyAuthenticatedRateLimit = rateLimitConfig.enabled
+    ? createInMemoryRateLimitConsume({
+        max: rateLimitConfig.globalMax,
+        windowMs: decideTimeWindowMs({ timeWindow: rateLimitConfig.globalTimeWindow }).windowMs,
+        now: () => Date.now(),
+      })
+    : undefined;
+  const authMiddleware =
+    applyAuthenticatedRateLimit === undefined
+      ? deps.authMiddleware
+      : withAuthenticatedRateLimit(deps.authMiddleware, applyAuthenticatedRateLimit);
 
   // Register security plugins
   await app.register(helmet, {
@@ -154,26 +165,15 @@ export const createApp = async (deps: AppDependencies) => {
 
   await app.register(cookie);
 
-  // Only register global rate limiting if enabled
+  // Cheap IP bucket first: no session/token lookups. Forged credentials cannot
+  // add hash work or mint a new bucket once this IP is over the limit.
   if (rateLimitConfig.enabled) {
-    const sessionCookieName = deps.cookie.sessionName;
-    const resolvePrincipal = deps.resolveRateLimitPrincipal;
     await app.register(rateLimit, {
       global: true,
       max: rateLimitConfig.globalMax,
       timeWindow: rateLimitConfig.globalTimeWindow,
-      keyGenerator: async (request) => {
-        const clientIp = clientIpOf(request);
-        const userId =
-          resolvePrincipal === undefined
-            ? undefined
-            : await resolvePrincipal({
-                cookieHeader: firstHeaderValue(request.headers.cookie),
-                authorization: firstHeaderValue(request.headers.authorization),
-                sessionCookieName,
-              });
-        return decideRateLimitKey({ clientIp, userId }).key;
-      },
+      keyGenerator: (request) =>
+        decideRateLimitKey({ clientIp: clientIpOf(request) }).key,
       allowList: (request) => decideRateLimitExempt({ url: request.url }).exempt,
     });
   }
@@ -183,38 +183,38 @@ export const createApp = async (deps: AppDependencies) => {
   await registerCaptureRoutes(app, {
     captureHandlers: deps.captureHandlers,
     captureProcessingService: deps.captureProcessingService,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerListRoutes(app, {
     listHandlers: deps.listHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerProjectRoutes(app, {
     projectHandlers: deps.projectHandlers,
     historyHandlers: deps.historyHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerNoteRoutes(app, {
     noteHandlers: deps.noteHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
     historyHandlers: deps.historyHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerWorkRoutes(app, {
     workHandlers: deps.workHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   await registerReviewRoutes(app, {
     reviewHandlers: deps.reviewHandlers,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
   if (deps.enableTestFixtures && deps.database) {
     await registerReviewFixtureRoutes(app, {
-      authMiddleware: deps.authMiddleware,
+      authMiddleware,
       db: deps.database,
     });
   }
@@ -233,7 +233,7 @@ export const createApp = async (deps: AppDependencies) => {
     invitationService: deps.invitationService,
     membershipService: deps.membershipService,
     organizationService: deps.organizationService,
-    authMiddleware: deps.authMiddleware,
+    authMiddleware,
   });
 
   // Session cookie configuration (shared between signup and passkey routes)
@@ -277,6 +277,7 @@ export const createApp = async (deps: AppDependencies) => {
       sessionCookieName,
       cookieOptions,
       clientIpOf,
+      applyAuthenticatedRateLimit,
     }, rateLimitConfig);
 
     // Organization routes (switch, leave, members)
@@ -286,7 +287,7 @@ export const createApp = async (deps: AppDependencies) => {
       userService: deps.signup.userService,
       agentService: deps.signup.agentService,
       reissueAgentToken: deps.signup.reissueAgentToken,
-      authMiddleware: deps.authMiddleware,
+      authMiddleware,
     });
 
     // User token self-service routes

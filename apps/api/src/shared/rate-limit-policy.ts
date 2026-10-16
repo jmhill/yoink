@@ -87,6 +87,105 @@ export const decideRateLimitKey = (query: RateLimitKeyQuery): RateLimitKeyResult
   return { key: `ip:${query.clientIp}`, source: 'ip' };
 };
 
+export type TimeWindowQuery = {
+  timeWindow: string | number;
+};
+
+export type TimeWindowResult = {
+  windowMs: number;
+};
+
+const DEFAULT_WINDOW_MS = 60_000;
+
+const unitMs = (unit: string): number | undefined => {
+  switch (unit) {
+    case 'ms':
+    case 'millisecond':
+    case 'milliseconds':
+      return 1;
+    case 's':
+    case 'sec':
+    case 'second':
+    case 'seconds':
+      return 1000;
+    case 'm':
+    case 'min':
+    case 'minute':
+    case 'minutes':
+      return 60_000;
+    case 'h':
+    case 'hr':
+    case 'hour':
+    case 'hours':
+      return 3_600_000;
+    default:
+      return undefined;
+  }
+};
+
+export const decideTimeWindowMs = (query: TimeWindowQuery): TimeWindowResult => {
+  if (typeof query.timeWindow === 'number') {
+    return { windowMs: query.timeWindow > 0 ? query.timeWindow : DEFAULT_WINDOW_MS };
+  }
+  const match = /^(\d+)\s*([a-z]+)$/i.exec(query.timeWindow.trim());
+  if (match === null) {
+    return { windowMs: DEFAULT_WINDOW_MS };
+  }
+  const amount = Number(match[1]);
+  const unit = match[2];
+  if (unit === undefined || !Number.isFinite(amount)) {
+    return { windowMs: DEFAULT_WINDOW_MS };
+  }
+  const ms = unitMs(unit.toLowerCase());
+  if (ms === undefined) {
+    return { windowMs: DEFAULT_WINDOW_MS };
+  }
+  return { windowMs: amount * ms };
+};
+
+export type RateLimitConsumeQuery = {
+  count: number;
+  resetAt: number;
+  nowMs: number;
+  max: number;
+  windowMs: number;
+};
+
+export type RateLimitConsumeResult = {
+  limited: boolean;
+  nextCount: number;
+  nextResetAt: number;
+  retryAfterSeconds: number;
+};
+
+export const decideRateLimitConsume = (
+  query: RateLimitConsumeQuery
+): RateLimitConsumeResult => {
+  const expired = query.resetAt === 0 || query.nowMs >= query.resetAt;
+  if (expired) {
+    return {
+      limited: false,
+      nextCount: 1,
+      nextResetAt: query.nowMs + query.windowMs,
+      retryAfterSeconds: Math.max(1, Math.ceil(query.windowMs / 1000)),
+    };
+  }
+  if (query.count >= query.max) {
+    return {
+      limited: true,
+      nextCount: query.count,
+      nextResetAt: query.resetAt,
+      retryAfterSeconds: Math.max(1, Math.ceil((query.resetAt - query.nowMs) / 1000)),
+    };
+  }
+  return {
+    limited: false,
+    nextCount: query.count + 1,
+    nextResetAt: query.resetAt,
+    retryAfterSeconds: Math.max(1, Math.ceil((query.resetAt - query.nowMs) / 1000)),
+  };
+};
+
 export const sessionIdFromCookieHeader = (
   header: string | undefined,
   name: string

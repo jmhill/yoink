@@ -53,7 +53,6 @@ import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health
 import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
-  createRateLimitPrincipalResolver,
 } from './access/application/index.js';
 import { decideViaFly } from './shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
@@ -78,6 +77,7 @@ import {
 } from './access/infrastructure/index.js';
 import {
   createTokenService,
+  type TokenService,
   createPasskeyService,
   createSessionService,
   createSignupService,
@@ -165,6 +165,8 @@ export type BootstrapOptions = {
   silent?: boolean;
   /** Override Fly detection. Defaults to FLY_ALLOC_ID / FLY_APP_NAME. */
   viaFly?: boolean;
+  /** Test seam: count or wrap validateToken without a second production lookup. */
+  wrapTokenService?: (tokenService: TokenService) => TokenService;
 };
 
 export const bootstrapApp = async (options: BootstrapOptions) => {
@@ -203,13 +205,17 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   });
 
   // Create auth services
-  const tokenService = createTokenService({
+  const createdTokenService = createTokenService({
     organizationStore,
     userStore,
     tokenStore,
     passwordHasher,
     clock,
   });
+  const tokenService =
+    options.wrapTokenService === undefined
+      ? createdTokenService
+      : options.wrapTokenService(createdTokenService);
 
   // Create UserService to be used by other services
   const userService = createUserService({ userStore });
@@ -366,11 +372,6 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         sessionCookieName: config.cookie.sessionName,
       })
     : createAuthMiddleware({ tokenService });
-
-  const resolveRateLimitPrincipal = createRateLimitPrincipalResolver({
-    tokenService,
-    sessionService: signupConfig?.sessionService,
-  });
 
   // Create health checker
   const healthChecker = createSqliteHealthChecker({ tokenStore });
@@ -620,6 +621,5 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     log: config.log,
     cookie: config.cookie,
     viaFly,
-    resolveRateLimitPrincipal,
   });
 };

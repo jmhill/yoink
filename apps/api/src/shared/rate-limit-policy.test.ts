@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   decideClientIp,
+  decideRateLimitConsume,
   decideRateLimitExempt,
   decideRateLimitKey,
+  decideTimeWindowMs,
   decideViaFly,
   firstHeaderValue,
   pathnameOf,
@@ -80,6 +82,47 @@ describe('decideRateLimitKey', () => {
     expect(decideRateLimitKey({ clientIp: '1.1.1.1', userId: '  ' })).toEqual({
       key: 'ip:1.1.1.1',
       source: 'ip',
+    });
+  });
+});
+
+describe('decideTimeWindowMs', () => {
+  it('parses the windows the API config uses', () => {
+    expect(decideTimeWindowMs({ timeWindow: '1 minute' })).toEqual({ windowMs: 60_000 });
+    expect(decideTimeWindowMs({ timeWindow: '15 minutes' })).toEqual({ windowMs: 900_000 });
+    expect(decideTimeWindowMs({ timeWindow: 5000 })).toEqual({ windowMs: 5000 });
+  });
+});
+
+describe('decideRateLimitConsume', () => {
+  it('opens a new window, then limits once max is reached', () => {
+    expect(
+      decideRateLimitConsume({
+        count: 0,
+        resetAt: 0,
+        nowMs: 1_000,
+        max: 3,
+        windowMs: 60_000,
+      })
+    ).toEqual({
+      limited: false,
+      nextCount: 1,
+      nextResetAt: 61_000,
+      retryAfterSeconds: 60,
+    });
+    expect(
+      decideRateLimitConsume({
+        count: 3,
+        resetAt: 61_000,
+        nowMs: 1_000,
+        max: 3,
+        windowMs: 60_000,
+      })
+    ).toEqual({
+      limited: true,
+      nextCount: 3,
+      nextResetAt: 61_000,
+      retryAfterSeconds: 60,
     });
   });
 });

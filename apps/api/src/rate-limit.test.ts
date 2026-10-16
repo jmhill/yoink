@@ -4,6 +4,7 @@ import { runMigrations } from './database/migrator.js';
 import { migrations } from './database/migrations.js';
 import type { AppConfig, RateLimitConfig } from './config/schema.js';
 import type { FastifyInstance } from 'fastify';
+import type { TokenService } from './access/domain/index.js';
 import {
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
@@ -30,6 +31,7 @@ type StartOptions = {
   viaFly?: boolean;
   seedToken?: boolean;
   webauthn?: boolean;
+  wrapTokenService?: (tokenService: TokenService) => TokenService;
 };
 
 const createTestConfig = (
@@ -92,6 +94,7 @@ const startApp = async (
     infrastructure,
     silent: true,
     viaFly: options.viaFly ?? false,
+    wrapTokenService: options.wrapTokenService,
   });
   if (options.webauthn) {
     await seedTestUserSession(infrastructure.database);
@@ -103,6 +106,13 @@ const health = (app: FastifyInstance, headers: Record<string, string> = {}) =>
   app.inject({
     method: 'GET',
     url: '/api/health',
+    headers,
+  });
+
+const projects = (app: FastifyInstance, headers: Record<string, string> = {}) =>
+  app.inject({
+    method: 'GET',
+    url: '/api/projects',
     headers,
   });
 
@@ -198,34 +208,86 @@ describe('General API rate limit', () => {
     expect(blocked.statusCode).toBe(429);
   });
 
-  it('keys a validated session or bot token as user:<id>', async () => {
-    app = await startApp(tightGlobalLimit, { seedToken: true, webauthn: true });
+  it('does not call validateToken for forged tokens once the IP bucket is full', async () => {
+    let validateCalls = 0;
+    app = await startApp(tightGlobalLimit, {
+      wrapTokenService: (tokenService) => ({
+        validateToken: (query) => {
+          validateCalls += 1;
+          return tokenService.validateToken(query);
+        },
+      }),
+    });
 
     for (let i = 0; i < 3; i += 1) {
-      const allowed = await health(app);
-      expect(allowed.statusCode).toBe(200);
+      expect((await health(app)).statusCode).toBe(200);
     }
-    expect((await health(app)).statusCode).toBe(429);
 
-    const tokenAllowed = await health(app, {
+    const blocked = await projects(app, {
+      authorization: 'Bearer forged-id:forged-secret',
+    });
+    expect(blocked.statusCode).toBe(429);
+    expect(validateCalls).toBe(0);
+  });
+
+  it('validates a real token once per request after the IP check passes', async () => {
+    let validateCalls = 0;
+    app = await startApp(
+      { ...tightGlobalLimit, globalMax: 100 },
+      {
+        seedToken: true,
+        wrapTokenService: (tokenService) => ({
+          validateToken: (query) => {
+            validateCalls += 1;
+            return tokenService.validateToken(query);
+          },
+        }),
+      }
+    );
+
+    const first = await projects(app, {
       authorization: `Bearer ${TEST_TOKEN}`,
     });
-    expect(tokenAllowed.statusCode).toBe(200);
+    expect(first.statusCode).toBe(200);
+    expect(validateCalls).toBe(1);
 
-    for (let i = 0; i < 2; i += 1) {
-      const allowed = await health(app, {
+    const second = await projects(app, {
+      authorization: `Bearer ${TEST_TOKEN}`,
+    });
+    expect(second.statusCode).toBe(200);
+    expect(validateCalls).toBe(2);
+  });
+
+  it('limits a validated user after auth, including across Fly client IPs', async () => {
+    app = await startApp(tightGlobalLimit, {
+      seedToken: true,
+      webauthn: true,
+      viaFly: true,
+    });
+
+    for (let i = 0; i < 3; i += 1) {
+      const allowed = await projects(app, {
         authorization: `Bearer ${TEST_TOKEN}`,
+        'fly-client-ip': '198.51.100.10',
       });
       expect(allowed.statusCode).toBe(200);
     }
 
-    const sameUserToken = await health(app, {
+    const sameIp = await projects(app, {
       authorization: `Bearer ${TEST_TOKEN}`,
+      'fly-client-ip': '198.51.100.10',
     });
-    expect(sameUserToken.statusCode).toBe(429);
+    expect(sameIp.statusCode).toBe(429);
 
-    const sameUserSession = await health(app, {
+    const otherIpSameUser = await projects(app, {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      'fly-client-ip': '198.51.100.20',
+    });
+    expect(otherIpSameUser.statusCode).toBe(429);
+
+    const sameUserSession = await projects(app, {
       cookie: `${TEST_SESSION_COOKIE}=${TEST_SESSION_ID}`,
+      'fly-client-ip': '198.51.100.20',
     });
     expect(sameUserSession.statusCode).toBe(429);
   });

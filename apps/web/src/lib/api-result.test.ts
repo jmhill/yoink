@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apiResultFromResponse } from './api-result';
+import { apiResultFromResponse, jsonBodyOf } from './api-result';
 import { decideRetryAfterMs } from './live-query';
 
 describe('apiResultFromResponse', () => {
@@ -20,6 +20,14 @@ describe('apiResultFromResponse', () => {
     const response = new Response(null, { status: 200 });
     const result = await apiResultFromResponse(response);
     expect(result.status).toBe(200);
+    expect(result.body).toBeUndefined();
+  });
+
+  it('does not throw when the body is not JSON', async () => {
+    expect(jsonBodyOf('not-json')).toEqual({ ok: false });
+    const response = new Response('not-json', { status: 500 });
+    const result = await apiResultFromResponse(response);
+    expect(result.status).toBe(500);
     expect(result.body).toBeUndefined();
   });
 });

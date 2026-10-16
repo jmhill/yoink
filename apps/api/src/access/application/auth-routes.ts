@@ -15,7 +15,11 @@ import {
 import type { TokenService } from '../domain/token-service.js';
 import type { RateLimitConfig } from '../../config/schema.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
-import { clientIpOfRequest, type ClientIpOf } from '../../shared/request-client-ip.js';
+import type { ClientIpOf } from '../../shared/request-client-ip.js';
+import {
+  withAuthenticatedRateLimit,
+  type AuthenticatedRateLimitConsume,
+} from './with-authenticated-rate-limit.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -32,7 +36,8 @@ export type AuthRoutesDependencies = {
     path: string;
     maxAge: number; // in seconds
   };
-  clientIpOf?: ClientIpOf;
+  clientIpOf: ClientIpOf;
+  applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
 // Helper to check if a route is public (no auth required)
@@ -51,9 +56,7 @@ export const registerAuthRoutes = async (
   deps: AuthRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { passkeyService, sessionService, userService, membershipService, organizationStore, tokenService, sessionCookieName, cookieOptions } = deps;
-  const clientIpOf: ClientIpOf =
-    deps.clientIpOf ?? ((request) => clientIpOfRequest(request, false));
+  const { passkeyService, sessionService, userService, membershipService, organizationStore, tokenService, sessionCookieName, cookieOptions, clientIpOf } = deps;
   const s = initServer();
 
   // Create combined auth middleware if tokenService is provided
@@ -72,7 +75,11 @@ export const registerAuthRoutes = async (
         sessionCookieName,
       };
 
-  const authMiddleware = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
+  const authMiddleware =
+    deps.applyAuthenticatedRateLimit === undefined
+      ? resolvedAuth
+      : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
   await app.register(async (authApp) => {
     // Apply strict rate limiting only to login verify endpoint (brute force protection)

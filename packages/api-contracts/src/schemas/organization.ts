@@ -9,6 +9,18 @@ export const MembershipRoleSchema = z.enum(['owner', 'admin', 'member']);
 
 export type MembershipRole = z.infer<typeof MembershipRoleSchema>;
 
+/** Anyone removing the owner — dedicated, not INSUFFICIENT_PERMISSIONS */
+export const OWNER_CANNOT_BE_REMOVED_MESSAGE =
+  "The owner can't be removed. Ownership has to be handed over first.";
+
+/** Owner leave — reader is a workspace person, not the app admin */
+export const OWNER_MUST_TRANSFER_MESSAGE =
+  'Transfer ownership first. Ask an admin of the whole app to change the owner.';
+
+/** Admin-panel change-role — reader is the app admin */
+export const OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE =
+  'Transfer ownership first. Use Make owner on another member.';
+
 // ============================================================================
 // Member
 // ============================================================================

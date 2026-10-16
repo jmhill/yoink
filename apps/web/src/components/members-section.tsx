@@ -14,6 +14,7 @@ import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { listMembers, removeMember, mintAgent, memberLabel, type Member } from '@/api/auth';
 import { tsrOrganizations } from '@/api/client';
+import { OWNER_CANNOT_BE_REMOVED_MESSAGE } from '@yoink/api-contracts';
 
 const errorBodyMessage = (body: unknown): string | null => {
   if (
@@ -221,7 +222,7 @@ export function MembersSection({
                           className="max-w-[14rem] text-right text-sm text-muted-foreground"
                           data-owner-cannot-remove=""
                         >
-                          The owner can&apos;t be removed. Ownership has to be handed over first.
+                          {OWNER_CANNOT_BE_REMOVED_MESSAGE}
                         </p>
                       ) : null}
                       {canReissue && member.kind === 'agent' && (

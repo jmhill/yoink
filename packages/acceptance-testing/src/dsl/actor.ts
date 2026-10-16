@@ -364,6 +364,11 @@ export type BrowserActorOperations = {
   shouldSeeOwnerCannotBeRemoved(): Promise<void>;
 
   /**
+   * Frame the owner-cannot-remove copy for a walkthrough shot.
+   */
+  frameOwnerCannotBeRemoved(): Promise<void>;
+
+  /**
    * Scroll the Members list into view for a walkthrough shot.
    */
   revealMembersSection(): Promise<void>;

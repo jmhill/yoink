@@ -313,6 +313,9 @@ export const createHttpAdmin = (
   async revealMember() {
     throw new UnsupportedOperationError('revealMember', 'http');
   },
+  async frameMember() {
+    throw new UnsupportedOperationError('frameMember', 'http');
+  },
   async useMobileViewport() {
     throw new UnsupportedOperationError('useMobileViewport', 'http');
   },

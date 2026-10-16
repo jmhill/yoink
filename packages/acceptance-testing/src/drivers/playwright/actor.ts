@@ -6160,6 +6160,10 @@ export const createPlaywrightActor = (
       await settingsPage.shouldSeeOwnerCannotBeRemoved();
     },
 
+    async frameOwnerCannotBeRemoved(): Promise<void> {
+      await settingsPage.frameOwnerCannotBeRemoved();
+    },
+
     async revealMembersSection(): Promise<void> {
       await settingsPage.revealMembersSection();
     },

@@ -657,6 +657,15 @@ export class SettingsPage {
     await expect(copy).toHaveText(
       "The owner can't be removed. Ownership has to be handed over first."
     );
+  }
+
+  async frameOwnerCannotBeRemoved(): Promise<void> {
+    const copy = this.page.locator('[data-owner-cannot-remove]');
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
     await copy.evaluate((el) => {
       el.setAttribute('data-screenshot-focus', '');
     });

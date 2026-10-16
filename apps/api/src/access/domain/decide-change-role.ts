@@ -13,6 +13,7 @@ import {
   type CannotAssignOwnerRoleError,
   type LastAdminError,
   type MembershipNotFoundError,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   type OwnerMustTransferError,
 } from './organization-errors.js';
 
@@ -63,7 +64,10 @@ export const decideChangeRole = ({
     membershipsWithRole(members, membership.userId, command.newRole)
   );
   if (ownerCheck.isErr()) {
-    return err(ownerCheck.error);
+    return err({
+      ...ownerCheck.error,
+      message: OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+    });
   }
 
   if (

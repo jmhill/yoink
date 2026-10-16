@@ -371,7 +371,7 @@ describe('admin HTTP routes', () => {
       });
       expect(demote.statusCode).toBe(409);
       expect(demote.json().message).toBe(
-        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
+        'Transfer ownership first. Use Make owner on another member.'
       );
 
       const botAdmin = await app.inject({

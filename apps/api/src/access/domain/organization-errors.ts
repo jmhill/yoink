@@ -1,4 +1,15 @@
+import {
+  OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+  OWNER_MUST_TRANSFER_MESSAGE,
+} from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
+
+export {
+  OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+  OWNER_MUST_TRANSFER_MESSAGE,
+};
 
 // ============================================================================
 // Organization Storage Errors
@@ -144,9 +155,6 @@ export type OwnerMustTransferError = {
   readonly message: string;
 };
 
-export const OWNER_MUST_TRANSFER_MESSAGE =
-  'Transfer ownership first. Ask an admin of the whole app to change the owner.';
-
 export const ownerMustTransferError = (
   organizationId: string,
   userId: string
@@ -164,9 +172,6 @@ export type OwnerCannotBeRemovedError = {
   readonly userId: string;
   readonly message: string;
 };
-
-export const OWNER_CANNOT_BE_REMOVED_MESSAGE =
-  "The owner can't be removed. Ownership has to be handed over first.";
 
 export const ownerCannotBeRemovedError = (
   organizationId: string,

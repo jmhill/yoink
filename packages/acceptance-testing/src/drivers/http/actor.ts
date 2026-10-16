@@ -3408,6 +3408,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeOwnerCannotBeRemoved', 'http');
     },
 
+    async frameOwnerCannotBeRemoved(): Promise<void> {
+      throw new UnsupportedOperationError('frameOwnerCannotBeRemoved', 'http');
+    },
+
     async revealMembersSection(): Promise<void> {
       throw new UnsupportedOperationError('revealMembersSection', 'http');
     },

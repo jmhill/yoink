@@ -308,6 +308,11 @@ describe('AdminService', () => {
         role: 'admin',
       });
       expect(demote.isErr() && demote.error.type).toBe('OWNER_MUST_TRANSFER');
+      if (demote.isErr() && demote.error.type === 'OWNER_MUST_TRANSFER') {
+        expect(demote.error.message).toBe(
+          'Transfer ownership first. Use Make owner on another member.'
+        );
+      }
 
       const still = await organizationMembershipStore.findByUserAndOrg(
         created.value.id,

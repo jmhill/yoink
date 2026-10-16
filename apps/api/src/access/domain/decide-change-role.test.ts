@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideChangeRole } from './decide-change-role.js';
+import { OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE } from './organization-errors.js';
 import type { OrganizationMembership } from './organization-membership.js';
 
 const orgId = '550e8400-e29b-41d4-a716-446655440001';
@@ -67,6 +68,9 @@ describe('decideChangeRole', () => {
       targetKind: 'human',
     });
     expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
+    if (result.isErr() && result.error.type === 'OWNER_MUST_TRANSFER') {
+      expect(result.error.message).toBe(OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE);
+    }
   });
 
   it('refuses promoting a bot to admin', () => {

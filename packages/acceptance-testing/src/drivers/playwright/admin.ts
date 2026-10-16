@@ -158,6 +158,20 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       await memberRow(browserPage(), userId).scrollIntoViewIfNeeded();
     },
 
+    async frameMember(userId: string): Promise<void> {
+      const row = memberRow(browserPage(), userId);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await browserPage().locator('[data-screenshot-focus]').evaluateAll((els) => {
+        for (const el of els) {
+          el.removeAttribute('data-screenshot-focus');
+        }
+      });
+      await row.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+    },
+
     async useMobileViewport(): Promise<void> {
       walkthroughViewport = 'phone';
       const adminPage = await ensureLoggedIn();

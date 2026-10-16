@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
 import { tsrAdmin } from '@/api/client';
+import { parseCreateUserKind, parseCreateUserRole } from '@/lib/parse-create-user-fields';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff, Mail, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -440,7 +441,12 @@ function OrganizationDetailPage() {
                       id="createUserKind"
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       value={createUserKind}
-                      onChange={(e) => setCreateUserKind(e.target.value as 'human' | 'agent')}
+                      onChange={(e) => {
+                        const kind = parseCreateUserKind(e.target.value);
+                        if (kind) {
+                          setCreateUserKind(kind);
+                        }
+                      }}
                     >
                       <option value="human">Human</option>
                       <option value="agent">Bot</option>
@@ -452,7 +458,12 @@ function OrganizationDetailPage() {
                       id="createUserRole"
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       value={createUserRole}
-                      onChange={(e) => setCreateUserRole(e.target.value as 'member' | 'admin')}
+                      onChange={(e) => {
+                        const role = parseCreateUserRole(e.target.value);
+                        if (role) {
+                          setCreateUserRole(role);
+                        }
+                      }}
                     >
                       <option value="member">Member</option>
                       <option value="admin">Admin</option>

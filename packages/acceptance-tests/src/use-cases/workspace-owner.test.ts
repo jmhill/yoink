@@ -127,10 +127,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'admin_before_no_owner',
         });
-        await ctx.admin.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'non_member_no_make_owner',
-        });
 
         await ctx.admin.makeOwner(justin.id);
         await ctx.admin.shouldSeeMemberRole(justin.id, 'owner');
@@ -156,7 +152,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
         await ctx.admin.shouldNotSeeMakeAdmin(lane.id);
         await ctx.admin.shouldNotSeeMakeOwner(lane.id);
-        await ctx.admin.revealMember(lane.id);
+        await ctx.admin.frameMember(lane.id);
         await ctx.admin.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'bot_row_no_buttons',
@@ -228,6 +224,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           story: WALKTHROUGH_STORY,
           step: 'admin_members_no_remove',
         });
+        await workspaceAdmin.frameOwnerCannotBeRemoved();
         await workspaceAdmin.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'owner_cannot_be_removed',

@@ -72,6 +72,7 @@ export type Admin = {
   }): Promise<void>;
   shouldSeeCreateUserError(pattern: string | RegExp): Promise<void>;
   revealMember(userId: string): Promise<void>;
+  frameMember(userId: string): Promise<void>;
   useMobileViewport(): Promise<void>;
   useDesktopViewport(): Promise<void>;
   saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;

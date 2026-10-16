@@ -59,6 +59,7 @@ import {
   UnsupportedOperationError,
   CannotLeavePersonalOrgError,
   LastAdminError,
+  OwnerMustTransferError,
   NotMemberError,
   ForbiddenError,
   CannotRemoveSelfError,
@@ -6141,13 +6142,16 @@ export const createPlaywrightActor = (
         throw new NotMemberError(organizationId);
       }
 
-      if (response.status() === 400) {
+      if (response.status() === 400 || response.status() === 409) {
         const body = await response.json();
         if (body.message?.includes('personal')) {
           throw new CannotLeavePersonalOrgError();
         }
         if (body.message?.includes('last admin')) {
           throw new LastAdminError();
+        }
+        if (body.message?.includes('Transfer ownership first')) {
+          throw new OwnerMustTransferError();
         }
         throw new Error(body.message || 'Cannot leave organization');
       }
@@ -6216,16 +6220,23 @@ export const createPlaywrightActor = (
       }
 
       if (response.status() === 403) {
-        throw new ForbiddenError();
+        const body = await response.json().catch(() => ({ message: undefined }));
+        if (body.message?.includes('Transfer ownership first')) {
+          throw new OwnerMustTransferError();
+        }
+        throw new ForbiddenError(body.message);
       }
 
-      if (response.status() === 400) {
+      if (response.status() === 400 || response.status() === 409) {
         const body = await response.json();
         if (body.message?.includes('yourself')) {
           throw new CannotRemoveSelfError();
         }
         if (body.message?.includes('last admin') || body.message?.includes('last owner')) {
           throw new LastAdminError();
+        }
+        if (body.message?.includes('Transfer ownership first')) {
+          throw new OwnerMustTransferError();
         }
         throw new Error(body.message || 'Cannot remove member');
       }

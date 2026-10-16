@@ -49,6 +49,7 @@ export const organizationContract = c.router({
       400: ErrorSchema, // Cannot leave personal org or last admin
       401: ErrorSchema, // Not authenticated
       404: ErrorSchema, // Not a member
+      409: ErrorSchema, // Owner must transfer first
       500: ErrorSchema,
     },
     summary: 'Leave an organization',
@@ -95,8 +96,9 @@ export const organizationContract = c.router({
       204: z.undefined(), // Success, no content
       400: ErrorSchema, // Cannot remove self, last admin, etc.
       401: ErrorSchema, // Not authenticated
-      403: ErrorSchema, // Insufficient permissions
+      403: ErrorSchema, // Insufficient permissions or owner must transfer
       404: ErrorSchema, // Member not found
+      409: ErrorSchema, // Owner must transfer first
       500: ErrorSchema,
     },
     summary: 'Remove a member from an organization',

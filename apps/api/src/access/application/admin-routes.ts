@@ -205,7 +205,104 @@ export const registerAdminRoutes = async (
                 body: { message: 'Organization not found' },
               };
             }
+            if (error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+              return {
+                status: 400 as const,
+                body: { message: error.message, code: error.type },
+              };
+            }
             return storageErrorResponse('Failed to create user');
+          }
+        );
+      },
+
+      setOrganizationOwner: async ({ params, body }) => {
+        const result = await adminService.setOrganizationOwner({
+          organizationId: params.id,
+          userId: body.userId,
+        });
+
+        return result.match(
+          (member) => ({
+            status: 200 as const,
+            body: member,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'ORGANIZATION_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Organization not found' },
+                };
+              case 'USER_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'User not found' },
+                };
+              case 'TARGET_NOT_WORKSPACE_MEMBER':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message, code: error.type },
+                };
+              case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message, code: error.type },
+                };
+              default:
+                return storageErrorResponse('Failed to set owner');
+            }
+          }
+        );
+      },
+
+      changeMemberRole: async ({ params, body }) => {
+        const result = await adminService.changeMemberRole({
+          organizationId: params.id,
+          userId: params.userId,
+          role: body.role,
+        });
+
+        return result.match(
+          (member) => ({
+            status: 200 as const,
+            body: member,
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'ORGANIZATION_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Organization not found' },
+                };
+              case 'USER_NOT_FOUND':
+              case 'TARGET_NOT_WORKSPACE_MEMBER':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Member not found' },
+                };
+              case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+              case 'CANNOT_ASSIGN_OWNER_ROLE':
+                return {
+                  status: 400 as const,
+                  body: { message: error.message, code: error.type },
+                };
+              case 'CANNOT_CHANGE_OWNER_ROLE':
+                return {
+                  status: 409 as const,
+                  body: {
+                    message: 'Transfer ownership first',
+                    code: 'OWNER_MUST_TRANSFER',
+                  },
+                };
+              case 'LAST_ADMIN':
+                return {
+                  status: 409 as const,
+                  body: { message: 'Cannot change the last admin', code: error.type },
+                };
+              default:
+                return storageErrorResponse('Failed to change member role');
+            }
           }
         );
       },

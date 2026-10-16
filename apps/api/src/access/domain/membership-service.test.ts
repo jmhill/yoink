@@ -232,6 +232,278 @@ describe('MembershipService', () => {
         expect(result.error.type).toBe('LAST_ADMIN');
       }
     });
+
+    it('returns OWNER_MUST_TRANSFER when the owner tries to leave', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(admin);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+      await membershipStore.save(
+        createTestMembership({
+          id: 'admin-membership',
+          userId: admin.id,
+          organizationId: org.id,
+          role: 'admin',
+        })
+      );
+
+      const result = await service.removeMember({
+        userId: owner.id,
+        organizationId: org.id,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr() && result.error.type === 'OWNER_MUST_TRANSFER') {
+        expect(result.error.message).toContain('Transfer ownership first');
+      } else {
+        expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
+      }
+
+      const stillOwner = await membershipStore.findByUserAndOrg(owner.id, org.id);
+      expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');
+    });
+
+    it('returns OWNER_MUST_TRANSFER when another member tries to remove the owner', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(admin);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+      await membershipStore.save(
+        createTestMembership({
+          id: 'admin-membership',
+          userId: admin.id,
+          organizationId: org.id,
+          role: 'admin',
+        })
+      );
+
+      const result = await service.removeMember({
+        userId: owner.id,
+        organizationId: org.id,
+      });
+
+      expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
+    });
+
+    it('allows an admin to leave when an owner remains', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const admin = createTestUser({ id: 'admin-user', email: 'admin@example.com' });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(admin);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+      await membershipStore.save(
+        createTestMembership({
+          id: 'admin-membership',
+          userId: admin.id,
+          organizationId: org.id,
+          role: 'admin',
+        })
+      );
+
+      const result = await service.removeMember({
+        userId: admin.id,
+        organizationId: org.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
+  });
+
+  describe('changeRole', () => {
+    it('promotes a member to admin', async () => {
+      const org = createTestOrg();
+      const user = createTestUser();
+      const owner = createTestUser({ id: 'owner-user', email: 'owner@example.com' });
+      const membership = createTestMembership({
+        userId: user.id,
+        organizationId: org.id,
+        role: 'member',
+      });
+      await organizationStore.save(org);
+      await userStore.save(user);
+      await userStore.save(owner);
+      await membershipStore.save(membership);
+      await membershipStore.save(
+        createTestMembership({
+          id: 'owner-membership',
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+
+      const result = await service.changeRole({
+        membershipId: membership.id,
+        newRole: 'admin',
+      });
+
+      expect(result.isOk() && result.value.role).toBe('admin');
+    });
+
+    it('refuses assigning owner', async () => {
+      const org = createTestOrg();
+      const user = createTestUser();
+      const membership = createTestMembership({
+        userId: user.id,
+        organizationId: org.id,
+        role: 'member',
+      });
+      await organizationStore.save(org);
+      await userStore.save(user);
+      await membershipStore.save(membership);
+
+      const result = await service.changeRole({
+        membershipId: membership.id,
+        newRole: 'owner',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('CANNOT_ASSIGN_OWNER_ROLE');
+    });
+
+    it('refuses changing the owner role', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const membership = createTestMembership({
+        userId: owner.id,
+        organizationId: org.id,
+        role: 'owner',
+      });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await membershipStore.save(membership);
+
+      const result = await service.changeRole({
+        membershipId: membership.id,
+        newRole: 'admin',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('CANNOT_CHANGE_OWNER_ROLE');
+    });
+
+    it('refuses promoting a bot to admin', async () => {
+      const org = createTestOrg();
+      const bot = createTestUser({
+        id: 'bot-user',
+        email: 'agent-bot@yoink.invalid',
+        kind: 'agent',
+      });
+      const owner = createTestUser();
+      const membership = createTestMembership({
+        id: 'bot-membership',
+        userId: bot.id,
+        organizationId: org.id,
+        role: 'member',
+      });
+      await organizationStore.save(org);
+      await userStore.save(bot);
+      await userStore.save(owner);
+      await membershipStore.save(membership);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+
+      const result = await service.changeRole({
+        membershipId: membership.id,
+        newRole: 'admin',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    });
+
+    it('returns LAST_ADMIN when demoting the only admin of an ownerless workspace', async () => {
+      const org = createTestOrg();
+      const admin = createTestUser();
+      const membership = createTestMembership({
+        userId: admin.id,
+        organizationId: org.id,
+        role: 'admin',
+      });
+      await organizationStore.save(org);
+      await userStore.save(admin);
+      await membershipStore.save(membership);
+
+      const result = await service.changeRole({
+        membershipId: membership.id,
+        newRole: 'member',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('LAST_ADMIN');
+    });
+  });
+
+  describe('addMember one-owner rule', () => {
+    it('refuses adding a second owner', async () => {
+      const org = createTestOrg();
+      const owner = createTestUser();
+      const other = createTestUser({ id: 'other-user', email: 'other@example.com' });
+      await organizationStore.save(org);
+      await userStore.save(owner);
+      await userStore.save(other);
+      await membershipStore.save(
+        createTestMembership({
+          userId: owner.id,
+          organizationId: org.id,
+          role: 'owner',
+        })
+      );
+
+      const result = await service.addMember({
+        userId: other.id,
+        organizationId: org.id,
+        role: 'owner',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('SECOND_OWNER');
+    });
+
+    it('refuses adding a bot as admin', async () => {
+      const org = createTestOrg();
+      const bot = createTestUser({
+        id: 'bot-user',
+        email: 'agent-bot@yoink.invalid',
+        kind: 'agent',
+      });
+      await organizationStore.save(org);
+      await userStore.save(bot);
+
+      const result = await service.addMember({
+        userId: bot.id,
+        organizationId: org.id,
+        role: 'admin',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    });
   });
 
   describe('listMemberships', () => {

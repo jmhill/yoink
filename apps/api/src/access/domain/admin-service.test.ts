@@ -176,6 +176,27 @@ describe('AdminService', () => {
       expect(loaded.isOk() && loaded.value?.name).toBe('Alice');
     });
 
+    it('refuses creating an agent as admin', async () => {
+      const orgResult = await service.createOrganization('Test Org');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+
+      const result = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'bot@example.com',
+        kind: 'agent',
+        role: 'admin',
+        name: 'Nope',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr() && result.error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+        expect(result.error.message).toContain('admin');
+      } else {
+        expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+      }
+    });
+
     it('creates an admin when role is admin', async () => {
       const orgResult = await service.createOrganization('Test Org');
       expect(orgResult.isOk()).toBe(true);
@@ -195,6 +216,208 @@ describe('AdminService', () => {
         orgResult.value.id
       );
       expect(membership.isOk() && membership.value?.role).toBe('admin');
+    });
+  });
+
+  describe('setOrganizationOwner and changeMemberRole', () => {
+    it('sets the first owner on a zero-owner workspace', async () => {
+      const orgResult = await service.createOrganization('Polly UX');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const created = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'justin@example.com',
+        role: 'member',
+      });
+      expect(created.isOk()).toBe(true);
+      if (!created.isOk()) return;
+
+      const result = await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: created.value.id,
+      });
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      expect(result.value.role).toBe('owner');
+
+      const membership = await organizationMembershipStore.findByUserAndOrg(
+        created.value.id,
+        orgResult.value.id
+      );
+      expect(membership.isOk() && membership.value?.role).toBe('owner');
+    });
+
+    it('demotes the old owner to admin in one save', async () => {
+      const orgResult = await service.createOrganization('Shared');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const first = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'first@example.com',
+        role: 'admin',
+      });
+      const second = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'second@example.com',
+        role: 'member',
+      });
+      expect(first.isOk() && second.isOk()).toBe(true);
+      if (!first.isOk() || !second.isOk()) return;
+
+      await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: first.value.id,
+      });
+      const transferred = await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: second.value.id,
+      });
+      expect(transferred.isOk() && transferred.value.role).toBe('owner');
+
+      const old = await organizationMembershipStore.findByUserAndOrg(
+        first.value.id,
+        orgResult.value.id
+      );
+      const next = await organizationMembershipStore.findByUserAndOrg(
+        second.value.id,
+        orgResult.value.id
+      );
+      expect(old.isOk() && old.value?.role).toBe('admin');
+      expect(next.isOk() && next.value?.role).toBe('owner');
+    });
+
+    it('refuses removing the owner via changeMemberRole (would leave ownerless)', async () => {
+      const orgResult = await service.createOrganization('Owned');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const created = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'owner@example.com',
+        role: 'member',
+      });
+      expect(created.isOk()).toBe(true);
+      if (!created.isOk()) return;
+      await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: created.value.id,
+      });
+
+      const demote = await service.changeMemberRole({
+        organizationId: orgResult.value.id,
+        userId: created.value.id,
+        role: 'admin',
+      });
+      expect(demote.isErr() && demote.error.type).toBe('CANNOT_CHANGE_OWNER_ROLE');
+
+      const still = await organizationMembershipStore.findByUserAndOrg(
+        created.value.id,
+        orgResult.value.id
+      );
+      expect(still.isOk() && still.value?.role).toBe('owner');
+    });
+
+    it('refuses making a bot the owner', async () => {
+      const orgResult = await service.createOrganization('Bots');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const bot = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'unused@example.com',
+        kind: 'agent',
+        name: 'Lane',
+      });
+      expect(bot.isOk()).toBe(true);
+      if (!bot.isOk()) return;
+
+      const result = await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: bot.value.id,
+      });
+      expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    });
+
+    it('switches a member to admin and back when an owner remains', async () => {
+      const orgResult = await service.createOrganization('Roles');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const owner = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'owner@example.com',
+        role: 'member',
+      });
+      const created = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'switch@example.com',
+        role: 'member',
+      });
+      expect(owner.isOk() && created.isOk()).toBe(true);
+      if (!owner.isOk() || !created.isOk()) return;
+      await service.setOrganizationOwner({
+        organizationId: orgResult.value.id,
+        userId: owner.value.id,
+      });
+
+      const promoted = await service.changeMemberRole({
+        organizationId: orgResult.value.id,
+        userId: created.value.id,
+        role: 'admin',
+      });
+      expect(promoted.isOk() && promoted.value.role).toBe('admin');
+
+      const demoted = await service.changeMemberRole({
+        organizationId: orgResult.value.id,
+        userId: created.value.id,
+        role: 'member',
+      });
+      expect(demoted.isOk() && demoted.value.role).toBe('member');
+    });
+
+    it('refuses promoting a bot to admin', async () => {
+      const orgResult = await service.createOrganization('Bot admin');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const bot = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'unused@example.com',
+        kind: 'agent',
+        name: 'Lane',
+      });
+      expect(bot.isOk()).toBe(true);
+      if (!bot.isOk()) return;
+
+      const result = await service.changeMemberRole({
+        organizationId: orgResult.value.id,
+        userId: bot.value.id,
+        role: 'admin',
+      });
+      expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    });
+
+    it('lists users with their roles', async () => {
+      const orgResult = await service.createOrganization('Roster');
+      expect(orgResult.isOk()).toBe(true);
+      if (!orgResult.isOk()) return;
+      const created = await service.createUser({
+        organizationId: orgResult.value.id,
+        email: 'listed@example.com',
+        role: 'admin',
+      });
+      expect(created.isOk()).toBe(true);
+      if (!created.isOk()) return;
+
+      const listed = await service.listUsers(orgResult.value.id);
+      expect(listed.isOk()).toBe(true);
+      if (listed.isOk()) {
+        expect(listed.value).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: created.value.id,
+              email: 'listed@example.com',
+              role: 'admin',
+            }),
+          ])
+        );
+      }
     });
   });
 

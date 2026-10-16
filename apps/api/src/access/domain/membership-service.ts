@@ -4,13 +4,16 @@ import type { OrganizationMembership, MembershipRole } from './organization-memb
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { UserService } from './user-service.js';
+import { decideBotMayHaveRole } from './decide-bot-role.js';
+import { decideChangeRole } from './decide-change-role.js';
+import { decideRemoveMember } from './decide-remove-member.js';
+import { roleAtLeast, workspaceHasOwner } from './membership-roles.js';
+import { principalKindOf } from './user.js';
 import {
   alreadyMemberError,
   membershipNotFoundError,
-  cannotLeavePersonalOrgError,
-  cannotChangeOwnerRoleError,
-  lastAdminError,
   organizationNotFoundError,
+  secondOwnerError,
   type MembershipServiceError,
 } from './organization-errors.js';
 import { userNotFoundError } from './user-errors.js';
@@ -68,13 +71,15 @@ export type MembershipService = {
 
   /**
    * Remove a user from an organization.
-   * Fails if this is their personal org or if they're the last admin.
+   * Fails if this is their personal org, they are the owner, or they are
+   * the last admin of an ownerless workspace.
    */
   removeMember(command: RemoveMemberCommand): ResultAsync<void, MembershipServiceError>;
 
   /**
    * Change a member's role in an organization.
-   * Fails if trying to change owner role or demote the last admin.
+   * Fails if assigning owner, changing the owner's role, promoting a bot,
+   * or demoting the last admin of an ownerless workspace.
    */
   changeRole(
     command: ChangeRoleCommand
@@ -122,38 +127,10 @@ export type MembershipServiceDependencies = {
 // Implementation
 // ============================================================================
 
-/**
- * Role hierarchy: owner > admin > member
- * Returns true if actualRole >= requiredRole
- */
-const ROLE_HIERARCHY: Record<MembershipRole, number> = {
-  owner: 3,
-  admin: 2,
-  member: 1,
-};
-
-const roleAtLeast = (actualRole: MembershipRole, requiredRole: MembershipRole): boolean => {
-  return ROLE_HIERARCHY[actualRole] >= ROLE_HIERARCHY[requiredRole];
-};
-
-/**
- * Check if a role can manage the organization (owner or admin)
- */
-const isAdminRole = (role: MembershipRole): boolean => {
-  return role === 'owner' || role === 'admin';
-};
-
 export const createMembershipService = (
   deps: MembershipServiceDependencies
 ): MembershipService => {
   const { membershipStore, userService, organizationStore, clock, idGenerator } = deps;
-
-  /**
-   * Count how many admins (owner or admin role) exist in an organization
-   */
-  const countAdmins = (memberships: OrganizationMembership[]): number => {
-    return memberships.filter((m) => isAdminRole(m.role)).length;
-  };
 
   return {
     addMember(
@@ -173,23 +150,33 @@ export const createMembershipService = (
             return errAsync(organizationNotFoundError(organizationId));
           }
 
+          const botCheck = decideBotMayHaveRole(principalKindOf(user), role);
+          if (botCheck.isErr()) {
+            return errAsync(botCheck.error);
+          }
+
           // Check if already a member
           return membershipStore.findByUserAndOrg(userId, organizationId).andThen((existing) => {
             if (existing) {
               return errAsync(alreadyMemberError(userId, organizationId));
             }
 
-            // Create membership
-            const membership: OrganizationMembership = {
-              id: idGenerator.generate(),
-              userId,
-              organizationId,
-              role,
-              isPersonalOrg,
-              joinedAt: clock.now().toISOString(),
-            };
+            return membershipStore.findByOrganizationId(organizationId).andThen((allMembers) => {
+              if (role === 'owner' && workspaceHasOwner(allMembers)) {
+                return errAsync(secondOwnerError(organizationId));
+              }
 
-            return membershipStore.save(membership).map(() => membership);
+              const membership: OrganizationMembership = {
+                id: idGenerator.generate(),
+                userId,
+                organizationId,
+                role,
+                isPersonalOrg,
+                joinedAt: clock.now().toISOString(),
+              };
+
+              return membershipStore.save(membership).map(() => membership);
+            });
           });
         });
       });
@@ -200,29 +187,18 @@ export const createMembershipService = (
     ): ResultAsync<void, MembershipServiceError> {
       const { userId, organizationId } = command;
 
-      // Find the membership
       return membershipStore.findByUserAndOrg(userId, organizationId).andThen((membership) => {
         if (!membership) {
           return errAsync(membershipNotFoundError({ userId, organizationId }));
         }
 
-        // Cannot leave personal org
-        if (membership.isPersonalOrg) {
-          return errAsync(cannotLeavePersonalOrgError(userId, organizationId));
-        }
-
-        // Check if this is the last admin
-        if (isAdminRole(membership.role)) {
-          return membershipStore.findByOrganizationId(organizationId).andThen((allMembers) => {
-            const adminCount = countAdmins(allMembers);
-            if (adminCount <= 1) {
-              return errAsync(lastAdminError(organizationId));
-            }
-            return membershipStore.delete(membership.id);
-          });
-        }
-
-        return membershipStore.delete(membership.id);
+        return membershipStore.findByOrganizationId(organizationId).andThen((allMembers) => {
+          const decision = decideRemoveMember({ membership, allMembers });
+          if (decision.isErr()) {
+            return errAsync(decision.error);
+          }
+          return membershipStore.delete(membership.id);
+        });
       });
     },
 
@@ -231,40 +207,30 @@ export const createMembershipService = (
     ): ResultAsync<OrganizationMembership, MembershipServiceError> {
       const { membershipId, newRole } = command;
 
-      // Find membership by ID
       return membershipStore.findById(membershipId).andThen((membership) => {
         if (!membership) {
           return errAsync(membershipNotFoundError({ membershipId }));
         }
 
-        // Cannot change owner role
-        if (membership.role === 'owner') {
-          return errAsync(cannotChangeOwnerRoleError(membershipId));
-        }
+        return userService.getUser(membership.userId).andThen((user) => {
+          if (!user) {
+            return errAsync(userNotFoundError(membership.userId));
+          }
 
-        // If demoting from admin, check that another admin exists
-        if (isAdminRole(membership.role) && !isAdminRole(newRole)) {
           return membershipStore.findByOrganizationId(membership.organizationId).andThen((allMembers) => {
-            const adminCount = countAdmins(allMembers);
-            if (adminCount <= 1) {
-              return errAsync(lastAdminError(membership.organizationId));
+            const decision = decideChangeRole({
+              membership,
+              newRole,
+              targetKind: principalKindOf(user),
+              allMembers,
+            });
+            if (decision.isErr()) {
+              return errAsync(decision.error);
             }
-
-            // Update the role
-            const updated: OrganizationMembership = {
-              ...membership,
-              role: newRole,
-            };
+            const updated = decision.value;
             return membershipStore.save(updated).map(() => updated);
           });
-        }
-
-        // Update the role (promoting or same level change)
-        const updated: OrganizationMembership = {
-          ...membership,
-          role: newRole,
-        };
-        return membershipStore.save(updated).map(() => updated);
+        });
       });
     },
 

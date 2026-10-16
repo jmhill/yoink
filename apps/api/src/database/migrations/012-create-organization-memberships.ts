@@ -8,7 +8,7 @@ import type { Migration } from '../types.js';
  *
  * Key design decisions:
  * - is_personal_org: true for user's auto-created personal org (cannot leave)
- * - role: owner (personal org), admin, or member
+ * - role: owner (at most one per workspace), admin, or member
  * - Composite unique constraint prevents duplicate memberships
  */
 export const migration: Migration = {

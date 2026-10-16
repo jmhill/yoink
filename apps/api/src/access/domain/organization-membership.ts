@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 /**
  * Membership role in an organization.
- * - owner: Full control, only for personal orgs, cannot be removed
+ * - owner: Full control, including delete workspace and handover. At most one
+ *   per workspace. Set from the admin panel; cannot leave or be removed until
+ *   ownership is transferred.
  * - admin: Can invite/remove members, manage org settings
  * - member: Can create/manage their own captures and tasks
  */

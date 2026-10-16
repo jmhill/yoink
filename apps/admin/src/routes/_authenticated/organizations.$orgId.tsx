@@ -45,7 +45,24 @@ function OrganizationDetailPage() {
   const [isInviteResultDialogOpen, setIsInviteResultDialogOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [memberErrors, setMemberErrors] = useState<Record<string, string>>({});
   const tsrQueryClient = tsrAdmin.useQueryClient();
+
+  const invalidateMembers = () => {
+    tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
+  };
+
+  const errorMessage = (body: unknown, fallback: string): string => {
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'message' in body &&
+      typeof body.message === 'string'
+    ) {
+      return body.message;
+    }
+    return fallback;
+  };
 
   const { data: orgData, isPending: orgPending, error: orgError } = tsrAdmin.getOrganization.useQuery({
     queryKey: ['organizations', orgId],
@@ -178,6 +195,60 @@ function OrganizationDetailPage() {
     onSettled: () => {
       // Refetch to ensure consistency with server
       tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+    },
+  });
+
+  const setOwnerMutation = tsrAdmin.setOrganizationOwner.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.status === 200) {
+        setMemberErrors((current) => {
+          const next = { ...current };
+          delete next[variables.body.userId];
+          return next;
+        });
+        invalidateMembers();
+        toast.success('Owner updated');
+        return;
+      }
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.body.userId]: errorMessage(data.body, 'Failed to set owner'),
+      }));
+    },
+    onError: (err, variables) => {
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.body.userId]: isFetchError(err)
+          ? 'Network error. Please check your connection.'
+          : 'Failed to set owner',
+      }));
+    },
+  });
+
+  const changeRoleMutation = tsrAdmin.changeMemberRole.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.status === 200) {
+        setMemberErrors((current) => {
+          const next = { ...current };
+          delete next[variables.params.userId];
+          return next;
+        });
+        invalidateMembers();
+        toast.success('Role updated');
+        return;
+      }
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.params.userId]: errorMessage(data.body, 'Failed to change role'),
+      }));
+    },
+    onError: (err, variables) => {
+      setMemberErrors((current) => ({
+        ...current,
+        [variables.params.userId]: isFetchError(err)
+          ? 'Network error. Please check your connection.'
+          : 'Failed to change role',
+      }));
     },
   });
 
@@ -376,7 +447,7 @@ function OrganizationDetailPage() {
         <CardHeader>
           <CardTitle>Users</CardTitle>
           <CardDescription>
-            Click on a user to manage their API tokens. Invite new users with the button above.
+            Each workspace has at most one owner. Set the owner here; the previous owner becomes an admin.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -389,26 +460,83 @@ function OrganizationDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow
-                    key={user.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() =>
-                      navigate({
-                        to: '/users/$userId',
-                        params: { userId: user.id },
-                        search: { orgId },
-                      })
-                    }
-                  >
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
-                  </TableRow>
-                ))}
+                {users.map((user) => {
+                  const kind = user.kind ?? 'human';
+                  const isHuman = kind !== 'agent';
+                  const isOwner = user.role === 'owner';
+                  return (
+                    <TableRow key={user.id} data-user-id={user.id} data-role={user.role ?? ''}>
+                      <TableCell className="font-medium">
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() =>
+                            navigate({
+                              to: '/users/$userId',
+                              params: { userId: user.id },
+                              search: { orgId },
+                            })
+                          }
+                        >
+                          {user.email}
+                        </button>
+                      </TableCell>
+                      <TableCell>{isHuman ? 'Human' : 'Bot'}</TableCell>
+                      <TableCell className="capitalize">{user.role ?? '—'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            {isHuman && !isOwner ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                data-action="make-owner"
+                                disabled={setOwnerMutation.isPending}
+                                onClick={() =>
+                                  setOwnerMutation.mutate({
+                                    params: { id: orgId },
+                                    body: { userId: user.id },
+                                  })
+                                }
+                              >
+                                Make owner
+                              </Button>
+                            ) : null}
+                            {!isOwner ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                data-action="toggle-admin"
+                                disabled={changeRoleMutation.isPending}
+                                onClick={() =>
+                                  changeRoleMutation.mutate({
+                                    params: { id: orgId, userId: user.id },
+                                    body: { role: user.role === 'admin' ? 'member' : 'admin' },
+                                  })
+                                }
+                              >
+                                {user.role === 'admin' ? 'Make member' : 'Make admin'}
+                              </Button>
+                            ) : null}
+                          </div>
+                          {memberErrors[user.id] ? (
+                            <p className="text-sm text-red-600" data-member-error={user.id}>
+                              {memberErrors[user.id]}
+                            </p>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

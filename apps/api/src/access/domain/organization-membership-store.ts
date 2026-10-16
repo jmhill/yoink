@@ -26,4 +26,13 @@ export type OrganizationMembershipStore = {
 
   /** Delete a membership */
   delete(id: string): ResultAsync<void, MembershipStorageError>;
+
+  /**
+   * Atomically demote the old owner (if any) then promote the new owner.
+   * Demote must run first so the one-owner unique index never sees two owners.
+   */
+  setOwner(plan: {
+    demote: OrganizationMembership | null;
+    promote: OrganizationMembership;
+  }): ResultAsync<void, MembershipStorageError>;
 };

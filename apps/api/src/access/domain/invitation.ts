@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Role for invitation - excludes 'owner' since that's only for personal orgs.
+ * Role for invitation — excludes 'owner'. Owner is assigned from the admin
+ * panel (or personal-workspace signup), not by invite.
  */
 export const InvitationRoleSchema = z.enum(['admin', 'member']);
 

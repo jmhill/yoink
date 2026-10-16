@@ -82,7 +82,7 @@ export const seedMigrationTestData = async (
     }
   }
 
-  // 3. Create organization memberships
+  // 3. Create organization memberships (at most one owner per org)
   // User 1 owns org 1, is member of org 2
   await db.execute({
     sql: `INSERT INTO organization_memberships (id, user_id, organization_id, role, is_personal_org, joined_at) VALUES (?, ?, ?, ?, ?, ?)`,

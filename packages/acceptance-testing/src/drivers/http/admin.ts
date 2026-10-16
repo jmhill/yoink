@@ -120,6 +120,51 @@ export const createHttpAdmin = (
     return response.json<{ users: User[] }>().users;
   },
 
+  async setOrganizationOwner(organizationId: string, userId: string): Promise<User> {
+    const response = await client.put(`/api/admin/organizations/${organizationId}/owner`, {
+      userId,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    if (response.statusCode === 400 || response.statusCode === 409) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to set owner: ${response.body}`);
+    }
+    return response.json<User>();
+  },
+
+  async changeMemberRole(
+    organizationId: string,
+    userId: string,
+    role: 'admin' | 'member'
+  ): Promise<User> {
+    const response = await client.patch(
+      `/api/admin/organizations/${organizationId}/members/${userId}`,
+      { role }
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('User', userId);
+    }
+    if (response.statusCode === 400 || response.statusCode === 409) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to change member role: ${response.body}`);
+    }
+    return response.json<User>();
+  },
+
   async getUser(id: string): Promise<User> {
     const response = await client.get(`/api/admin/users/${id}`);
     if (response.statusCode === 401) {

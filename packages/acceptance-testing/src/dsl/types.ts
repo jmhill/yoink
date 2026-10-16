@@ -409,6 +409,9 @@ export type Organization = {
 export type User = {
   id: string;
   email: string;
+  name?: string;
+  kind?: 'human' | 'agent';
+  role?: 'owner' | 'admin' | 'member';
   createdAt: string;
 };
 

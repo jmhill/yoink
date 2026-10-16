@@ -74,6 +74,7 @@ export {
   CannotDeleteLastPasskeyError,
   CannotLeavePersonalOrgError,
   LastAdminError,
+  OwnerMustTransferError,
   NotMemberError,
   ForbiddenError,
   CannotRemoveSelfError,

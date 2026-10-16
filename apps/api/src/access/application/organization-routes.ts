@@ -111,6 +111,12 @@ export const registerOrganizationRoutes = async (
                 body: { message: 'Cannot leave as the last admin. Transfer ownership first.' },
               };
             }
+            if (error.type === 'OWNER_MUST_TRANSFER') {
+              return {
+                status: 409 as const,
+                body: { message: error.message, code: error.type },
+              };
+            }
             return {
               status: 500 as const,
               body: { message: 'Failed to leave organization' },
@@ -252,8 +258,8 @@ export const registerOrganizationRoutes = async (
         }
 
         // Permission checks:
-        // - owner can remove anyone (except themselves, already checked)
-        // - admin can only remove members (not other admins)
+        // - owner can remove members and admins (not the owner — domain refuses)
+        // - admin can only remove members (not other admins or the owner)
         // - member cannot remove anyone
         const callerRole = callerMembership.role;
         const targetRole = targetMembership.role;
@@ -265,7 +271,14 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        if (callerRole === 'admin' && (targetRole === 'admin' || targetRole === 'owner')) {
+        if (targetRole === 'owner') {
+          return {
+            status: 403 as const,
+            body: { message: 'Transfer ownership first', code: 'OWNER_MUST_TRANSFER' },
+          };
+        }
+
+        if (callerRole === 'admin' && targetRole === 'admin') {
           return {
             status: 403 as const,
             body: { message: 'Admins can only remove members, not other admins or owners' },
@@ -294,6 +307,12 @@ export const registerOrganizationRoutes = async (
               return {
                 status: 400 as const,
                 body: { message: 'Cannot remove the last admin' },
+              };
+            }
+            if (error.type === 'OWNER_MUST_TRANSFER') {
+              return {
+                status: 403 as const,
+                body: { message: error.message, code: error.type },
               };
             }
             return {

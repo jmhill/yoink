@@ -32,8 +32,8 @@ export const createHttpDriver = (config: DriverConfig): Driver => {
       await admin.login();
       try {
         const org = await admin.createOrganization(orgName);
-        // Isolated tenant's sole user must be admin (owner is personal-org only).
-        // Playwright createActor invites as admin for the same reason.
+        // Isolated HTTP tenants start as admin (owner is assigned from the
+        // admin panel). Playwright createActor still invites as admin.
         const user = await admin.createUser(org.id, uniqueEmail, {
           role: 'admin',
           name: displayNameFromEmail(email),

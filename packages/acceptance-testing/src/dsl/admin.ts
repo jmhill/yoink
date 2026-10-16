@@ -34,6 +34,12 @@ export type Admin = {
   ): Promise<User>;
   listUsers(organizationId: string): Promise<User[]>;
   getUser(id: string): Promise<User>;
+  setOrganizationOwner(organizationId: string, userId: string): Promise<User>;
+  changeMemberRole(
+    organizationId: string,
+    userId: string,
+    role: 'admin' | 'member'
+  ): Promise<User>;
   updateUser(id: string, options: { name: string }): Promise<User>;
   updateProjectCreatedAt(id: string, createdAt: string): Promise<{ id: string; createdAt: string }>;
 

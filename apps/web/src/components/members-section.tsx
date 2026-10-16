@@ -63,8 +63,9 @@ const getRoleLabel = (role: 'owner' | 'admin' | 'member') => {
 
 /**
  * Check if the current user can remove the target member.
- * - Owners can remove anyone (except themselves)
- * - Admins can only remove members (not other admins or owners)
+ * - Nobody can remove the owner (transfer ownership first)
+ * - Owners can remove admins and members (except themselves)
+ * - Admins can only remove members (not other admins)
  * - Members cannot remove anyone
  */
 const canRemove = (
@@ -73,8 +74,9 @@ const canRemove = (
   isSelf: boolean
 ): boolean => {
   if (isSelf) return false;
+  if (targetRole === 'owner') return false;
   if (currentRole === 'member') return false;
-  if (currentRole === 'admin' && (targetRole === 'admin' || targetRole === 'owner')) return false;
+  if (currentRole === 'admin' && targetRole === 'admin') return false;
   return true;
 };
 

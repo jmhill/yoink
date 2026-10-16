@@ -2,10 +2,14 @@ import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
 import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
-import type { OrganizationMembership } from './organization-membership.js';
+import type { MembershipRole, OrganizationMembership } from './organization-membership.js';
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
-import { agentEmailFor, type PrincipalKind, type User } from './user.js';
+import { agentEmailFor, principalKindOf, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
+import { decideBotMayHaveRole } from './decide-bot-role.js';
+import { decideChangeRole } from './decide-change-role.js';
+import { decideSetOwner } from './decide-set-owner.js';
+import { targetNotWorkspaceMemberError } from './organization-errors.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
 import type {
@@ -14,7 +18,7 @@ import type {
   UserStorageError,
   TokenStorageError,
 } from './admin-errors.js';
-import { userNotFoundError } from './admin-errors.js';
+import { organizationNotFoundError, userNotFoundError } from './admin-errors.js';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../../projects/domain/project-store.js';
 import { projectNotFoundError } from '../../projects/domain/project-errors.js';
@@ -33,10 +37,25 @@ export type AdminServiceDependencies = {
 export type CreateUserCommand = {
   organizationId: string;
   email: string;
-  /** Defaults to member. Owner is reserved for personal orgs. */
+  /** Defaults to member. Owner is assigned only via setOrganizationOwner. */
   role?: 'admin' | 'member';
   kind?: PrincipalKind;
   name?: string;
+};
+
+export type SetOrganizationOwnerCommand = {
+  organizationId: string;
+  userId: string;
+};
+
+export type ChangeMemberRoleCommand = {
+  organizationId: string;
+  userId: string;
+  role: 'admin' | 'member';
+};
+
+export type AdminOrganizationMember = User & {
+  role: MembershipRole;
 };
 
 export type CreateTokenCommand = {
@@ -64,10 +83,16 @@ export type AdminService = {
   ): ResultAsync<Organization | null, OrganizationStorageError>;
 
   // Users
-  listUsers(organizationId: string): ResultAsync<User[], AdminServiceError>;
+  listUsers(organizationId: string): ResultAsync<AdminOrganizationMember[], AdminServiceError>;
   getUser(id: string): ResultAsync<User | null, UserStorageError>;
   createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError>;
   updateUser(id: string, name: string): ResultAsync<User, AdminServiceError>;
+  setOrganizationOwner(
+    command: SetOrganizationOwnerCommand
+  ): ResultAsync<AdminOrganizationMember, AdminServiceError>;
+  changeMemberRole(
+    command: ChangeMemberRoleCommand
+  ): ResultAsync<AdminOrganizationMember, AdminServiceError>;
   updateProjectCreatedAt(
     id: string,
     createdAt: string
@@ -135,12 +160,17 @@ export const createAdminService = (
 
     // Users
     listUsers(organizationId: string) {
-      // Get memberships for the org, then fetch users by their IDs
       return organizationMembershipStore
         .findByOrganizationId(organizationId)
         .andThen((memberships) => {
           const userIds = memberships.map((m) => m.userId);
-          return userStore.findByIds(userIds);
+          return userStore.findByIds(userIds).map((users) => {
+            const roleByUserId = new Map(memberships.map((m) => [m.userId, m.role]));
+            return users.flatMap((user) => {
+              const role = roleByUserId.get(user.id);
+              return role === undefined ? [] : [{ ...user, role }];
+            });
+          });
         });
     },
 
@@ -164,10 +194,88 @@ export const createAdminService = (
       );
     },
 
+    setOrganizationOwner(
+      command: SetOrganizationOwnerCommand
+    ): ResultAsync<AdminOrganizationMember, AdminServiceError> {
+      const { organizationId, userId } = command;
+      return organizationStore.findById(organizationId).andThen((org) => {
+        if (!org) {
+          return errAsync(organizationNotFoundError(organizationId));
+        }
+        return userStore.findById(userId).andThen((targetUser) =>
+          organizationMembershipStore.findByOrganizationId(organizationId).andThen((memberships) => {
+            const targetMembership =
+              memberships.find((membership) => membership.userId === userId) ?? null;
+            const currentOwner =
+              memberships.find((membership) => membership.role === 'owner') ?? null;
+            const decision = decideSetOwner({
+              organizationId,
+              targetUserId: userId,
+              targetUser,
+              targetMembership,
+              currentOwner,
+            });
+            if (decision.isErr()) {
+              return errAsync(decision.error);
+            }
+            return organizationMembershipStore.setOwner(decision.value).andThen(() => {
+              if (!targetUser) {
+                return errAsync(userNotFoundError(userId));
+              }
+              return okAsync({ ...targetUser, role: decision.value.promote.role });
+            });
+          })
+        );
+      });
+    },
+
+    changeMemberRole(
+      command: ChangeMemberRoleCommand
+    ): ResultAsync<AdminOrganizationMember, AdminServiceError> {
+      const { organizationId, userId, role } = command;
+      return organizationStore.findById(organizationId).andThen((org) => {
+        if (!org) {
+          return errAsync(organizationNotFoundError(organizationId));
+        }
+        return organizationMembershipStore
+          .findByUserAndOrg(userId, organizationId)
+          .andThen((membership) => {
+            if (!membership) {
+              return errAsync(targetNotWorkspaceMemberError(userId, organizationId));
+            }
+            return userStore.findById(userId).andThen((user) => {
+              if (!user) {
+                return errAsync(userNotFoundError(userId));
+              }
+              return organizationMembershipStore
+                .findByOrganizationId(organizationId)
+                .andThen((allMembers) => {
+                  const decision = decideChangeRole({
+                    membership,
+                    newRole: role,
+                    targetKind: principalKindOf(user),
+                    allMembers,
+                  });
+                  if (decision.isErr()) {
+                    return errAsync(decision.error);
+                  }
+                  return organizationMembershipStore
+                    .save(decision.value)
+                    .map(() => ({ ...user, role: decision.value.role }));
+                });
+            });
+          });
+      });
+    },
+
     createUser(command: CreateUserCommand): ResultAsync<User, AdminServiceError> {
       const { organizationId, email, role = 'member', kind, name } = command;
       const now = clock.now().toISOString();
       const userId = idGenerator.generate();
+      const botCheck = decideBotMayHaveRole(kind ?? 'human', role);
+      if (botCheck.isErr()) {
+        return errAsync(botCheck.error);
+      }
 
       // Check if org exists first
       return organizationStore.findById(organizationId).andThen((org) => {

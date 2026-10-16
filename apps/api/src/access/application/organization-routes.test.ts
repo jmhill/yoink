@@ -403,6 +403,18 @@ describe('organization routes', () => {
       expect(response.json().message).toContain('Not a member');
     });
 
+    it('returns 409 when the owner tries to leave', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().message).toContain('Transfer ownership first');
+      expect(response.json().code).toBe('OWNER_MUST_TRANSFER');
+    });
+
     it('returns 400 when trying to leave personal organization', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -487,6 +499,19 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe('DELETE /api/organizations/:organizationId/members/:userId', () => {
+    it('returns 403 with Transfer ownership first when an admin removes the owner', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${teamOwner.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toContain('Transfer ownership first');
     });
   });
 

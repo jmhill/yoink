@@ -122,6 +122,86 @@ export const cannotChangeOwnerRoleError = (
   membershipId,
 });
 
+/** Owner can only be assigned via the admin-panel set-owner command */
+export type CannotAssignOwnerRoleError = {
+  readonly type: 'CANNOT_ASSIGN_OWNER_ROLE';
+  readonly message: string;
+};
+
+export const cannotAssignOwnerRoleError = (): CannotAssignOwnerRoleError => ({
+  type: 'CANNOT_ASSIGN_OWNER_ROLE',
+  message: 'Owner can only be set from the admin panel',
+});
+
+/** Owner cannot leave or be removed until ownership is transferred */
+export type OwnerMustTransferError = {
+  readonly type: 'OWNER_MUST_TRANSFER';
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const OWNER_MUST_TRANSFER_MESSAGE = 'Transfer ownership first';
+
+export const ownerMustTransferError = (
+  organizationId: string,
+  userId: string
+): OwnerMustTransferError => ({
+  type: 'OWNER_MUST_TRANSFER',
+  organizationId,
+  userId,
+  message: OWNER_MUST_TRANSFER_MESSAGE,
+});
+
+/** A workspace already has an owner; a second owner cannot be saved */
+export type SecondOwnerError = {
+  readonly type: 'SECOND_OWNER';
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const secondOwnerError = (organizationId: string): SecondOwnerError => ({
+  type: 'SECOND_OWNER',
+  organizationId,
+  message: 'A workspace can have at most one owner',
+});
+
+/** Bots can never be admin or owner */
+export type BotCannotHavePrivilegedRoleError = {
+  readonly type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE';
+  readonly role: 'admin' | 'owner';
+  readonly message: string;
+};
+
+export const botCannotHavePrivilegedRoleError = (
+  role: 'admin' | 'owner'
+): BotCannotHavePrivilegedRoleError => ({
+  type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE',
+  role,
+  message:
+    role === 'owner'
+      ? 'A bot cannot be the workspace owner'
+      : 'A bot cannot be an admin',
+});
+
+/** Set-owner target is not already a member of the workspace */
+export type TargetNotWorkspaceMemberError = {
+  readonly type: 'TARGET_NOT_WORKSPACE_MEMBER';
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const targetNotWorkspaceMemberError = (
+  userId: string,
+  organizationId: string
+): TargetNotWorkspaceMemberError => ({
+  type: 'TARGET_NOT_WORKSPACE_MEMBER',
+  userId,
+  organizationId,
+  message: 'Owner must already be a member of the workspace',
+});
+
 /** Organization must have at least one admin */
 export type LastAdminError = {
   readonly type: 'LAST_ADMIN';
@@ -154,6 +234,11 @@ export type MembershipServiceError =
   | MembershipNotFoundError
   | CannotLeavePersonalOrgError
   | CannotChangeOwnerRoleError
+  | CannotAssignOwnerRoleError
+  | OwnerMustTransferError
+  | SecondOwnerError
+  | BotCannotHavePrivilegedRoleError
+  | TargetNotWorkspaceMemberError
   | LastAdminError
   | InsufficientPermissionsError
   | UserNotFoundError

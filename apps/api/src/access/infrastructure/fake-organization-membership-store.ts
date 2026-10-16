@@ -7,6 +7,7 @@ export type FakeOrganizationMembershipStoreOptions = {
   shouldFailOnSave?: boolean;
   shouldFailOnFind?: boolean;
   shouldFailOnDelete?: boolean;
+  shouldFailOnSetOwner?: boolean;
   initialMemberships?: OrganizationMembership[];
 };
 
@@ -77,6 +78,23 @@ export const createFakeOrganizationMembershipStore = (
       if (index >= 0) {
         memberships.splice(index, 1);
       }
+      return okAsync(undefined);
+    },
+
+    setOwner: ({ demote, promote }): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnSetOwner || options.shouldFailOnSave) {
+        return errAsync(membershipStorageError('Set owner failed'));
+      }
+      const next = memberships.map((membership) => {
+        if (demote && membership.id === demote.id) {
+          return demote;
+        }
+        if (membership.id === promote.id) {
+          return promote;
+        }
+        return membership;
+      });
+      memberships.splice(0, memberships.length, ...next);
       return okAsync(undefined);
     },
   };

@@ -22,12 +22,25 @@ export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 // User schemas
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  email: z.string().email(),
+  email: z.string().min(1),
   name: z.string().min(1).max(100).optional(),
+  kind: z.enum(['human', 'agent']).optional(),
+  role: z.enum(['owner', 'admin', 'member']).optional(),
   createdAt: z.string().datetime(),
 });
 
 export type User = z.infer<typeof UserSchema>;
+
+export const SetOrganizationOwnerSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export const PatchMemberRoleSchema = z.object({
+  role: z.enum(['admin', 'member']),
+});
+
+export type SetOrganizationOwner = z.infer<typeof SetOrganizationOwnerSchema>;
+export type PatchMemberRole = z.infer<typeof PatchMemberRoleSchema>;
 
 // Token schemas (note: we don't expose tokenHash to the client)
 // Tokens are scoped to organizations

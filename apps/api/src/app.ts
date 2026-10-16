@@ -55,10 +55,21 @@ import type {
 // TODO(8.5.4): store interfaces are not part of the access public API;
 // auth-routes should stop needing an OrganizationStore dependency
 import type { OrganizationStore } from './access/domain/organization-store.js';
-import type { RateLimitConfig, LogConfig, CookieConfig } from './config/schema.js';
+import {
+  DEFAULT_GLOBAL_RATE_LIMIT_MAX,
+  type RateLimitConfig,
+  type LogConfig,
+  type CookieConfig,
+} from './config/schema.js';
 import type { Database } from './database/types.js';
 import { createLoggerOptions } from './logging/index.js';
+import { shouldHandleError } from './logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
+import {
+  decideRateLimitExempt,
+  decideRateLimitKey,
+  firstHeaderValue,
+} from './shared/rate-limit-policy.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {
@@ -106,12 +117,12 @@ export type AppDependencies = {
 };
 
 export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log) });
+  Fastify({ logger: createLoggerOptions(log), trustProxy: true });
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {
   enabled: true,
-  globalMax: 100,
+  globalMax: DEFAULT_GLOBAL_RATE_LIMIT_MAX,
   globalTimeWindow: '1 minute',
   adminLoginMax: 5,
   adminLoginTimeWindow: '15 minutes',
@@ -131,17 +142,26 @@ export const createApp = async (deps: AppDependencies) => {
     contentSecurityPolicy: false, // Disable CSP for now (SPA needs inline scripts from Vite)
   });
 
+  await app.register(cookie);
+
   // Only register global rate limiting if enabled
   if (rateLimitConfig.enabled) {
+    const sessionCookieName = deps.cookie.sessionName;
     await app.register(rateLimit, {
       global: true,
       max: rateLimitConfig.globalMax,
       timeWindow: rateLimitConfig.globalTimeWindow,
+      keyGenerator: (request) =>
+        decideRateLimitKey({
+          ip: request.ip,
+          flyClientIp: firstHeaderValue(request.headers['fly-client-ip']),
+          authorization: firstHeaderValue(request.headers.authorization),
+          cookieHeader: firstHeaderValue(request.headers.cookie),
+          sessionCookieName,
+        }).key,
+      allowList: (request) => decideRateLimitExempt({ url: request.url }).exempt,
     });
   }
-
-  // Register other plugins
-  await app.register(cookie);
 
   // Register routes
   await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
@@ -290,7 +310,7 @@ export const createApp = async (deps: AppDependencies) => {
   }
 
   // Register Sentry error handler (must be after routes but before other error handlers)
-  Sentry.setupFastifyErrorHandler(app);
+  Sentry.setupFastifyErrorHandler(app, { shouldHandleError });
 
   // SPA fallback - serve index.html for unmatched routes
   app.setNotFoundHandler((request, reply) => {

@@ -9,6 +9,7 @@ import {
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type PasskeyRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -241,7 +242,7 @@ export const registerPasskeyRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

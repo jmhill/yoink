@@ -184,7 +184,11 @@ describe('GET /api/work', () => {
       headers: auth,
     });
     expect(bogus.statusCode).toBe(400);
-    expect(bogus.json<{ code?: string }>().code).toBe('VALIDATION_FAILED');
+    expect(bogus.json<{ code?: string; message?: string; fields?: string[] }>()).toEqual({
+      message: 'Request validation failed: owner',
+      code: 'VALIDATION_FAILED',
+      fields: ['owner'],
+    });
 
     const dueBogus = await app.inject({
       method: 'GET',
@@ -192,7 +196,11 @@ describe('GET /api/work', () => {
       headers: auth,
     });
     expect(dueBogus.statusCode).toBe(400);
-    expect(dueBogus.json<{ code?: string }>().code).toBe('VALIDATION_FAILED');
+    expect(dueBogus.json<{ code?: string; message?: string; fields?: string[] }>()).toEqual({
+      message: 'Request validation failed: owner',
+      code: 'VALIDATION_FAILED',
+      fields: ['owner'],
+    });
 
     const mars = await app.inject({
       method: 'GET',

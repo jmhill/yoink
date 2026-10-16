@@ -4,6 +4,7 @@ import { tokenContract } from '@yoink/api-contracts';
 import type { SessionService } from '../domain/session-service.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { TokenHandlers } from './create-token-handlers.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -146,7 +147,7 @@ export const registerTokenRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

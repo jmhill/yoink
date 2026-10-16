@@ -8,6 +8,7 @@ import {
   toNamedListListBody,
   toTaskListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
+import { namedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
 
 export type ListRoutesDependencies = {
   listHandlers: ListHandlers;
@@ -299,7 +300,7 @@ export const registerListRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

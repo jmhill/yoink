@@ -12,6 +12,7 @@ import {
   LogLevelSchema,
   LogConfigSchema,
   SentryConfigSchema,
+  DEFAULT_GLOBAL_RATE_LIMIT_MAX,
 } from './schema.js';
 
 const SentryLogsEnabledEnvSchema = z.enum(['true', 'false']).optional();
@@ -67,7 +68,10 @@ const loadRateLimitConfig = (): RateLimitConfig => {
   const enabled = process.env.RATE_LIMIT_ENABLED !== 'false';
   return {
     enabled,
-    globalMax: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX ?? '100', 10),
+    globalMax: parseInt(
+      process.env.RATE_LIMIT_GLOBAL_MAX ?? String(DEFAULT_GLOBAL_RATE_LIMIT_MAX),
+      10
+    ),
     globalTimeWindow: process.env.RATE_LIMIT_GLOBAL_WINDOW ?? '1 minute',
     adminLoginMax: parseInt(process.env.RATE_LIMIT_ADMIN_LOGIN_MAX ?? '5', 10),
     adminLoginTimeWindow: process.env.RATE_LIMIT_ADMIN_LOGIN_WINDOW ?? '15 minutes',

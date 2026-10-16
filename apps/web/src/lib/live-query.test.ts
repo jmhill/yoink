@@ -5,9 +5,14 @@ import {
   LIVE_QUERY_TEST_INTERVAL_KEY,
   cancelLiveQueries,
   createAppQueryClient,
+  decideFocusRefetch,
+  decideLiveRefetchInterval,
+  decideRetryAfterMs,
   isBlockingQueryFailure,
   isLiveOpenTaskListQueryKey,
   liveQueryRefetchInterval,
+  liveQueryRefetchOnWindowFocus,
+  liveQueryRetryDelayMs,
   mapLiveOpenTaskLists,
   readLiveQueryIntervalMs,
 } from './live-query';
@@ -59,7 +64,71 @@ describe('live query interval', () => {
     const queries = client.getDefaultOptions().queries;
     expect(queries?.refetchInterval).toBe(liveQueryRefetchInterval);
     expect(queries?.refetchIntervalInBackground).toBe(false);
-    expect(queries?.refetchOnWindowFocus).toBe(true);
+    expect(queries?.refetchOnWindowFocus).toBe(liveQueryRefetchOnWindowFocus);
+  });
+
+  it('respects Retry-After on a 429 and defaults to the live interval', () => {
+    expect(
+      decideRetryAfterMs({
+        error: { status: 429, headers: { 'retry-after': '12' } },
+        nowMs: 0,
+      })
+    ).toEqual({ waitMs: 12_000 });
+    expect(
+      decideRetryAfterMs({
+        error: {
+          status: 429,
+          headers: { 'Retry-After': 'Wed, 21 Oct 2015 07:28:12 GMT' },
+        },
+        nowMs: Date.parse('Wed, 21 Oct 2015 07:28:00 GMT'),
+      })
+    ).toEqual({ waitMs: 12_000 });
+    expect(
+      decideRetryAfterMs({ error: { status: 429 }, nowMs: 0 })
+    ).toEqual({ waitMs: LIVE_QUERY_REFETCH_INTERVAL_MS });
+    expect(decideRetryAfterMs({ error: { status: 500 }, nowMs: 0 })).toEqual({
+      waitMs: null,
+    });
+    expect(
+      liveQueryRetryDelayMs({
+        error: { status: 429, headers: { 'retry-after': '5' } },
+        nowMs: 0,
+        failureCount: 0,
+      })
+    ).toBe(5_000);
+  });
+
+  it('skips a focus refetch when the 10-second refresh is already due', () => {
+    expect(
+      decideFocusRefetch({
+        dataUpdatedAt: 1_000,
+        nowMs: 11_000,
+        intervalMs: 10_000,
+      })
+    ).toEqual({ refetch: false });
+    expect(
+      decideFocusRefetch({
+        dataUpdatedAt: 1_000,
+        nowMs: 5_000,
+        intervalMs: 10_000,
+      })
+    ).toEqual({ refetch: true });
+    expect(
+      decideFocusRefetch({
+        dataUpdatedAt: 1_000,
+        nowMs: 5_000,
+        intervalMs: 10_000,
+        retryAfterUntilMs: 8_000,
+      })
+    ).toEqual({ refetch: false });
+    expect(
+      decideLiveRefetchInterval({
+        visibilityState: 'visible',
+        dataUpdatedAt: 1_000,
+        nowMs: 11_000,
+        intervalMs: 10_000,
+      })
+    ).toEqual({ intervalMs: 1 });
   });
 
   it('includes projects in the live collection keys', () => {

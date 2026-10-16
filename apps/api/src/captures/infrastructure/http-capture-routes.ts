@@ -9,6 +9,7 @@ import {
   toCaptureListBody,
 } from '../../listing/infrastructure/http-listed-page.js';
 import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
+import { namedRequestValidationError } from '../../shared/infrastructure/request-validation-http.js';
 
 export type CaptureRoutesDependencies = {
   captureHandlers: CaptureHandlers;
@@ -471,7 +472,7 @@ export const registerCaptureRoutes = async (
         if (request.url.includes('/process-to-project')) {
           return reply.status(400).send(projectRequestValidationError(err));
         }
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

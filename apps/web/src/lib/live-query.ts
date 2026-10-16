@@ -309,17 +309,197 @@ export const readLiveQueryIntervalMs = (): number => {
   return LIVE_QUERY_REFETCH_INTERVAL_MS;
 };
 
+export type LiveQuerySnapshot = {
+  state: {
+    dataUpdatedAt: number;
+    error: unknown;
+    errorUpdatedAt: number;
+  };
+};
+
+export type RetryAfterQuery = {
+  error: unknown;
+  nowMs: number;
+};
+
+export type RetryAfterResult = {
+  waitMs: number | null;
+};
+
+export type FocusRefetchQuery = {
+  dataUpdatedAt: number;
+  nowMs: number;
+  intervalMs: number;
+  retryAfterUntilMs?: number;
+};
+
+export type FocusRefetchResult = {
+  refetch: boolean;
+};
+
+export type LiveRefetchIntervalQuery = {
+  visibilityState: 'hidden' | 'visible';
+  dataUpdatedAt: number;
+  nowMs: number;
+  intervalMs: number;
+  retryAfterUntilMs?: number;
+};
+
+export type LiveRefetchIntervalResult = {
+  intervalMs: number | false;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isHeaderGetter = (
+  value: unknown
+): value is { get: (name: string) => string | null } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'get' in value &&
+  typeof value.get === 'function';
+
+const retryAfterHeaderValue = (headers: unknown): string | undefined => {
+  if (isHeaderGetter(headers)) {
+    return headers.get('retry-after') ?? headers.get('Retry-After') ?? undefined;
+  }
+  if (!isRecord(headers)) {
+    return undefined;
+  }
+  const raw = headers['retry-after'] ?? headers['Retry-After'];
+  if (typeof raw === 'string') {
+    return raw;
+  }
+  if (Array.isArray(raw) && typeof raw[0] === 'string') {
+    return raw[0];
+  }
+  return undefined;
+};
+
+const httpStatusOf = (error: unknown): number | undefined => {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+  const status = error.status ?? error.statusCode;
+  return typeof status === 'number' ? status : undefined;
+};
+
+const parseRetryAfterMs = (raw: string, nowMs: number): number | undefined => {
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+  const until = Date.parse(raw);
+  if (Number.isNaN(until)) {
+    return undefined;
+  }
+  return Math.max(0, until - nowMs);
+};
+
+export const decideRetryAfterMs = (query: RetryAfterQuery): RetryAfterResult => {
+  if (httpStatusOf(query.error) !== 429) {
+    return { waitMs: null };
+  }
+  const headers = isRecord(query.error) ? query.error.headers : undefined;
+  const raw = retryAfterHeaderValue(headers);
+  if (raw === undefined) {
+    return { waitMs: LIVE_QUERY_REFETCH_INTERVAL_MS };
+  }
+  const parsed = parseRetryAfterMs(raw, query.nowMs);
+  return { waitMs: parsed ?? LIVE_QUERY_REFETCH_INTERVAL_MS };
+};
+
+export const retryAfterUntilMsFromQuery = (
+  query: LiveQuerySnapshot,
+  nowMs: number
+): number | undefined => {
+  const wait = decideRetryAfterMs({ error: query.state.error, nowMs });
+  if (wait.waitMs === null) {
+    return undefined;
+  }
+  return query.state.errorUpdatedAt + wait.waitMs;
+};
+
+export const liveQueryRetryDelayMs = (input: {
+  error: unknown;
+  nowMs: number;
+  failureCount: number;
+}): number => {
+  const retryAfter = decideRetryAfterMs({ error: input.error, nowMs: input.nowMs });
+  if (retryAfter.waitMs !== null) {
+    return retryAfter.waitMs;
+  }
+  return Math.min(1000 * 2 ** input.failureCount, 30_000);
+};
+
+/**
+ * Skip the extra focus refetch when the 10s poll is already due (or we are
+ * sitting out a 429 Retry-After). The interval timer covers the refresh.
+ */
+export const decideFocusRefetch = (query: FocusRefetchQuery): FocusRefetchResult => {
+  if (
+    query.retryAfterUntilMs !== undefined &&
+    query.nowMs < query.retryAfterUntilMs
+  ) {
+    return { refetch: false };
+  }
+  if (query.dataUpdatedAt === 0) {
+    return { refetch: true };
+  }
+  if (query.nowMs >= query.dataUpdatedAt + query.intervalMs) {
+    return { refetch: false };
+  }
+  return { refetch: true };
+};
+
+export const decideLiveRefetchInterval = (
+  query: LiveRefetchIntervalQuery
+): LiveRefetchIntervalResult => {
+  if (query.visibilityState === 'hidden') {
+    return { intervalMs: false };
+  }
+  if (
+    query.retryAfterUntilMs !== undefined &&
+    query.nowMs < query.retryAfterUntilMs
+  ) {
+    return { intervalMs: query.retryAfterUntilMs - query.nowMs };
+  }
+  if (query.dataUpdatedAt > 0 && query.nowMs >= query.dataUpdatedAt + query.intervalMs) {
+    return { intervalMs: 1 };
+  }
+  return { intervalMs: query.intervalMs };
+};
+
+const visibilityState = (): 'hidden' | 'visible' =>
+  typeof document !== 'undefined' && document.visibilityState === 'hidden'
+    ? 'hidden'
+    : 'visible';
+
 /**
  * TanStack Query calls this after each fetch to schedule the next one.
  * Hidden tabs return `false` so the timer does not keep firing in the background.
  * `refetchIntervalInBackground: false` is the other half of the same pause.
  */
-export const liveQueryRefetchInterval = (): number | false => {
-  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-    return false;
-  }
-  return readLiveQueryIntervalMs();
-};
+export const liveQueryRefetchInterval = (
+  query?: LiveQuerySnapshot
+): number | false =>
+  decideLiveRefetchInterval({
+    visibilityState: visibilityState(),
+    dataUpdatedAt: query?.state.dataUpdatedAt ?? 0,
+    nowMs: Date.now(),
+    intervalMs: readLiveQueryIntervalMs(),
+    retryAfterUntilMs:
+      query === undefined ? undefined : retryAfterUntilMsFromQuery(query, Date.now()),
+  }).intervalMs;
+
+export const liveQueryRefetchOnWindowFocus = (query: LiveQuerySnapshot): boolean =>
+  decideFocusRefetch({
+    dataUpdatedAt: query.state.dataUpdatedAt,
+    nowMs: Date.now(),
+    intervalMs: readLiveQueryIntervalMs(),
+    retryAfterUntilMs: retryAfterUntilMsFromQuery(query, Date.now()),
+  }).refetch;
 
 /**
  * Show the full-page error card only when there is nothing to display.
@@ -335,7 +515,9 @@ export const createAppQueryClient = (): QueryClient =>
       queries: {
         refetchInterval: liveQueryRefetchInterval,
         refetchIntervalInBackground: false,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: liveQueryRefetchOnWindowFocus,
+        retryDelay: (failureCount, error) =>
+          liveQueryRetryDelayMs({ error, nowMs: Date.now(), failureCount }),
       },
     },
   });

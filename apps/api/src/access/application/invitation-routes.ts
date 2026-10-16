@@ -5,6 +5,7 @@ import type { InvitationService } from '../domain/invitation-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { OrganizationService } from '../domain/organization-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;
@@ -289,7 +290,7 @@ export const registerInvitationRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

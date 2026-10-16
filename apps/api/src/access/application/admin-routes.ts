@@ -7,6 +7,7 @@ import type { AdminSessionService } from '../domain/admin-session-service.js';
 import type { InvitationService } from '../domain/invitation-service.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
 import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
@@ -83,7 +84,7 @@ export const registerAdminRoutes = async (
     s.registerRouter(adminPublicContract, publicRouter, publicApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });
@@ -379,7 +380,7 @@ export const registerAdminRoutes = async (
     s.registerRouter(adminProtectedContract, protectedRouter, protectedApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

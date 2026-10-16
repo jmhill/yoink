@@ -1,19 +1,18 @@
+import {
+  namedValidationFailedMessage,
+  validationIssuePaths,
+  type RequestValidationErr,
+} from '../../shared/request-validation.js';
+
 export type NoteHttpError = {
   message: string;
   code: string;
+  fields?: string[];
 };
 
 type ValidationIssue = {
   path: string;
   code: string;
-};
-
-type RequestValidationErr = {
-  message: string;
-  body?: { issues?: Array<{ path: PropertyKey[]; code: string }> } | null;
-  query?: { issues?: Array<{ path: PropertyKey[]; code: string }> } | null;
-  pathParams?: { issues?: Array<{ path: PropertyKey[]; code: string }> } | null;
-  headers?: { issues?: Array<{ path: PropertyKey[]; code: string }> } | null;
 };
 
 const firstIssue = (err: RequestValidationErr): ValidationIssue | null => {
@@ -33,7 +32,12 @@ const firstIssue = (err: RequestValidationErr): ValidationIssue | null => {
 export const noteRequestValidationError = (err: RequestValidationErr): NoteHttpError => {
   const issue = firstIssue(err);
   if (!issue) {
-    return { message: 'Request validation failed', code: 'VALIDATION_FAILED' };
+    const fields = validationIssuePaths(err);
+    return {
+      message: namedValidationFailedMessage(fields),
+      code: 'VALIDATION_FAILED',
+      fields,
+    };
   }
 
   if (issue.path === 'title' && issue.code === 'too_small') {
@@ -55,5 +59,10 @@ export const noteRequestValidationError = (err: RequestValidationErr): NoteHttpE
     return { message: 'since must be an ISO timestamp', code: 'VALIDATION_FAILED' };
   }
 
-  return { message: 'Request validation failed', code: 'VALIDATION_FAILED' };
+  const fields = validationIssuePaths(err);
+  return {
+    message: namedValidationFailedMessage(fields),
+    code: 'VALIDATION_FAILED',
+    fields,
+  };
 };

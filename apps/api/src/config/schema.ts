@@ -85,11 +85,14 @@ export const AdminConfigSchema = z.object({
   sessionSecret: z.string().min(32),
 });
 
+/** General API budget per key (signed-in user, bot token, or client IP). */
+export const DEFAULT_GLOBAL_RATE_LIMIT_MAX = 600;
+
 // Rate limiting configuration
 export const RateLimitConfigSchema = z.object({
   enabled: z.boolean().default(true),
   // General rate limit for all endpoints
-  globalMax: z.number().default(100),
+  globalMax: z.number().default(DEFAULT_GLOBAL_RATE_LIMIT_MAX),
   globalTimeWindow: z.string().default('1 minute'),
   // Strict rate limit for admin login (brute force protection)
   adminLoginMax: z.number().default(5),

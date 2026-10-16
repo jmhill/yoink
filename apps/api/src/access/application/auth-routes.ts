@@ -14,6 +14,7 @@ import {
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { RateLimitConfig } from '../../config/schema.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -271,7 +272,7 @@ export const registerAuthRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

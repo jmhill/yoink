@@ -11,6 +11,15 @@
 | `SENTRY_LOGS_ENABLED` | Forward Pino logs to Sentry Logs | Optional. `true` / `false`. Default: `true` in production, `false` in tests and local dev. |
 | `SENTRY_LOGS_LEVEL` | Minimum Pino level forwarded to Sentry (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | Optional. Default: `info`. |
 | `NOTES_MIRROR_BOT_USER_ID` | Fallback user id of the designated notes-mirror bot when `organizations.notes_mirror_bot_user_id` is empty | Optional UUID. Used only for `POST /api/notes/import`. |
+| `RATE_LIMIT_ENABLED` | Master switch for API rate limiting | Optional. `false` disables all limiters (tests). Default: enabled. |
+| `RATE_LIMIT_GLOBAL_MAX` | General API requests per key per window | Optional. Default: `600`. Keyed by session, bot token, or client IP. |
+| `RATE_LIMIT_GLOBAL_WINDOW` | Window for the general API limit | Optional. Default: `1 minute`. |
+| `RATE_LIMIT_ADMIN_LOGIN_MAX` | Admin login attempts per IP per window | Optional. Default: `5`. |
+| `RATE_LIMIT_ADMIN_LOGIN_WINDOW` | Window for admin login | Optional. Default: `15 minutes`. |
+| `RATE_LIMIT_AUTH_LOGIN_MAX` | Passkey login verify attempts per IP per window | Optional. Default: `10`. |
+| `RATE_LIMIT_AUTH_LOGIN_WINDOW` | Window for passkey login verify | Optional. Default: `15 minutes`. |
+| `RATE_LIMIT_SIGNUP_MAX` | Signup attempts per IP per window | Optional. Default: `5`. |
+| `RATE_LIMIT_SIGNUP_WINDOW` | Window for signup | Optional. Default: `1 hour`. |
 
 ## Sentry Logs
 

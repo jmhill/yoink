@@ -7,6 +7,7 @@ import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../config/schema.js';
+import { namedRequestValidationError } from '../../shared/request-validation.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;
@@ -229,7 +230,7 @@ export const registerSignupRoutes = async (
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send({ message: err.message });
+        return reply.status(400).send(namedRequestValidationError(err));
       },
     });
   });

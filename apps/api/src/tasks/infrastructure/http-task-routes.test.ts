@@ -373,6 +373,10 @@ describe('GET /api/tasks viewer today', () => {
       headers: auth,
     });
     expect(bogus.statusCode).toBe(400);
-    expect(bogus.json<{ code?: string }>().code).toBe('VALIDATION_FAILED');
+    expect(bogus.json<{ code?: string; message?: string; fields?: string[] }>()).toEqual({
+      message: 'Request validation failed: filter',
+      code: 'VALIDATION_FAILED',
+      fields: ['filter'],
+    });
   });
 });

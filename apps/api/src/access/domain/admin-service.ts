@@ -9,7 +9,7 @@ import type { UserStore } from './user-store.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
 import { decideChangeRole } from './decide-change-role.js';
 import { decideSetOwner } from './decide-set-owner.js';
-import { targetNotWorkspaceMemberError } from './organization-errors.js';
+import type { ChangeRoleCommand, SetOwnerCommand } from './membership-commands.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
 import type {
@@ -43,10 +43,7 @@ export type CreateUserCommand = {
   name?: string;
 };
 
-export type SetOrganizationOwnerCommand = {
-  organizationId: string;
-  userId: string;
-};
+export type SetOrganizationOwnerCommand = SetOwnerCommand;
 
 export type ChangeMemberRoleCommand = {
   organizationId: string;
@@ -203,17 +200,11 @@ export const createAdminService = (
           return errAsync(organizationNotFoundError(organizationId));
         }
         return userStore.findById(userId).andThen((targetUser) =>
-          organizationMembershipStore.findByOrganizationId(organizationId).andThen((memberships) => {
-            const targetMembership =
-              memberships.find((membership) => membership.userId === userId) ?? null;
-            const currentOwner =
-              memberships.find((membership) => membership.role === 'owner') ?? null;
+          organizationMembershipStore.findByOrganizationId(organizationId).andThen((members) => {
             const decision = decideSetOwner({
-              organizationId,
-              targetUserId: userId,
+              command: { organizationId, userId },
+              members,
               targetUser,
-              targetMembership,
-              currentOwner,
             });
             if (decision.isErr()) {
               return errAsync(decision.error);
@@ -237,34 +228,31 @@ export const createAdminService = (
         if (!org) {
           return errAsync(organizationNotFoundError(organizationId));
         }
-        return organizationMembershipStore
-          .findByUserAndOrg(userId, organizationId)
-          .andThen((membership) => {
-            if (!membership) {
-              return errAsync(targetNotWorkspaceMemberError(userId, organizationId));
-            }
-            return userStore.findById(userId).andThen((user) => {
-              if (!user) {
-                return errAsync(userNotFoundError(userId));
+        return userStore.findById(userId).andThen((user) => {
+          if (!user) {
+            return errAsync(userNotFoundError(userId));
+          }
+          return organizationMembershipStore
+            .findByOrganizationId(organizationId)
+            .andThen((members) => {
+              const command: ChangeRoleCommand = {
+                organizationId,
+                userId,
+                newRole: role,
+              };
+              const decision = decideChangeRole({
+                command,
+                members,
+                targetKind: principalKindOf(user),
+              });
+              if (decision.isErr()) {
+                return errAsync(decision.error);
               }
               return organizationMembershipStore
-                .findByOrganizationId(organizationId)
-                .andThen((allMembers) => {
-                  const decision = decideChangeRole({
-                    membership,
-                    newRole: role,
-                    targetKind: principalKindOf(user),
-                    allMembers,
-                  });
-                  if (decision.isErr()) {
-                    return errAsync(decision.error);
-                  }
-                  return organizationMembershipStore
-                    .save(decision.value)
-                    .map(() => ({ ...user, role: decision.value.role }));
-                });
+                .save(decision.value)
+                .map(() => ({ ...user, role: decision.value.role }));
             });
-          });
+        });
       });
     },
 

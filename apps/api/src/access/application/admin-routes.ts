@@ -277,6 +277,7 @@ export const registerAdminRoutes = async (
                 };
               case 'USER_NOT_FOUND':
               case 'TARGET_NOT_WORKSPACE_MEMBER':
+              case 'MEMBERSHIP_NOT_FOUND':
                 return {
                   status: 404 as const,
                   body: { message: 'Member not found' },
@@ -287,12 +288,12 @@ export const registerAdminRoutes = async (
                   status: 400 as const,
                   body: { message: error.message, code: error.type },
                 };
-              case 'CANNOT_CHANGE_OWNER_ROLE':
+              case 'OWNER_MUST_TRANSFER':
                 return {
                   status: 409 as const,
                   body: {
-                    message: 'Transfer ownership first',
-                    code: 'OWNER_MUST_TRANSFER',
+                    message: error.message,
+                    code: error.type,
                   },
                 };
               case 'LAST_ADMIN':

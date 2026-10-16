@@ -109,17 +109,20 @@ export const cannotLeavePersonalOrgError = (
   organizationId,
 });
 
-/** Cannot change owner role */
-export type CannotChangeOwnerRoleError = {
-  readonly type: 'CANNOT_CHANGE_OWNER_ROLE';
-  readonly membershipId: string;
+/** #190: fromUserId is not the current owner */
+export type NotCurrentOwnerError = {
+  readonly type: 'NOT_CURRENT_OWNER';
+  readonly organizationId: string;
+  readonly userId: string;
 };
 
-export const cannotChangeOwnerRoleError = (
-  membershipId: string
-): CannotChangeOwnerRoleError => ({
-  type: 'CANNOT_CHANGE_OWNER_ROLE',
-  membershipId,
+export const notCurrentOwnerError = (
+  organizationId: string,
+  userId: string
+): NotCurrentOwnerError => ({
+  type: 'NOT_CURRENT_OWNER',
+  organizationId,
+  userId,
 });
 
 /** Owner can only be assigned via the admin-panel set-owner command */
@@ -229,20 +232,24 @@ export const insufficientPermissionsError = (
   actualRole,
 });
 
-export type MembershipServiceError =
+/** Closed union of membership command errors (no storage). */
+export type MembershipError =
   | AlreadyMemberError
   | MembershipNotFoundError
   | CannotLeavePersonalOrgError
-  | CannotChangeOwnerRoleError
   | CannotAssignOwnerRoleError
   | OwnerMustTransferError
+  | NotCurrentOwnerError
   | SecondOwnerError
   | BotCannotHavePrivilegedRoleError
   | TargetNotWorkspaceMemberError
   | LastAdminError
   | InsufficientPermissionsError
   | UserNotFoundError
-  | OrganizationNotFoundError
+  | OrganizationNotFoundError;
+
+export type MembershipServiceError =
+  | MembershipError
   | MembershipStorageError
   | OrganizationStorageError
   | UserServiceError;

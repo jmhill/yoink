@@ -38,11 +38,9 @@ describe('decideSetOwner', () => {
   it('promotes a human member on a zero-owner workspace', () => {
     const target = membership({ role: 'member' });
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: human.id,
+      command: { organizationId: orgId, userId: human.id },
+      members: [target],
       targetUser: human,
-      targetMembership: target,
-      currentOwner: null,
     });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -55,11 +53,9 @@ describe('decideSetOwner', () => {
   it('demotes the old owner to admin in the same plan', () => {
     const target = membership({ role: 'admin' });
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: human.id,
+      command: { organizationId: orgId, userId: human.id },
+      members: [currentOwner, target],
       targetUser: human,
-      targetMembership: target,
-      currentOwner,
     });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -71,11 +67,9 @@ describe('decideSetOwner', () => {
 
   it('is a no-op when the target is already the owner', () => {
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: currentOwner.userId,
+      command: { organizationId: orgId, userId: currentOwner.userId },
+      members: [currentOwner],
       targetUser: { ...human, id: currentOwner.userId },
-      targetMembership: currentOwner,
-      currentOwner,
     });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -86,22 +80,18 @@ describe('decideSetOwner', () => {
 
   it('refuses a missing user', () => {
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: human.id,
+      command: { organizationId: orgId, userId: human.id },
+      members: [],
       targetUser: null,
-      targetMembership: null,
-      currentOwner: null,
     });
     expect(result.isErr() && result.error.type).toBe('USER_NOT_FOUND');
   });
 
   it('refuses a non-member', () => {
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: human.id,
+      command: { organizationId: orgId, userId: human.id },
+      members: [],
       targetUser: human,
-      targetMembership: null,
-      currentOwner: null,
     });
     expect(result.isErr() && result.error.type).toBe('TARGET_NOT_WORKSPACE_MEMBER');
   });
@@ -109,11 +99,9 @@ describe('decideSetOwner', () => {
   it('refuses a bot', () => {
     const botMembership = membership({ userId: bot.id, role: 'member' });
     const result = decideSetOwner({
-      organizationId: orgId,
-      targetUserId: bot.id,
+      command: { organizationId: orgId, userId: bot.id },
+      members: [botMembership],
       targetUser: bot,
-      targetMembership: botMembership,
-      currentOwner: null,
     });
     expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
   });

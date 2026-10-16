@@ -1,4 +1,5 @@
 import type { MembershipRole, OrganizationMembership } from './organization-membership.js';
+import { ownerOf } from './owner-presence.js';
 
 /**
  * Role hierarchy: owner > admin > member.
@@ -24,7 +25,7 @@ export const countAdmins = (memberships: readonly OrganizationMembership[]): num
 
 export const workspaceHasOwner = (
   memberships: readonly OrganizationMembership[]
-): boolean => memberships.some((membership) => membership.role === 'owner');
+): boolean => ownerOf(memberships) !== null;
 
 /**
  * Last-admin guard for ownerless workspaces: do not let the last
@@ -35,7 +36,7 @@ export const lastAdminBlocksChange = (
   membership: OrganizationMembership,
   allMembers: readonly OrganizationMembership[]
 ): boolean => {
-  if (!isAdminRole(membership.role) || membership.role === 'owner') {
+  if (!isAdminRole(membership.role) || ownerOf([membership])) {
     return false;
   }
   if (workspaceHasOwner(allMembers)) {

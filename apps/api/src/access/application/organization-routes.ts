@@ -207,7 +207,6 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        // Cannot remove self - use leave instead
         if (targetUserId === session.userId) {
           return {
             status: 400 as const,
@@ -215,80 +214,10 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        // Get caller's membership to check permissions
-        const callerMembershipResult = await membershipService.getMembership({
-          userId: session.userId,
-          organizationId,
-        });
-
-        if (callerMembershipResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to check membership' },
-          };
-        }
-
-        const callerMembership = callerMembershipResult.value;
-        if (!callerMembership) {
-          return {
-            status: 403 as const,
-            body: { message: 'Not a member of this organization' },
-          };
-        }
-
-        // Get target's membership
-        const targetMembershipResult = await membershipService.getMembership({
-          userId: targetUserId,
-          organizationId,
-        });
-
-        if (targetMembershipResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to check target membership' },
-          };
-        }
-
-        const targetMembership = targetMembershipResult.value;
-        if (!targetMembership) {
-          return {
-            status: 404 as const,
-            body: { message: 'User is not a member of this organization' },
-          };
-        }
-
-        // Permission checks:
-        // - owner can remove members and admins (not the owner — domain refuses)
-        // - admin can only remove members (not other admins or the owner)
-        // - member cannot remove anyone
-        const callerRole = callerMembership.role;
-        const targetRole = targetMembership.role;
-
-        if (callerRole === 'member') {
-          return {
-            status: 403 as const,
-            body: { message: 'Insufficient permissions to remove members' },
-          };
-        }
-
-        if (targetRole === 'owner') {
-          return {
-            status: 403 as const,
-            body: { message: 'Transfer ownership first', code: 'OWNER_MUST_TRANSFER' },
-          };
-        }
-
-        if (callerRole === 'admin' && targetRole === 'admin') {
-          return {
-            status: 403 as const,
-            body: { message: 'Admins can only remove members, not other admins or owners' },
-          };
-        }
-
-        // Perform removal
         const result = await membershipService.removeMember({
           organizationId,
           userId: targetUserId,
+          actorUserId: session.userId,
         });
 
         return result.match(
@@ -313,6 +242,12 @@ export const registerOrganizationRoutes = async (
               return {
                 status: 403 as const,
                 body: { message: error.message, code: error.type },
+              };
+            }
+            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
+              return {
+                status: 403 as const,
+                body: { message: 'Insufficient permissions to remove members' },
               };
             }
             return {

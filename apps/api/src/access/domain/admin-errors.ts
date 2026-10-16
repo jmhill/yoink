@@ -3,8 +3,8 @@ import type {
   MembershipStorageError,
   BotCannotHavePrivilegedRoleError,
   CannotAssignOwnerRoleError,
-  CannotChangeOwnerRoleError,
   LastAdminError,
+  MembershipNotFoundError,
   OwnerMustTransferError,
   TargetNotWorkspaceMemberError,
 } from './organization-errors.js';
@@ -46,8 +46,8 @@ export type AdminServiceError =
   | ProjectStorageError
   | BotCannotHavePrivilegedRoleError
   | CannotAssignOwnerRoleError
-  | CannotChangeOwnerRoleError
   | LastAdminError
+  | MembershipNotFoundError
   | OwnerMustTransferError
   | TargetNotWorkspaceMemberError;
 

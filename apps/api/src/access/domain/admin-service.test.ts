@@ -307,7 +307,7 @@ describe('AdminService', () => {
         userId: created.value.id,
         role: 'admin',
       });
-      expect(demote.isErr() && demote.error.type).toBe('CANNOT_CHANGE_OWNER_ROLE');
+      expect(demote.isErr() && demote.error.type).toBe('OWNER_MUST_TRANSFER');
 
       const still = await organizationMembershipStore.findByUserAndOrg(
         created.value.id,

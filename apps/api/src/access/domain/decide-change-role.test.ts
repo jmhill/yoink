@@ -29,10 +29,9 @@ const admin = member({
 describe('decideChangeRole', () => {
   it('promotes a human member to admin', () => {
     const result = decideChangeRole({
-      membership: member(),
-      newRole: 'admin',
+      command: { organizationId: orgId, userId: member().userId, newRole: 'admin' },
+      members: [owner, member()],
       targetKind: 'human',
-      allMembers: [owner, member()],
     });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -42,10 +41,9 @@ describe('decideChangeRole', () => {
 
   it('demotes a human admin to member when an owner remains', () => {
     const result = decideChangeRole({
-      membership: admin,
-      newRole: 'member',
+      command: { organizationId: orgId, userId: admin.userId, newRole: 'member' },
+      members: [owner, admin],
       targetKind: 'human',
-      allMembers: [owner, admin],
     });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -55,41 +53,37 @@ describe('decideChangeRole', () => {
 
   it('refuses assigning owner', () => {
     const result = decideChangeRole({
-      membership: member(),
-      newRole: 'owner',
+      command: { organizationId: orgId, userId: member().userId, newRole: 'owner' },
+      members: [member()],
       targetKind: 'human',
-      allMembers: [member()],
     });
     expect(result.isErr() && result.error.type).toBe('CANNOT_ASSIGN_OWNER_ROLE');
   });
 
   it('refuses changing the current owner (would leave the workspace ownerless)', () => {
     const result = decideChangeRole({
-      membership: owner,
-      newRole: 'admin',
+      command: { organizationId: orgId, userId: owner.userId, newRole: 'admin' },
+      members: [owner, admin],
       targetKind: 'human',
-      allMembers: [owner, admin],
     });
-    expect(result.isErr() && result.error.type).toBe('CANNOT_CHANGE_OWNER_ROLE');
+    expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
   });
 
   it('refuses promoting a bot to admin', () => {
     const bot = member({ role: 'member' });
     const result = decideChangeRole({
-      membership: bot,
-      newRole: 'admin',
+      command: { organizationId: orgId, userId: bot.userId, newRole: 'admin' },
+      members: [owner, bot],
       targetKind: 'agent',
-      allMembers: [owner, bot],
     });
     expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
   });
 
   it('refuses demoting the last admin of an ownerless workspace', () => {
     const result = decideChangeRole({
-      membership: admin,
-      newRole: 'member',
+      command: { organizationId: orgId, userId: admin.userId, newRole: 'member' },
+      members: [admin, member()],
       targetKind: 'human',
-      allMembers: [admin, member()],
     });
     expect(result.isErr() && result.error.type).toBe('LAST_ADMIN');
   });

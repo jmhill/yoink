@@ -359,7 +359,8 @@ describe('MembershipService', () => {
       );
 
       const result = await service.changeRole({
-        membershipId: membership.id,
+        organizationId: org.id,
+        userId: user.id,
         newRole: 'admin',
       });
 
@@ -379,7 +380,8 @@ describe('MembershipService', () => {
       await membershipStore.save(membership);
 
       const result = await service.changeRole({
-        membershipId: membership.id,
+        organizationId: org.id,
+        userId: user.id,
         newRole: 'owner',
       });
 
@@ -399,11 +401,12 @@ describe('MembershipService', () => {
       await membershipStore.save(membership);
 
       const result = await service.changeRole({
-        membershipId: membership.id,
+        organizationId: org.id,
+        userId: owner.id,
         newRole: 'admin',
       });
 
-      expect(result.isErr() && result.error.type).toBe('CANNOT_CHANGE_OWNER_ROLE');
+      expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
     });
 
     it('refuses promoting a bot to admin', async () => {
@@ -433,7 +436,8 @@ describe('MembershipService', () => {
       );
 
       const result = await service.changeRole({
-        membershipId: membership.id,
+        organizationId: org.id,
+        userId: bot.id,
         newRole: 'admin',
       });
 
@@ -453,7 +457,8 @@ describe('MembershipService', () => {
       await membershipStore.save(membership);
 
       const result = await service.changeRole({
-        membershipId: membership.id,
+        organizationId: org.id,
+        userId: admin.id,
         newRole: 'member',
       });
 

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
 
 describe('decideBotMayHaveRole', () => {
@@ -28,7 +29,7 @@ describe('decideBotMayHaveRole', () => {
     if (result.isErr()) {
       expect(result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
       expect(result.error.role).toBe('owner');
-      expect(result.error.message).toContain('owner');
+      expect(result.error.message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
     }
   });
 });

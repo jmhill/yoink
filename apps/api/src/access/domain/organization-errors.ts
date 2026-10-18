@@ -1,5 +1,6 @@
 import {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_OWNER_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
   OWNER_CANNOT_BE_REMOVED_MESSAGE,
@@ -11,6 +12,7 @@ import type { UserNotFoundError, UserServiceError } from './user-errors.js';
 
 export {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_OWNER_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
   OWNER_CANNOT_BE_REMOVED_MESSAGE,
@@ -257,10 +259,7 @@ export const botCannotHavePrivilegedRoleError = (
 ): BotCannotHavePrivilegedRoleError => ({
   type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE',
   role,
-  message:
-    role === 'owner'
-      ? 'A bot cannot be the workspace owner'
-      : 'A bot cannot be an admin',
+  message: role === 'owner' ? BOT_CANNOT_BE_OWNER_MESSAGE : 'A bot cannot be an admin',
 });
 
 /** Set-owner target is not already a member of the workspace */

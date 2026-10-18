@@ -818,13 +818,15 @@ curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
 | `PERSONAL_WORKSPACE_TRANSFER` | Personal workspace (`400`) |
 | `ALREADY_OWNER` | Target is the caller (`400`) |
 | `USER_NOT_FOUND` | Target user does not exist (`404`) |
-| `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | Target is a bot (`400`) |
+| `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | Target is a bot (`400`): `A bot can't be the owner.` |
 | `TARGET_NOT_WORKSPACE_MEMBER` | Target is not already a member (`400`) |
 | `OWNER_MUST_TRANSFER` | Leave/remove while still owner (`409`, includes `handoverPath`) |
 
 Leave and remove-owner `409`s use message `Hand over ownership first.` and
-`handoverPath` `/settings#ownership`. Storage failure is `500`
-`Couldn't hand over ownership. Try again.`
+`handoverPath` `/settings#ownership`. A bot as the new owner is
+`BOT_CANNOT_HAVE_PRIVILEGED_ROLE` with `A bot can't be the owner.` — same
+copy as admin `PUT /api/admin/organizations/:id/owner`. Storage failure is
+`500` `Couldn't hand over ownership. Try again.`
 
 ```bash
 # lastChangedBy on one task → display name

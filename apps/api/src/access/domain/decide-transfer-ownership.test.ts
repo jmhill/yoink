@@ -4,6 +4,7 @@ import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
 import {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_OWNER_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
@@ -204,6 +205,9 @@ describe('decideTransferOwnership', () => {
       targetUser: bot,
     });
     expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    if (result.isErr() && result.error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+      expect(result.error.message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
+    }
   });
 
   it('refuses someone outside the workspace', () => {

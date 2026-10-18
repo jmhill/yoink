@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
 import { createAdminService, type AdminService } from './admin-service.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
@@ -339,6 +340,9 @@ describe('AdminService', () => {
         userId: bot.value.id,
       });
       expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+      if (result.isErr() && result.error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+        expect(result.error.message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
+      }
     });
 
     it('switches a member to admin and back when an owner remains', async () => {

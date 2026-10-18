@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
 import { decideSetOwner } from './decide-set-owner.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
@@ -104,5 +105,8 @@ describe('decideSetOwner', () => {
       targetUser: bot,
     });
     expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+    if (result.isErr() && result.error.type === 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE') {
+      expect(result.error.message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
+    }
   });
 });

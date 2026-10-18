@@ -17,6 +17,7 @@ import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './handle-transfer-ownership.js';
 import {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_OWNER_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
@@ -845,7 +846,7 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.json().code).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
-      expect(response.json().message).toBe('A bot cannot be the workspace owner');
+      expect(response.json().message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
     });
 
     it('returns 400 when the target is not in the workspace', async () => {

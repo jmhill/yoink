@@ -819,14 +819,14 @@ curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
 | `ALREADY_OWNER` | Target is the caller (`400`) |
 | `USER_NOT_FOUND` | Target user does not exist (`404`) |
 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | Target is a bot (`400`): `A bot can't be the owner.` |
-| `TARGET_NOT_WORKSPACE_MEMBER` | Target is not already a member (`400`): `That person isn't a member here.` |
+| `TARGET_NOT_WORKSPACE_MEMBER` | Target is not already a member (`400`): `The new owner has to be a member first.` |
 | `OWNER_MUST_TRANSFER` | Leave/remove while still owner (`409`, includes `handoverPath`) |
 
 Leave and remove-owner `409`s use message `Hand over ownership first.` and
 `handoverPath` `/settings#ownership`. A bot as the new owner is
 `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` with `A bot can't be the owner.` — same
 copy as admin `PUT /api/admin/organizations/:id/owner`. A target who is
-not already a member is `That person isn't a member here.` Storage failure
+not already a member is `The new owner has to be a member first.` Storage failure
 is `500` `Couldn't hand over ownership. Try again.`
 
 ```bash

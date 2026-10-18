@@ -30,7 +30,7 @@ export const OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE =
 
 export const BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE = "Bots can't hand over ownership.";
 export const BOT_CANNOT_BE_OWNER_MESSAGE = "A bot can't be the owner.";
-export const TARGET_NOT_WORKSPACE_MEMBER_MESSAGE = "That person isn't a member here.";
+export const TARGET_NOT_WORKSPACE_MEMBER_MESSAGE = 'The new owner has to be a member first.';
 export const NOT_CURRENT_OWNER_MESSAGE = 'Only the owner can hand over ownership.';
 export const PERSONAL_WORKSPACE_TRANSFER_MESSAGE = "Personal workspaces can't be handed over.";
 export const ALREADY_OWNER_MESSAGE = "You're already the owner.";

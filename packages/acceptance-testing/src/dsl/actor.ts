@@ -1936,6 +1936,7 @@ export type BrowserActorOperations = {
   }): Promise<void>;
 
   openJoin(code: string): Promise<void>;
+  clickJoin(): Promise<void>;
   shouldSeeInvitationError(message: string): Promise<void>;
   shouldSeeJoinTitle(text: string): Promise<void>;
 

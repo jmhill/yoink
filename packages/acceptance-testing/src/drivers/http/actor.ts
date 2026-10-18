@@ -2410,6 +2410,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openJoin', 'http');
     },
 
+    async clickJoin(): Promise<void> {
+      throw new UnsupportedOperationError('clickJoin', 'http');
+    },
+
     async shouldSeeInvitationError(_message: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeInvitationError', 'http');
     },

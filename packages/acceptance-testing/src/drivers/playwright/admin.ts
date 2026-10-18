@@ -69,6 +69,9 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       deps.http.issueOwnerInvitation(organizationId, email),
     getOwnerInvitation: (organizationId) => deps.http.getOwnerInvitation(organizationId),
     createOwnerlessWorkspace: (name) => deps.http.createOwnerlessWorkspace(name),
+    expireInvitation: (code) => deps.http.expireInvitation(code),
+    assignOwnerKeepingInvite: (organizationId, userId) =>
+      deps.http.assignOwnerKeepingInvite(organizationId, userId),
     listOrganizations: () => deps.http.listOrganizations(),
     getOrganization: (id) => deps.http.getOrganization(id),
     renameOrganization: (id, newName) => deps.http.renameOrganization(id, newName),

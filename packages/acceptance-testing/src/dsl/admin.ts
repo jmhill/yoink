@@ -33,6 +33,8 @@ export type Admin = {
   ): Promise<IssueOwnerInvitationResult>;
   getOwnerInvitation(organizationId: string): Promise<OwnerInvitation | null>;
   createOwnerlessWorkspace(name: string): Promise<Organization>;
+  expireInvitation(code: string): Promise<void>;
+  assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void>;
 
   // User management
   createUser(

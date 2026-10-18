@@ -704,6 +704,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     membershipService,
     organizationService,
     organizationStore,
+    invitationStore,
+    membershipStore,
     userService,
     acceptInvitation,
     signup: signupConfig,

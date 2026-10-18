@@ -3951,6 +3951,12 @@ export const createPlaywrightActor = (
       await page.goto(`/join/${code}`);
     },
 
+    async clickJoin(): Promise<void> {
+      const join = page.getByRole('button', { name: /^Join / });
+      await expect(join).toBeVisible();
+      await join.click();
+    },
+
     async shouldSeeInvitationError(message: string): Promise<void> {
       await expect(page.locator('[data-testid="invitation-error"]')).toHaveText(message);
     },

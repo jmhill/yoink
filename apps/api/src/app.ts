@@ -62,6 +62,8 @@ import type {
 // TODO(8.5.4): store interfaces are not part of the access public API;
 // auth-routes should stop needing an OrganizationStore dependency
 import type { OrganizationStore } from './access/domain/organization-store.js';
+import type { InvitationStore } from './access/domain/invitation-store.js';
+import type { OrganizationMembershipStore } from './access/domain/organization-membership-store.js';
 import {
   DEFAULT_GLOBAL_RATE_LIMIT_MAX,
   DEFAULT_IP_RATE_LIMIT_MAX,
@@ -127,6 +129,8 @@ export type AppDependencies = {
   membershipService: MembershipService;
   organizationService: OrganizationService;
   organizationStore: OrganizationStore;
+  invitationStore?: InvitationStore;
+  membershipStore?: OrganizationMembershipStore;
   userService: UserService;
   acceptInvitation: InvitationRoutesDependencies['acceptInvitation'];
   signup?: SignupConfig;
@@ -234,10 +238,17 @@ export const createApp = async (deps: AppDependencies) => {
       db: deps.database,
     });
   }
-  if (deps.enableTestFixtures && deps.admin) {
+  if (
+    deps.enableTestFixtures &&
+    deps.admin &&
+    deps.invitationStore &&
+    deps.membershipStore
+  ) {
     await registerOwnerlessWorkspaceFixtureRoutes(app, {
       adminSessionService: deps.admin.adminSessionService,
       organizationStore: deps.organizationStore,
+      invitationStore: deps.invitationStore,
+      membershipStore: deps.membershipStore,
     });
   }
 

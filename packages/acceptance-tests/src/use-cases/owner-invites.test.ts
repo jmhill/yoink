@@ -1,9 +1,13 @@
 import { usingDrivers, describe, it, expect, beforeAll, afterAll } from '@yoink/acceptance-testing';
 import { ValidationError } from '@yoink/acceptance-testing';
+import type { Actor } from '@yoink/acceptance-testing';
 import {
+  INVITATION_ALREADY_USED_MESSAGE,
+  INVITATION_EXPIRED_MESSAGE,
   INVITATION_NOT_FOUND_MESSAGE,
   INVITATION_REPLACED_MESSAGE,
   OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
   ownerInviteJoinTitle,
   YOUR_ROLE_OWNER_LABEL,
 } from '@yoink/api-contracts';
@@ -94,7 +98,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const justinEmail = 'justin@example.com';
       const libbyEmail = 'libby@example.com';
       const host = await ctx.admin.createOrganization(`host-${stamp}`);
-      await ctx.admin.createUser(host.id, justinEmail, {
+      const justin = await ctx.admin.createUser(host.id, justinEmail, {
         name: 'Justin',
         role: 'member',
       });
@@ -166,6 +170,32 @@ usingDrivers(['playwright'] as const, (ctx) => {
         }
       };
 
+      const captureJoinRefusal = async (input: {
+        actor: Actor;
+        code: string;
+        step: string;
+        message: string;
+        clickJoin?: boolean;
+      }) => {
+        for (const viewport of ['phone', 'desktop'] as const) {
+          await input.actor.goToSettings();
+          if (viewport === 'phone') {
+            await input.actor.useMobileViewport();
+          } else {
+            await input.actor.useDesktopViewport();
+          }
+          await input.actor.openJoin(input.code);
+          if (input.clickJoin) {
+            await input.actor.clickJoin();
+          }
+          await input.actor.shouldSeeInvitationError(input.message);
+          await input.actor.saveWalkthroughScreenshot({
+            story: WALKTHROUGH_STORY,
+            step: input.step,
+          });
+        }
+      };
+
       await ctx.admin.openUnsignedSignup(pending?.code ?? '');
       await ctx.admin.shouldSeeUnsignedSignupText(ownerInviteJoinTitle('Garden Club'));
       await ctx.admin.shouldSeeUnsignedSignupText(YOUR_ROLE_OWNER_LABEL);
@@ -210,22 +240,64 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await ctx.admin.closeOwnerInviteDialog();
       await ctx.admin.shouldSeePendingOwnerInvite(`replace-${stamp}@example.com`);
 
-      await libby.openJoin(oldInvite?.code ?? '');
-      await libby.shouldSeeInvitationError(INVITATION_REPLACED_MESSAGE);
-      for (const viewport of ['phone', 'desktop'] as const) {
-        await libby.goToSettings();
-        if (viewport === 'phone') {
-          await libby.useMobileViewport();
-        } else {
-          await libby.useDesktopViewport();
-        }
-        await libby.openJoin(oldInvite?.code ?? '');
-        await libby.shouldSeeInvitationError(INVITATION_REPLACED_MESSAGE);
-        await libby.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'invite_replaced',
-        });
-      }
+      await captureJoinRefusal({
+        actor: libby,
+        code: oldInvite?.code ?? '',
+        step: 'invite_replaced',
+        message: INVITATION_REPLACED_MESSAGE,
+      });
+
+      await captureJoinRefusal({
+        actor: libby,
+        code: pending?.code ?? '',
+        step: 'invite_already_used',
+        message: INVITATION_ALREADY_USED_MESSAGE,
+      });
+
+      const expiredOrg = await ctx.admin.createOrganization(`Garden Club expired ${stamp}`, {
+        ownerEmail: `expired-${stamp}@example.com`,
+      });
+      const expiredInvite = await ctx.admin.getOwnerInvitation(expiredOrg.id);
+      await ctx.admin.expireInvitation(expiredInvite?.code ?? '');
+      await captureJoinRefusal({
+        actor: libby,
+        code: expiredInvite?.code ?? '',
+        step: 'invite_expired',
+        message: INVITATION_EXPIRED_MESSAGE,
+      });
+
+      const wrongJoinOrg = await ctx.admin.createOrganization(
+        `Garden Club join-email ${stamp}`,
+        { ownerEmail: `join-wrong-${stamp}@example.com` }
+      );
+      const wrongJoinInvite = await ctx.admin.getOwnerInvitation(wrongJoinOrg.id);
+      await captureJoinRefusal({
+        actor: libby,
+        code: wrongJoinInvite?.code ?? '',
+        step: 'join_wrong_email',
+        message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+        clickJoin: true,
+      });
+
+      const alreadyOwnerEmail = `already-owner-${stamp}@example.com`;
+      const alreadyOrg = await ctx.admin.createOrganization(`Garden Club already ${stamp}`, {
+        ownerEmail: alreadyOwnerEmail,
+      });
+      const alreadyInvite = await ctx.admin.getOwnerInvitation(alreadyOrg.id);
+      await ctx.admin.assignOwnerKeepingInvite(alreadyOrg.id, justin.id);
+      const memberInvite = await ctx.admin.createInvitation(host.id, { role: 'member' });
+      const matching = await ctx.createActorWithInvitation(
+        memberInvite.code,
+        alreadyOwnerEmail,
+        { exactEmail: true }
+      );
+      await captureJoinRefusal({
+        actor: matching,
+        code: alreadyInvite?.code ?? '',
+        step: 'join_already_has_owner',
+        message: WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
+        clickJoin: true,
+      });
 
       await ctx.admin.clickUseDifferentEmail();
       await ctx.admin.submitDifferentOwnerEmail(`new-${stamp}@example.com`);
@@ -241,23 +313,13 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await ctx.admin.closeOwnerInviteDialog();
       await ctx.admin.shouldSeePendingOwnerInvite(`ownerless-${stamp}@example.com`);
 
-      await libby.openJoin('BADCODE1');
-      await libby.shouldSeeInvitationError(INVITATION_NOT_FOUND_MESSAGE);
-      for (const viewport of ['phone', 'desktop'] as const) {
-        await libby.goToSettings();
-        if (viewport === 'phone') {
-          await libby.useMobileViewport();
-        } else {
-          await libby.useDesktopViewport();
-        }
-        await libby.openJoin('BADCODE1');
-        await libby.shouldSeeInvitationError(INVITATION_NOT_FOUND_MESSAGE);
-        await libby.saveWalkthroughScreenshot({
-          story: WALKTHROUGH_STORY,
-          step: 'join_not_found',
-        });
-      }
-    }, 180_000);
+      await captureJoinRefusal({
+        actor: libby,
+        code: 'BADCODE1',
+        step: 'join_not_found',
+        message: INVITATION_NOT_FOUND_MESSAGE,
+      });
+    }, 300_000);
 
     it('lets the matching email accept an owner invite and refuses a different email', async () => {
       const stamp = `${Date.now()}`;

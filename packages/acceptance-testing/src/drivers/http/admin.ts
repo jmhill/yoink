@@ -115,6 +115,32 @@ export const createHttpAdmin = (
     return response.json<{ organization: Organization }>().organization;
   },
 
+  async expireInvitation(code: string): Promise<void> {
+    const response = await client.post('/api/test/expire-invitation', { code });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Invitation', code);
+    }
+    if (response.statusCode !== 204) {
+      throw new Error(`Failed to expire invitation: ${response.body}`);
+    }
+  },
+
+  async assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void> {
+    const response = await client.post('/api/test/assign-owner-keeping-invite', {
+      organizationId,
+      userId,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode !== 204) {
+      throw new Error(`Failed to assign owner keeping invite: ${response.body}`);
+    }
+  },
+
   async listOrganizations(): Promise<Organization[]> {
     const response = await client.get('/api/admin/organizations');
     if (response.statusCode === 401) {

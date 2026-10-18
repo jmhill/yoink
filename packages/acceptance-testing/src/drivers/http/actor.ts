@@ -3460,6 +3460,78 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('revealMembersSection', 'http');
     },
 
+    async shouldSeeRoleActionOnMember(_name: string, _label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRoleActionOnMember', 'http');
+    },
+
+    async shouldNotSeeRoleActionOnMember(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeRoleActionOnMember', 'http');
+    },
+
+    async shouldNotSeeAnyRoleActions(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAnyRoleActions', 'http');
+    },
+
+    async shouldNotSeeAnyReissueButtons(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAnyReissueButtons', 'http');
+    },
+
+    async shouldSeeMemberRole(_name: string, _role: 'owner' | 'admin' | 'member'): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeMemberRole', 'http');
+    },
+
+    async openRoleAction(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openRoleAction', 'http');
+    },
+
+    async chooseOpenRoleAction(): Promise<void> {
+      throw new UnsupportedOperationError('chooseOpenRoleAction', 'http');
+    },
+
+    async makeAdmin(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('makeAdmin', 'http');
+    },
+
+    async openMakeMember(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openMakeMember', 'http');
+    },
+
+    async confirmMakeMember(): Promise<void> {
+      throw new UnsupportedOperationError('confirmMakeMember', 'http');
+    },
+
+    async shouldSeeDemoteConfirm(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDemoteConfirm', 'http');
+    },
+
+    async openRemoveMember(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openRemoveMember', 'http');
+    },
+
+    async confirmRemoveMember(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('confirmRemoveMember', 'http');
+    },
+
+    async shouldSeeRemoveConfirm(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeRemoveConfirm', 'http');
+    },
+
+    async openIssueNewToken(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openIssueNewToken', 'http');
+    },
+
+    async confirmIssueNewToken(): Promise<string> {
+      throw new UnsupportedOperationError('confirmIssueNewToken', 'http');
+    },
+
+    async frameMemberRow(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('frameMemberRow', 'http');
+    },
+
+    async frameOpenOverlay(_selector: string): Promise<void> {
+      throw new UnsupportedOperationError('frameOpenOverlay', 'http');
+    },
+
     async leaveOrganization(_organizationId: string): Promise<void> {
       // Leaving an organization requires session-based auth (not token auth).
       // The HTTP driver uses token auth, so this operation is not supported.
@@ -3481,6 +3553,10 @@ export const createHttpActor = (
         throw new Error(`Failed to list members: ${response.body}`);
       }
       return response.json<{ members: Member[] }>().members;
+    },
+
+    async changeMemberRole(_userId: string, _role: 'admin' | 'member'): Promise<Member> {
+      throw new UnsupportedOperationError('changeMemberRole', 'http');
     },
 
     async removeMember(_userId: string): Promise<void> {

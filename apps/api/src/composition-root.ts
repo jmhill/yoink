@@ -63,6 +63,8 @@ import {
 } from './access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './access/application/handle-transfer-ownership.js';
+import { handleChangeMemberRole } from './access/application/handle-change-member-role.js';
+import { handleRemoveMember } from './access/application/handle-remove-member.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
 import { principalKindOf } from './access/domain/user.js';
@@ -323,10 +325,30 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
         now: () => clock.now().toISOString(),
       });
 
+    const changeMemberRole = (request: Parameters<typeof handleChangeMemberRole>[0]) =>
+      handleChangeMemberRole(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistChange: ({ membership, event }) =>
+          membershipStore.changeMemberRole(membership, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
+    const removeMember = (request: Parameters<typeof handleRemoveMember>[0]) =>
+      handleRemoveMember(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistRemove: ({ membershipId, event }) =>
+          membershipStore.removeMember(membershipId, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
     const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
       handleReissueAgentToken(command, {
         loadMembership: (userId, organizationId) =>
-          membershipService.getMembership({ userId, organizationId }),
+          membershipStore.findByUserAndOrg(userId, organizationId),
         loadUser: (userId) => userService.getUser(userId),
         persistReissue: createStoreBackedTokenReissue(tokenStore),
         hashSecret: (secret) =>
@@ -371,6 +393,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       agentService,
       reissueAgentToken,
       transferOwnership,
+      changeMemberRole,
+      removeMember,
     };
   }
 

@@ -1,26 +1,42 @@
 import {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
+  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
+  CANNOT_REMOVE_SELF_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
-  OWNER_CANNOT_BE_REMOVED_MESSAGE,
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
+  OWNER_ROLE_LOCKED_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  REISSUE_NOT_ALLOWED_MESSAGE,
+  REMOVE_NOT_ALLOWED_MESSAGE,
+  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
 } from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
 
 export {
   ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
+  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
+  CANNOT_REMOVE_SELF_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
-  OWNER_CANNOT_BE_REMOVED_MESSAGE,
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
+  OWNER_ROLE_LOCKED_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  REISSUE_NOT_ALLOWED_MESSAGE,
+  REMOVE_NOT_ALLOWED_MESSAGE,
+  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
 };
 
 // ============================================================================
@@ -233,7 +249,7 @@ export const ownerCannotBeRemovedError = (
   type: 'OWNER_CANNOT_BE_REMOVED',
   organizationId,
   userId,
-  message: OWNER_CANNOT_BE_REMOVED_MESSAGE,
+  message: THE_OWNER_CANT_BE_REMOVED_MESSAGE,
 });
 
 /** A workspace already has an owner; a second owner cannot be saved */
@@ -261,7 +277,7 @@ export const botCannotHavePrivilegedRoleError = (
 ): BotCannotHavePrivilegedRoleError => ({
   type: 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE',
   role,
-  message: role === 'owner' ? BOT_CANNOT_BE_OWNER_MESSAGE : 'A bot cannot be an admin',
+  message: role === 'owner' ? BOT_CANNOT_BE_OWNER_MESSAGE : BOT_CANNOT_BE_ADMIN_MESSAGE,
 });
 
 /** Set-owner target is not already a member of the workspace */
@@ -309,6 +325,98 @@ export const insufficientPermissionsError = (
   actualRole,
 });
 
+export type BotCannotChangeRolesError = {
+  readonly type: 'BOT_CANNOT_CHANGE_ROLES';
+  readonly message: string;
+};
+
+export const botCannotChangeRolesError = (): BotCannotChangeRolesError => ({
+  type: 'BOT_CANNOT_CHANGE_ROLES',
+  message: BOT_CANNOT_CHANGE_ROLES_MESSAGE,
+});
+
+export type RoleChangeNotAllowedError = {
+  readonly type: 'ROLE_CHANGE_NOT_ALLOWED';
+  readonly message: string;
+};
+
+export const roleChangeNotAllowedError = (): RoleChangeNotAllowedError => ({
+  type: 'ROLE_CHANGE_NOT_ALLOWED',
+  message: ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
+});
+
+export type CannotChangeOwnRoleError = {
+  readonly type: 'CANNOT_CHANGE_OWN_ROLE';
+  readonly message: string;
+};
+
+export const cannotChangeOwnRoleError = (): CannotChangeOwnRoleError => ({
+  type: 'CANNOT_CHANGE_OWN_ROLE',
+  message: CANNOT_CHANGE_OWN_ROLE_MESSAGE,
+});
+
+export type OwnerRoleLockedError = {
+  readonly type: 'OWNER_ROLE_LOCKED';
+  readonly organizationId: string;
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const ownerRoleLockedError = (
+  organizationId: string,
+  userId: string
+): OwnerRoleLockedError => ({
+  type: 'OWNER_ROLE_LOCKED',
+  organizationId,
+  userId,
+  message: OWNER_ROLE_LOCKED_MESSAGE,
+});
+
+export type CannotRemoveSelfError = {
+  readonly type: 'CANNOT_REMOVE_SELF';
+  readonly message: string;
+};
+
+export const cannotRemoveSelfError = (): CannotRemoveSelfError => ({
+  type: 'CANNOT_REMOVE_SELF',
+  message: CANNOT_REMOVE_SELF_MESSAGE,
+});
+
+export type RemoveNotAllowedError = {
+  readonly type: 'REMOVE_NOT_ALLOWED';
+  readonly message: string;
+};
+
+export const removeNotAllowedError = (): RemoveNotAllowedError => ({
+  type: 'REMOVE_NOT_ALLOWED',
+  message: REMOVE_NOT_ALLOWED_MESSAGE,
+});
+
+export type ReissueNotAllowedError = {
+  readonly type: 'REISSUE_NOT_ALLOWED';
+  readonly message: string;
+};
+
+export const reissueNotAllowedError = (): ReissueNotAllowedError => ({
+  type: 'REISSUE_NOT_ALLOWED',
+  message: REISSUE_NOT_ALLOWED_MESSAGE,
+});
+
+export type MemberRemoveFailedError = {
+  readonly type: 'MEMBER_REMOVE_FAILED';
+  readonly memberName: string;
+  readonly cause: MembershipStorageError;
+};
+
+export const memberRemoveFailedError = (
+  memberName: string,
+  cause: MembershipStorageError
+): MemberRemoveFailedError => ({
+  type: 'MEMBER_REMOVE_FAILED',
+  memberName,
+  cause,
+});
+
 /** Closed union of membership command errors (no storage). */
 export type MembershipError =
   | AlreadyMemberError
@@ -326,6 +434,13 @@ export type MembershipError =
   | TargetNotWorkspaceMemberError
   | LastAdminError
   | InsufficientPermissionsError
+  | BotCannotChangeRolesError
+  | RoleChangeNotAllowedError
+  | CannotChangeOwnRoleError
+  | OwnerRoleLockedError
+  | CannotRemoveSelfError
+  | RemoveNotAllowedError
+  | ReissueNotAllowedError
   | UserNotFoundError
   | OrganizationNotFoundError;
 

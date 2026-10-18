@@ -343,6 +343,9 @@ importers:
       '@yoink/acceptance-testing':
         specifier: workspace:*
         version: link:../acceptance-testing
+      '@yoink/api-contracts':
+        specifier: workspace:*
+        version: link:../api-contracts
     devDependencies:
       '@types/node':
         specifier: ^22.19.7

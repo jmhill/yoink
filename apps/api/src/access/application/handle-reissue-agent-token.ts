@@ -11,13 +11,13 @@ import { tokenStorageError } from '../domain/auth-errors.js';
 import type { TokenWriteError } from '../domain/token-store.js';
 import type { TokenInfo } from '../domain/token-info.js';
 import type { UserServiceError } from '../domain/user-errors.js';
-import type { MembershipServiceError } from '../domain/organization-errors.js';
+import type { MembershipStorageError } from '../domain/organization-errors.js';
 import type { HashSecret, PersistReissue } from './token-ports.js';
 
 export type LoadMembership = (
   userId: string,
   organizationId: string
-) => ResultAsync<OrganizationMembership | null, MembershipServiceError>;
+) => ResultAsync<OrganizationMembership | null, MembershipStorageError>;
 
 export type LoadUser = (userId: string) => ResultAsync<User | null, UserServiceError>;
 
@@ -38,7 +38,7 @@ export type ReissueAgentTokenResult = {
 
 export type ReissueAgentTokenError =
   | DecideReissueAgentTokenError
-  | MembershipServiceError
+  | MembershipStorageError
   | UserServiceError
   | TokenWriteError;
 

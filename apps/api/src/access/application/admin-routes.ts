@@ -1,7 +1,11 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
-import { adminPublicContract, adminProtectedContract } from '@yoink/api-contracts';
+import {
+  adminPublicContract,
+  adminProtectedContract,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
+} from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminServiceError } from '../domain/admin-errors.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
@@ -65,6 +69,10 @@ const setOrganizationOwnerErrorResponse = (error: AdminServiceError) => {
     case 'CANNOT_ASSIGN_OWNER_ROLE':
     case 'LAST_ADMIN':
     case 'MEMBERSHIP_NOT_FOUND':
+    case 'BOT_CANNOT_CHANGE_ROLES':
+    case 'ROLE_CHANGE_NOT_ALLOWED':
+    case 'CANNOT_CHANGE_OWN_ROLE':
+    case 'OWNER_ROLE_LOCKED':
       return storageErrorResponse('Failed to set owner');
     default: {
       const _never: never = error;
@@ -102,7 +110,7 @@ const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
     case 'LAST_ADMIN':
       return {
         status: 409 as const,
-        body: { message: 'Cannot change the last admin', code: error.type },
+        body: { message: THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE, code: error.type },
       };
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':
@@ -112,6 +120,10 @@ const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
     case 'INVALID_TOKEN_NAME':
     case 'PROJECT_NOT_FOUND':
     case 'STORAGE_ERROR':
+    case 'BOT_CANNOT_CHANGE_ROLES':
+    case 'ROLE_CHANGE_NOT_ALLOWED':
+    case 'CANNOT_CHANGE_OWN_ROLE':
+    case 'OWNER_ROLE_LOCKED':
       return storageErrorResponse('Failed to change member role');
     default: {
       const _never: never = error;

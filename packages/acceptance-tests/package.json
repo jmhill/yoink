@@ -8,7 +8,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@yoink/acceptance-testing": "workspace:*"
+    "@yoink/acceptance-testing": "workspace:*",
+    "@yoink/api-contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.19.7",

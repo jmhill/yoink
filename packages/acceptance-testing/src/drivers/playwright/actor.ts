@@ -3920,7 +3920,16 @@ export const createPlaywrightActor = (
       if (input.includeToasts) {
         await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
       }
-      await page.mouse.move(0, 0);
+      const openRoleMenu = page.locator('[data-role-menu], [data-role-sheet]');
+      const overlayOpen =
+        ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) ||
+        (await openDialog.isVisible().catch(() => false)) ||
+        (await openSheet.isVisible().catch(() => false)) ||
+        (await openRoleMenu.isVisible().catch(() => false));
+      // Moving the pointer to 0,0 dismisses a non-modal row menu before the shot.
+      if (!overlayOpen) {
+        await page.mouse.move(0, 0);
+      }
       await waitForFinishedPageAnimations({ page });
       await saveWalkthroughPng({
         page,
@@ -6022,7 +6031,8 @@ export const createPlaywrightActor = (
       const orgId = sessionData.organizationId;
 
       const response = await page.request.post(
-        `/api/organizations/${orgId}/members/${memberUserId}/token`
+        `/api/organizations/${orgId}/members/${memberUserId}/token`,
+        { data: {} }
       );
 
       if (response.status() === 401) {
@@ -6031,6 +6041,10 @@ export const createPlaywrightActor = (
       if (response.status() === 403) {
         const body = await response.json();
         throw new ForbiddenError(body.message || 'Permission denied');
+      }
+      if (response.status() === 400) {
+        const body = await response.json().catch(() => ({ message: undefined }));
+        throw new ValidationError(body.message || 'Cannot reissue agent token');
       }
       if (response.status() === 404) {
         throw new NotFoundError('Agent member', memberUserId);
@@ -6217,6 +6231,78 @@ export const createPlaywrightActor = (
       await settingsPage.revealMembersSection();
     },
 
+    async shouldSeeRoleActionOnMember(name: string, label: string): Promise<void> {
+      await settingsPage.shouldSeeRoleActionOnMember(name, label);
+    },
+
+    async shouldNotSeeRoleActionOnMember(name: string): Promise<void> {
+      await settingsPage.shouldNotSeeRoleActionOnMember(name);
+    },
+
+    async shouldNotSeeAnyRoleActions(): Promise<void> {
+      await settingsPage.shouldNotSeeAnyRoleActions();
+    },
+
+    async shouldNotSeeAnyReissueButtons(): Promise<void> {
+      await settingsPage.shouldNotSeeAnyReissueButtons();
+    },
+
+    async shouldSeeMemberRole(name: string, role: 'owner' | 'admin' | 'member'): Promise<void> {
+      await settingsPage.shouldSeeMemberRole(name, role);
+    },
+
+    async openRoleAction(name: string): Promise<void> {
+      await settingsPage.openRoleAction(name);
+    },
+
+    async chooseOpenRoleAction(): Promise<void> {
+      await settingsPage.chooseOpenRoleAction();
+    },
+
+    async makeAdmin(name: string): Promise<void> {
+      await settingsPage.makeAdmin(name);
+    },
+
+    async openMakeMember(name: string): Promise<void> {
+      await settingsPage.openMakeMember(name);
+    },
+
+    async confirmMakeMember(): Promise<void> {
+      await settingsPage.confirmMakeMember();
+    },
+
+    async shouldSeeDemoteConfirm(name: string): Promise<void> {
+      await settingsPage.shouldSeeDemoteConfirm(name);
+    },
+
+    async openRemoveMember(name: string): Promise<void> {
+      await settingsPage.openRemoveMember(name);
+    },
+
+    async confirmRemoveMember(name: string): Promise<void> {
+      await settingsPage.confirmRemoveMember(name);
+    },
+
+    async shouldSeeRemoveConfirm(name: string): Promise<void> {
+      await settingsPage.shouldSeeRemoveConfirm(name);
+    },
+
+    async openIssueNewToken(name: string): Promise<void> {
+      await settingsPage.openIssueNewToken(name);
+    },
+
+    async confirmIssueNewToken(): Promise<string> {
+      return settingsPage.confirmIssueNewToken();
+    },
+
+    async frameMemberRow(name: string): Promise<void> {
+      await settingsPage.frameMemberRow(name);
+    },
+
+    async frameOpenOverlay(selector: string): Promise<void> {
+      await settingsPage.frameOpenOverlay(selector);
+    },
+
     async leaveOrganization(organizationId: string): Promise<void> {
       const response = await page.request.post(`/api/organizations/${organizationId}/leave`);
 
@@ -6282,6 +6368,40 @@ export const createPlaywrightActor = (
 
       const data = await response.json();
       return data.members;
+    },
+
+    async changeMemberRole(userId: string, role: 'admin' | 'member'): Promise<Member> {
+      const session = await page.request.get('/api/auth/session');
+      if (!session.ok()) {
+        throw new UnauthorizedError();
+      }
+      const sessionData = await session.json();
+      const orgId = sessionData.organizationId;
+
+      const response = await page.request.patch(
+        `/api/organizations/${orgId}/members/${userId}/role`,
+        { data: { role } }
+      );
+
+      if (response.status() === 401) {
+        throw new UnauthorizedError();
+      }
+      if (response.status() === 403) {
+        const body = await response.json().catch(() => ({ message: undefined }));
+        throw new ForbiddenError(body.message);
+      }
+      if (response.status() === 400 || response.status() === 409) {
+        const body = await response.json().catch(() => ({ message: undefined }));
+        throw new ValidationError(body.message || 'Cannot change member role');
+      }
+      if (response.status() === 404) {
+        throw new NotFoundError('Member', userId);
+      }
+      if (!response.ok()) {
+        throw new Error(`Failed to change member role: ${response.status()}`);
+      }
+      const body = await response.json();
+      return body.member;
     },
 
     async removeMember(userId: string): Promise<void> {

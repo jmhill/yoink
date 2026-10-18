@@ -5,7 +5,13 @@ import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
-import type { SignupOptionsResponse, SignupVerifyResponse } from '@yoink/api-contracts';
+import {
+  memberDisplayName,
+  REMOVE_NOT_ALLOWED_MESSAGE,
+  removeMemberFailedMessage,
+  type SignupOptionsResponse,
+  type SignupVerifyResponse,
+} from '@yoink/api-contracts';
 import { z } from 'zod';
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string; handoverPath?: string };
@@ -397,11 +403,10 @@ export type MintedAgent = {
   rawToken: string;
 };
 
+export { memberDisplayName };
+
 export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): string =>
   member.kind === 'agent' ? (member.name ?? 'Agent') : member.email;
-
-export const memberDisplayName = (member: Pick<Member, 'email' | 'name'>): string =>
-  member.name ?? member.email;
 
 /**
  * List members of the current organization.
@@ -464,12 +469,12 @@ export const removeMember = async (
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     if (response.status === 403) {
-      return { ok: false, error: body.message || 'Insufficient permissions' };
+      return { ok: false, error: body.message || REMOVE_NOT_ALLOWED_MESSAGE };
     }
     if (response.status === 400) {
       return { ok: false, error: body.message || 'Cannot remove this member' };
     }
-    return { ok: false, error: body.message || 'Failed to remove member' };
+    return { ok: false, error: body.message || removeMemberFailedMessage('member') };
   }
 
   return { ok: true, data: undefined };

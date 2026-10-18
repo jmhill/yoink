@@ -1,3 +1,4 @@
+import { Writable } from 'node:stream';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -16,19 +17,38 @@ import {
 import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './handle-transfer-ownership.js';
 import {
+  handleChangeMemberRole,
+  type ChangeMemberRoleHandler,
+} from './handle-change-member-role.js';
+import { handleRemoveMember } from './handle-remove-member.js';
+import {
   ALREADY_OWNER_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
+  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
+  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
+  CANNOT_REMOVE_SELF_MESSAGE,
+  CHANGE_ROLE_STORAGE_MESSAGE,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
+  OWNER_ROLE_LOCKED_MESSAGE,
+  REISSUE_NOT_ALLOWED_MESSAGE,
+  REISSUE_TOKEN_STORAGE_MESSAGE,
+  REMOVE_NOT_ALLOWED_MESSAGE,
+  removeMemberFailedMessage,
+  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
+  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
 } from '@yoink/api-contracts';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import { principalKindOf } from '../domain/user.js';
-import { ResultAsync } from 'neverthrow';
+import { errAsync, ResultAsync } from 'neverthrow';
+import { lastAdminError } from '../domain/organization-errors.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
@@ -48,6 +68,13 @@ import {
 } from '@yoink/infrastructure';
 
 const USER_SESSION_COOKIE = 'user_session';
+const PINO_ERROR_LEVEL = 50;
+
+type PinoLogLine = {
+  level: number;
+  msg?: string;
+  error?: unknown;
+};
 
 describe('organization routes', () => {
   let app: FastifyInstance;
@@ -134,6 +161,13 @@ describe('organization routes', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const extraAdmin: User = {
+    id: '550e8400-e29b-41d4-a716-446655440016',
+    email: 'admin2@example.com',
+    name: 'Libby',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
   const personalMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440020',
     userId: testUser.id,
@@ -188,6 +222,15 @@ describe('organization routes', () => {
     joinedAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const extraAdminMembership: OrganizationMembership = {
+    id: '550e8400-e29b-41d4-a716-446655440026',
+    userId: extraAdmin.id,
+    organizationId: teamOrg.id,
+    role: 'admin',
+    isPersonalOrg: false,
+    joinedAt: '2024-01-01T00:00:00.000Z',
+  };
+
   const testSession: UserSession = {
     id: '550e8400-e29b-41d4-a716-446655440030',
     userId: testUser.id,
@@ -223,7 +266,7 @@ describe('organization routes', () => {
       initialOrganizations: [personalOrg, teamOrg, otherOrg],
     });
     const userStore = createFakeUserStore({
-      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider],
+      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider, extraAdmin],
     });
     membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [
@@ -233,6 +276,7 @@ describe('organization routes', () => {
         teamOwnerMembership,
         teamAdminMembership,
         otherAgentMembership,
+        extraAdminMembership,
       ],
     });
     const tokenStore = createFakeTokenStore({
@@ -313,10 +357,30 @@ describe('organization routes', () => {
         now: () => clock.now().toISOString(),
       });
 
+    const changeMemberRole = (request: Parameters<typeof handleChangeMemberRole>[0]) =>
+      handleChangeMemberRole(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistChange: ({ membership, event }) =>
+          membershipStore.changeMemberRole(membership, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
+    const removeMember = (request: Parameters<typeof handleRemoveMember>[0]) =>
+      handleRemoveMember(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistRemove: ({ membershipId, event }) =>
+          membershipStore.removeMember(membershipId, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
     const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
       handleReissueAgentToken(command, {
         loadMembership: (userId, organizationId) =>
-          membershipService.getMembership({ userId, organizationId }),
+          membershipStore.findByUserAndOrg(userId, organizationId),
         loadUser: (userId) => userService.getUser(userId),
         persistReissue: createStoreBackedTokenReissue(tokenStore),
         hashSecret: (secret) =>
@@ -351,11 +415,158 @@ describe('organization routes', () => {
       agentService,
       reissueAgentToken,
       transferOwnership,
+      changeMemberRole,
+      removeMember,
       authMiddleware,
     });
 
     await app.ready();
   });
+
+  const createLoggedOrgApp = async (options: {
+    shouldFailOnChangeMemberRole?: boolean;
+    shouldFailOnRemoveMember?: boolean;
+    tokenShouldFailOnSave?: boolean;
+    changeMemberRole?: ChangeMemberRoleHandler;
+  }): Promise<{ app: FastifyInstance; logs: PinoLogLine[] }> => {
+    const logs: PinoLogLine[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        const text = String(chunk);
+        for (const part of text.split('\n')) {
+          if (part.length === 0) {
+            continue;
+          }
+          logs.push(JSON.parse(part) as PinoLogLine);
+        }
+        callback();
+      },
+    });
+    const failingApp = Fastify({
+      logger: {
+        level: 'error',
+        stream,
+      },
+    });
+    await failingApp.register(cookie);
+    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const idGenerator = createFakeIdGenerator();
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [personalOrg, teamOrg, otherOrg],
+    });
+    const userStore = createFakeUserStore({
+      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider, extraAdmin],
+    });
+    const failingMembershipStore = createFakeOrganizationMembershipStore({
+      initialMemberships: [
+        personalMembership,
+        teamMembership,
+        agentMembership,
+        teamOwnerMembership,
+        teamAdminMembership,
+        otherAgentMembership,
+        extraAdminMembership,
+      ],
+      shouldFailOnChangeMemberRole: options.shouldFailOnChangeMemberRole,
+      shouldFailOnRemoveMember: options.shouldFailOnRemoveMember,
+    });
+    const failingTokenStore = createFakeTokenStore({
+      initialTokens: [agentToken, ownerToken],
+      shouldFailOnSave: options.tokenShouldFailOnSave,
+    });
+    const userService = createUserService({ userStore });
+    const membershipService = createMembershipService({
+      membershipStore: failingMembershipStore,
+      userService,
+      organizationStore,
+      clock,
+      idGenerator,
+    });
+    const sessionService = createSessionService({
+      sessionStore,
+      userService,
+      membershipService,
+      clock,
+      idGenerator,
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+      refreshThresholdMs: 24 * 60 * 60 * 1000,
+    });
+    const passwordHasher = createFakePasswordHasher();
+    await registerOrganizationRoutes(failingApp, {
+      sessionService,
+      membershipService,
+      userService,
+      agentService: createAgentService({
+        userService,
+        membershipService,
+        createToken: () => {
+          throw new Error('unused');
+        },
+        clock,
+        idGenerator,
+      }),
+      reissueAgentToken: (command) =>
+        handleReissueAgentToken(command, {
+          loadMembership: (userId, organizationId) =>
+            failingMembershipStore.findByUserAndOrg(userId, organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistReissue: createStoreBackedTokenReissue(failingTokenStore),
+          hashSecret: (secret) =>
+            ResultAsync.fromPromise(
+              passwordHasher.hash(secret),
+              (error) => tokenStorageError('Failed to hash token secret', error)
+            ),
+          nextId: () => idGenerator.generate(),
+          nextSecret: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      transferOwnership: (request) =>
+        handleTransferOwnership(request, {
+          loadMembers: (organizationId) =>
+            failingMembershipStore.findByOrganizationId(organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistTransfer: ({ plan, event }) =>
+            failingMembershipStore.transferOwnership(plan, event),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      changeMemberRole:
+        options.changeMemberRole ??
+        ((request) =>
+          handleChangeMemberRole(request, {
+            loadMembers: (organizationId) =>
+              failingMembershipStore.findByOrganizationId(organizationId),
+            loadUser: (userId) => userService.getUser(userId),
+            persistChange: ({ membership, event }) =>
+              failingMembershipStore.changeMemberRole(membership, event),
+            nextId: () => idGenerator.generate(),
+            now: () => clock.now().toISOString(),
+          })),
+      removeMember: (request) =>
+        handleRemoveMember(request, {
+          loadMembers: (organizationId) =>
+            failingMembershipStore.findByOrganizationId(organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistRemove: ({ membershipId, event }) =>
+            failingMembershipStore.removeMember(membershipId, event),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      authMiddleware: createCombinedAuthMiddleware({
+        tokenService: createTokenService({
+          organizationStore,
+          userStore,
+          tokenStore: failingTokenStore,
+          passwordHasher: createFakePasswordHasher(),
+          clock,
+        }),
+        sessionService,
+        sessionCookieName: USER_SESSION_COOKIE,
+      }),
+    });
+    await failingApp.ready();
+    return { app: failingApp, logs };
+  };
 
   describe('POST /api/organizations/switch', () => {
     it('switches to another organization the user is a member of', async () => {
@@ -418,6 +629,9 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({ success: true });
+      expect(membershipStore.recordedEvents().some((event) => event.type === 'MemberLeft')).toBe(
+        true
+      );
     });
 
     it('returns 404 when not a member of the organization', async () => {
@@ -488,6 +702,30 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(400);
     });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnRemoveMember: true,
+      });
+      const response = await failingApp.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe('Failed to leave organization');
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            msg: 'Failed to leave organization',
+            error: expect.anything(),
+          }),
+        ])
+      );
+      await failingApp.close();
+    });
   });
 
   describe('GET /api/organizations/:organizationId/members', () => {
@@ -552,8 +790,8 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(409);
       expect(response.json().code).toBe('OWNER_CANNOT_BE_REMOVED');
-      expect(response.json().message).toBe(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
-      expect(response.json().handoverPath).toBe(HANDOVER_OWNERSHIP_PATH);
+      expect(response.json().message).toBe(THE_OWNER_CANT_BE_REMOVED_MESSAGE);
+      expect(response.json().handoverPath).toBeUndefined();
     });
 
     it('returns 409 OWNER_CANNOT_BE_REMOVED when a member removes the owner', async () => {
@@ -565,6 +803,8 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(409);
       expect(response.json().code).toBe('OWNER_CANNOT_BE_REMOVED');
+      expect(response.json().message).toBe(THE_OWNER_CANT_BE_REMOVED_MESSAGE);
+      expect(response.json().handoverPath).toBeUndefined();
     });
 
     it('returns 403 when a member removes another member (permission first)', async () => {
@@ -575,7 +815,30 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json().message).toContain('Insufficient permissions');
+      expect(response.json().code).toBe('REMOVE_NOT_ALLOWED');
+      expect(response.json().message).toBe(REMOVE_NOT_ALLOWED_MESSAGE);
+    });
+
+    it('returns 400 CANNOT_REMOVE_SELF when removing yourself', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${teamAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('CANNOT_REMOVE_SELF');
+      expect(response.json().message).toBe(CANNOT_REMOVE_SELF_MESSAGE);
+    });
+
+    it('lets an admin remove another admin', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${extraAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(204);
     });
 
     it('allows the owner to remove the last admin', async () => {
@@ -597,6 +860,29 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toMatch(/personal/i);
+    });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnRemoveMember: true,
+      });
+      const response = await failingApp.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${extraAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(removeMemberFailedMessage('Libby'));
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            error: expect.objectContaining({ type: 'MEMBERSHIP_STORAGE_ERROR' }),
+          }),
+        ])
+      );
+      await failingApp.close();
     });
   });
 
@@ -692,7 +978,7 @@ describe('organization routes', () => {
       expect(response.json().message).toContain('API tokens cannot');
     });
 
-    it('returns 403 when a non-owner human tries', async () => {
+    it('returns 403 REISSUE_NOT_ALLOWED when a member tries', async () => {
       const asMember = await app.inject({
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
@@ -700,16 +986,234 @@ describe('organization routes', () => {
         payload: {},
       });
       expect(asMember.statusCode).toBe(403);
+      expect(asMember.json().code).toBe('REISSUE_NOT_ALLOWED');
+      expect(asMember.json().message).toBe(REISSUE_NOT_ALLOWED_MESSAGE);
+    });
 
-      const asAdmin = await app.inject({
+    it('lets an admin reissue so the old token is 401', async () => {
+      const response = await app.inject({
         method: 'POST',
         url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
         cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
         payload: {},
       });
-      expect(asAdmin.statusCode).toBe(403);
+      expect(response.statusCode).toBe(201);
+      const oldAuth = await app.inject({
+        method: 'GET',
+        url: `/api/organizations/${teamOrg.id}/members`,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+      });
+      expect(oldAuth.statusCode).toBe(401);
     });
 
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        tokenShouldFailOnSave: true,
+      });
+      const response = await failingApp.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(REISSUE_TOKEN_STORAGE_MESSAGE);
+      expect(
+        logs.some(
+          (line) =>
+            line.level === PINO_ERROR_LEVEL &&
+            line.msg === 'Failed to reissue agent token' &&
+            line.error !== undefined
+        )
+      ).toBe(true);
+      await failingApp.close();
+    });
+  });
+
+  describe('PATCH /api/organizations/:organizationId/members/:userId/role', () => {
+    const roleUrl = (userId: string) =>
+      `/api/organizations/${teamOrg.id}/members/${userId}/role`;
+
+    it('lets an admin promote a member', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().member.role).toBe('admin');
+      expect(membershipStore.recordedEvents().some((event) => event.type === 'MemberRoleChanged')).toBe(
+        true
+      );
+    });
+
+    it('returns unchanged 200 with no event when the role is already set', async () => {
+      const before = membershipStore.recordedEvents().length;
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(teamAdmin.id),
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().member.role).toBe('admin');
+      expect(membershipStore.recordedEvents()).toHaveLength(before);
+    });
+
+    it('refuses a bot token with BOT_CANNOT_CHANGE_ROLES', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        headers: { authorization: `Bearer ${agentRawToken}` },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe('BOT_CANNOT_CHANGE_ROLES');
+      expect(response.json().message).toBe(BOT_CANNOT_CHANGE_ROLES_MESSAGE);
+    });
+
+    it('refuses a human personal token with BOT_CANNOT_CHANGE_ROLES', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/organizations/${personalOrg.id}/members/${testUser.id}/role`,
+        headers: { authorization: `Bearer ${ownerRawToken}` },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe('BOT_CANNOT_CHANGE_ROLES');
+    });
+
+    it('refuses a member with ROLE_CHANGE_NOT_ALLOWED', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(extraAdmin.id),
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+        payload: { role: 'member' },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe('ROLE_CHANGE_NOT_ALLOWED');
+      expect(response.json().message).toBe(ROLE_CHANGE_NOT_ALLOWED_MESSAGE);
+    });
+
+    it('refuses changing your own role', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(teamAdmin.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'member' },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('CANNOT_CHANGE_OWN_ROLE');
+      expect(response.json().message).toBe(CANNOT_CHANGE_OWN_ROLE_MESSAGE);
+    });
+
+    it('refuses changing the owner', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(teamOwner.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe('OWNER_ROLE_LOCKED');
+      expect(response.json().message).toBe(OWNER_ROLE_LOCKED_MESSAGE);
+    });
+
+    it('refuses promoting a bot', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(agentUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'admin' },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+      expect(response.json().message).toBe(BOT_CANNOT_BE_ADMIN_MESSAGE);
+    });
+
+    it('returns 409 LAST_ADMIN with the at-least-one-admin message', async () => {
+      const { app: failingApp } = await createLoggedOrgApp({
+        changeMemberRole: () => errAsync(lastAdminError(teamOrg.id)),
+      });
+      const response = await failingApp.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'member' },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe('LAST_ADMIN');
+      expect(response.json().message).toBe(THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE);
+      await failingApp.close();
+    });
+
+    it('returns 400 validation when the body role is owner', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'owner' },
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('after a demotion the demoted person cannot remove or reissue', async () => {
+      const demote = await app.inject({
+        method: 'PATCH',
+        url: roleUrl(teamAdmin.id),
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { role: 'member' },
+      });
+      expect(demote.statusCode).toBe(200);
+      expect(demote.json().member.role).toBe('member');
+
+      const remove = await app.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${extraAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+      expect(remove.statusCode).toBe(403);
+      expect(remove.json().code).toBe('REMOVE_NOT_ALLOWED');
+
+      const reissue = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: {},
+      });
+      expect(reissue.statusCode).toBe(403);
+      expect(reissue.json().code).toBe('REISSUE_NOT_ALLOWED');
+    });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnChangeMemberRole: true,
+      });
+      const response = await failingApp.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'admin' },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(CHANGE_ROLE_STORAGE_MESSAGE);
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            error: expect.objectContaining({ type: 'MEMBERSHIP_STORAGE_ERROR' }),
+          }),
+        ])
+      );
+      await failingApp.close();
+    });
+  });
+
+  describe('POST /api/organizations/:organizationId/members/:userId/token not-found', () => {
     it('returns 404 when the target is a human member', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -893,7 +1397,7 @@ describe('organization routes', () => {
         initialOrganizations: [personalOrg, teamOrg, otherOrg],
       });
       const userStore = createFakeUserStore({
-        initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider],
+        initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider, extraAdmin],
       });
       const userService = createUserService({ userStore });
       const membershipService = createMembershipService({
@@ -933,6 +1437,24 @@ describe('organization routes', () => {
             loadMembers: (organizationId) => failingStore.findByOrganizationId(organizationId),
             loadUser: (userId) => userService.getUser(userId),
             persistTransfer: ({ plan, event }) => failingStore.transferOwnership(plan, event),
+            nextId: () => idGenerator.generate(),
+            now: () => clock.now().toISOString(),
+          }),
+        changeMemberRole: (request) =>
+          handleChangeMemberRole(request, {
+            loadMembers: (organizationId) => failingStore.findByOrganizationId(organizationId),
+            loadUser: (userId) => userService.getUser(userId),
+            persistChange: ({ membership, event }) =>
+              failingStore.changeMemberRole(membership, event),
+            nextId: () => idGenerator.generate(),
+            now: () => clock.now().toISOString(),
+          }),
+        removeMember: (request) =>
+          handleRemoveMember(request, {
+            loadMembers: (organizationId) => failingStore.findByOrganizationId(organizationId),
+            loadUser: (userId) => userService.getUser(userId),
+            persistRemove: ({ membershipId, event }) =>
+              failingStore.removeMember(membershipId, event),
             nextId: () => idGenerator.generate(),
             now: () => clock.now().toISOString(),
           }),

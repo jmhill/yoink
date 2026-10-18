@@ -7,9 +7,9 @@ import type { OrganizationMembershipStore } from './organization-membership-stor
 import { agentEmailFor, principalKindOf, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
-import { decideChangeRole } from './decide-change-role.js';
+import { decideChangeMemberRole } from './decide-change-member-role.js';
 import { decideSetOwner } from './decide-set-owner.js';
-import type { ChangeRoleCommand, SetOwnerCommand } from './membership-commands.js';
+import type { ChangeMemberRole, SetOwnerCommand } from './membership-commands.js';
 import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
 import type {
@@ -45,7 +45,7 @@ export type CreateUserCommand = {
 
 export type SetOrganizationOwnerCommand = SetOwnerCommand;
 
-export type ChangeMemberRoleCommand = {
+export type AdminChangeMemberRoleInput = {
   organizationId: string;
   userId: string;
   role: 'admin' | 'member';
@@ -88,7 +88,7 @@ export type AdminService = {
     command: SetOrganizationOwnerCommand
   ): ResultAsync<AdminOrganizationMember, AdminServiceError>;
   changeMemberRole(
-    command: ChangeMemberRoleCommand
+    command: AdminChangeMemberRoleInput
   ): ResultAsync<AdminOrganizationMember, AdminServiceError>;
   updateProjectCreatedAt(
     id: string,
@@ -221,7 +221,7 @@ export const createAdminService = (
     },
 
     changeMemberRole(
-      command: ChangeMemberRoleCommand
+      command: AdminChangeMemberRoleInput
     ): ResultAsync<AdminOrganizationMember, AdminServiceError> {
       const { organizationId, userId, role } = command;
       return organizationStore.findById(organizationId).andThen((org) => {
@@ -235,22 +235,29 @@ export const createAdminService = (
           return organizationMembershipStore
             .findByOrganizationId(organizationId)
             .andThen((members) => {
-              const command: ChangeRoleCommand = {
+              const change: ChangeMemberRole = {
                 organizationId,
                 userId,
                 newRole: role,
+                by: { kind: 'app-admin' },
               };
-              const decision = decideChangeRole({
-                command,
+              const decision = decideChangeMemberRole({
+                command: change,
                 members,
                 targetKind: principalKindOf(user),
+                eventId: idGenerator.generate(),
+                now: clock.now().toISOString(),
               });
               if (decision.isErr()) {
                 return errAsync(decision.error);
               }
+              if (decision.value.kind === 'unchanged') {
+                return okAsync({ ...user, role: decision.value.membership.role });
+              }
+              const changed = decision.value;
               return organizationMembershipStore
-                .save(decision.value)
-                .map(() => ({ ...user, role: decision.value.role }));
+                .changeMemberRole(changed.membership, changed.event)
+                .map(() => ({ ...user, role: changed.membership.role }));
             });
         });
       });

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
 import {
   createTestAppFull,
@@ -402,7 +404,7 @@ describe('admin HTTP routes', () => {
         payload: { role: 'admin' },
       });
       expect(promoteBot.statusCode).toBe(400);
-      expect(promoteBot.json().message).toBe('A bot cannot be an admin');
+      expect(promoteBot.json().message).toBe(BOT_CANNOT_BE_ADMIN_MESSAGE);
 
       const still = await app.inject({
         method: 'GET',
@@ -535,6 +537,35 @@ describe('admin HTTP routes', () => {
       });
       expect(toMember.statusCode).toBe(200);
       expect(toMember.json()).toMatchObject({ id: userId, role: 'member' });
+    });
+
+    it('refuses demoting the last admin of an ownerless workspace', async () => {
+      const cookies = await loginAdmin();
+      const org = await app.inject({
+        method: 'POST',
+        url: '/api/admin/organizations',
+        cookies,
+        payload: { name: 'Ownerless' },
+      });
+      const { id: orgId } = org.json<{ id: string }>();
+      const created = await app.inject({
+        method: 'POST',
+        url: `/api/admin/organizations/${orgId}/users`,
+        cookies,
+        payload: { email: 'only-admin@example.com', role: 'admin' },
+      });
+      expect(created.statusCode).toBe(201);
+      const userId = created.json<{ id: string }>().id;
+
+      const demote = await app.inject({
+        method: 'PATCH',
+        url: `/api/admin/organizations/${orgId}/members/${userId}`,
+        cookies,
+        payload: { role: 'member' },
+      });
+      expect(demote.statusCode).toBe(409);
+      expect(demote.json().code).toBe('LAST_ADMIN');
+      expect(demote.json().message).toBe(THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE);
     });
   });
 });

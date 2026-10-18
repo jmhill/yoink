@@ -224,7 +224,7 @@ export type CoreActor = {
   createToken(name: string): Promise<CreateTokenResult>;
 
   /**
-   * Issue a new token for an existing agent member. Owner only.
+   * Issue a new token for an existing agent member. Owner and admins.
    */
   reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }>;
 
@@ -429,6 +429,25 @@ export type BrowserActorOperations = {
    * Scroll the Members list into view for a walkthrough shot.
    */
   revealMembersSection(): Promise<void>;
+
+  shouldSeeRoleActionOnMember(name: string, label: string): Promise<void>;
+  shouldNotSeeRoleActionOnMember(name: string): Promise<void>;
+  shouldNotSeeAnyRoleActions(): Promise<void>;
+  shouldNotSeeAnyReissueButtons(): Promise<void>;
+  shouldSeeMemberRole(name: string, role: 'owner' | 'admin' | 'member'): Promise<void>;
+  openRoleAction(name: string): Promise<void>;
+  chooseOpenRoleAction(): Promise<void>;
+  makeAdmin(name: string): Promise<void>;
+  openMakeMember(name: string): Promise<void>;
+  confirmMakeMember(): Promise<void>;
+  shouldSeeDemoteConfirm(name: string): Promise<void>;
+  openRemoveMember(name: string): Promise<void>;
+  confirmRemoveMember(name: string): Promise<void>;
+  shouldSeeRemoveConfirm(name: string): Promise<void>;
+  openIssueNewToken(name: string): Promise<void>;
+  confirmIssueNewToken(): Promise<string>;
+  frameMemberRow(name: string): Promise<void>;
+  frameOpenOverlay(selector: string): Promise<void>;
 
   /**
    * Log out of the current session.
@@ -2499,15 +2518,19 @@ export type BrowserActorOperations = {
 
   /**
    * Remove a member from the current organization.
-   * - Admins can remove members
-   * - Owners can remove admins and members
+   * - Owners and admins can remove admins and members
    * - Cannot remove self (use leaveOrganization instead)
-   * - Cannot remove the last owner
+   * - Cannot remove the owner
    * @throws ForbiddenError if insufficient permissions
    * @throws CannotRemoveSelfError if trying to remove self
-   * @throws LastAdminError if removing the last admin/owner
+   * @throws LastAdminError if removing the last admin of an ownerless workspace
    */
   removeMember(userId: string): Promise<void>;
+
+  /**
+   * Change a member's role between admin and member. Session only.
+   */
+  changeMemberRole(userId: string, role: 'admin' | 'member'): Promise<Member>;
 
   // ==========================================================================
   // Invitation Management

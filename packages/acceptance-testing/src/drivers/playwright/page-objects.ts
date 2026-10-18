@@ -1,6 +1,8 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
 import {
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  MAKE_ADMIN_LABEL,
+  MAKE_MEMBER_LABEL,
   THE_OWNER_CANT_BE_REMOVED_MESSAGE,
 } from '@yoink/api-contracts';
 import type { TaskFilter } from '../../dsl/types.js';
@@ -643,14 +645,14 @@ export class SettingsPage {
     await expect(this.memberRow(label)).toBeVisible();
   }
 
-  async shouldNotSeeRemoveOnMember(email: string): Promise<void> {
-    const row = this.memberRow(email);
+  async shouldNotSeeRemoveOnMember(name: string): Promise<void> {
+    const row = this.memberRow(name);
     await expect(row).toBeVisible();
-    await expect(row.getByTitle(`Remove ${email}`)).toHaveCount(0);
+    await expect(row.getByTitle(`Remove ${name}`)).toHaveCount(0);
   }
 
-  async shouldSeeRemoveOnMember(email: string): Promise<void> {
-    await expect(this.memberRow(email).getByTitle(`Remove ${email}`)).toBeVisible();
+  async shouldSeeRemoveOnMember(name: string): Promise<void> {
+    await expect(this.memberRow(name).getByTitle(`Remove ${name}`)).toBeVisible();
   }
 
   async shouldNotSeeAnyRemoveButtons(): Promise<void> {
@@ -777,6 +779,129 @@ export class SettingsPage {
     const first = this.page.locator('[data-member-row]').first();
     await first.waitFor({ state: 'visible' });
     await first.scrollIntoViewIfNeeded();
+  }
+
+  async shouldSeeRoleActionOnMember(name: string, label: string): Promise<void> {
+    const action = label === MAKE_ADMIN_LABEL ? 'admin' : 'member';
+    await expect(this.memberRow(name).locator(`[data-role-action="${action}"]`)).toBeVisible();
+    await expect(this.memberRow(name).locator(`[data-role-action="${action}"]`)).toHaveText(label);
+  }
+
+  async shouldNotSeeRoleActionOnMember(name: string): Promise<void> {
+    await expect(this.memberRow(name)).toBeVisible();
+    await expect(this.memberRow(name).locator('[data-role-action]')).toHaveCount(0);
+  }
+
+  async shouldNotSeeAnyRoleActions(): Promise<void> {
+    await expect(this.page.locator('[data-role-action]')).toHaveCount(0);
+  }
+
+  async shouldNotSeeAnyReissueButtons(): Promise<void> {
+    await expect(this.page.getByRole('button', { name: 'Issue new token' })).toHaveCount(0);
+  }
+
+  async shouldSeeMemberRole(name: string, role: 'owner' | 'admin' | 'member'): Promise<void> {
+    await expect(this.memberRow(name)).toHaveAttribute('data-member-role', role);
+  }
+
+  async openRoleAction(name: string): Promise<void> {
+    await this.memberRow(name).locator('[data-role-action]').click();
+    const viewport = this.page.viewportSize();
+    if (viewport !== null && viewport.width >= 768) {
+      await expect(this.page.locator('[data-role-menu]')).toBeVisible();
+    } else {
+      await waitForSettledOpenSheet({ page: this.page });
+      await expect(this.page.locator('[data-role-sheet]')).toBeVisible();
+    }
+  }
+
+  async chooseOpenRoleAction(): Promise<void> {
+    const openSheetItem = this.page.locator(
+      '[data-role-sheet][data-state="open"] [data-role-action-item]'
+    );
+    const menuItem = this.page.locator('[data-role-menu] [data-role-action-item]');
+    const item = (await openSheetItem.count()) > 0 ? openSheetItem : menuItem;
+    await item.waitFor({ state: 'visible' });
+    await item.click();
+  }
+
+  async makeAdmin(name: string): Promise<void> {
+    await this.openRoleAction(name);
+    await this.chooseOpenRoleAction();
+    await expect(this.memberRow(name)).toHaveAttribute('data-member-role', 'admin');
+  }
+
+  async openMakeMember(name: string): Promise<void> {
+    await this.openRoleAction(name);
+    await this.chooseOpenRoleAction();
+    await expect(this.page.locator('[data-demote-confirm]')).toBeVisible();
+    await waitForSettledOpenDialog({ page: this.page });
+  }
+
+  async confirmMakeMember(): Promise<void> {
+    await this.page.locator('[data-confirm-demote]').click();
+    await this.page.locator('[data-demote-confirm]').waitFor({ state: 'hidden' });
+  }
+
+  async shouldSeeDemoteConfirm(name: string): Promise<void> {
+    const confirm = this.page.locator('[data-demote-confirm]');
+    await expect(confirm).toContainText(`Make ${name} a member? They'll lose admin access.`);
+    await expect(confirm.locator('[data-confirm-demote]')).toHaveText(MAKE_MEMBER_LABEL);
+  }
+
+  async openRemoveMember(name: string): Promise<void> {
+    await this.memberRow(name).getByTitle(`Remove ${name}`).click();
+    await expect(this.page.locator('[data-remove-confirm]')).toBeVisible();
+    await waitForSettledOpenDialog({ page: this.page });
+  }
+
+  async confirmRemoveMember(name: string): Promise<void> {
+    await this.page.getByRole('button', { name: 'Remove', exact: true }).click();
+    await this.memberRow(name).waitFor({ state: 'hidden' });
+  }
+
+  async shouldSeeRemoveConfirm(name: string): Promise<void> {
+    await expect(this.page.locator('[data-remove-confirm]')).toContainText(name);
+  }
+
+  async openIssueNewToken(name: string): Promise<void> {
+    const row = this.memberRow(name);
+    await row.waitFor({ state: 'visible' });
+    await row.getByRole('button', { name: 'Issue new token' }).click();
+    await expect(this.page.getByRole('heading', { name: 'Issue new token' })).toBeVisible();
+    await waitForSettledOpenDialog({ page: this.page });
+  }
+
+  async confirmIssueNewToken(): Promise<string> {
+    await this.page.locator('[data-reissue-dialog]').getByRole('button', { name: 'Issue new token' }).click();
+    await this.page.getByRole('heading', { name: 'New agent token' }).waitFor({ state: 'visible' });
+    const rawToken = (await this.page.locator('[data-reissued-token]').textContent()) ?? '';
+    return rawToken;
+  }
+
+  async frameMemberRow(name: string): Promise<void> {
+    const row = this.memberRow(name);
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+    await row.evaluate((el) => {
+      el.setAttribute('data-screenshot-focus', '');
+    });
+    await this.revealAbovePhoneChrome(row);
+  }
+
+  async frameOpenOverlay(selector: string): Promise<void> {
+    const overlay = this.page.locator(selector);
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+    await overlay.evaluate((el) => {
+      el.setAttribute('data-screenshot-focus', '');
+    });
   }
 
   async issueNewTokenForAgent(name: string): Promise<string> {

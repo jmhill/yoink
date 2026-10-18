@@ -83,16 +83,10 @@ export const handleIssueOwnerInvitation = (
 
                   const value = decision.value;
                   if (value.kind === 'owner-assigned') {
-                    if (!account) {
-                      return errAsync(
-                        issueOwnerInvitationFailedError('owner-assigned without account')
-                      );
-                    }
-                    const owner = account;
                     return deps.membershipStore
                       .assignOwnerFromInvite(value.plan, value.event, value.replaced)
                       .mapErr((error) => issueOwnerInvitationFailedError(error.cause ?? error))
-                      .map(() => ({ kind: 'owner-assigned' as const, owner }));
+                      .map(() => ({ kind: 'owner-assigned' as const, owner: value.owner }));
                   }
 
                   return deps.invitationStore

@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Invitation } from '../domain/invitation.js';
 import type { InvitationStore } from '../domain/invitation-store.js';
 import {
@@ -27,19 +27,20 @@ const parseInvitationRow = (
   return okAsync(invitation);
 };
 
+const invitationFromUnknown = (
+  row: Record<string, unknown>,
+  context: string
+): Result<Invitation, InvitationStorageError> => {
+  const invitation = invitationFromRow(row);
+  return invitation ? ok(invitation) : err(invitationStorageError(context));
+};
+
 const parseInvitationRows = (
   rows: Record<string, unknown>[],
   context: string
 ): ResultAsync<Invitation[], InvitationStorageError> => {
-  const invitations: Invitation[] = [];
-  for (const row of rows) {
-    const invitation = invitationFromRow(row);
-    if (!invitation) {
-      return errAsync(invitationStorageError(context));
-    }
-    invitations.push(invitation);
-  }
-  return okAsync(invitations);
+  const parsed = Result.combine(rows.map((row) => invitationFromUnknown(row, context)));
+  return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
 };
 
 const validateSchema = async (db: Database): Promise<void> => {

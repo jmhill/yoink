@@ -49,6 +49,7 @@ export type IssueOwnerInvitationDecision =
       plan: AssignOwnerPlan;
       event: OwnerAssigned;
       replaced: Invitation | null;
+      owner: User;
     }
   | {
       kind: 'owner-invited';
@@ -120,7 +121,7 @@ export const decideIssueOwnerInvitation = ({
       actor: { kind: 'app-admin' },
       occurredAt: now,
     };
-    return ok({ kind: 'owner-assigned', plan, event, replaced });
+    return ok({ kind: 'owner-assigned', plan, event, replaced, owner: account });
   }
 
   const invitation: Invitation = {

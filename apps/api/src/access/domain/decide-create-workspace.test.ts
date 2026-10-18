@@ -42,6 +42,7 @@ describe('decideCreateWorkspace', () => {
         expect(result.value.membership.role).toBe('owner');
         expect(result.value.membership.isPersonalOrg).toBe(false);
         expect(result.value.membership.userId).toBe(justin.id);
+        expect(result.value.owner).toBe(justin);
         expect(result.value.event).toEqual({
           type: 'OwnerAssigned',
           id: ids.eventId,

@@ -64,17 +64,13 @@ export const handleCreateWorkspace = (
 
       const value = decision.value;
       if (value.kind === 'owner-assigned') {
-        if (!ownerAccount) {
-          return errAsync(createWorkspaceFailedError('owner-assigned without account'));
-        }
-        const owner = ownerAccount;
         return deps.workspaceStore
           .createWithOwner(value.organization, value.membership, value.event)
           .mapErr((error) => createWorkspaceFailedError(error.cause ?? error))
           .map(() => ({
             kind: 'owner-assigned' as const,
             organization: value.organization,
-            owner,
+            owner: value.owner,
           }));
       }
 

@@ -1,5 +1,5 @@
 import type { Database } from '../../database/types.js';
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
@@ -42,19 +42,20 @@ const parseMembershipRow = (
   return okAsync(membership);
 };
 
+const membershipFromUnknown = (
+  row: Record<string, unknown>,
+  context: string
+): Result<OrganizationMembership, MembershipStorageError> => {
+  const membership = membershipFromRow(row);
+  return membership ? ok(membership) : err(membershipStorageError(context));
+};
+
 const parseMembershipRows = (
   rows: Record<string, unknown>[],
   context: string
 ): ResultAsync<OrganizationMembership[], MembershipStorageError> => {
-  const memberships: OrganizationMembership[] = [];
-  for (const row of rows) {
-    const membership = membershipFromRow(row);
-    if (!membership) {
-      return errAsync(membershipStorageError(context));
-    }
-    memberships.push(membership);
-  }
-  return okAsync(memberships);
+  const parsed = Result.combine(rows.map((row) => membershipFromUnknown(row, context)));
+  return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
 };
 
 const assignOwnerQueries = (

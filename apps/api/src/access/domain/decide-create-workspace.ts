@@ -35,6 +35,7 @@ export type CreateWorkspaceDecision =
       organization: Organization;
       membership: OrganizationMembership;
       event: OwnerAssigned;
+      owner: User;
     }
   | {
       kind: 'owner-invited';
@@ -81,7 +82,7 @@ export const decideCreateWorkspace = ({
       actor: { kind: 'app-admin' },
       occurredAt: now,
     };
-    return ok({ kind: 'owner-assigned', organization, membership, event });
+    return ok({ kind: 'owner-assigned', organization, membership, event, owner: ownerAccount });
   }
 
   const invitation: Invitation = {

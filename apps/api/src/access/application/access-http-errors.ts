@@ -232,8 +232,26 @@ export const validateInvitationErrorResponse = (
         status: 400 as const,
         body: { message: error.message, code: error.type },
       };
-    default:
-      return unexpectedInvitationServiceError(request, error);
+    case 'ALREADY_MEMBER_OF_ORG':
+    case 'INSUFFICIENT_INVITE_PERMISSIONS':
+    case 'OWNER_INVITATION_ADMIN_ONLY':
+    case 'INVITATION_ORG_NOT_FOUND':
+    case 'WORKSPACE_ALREADY_HAS_OWNER':
+    case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
+    case 'EMAIL_ALREADY_EXISTS':
+    case 'INVITATION_USER_NOT_FOUND':
+    case 'CREATE_WORKSPACE_FAILED':
+    case 'ISSUE_OWNER_INVITATION_FAILED':
+    case 'ACCEPT_INVITATION_FAILED':
+    case 'INVITATION_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+      return invitationStorageFailure(request, error);
+    default: {
+      const _never: never = error;
+      void _never;
+      return invitationStorageFailure(request, error);
+    }
   }
 };
 
@@ -255,8 +273,29 @@ export const createInvitationErrorResponse = (
           code: error.type,
         },
       };
-    default:
-      return unexpectedInvitationServiceError(request, error);
+    case 'INVITATION_NOT_FOUND':
+    case 'INVITATION_REPLACED':
+    case 'INVITATION_EXPIRED':
+    case 'INVITATION_ALREADY_ACCEPTED':
+    case 'INVITATION_EMAIL_MISMATCH':
+    case 'ALREADY_MEMBER_OF_ORG':
+    case 'OWNER_INVITATION_ADMIN_ONLY':
+    case 'WORKSPACE_ALREADY_HAS_OWNER':
+    case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
+    case 'EMAIL_ALREADY_EXISTS':
+    case 'INVITATION_USER_NOT_FOUND':
+    case 'CREATE_WORKSPACE_FAILED':
+    case 'ISSUE_OWNER_INVITATION_FAILED':
+    case 'ACCEPT_INVITATION_FAILED':
+    case 'INVITATION_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+      return invitationStorageFailure(request, error);
+    default: {
+      const _never: never = error;
+      void _never;
+      return invitationStorageFailure(request, error);
+    }
   }
 };
 
@@ -288,8 +327,28 @@ export const revokeInvitationErrorResponse = (
         status: 403 as const,
         body: { message: OWNER_INVITE_ADMIN_ONLY_MESSAGE, code: error.type },
       };
-    default:
-      return unexpectedInvitationServiceError(request, error);
+    case 'INVITATION_REPLACED':
+    case 'INVITATION_EXPIRED':
+    case 'INVITATION_ALREADY_ACCEPTED':
+    case 'INVITATION_EMAIL_MISMATCH':
+    case 'ALREADY_MEMBER_OF_ORG':
+    case 'INVITATION_ORG_NOT_FOUND':
+    case 'WORKSPACE_ALREADY_HAS_OWNER':
+    case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
+    case 'EMAIL_ALREADY_EXISTS':
+    case 'INVITATION_USER_NOT_FOUND':
+    case 'CREATE_WORKSPACE_FAILED':
+    case 'ISSUE_OWNER_INVITATION_FAILED':
+    case 'ACCEPT_INVITATION_FAILED':
+    case 'INVITATION_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+      return invitationStorageFailure(request, error);
+    default: {
+      const _never: never = error;
+      void _never;
+      return invitationStorageFailure(request, error);
+    }
   }
 };
 
@@ -303,7 +362,29 @@ export const adminCreateInvitationErrorResponse = (
         status: 404 as const,
         body: { message: 'Organization not found', code: error.type },
       };
-    default:
-      return unexpectedInvitationServiceError(request, error);
+    case 'INVITATION_NOT_FOUND':
+    case 'INVITATION_REPLACED':
+    case 'INVITATION_EXPIRED':
+    case 'INVITATION_ALREADY_ACCEPTED':
+    case 'INVITATION_EMAIL_MISMATCH':
+    case 'ALREADY_MEMBER_OF_ORG':
+    case 'INSUFFICIENT_INVITE_PERMISSIONS':
+    case 'OWNER_INVITATION_ADMIN_ONLY':
+    case 'WORKSPACE_ALREADY_HAS_OWNER':
+    case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
+    case 'EMAIL_ALREADY_EXISTS':
+    case 'INVITATION_USER_NOT_FOUND':
+    case 'CREATE_WORKSPACE_FAILED':
+    case 'ISSUE_OWNER_INVITATION_FAILED':
+    case 'ACCEPT_INVITATION_FAILED':
+    case 'INVITATION_STORAGE_ERROR':
+    case 'ORGANIZATION_STORAGE_ERROR':
+    case 'MEMBERSHIP_STORAGE_ERROR':
+      return invitationStorageFailure(request, error);
+    default: {
+      const _never: never = error;
+      void _never;
+      return invitationStorageFailure(request, error);
+    }
   }
 };

@@ -120,6 +120,7 @@ describe('decideIssueOwnerInvitation', () => {
     if (result.isOk() && result.value.kind === 'owner-assigned') {
       expect(result.value.replaced?.id).toBe(old.id);
       expect(result.value.plan.kind).toBe('add');
+      expect(result.value.owner).toBe(justin);
       expect(result.value.event.actor).toEqual({ kind: 'app-admin' });
       expect(result.value.event.fromRole).toBeNull();
       expect(result.value.event.userId).toBe(justin.id);

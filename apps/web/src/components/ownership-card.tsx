@@ -21,6 +21,7 @@ import { AlertCircle, Crown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ErrorSchema,
+  TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
   TransferOwnershipResponseSchema,
 } from '@yoink/api-contracts';
 import { memberDisplayName, type Member } from '@/api/auth';
@@ -97,10 +98,10 @@ function OwnershipCardOpen({
         }
       }
       const parsed = ErrorSchema.safeParse(result.body);
-      setError(parsed.success ? parsed.data.message : 'Could not hand over ownership.');
+      setError(parsed.success ? parsed.data.message : TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
     },
     onError: () => {
-      setError('Could not hand over ownership.');
+      setError(TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
     },
   });
 

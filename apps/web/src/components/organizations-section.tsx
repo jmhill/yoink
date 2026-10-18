@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { Building2, LogOut, Loader2, AlertCircle, User, Crown, Shield, Users } from 'lucide-react';
-import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
 import { getSession, leaveOrganization, switchOrganization, type SessionOrganization } from '@/api/auth';
 
 type OrgsListState =
@@ -237,9 +236,7 @@ function LeaveOrganizationDialog({
                 className="underline underline-offset-2"
                 onClick={() => onOpenChange(false)}
               >
-                {error === HAND_OVER_OWNERSHIP_FIRST_MESSAGE
-                  ? HAND_OVER_OWNERSHIP_FIRST_MESSAGE
-                  : error}
+                {error}
               </a>
             ) : (
               <span>{error}</span>

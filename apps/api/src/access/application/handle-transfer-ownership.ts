@@ -80,19 +80,14 @@ export const handleTransferOwnership = (
         return errAsync(decision.error);
       }
 
-      const { plan, event } = decision.value;
-      const demote = plan.demote;
-      if (!targetUser || !demote) {
-        return errAsync(userNotFoundError(request.toUserId));
-      }
-
+      const { plan, event, nextOwner } = decision.value;
       return deps.loadUser(request.callerUserId).andThen((callerUser) => {
-        if (!callerUser) {
+        if (callerUser === null) {
           return errAsync(userNotFoundError(request.callerUserId));
         }
         return deps.persistTransfer({ plan, event }).map(() => ({
-          owner: toMember(targetUser, plan.promote),
-          previousOwner: toMember(callerUser, demote),
+          owner: toMember(nextOwner, plan.promote),
+          previousOwner: toMember(callerUser, plan.demote),
         }));
       });
     })

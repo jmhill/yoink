@@ -3,7 +3,7 @@ import type { TransferOwnership } from './membership-commands.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { PrincipalKind, User } from './user.js';
 import { decideSetOwner, type DecideSetOwnerError } from './decide-set-owner.js';
-import { ownerOf, type OwnershipTransferPlan } from './owner-presence.js';
+import { ownerOf } from './owner-presence.js';
 import type { OwnershipTransferred } from './membership-events.js';
 import {
   alreadyOwnerError,
@@ -15,6 +15,7 @@ import {
   type NotCurrentOwnerError,
   type PersonalWorkspaceTransferError,
 } from './organization-errors.js';
+import { userNotFoundError } from './user-errors.js';
 
 export type DecideTransferOwnershipInput = {
   command: TransferOwnership;
@@ -32,13 +33,17 @@ export type TransferOwnershipError =
   | AlreadyOwnerError
   | DecideSetOwnerError;
 
-export type TransferOwnershipDecision = {
-  plan: OwnershipTransferPlan;
-  event: OwnershipTransferred;
+/** Handover always names the outgoing owner; demote is never null. */
+export type HandoverOwnershipPlan = {
+  demote: OrganizationMembership;
+  promote: OrganizationMembership;
 };
 
-const isPersonalWorkspace = (members: readonly OrganizationMembership[]): boolean =>
-  members.some((membership) => membership.isPersonalOrg);
+export type TransferOwnershipDecision = {
+  plan: HandoverOwnershipPlan;
+  event: OwnershipTransferred;
+  nextOwner: User;
+};
 
 /**
  * Current owner names the next owner. Checks run in this order, then
@@ -61,12 +66,16 @@ export const decideTransferOwnership = ({
     return err(notCurrentOwnerError(command.organizationId, command.fromUserId));
   }
 
-  if (isPersonalWorkspace(members)) {
+  if (currentOwner.isPersonalOrg) {
     return err(personalWorkspaceTransferError(command.organizationId));
   }
 
   if (command.toUserId === command.fromUserId) {
     return err(alreadyOwnerError(command.fromUserId));
+  }
+
+  if (targetUser === null) {
+    return err(userNotFoundError(command.toUserId));
   }
 
   const setOwner = decideSetOwner({
@@ -79,7 +88,10 @@ export const decideTransferOwnership = ({
   }
 
   return ok({
-    plan: setOwner.value,
+    plan: {
+      demote: { ...currentOwner, role: 'admin' },
+      promote: setOwner.value.promote,
+    },
     event: {
       type: 'OwnershipTransferred',
       id: eventId,
@@ -89,5 +101,6 @@ export const decideTransferOwnership = ({
       actorUserId: command.fromUserId,
       occurredAt: now,
     },
+    nextOwner: targetUser,
   });
 };

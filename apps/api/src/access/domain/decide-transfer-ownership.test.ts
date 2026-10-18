@@ -172,6 +172,13 @@ describe('decideTransferOwnership', () => {
     }
   });
 
+  it('treats personal from the owner membership only, not another member', () => {
+    const result = decide({
+      members: [owner, { ...admin, isPersonalOrg: true }, member, botMembership],
+    });
+    expect(result.isOk()).toBe(true);
+  });
+
   it('refuses handing over to yourself', () => {
     const result = decide({
       command: { organizationId: orgId, fromUserId: justin.id, toUserId: justin.id },

@@ -1,3 +1,4 @@
+import { Writable } from 'node:stream';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -25,11 +26,14 @@ import {
   BOT_CANNOT_CHANGE_ROLES_MESSAGE,
   CANNOT_CHANGE_OWN_ROLE_MESSAGE,
   CANNOT_REMOVE_SELF_MESSAGE,
+  CHANGE_ROLE_STORAGE_MESSAGE,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
   OWNER_ROLE_LOCKED_MESSAGE,
   REISSUE_NOT_ALLOWED_MESSAGE,
+  REISSUE_TOKEN_STORAGE_MESSAGE,
   REMOVE_NOT_ALLOWED_MESSAGE,
+  removeMemberFailedMessage,
   ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
   THE_OWNER_CANT_BE_REMOVED_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
@@ -59,6 +63,13 @@ import {
 } from '@yoink/infrastructure';
 
 const USER_SESSION_COOKIE = 'user_session';
+const PINO_ERROR_LEVEL = 50;
+
+type PinoLogLine = {
+  level: number;
+  msg?: string;
+  error?: unknown;
+};
 
 describe('organization routes', () => {
   let app: FastifyInstance;
@@ -407,6 +418,148 @@ describe('organization routes', () => {
     await app.ready();
   });
 
+  const createLoggedOrgApp = async (options: {
+    shouldFailOnChangeMemberRole?: boolean;
+    shouldFailOnRemoveMember?: boolean;
+    tokenShouldFailOnSave?: boolean;
+  }): Promise<{ app: FastifyInstance; logs: PinoLogLine[] }> => {
+    const logs: PinoLogLine[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        const text = String(chunk);
+        for (const part of text.split('\n')) {
+          if (part.length === 0) {
+            continue;
+          }
+          logs.push(JSON.parse(part) as PinoLogLine);
+        }
+        callback();
+      },
+    });
+    const failingApp = Fastify({
+      logger: {
+        level: 'error',
+        stream,
+      },
+    });
+    await failingApp.register(cookie);
+    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const idGenerator = createFakeIdGenerator();
+    const organizationStore = createFakeOrganizationStore({
+      initialOrganizations: [personalOrg, teamOrg, otherOrg],
+    });
+    const userStore = createFakeUserStore({
+      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider, extraAdmin],
+    });
+    const failingMembershipStore = createFakeOrganizationMembershipStore({
+      initialMemberships: [
+        personalMembership,
+        teamMembership,
+        agentMembership,
+        teamOwnerMembership,
+        teamAdminMembership,
+        otherAgentMembership,
+        extraAdminMembership,
+      ],
+      shouldFailOnChangeMemberRole: options.shouldFailOnChangeMemberRole,
+      shouldFailOnRemoveMember: options.shouldFailOnRemoveMember,
+    });
+    const failingTokenStore = createFakeTokenStore({
+      initialTokens: [agentToken, ownerToken],
+      shouldFailOnSave: options.tokenShouldFailOnSave,
+    });
+    const userService = createUserService({ userStore });
+    const membershipService = createMembershipService({
+      membershipStore: failingMembershipStore,
+      userService,
+      organizationStore,
+      clock,
+      idGenerator,
+    });
+    const sessionService = createSessionService({
+      sessionStore,
+      userService,
+      membershipService,
+      clock,
+      idGenerator,
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+      refreshThresholdMs: 24 * 60 * 60 * 1000,
+    });
+    const passwordHasher = createFakePasswordHasher();
+    await registerOrganizationRoutes(failingApp, {
+      sessionService,
+      membershipService,
+      userService,
+      agentService: createAgentService({
+        userService,
+        membershipService,
+        createToken: () => {
+          throw new Error('unused');
+        },
+        clock,
+        idGenerator,
+      }),
+      reissueAgentToken: (command) =>
+        handleReissueAgentToken(command, {
+          loadMembership: (userId, organizationId) =>
+            failingMembershipStore.findByUserAndOrg(userId, organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistReissue: createStoreBackedTokenReissue(failingTokenStore),
+          hashSecret: (secret) =>
+            ResultAsync.fromPromise(
+              passwordHasher.hash(secret),
+              (error) => tokenStorageError('Failed to hash token secret', error)
+            ),
+          nextId: () => idGenerator.generate(),
+          nextSecret: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      transferOwnership: (request) =>
+        handleTransferOwnership(request, {
+          loadMembers: (organizationId) =>
+            failingMembershipStore.findByOrganizationId(organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistTransfer: ({ plan, event }) =>
+            failingMembershipStore.transferOwnership(plan, event),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      changeMemberRole: (request) =>
+        handleChangeMemberRole(request, {
+          loadMembers: (organizationId) =>
+            failingMembershipStore.findByOrganizationId(organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistChange: ({ membership, event }) =>
+            failingMembershipStore.changeMemberRole(membership, event),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      removeMember: (request) =>
+        handleRemoveMember(request, {
+          loadMembers: (organizationId) =>
+            failingMembershipStore.findByOrganizationId(organizationId),
+          loadUser: (userId) => userService.getUser(userId),
+          persistRemove: ({ membershipId, event }) =>
+            failingMembershipStore.removeMember(membershipId, event),
+          nextId: () => idGenerator.generate(),
+          now: () => clock.now().toISOString(),
+        }),
+      authMiddleware: createCombinedAuthMiddleware({
+        tokenService: createTokenService({
+          organizationStore,
+          userStore,
+          tokenStore: failingTokenStore,
+          passwordHasher: createFakePasswordHasher(),
+          clock,
+        }),
+        sessionService,
+        sessionCookieName: USER_SESSION_COOKIE,
+      }),
+    });
+    await failingApp.ready();
+    return { app: failingApp, logs };
+  };
+
   describe('POST /api/organizations/switch', () => {
     it('switches to another organization the user is a member of', async () => {
       const response = await app.inject({
@@ -676,6 +829,24 @@ describe('organization routes', () => {
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toMatch(/personal/i);
     });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnRemoveMember: true,
+      });
+      const response = await failingApp.inject({
+        method: 'DELETE',
+        url: `/api/organizations/${teamOrg.id}/members/${extraAdmin.id}`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(removeMemberFailedMessage('Libby'));
+      expect(logs.some((line) => line.level === PINO_ERROR_LEVEL && line.error !== undefined)).toBe(
+        true
+      );
+      await failingApp.close();
+    });
   });
 
   describe('agent token cannot administer membership', () => {
@@ -796,6 +967,30 @@ describe('organization routes', () => {
         headers: { authorization: `Bearer ${agentRawToken}` },
       });
       expect(oldAuth.statusCode).toBe(401);
+    });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        tokenShouldFailOnSave: true,
+      });
+      const response = await failingApp.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/members/${agentUser.id}/token`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(REISSUE_TOKEN_STORAGE_MESSAGE);
+      expect(
+        logs.some(
+          (line) =>
+            line.level === PINO_ERROR_LEVEL &&
+            line.msg === 'Failed to reissue agent token' &&
+            line.error !== undefined
+        )
+      ).toBe(true);
+      await failingApp.close();
     });
   });
 
@@ -937,6 +1132,25 @@ describe('organization routes', () => {
       });
       expect(reissue.statusCode).toBe(403);
       expect(reissue.json().code).toBe('REISSUE_NOT_ALLOWED');
+    });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnChangeMemberRole: true,
+      });
+      const response = await failingApp.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'admin' },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(CHANGE_ROLE_STORAGE_MESSAGE);
+      expect(logs.some((line) => line.level === PINO_ERROR_LEVEL && line.error !== undefined)).toBe(
+        true
+      );
+      await failingApp.close();
     });
   });
 

@@ -405,11 +405,16 @@ export const reissueNotAllowedError = (): ReissueNotAllowedError => ({
 export type MemberRemoveFailedError = {
   readonly type: 'MEMBER_REMOVE_FAILED';
   readonly memberName: string;
+  readonly cause: MembershipStorageError;
 };
 
-export const memberRemoveFailedError = (memberName: string): MemberRemoveFailedError => ({
+export const memberRemoveFailedError = (
+  memberName: string,
+  cause: MembershipStorageError
+): MemberRemoveFailedError => ({
   type: 'MEMBER_REMOVE_FAILED',
   memberName,
+  cause,
 });
 
 /** Closed union of membership command errors (no storage). */

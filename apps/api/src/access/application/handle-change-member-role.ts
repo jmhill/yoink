@@ -83,18 +83,18 @@ export const handleChangeMemberRole = (
 
   return deps.loadMembers(request.organizationId).andThen((members) =>
     deps.loadUser(request.userId).andThen((targetUser) => {
+      if (targetUser === null) {
+        return errAsync(userNotFoundError(request.userId));
+      }
       const decision = decideChangeMemberRole({
         command,
         members,
-        targetKind: targetUser === null ? 'human' : principalKindOf(targetUser),
+        targetKind: principalKindOf(targetUser),
         eventId: deps.nextId(),
         now: deps.now(),
       });
       if (decision.isErr()) {
         return errAsync(decision.error);
-      }
-      if (targetUser === null) {
-        return errAsync(userNotFoundError(request.userId));
       }
       if (decision.value.kind === 'unchanged') {
         return okAsync(toMember(targetUser, decision.value.membership));

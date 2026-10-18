@@ -59,24 +59,27 @@ export const handleRemoveMember = (
     by: request.by,
   };
 
-  return deps.loadMembers(request.organizationId).mapErr(() => memberRemoveFailedError('member')).andThen((members) =>
-    deps.loadUser(request.userId).andThen((targetUser) => {
-      const decision = decideRemoveMember({
-        command,
-        members,
-        eventId: deps.nextId(),
-        now: deps.now(),
-      });
-      if (decision.isErr()) {
-        return errAsync(decision.error);
-      }
-      const memberName = displayNameOf(targetUser);
-      return deps
-        .persistRemove({
-          membershipId: decision.value.membership.id,
-          event: decision.value.event,
-        })
-        .mapErr(() => memberRemoveFailedError(memberName));
-    })
-  );
+  return deps
+    .loadMembers(request.organizationId)
+    .mapErr((error) => memberRemoveFailedError('member', error))
+    .andThen((members) =>
+      deps.loadUser(request.userId).andThen((targetUser) => {
+        const decision = decideRemoveMember({
+          command,
+          members,
+          eventId: deps.nextId(),
+          now: deps.now(),
+        });
+        if (decision.isErr()) {
+          return errAsync(decision.error);
+        }
+        const memberName = displayNameOf(targetUser);
+        return deps
+          .persistRemove({
+            membershipId: decision.value.membership.id,
+            event: decision.value.event,
+          })
+          .mapErr((error) => memberRemoveFailedError(memberName, error));
+      })
+    );
 };

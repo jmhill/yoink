@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import {
   BOT_CANNOT_CHANGE_ROLES_MESSAGE,
@@ -42,7 +42,17 @@ const storageFailure = (message: string) => ({
   body: { message },
 });
 
-const leaveErrorResponse = (error: HandleRemoveMemberError) => {
+const logAndReturnStorageFailure = (
+  request: FastifyRequest,
+  error: unknown,
+  message: string,
+  logMessage: string = message
+) => {
+  request.log.error({ error }, logMessage);
+  return storageFailure(message);
+};
+
+const leaveErrorResponse = (error: HandleRemoveMemberError, request: FastifyRequest) => {
   switch (error.type) {
     case 'MEMBERSHIP_NOT_FOUND':
       return {
@@ -68,22 +78,27 @@ const leaveErrorResponse = (error: HandleRemoveMemberError) => {
           handoverPath: HANDOVER_OWNERSHIP_PATH,
         },
       };
+    case 'MEMBER_REMOVE_FAILED':
+      return logAndReturnStorageFailure(
+        request,
+        error.cause,
+        'Failed to leave organization'
+      );
     case 'OWNER_CANNOT_BE_REMOVED':
     case 'CANNOT_REMOVE_SELF':
     case 'REMOVE_NOT_ALLOWED':
-    case 'MEMBER_REMOVE_FAILED':
     case 'USER_NOT_FOUND':
     case 'USER_STORAGE_ERROR':
-      return storageFailure('Failed to leave organization');
+      return logAndReturnStorageFailure(request, error, 'Failed to leave organization');
     default: {
       const _never: never = error;
       void _never;
-      return storageFailure('Failed to leave organization');
+      return logAndReturnStorageFailure(request, error, 'Failed to leave organization');
     }
   }
 };
 
-const removeMemberErrorResponse = (error: HandleRemoveMemberError) => {
+const removeMemberErrorResponse = (error: HandleRemoveMemberError, request: FastifyRequest) => {
   switch (error.type) {
     case 'MEMBERSHIP_NOT_FOUND':
       return {
@@ -121,21 +136,34 @@ const removeMemberErrorResponse = (error: HandleRemoveMemberError) => {
         body: { message: error.message, code: error.type },
       };
     case 'MEMBER_REMOVE_FAILED':
-      return storageFailure(removeMemberFailedMessage(error.memberName));
+      return logAndReturnStorageFailure(
+        request,
+        error.cause,
+        removeMemberFailedMessage(error.memberName)
+      );
     case 'USER_NOT_FOUND':
     case 'USER_STORAGE_ERROR':
-      return storageFailure(removeMemberFailedMessage('member'));
+      return logAndReturnStorageFailure(
+        request,
+        error,
+        removeMemberFailedMessage('member')
+      );
     default: {
       const _never: never = error;
       void _never;
-      return storageFailure(removeMemberFailedMessage('member'));
+      return logAndReturnStorageFailure(
+        request,
+        error,
+        removeMemberFailedMessage('member')
+      );
     }
   }
 };
 
 const changeMemberRoleErrorResponse = (
   error: HandleChangeMemberRoleError,
-  callerUserId: string
+  callerUserId: string,
+  request: FastifyRequest
 ) => {
   switch (error.type) {
     case 'BOT_CANNOT_CHANGE_ROLES':
@@ -192,24 +220,19 @@ const changeMemberRoleErrorResponse = (
       };
     case 'MEMBERSHIP_STORAGE_ERROR':
     case 'USER_STORAGE_ERROR':
-      return {
-        status: 500 as const,
-        body: { message: CHANGE_ROLE_STORAGE_MESSAGE },
-      };
+      return logAndReturnStorageFailure(request, error, CHANGE_ROLE_STORAGE_MESSAGE);
     default: {
       const _never: never = error;
       void _never;
-      return {
-        status: 500 as const,
-        body: { message: CHANGE_ROLE_STORAGE_MESSAGE },
-      };
+      return logAndReturnStorageFailure(request, error, CHANGE_ROLE_STORAGE_MESSAGE);
     }
   }
 };
 
 const reissueAgentTokenErrorResponse = (
   error: ReissueAgentTokenError,
-  callerUserId: string
+  callerUserId: string,
+  request: FastifyRequest
 ) => {
   switch (error.type) {
     case 'BOT_CANNOT_MANAGE_TOKENS':
@@ -242,17 +265,21 @@ const reissueAgentTokenErrorResponse = (
     case 'USER_STORAGE_ERROR':
     case 'TOKEN_STORAGE_ERROR':
     case 'USER_NOT_FOUND':
-      return {
-        status: 500 as const,
-        body: { message: REISSUE_TOKEN_STORAGE_MESSAGE },
-      };
+      return logAndReturnStorageFailure(
+        request,
+        error,
+        REISSUE_TOKEN_STORAGE_MESSAGE,
+        'Failed to reissue agent token'
+      );
     default: {
       const _never: never = error;
       void _never;
-      return {
-        status: 500 as const,
-        body: { message: REISSUE_TOKEN_STORAGE_MESSAGE },
-      };
+      return logAndReturnStorageFailure(
+        request,
+        error,
+        REISSUE_TOKEN_STORAGE_MESSAGE,
+        'Failed to reissue agent token'
+      );
     }
   }
 };
@@ -433,7 +460,7 @@ export const registerOrganizationRoutes = async (
             status: 200 as const,
             body: { success: true as const },
           }),
-          (error) => leaveErrorResponse(error)
+          (error) => leaveErrorResponse(error, request)
         );
       },
 
@@ -523,7 +550,8 @@ export const registerOrganizationRoutes = async (
             status: 200 as const,
             body: { member },
           }),
-          (error) => changeMemberRoleErrorResponse(error, request.authContext.userId)
+          (error) =>
+            changeMemberRoleErrorResponse(error, request.authContext.userId, request)
         );
       },
 
@@ -549,7 +577,7 @@ export const registerOrganizationRoutes = async (
             status: 204 as const,
             body: undefined,
           }),
-          (error) => removeMemberErrorResponse(error)
+          (error) => removeMemberErrorResponse(error, request)
         );
       },
 
@@ -628,7 +656,8 @@ export const registerOrganizationRoutes = async (
             status: 201 as const,
             body: { token, rawToken },
           }),
-          (error) => reissueAgentTokenErrorResponse(error, request.authContext.actor.userId)
+          (error) =>
+            reissueAgentTokenErrorResponse(error, request.authContext.actor.userId, request)
         );
       },
     });

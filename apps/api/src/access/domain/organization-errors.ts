@@ -1,14 +1,22 @@
 import {
+  ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  NOT_CURRENT_OWNER_MESSAGE,
   OWNER_CANNOT_BE_REMOVED_MESSAGE,
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
+  PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
 } from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
 
 export {
+  ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  NOT_CURRENT_OWNER_MESSAGE,
   OWNER_CANNOT_BE_REMOVED_MESSAGE,
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
+  PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
 };
 
 // ============================================================================
@@ -125,6 +133,7 @@ export type NotCurrentOwnerError = {
   readonly type: 'NOT_CURRENT_OWNER';
   readonly organizationId: string;
   readonly userId: string;
+  readonly message: string;
 };
 
 export const notCurrentOwnerError = (
@@ -134,6 +143,46 @@ export const notCurrentOwnerError = (
   type: 'NOT_CURRENT_OWNER',
   organizationId,
   userId,
+  message: NOT_CURRENT_OWNER_MESSAGE,
+});
+
+/** #190: agents cannot hand over ownership */
+export type BotCannotTransferOwnershipError = {
+  readonly type: 'BOT_CANNOT_TRANSFER_OWNERSHIP';
+  readonly message: string;
+};
+
+export const botCannotTransferOwnershipError = (): BotCannotTransferOwnershipError => ({
+  type: 'BOT_CANNOT_TRANSFER_OWNERSHIP',
+  message: BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+});
+
+/** #190: personal workspaces stay with their person */
+export type PersonalWorkspaceTransferError = {
+  readonly type: 'PERSONAL_WORKSPACE_TRANSFER';
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const personalWorkspaceTransferError = (
+  organizationId: string
+): PersonalWorkspaceTransferError => ({
+  type: 'PERSONAL_WORKSPACE_TRANSFER',
+  organizationId,
+  message: PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+});
+
+/** #190: handing over to yourself */
+export type AlreadyOwnerError = {
+  readonly type: 'ALREADY_OWNER';
+  readonly userId: string;
+  readonly message: string;
+};
+
+export const alreadyOwnerError = (userId: string): AlreadyOwnerError => ({
+  type: 'ALREADY_OWNER',
+  userId,
+  message: ALREADY_OWNER_MESSAGE,
 });
 
 /** Owner can only be assigned via the admin-panel set-owner command */
@@ -268,6 +317,9 @@ export type MembershipError =
   | OwnerMustTransferError
   | OwnerCannotBeRemovedError
   | NotCurrentOwnerError
+  | BotCannotTransferOwnershipError
+  | PersonalWorkspaceTransferError
+  | AlreadyOwnerError
   | SecondOwnerError
   | BotCannotHavePrivilegedRoleError
   | TargetNotWorkspaceMemberError

@@ -9,17 +9,27 @@ export const MembershipRoleSchema = z.enum(['owner', 'admin', 'member']);
 
 export type MembershipRole = z.infer<typeof MembershipRoleSchema>;
 
+/** In-app leave refusal and owner-row note. Links to the handover card. */
+export const HAND_OVER_OWNERSHIP_FIRST_MESSAGE = 'Hand over ownership first.';
+
+/** Settings Organization tab, Ownership card. */
+export const HANDOVER_OWNERSHIP_PATH = '/settings#ownership';
+
 /** Anyone removing the owner — dedicated, not INSUFFICIENT_PERMISSIONS */
-export const OWNER_CANNOT_BE_REMOVED_MESSAGE =
-  "The owner can't be removed. Ownership has to be handed over first.";
+export const OWNER_CANNOT_BE_REMOVED_MESSAGE = HAND_OVER_OWNERSHIP_FIRST_MESSAGE;
 
 /** Owner leave — reader is a workspace person, not the app admin */
-export const OWNER_MUST_TRANSFER_MESSAGE =
-  'Transfer ownership first. Ask an admin of the whole app to change the owner.';
+export const OWNER_MUST_TRANSFER_MESSAGE = HAND_OVER_OWNERSHIP_FIRST_MESSAGE;
 
 /** Admin-panel change-role — reader is the app admin */
 export const OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE =
   'Transfer ownership first. Use Make owner on another member.';
+
+export const BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE = "Bots can't hand over ownership.";
+export const NOT_CURRENT_OWNER_MESSAGE = 'Only the owner can hand over ownership.';
+export const PERSONAL_WORKSPACE_TRANSFER_MESSAGE = "Personal workspaces can't be handed over.";
+export const ALREADY_OWNER_MESSAGE = "You're already the owner.";
+export const TRANSFER_OWNERSHIP_STORAGE_MESSAGE = "Couldn't hand over ownership. Try again.";
 
 // ============================================================================
 // Member
@@ -86,6 +96,19 @@ export const LeaveOrganizationResponseSchema = z.object({
 });
 
 export type LeaveOrganizationResponse = z.infer<typeof LeaveOrganizationResponseSchema>;
+
+export const TransferOwnershipRequestSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export type TransferOwnershipRequest = z.infer<typeof TransferOwnershipRequestSchema>;
+
+export const TransferOwnershipResponseSchema = z.object({
+  owner: MemberSchema,
+  previousOwner: MemberSchema,
+});
+
+export type TransferOwnershipResponse = z.infer<typeof TransferOwnershipResponseSchema>;
 
 // ============================================================================
 // Agents

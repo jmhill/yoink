@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { Building2, LogOut, Loader2, AlertCircle, User, Crown, Shield, Users } from 'lucide-react';
+import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
 import { getSession, leaveOrganization, switchOrganization, type SessionOrganization } from '@/api/auth';
 
 type OrgsListState =
@@ -186,11 +187,13 @@ function LeaveOrganizationDialog({
 }: LeaveOrganizationDialogProps) {
   const [isLeaving, setIsLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [handoverPath, setHandoverPath] = useState<string | null>(null);
 
   // Reset error when dialog opens
   useEffect(() => {
     if (open) {
       setError(null);
+      setHandoverPath(null);
     }
   }, [open]);
 
@@ -208,6 +211,7 @@ function LeaveOrganizationDialog({
       onSuccess();
     } else {
       setError(result.error);
+      setHandoverPath(result.handoverPath ?? null);
     }
   };
 
@@ -226,7 +230,20 @@ function LeaveOrganizationDialog({
         {error && (
           <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+            {handoverPath ? (
+              <a
+                href={handoverPath}
+                data-handover-link=""
+                className="underline underline-offset-2"
+                onClick={() => onOpenChange(false)}
+              >
+                {error === HAND_OVER_OWNERSHIP_FIRST_MESSAGE
+                  ? HAND_OVER_OWNERSHIP_FIRST_MESSAGE
+                  : error}
+              </a>
+            ) : (
+              <span>{error}</span>
+            )}
           </div>
         )}
 

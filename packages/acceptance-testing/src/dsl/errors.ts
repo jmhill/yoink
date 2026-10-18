@@ -3,6 +3,8 @@
  * These provide typed error handling without leaking transport details.
  */
 
+import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
+
 export class DslError extends Error {
   constructor(message: string) {
     super(message);
@@ -158,7 +160,7 @@ export class LastAdminError extends DslError {
 
 export class OwnerMustTransferError extends DslError {
   constructor() {
-    super('Transfer ownership first. Ask an admin of the whole app to change the owner.');
+    super(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
   }
 }
 

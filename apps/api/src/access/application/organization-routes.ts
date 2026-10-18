@@ -1,12 +1,20 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
-import { organizationContract } from '@yoink/api-contracts';
+import {
+  HANDOVER_OWNERSHIP_PATH,
+  TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
+  organizationContract,
+} from '@yoink/api-contracts';
 import type { SessionService } from '../domain/session-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { UserService } from '../domain/user-service.js';
 import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
 import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
+import type {
+  HandleTransferOwnershipError,
+  TransferOwnershipHandler,
+} from './handle-transfer-ownership.js';
 import { principalKindOf } from '../domain/user.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
 import type { MembershipServiceError } from '../domain/organization-errors.js';
@@ -37,12 +45,19 @@ const leaveErrorResponse = (error: MembershipServiceError) => {
     case 'OWNER_CANNOT_BE_REMOVED':
       return {
         status: 409 as const,
-        body: { message: error.message, code: error.type },
+        body: {
+          message: error.message,
+          code: error.type,
+          handoverPath: HANDOVER_OWNERSHIP_PATH,
+        },
       };
     case 'INSUFFICIENT_PERMISSIONS':
     case 'ALREADY_MEMBER':
     case 'CANNOT_ASSIGN_OWNER_ROLE':
     case 'NOT_CURRENT_OWNER':
+    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
+    case 'PERSONAL_WORKSPACE_TRANSFER':
+    case 'ALREADY_OWNER':
     case 'SECOND_OWNER':
     case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
     case 'TARGET_NOT_WORKSPACE_MEMBER':
@@ -81,7 +96,11 @@ const removeMemberErrorResponse = (error: MembershipServiceError) => {
     case 'OWNER_CANNOT_BE_REMOVED':
       return {
         status: 409 as const,
-        body: { message: error.message, code: error.type },
+        body: {
+          message: error.message,
+          code: error.type,
+          handoverPath: HANDOVER_OWNERSHIP_PATH,
+        },
       };
     case 'INSUFFICIENT_PERMISSIONS':
       return {
@@ -91,6 +110,9 @@ const removeMemberErrorResponse = (error: MembershipServiceError) => {
     case 'ALREADY_MEMBER':
     case 'CANNOT_ASSIGN_OWNER_ROLE':
     case 'NOT_CURRENT_OWNER':
+    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
+    case 'PERSONAL_WORKSPACE_TRANSFER':
+    case 'ALREADY_OWNER':
     case 'SECOND_OWNER':
     case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
     case 'TARGET_NOT_WORKSPACE_MEMBER':
@@ -108,12 +130,76 @@ const removeMemberErrorResponse = (error: MembershipServiceError) => {
   }
 };
 
+const transferOwnershipErrorResponse = (error: HandleTransferOwnershipError) => {
+  switch (error.type) {
+    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
+      return {
+        status: 403 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'NOT_CURRENT_OWNER':
+      return {
+        status: 403 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'PERSONAL_WORKSPACE_TRANSFER':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'ALREADY_OWNER':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'USER_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'User not found', code: error.type },
+      };
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'TARGET_NOT_WORKSPACE_MEMBER':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'OWNER_MUST_TRANSFER':
+      return {
+        status: 409 as const,
+        body: {
+          message: error.message,
+          code: error.type,
+          handoverPath: HANDOVER_OWNERSHIP_PATH,
+        },
+      };
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return {
+        status: 500 as const,
+        body: { message: TRANSFER_OWNERSHIP_STORAGE_MESSAGE },
+      };
+    default: {
+      const _never: never = error;
+      void _never;
+      return {
+        status: 500 as const,
+        body: { message: TRANSFER_OWNERSHIP_STORAGE_MESSAGE },
+      };
+    }
+  }
+};
+
 export type OrganizationRoutesDependencies = {
   sessionService: SessionService;
   membershipService: MembershipService;
   userService: UserService;
   agentService: AgentService;
   reissueAgentToken: ReissueAgentToken;
+  transferOwnership: TransferOwnershipHandler;
   authMiddleware: AuthMiddleware;
 };
 
@@ -121,7 +207,15 @@ export const registerOrganizationRoutes = async (
   app: FastifyInstance,
   deps: OrganizationRoutesDependencies
 ) => {
-  const { sessionService, membershipService, userService, agentService, reissueAgentToken, authMiddleware } = deps;
+  const {
+    sessionService,
+    membershipService,
+    userService,
+    agentService,
+    reissueAgentToken,
+    transferOwnership,
+    authMiddleware,
+  } = deps;
   const s = initServer();
 
   await app.register(async (orgApp) => {
@@ -166,6 +260,23 @@ export const registerOrganizationRoutes = async (
               body: { message: 'Failed to switch organization' },
             };
           }
+        );
+      },
+
+      transferOwner: async ({ params, body, request }) => {
+        const result = await transferOwnership({
+          organizationId: params.organizationId,
+          toUserId: body.userId,
+          callerUserId: request.authContext.userId,
+          actorKind: request.authContext.principalKind,
+        });
+
+        return result.match(
+          (view) => ({
+            status: 200 as const,
+            body: view,
+          }),
+          (error) => transferOwnershipErrorResponse(error)
         );
       },
 

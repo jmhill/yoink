@@ -3388,6 +3388,46 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('tryLeaveOrganizationFromSettings', 'http');
     },
 
+    async leaveOrganizationFromSettings(_orgName: string): Promise<void> {
+      throw new UnsupportedOperationError('leaveOrganizationFromSettings', 'http');
+    },
+
+    async shouldSeeOwnershipCard(_ownerName: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOwnershipCard', 'http');
+    },
+
+    async shouldNotSeeOwnershipCard(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeOwnershipCard', 'http');
+    },
+
+    async openHandOverOwnership(): Promise<void> {
+      throw new UnsupportedOperationError('openHandOverOwnership', 'http');
+    },
+
+    async shouldSeeHandoverCandidate(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeHandoverCandidate', 'http');
+    },
+
+    async shouldNotSeeHandoverCandidate(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeHandoverCandidate', 'http');
+    },
+
+    async pickHandoverCandidate(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('pickHandoverCandidate', 'http');
+    },
+
+    async confirmHandover(): Promise<void> {
+      throw new UnsupportedOperationError('confirmHandover', 'http');
+    },
+
+    async followHandoverLink(): Promise<void> {
+      throw new UnsupportedOperationError('followHandoverLink', 'http');
+    },
+
+    async frameOwnershipCard(): Promise<void> {
+      throw new UnsupportedOperationError('frameOwnershipCard', 'http');
+    },
+
     async shouldSeeMemberRow(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeMemberRow', 'http');
     },

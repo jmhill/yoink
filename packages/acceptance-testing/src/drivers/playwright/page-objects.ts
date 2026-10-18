@@ -1,4 +1,5 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
+import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
 import type { TaskFilter } from '../../dsl/types.js';
 import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
 import {
@@ -8,6 +9,7 @@ import {
   type MobileTabKey,
   tasksBoardCopyForUrl,
 } from './tasks-board-url.js';
+import { waitForSettledOpenDialog, waitForSettledOpenSheet } from './walkthrough-screenshots.js';
 
 /**
  * Page object for the login page (/login).
@@ -602,9 +604,9 @@ export class SettingsPage {
     await row.getByTitle('Leave organization').click();
     await this.page.getByRole('button', { name: 'Leave Organization' }).click();
     await expect(
-      this.page.getByText(
-        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
-      )
+      this.page.locator('[data-handover-link]').filter({
+        hasText: HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+      })
     ).toBeVisible();
   }
 
@@ -654,9 +656,99 @@ export class SettingsPage {
 
   async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
     const copy = this.page.locator('[data-owner-cannot-remove]');
-    await expect(copy).toHaveText(
-      "The owner can't be removed. Ownership has to be handed over first."
-    );
+    await expect(copy).toHaveText(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
+    await expect(copy.locator('[data-handover-link]')).toBeVisible();
+  }
+
+  ownershipCard() {
+    return this.page.locator('[data-ownership-card]');
+  }
+
+  async shouldSeeOwnershipCard(ownerName: string): Promise<void> {
+    const card = this.ownershipCard();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(`Owner: ${ownerName}`);
+  }
+
+  async shouldNotSeeOwnershipCard(): Promise<void> {
+    await expect(this.ownershipCard()).toHaveCount(0);
+  }
+
+  async openHandOverOwnership(): Promise<void> {
+    await this.page.locator('[data-hand-over-ownership]').click();
+    await expect(this.page.locator('[data-ownership-picker]')).toBeVisible();
+    const viewport = this.page.viewportSize();
+    if (viewport !== null && viewport.width >= 768) {
+      await waitForSettledOpenDialog({ page: this.page });
+    } else {
+      await waitForSettledOpenSheet({ page: this.page });
+    }
+  }
+
+  async shouldSeeHandoverCandidate(name: string): Promise<void> {
+    await expect(this.page.locator(`[data-ownership-candidate="${name}"]`)).toBeVisible();
+  }
+
+  async shouldNotSeeHandoverCandidate(name: string): Promise<void> {
+    await expect(this.page.locator(`[data-ownership-candidate="${name}"]`)).toHaveCount(0);
+  }
+
+  async pickHandoverCandidate(name: string): Promise<void> {
+    await this.page.locator(`[data-ownership-candidate="${name}"]`).click();
+    await expect(this.page.locator('[data-ownership-confirm]')).toBeVisible();
+    await expect(this.page.getByText(`Make ${name} the owner? You'll become an admin.`)).toBeVisible();
+  }
+
+  async confirmHandover(): Promise<void> {
+    await this.page.locator('[data-confirm-handover]').click();
+    await this.page.locator('[data-ownership-confirm]').waitFor({ state: 'hidden' });
+  }
+
+  async followHandoverLink(): Promise<void> {
+    await this.page.locator('[data-handover-link]').first().click();
+    await this.ownershipCard().waitFor({ state: 'visible' });
+  }
+
+  async leaveOrganizationFromSettings(orgName: string): Promise<void> {
+    await this.page.getByText(orgName, { exact: true }).waitFor({ state: 'visible' });
+    const row = this.page
+      .locator('div.flex.items-center.justify-between')
+      .filter({ hasText: orgName });
+    await row.getByTitle('Leave organization').click();
+    await this.page.getByRole('button', { name: 'Leave Organization' }).click();
+    await expect(this.page.getByText(orgName, { exact: true })).toHaveCount(0);
+    const organizations = this.page.getByText('Manage your organization memberships');
+    await organizations.waitFor({ state: 'visible' });
+    await organizations.evaluate((el) => {
+      el.scrollIntoView({ block: 'start', inline: 'nearest' });
+    });
+  }
+
+  async frameOwnershipCard(): Promise<void> {
+    const card = this.ownershipCard();
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+    await card.evaluate((el) => {
+      el.setAttribute('data-screenshot-focus', '');
+    });
+    await this.revealAbovePhoneChrome(card);
+  }
+
+  private async revealAbovePhoneChrome(target: Locator): Promise<void> {
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    const viewport = this.page.viewportSize();
+    if (box === null || viewport === null) {
+      return;
+    }
+    const reserve = viewport.width < 768 ? 80 : 16;
+    const overflow = box.y + box.height - (viewport.height - reserve);
+    if (overflow > 0) {
+      await this.page.evaluate(`window.scrollBy(0, ${Math.ceil(overflow)})`);
+    }
   }
 
   async frameOwnerCannotBeRemoved(): Promise<void> {

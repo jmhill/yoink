@@ -22,18 +22,41 @@ function SettingsPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [currentOrg, setCurrentOrg] = useState<SessionOrganization | null>(null);
+  const [tab, setTab] = useState<string>(() =>
+    typeof window !== 'undefined' && window.location.hash === '#ownership' ? 'organization' : 'user'
+  );
+
+  const refreshSession = async () => {
+    const result = await getSession();
+    if (result.ok) {
+      setSession(result.data);
+      const org = result.data.organizations.find((o) => o.id === result.data.organizationId);
+      setCurrentOrg(org ?? null);
+    }
+  };
 
   useEffect(() => {
-    const loadSession = async () => {
-      const result = await getSession();
-      if (result.ok) {
-        setSession(result.data);
-        const org = result.data.organizations.find((o) => o.id === result.data.organizationId);
-        setCurrentOrg(org ?? null);
+    refreshSession();
+  }, []);
+
+  useEffect(() => {
+    const openHandover = () => {
+      if (window.location.hash === '#ownership') {
+        setTab('organization');
       }
     };
-    loadSession();
+    openHandover();
+    window.addEventListener('hashchange', openHandover);
+    return () => window.removeEventListener('hashchange', openHandover);
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'organization' || window.location.hash !== '#ownership') {
+      return;
+    }
+    const card = document.getElementById('ownership');
+    card?.scrollIntoView({ block: 'start' });
+  }, [tab, session, currentOrg]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -56,7 +79,7 @@ function SettingsPage() {
   const canManageOrg = currentOrg?.role === 'owner' || currentOrg?.role === 'admin';
 
   return (
-    <div className="container mx-auto max-w-2xl p-4">
+    <div className="container mx-auto max-w-2xl p-4 pb-12">
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link to="/">
@@ -66,7 +89,7 @@ function SettingsPage() {
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
-      <Tabs defaultValue="user" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="user" className="flex items-center gap-2">
             <User className="h-4 w-4" />
@@ -186,6 +209,8 @@ function SettingsPage() {
                 organizationName={currentOrg.name}
                 currentUserId={session.user.id}
                 currentUserRole={currentOrg.role}
+                isPersonal={currentOrg.isPersonal}
+                onMembershipChanged={refreshSession}
               />
 
               {/* Invitations - only for admin/owner */}

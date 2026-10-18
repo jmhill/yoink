@@ -323,6 +323,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(terser@5.46.0)(tsx@4.23.12)(yaml@2.8.2)
 
   packages/acceptance-testing:
+    dependencies:
+      '@yoink/api-contracts':
+        specifier: workspace:*
+        version: link:../api-contracts
     devDependencies:
       '@playwright/test':
         specifier: ^1.58.0

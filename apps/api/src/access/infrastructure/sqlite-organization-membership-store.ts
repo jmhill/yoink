@@ -2,6 +2,7 @@ import type { Database } from '../../database/types.js';
 import { ResultAsync } from 'neverthrow';
 import type { OrganizationMembership, MembershipRole } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
+import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
 import {
   membershipStorageError,
   type MembershipStorageError,
@@ -37,6 +38,15 @@ const validateSchema = async (db: Database): Promise<void> => {
   if (result.rows.length === 0) {
     throw new Error(
       'OrganizationMembershipStore requires "organization_memberships" table. Ensure migrations have been run before starting the application.'
+    );
+  }
+
+  const events = await db.execute({
+    sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='membership_events'`,
+  });
+  if (events.rows.length === 0) {
+    throw new Error(
+      'OrganizationMembershipStore requires "membership_events" table. Ensure migrations have been run before starting the application.'
     );
   }
 };
@@ -149,24 +159,52 @@ export const createSqliteOrganizationMembershipStore = async (
     },
 
     setOwner: ({ demote, promote }): ResultAsync<void, MembershipStorageError> => {
-      const queries = [
-        ...(demote
-          ? [
-              {
-                sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
-                args: [demote.role, demote.id],
-              },
-            ]
-          : []),
-        {
-          sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
-          args: [promote.role, promote.id],
-        },
-      ];
+      const queries = planQueries({ demote, promote });
       return ResultAsync.fromPromise(
         db.batch(queries, 'write'),
         (error) => membershipStorageError('Failed to set owner', error)
       ).map(() => undefined);
     },
+
+    transferOwnership: (plan, event): ResultAsync<void, MembershipStorageError> => {
+      const queries = [
+        ...planQueries(plan),
+        {
+          sql: `
+            INSERT INTO membership_events
+              (id, type, organization_id, from_user_id, to_user_id, actor_user_id, occurred_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            event.id,
+            event.type,
+            event.organizationId,
+            event.fromUserId,
+            event.toUserId,
+            event.actorUserId,
+            event.occurredAt,
+          ],
+        },
+      ];
+      return ResultAsync.fromPromise(
+        db.batch(queries, 'write'),
+        (error) => membershipStorageError('Failed to hand over ownership', error)
+      ).map(() => undefined);
+    },
   };
 };
+
+const planQueries = ({ demote, promote }: OwnershipTransferPlan) => [
+  ...(demote
+    ? [
+        {
+          sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
+          args: [demote.role, demote.id],
+        },
+      ]
+    : []),
+  {
+    sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
+    args: [promote.role, promote.id],
+  },
+];

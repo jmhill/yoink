@@ -6,8 +6,9 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 import type { SignupOptionsResponse, SignupVerifyResponse } from '@yoink/api-contracts';
+import { z } from 'zod';
 
-type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
+type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string; handoverPath?: string };
 
 export type SessionOrganization = {
   id: string;
@@ -154,14 +155,23 @@ export const leaveOrganization = async (
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+    const parsed = z.object({
+      message: z.string().optional(),
+      handoverPath: z.string().optional(),
+    }).safeParse(await response.json().catch(() => ({})));
+    const message = parsed.success ? parsed.data.message : undefined;
+    const handoverPath = parsed.success ? parsed.data.handoverPath : undefined;
     if (response.status === 404) {
       return { ok: false, error: 'Not a member of this organization' };
     }
     if (response.status === 400) {
-      return { ok: false, error: body.message || 'Cannot leave this organization' };
+      return { ok: false, error: message ?? 'Cannot leave this organization' };
     }
-    return { ok: false, error: body.message || 'Failed to leave organization' };
+    return {
+      ok: false,
+      error: message ?? 'Failed to leave organization',
+      handoverPath,
+    };
   }
 
   return { ok: true, data: { success: true } };
@@ -389,6 +399,9 @@ export type MintedAgent = {
 
 export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): string =>
   member.kind === 'agent' ? (member.name ?? 'Agent') : member.email;
+
+export const memberDisplayName = (member: Pick<Member, 'email' | 'name'>): string =>
+  member.name ?? member.email;
 
 /**
  * List members of the current organization.

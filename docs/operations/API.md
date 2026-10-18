@@ -795,6 +795,37 @@ Response:
 
 Match the id to `userId`. Agents use `name`; humans use `email`.
 
+## Hand over ownership
+
+The current owner hands the workspace to another person already in it.
+Caller and previous owner come from the session, never the body. One save:
+the new person becomes owner and the old owner becomes an admin. Bots,
+personal workspaces, and non-owners are refused.
+
+```bash
+curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"'"$NEXT_OWNER_ID"'"}' \
+  "$API/api/organizations/$ORGANIZATION_ID/owner/transfer"
+```
+
+`200` body is `{ "owner": Member, "previousOwner": Member }`.
+
+| Code | When |
+| --- | --- |
+| `BOT_CANNOT_TRANSFER_OWNERSHIP` | An agent token called transfer (`403`) |
+| `NOT_CURRENT_OWNER` | Caller is not the current owner (`403`) |
+| `PERSONAL_WORKSPACE_TRANSFER` | Personal workspace (`400`) |
+| `ALREADY_OWNER` | Target is the caller (`400`) |
+| `USER_NOT_FOUND` | Target user does not exist (`404`) |
+| `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | Target is a bot (`400`) |
+| `TARGET_NOT_WORKSPACE_MEMBER` | Target is not already a member (`400`) |
+| `OWNER_MUST_TRANSFER` | Leave/remove while still owner (`409`, includes `handoverPath`) |
+
+Leave and remove-owner `409`s use message `Hand over ownership first.` and
+`handoverPath` `/settings#ownership`. Storage failure is `500`
+`Couldn't hand over ownership. Try again.`
+
 ```bash
 # lastChangedBy on one task → display name
 id=$(printf '%s' "$task" | jq -r .lastChangedBy)

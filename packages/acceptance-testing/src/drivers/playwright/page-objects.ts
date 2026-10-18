@@ -1,5 +1,8 @@
 import { type Page, type CDPSession, type Locator, expect } from '@playwright/test';
-import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
+import {
+  HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
+} from '@yoink/api-contracts';
 import type { TaskFilter } from '../../dsl/types.js';
 import { dropPointForOpenTaskSlot } from './open-task-slot-drop.js';
 import {
@@ -654,10 +657,16 @@ export class SettingsPage {
     await expect(this.page.locator('button[title^="Remove "]')).toHaveCount(0);
   }
 
-  async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
+  async shouldSeeOwnerHandoverLink(): Promise<void> {
     const copy = this.page.locator('[data-owner-cannot-remove]');
     await expect(copy).toHaveText(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
     await expect(copy.locator('[data-handover-link]')).toBeVisible();
+  }
+
+  async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
+    const copy = this.page.locator('[data-owner-cannot-remove]');
+    await expect(copy).toHaveText(THE_OWNER_CANT_BE_REMOVED_MESSAGE);
+    await expect(copy.locator('[data-handover-link]')).toHaveCount(0);
   }
 
   ownershipCard() {

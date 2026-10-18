@@ -3444,6 +3444,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldNotSeeAnyRemoveButtons', 'http');
     },
 
+    async shouldSeeOwnerHandoverLink(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeOwnerHandoverLink', 'http');
+    },
+
     async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeOwnerCannotBeRemoved', 'http');
     },

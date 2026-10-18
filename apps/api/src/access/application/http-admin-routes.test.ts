@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
+import {
+  BOT_CANNOT_BE_OWNER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+} from '@yoink/api-contracts';
 import {
   createTestAppFull,
   TEST_ADMIN_PASSWORD,
@@ -478,7 +481,7 @@ describe('admin HTTP routes', () => {
       });
       expect(outsider.statusCode).toBe(400);
       expect(outsider.json().code).toBe('TARGET_NOT_WORKSPACE_MEMBER');
-      expect(outsider.json().message).toMatch(/member/i);
+      expect(outsider.json().message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
     });
 
     it('switches a member to admin and back when an owner remains', async () => {

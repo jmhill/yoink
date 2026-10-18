@@ -12,9 +12,13 @@ import {
 import { Crown, Shield, User, Trash2, Loader2, AlertCircle, Users, Bot, Plus, Copy, Check, KeyRound } from 'lucide-react';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
-import { listMembers, removeMember, mintAgent, memberLabel, type Member } from '@/api/auth';
+import { listMembers, removeMember, mintAgent, memberDisplayName, memberLabel, type Member } from '@/api/auth';
 import { tsrOrganizations } from '@/api/client';
-import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE, HANDOVER_OWNERSHIP_PATH } from '@yoink/api-contracts';
+import {
+  HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  HANDOVER_OWNERSHIP_PATH,
+  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
+} from '@yoink/api-contracts';
 import { OwnershipCard } from '@/components/ownership-card';
 
 const errorBodyMessage = (body: unknown): string | null => {
@@ -203,7 +207,7 @@ export function MembersSection({
                       </div>
                       <div>
                         <div className="font-medium flex items-center gap-2">
-                          {memberLabel(member)}
+                          {member.kind === 'agent' ? memberLabel(member) : memberDisplayName(member)}
                           {isSelf && (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
                               You
@@ -222,18 +226,22 @@ export function MembersSection({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {member.role === 'owner' && currentUserRole !== 'member' ? (
+                      {member.role === 'owner' ? (
                         <p
                           className="max-w-[14rem] text-right text-sm text-muted-foreground"
                           data-owner-cannot-remove=""
                         >
-                          <a
-                            href={HANDOVER_OWNERSHIP_PATH}
-                            data-handover-link=""
-                            className="underline underline-offset-2"
-                          >
-                            {HAND_OVER_OWNERSHIP_FIRST_MESSAGE}
-                          </a>
+                          {currentUserId === member.userId ? (
+                            <a
+                              href={HANDOVER_OWNERSHIP_PATH}
+                              data-handover-link=""
+                              className="underline underline-offset-2"
+                            >
+                              {HAND_OVER_OWNERSHIP_FIRST_MESSAGE}
+                            </a>
+                          ) : (
+                            THE_OWNER_CANT_BE_REMOVED_MESSAGE
+                          )}
                         </p>
                       ) : null}
                       {canReissue && member.kind === 'agent' && (

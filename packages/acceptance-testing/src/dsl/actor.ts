@@ -409,7 +409,14 @@ export type BrowserActorOperations = {
   shouldNotSeeAnyRemoveButtons(): Promise<void>;
 
   /**
+   * Settings Organization tab: owner row shows the handover link.
+   * Shown only to the owner.
+   */
+  shouldSeeOwnerHandoverLink(): Promise<void>;
+
+  /**
    * Settings Organization tab: owner row shows the cannot-remove copy.
+   * Shown to everyone except the owner.
    */
   shouldSeeOwnerCannotBeRemoved(): Promise<void>;
 

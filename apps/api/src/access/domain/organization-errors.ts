@@ -7,6 +7,7 @@ import {
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
 } from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
 
@@ -19,6 +20,7 @@ export {
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
   OWNER_MUST_TRANSFER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
 };
 
 // ============================================================================
@@ -277,7 +279,7 @@ export const targetNotWorkspaceMemberError = (
   type: 'TARGET_NOT_WORKSPACE_MEMBER',
   userId,
   organizationId,
-  message: 'Owner must already be a member of the workspace',
+  message: TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
 });
 
 /** Organization must have at least one admin */

@@ -8,6 +8,7 @@ import {
   BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
   NOT_CURRENT_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
 } from './organization-errors.js';
 
 const orgId = '550e8400-e29b-41d4-a716-446655440001';
@@ -216,6 +217,9 @@ describe('decideTransferOwnership', () => {
       targetUser: outsider,
     });
     expect(result.isErr() && result.error.type).toBe('TARGET_NOT_WORKSPACE_MEMBER');
+    if (result.isErr() && result.error.type === 'TARGET_NOT_WORKSPACE_MEMBER') {
+      expect(result.error.message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
+    }
   });
 
   it('checks refusals in the specified order when several could apply', () => {

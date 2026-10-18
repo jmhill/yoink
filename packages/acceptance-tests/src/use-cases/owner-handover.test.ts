@@ -57,6 +57,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await setViewport(owner, viewport);
         await owner.openOrganizationSettings();
         await owner.shouldSeeOwnershipCard('Justin');
+        await owner.shouldSeeOwnerHandoverLink();
         await owner.frameOwnershipCard();
         await owner.saveWalkthroughScreenshot({ story: WALKTHROUGH_STORY, step: 'card' });
 
@@ -110,6 +111,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await member.switchOrganization(org.id);
       await member.openOrganizationSettings();
       await member.shouldNotSeeOwnershipCard();
+      await member.shouldSeeOwnerCannotBeRemoved();
 
       const personal = await ctx.createActor(`personal-${stamp}@example.com`);
       await personal.openOrganizationSettings();
@@ -138,6 +140,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       for (const viewport of ['phone', 'desktop'] as const) {
         await setViewport(owner, viewport);
+        await owner.openOrganizationSettings();
+        await owner.shouldSeeOwnerHandoverLink();
         await owner.tryLeaveOrganizationFromSettings(org.name);
         await owner.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
@@ -152,6 +156,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         adminInvite.code,
         `handover-link-admin-${Date.now()}@example.com`
       );
+      await ctx.admin.updateUser(workspaceAdmin.userId, { name: 'Polly' });
       await workspaceAdmin.switchOrganization(org.id);
 
       for (const viewport of ['phone', 'desktop'] as const) {

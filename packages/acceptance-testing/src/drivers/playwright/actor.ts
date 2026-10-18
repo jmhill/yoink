@@ -6201,6 +6201,10 @@ export const createPlaywrightActor = (
       await settingsPage.shouldNotSeeAnyRemoveButtons();
     },
 
+    async shouldSeeOwnerHandoverLink(): Promise<void> {
+      await settingsPage.shouldSeeOwnerHandoverLink();
+    },
+
     async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
       await settingsPage.shouldSeeOwnerCannotBeRemoved();
     },

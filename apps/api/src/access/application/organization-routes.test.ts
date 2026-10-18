@@ -23,6 +23,7 @@ import {
   HANDOVER_OWNERSHIP_PATH,
   NOT_CURRENT_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
 } from '@yoink/api-contracts';
 import { tokenStorageError } from '../domain/auth-errors.js';
@@ -859,7 +860,7 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.json().code).toBe('TARGET_NOT_WORKSPACE_MEMBER');
-      expect(response.json().message).toBe('Owner must already be a member of the workspace');
+      expect(response.json().message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
     });
 
     it('returns 401 without authentication', async () => {

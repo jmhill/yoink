@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
+import {
+  BOT_CANNOT_BE_OWNER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+} from '@yoink/api-contracts';
 import { decideSetOwner } from './decide-set-owner.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
@@ -95,6 +98,9 @@ describe('decideSetOwner', () => {
       targetUser: human,
     });
     expect(result.isErr() && result.error.type).toBe('TARGET_NOT_WORKSPACE_MEMBER');
+    if (result.isErr() && result.error.type === 'TARGET_NOT_WORKSPACE_MEMBER') {
+      expect(result.error.message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
+    }
   });
 
   it('refuses a bot', () => {

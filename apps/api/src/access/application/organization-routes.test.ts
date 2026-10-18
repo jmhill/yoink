@@ -694,6 +694,30 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(400);
     });
+
+    it('returns 500 with the storage message and logs at error when persist fails', async () => {
+      const { app: failingApp, logs } = await createLoggedOrgApp({
+        shouldFailOnRemoveMember: true,
+      });
+      const response = await failingApp.inject({
+        method: 'POST',
+        url: `/api/organizations/${teamOrg.id}/leave`,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe('Failed to leave organization');
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            msg: 'Failed to leave organization',
+            error: expect.anything(),
+          }),
+        ])
+      );
+      await failingApp.close();
+    });
   });
 
   describe('GET /api/organizations/:organizationId/members', () => {
@@ -842,8 +866,13 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.json().message).toBe(removeMemberFailedMessage('Libby'));
-      expect(logs.some((line) => line.level === PINO_ERROR_LEVEL && line.error !== undefined)).toBe(
-        true
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            error: expect.objectContaining({ type: 'MEMBERSHIP_STORAGE_ERROR' }),
+          }),
+        ])
       );
       await failingApp.close();
     });
@@ -1147,8 +1176,13 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.json().message).toBe(CHANGE_ROLE_STORAGE_MESSAGE);
-      expect(logs.some((line) => line.level === PINO_ERROR_LEVEL && line.error !== undefined)).toBe(
-        true
+      expect(logs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            level: PINO_ERROR_LEVEL,
+            error: expect.objectContaining({ type: 'MEMBERSHIP_STORAGE_ERROR' }),
+          }),
+        ])
       );
       await failingApp.close();
     });

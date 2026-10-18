@@ -37,15 +37,20 @@ describe('Migration 41: membership events', () => {
     await db.execute({
       sql: `
         INSERT INTO membership_events
-          (id, type, organization_id, from_user_id, to_user_id, actor_user_id, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (id, type, organization_id, user_id, from_user_id, to_user_id,
+           from_role, to_role, actor_kind, actor_user_id, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         'evt-1',
         'OwnershipTransferred',
         'org-1',
+        'user-2',
         'user-1',
         'user-2',
+        null,
+        null,
+        'member',
         'user-1',
         '2024-06-15T12:00:00.000Z',
       ],

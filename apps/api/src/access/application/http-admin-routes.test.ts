@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
 } from '@yoink/api-contracts';
@@ -402,7 +403,7 @@ describe('admin HTTP routes', () => {
         payload: { role: 'admin' },
       });
       expect(promoteBot.statusCode).toBe(400);
-      expect(promoteBot.json().message).toBe('A bot cannot be an admin');
+      expect(promoteBot.json().message).toBe(BOT_CANNOT_BE_ADMIN_MESSAGE);
 
       const still = await app.inject({
         method: 'GET',

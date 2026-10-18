@@ -7,6 +7,8 @@ import {
   ListMembersResponseSchema,
   TransferOwnershipRequestSchema,
   TransferOwnershipResponseSchema,
+  ChangeMemberRoleRequestSchema,
+  ChangeMemberRoleResponseSchema,
   CreateAgentRequestSchema,
   CreateAgentResponseSchema,
 } from '../schemas/organization.js';
@@ -103,9 +105,34 @@ export const organizationContract = c.router({
   },
 
   /**
+   * Change a member's role between admin and member.
+   * Owner and admins only. Cannot change the owner, assign owner, or change your own role.
+   * Bots cannot be admin. Token callers are refused in the domain.
+   * Requires auth (token or session).
+   */
+  changeMemberRole: {
+    method: 'PATCH',
+    path: '/api/organizations/:organizationId/members/:userId/role',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+      userId: z.string().uuid(),
+    }),
+    body: ChangeMemberRoleRequestSchema,
+    responses: {
+      200: ChangeMemberRoleResponseSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      403: ErrorSchema,
+      404: ErrorSchema,
+      409: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Change a member role between admin and member',
+  },
+
+  /**
    * Remove a member from an organization.
-   * - Admins can remove members (but not other admins)
-   * - Owners can remove admins and members
+   * - Owners and admins can remove admins and members
    * - Cannot remove self (use leave instead)
    * - Cannot remove the owner (OWNER_CANNOT_BE_REMOVED)
    * Requires auth (token or session).
@@ -155,7 +182,7 @@ export const organizationContract = c.router({
 
   /**
    * Issue a new token for an existing agent member.
-   * Owner only. Revokes the member's current tokens and returns the new secret once.
+   * Owner and admins. Revokes the member's current tokens and returns the new secret once.
    * Requires auth (token or session).
    */
   reissueAgentToken: {

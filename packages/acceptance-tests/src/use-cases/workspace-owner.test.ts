@@ -1,5 +1,6 @@
 import { usingDrivers, describe, it, expect, beforeAll, afterAll } from '@yoink/acceptance-testing';
 import { OwnerMustTransferError, ValidationError } from '@yoink/acceptance-testing';
+import { BOT_CANNOT_BE_ADMIN_MESSAGE } from '@yoink/api-contracts';
 
 const WALKTHROUGH_STORY = '185-one-owner';
 
@@ -165,7 +166,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           kind: 'agent',
           role: 'admin',
         });
-        await ctx.admin.shouldSeeCreateUserError('A bot cannot be an admin');
+        await ctx.admin.shouldSeeCreateUserError(BOT_CANNOT_BE_ADMIN_MESSAGE);
         await ctx.admin.saveWalkthroughScreenshot({
           story: WALKTHROUGH_STORY,
           step: 'bot_create_admin_refused',
@@ -176,7 +177,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await drivePanel('desktop');
     }, 180_000);
 
-    it('hides Remove on the owner and other admins, and hides all Remove for members', async () => {
+    it('hides Remove on the owner, shows it on other admins, and hides all Remove for members', async () => {
       const stamp = Date.now();
       const org = await ctx.admin.createOrganization(`members-remove-${stamp}`);
       const ownerUser = await ctx.admin.createUser(org.id, `owner-${stamp}@example.com`, {
@@ -184,11 +185,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
         role: 'member',
       });
       await ctx.admin.setOrganizationOwner(org.id, ownerUser.id);
-      const otherAdminUser = await ctx.admin.createUser(org.id, `other-admin-${stamp}@example.com`, {
+      await ctx.admin.createUser(org.id, `other-admin-${stamp}@example.com`, {
         name: 'Other Admin',
         role: 'admin',
       });
-      const removableUser = await ctx.admin.createUser(org.id, `removable-${stamp}@example.com`, {
+      await ctx.admin.createUser(org.id, `removable-${stamp}@example.com`, {
         name: 'Removable',
         role: 'member',
       });
@@ -214,10 +215,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
           await workspaceAdmin.useDesktopViewport();
         }
         await workspaceAdmin.openOrganizationSettings();
-        await workspaceAdmin.shouldSeeMemberRow(ownerUser.email);
-        await workspaceAdmin.shouldNotSeeRemoveOnMember(ownerUser.email);
-        await workspaceAdmin.shouldNotSeeRemoveOnMember(otherAdminUser.email);
-        await workspaceAdmin.shouldSeeRemoveOnMember(removableUser.email);
+        await workspaceAdmin.shouldSeeMemberRow('Owner Pat');
+        await workspaceAdmin.shouldNotSeeRemoveOnMember('Owner Pat');
+        await workspaceAdmin.shouldSeeRemoveOnMember('Other Admin');
+        await workspaceAdmin.shouldSeeRemoveOnMember('Removable');
         await workspaceAdmin.shouldSeeOwnerCannotBeRemoved();
         await workspaceAdmin.revealMembersSection();
         await workspaceAdmin.saveWalkthroughScreenshot({
@@ -238,7 +239,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           await member.useDesktopViewport();
         }
         await member.openOrganizationSettings();
-        await member.shouldSeeMemberRow(ownerUser.email);
+        await member.shouldSeeMemberRow('Owner Pat');
         await member.shouldNotSeeAnyRemoveButtons();
         await member.revealMembersSection();
         await member.saveWalkthroughScreenshot({

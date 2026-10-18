@@ -53,6 +53,7 @@ import { migration as notesChangedSinceIndex } from './038-notes-changed-since-i
 import { migration as notesMirrorBot } from './039-notes-mirror-bot.js';
 import { migration as oneOwnerPerWorkspace } from './040-one-owner-per-workspace.js';
 import { migration as membershipEvents } from './041-membership-events.js';
+import { migration as membershipEventsV2 } from './042-membership-events-v2.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -96,6 +97,7 @@ export const migrations: Migration[] = [
   notesMirrorBot,
   oneOwnerPerWorkspace,
   membershipEvents,
+  membershipEventsV2,
 ];
 
 export type { Migration };

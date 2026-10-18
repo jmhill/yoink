@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Button } from '@yoink/ui-base/components/button';
 import {
@@ -9,28 +10,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@yoink/ui-base/components/sheet';
 import { Crown, Shield, User, Trash2, Loader2, AlertCircle, Users, Bot, Plus, Copy, Check, KeyRound } from 'lucide-react';
+import { cn } from '@yoink/ui-base/lib/utils';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
+import { toast } from 'sonner';
 import { listMembers, removeMember, mintAgent, memberDisplayName, memberLabel, type Member } from '@/api/auth';
 import { tsrOrganizations } from '@/api/client';
 import {
+  CHANGE_ROLE_STORAGE_MESSAGE,
+  ErrorSchema,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
+  MAKE_ADMIN_LABEL,
+  MAKE_MEMBER_LABEL,
   THE_OWNER_CANT_BE_REMOVED_MESSAGE,
+  demoteConfirmMessage,
+  madeAdminToast,
+  madeMemberToast,
 } from '@yoink/api-contracts';
 import { OwnershipCard } from '@/components/ownership-card';
+import { useDesktopLayout } from '@/lib/use-desktop-layout';
+import {
+  canChangeRole,
+  canReissue,
+  canRemove,
+  roleActionFor,
+} from '@/lib/member-row-actions';
+import { roleActionMenuCoords } from '@/lib/role-action-menu';
 
 const errorBodyMessage = (body: unknown): string | null => {
-  if (
-    typeof body === 'object' &&
-    body !== null &&
-    'message' in body &&
-    typeof body.message === 'string'
-  ) {
-    return body.message;
-  }
-  return null;
+  const parsed = ErrorSchema.safeParse(body);
+  return parsed.success ? parsed.data.message : null;
 };
 
 type MembersSectionProps = {
@@ -69,24 +87,8 @@ const getRoleLabel = (role: 'owner' | 'admin' | 'member') => {
   }
 };
 
-/**
- * Check if the current user can remove the target member.
- * - Nobody can remove the owner (transfer ownership first)
- * - Owners can remove admins and members (except themselves)
- * - Admins can only remove members (not other admins)
- * - Members cannot remove anyone
- */
-const canRemove = (
-  currentRole: 'owner' | 'admin' | 'member',
-  targetRole: 'owner' | 'admin' | 'member',
-  isSelf: boolean
-): boolean => {
-  if (isSelf) return false;
-  if (targetRole === 'owner') return false;
-  if (currentRole === 'member') return false;
-  if (currentRole === 'admin' && targetRole === 'admin') return false;
-  return true;
-};
+const rowLabel = (member: Member): string =>
+  member.kind === 'agent' ? memberLabel(member) : memberDisplayName(member);
 
 export function MembersSection({
   organizationId,
@@ -109,6 +111,10 @@ export function MembersSection({
   const [reissuingMember, setReissuingMember] = useState<Member | null>(null);
   const [reissueError, setReissueError] = useState<string | null>(null);
   const [rawReissuedToken, setRawReissuedToken] = useState<string | null>(null);
+  const [demotingMember, setDemotingMember] = useState<Member | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  const viewer = { userId: currentUserId, role: currentUserRole };
 
   const reissueMutation = tsrOrganizations.reissueAgentToken.useMutation({
     onSuccess: (result) => {
@@ -123,15 +129,37 @@ export function MembersSection({
     },
   });
 
-  const canMint = currentUserRole === 'owner' || currentUserRole === 'admin';
-  const canReissue = currentUserRole === 'owner';
+  const changeRoleMutation = tsrOrganizations.changeMemberRole.useMutation({
+    onSuccess: (result, variables) => {
+      if (result.status === 200) {
+        const name = memberDisplayName(result.body.member);
+        if (variables.body.role === 'admin') {
+          toast.success(madeAdminToast(name));
+        } else {
+          toast.success(madeMemberToast(name));
+        }
+        setDemotingMember(null);
+        setRoleError(null);
+        loadMembers('refresh');
+        return;
+      }
+      setRoleError(errorBodyMessage(result.body) ?? CHANGE_ROLE_STORAGE_MESSAGE);
+    },
+    onError: () => {
+      setRoleError(CHANGE_ROLE_STORAGE_MESSAGE);
+    },
+  });
 
-  const loadMembers = async () => {
-    setState({ status: 'loading' });
+  const canMint = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  const loadMembers = async (mode: 'replace' | 'refresh' = 'replace') => {
+    if (mode === 'replace') {
+      setState({ status: 'loading' });
+    }
     const result = await listMembers(organizationId);
     if (result.ok) {
       setState({ status: 'success', members: result.data.members });
-    } else {
+    } else if (mode === 'replace') {
       setState({ status: 'error', error: result.error });
     }
   };
@@ -140,7 +168,6 @@ export function MembersSection({
     loadMembers();
   }, [organizationId]);
 
-  // Reset error when dialog opens
   useEffect(() => {
     if (removingMember) {
       setRemoveError(null);
@@ -159,10 +186,18 @@ export function MembersSection({
 
     if (result.ok) {
       setRemovingMember(null);
-      loadMembers();
+      loadMembers('refresh');
     } else {
       setRemoveError(result.error);
     }
+  };
+
+  const requestRole = (target: Member, role: 'admin' | 'member') => {
+    setRoleError(null);
+    changeRoleMutation.mutate({
+      params: { organizationId, userId: target.userId },
+      body: { role },
+    });
   };
 
   return (
@@ -191,14 +226,24 @@ export function MembersSection({
 
           {state.status === 'success' && (
             <div className="space-y-2">
+              {roleError && (
+                <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{roleError}</span>
+                </div>
+              )}
               {state.members.map((member) => {
                 const isSelf = member.userId === currentUserId;
-                const showRemove = canRemove(currentUserRole, member.role, isSelf);
+                const showRemove = canRemove(viewer, member);
+                const showRole = canChangeRole(viewer, member);
+                const showReissue = canReissue(viewer, member);
+                const label = rowLabel(member);
 
                 return (
                   <div
                     key={member.userId}
-                    data-member-row={memberLabel(member)}
+                    data-member-row={label}
+                    data-member-role={member.role}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card"
                   >
                     <div className="flex items-center gap-3">
@@ -207,7 +252,7 @@ export function MembersSection({
                       </div>
                       <div>
                         <div className="font-medium flex items-center gap-2">
-                          {member.kind === 'agent' ? memberLabel(member) : memberDisplayName(member)}
+                          {label}
                           {isSelf && (
                             <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
                               You
@@ -244,7 +289,15 @@ export function MembersSection({
                           )}
                         </p>
                       ) : null}
-                      {canReissue && member.kind === 'agent' && (
+                      {showRole ? (
+                        <MemberRoleAction
+                          member={member}
+                          pending={changeRoleMutation.isPending}
+                          onPromote={() => requestRole(member, 'admin')}
+                          onDemote={() => setDemotingMember(member)}
+                        />
+                      ) : null}
+                      {showReissue && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -264,7 +317,7 @@ export function MembersSection({
                           variant="ghost"
                           size="icon"
                           onClick={() => setRemovingMember(member)}
-                          title={`Remove ${member.email}`}
+                          title={`Remove ${label}`}
                         >
                           <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                         </Button>
@@ -413,7 +466,7 @@ export function MembersSection({
           setReissueError(null);
         }
       }}>
-        <DialogContent>
+        <DialogContent data-reissue-dialog="">
           {rawReissuedToken ? (
             <>
               <DialogHeader>
@@ -426,7 +479,7 @@ export function MembersSection({
                   The previous token for {reissuingMember ? memberLabel(reissuingMember) : 'this agent'} no longer works.
                 </DialogDescription>
               </DialogHeader>
-              <div className="p-3 rounded-lg border bg-muted font-mono text-sm break-all">
+              <div className="p-3 rounded-lg border bg-muted font-mono text-sm break-all" data-reissued-token="">
                 {rawReissuedToken}
               </div>
               <DialogFooter>
@@ -512,13 +565,59 @@ export function MembersSection({
         />
       ) : null}
 
-      {/* Remove member confirmation dialog */}
+      <Dialog open={!!demotingMember} onOpenChange={(open) => {
+        if (!open) {
+          setDemotingMember(null);
+        }
+      }}>
+        <DialogContent data-demote-confirm="">
+          <DialogHeader>
+            <DialogTitle>{MAKE_MEMBER_LABEL}</DialogTitle>
+            <DialogDescription>
+              {demotingMember ? demoteConfirmMessage(memberDisplayName(demotingMember)) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {roleError && (
+            <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{roleError}</span>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDemotingMember(null)}
+              disabled={changeRoleMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-confirm-demote=""
+              onClick={() => {
+                if (!demotingMember) return;
+                requestRole(demotingMember, 'member');
+              }}
+              disabled={changeRoleMutation.isPending}
+            >
+              {changeRoleMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                MAKE_MEMBER_LABEL
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!removingMember} onOpenChange={() => setRemovingMember(null)}>
-        <DialogContent>
+        <DialogContent data-remove-confirm="">
           <DialogHeader>
             <DialogTitle>Remove member</DialogTitle>
             <DialogDescription>
-              Remove {removingMember?.email} from {organizationName}? They will lose access to all
+              Remove {removingMember ? rowLabel(removingMember) : ''} from {organizationName}? They will lose access to all
               organization data.
             </DialogDescription>
           </DialogHeader>
@@ -547,6 +646,183 @@ export function MembersSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+type MemberRoleActionProps = {
+  member: Member;
+  pending: boolean;
+  onPromote: () => void;
+  onDemote: () => void;
+};
+
+function MemberRoleAction({ member, pending, onPromote, onDemote }: MemberRoleActionProps) {
+  const isDesktop = useDesktopLayout();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const action = roleActionFor(member);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+      setMenuCoords(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setMenuOpen(false);
+        setMenuCoords(null);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [menuOpen]);
+
+  if (action === null) {
+    return null;
+  }
+  const label = action === 'admin' ? MAKE_ADMIN_LABEL : MAKE_MEMBER_LABEL;
+  const choose = () => {
+    if (action === 'admin') {
+      onPromote();
+    } else {
+      onDemote();
+    }
+    setSheetOpen(false);
+    setMenuOpen(false);
+    setMenuCoords(null);
+  };
+
+  const openDesktopMenu = () => {
+    const triggerBox = triggerRef.current?.getBoundingClientRect();
+    if (!triggerBox) {
+      return;
+    }
+    setMenuCoords(
+      roleActionMenuCoords({
+        trigger: triggerBox,
+        viewport: {
+          top: 0,
+          left: 0,
+          right: window.innerWidth,
+          bottom: window.innerHeight,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      })
+    );
+    setMenuOpen(true);
+  };
+
+  if (isDesktop) {
+    return (
+      <>
+        <div ref={triggerRef} className="inline-flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            aria-label={label}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            data-role-action={action}
+            onClick={() => {
+              if (menuOpen) {
+                setMenuOpen(false);
+                setMenuCoords(null);
+                return;
+              }
+              openDesktopMenu();
+            }}
+          >
+            {label}
+          </Button>
+        </div>
+        {menuOpen && menuCoords
+          ? createPortal(
+              <div
+                ref={menuRef}
+                role="menu"
+                data-role-menu=""
+                className="bg-popover text-popover-foreground min-w-[8rem] rounded-md border p-1 shadow-md"
+                style={{
+                  position: 'fixed',
+                  top: menuCoords.top,
+                  left: menuCoords.left,
+                  zIndex: 100,
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-role-action-item=""
+                  className={cn(
+                    'relative flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-left text-sm',
+                    'outline-hidden select-none hover:bg-accent hover:text-accent-foreground'
+                  )}
+                  onClick={choose}
+                  disabled={pending}
+                >
+                  {label}
+                </button>
+              </div>,
+              document.body
+            )
+          : null}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={pending}
+        aria-label={label}
+        data-role-action={action}
+        onClick={() => setSheetOpen(true)}
+      >
+        {label}
+      </Button>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent data-role-sheet="" side="bottom" className="gap-0">
+          <SheetHeader>
+            <SheetTitle>{label}</SheetTitle>
+            <SheetDescription>{memberDisplayName(member)}</SheetDescription>
+          </SheetHeader>
+          <div className="py-4">
+            <Button
+              className="w-full"
+              data-role-action-item=""
+              onClick={choose}
+              disabled={pending}
+            >
+              {label}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

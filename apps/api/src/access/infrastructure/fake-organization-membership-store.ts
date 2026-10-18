@@ -1,7 +1,7 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
-import type { OwnershipTransferred } from '../domain/membership-events.js';
+import type { MembershipEvent } from '../domain/membership-events.js';
 import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
 import { membershipStorageError, type MembershipStorageError } from '../domain/organization-errors.js';
 
@@ -11,18 +11,20 @@ export type FakeOrganizationMembershipStoreOptions = {
   shouldFailOnDelete?: boolean;
   shouldFailOnSetOwner?: boolean;
   shouldFailOnTransferOwnership?: boolean;
+  shouldFailOnChangeMemberRole?: boolean;
+  shouldFailOnRemoveMember?: boolean;
   initialMemberships?: OrganizationMembership[];
 };
 
 export type FakeOrganizationMembershipStore = OrganizationMembershipStore & {
-  recordedEvents(): readonly OwnershipTransferred[];
+  recordedEvents(): readonly MembershipEvent[];
 };
 
 export const createFakeOrganizationMembershipStore = (
   options: FakeOrganizationMembershipStoreOptions = {}
 ): FakeOrganizationMembershipStore => {
   const memberships: OrganizationMembership[] = [...(options.initialMemberships ?? [])];
-  const events: OwnershipTransferred[] = [];
+  const events: MembershipEvent[] = [];
 
   return {
     save: (membership: OrganizationMembership): ResultAsync<void, MembershipStorageError> => {
@@ -101,6 +103,28 @@ export const createFakeOrganizationMembershipStore = (
         return errAsync(membershipStorageError('Transfer ownership failed'));
       }
       applyPlan(memberships, plan);
+      events.push(event);
+      return okAsync(undefined);
+    },
+
+    changeMemberRole: (membership, event): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnChangeMemberRole) {
+        return errAsync(membershipStorageError('Change member role failed'));
+      }
+      const next = memberships.map((entry) =>
+        entry.id === membership.id ? membership : entry
+      );
+      memberships.splice(0, memberships.length, ...next);
+      events.push(event);
+      return okAsync(undefined);
+    },
+
+    removeMember: (membershipId, event): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnRemoveMember) {
+        return errAsync(membershipStorageError('Remove member failed'));
+      }
+      const next = memberships.filter((entry) => entry.id !== membershipId);
+      memberships.splice(0, memberships.length, ...next);
       events.push(event);
       return okAsync(undefined);
     },

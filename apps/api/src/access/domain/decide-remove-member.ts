@@ -1,63 +1,94 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { RemoveMemberCommand } from './membership-commands.js';
+import type { RemoveMember } from './membership-commands.js';
 import type { OrganizationMembership } from './organization-membership.js';
-import { lastAdminBlocksChange } from './membership-roles.js';
+import type { MemberLeft, MemberRemoved } from './membership-events.js';
+import { isAdminRole, lastAdminBlocksChange } from './membership-roles.js';
 import { decideOwnerRemains, membershipsWithout } from './owner-presence.js';
 import {
   cannotLeavePersonalOrgError,
-  insufficientPermissionsError,
+  cannotRemoveSelfError,
   lastAdminError,
   membershipNotFoundError,
   ownerCannotBeRemovedError,
+  removeNotAllowedError,
   type CannotLeavePersonalOrgError,
-  type InsufficientPermissionsError,
+  type CannotRemoveSelfError,
   type LastAdminError,
   type MembershipNotFoundError,
   type OwnerCannotBeRemovedError,
   type OwnerMustTransferError,
+  type RemoveNotAllowedError,
 } from './organization-errors.js';
 
 export type DecideRemoveMemberInput = {
-  command: RemoveMemberCommand;
+  command: RemoveMember;
   members: readonly OrganizationMembership[];
+  eventId: string;
+  now: string;
 };
 
 export type RemoveMemberPlan = {
   membership: OrganizationMembership;
+  event: MemberRemoved | MemberLeft;
 };
 
-export type DecideRemoveMemberError =
+export type RemoveMemberError =
   | MembershipNotFoundError
+  | CannotRemoveSelfError
   | CannotLeavePersonalOrgError
   | OwnerCannotBeRemovedError
+  | RemoveNotAllowedError
   | OwnerMustTransferError
-  | LastAdminError
-  | InsufficientPermissionsError;
+  | LastAdminError;
 
 const decideRemoveOthersPermission = (
-  actor: OrganizationMembership,
-  target: OrganizationMembership
-): Result<void, InsufficientPermissionsError> => {
-  if (actor.role === 'member') {
-    return err(insufficientPermissionsError('admin', actor.role));
-  }
-  if (actor.role === 'admin' && target.role !== 'member') {
-    return err(insufficientPermissionsError('owner', actor.role));
+  actor: OrganizationMembership | null
+): Result<void, RemoveNotAllowedError> => {
+  if (actor === null || !isAdminRole(actor.role)) {
+    return err(removeNotAllowedError());
   }
   return ok(undefined);
 };
 
+const removalEvent = (
+  command: RemoveMember,
+  membership: OrganizationMembership,
+  eventId: string,
+  now: string
+): MemberRemoved | MemberLeft => {
+  if (command.by.kind === 'self') {
+    return {
+      type: 'MemberLeft',
+      id: eventId,
+      organizationId: membership.organizationId,
+      userId: membership.userId,
+      role: membership.role,
+      occurredAt: now,
+    };
+  }
+  return {
+    type: 'MemberRemoved',
+    id: eventId,
+    organizationId: membership.organizationId,
+    userId: membership.userId,
+    role: membership.role,
+    actorUserId: command.by.userId,
+    occurredAt: now,
+  };
+};
+
 /**
- * Leave or remove. Removing the owner (anyone) is OWNER_CANNOT_BE_REMOVED
- * before permission. Permission is first for everything else, so a member
- * removing a last-admin still gets INSUFFICIENT_PERMISSIONS. Owner leave
- * is decideOwnerRemains → OWNER_MUST_TRANSFER. Last-admin only on
- * ownerless workspaces — once an owner exists, zero admins is allowed.
+ * Leave or remove. Order: target not found, target is the caller,
+ * personal workspace, target is the owner, permission, decideOwnerRemains,
+ * lastAdminBlocksChange. A member remover whose userId equals the target
+ * is CANNOT_REMOVE_SELF, never a leave.
  */
 export const decideRemoveMember = ({
   command,
   members,
-}: DecideRemoveMemberInput): Result<RemoveMemberPlan, DecideRemoveMemberError> => {
+  eventId,
+  now,
+}: DecideRemoveMemberInput): Result<RemoveMemberPlan, RemoveMemberError> => {
   const membership = members.find((entry) => entry.userId === command.userId) ?? null;
   if (!membership) {
     return err(
@@ -65,22 +96,22 @@ export const decideRemoveMember = ({
     );
   }
 
+  if (command.by.kind === 'member' && command.by.userId === command.userId) {
+    return err(cannotRemoveSelfError());
+  }
+
   if (membership.isPersonalOrg) {
     return err(cannotLeavePersonalOrgError(membership.userId, membership.organizationId));
   }
 
-  const actorUserId = command.actorUserId;
-  const isLeave = actorUserId === undefined || actorUserId === command.userId;
-  if (!isLeave && membership.role === 'owner') {
+  if (command.by.kind === 'member' && membership.role === 'owner') {
     return err(ownerCannotBeRemovedError(membership.organizationId, membership.userId));
   }
 
-  if (!isLeave) {
-    const actor = members.find((entry) => entry.userId === actorUserId) ?? null;
-    if (!actor) {
-      return err(insufficientPermissionsError('member', 'none'));
-    }
-    const permission = decideRemoveOthersPermission(actor, membership);
+  const remover = command.by;
+  if (remover.kind === 'member') {
+    const actor = members.find((entry) => entry.userId === remover.userId) ?? null;
+    const permission = decideRemoveOthersPermission(actor);
     if (permission.isErr()) {
       return err(permission.error);
     }
@@ -95,5 +126,8 @@ export const decideRemoveMember = ({
     return err(lastAdminError(membership.organizationId));
   }
 
-  return ok({ membership });
+  return ok({
+    membership,
+    event: removalEvent(command, membership, eventId, now),
+  });
 };

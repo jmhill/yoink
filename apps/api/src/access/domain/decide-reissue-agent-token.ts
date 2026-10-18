@@ -2,6 +2,7 @@ import { err, ok, type Result } from 'neverthrow';
 import type { MembershipRole } from './organization-membership.js';
 import type { PrincipalKind } from './user.js';
 import { requireWebSessionPerson } from './require-web-session-person.js';
+import { isAdminRole } from './membership-roles.js';
 import type { ReissueAgentTokenCommand } from './token-commands.js';
 import type { TokenCreated } from './token-events.js';
 import {
@@ -10,10 +11,10 @@ import {
   type InvalidTokenNameError,
 } from './token-errors.js';
 import {
-  insufficientPermissionsError,
   membershipNotFoundError,
-  type InsufficientPermissionsError,
+  reissueNotAllowedError,
   type MembershipNotFoundError,
+  type ReissueNotAllowedError,
 } from './organization-errors.js';
 
 export type ReissueScope = {
@@ -30,7 +31,7 @@ export type ReissueAgentTokenDecision = {
 export type DecideReissueAgentTokenError =
   | BotCannotManageTokensError
   | InvalidTokenNameError
-  | InsufficientPermissionsError
+  | ReissueNotAllowedError
   | MembershipNotFoundError;
 
 export type DecideReissueAgentTokenInput = {
@@ -57,8 +58,8 @@ export const decideReissueAgentToken = ({
     return err(human.error);
   }
 
-  if (actorRole !== 'owner') {
-    return err(insufficientPermissionsError('owner', actorRole ?? 'none'));
+  if (actorRole === null || !isAdminRole(actorRole)) {
+    return err(reissueNotAllowedError());
   }
 
   if (

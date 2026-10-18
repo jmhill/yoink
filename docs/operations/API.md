@@ -820,14 +820,97 @@ curl -sS -X POST -H "Authorization: Bearer $TOKEN" \
 | `USER_NOT_FOUND` | Target user does not exist (`404`) |
 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | Target is a bot (`400`): `A bot can't be the owner.` |
 | `TARGET_NOT_WORKSPACE_MEMBER` | Target is not already a member (`400`): `The new owner has to be a member first.` |
-| `OWNER_MUST_TRANSFER` | Leave/remove while still owner (`409`, includes `handoverPath`) |
+| `OWNER_MUST_TRANSFER` | Owner leave (`409`, includes `handoverPath`) |
 
-Leave and remove-owner `409`s use message `Hand over ownership first.` and
-`handoverPath` `/settings#ownership`. A bot as the new owner is
+Owner leave `409`s use message `Hand over ownership first.` and
+`handoverPath` `/settings#ownership`. Anyone removing the owner is
+`OWNER_CANNOT_BE_REMOVED` `409` with `The owner can't be removed.` and no
+`handoverPath`. A bot as the new owner is
 `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` with `A bot can't be the owner.` — same
 copy as admin `PUT /api/admin/organizations/:id/owner`. A target who is
 not already a member is `The new owner has to be a member first.` Storage failure
 is `500` `Couldn't hand over ownership. Try again.`
+
+## Change a member role
+
+Owner and admins switch a person between `admin` and `member`.
+`PATCH /api/organizations/:organizationId/members/:userId/role` with
+`{ "role": "admin" | "member" }`. `owner` in the body is a validation `400`.
+Token callers (bot or a person's own token) reach the domain and get
+`BOT_CANNOT_CHANGE_ROLES`. `200` is `{ "member": Member }` for both a
+change and a no-op (same role records nothing).
+
+Refusal order: bot/token caller, caller not a member, caller is a member,
+target is the caller, target not a member, target is the owner,
+`newRole` is `owner`, bot target with `admin`, same role (success),
+`decideOwnerRemains`, last admin of an ownerless workspace.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 403 | `BOT_CANNOT_CHANGE_ROLES` | Bots can't change roles. |
+| 403 | `MEMBERSHIP_NOT_FOUND` (caller) | Not a member of this organization |
+| 403 | `ROLE_CHANGE_NOT_ALLOWED` | Only the owner and admins can change roles. |
+| 400 | `CANNOT_CHANGE_OWN_ROLE` | You can't change your own role. |
+| 404 | `MEMBERSHIP_NOT_FOUND` (target) | Member not found |
+| 409 | `OWNER_ROLE_LOCKED` | The owner's role can't be changed. |
+| 400 | `CANNOT_ASSIGN_OWNER_ROLE` | Owner can only be set from the admin panel |
+| 400 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | A bot can't be an admin. |
+| 409 | `LAST_ADMIN` | Cannot change the last admin |
+| 500 | (storage) | Couldn't change the role. Try again. |
+
+The admin panel uses the same `ChangeMemberRole` command with
+`by: { kind: 'app-admin' }`. It skips the in-app permission steps and
+`OWNER_ROLE_LOCKED`; demoting the owner is still `OWNER_MUST_TRANSFER`
+with `Transfer ownership first. Use Make owner on another member.`
+
+## Remove a member
+
+`DELETE /api/organizations/:organizationId/members/:userId`. Owners and
+admins can remove admins and members. Nobody can remove the owner.
+
+Refusal order: target not found, target is the caller, personal workspace,
+target is the owner, permission, `decideOwnerRemains`, last admin.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 404 | `MEMBERSHIP_NOT_FOUND` | Member not found |
+| 400 | `CANNOT_REMOVE_SELF` | You can't remove yourself. Use Leave instead. |
+| 400 | `CANNOT_LEAVE_PERSONAL_ORG` | Cannot remove a member from a personal workspace |
+| 409 | `OWNER_CANNOT_BE_REMOVED` | The owner can't be removed. (no `handoverPath`) |
+| 403 | `REMOVE_NOT_ALLOWED` | Only the owner and admins can remove members. |
+| 400 | `LAST_ADMIN` | Cannot remove the last admin |
+| 500 | `MEMBER_REMOVE_FAILED` | Couldn't remove \<Name\>. Try again. |
+
+## Leave
+
+`POST /api/organizations/:organizationId/leave` records `MemberLeft` in
+the same batch as the delete. Owner leave is still `OWNER_MUST_TRANSFER`
+`409` `Hand over ownership first.` with `handoverPath` `/settings#ownership`.
+That is the only place the handover link appears.
+
+## Reissue a bot token
+
+`POST /api/organizations/:organizationId/members/:userId/token`. Owner
+and admins. Members get `REISSUE_NOT_ALLOWED`. Token reissues are not
+membership events.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 403 | `BOT_CANNOT_MANAGE_TOKENS` | (existing token-caller copy) |
+| 403 | `REISSUE_NOT_ALLOWED` | Only the owner and admins can issue new tokens. |
+| 500 | (storage) | Couldn't issue a new token. Try again. |
+
+## Membership events
+
+Table `membership_events` (migration 042) stores four types, each in the
+same `db.batch` as its change:
+
+| type | When |
+| --- | --- |
+| `OwnershipTransferred` | #190 handover |
+| `MemberRoleChanged` | In-app or admin-panel member/admin switch |
+| `MemberRemoved` | Someone removes another person |
+| `MemberLeft` | A person leaves |
 
 ```bash
 # lastChangedBy on one task → display name

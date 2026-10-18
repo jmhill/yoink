@@ -1,4 +1,5 @@
 import type { MembershipRole } from './organization-membership.js';
+import type { PrincipalKind } from './user.js';
 
 export type AddMemberCommand = {
   userId: string;
@@ -8,20 +9,32 @@ export type AddMemberCommand = {
   isPersonalOrg?: boolean;
 };
 
-export type RemoveMemberCommand = {
-  userId: string;
+export type Remover =
+  | { kind: 'self' }
+  | { kind: 'member'; userId: string };
+
+/** Remove someone else (`by.kind === 'member'`) or leave (`by.kind === 'self'`). */
+export type RemoveMember = {
   organizationId: string;
-  /**
-   * Who is removing the member. Omit (or pass the same userId) for leave.
-   * When it differs, decideRemoveMember applies remove-others permissions.
-   */
-  actorUserId?: string;
+  userId: string;
+  by: Remover;
 };
 
-export type ChangeRoleCommand = {
+export type RoleChanger =
+  | {
+      kind: 'member';
+      userId: string;
+      via: 'session' | 'token';
+      principalKind: PrincipalKind;
+    }
+  | { kind: 'app-admin' };
+
+/** In-app and admin-panel member/admin switch. Never assigns owner. */
+export type ChangeMemberRole = {
   organizationId: string;
   userId: string;
   newRole: MembershipRole;
+  by: RoleChanger;
 };
 
 /** Admin panel: name a human already in the workspace as owner. */

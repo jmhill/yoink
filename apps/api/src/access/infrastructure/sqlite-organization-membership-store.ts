@@ -7,6 +7,8 @@ import {
   membershipStorageError,
   type MembershipStorageError,
 } from '../domain/organization-errors.js';
+import { eventInsert } from './membership-event-insert.js';
+import type { MemberLeft, MemberRemoved, MemberRoleChanged } from '../domain/membership-events.js';
 
 type MembershipRow = {
   id: string;
@@ -167,28 +169,48 @@ export const createSqliteOrganizationMembershipStore = async (
     },
 
     transferOwnership: (plan, event): ResultAsync<void, MembershipStorageError> => {
-      const queries = [
-        ...planQueries(plan),
-        {
-          sql: `
-            INSERT INTO membership_events
-              (id, type, organization_id, from_user_id, to_user_id, actor_user_id, occurred_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `,
-          args: [
-            event.id,
-            event.type,
-            event.organizationId,
-            event.fromUserId,
-            event.toUserId,
-            event.actorUserId,
-            event.occurredAt,
-          ],
-        },
-      ];
+      const queries = [...planQueries(plan), eventInsert(event)];
       return ResultAsync.fromPromise(
         db.batch(queries, 'write'),
         (error) => membershipStorageError('Failed to hand over ownership', error)
+      ).map(() => undefined);
+    },
+
+    changeMemberRole: (
+      membership,
+      event: MemberRoleChanged
+    ): ResultAsync<void, MembershipStorageError> => {
+      return ResultAsync.fromPromise(
+        db.batch(
+          [
+            {
+              sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
+              args: [membership.role, membership.id],
+            },
+            eventInsert(event),
+          ],
+          'write'
+        ),
+        (error) => membershipStorageError('Failed to change member role', error)
+      ).map(() => undefined);
+    },
+
+    removeMember: (
+      membershipId,
+      event: MemberRemoved | MemberLeft
+    ): ResultAsync<void, MembershipStorageError> => {
+      return ResultAsync.fromPromise(
+        db.batch(
+          [
+            {
+              sql: `DELETE FROM organization_memberships WHERE id = ?`,
+              args: [membershipId],
+            },
+            eventInsert(event),
+          ],
+          'write'
+        ),
+        (error) => membershipStorageError('Failed to remove member', error)
       ).map(() => undefined);
     },
   };

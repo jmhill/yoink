@@ -14,10 +14,9 @@ import {
  *
  * Permission model:
  * - All members can view the members list
- * - Admins can remove members (but not other admins)
- * - Owners can remove admins and members
+ * - Owners and admins can remove admins and members
  * - Cannot remove self (use leave instead)
- * - Cannot remove the last owner
+ * - Cannot remove the owner
  */
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Managing organization members [${ctx.driverName}]`, () => {
@@ -81,29 +80,25 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(members.some((m) => m.userId === member.userId)).toBe(false);
     });
 
-    it('admin cannot remove another admin', async () => {
-      // Create an org
-      const org = await ctx.admin.createOrganization('Admin Cannot Remove Admin Org');
-
-      // Create two admin invitations
+    it('admin removes another admin', async () => {
+      const org = await ctx.admin.createOrganization('Admin Removes Admin Org');
       const admin1Invite = await ctx.admin.createInvitation(org.id, { role: 'admin' });
       const admin2Invite = await ctx.admin.createInvitation(org.id, { role: 'admin' });
 
-      // Sign up both admins
       const admin1 = await ctx.createActorWithInvitation(
         admin1Invite.code,
-        'admin1-noadmin@example.com'
+        'admin1-removeadmin@example.com'
       );
       const admin2 = await ctx.createActorWithInvitation(
         admin2Invite.code,
-        'admin2-noadmin@example.com'
+        'admin2-removeadmin@example.com'
       );
 
-      // Switch admin1 to the shared org
       await admin1.switchOrganization(org.id);
+      await admin1.removeMember(admin2.userId);
 
-      // Admin1 should NOT be able to remove Admin2
-      await expect(admin1.removeMember(admin2.userId)).rejects.toThrow(ForbiddenError);
+      const members = await admin1.listMembers();
+      expect(members.some((entry) => entry.userId === admin2.userId)).toBe(false);
     });
 
     it('owner can remove admin', async () => {
@@ -204,6 +199,21 @@ usingDrivers(['http'] as const, (ctx) => {
       }) as BrowserActor;
 
       await expect(actorWithAllMethods.removeMember('any-user-id')).rejects.toThrow(
+        UnsupportedOperationError
+      );
+    });
+
+    it('changeMemberRole is not supported in HTTP driver', async () => {
+      const actor = await ctx.createActor('http-changerole-members@example.com');
+
+      const actorWithAllMethods = ctx.createActorWithCredentials({
+        email: actor.email,
+        userId: actor.userId,
+        organizationId: actor.organizationId,
+        token: 'any-token',
+      }) as BrowserActor;
+
+      await expect(actorWithAllMethods.changeMemberRole(actor.userId, 'admin')).rejects.toThrow(
         UnsupportedOperationError
       );
     });

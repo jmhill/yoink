@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
+import { BOT_CANNOT_BE_ADMIN_MESSAGE } from '@yoink/api-contracts';
 import { tsrAdmin } from '@/api/client';
 import { parseCreateUserKind, parseCreateUserRole } from '@/lib/parse-create-user-fields';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -410,7 +411,7 @@ function OrganizationDetailPage() {
                 <DialogHeader>
                   <DialogTitle>Create User</DialogTitle>
                   <DialogDescription>
-                    Add a person or bot to {organization.name}. A bot cannot be an admin or owner.
+                    Add a person or bot to {organization.name}. {BOT_CANNOT_BE_ADMIN_MESSAGE}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">

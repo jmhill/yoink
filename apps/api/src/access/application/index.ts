@@ -18,5 +18,7 @@ export { registerTokenRoutes } from './token-routes.js';
 export { registerOrganizationRoutes } from './organization-routes.js';
 export type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 export type { TransferOwnershipHandler } from './handle-transfer-ownership.js';
+export type { ChangeMemberRoleHandler } from './handle-change-member-role.js';
+export type { RemoveMemberHandler } from './handle-remove-member.js';
 export { registerInvitationRoutes } from './invitation-routes.js';
 export { registerAdminRoutes } from './admin-routes.js';

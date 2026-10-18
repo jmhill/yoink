@@ -3,7 +3,10 @@
  * These provide typed error handling without leaking transport details.
  */
 
-import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
+import {
+  CANNOT_REMOVE_SELF_MESSAGE,
+  HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+} from '@yoink/api-contracts';
 
 export class DslError extends Error {
   constructor(message: string) {
@@ -188,7 +191,7 @@ export class ForbiddenError extends DslError {
  */
 export class CannotRemoveSelfError extends DslError {
   constructor() {
-    super('Cannot remove yourself. Use leave instead.');
+    super(CANNOT_REMOVE_SELF_MESSAGE);
   }
 }
 

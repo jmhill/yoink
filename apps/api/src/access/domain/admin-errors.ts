@@ -1,11 +1,15 @@
 import type {
   OrganizationStorageError,
   MembershipStorageError,
+  BotCannotChangeRolesError,
   BotCannotHavePrivilegedRoleError,
   CannotAssignOwnerRoleError,
+  CannotChangeOwnRoleError,
   LastAdminError,
   MembershipNotFoundError,
   OwnerMustTransferError,
+  OwnerRoleLockedError,
+  RoleChangeNotAllowedError,
   TargetNotWorkspaceMemberError,
 } from './organization-errors.js';
 import type { UserStorageError } from './user-errors.js';
@@ -49,7 +53,11 @@ export type AdminServiceError =
   | LastAdminError
   | MembershipNotFoundError
   | OwnerMustTransferError
-  | TargetNotWorkspaceMemberError;
+  | TargetNotWorkspaceMemberError
+  | BotCannotChangeRolesError
+  | RoleChangeNotAllowedError
+  | CannotChangeOwnRoleError
+  | OwnerRoleLockedError;
 
 // Factory functions
 export const organizationNotFoundError = (

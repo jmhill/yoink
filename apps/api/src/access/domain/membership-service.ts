@@ -4,27 +4,16 @@ import type { OrganizationMembership, MembershipRole } from './organization-memb
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { UserService } from './user-service.js';
-import type {
-  AddMemberCommand,
-  ChangeRoleCommand,
-  RemoveMemberCommand,
-} from './membership-commands.js';
+import type { AddMemberCommand } from './membership-commands.js';
 import { decideAddMember } from './decide-add-member.js';
-import { decideChangeRole } from './decide-change-role.js';
-import { decideRemoveMember } from './decide-remove-member.js';
 import { roleAtLeast } from './membership-roles.js';
-import { principalKindOf } from './user.js';
 import {
   organizationNotFoundError,
   type MembershipServiceError,
 } from './organization-errors.js';
 import { userNotFoundError } from './user-errors.js';
 
-export type {
-  AddMemberCommand,
-  ChangeRoleCommand,
-  RemoveMemberCommand,
-} from './membership-commands.js';
+export type { AddMemberCommand } from './membership-commands.js';
 
 export type GetMembershipQuery = {
   userId: string;
@@ -39,12 +28,6 @@ export type ListMembershipsQuery = {
 export type MembershipService = {
   addMember(
     command: AddMemberCommand
-  ): ResultAsync<OrganizationMembership, MembershipServiceError>;
-
-  removeMember(command: RemoveMemberCommand): ResultAsync<void, MembershipServiceError>;
-
-  changeRole(
-    command: ChangeRoleCommand
   ): ResultAsync<OrganizationMembership, MembershipServiceError>;
 
   getMembership(
@@ -109,39 +92,6 @@ export const createMembershipService = (
             );
         });
       });
-    },
-
-    removeMember(command: RemoveMemberCommand): ResultAsync<void, MembershipServiceError> {
-      return membershipStore.findByOrganizationId(command.organizationId).andThen((members) => {
-        const decision = decideRemoveMember({ command, members });
-        if (decision.isErr()) {
-          return errAsync(decision.error);
-        }
-        return membershipStore.delete(decision.value.membership.id);
-      });
-    },
-
-    changeRole(
-      command: ChangeRoleCommand
-    ): ResultAsync<OrganizationMembership, MembershipServiceError> {
-      return membershipStore
-        .findByOrganizationId(command.organizationId)
-        .andThen((members) =>
-          userService.getUser(command.userId).andThen((user) => {
-            if (!user) {
-              return errAsync(userNotFoundError(command.userId));
-            }
-            const decision = decideChangeRole({
-              command,
-              members,
-              targetKind: principalKindOf(user),
-            });
-            if (decision.isErr()) {
-              return errAsync(decision.error);
-            }
-            return membershipStore.save(decision.value).map(() => decision.value);
-          })
-        );
     },
 
     getMembership(

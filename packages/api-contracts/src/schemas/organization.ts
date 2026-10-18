@@ -15,10 +15,7 @@ export const HAND_OVER_OWNERSHIP_FIRST_MESSAGE = 'Hand over ownership first.';
 /** Settings Organization tab, Ownership card. */
 export const HANDOVER_OWNERSHIP_PATH = '/settings#ownership';
 
-/** Anyone removing the owner — dedicated, not INSUFFICIENT_PERMISSIONS */
-export const OWNER_CANNOT_BE_REMOVED_MESSAGE = HAND_OVER_OWNERSHIP_FIRST_MESSAGE;
-
-/** Owner's row in Settings, shown to everyone except the owner. */
+/** Owner's row in Settings, and anyone removing the owner. */
 export const THE_OWNER_CANT_BE_REMOVED_MESSAGE = "The owner can't be removed.";
 
 /** Owner leave — reader is a workspace person, not the app admin */
@@ -35,6 +32,36 @@ export const NOT_CURRENT_OWNER_MESSAGE = 'Only the owner can hand over ownership
 export const PERSONAL_WORKSPACE_TRANSFER_MESSAGE = "Personal workspaces can't be handed over.";
 export const ALREADY_OWNER_MESSAGE = "You're already the owner.";
 export const TRANSFER_OWNERSHIP_STORAGE_MESSAGE = "Couldn't hand over ownership. Try again.";
+
+export const BOT_CANNOT_CHANGE_ROLES_MESSAGE = "Bots can't change roles.";
+export const ROLE_CHANGE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can change roles.';
+export const CANNOT_CHANGE_OWN_ROLE_MESSAGE = "You can't change your own role.";
+export const OWNER_ROLE_LOCKED_MESSAGE = "The owner's role can't be changed.";
+export const BOT_CANNOT_BE_ADMIN_MESSAGE = "A bot can't be an admin.";
+export const REMOVE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can remove members.';
+export const CANNOT_REMOVE_SELF_MESSAGE = "You can't remove yourself. Use Leave instead.";
+export const REISSUE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can issue new tokens.';
+export const CHANGE_ROLE_STORAGE_MESSAGE = "Couldn't change the role. Try again.";
+export const REISSUE_TOKEN_STORAGE_MESSAGE = "Couldn't issue a new token. Try again.";
+export const MAKE_ADMIN_LABEL = 'Make admin';
+export const MAKE_MEMBER_LABEL = 'Make member';
+export const CANNOT_CHANGE_LAST_ADMIN_MESSAGE = 'Cannot change the last admin';
+
+export const removeMemberFailedMessage = (name: string): string =>
+  `Couldn't remove ${name}. Try again.`;
+
+export const madeAdminToast = (name: string): string => `${name} is now an admin.`;
+
+export const madeMemberToast = (name: string): string => `${name} is now a member.`;
+
+export const demoteConfirmMessage = (name: string): string =>
+  `Make ${name} a member? They'll lose admin access.`;
+
+/** Same display-name rule as the members list: given name, else email. */
+export const memberDisplayName = (member: {
+  name?: string;
+  email: string;
+}): string => member.name ?? member.email;
 
 // ============================================================================
 // Member
@@ -114,6 +141,18 @@ export const TransferOwnershipResponseSchema = z.object({
 });
 
 export type TransferOwnershipResponse = z.infer<typeof TransferOwnershipResponseSchema>;
+
+export const ChangeMemberRoleRequestSchema = z.object({
+  role: z.enum(['admin', 'member']),
+});
+
+export type ChangeMemberRoleRequest = z.infer<typeof ChangeMemberRoleRequestSchema>;
+
+export const ChangeMemberRoleResponseSchema = z.object({
+  member: MemberSchema,
+});
+
+export type ChangeMemberRoleResponse = z.infer<typeof ChangeMemberRoleResponseSchema>;
 
 // ============================================================================
 // Agents

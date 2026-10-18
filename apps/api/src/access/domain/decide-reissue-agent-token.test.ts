@@ -82,12 +82,18 @@ describe('decideReissueAgentToken', () => {
     }
   });
 
-  it('refuses a non-owner human', () => {
+  it('lets an admin reissue', () => {
     const result = input({ actorRole: 'admin' });
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it('refuses a member with REISSUE_NOT_ALLOWED', () => {
+    const result = input({ actorRole: 'member' });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
+      expect(result.error.type).toBe('REISSUE_NOT_ALLOWED');
     }
   });
 

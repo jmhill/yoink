@@ -1,48 +1,65 @@
 import type { FastifyInstance } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import {
+  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
+  CANNOT_CHANGE_LAST_ADMIN_MESSAGE,
+  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
+  CANNOT_REMOVE_SELF_MESSAGE,
+  CHANGE_ROLE_STORAGE_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
+  OWNER_ROLE_LOCKED_MESSAGE,
+  REISSUE_NOT_ALLOWED_MESSAGE,
+  REISSUE_TOKEN_STORAGE_MESSAGE,
+  REMOVE_NOT_ALLOWED_MESSAGE,
+  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
   organizationContract,
+  removeMemberFailedMessage,
 } from '@yoink/api-contracts';
 import type { SessionService } from '../domain/session-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { UserService } from '../domain/user-service.js';
 import type { AgentService } from '../domain/agent-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
-import type { ReissueAgentToken } from './handle-reissue-agent-token.js';
+import type { ReissueAgentToken, ReissueAgentTokenError } from './handle-reissue-agent-token.js';
 import type {
   HandleTransferOwnershipError,
   TransferOwnershipHandler,
 } from './handle-transfer-ownership.js';
+import type {
+  ChangeMemberRoleHandler,
+  HandleChangeMemberRoleError,
+} from './handle-change-member-role.js';
+import type {
+  HandleRemoveMemberError,
+  RemoveMemberHandler,
+} from './handle-remove-member.js';
 import { principalKindOf } from '../domain/user.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
-import type { MembershipServiceError } from '../domain/organization-errors.js';
 
 const storageFailure = (message: string) => ({
   status: 500 as const,
   body: { message },
 });
 
-const leaveErrorResponse = (error: MembershipServiceError) => {
+const leaveErrorResponse = (error: HandleRemoveMemberError) => {
   switch (error.type) {
     case 'MEMBERSHIP_NOT_FOUND':
       return {
         status: 404 as const,
-        body: { message: 'Not a member of this organization' },
+        body: { message: 'Not a member of this organization', code: error.type },
       };
     case 'CANNOT_LEAVE_PERSONAL_ORG':
       return {
         status: 400 as const,
-        body: { message: 'Cannot leave your personal organization' },
+        body: { message: 'Cannot leave your personal organization', code: error.type },
       };
     case 'LAST_ADMIN':
       return {
         status: 400 as const,
-        body: { message: 'Cannot leave as the last admin' },
+        body: { message: 'Cannot leave as the last admin', code: error.type },
       };
     case 'OWNER_MUST_TRANSFER':
-    case 'OWNER_CANNOT_BE_REMOVED':
       return {
         status: 409 as const,
         body: {
@@ -51,20 +68,11 @@ const leaveErrorResponse = (error: MembershipServiceError) => {
           handoverPath: HANDOVER_OWNERSHIP_PATH,
         },
       };
-    case 'INSUFFICIENT_PERMISSIONS':
-    case 'ALREADY_MEMBER':
-    case 'CANNOT_ASSIGN_OWNER_ROLE':
-    case 'NOT_CURRENT_OWNER':
-    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
-    case 'PERSONAL_WORKSPACE_TRANSFER':
-    case 'ALREADY_OWNER':
-    case 'SECOND_OWNER':
-    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
-    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'OWNER_CANNOT_BE_REMOVED':
+    case 'CANNOT_REMOVE_SELF':
+    case 'REMOVE_NOT_ALLOWED':
+    case 'MEMBER_REMOVE_FAILED':
     case 'USER_NOT_FOUND':
-    case 'ORGANIZATION_NOT_FOUND':
-    case 'MEMBERSHIP_STORAGE_ERROR':
-    case 'ORGANIZATION_STORAGE_ERROR':
     case 'USER_STORAGE_ERROR':
       return storageFailure('Failed to leave organization');
     default: {
@@ -75,57 +83,176 @@ const leaveErrorResponse = (error: MembershipServiceError) => {
   }
 };
 
-const removeMemberErrorResponse = (error: MembershipServiceError) => {
+const removeMemberErrorResponse = (error: HandleRemoveMemberError) => {
   switch (error.type) {
     case 'MEMBERSHIP_NOT_FOUND':
       return {
         status: 404 as const,
-        body: { message: 'Member not found' },
+        body: { message: 'Member not found', code: error.type },
+      };
+    case 'CANNOT_REMOVE_SELF':
+      return {
+        status: 400 as const,
+        body: { message: CANNOT_REMOVE_SELF_MESSAGE, code: error.type },
       };
     case 'CANNOT_LEAVE_PERSONAL_ORG':
       return {
         status: 400 as const,
-        body: { message: 'Cannot remove a member from a personal workspace' },
+        body: { message: 'Cannot remove a member from a personal workspace', code: error.type },
+      };
+    case 'OWNER_CANNOT_BE_REMOVED':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'REMOVE_NOT_ALLOWED':
+      return {
+        status: 403 as const,
+        body: { message: REMOVE_NOT_ALLOWED_MESSAGE, code: error.type },
       };
     case 'LAST_ADMIN':
       return {
         status: 400 as const,
-        body: { message: 'Cannot remove the last admin' },
+        body: { message: 'Cannot remove the last admin', code: error.type },
       };
     case 'OWNER_MUST_TRANSFER':
-    case 'OWNER_CANNOT_BE_REMOVED':
       return {
         status: 409 as const,
-        body: {
-          message: error.message,
-          code: error.type,
-          handoverPath: HANDOVER_OWNERSHIP_PATH,
-        },
+        body: { message: error.message, code: error.type },
       };
-    case 'INSUFFICIENT_PERMISSIONS':
-      return {
-        status: 403 as const,
-        body: { message: 'Insufficient permissions to remove members' },
-      };
-    case 'ALREADY_MEMBER':
-    case 'CANNOT_ASSIGN_OWNER_ROLE':
-    case 'NOT_CURRENT_OWNER':
-    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
-    case 'PERSONAL_WORKSPACE_TRANSFER':
-    case 'ALREADY_OWNER':
-    case 'SECOND_OWNER':
-    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
-    case 'TARGET_NOT_WORKSPACE_MEMBER':
+    case 'MEMBER_REMOVE_FAILED':
+      return storageFailure(removeMemberFailedMessage(error.memberName));
     case 'USER_NOT_FOUND':
-    case 'ORGANIZATION_NOT_FOUND':
-    case 'MEMBERSHIP_STORAGE_ERROR':
-    case 'ORGANIZATION_STORAGE_ERROR':
     case 'USER_STORAGE_ERROR':
-      return storageFailure('Failed to remove member');
+      return storageFailure(removeMemberFailedMessage('member'));
     default: {
       const _never: never = error;
       void _never;
-      return storageFailure('Failed to remove member');
+      return storageFailure(removeMemberFailedMessage('member'));
+    }
+  }
+};
+
+const changeMemberRoleErrorResponse = (
+  error: HandleChangeMemberRoleError,
+  callerUserId: string
+) => {
+  switch (error.type) {
+    case 'BOT_CANNOT_CHANGE_ROLES':
+      return {
+        status: 403 as const,
+        body: { message: BOT_CANNOT_CHANGE_ROLES_MESSAGE, code: error.type },
+      };
+    case 'MEMBERSHIP_NOT_FOUND':
+      if (error.userId === callerUserId) {
+        return {
+          status: 403 as const,
+          body: { message: 'Not a member of this organization', code: error.type },
+        };
+      }
+      return {
+        status: 404 as const,
+        body: { message: 'Member not found', code: error.type },
+      };
+    case 'ROLE_CHANGE_NOT_ALLOWED':
+      return {
+        status: 403 as const,
+        body: { message: ROLE_CHANGE_NOT_ALLOWED_MESSAGE, code: error.type },
+      };
+    case 'CANNOT_CHANGE_OWN_ROLE':
+      return {
+        status: 400 as const,
+        body: { message: CANNOT_CHANGE_OWN_ROLE_MESSAGE, code: error.type },
+      };
+    case 'OWNER_ROLE_LOCKED':
+      return {
+        status: 409 as const,
+        body: { message: OWNER_ROLE_LOCKED_MESSAGE, code: error.type },
+      };
+    case 'CANNOT_ASSIGN_OWNER_ROLE':
+    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'LAST_ADMIN':
+      return {
+        status: 409 as const,
+        body: { message: CANNOT_CHANGE_LAST_ADMIN_MESSAGE, code: error.type },
+      };
+    case 'OWNER_MUST_TRANSFER':
+      return {
+        status: 409 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'USER_NOT_FOUND':
+      return {
+        status: 404 as const,
+        body: { message: 'Member not found', code: error.type },
+      };
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return {
+        status: 500 as const,
+        body: { message: CHANGE_ROLE_STORAGE_MESSAGE },
+      };
+    default: {
+      const _never: never = error;
+      void _never;
+      return {
+        status: 500 as const,
+        body: { message: CHANGE_ROLE_STORAGE_MESSAGE },
+      };
+    }
+  }
+};
+
+const reissueAgentTokenErrorResponse = (
+  error: ReissueAgentTokenError,
+  callerUserId: string
+) => {
+  switch (error.type) {
+    case 'BOT_CANNOT_MANAGE_TOKENS':
+      return {
+        status: 403 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'INVALID_TOKEN_NAME':
+      return {
+        status: 400 as const,
+        body: { message: error.message, code: error.type },
+      };
+    case 'REISSUE_NOT_ALLOWED':
+      return {
+        status: 403 as const,
+        body: { message: REISSUE_NOT_ALLOWED_MESSAGE, code: error.type },
+      };
+    case 'MEMBERSHIP_NOT_FOUND':
+      if (error.userId === callerUserId) {
+        return {
+          status: 403 as const,
+          body: { message: 'Not a member of this organization', code: error.type },
+        };
+      }
+      return {
+        status: 404 as const,
+        body: { message: 'Agent member not found', code: error.type },
+      };
+    case 'MEMBERSHIP_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+    case 'TOKEN_STORAGE_ERROR':
+    case 'USER_NOT_FOUND':
+      return {
+        status: 500 as const,
+        body: { message: REISSUE_TOKEN_STORAGE_MESSAGE },
+      };
+    default: {
+      const _never: never = error;
+      void _never;
+      return {
+        status: 500 as const,
+        body: { message: REISSUE_TOKEN_STORAGE_MESSAGE },
+      };
     }
   }
 };
@@ -200,6 +327,8 @@ export type OrganizationRoutesDependencies = {
   agentService: AgentService;
   reissueAgentToken: ReissueAgentToken;
   transferOwnership: TransferOwnershipHandler;
+  changeMemberRole: ChangeMemberRoleHandler;
+  removeMember: RemoveMemberHandler;
   authMiddleware: AuthMiddleware;
 };
 
@@ -214,6 +343,8 @@ export const registerOrganizationRoutes = async (
     agentService,
     reissueAgentToken,
     transferOwnership,
+    changeMemberRole,
+    removeMember,
     authMiddleware,
   } = deps;
   const s = initServer();
@@ -291,9 +422,10 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        const result = await membershipService.removeMember({
+        const result = await removeMember({
           organizationId,
           userId: session.userId,
+          by: { kind: 'self' },
         });
 
         return result.match(
@@ -376,6 +508,25 @@ export const registerOrganizationRoutes = async (
         };
       },
 
+      changeMemberRole: async ({ params, body, request }) => {
+        const result = await changeMemberRole({
+          organizationId: params.organizationId,
+          userId: params.userId,
+          newRole: body.role,
+          callerUserId: request.authContext.userId,
+          callerVia: request.authContext.actor.via,
+          principalKind: request.authContext.principalKind,
+        });
+
+        return result.match(
+          (member) => ({
+            status: 200 as const,
+            body: { member },
+          }),
+          (error) => changeMemberRoleErrorResponse(error, request.authContext.userId)
+        );
+      },
+
       removeMember: async ({ params, request }) => {
         const { organizationId, userId: targetUserId } = params;
         const session = request.userSession;
@@ -387,17 +538,10 @@ export const registerOrganizationRoutes = async (
           };
         }
 
-        if (targetUserId === session.userId) {
-          return {
-            status: 400 as const,
-            body: { message: 'Cannot remove yourself. Use leave instead.' },
-          };
-        }
-
-        const result = await membershipService.removeMember({
+        const result = await removeMember({
           organizationId,
           userId: targetUserId,
-          actorUserId: session.userId,
+          by: { kind: 'member', userId: session.userId },
         });
 
         return result.match(
@@ -484,43 +628,7 @@ export const registerOrganizationRoutes = async (
             status: 201 as const,
             body: { token, rawToken },
           }),
-          (error) => {
-            if (error.type === 'BOT_CANNOT_MANAGE_TOKENS') {
-              return {
-                status: 403 as const,
-                body: { message: error.message },
-              };
-            }
-            if (error.type === 'INVALID_TOKEN_NAME') {
-              return {
-                status: 400 as const,
-                body: { message: error.message },
-              };
-            }
-            if (error.type === 'INSUFFICIENT_PERMISSIONS') {
-              return {
-                status: 403 as const,
-                body: { message: 'Only the owner can issue a new agent token' },
-              };
-            }
-            if (error.type === 'MEMBERSHIP_NOT_FOUND') {
-              if (error.userId === request.authContext.actor.userId) {
-                return {
-                  status: 403 as const,
-                  body: { message: 'Not a member of this organization' },
-                };
-              }
-              return {
-                status: 404 as const,
-                body: { message: 'Agent member not found' },
-              };
-            }
-            request.log.error({ error }, 'Failed to reissue agent token');
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to reissue agent token' },
-            };
-          }
+          (error) => reissueAgentTokenErrorResponse(error, request.authContext.actor.userId)
         );
       },
     });

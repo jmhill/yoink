@@ -27,6 +27,8 @@ import {
   type AuthMiddleware,
   type ReissueAgentToken,
   type TransferOwnershipHandler,
+  type ChangeMemberRoleHandler,
+  type RemoveMemberHandler,
   withAuthenticatedRateLimit,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
@@ -96,6 +98,8 @@ export type SignupConfig = {
   agentService: AgentService;
   reissueAgentToken: ReissueAgentToken;
   transferOwnership: TransferOwnershipHandler;
+  changeMemberRole: ChangeMemberRoleHandler;
+  removeMember: RemoveMemberHandler;
 };
 
 export type AppDependencies = {
@@ -293,6 +297,8 @@ export const createApp = async (deps: AppDependencies) => {
       agentService: deps.signup.agentService,
       reissueAgentToken: deps.signup.reissueAgentToken,
       transferOwnership: deps.signup.transferOwnership,
+      changeMemberRole: deps.signup.changeMemberRole,
+      removeMember: deps.signup.removeMember,
       authMiddleware,
     });
 

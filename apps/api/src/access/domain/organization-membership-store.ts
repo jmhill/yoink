@@ -2,7 +2,12 @@ import type { ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { MembershipStorageError } from './organization-errors.js';
 import type { OwnershipTransferPlan } from './owner-presence.js';
-import type { OwnershipTransferred } from './membership-events.js';
+import type {
+  MemberLeft,
+  MemberRemoved,
+  MemberRoleChanged,
+  OwnershipTransferred,
+} from './membership-events.js';
 
 /**
  * Store interface for organization membership persistence.
@@ -41,5 +46,17 @@ export type OrganizationMembershipStore = {
   transferOwnership(
     plan: OwnershipTransferPlan,
     event: OwnershipTransferred
+  ): ResultAsync<void, MembershipStorageError>;
+
+  /** Role update plus MemberRoleChanged in one write. */
+  changeMemberRole(
+    membership: OrganizationMembership,
+    event: MemberRoleChanged
+  ): ResultAsync<void, MembershipStorageError>;
+
+  /** Delete plus MemberRemoved or MemberLeft in one write. */
+  removeMember(
+    membershipId: string,
+    event: MemberRemoved | MemberLeft
   ): ResultAsync<void, MembershipStorageError>;
 };

@@ -5,6 +5,8 @@ import {
   SwitchOrganizationResponseSchema,
   LeaveOrganizationResponseSchema,
   ListMembersResponseSchema,
+  TransferOwnershipRequestSchema,
+  TransferOwnershipResponseSchema,
   CreateAgentRequestSchema,
   CreateAgentResponseSchema,
 } from '../schemas/organization.js';
@@ -53,6 +55,30 @@ export const organizationContract = c.router({
       500: ErrorSchema,
     },
     summary: 'Leave an organization',
+  },
+
+  /**
+   * Hand ownership to another person already in the workspace.
+   * Current owner only. Caller and fromUserId come from the session, never the body.
+   * Requires auth (token or session).
+   */
+  transferOwner: {
+    method: 'POST',
+    path: '/api/organizations/:organizationId/owner/transfer',
+    pathParams: z.object({
+      organizationId: z.string().uuid(),
+    }),
+    body: TransferOwnershipRequestSchema,
+    responses: {
+      200: TransferOwnershipResponseSchema,
+      400: ErrorSchema,
+      401: ErrorSchema,
+      403: ErrorSchema,
+      404: ErrorSchema,
+      409: ErrorSchema,
+      500: ErrorSchema,
+    },
+    summary: 'Hand over workspace ownership',
   },
 
   /**

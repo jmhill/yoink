@@ -3,7 +3,7 @@ import type { SetOwnerCommand } from './membership-commands.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import { principalKindOf, type User } from './user.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
-import { decideOwnerRemains, membershipsWithRole, planOwnershipTransfer, type OwnershipTransferred } from './owner-presence.js';
+import { decideOwnerRemains, membershipsWithRole, planOwnershipTransfer, type OwnershipTransferPlan } from './owner-presence.js';
 import {
   targetNotWorkspaceMemberError,
   type BotCannotHavePrivilegedRoleError,
@@ -26,13 +26,13 @@ export type DecideSetOwnerError =
 
 /**
  * Panel set-owner: target must be a human already in the workspace.
- * Old owner (if any) becomes admin in the same OwnershipTransferred plan.
+ * Old owner (if any) becomes admin in the same OwnershipTransferPlan.
  */
 export const decideSetOwner = ({
   command,
   members,
   targetUser,
-}: DecideSetOwnerInput): Result<OwnershipTransferred, DecideSetOwnerError> => {
+}: DecideSetOwnerInput): Result<OwnershipTransferPlan, DecideSetOwnerError> => {
   if (!targetUser) {
     return err(userNotFoundError(command.userId));
   }

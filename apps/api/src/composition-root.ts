@@ -62,6 +62,7 @@ import {
   createStoreBackedTokenReissue,
 } from './access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
+import { handleTransferOwnership } from './access/application/handle-transfer-ownership.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
 import { principalKindOf } from './access/domain/user.js';
@@ -313,6 +314,15 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       maxTokensPerUserPerOrg: MAX_TOKENS_PER_USER_PER_ORG,
     });
 
+    const transferOwnership = (request: Parameters<typeof handleTransferOwnership>[0]) =>
+      handleTransferOwnership(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistTransfer: ({ plan, event }) => membershipStore.transferOwnership(plan, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
     const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
       handleReissueAgentToken(command, {
         loadMembership: (userId, organizationId) =>
@@ -360,6 +370,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       tokenHandlers,
       agentService,
       reissueAgentToken,
+      transferOwnership,
     };
   }
 

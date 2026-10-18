@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
+  BOT_CANNOT_BE_OWNER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+} from '@yoink/api-contracts';
+import {
   createTestAppFull,
   TEST_ADMIN_PASSWORD,
   TEST_ORG_ID,
@@ -430,6 +434,35 @@ describe('admin HTTP routes', () => {
       expect(missing.json().message).toBe('User not found');
     });
 
+    it('returns 400 when the set-owner target is a bot', async () => {
+      const cookies = await loginAdmin();
+      const org = await app.inject({
+        method: 'POST',
+        url: '/api/admin/organizations',
+        cookies,
+        payload: { name: 'Bot owner' },
+      });
+      const { id: orgId } = org.json<{ id: string }>();
+      const bot = await app.inject({
+        method: 'POST',
+        url: `/api/admin/organizations/${orgId}/users`,
+        cookies,
+        payload: { email: 'lane@example.com', kind: 'agent', name: 'Lane' },
+      });
+      expect(bot.statusCode).toBe(201);
+      const botId = bot.json<{ id: string }>().id;
+
+      const setOwner = await app.inject({
+        method: 'PUT',
+        url: `/api/admin/organizations/${orgId}/owner`,
+        cookies,
+        payload: { userId: botId },
+      });
+      expect(setOwner.statusCode).toBe(400);
+      expect(setOwner.json().code).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+      expect(setOwner.json().message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
+    });
+
     it('returns 400 when the set-owner target is not a workspace member', async () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
@@ -448,7 +481,7 @@ describe('admin HTTP routes', () => {
       });
       expect(outsider.statusCode).toBe(400);
       expect(outsider.json().code).toBe('TARGET_NOT_WORKSPACE_MEMBER');
-      expect(outsider.json().message).toMatch(/member/i);
+      expect(outsider.json().message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
     });
 
     it('switches a member to admin and back when an owner remains', async () => {

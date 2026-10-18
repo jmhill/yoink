@@ -14,6 +14,18 @@ import {
   createStoreBackedTokenReissue,
 } from '../infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
+import { handleTransferOwnership } from './handle-transfer-ownership.js';
+import {
+  ALREADY_OWNER_MESSAGE,
+  BOT_CANNOT_BE_OWNER_MESSAGE,
+  BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
+  HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  HANDOVER_OWNERSHIP_PATH,
+  NOT_CURRENT_OWNER_MESSAGE,
+  PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
+  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
+} from '@yoink/api-contracts';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import { principalKindOf } from '../domain/user.js';
 import { ResultAsync } from 'neverthrow';
@@ -116,6 +128,12 @@ describe('organization routes', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
+  const outsider: User = {
+    id: '550e8400-e29b-41d4-a716-446655440015',
+    email: 'outsider@example.com',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
   const personalMembership: OrganizationMembership = {
     id: '550e8400-e29b-41d4-a716-446655440020',
     userId: testUser.id,
@@ -205,7 +223,7 @@ describe('organization routes', () => {
       initialOrganizations: [personalOrg, teamOrg, otherOrg],
     });
     const userStore = createFakeUserStore({
-      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent],
+      initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider],
     });
     membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [
@@ -286,6 +304,15 @@ describe('organization routes', () => {
       clock,
       idGenerator,
     });
+    const transferOwnership = (request: Parameters<typeof handleTransferOwnership>[0]) =>
+      handleTransferOwnership(request, {
+        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
+        loadUser: (userId) => userService.getUser(userId),
+        persistTransfer: ({ plan, event }) => membershipStore.transferOwnership(plan, event),
+        nextId: () => idGenerator.generate(),
+        now: () => clock.now().toISOString(),
+      });
+
     const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
       handleReissueAgentToken(command, {
         loadMembership: (userId, organizationId) =>
@@ -323,6 +350,7 @@ describe('organization routes', () => {
       userService,
       agentService,
       reissueAgentToken,
+      transferOwnership,
       authMiddleware,
     });
 
@@ -411,10 +439,9 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(409);
-      expect(response.json().message).toBe(
-        'Transfer ownership first. Ask an admin of the whole app to change the owner.'
-      );
+      expect(response.json().message).toBe(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
       expect(response.json().code).toBe('OWNER_MUST_TRANSFER');
+      expect(response.json().handoverPath).toBe(HANDOVER_OWNERSHIP_PATH);
     });
 
     it('allows the last admin to leave when an owner remains', async () => {
@@ -525,9 +552,8 @@ describe('organization routes', () => {
 
       expect(response.statusCode).toBe(409);
       expect(response.json().code).toBe('OWNER_CANNOT_BE_REMOVED');
-      expect(response.json().message).toBe(
-        "The owner can't be removed. Ownership has to be handed over first."
-      );
+      expect(response.json().message).toBe(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
+      expect(response.json().handoverPath).toBe(HANDOVER_OWNERSHIP_PATH);
     });
 
     it('returns 409 OWNER_CANNOT_BE_REMOVED when a member removes the owner', async () => {
@@ -704,6 +730,236 @@ describe('organization routes', () => {
       });
 
       expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('POST /api/organizations/:organizationId/owner/transfer', () => {
+    const transferUrl = `/api/organizations/${teamOrg.id}/owner/transfer`;
+
+    it('hands over to an admin', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: teamAdmin.id },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        owner: { userId: teamAdmin.id, role: 'owner', email: teamAdmin.email },
+        previousOwner: { userId: teamOwner.id, role: 'admin', email: teamOwner.email },
+      });
+
+      const oldOwner = await membershipStore.findByUserAndOrg(teamOwner.id, teamOrg.id);
+      const newOwner = await membershipStore.findByUserAndOrg(teamAdmin.id, teamOrg.id);
+      expect(oldOwner.isOk() && oldOwner.value?.role).toBe('admin');
+      expect(newOwner.isOk() && newOwner.value?.role).toBe('owner');
+    });
+
+    it('hands over to a member', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: testUser.id },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().owner.userId).toBe(testUser.id);
+      expect(response.json().owner.role).toBe('owner');
+      expect(response.json().previousOwner.userId).toBe(teamOwner.id);
+      expect(response.json().previousOwner.role).toBe('admin');
+    });
+
+    it('returns 403 when a bot calls it', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        headers: { authorization: `Bearer ${agentRawToken}` },
+        payload: { userId: teamAdmin.id },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe('BOT_CANNOT_TRANSFER_OWNERSHIP');
+      expect(response.json().message).toBe(BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE);
+    });
+
+    it('returns 403 when an admin tries', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { userId: testUser.id },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe('NOT_CURRENT_OWNER');
+      expect(response.json().message).toBe(NOT_CURRENT_OWNER_MESSAGE);
+    });
+
+    it('returns 400 for a personal workspace', async () => {
+      await membershipStore.save({ ...personalMembership, role: 'owner' });
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/organizations/${personalOrg.id}/owner/transfer`,
+        cookies: { [USER_SESSION_COOKIE]: testSession.id },
+        payload: { userId: testUser.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('PERSONAL_WORKSPACE_TRANSFER');
+      expect(response.json().message).toBe(PERSONAL_WORKSPACE_TRANSFER_MESSAGE);
+    });
+
+    it('returns 400 when handing over to yourself', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: teamOwner.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('ALREADY_OWNER');
+      expect(response.json().message).toBe(ALREADY_OWNER_MESSAGE);
+    });
+
+    it('returns 404 when the target user does not exist', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: '550e8400-e29b-41d4-a716-446655440099' },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json().code).toBe('USER_NOT_FOUND');
+      expect(response.json().message).toBe('User not found');
+    });
+
+    it('returns 400 when the target is a bot', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: agentUser.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
+      expect(response.json().message).toBe(BOT_CANNOT_BE_OWNER_MESSAGE);
+    });
+
+    it('returns 400 when the target is not in the workspace', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: outsider.id },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().code).toBe('TARGET_NOT_WORKSPACE_MEMBER');
+      expect(response.json().message).toBe(TARGET_NOT_WORKSPACE_MEMBER_MESSAGE);
+    });
+
+    it('returns 401 without authentication', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: transferUrl,
+        payload: { userId: teamAdmin.id },
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it('returns 500 with the storage message when persist fails', async () => {
+      const failingStore = createFakeOrganizationMembershipStore({
+        initialMemberships: [
+          personalMembership,
+          teamMembership,
+          agentMembership,
+          teamOwnerMembership,
+          teamAdminMembership,
+          otherAgentMembership,
+        ],
+        shouldFailOnTransferOwnership: true,
+      });
+      const failingApp = Fastify();
+      await failingApp.register(cookie);
+      const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+      const idGenerator = createFakeIdGenerator();
+      const organizationStore = createFakeOrganizationStore({
+        initialOrganizations: [personalOrg, teamOrg, otherOrg],
+      });
+      const userStore = createFakeUserStore({
+        initialUsers: [testUser, agentUser, teamOwner, teamAdmin, otherAgent, outsider],
+      });
+      const userService = createUserService({ userStore });
+      const membershipService = createMembershipService({
+        membershipStore: failingStore,
+        userService,
+        organizationStore,
+        clock,
+        idGenerator,
+      });
+      const sessionService = createSessionService({
+        sessionStore,
+        userService,
+        membershipService,
+        clock,
+        idGenerator,
+        sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+        refreshThresholdMs: 24 * 60 * 60 * 1000,
+      });
+      await registerOrganizationRoutes(failingApp, {
+        sessionService,
+        membershipService,
+        userService,
+        agentService: createAgentService({
+          userService,
+          membershipService,
+          createToken: () => {
+            throw new Error('unused');
+          },
+          clock,
+          idGenerator,
+        }),
+        reissueAgentToken: () => {
+          throw new Error('unused');
+        },
+        transferOwnership: (request) =>
+          handleTransferOwnership(request, {
+            loadMembers: (organizationId) => failingStore.findByOrganizationId(organizationId),
+            loadUser: (userId) => userService.getUser(userId),
+            persistTransfer: ({ plan, event }) => failingStore.transferOwnership(plan, event),
+            nextId: () => idGenerator.generate(),
+            now: () => clock.now().toISOString(),
+          }),
+        authMiddleware: createCombinedAuthMiddleware({
+          tokenService: createTokenService({
+            organizationStore,
+            userStore,
+            tokenStore: createFakeTokenStore({ initialTokens: [] }),
+            passwordHasher: createFakePasswordHasher(),
+            clock,
+          }),
+          sessionService,
+          sessionCookieName: USER_SESSION_COOKIE,
+        }),
+      });
+      await failingApp.ready();
+
+      const response = await failingApp.inject({
+        method: 'POST',
+        url: transferUrl,
+        cookies: { [USER_SESSION_COOKIE]: teamOwnerSession.id },
+        payload: { userId: teamAdmin.id },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json().message).toBe(TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
+      await failingApp.close();
     });
   });
 });

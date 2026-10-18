@@ -333,9 +333,59 @@ export type BrowserActorOperations = {
 
   /**
    * Settings User tab: click Leave on this organization, confirm, and
-   * leave the dialog open showing the refusal (Transfer ownership first…).
+   * leave the dialog open showing the refusal (Hand over ownership first…).
    */
   tryLeaveOrganizationFromSettings(orgName: string): Promise<void>;
+
+  /**
+   * Settings User tab: leave this organization successfully after handover.
+   */
+  leaveOrganizationFromSettings(orgName: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: owner-only ownership card is visible.
+   */
+  shouldSeeOwnershipCard(ownerName: string): Promise<void>;
+
+  /**
+   * Settings Organization tab: no ownership card.
+   */
+  shouldNotSeeOwnershipCard(): Promise<void>;
+
+  /**
+   * Open the handover picker from the ownership card.
+   */
+  openHandOverOwnership(): Promise<void>;
+
+  /**
+   * The handover picker lists this person.
+   */
+  shouldSeeHandoverCandidate(name: string): Promise<void>;
+
+  /**
+   * The handover picker does not list this person.
+   */
+  shouldNotSeeHandoverCandidate(name: string): Promise<void>;
+
+  /**
+   * Pick this person in the handover picker and see the confirm copy.
+   */
+  pickHandoverCandidate(name: string): Promise<void>;
+
+  /**
+   * Confirm the handover and wait for the overlay to close.
+   */
+  confirmHandover(): Promise<void>;
+
+  /**
+   * Follow the Hand over ownership first link to the ownership card.
+   */
+  followHandoverLink(): Promise<void>;
+
+  /**
+   * Frame the ownership card for a walkthrough shot.
+   */
+  frameOwnershipCard(): Promise<void>;
 
   /**
    * Settings Organization tab: assert this member row is visible.
@@ -359,7 +409,14 @@ export type BrowserActorOperations = {
   shouldNotSeeAnyRemoveButtons(): Promise<void>;
 
   /**
+   * Settings Organization tab: owner row shows the handover link.
+   * Shown only to the owner.
+   */
+  shouldSeeOwnerHandoverLink(): Promise<void>;
+
+  /**
    * Settings Organization tab: owner row shows the cannot-remove copy.
+   * Shown to everyone except the owner.
    */
   shouldSeeOwnerCannotBeRemoved(): Promise<void>;
 

@@ -1,5 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { type Page, expect } from '@playwright/test';
+import {
+  HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+} from '@yoink/api-contracts';
 import type {
   Actor,
   AnonymousActor,
@@ -6140,6 +6144,47 @@ export const createPlaywrightActor = (
       await settingsPage.tryLeaveOrganization(orgName);
     },
 
+    async leaveOrganizationFromSettings(orgName: string): Promise<void> {
+      await settingsPage.goto();
+      await settingsPage.leaveOrganizationFromSettings(orgName);
+    },
+
+    async shouldSeeOwnershipCard(ownerName: string): Promise<void> {
+      await settingsPage.shouldSeeOwnershipCard(ownerName);
+    },
+
+    async shouldNotSeeOwnershipCard(): Promise<void> {
+      await settingsPage.shouldNotSeeOwnershipCard();
+    },
+
+    async openHandOverOwnership(): Promise<void> {
+      await settingsPage.openHandOverOwnership();
+    },
+
+    async shouldSeeHandoverCandidate(name: string): Promise<void> {
+      await settingsPage.shouldSeeHandoverCandidate(name);
+    },
+
+    async shouldNotSeeHandoverCandidate(name: string): Promise<void> {
+      await settingsPage.shouldNotSeeHandoverCandidate(name);
+    },
+
+    async pickHandoverCandidate(name: string): Promise<void> {
+      await settingsPage.pickHandoverCandidate(name);
+    },
+
+    async confirmHandover(): Promise<void> {
+      await settingsPage.confirmHandover();
+    },
+
+    async followHandoverLink(): Promise<void> {
+      await settingsPage.followHandoverLink();
+    },
+
+    async frameOwnershipCard(): Promise<void> {
+      await settingsPage.frameOwnershipCard();
+    },
+
     async shouldSeeMemberRow(label: string): Promise<void> {
       await settingsPage.shouldSeeMemberRow(label);
     },
@@ -6154,6 +6199,10 @@ export const createPlaywrightActor = (
 
     async shouldNotSeeAnyRemoveButtons(): Promise<void> {
       await settingsPage.shouldNotSeeAnyRemoveButtons();
+    },
+
+    async shouldSeeOwnerHandoverLink(): Promise<void> {
+      await settingsPage.shouldSeeOwnerHandoverLink();
     },
 
     async shouldSeeOwnerCannotBeRemoved(): Promise<void> {
@@ -6183,7 +6232,10 @@ export const createPlaywrightActor = (
         if (body.message?.includes('last admin')) {
           throw new LastAdminError();
         }
-        if (body.message?.includes('Transfer ownership first')) {
+        if (
+          body.message?.includes(HAND_OVER_OWNERSHIP_FIRST_MESSAGE) ||
+          body.message?.includes(OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE)
+        ) {
           throw new OwnerMustTransferError();
         }
         throw new Error(body.message || 'Cannot leave organization');
@@ -6254,7 +6306,10 @@ export const createPlaywrightActor = (
 
       if (response.status() === 403) {
         const body = await response.json().catch(() => ({ message: undefined }));
-        if (body.message?.includes('Transfer ownership first')) {
+        if (
+          body.message?.includes(HAND_OVER_OWNERSHIP_FIRST_MESSAGE) ||
+          body.message?.includes(OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE)
+        ) {
           throw new OwnerMustTransferError();
         }
         throw new ForbiddenError(body.message);
@@ -6268,7 +6323,10 @@ export const createPlaywrightActor = (
         if (body.message?.includes('last admin') || body.message?.includes('last owner')) {
           throw new LastAdminError();
         }
-        if (body.message?.includes('Transfer ownership first')) {
+        if (
+          body.message?.includes(HAND_OVER_OWNERSHIP_FIRST_MESSAGE) ||
+          body.message?.includes(OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE)
+        ) {
           throw new OwnerMustTransferError();
         }
         throw new Error(body.message || 'Cannot remove member');

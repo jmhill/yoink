@@ -1,7 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { MembershipStorageError } from './organization-errors.js';
-import type { OwnershipTransferred } from './owner-presence.js';
+import type { OwnershipTransferPlan } from './owner-presence.js';
+import type { OwnershipTransferred } from './membership-events.js';
 
 /**
  * Store interface for organization membership persistence.
@@ -32,5 +33,13 @@ export type OrganizationMembershipStore = {
    * Atomically demote the old owner (if any) then promote the new owner.
    * Demote must run first so the one-owner unique index never sees two owners.
    */
-  setOwner(plan: OwnershipTransferred): ResultAsync<void, MembershipStorageError>;
+  setOwner(plan: OwnershipTransferPlan): ResultAsync<void, MembershipStorageError>;
+
+  /**
+   * Atomically demote, promote, and record the OwnershipTransferred event.
+   */
+  transferOwnership(
+    plan: OwnershipTransferPlan,
+    event: OwnershipTransferred
+  ): ResultAsync<void, MembershipStorageError>;
 };

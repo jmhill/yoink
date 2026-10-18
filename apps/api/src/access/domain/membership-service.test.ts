@@ -5,6 +5,7 @@ import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-or
 import { createUserService } from './user-service.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
+import { HAND_OVER_OWNERSHIP_FIRST_MESSAGE } from '@yoink/api-contracts';
 import type { Organization } from './organization.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
@@ -263,7 +264,7 @@ describe('MembershipService', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr() && result.error.type === 'OWNER_MUST_TRANSFER') {
-        expect(result.error.message).toContain('Transfer ownership first');
+        expect(result.error.message).toBe(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
       } else {
         expect(result.isErr() && result.error.type).toBe('OWNER_MUST_TRANSFER');
       }
@@ -303,7 +304,7 @@ describe('MembershipService', () => {
 
       expect(result.isErr() && result.error.type).toBe('OWNER_CANNOT_BE_REMOVED');
       if (result.isErr() && result.error.type === 'OWNER_CANNOT_BE_REMOVED') {
-        expect(result.error.message).toContain("The owner can't be removed");
+        expect(result.error.message).toBe(HAND_OVER_OWNERSHIP_FIRST_MESSAGE);
       }
     });
 

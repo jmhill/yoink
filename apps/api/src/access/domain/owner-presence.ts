@@ -8,9 +8,8 @@ import {
 /**
  * Result of a successful owner assignment. Demote (if any) must be persisted
  * before promote so the one-owner unique index never sees two owners.
- * #190 TransferOwnershipCommand returns this same type.
  */
-export type OwnershipTransferred = {
+export type OwnershipTransferPlan = {
   demote: OrganizationMembership | null;
   promote: OrganizationMembership;
 };
@@ -58,7 +57,7 @@ export const decideOwnerRemains = (
 export const planOwnershipTransfer = (
   members: readonly OrganizationMembership[],
   incomingOwner: OrganizationMembership
-): OwnershipTransferred => {
+): OwnershipTransferPlan => {
   if (incomingOwner.role === 'owner') {
     return {
       demote: null,

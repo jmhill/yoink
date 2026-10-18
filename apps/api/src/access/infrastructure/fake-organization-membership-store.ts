@@ -1,6 +1,8 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
+import type { OwnershipTransferred } from '../domain/membership-events.js';
+import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
 import { membershipStorageError, type MembershipStorageError } from '../domain/organization-errors.js';
 
 export type FakeOrganizationMembershipStoreOptions = {
@@ -8,20 +10,25 @@ export type FakeOrganizationMembershipStoreOptions = {
   shouldFailOnFind?: boolean;
   shouldFailOnDelete?: boolean;
   shouldFailOnSetOwner?: boolean;
+  shouldFailOnTransferOwnership?: boolean;
   initialMemberships?: OrganizationMembership[];
+};
+
+export type FakeOrganizationMembershipStore = OrganizationMembershipStore & {
+  recordedEvents(): readonly OwnershipTransferred[];
 };
 
 export const createFakeOrganizationMembershipStore = (
   options: FakeOrganizationMembershipStoreOptions = {}
-): OrganizationMembershipStore => {
+): FakeOrganizationMembershipStore => {
   const memberships: OrganizationMembership[] = [...(options.initialMemberships ?? [])];
+  const events: OwnershipTransferred[] = [];
 
   return {
     save: (membership: OrganizationMembership): ResultAsync<void, MembershipStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(membershipStorageError('Save failed'));
       }
-      // Check if already exists (update) or new (insert)
       const existingIndex = memberships.findIndex((m) => m.id === membership.id);
       if (existingIndex >= 0) {
         memberships[existingIndex] = membership;
@@ -85,17 +92,35 @@ export const createFakeOrganizationMembershipStore = (
       if (options.shouldFailOnSetOwner || options.shouldFailOnSave) {
         return errAsync(membershipStorageError('Set owner failed'));
       }
-      const next = memberships.map((membership) => {
-        if (demote && membership.id === demote.id) {
-          return demote;
-        }
-        if (membership.id === promote.id) {
-          return promote;
-        }
-        return membership;
-      });
-      memberships.splice(0, memberships.length, ...next);
+      applyPlan(memberships, { demote, promote });
       return okAsync(undefined);
     },
+
+    transferOwnership: (plan, event): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnTransferOwnership || options.shouldFailOnSave) {
+        return errAsync(membershipStorageError('Transfer ownership failed'));
+      }
+      applyPlan(memberships, plan);
+      events.push(event);
+      return okAsync(undefined);
+    },
+
+    recordedEvents: () => events,
   };
+};
+
+const applyPlan = (
+  memberships: OrganizationMembership[],
+  plan: OwnershipTransferPlan
+): void => {
+  const next = memberships.map((membership) => {
+    if (plan.demote && membership.id === plan.demote.id) {
+      return plan.demote;
+    }
+    if (membership.id === plan.promote.id) {
+      return plan.promote;
+    }
+    return membership;
+  });
+  memberships.splice(0, memberships.length, ...next);
 };

@@ -32,9 +32,9 @@ export type SetOwnerCommand = {
 
 /**
  * #190 handover: the current owner names the next owner.
- * Reuses OwnershipTransferred from decideSetOwner / planOwnershipTransfer.
+ * Reuses OwnershipTransferPlan from decideSetOwner / planOwnershipTransfer.
  */
-export type TransferOwnershipCommand = {
+export type TransferOwnership = {
   organizationId: string;
   fromUserId: string;
   toUserId: string;

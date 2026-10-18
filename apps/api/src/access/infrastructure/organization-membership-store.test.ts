@@ -70,6 +70,31 @@ const describeSetOwner = (
       expect(oldOwner.isOk() && oldOwner.value?.role).toBe('admin');
       expect(newOwner.isOk() && newOwner.value?.role).toBe('owner');
     });
+
+    it('transfers ownership in one save and records the event', async () => {
+      const event = {
+        type: 'OwnershipTransferred' as const,
+        id: '550e8400-e29b-41d4-a716-446655440099',
+        organizationId: org.id,
+        fromUserId: ownerUser.id,
+        toUserId: memberUser.id,
+        actorUserId: ownerUser.id,
+        occurredAt: '2024-06-15T12:00:00.000Z',
+      };
+      const result = await store.transferOwnership(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        event
+      );
+      expect(result.isOk()).toBe(true);
+
+      const oldOwner = await store.findById(ownerMembership.id);
+      const newOwner = await store.findById(memberMembership.id);
+      expect(oldOwner.isOk() && oldOwner.value?.role).toBe('admin');
+      expect(newOwner.isOk() && newOwner.value?.role).toBe('owner');
+    });
   });
 };
 
@@ -81,6 +106,34 @@ describe('organization membership store setOwner', () => {
   );
 
   describe('fake failure leaves the old owner', () => {
+    it('does not demote the old owner when transferOwnership fails', async () => {
+      const store = createFakeOrganizationMembershipStore({
+        initialMemberships: [ownerMembership, memberMembership],
+        shouldFailOnTransferOwnership: true,
+      });
+
+      const result = await store.transferOwnership(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        {
+          type: 'OwnershipTransferred',
+          id: '550e8400-e29b-41d4-a716-446655440099',
+          organizationId: org.id,
+          fromUserId: ownerUser.id,
+          toUserId: memberUser.id,
+          actorUserId: ownerUser.id,
+          occurredAt: '2024-06-15T12:00:00.000Z',
+        }
+      );
+      expect(result.isErr()).toBe(true);
+      expect(store.recordedEvents()).toHaveLength(0);
+
+      const oldOwner = await store.findById(ownerMembership.id);
+      expect(oldOwner.isOk() && oldOwner.value?.role).toBe('owner');
+    });
+
     it('does not demote the old owner when the save fails', async () => {
       const store = createFakeOrganizationMembershipStore({
         initialMemberships: [ownerMembership, memberMembership],
@@ -111,6 +164,7 @@ describe('organization membership store setOwner', () => {
     });
 
     beforeEach(async () => {
+      await db.execute({ sql: 'DELETE FROM membership_events' });
       await db.execute({ sql: 'DELETE FROM organization_memberships' });
       await db.execute({ sql: 'DELETE FROM api_tokens' });
       await db.execute({ sql: 'DELETE FROM users' });
@@ -159,6 +213,62 @@ describe('organization membership store setOwner', () => {
       expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');
       const stillMember = await store.findById(memberMembership.id);
       expect(stillMember.isOk() && stillMember.value?.role).toBe('member');
+    });
+
+    it('writes the OwnershipTransferred event in the same batch', async () => {
+      const event = {
+        type: 'OwnershipTransferred' as const,
+        id: '550e8400-e29b-41d4-a716-446655440099',
+        organizationId: org.id,
+        fromUserId: ownerUser.id,
+        toUserId: memberUser.id,
+        actorUserId: ownerUser.id,
+        occurredAt: '2024-06-15T12:00:00.000Z',
+      };
+      const result = await store.transferOwnership(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        event
+      );
+      expect(result.isOk()).toBe(true);
+      const rows = await db.execute({
+        sql: `SELECT type, from_user_id, to_user_id, actor_user_id FROM membership_events WHERE id = ?`,
+        args: [event.id],
+      });
+      expect(rows.rows).toHaveLength(1);
+      expect(rows.rows[0]?.type).toBe('OwnershipTransferred');
+      expect(rows.rows[0]?.from_user_id).toBe(ownerUser.id);
+      expect(rows.rows[0]?.to_user_id).toBe(memberUser.id);
+      expect(rows.rows[0]?.actor_user_id).toBe(ownerUser.id);
+    });
+
+    it('leaves the old owner when transferOwnership cannot promote a second owner', async () => {
+      const result = await store.transferOwnership(
+        {
+          demote: null,
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        {
+          type: 'OwnershipTransferred',
+          id: '550e8400-e29b-41d4-a716-446655440098',
+          organizationId: org.id,
+          fromUserId: ownerUser.id,
+          toUserId: memberUser.id,
+          actorUserId: ownerUser.id,
+          occurredAt: '2024-06-15T12:00:00.000Z',
+        }
+      );
+      expect(result.isErr()).toBe(true);
+      const stillOwner = await store.findById(ownerMembership.id);
+      expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');
+      const stillMember = await store.findById(memberMembership.id);
+      expect(stillMember.isOk() && stillMember.value?.role).toBe('member');
+      const rows = await db.execute({
+        sql: `SELECT id FROM membership_events`,
+      });
+      expect(rows.rows).toHaveLength(0);
     });
   });
 });

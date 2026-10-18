@@ -4,6 +4,8 @@ import type {
   User,
   Token,
   Invitation,
+  OwnerInvitation,
+  IssueOwnerInvitationResult,
   CreateTokenResult,
   CreateInvitationInput,
 } from '../../dsl/index.js';
@@ -45,15 +47,98 @@ export const createHttpAdmin = (
     return body.authenticated;
   },
 
-  async createOrganization(name: string): Promise<Organization> {
-    const response = await client.post('/api/admin/organizations', { name });
+  async createOrganization(
+    name: string,
+    options?: { ownerEmail?: string }
+  ): Promise<Organization> {
+    const ownerEmail =
+      options?.ownerEmail ??
+      `unused-owner-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@example.invalid`;
+    const response = await client.post('/api/admin/organizations', { name, ownerEmail });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
     if (response.statusCode !== 201) {
       throw new Error(`Failed to create organization: ${response.body}`);
     }
-    return response.json<Organization>();
+    return response.json<{ organization: Organization }>().organization;
+  },
+
+  async issueOwnerInvitation(
+    organizationId: string,
+    email: string
+  ): Promise<IssueOwnerInvitationResult> {
+    const response = await client.post(
+      `/api/admin/organizations/${organizationId}/owner-invitation`,
+      { email }
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Organization', organizationId);
+    }
+    if (response.statusCode === 400 || response.statusCode === 409) {
+      const error = response.json<{ message?: string }>();
+      throw new ValidationError(error.message ?? 'Invalid request');
+    }
+    if (response.statusCode !== 201) {
+      throw new Error(`Failed to issue owner invitation: ${response.body}`);
+    }
+    return response.json<IssueOwnerInvitationResult>();
+  },
+
+  async getOwnerInvitation(organizationId: string): Promise<OwnerInvitation | null> {
+    const response = await client.get(
+      `/api/admin/organizations/${organizationId}/owner-invitation`
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Organization', organizationId);
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to get owner invitation: ${response.body}`);
+    }
+    return response.json<{ ownerInvitation: OwnerInvitation | null }>().ownerInvitation;
+  },
+
+  async createOwnerlessWorkspace(name: string): Promise<Organization> {
+    const response = await client.post('/api/test/ownerless-workspace', { name });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode !== 201) {
+      throw new Error(`Failed to create ownerless workspace: ${response.body}`);
+    }
+    return response.json<{ organization: Organization }>().organization;
+  },
+
+  async expireInvitation(code: string): Promise<void> {
+    const response = await client.post('/api/test/expire-invitation', { code });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Invitation', code);
+    }
+    if (response.statusCode !== 204) {
+      throw new Error(`Failed to expire invitation: ${response.body}`);
+    }
+  },
+
+  async assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void> {
+    const response = await client.post('/api/test/assign-owner-keeping-invite', {
+      organizationId,
+      userId,
+    });
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode !== 204) {
+      throw new Error(`Failed to assign owner keeping invite: ${response.body}`);
+    }
   },
 
   async listOrganizations(): Promise<Organization[]> {
@@ -324,5 +409,65 @@ export const createHttpAdmin = (
   },
   async saveWalkthroughScreenshot() {
     throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
+  },
+  async openCreateWorkspace() {
+    throw new UnsupportedOperationError('openCreateWorkspace', 'http');
+  },
+  async fillCreateWorkspace() {
+    throw new UnsupportedOperationError('fillCreateWorkspace', 'http');
+  },
+  async submitCreateWorkspace() {
+    throw new UnsupportedOperationError('submitCreateWorkspace', 'http');
+  },
+  async shouldSeeOwnerAssignedToast() {
+    throw new UnsupportedOperationError('shouldSeeOwnerAssignedToast', 'http');
+  },
+  async shouldSeeOwnerInviteCreated() {
+    throw new UnsupportedOperationError('shouldSeeOwnerInviteCreated', 'http');
+  },
+  async copyOwnerInviteLink() {
+    throw new UnsupportedOperationError('copyOwnerInviteLink', 'http');
+  },
+  async closeOwnerInviteDialog() {
+    throw new UnsupportedOperationError('closeOwnerInviteDialog', 'http');
+  },
+  async shouldSeeOwner() {
+    throw new UnsupportedOperationError('shouldSeeOwner', 'http');
+  },
+  async shouldSeePendingOwnerInvite() {
+    throw new UnsupportedOperationError('shouldSeePendingOwnerInvite', 'http');
+  },
+  async clickNewOwnerLink() {
+    throw new UnsupportedOperationError('clickNewOwnerLink', 'http');
+  },
+  async confirmNewOwnerLink() {
+    throw new UnsupportedOperationError('confirmNewOwnerLink', 'http');
+  },
+  async clickUseDifferentEmail() {
+    throw new UnsupportedOperationError('clickUseDifferentEmail', 'http');
+  },
+  async submitDifferentOwnerEmail() {
+    throw new UnsupportedOperationError('submitDifferentOwnerEmail', 'http');
+  },
+  async clickCreateOwnerInvite() {
+    throw new UnsupportedOperationError('clickCreateOwnerInvite', 'http');
+  },
+  async submitCreateOwnerInvite() {
+    throw new UnsupportedOperationError('submitCreateOwnerInvite', 'http');
+  },
+  async openUnsignedSignup() {
+    throw new UnsupportedOperationError('openUnsignedSignup', 'http');
+  },
+  async fillUnsignedSignupEmail() {
+    throw new UnsupportedOperationError('fillUnsignedSignupEmail', 'http');
+  },
+  async submitUnsignedSignup() {
+    throw new UnsupportedOperationError('submitUnsignedSignup', 'http');
+  },
+  async shouldSeeUnsignedSignupText() {
+    throw new UnsupportedOperationError('shouldSeeUnsignedSignupText', 'http');
+  },
+  async saveUnsignedWalkthroughScreenshot() {
+    throw new UnsupportedOperationError('saveUnsignedWalkthroughScreenshot', 'http');
   },
 });

@@ -437,9 +437,21 @@ export type Invitation = {
   code: string;
   email: string | null;
   organizationId: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   expiresAt: string;
   createdAt: string;
+};
+
+export type OwnerInvitation = {
+  id: string;
+  code: string;
+  email: string;
+  expiresAt: string;
+};
+
+export type IssueOwnerInvitationResult = {
+  owner: User | null;
+  ownerInvitation: OwnerInvitation | null;
 };
 
 export type CreateInvitationInput = {
@@ -545,5 +557,5 @@ export type PublicFileHeaders = {
 export type AcceptInvitationResult = {
   organizationId: string;
   organizationName: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
 };

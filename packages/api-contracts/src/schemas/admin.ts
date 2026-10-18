@@ -9,6 +9,24 @@ export const OrganizationSchema = z.object({
 
 export const CreateOrganizationSchema = z.object({
   name: z.string().min(1).max(200),
+  ownerEmail: z.string().email(),
+});
+
+export const CreateWorkspaceRequestSchema = CreateOrganizationSchema;
+
+export const OwnerInvitationSummarySchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  email: z.string().email(),
+  expiresAt: z.string().datetime(),
+});
+
+export const IssueOwnerInvitationRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+export const GetOwnerInvitationResponseSchema = z.object({
+  ownerInvitation: OwnerInvitationSummarySchema.nullable(),
 });
 
 export const UpdateOrganizationSchema = z.object({
@@ -17,6 +35,10 @@ export const UpdateOrganizationSchema = z.object({
 
 export type Organization = z.infer<typeof OrganizationSchema>;
 export type CreateOrganization = z.infer<typeof CreateOrganizationSchema>;
+export type CreateWorkspaceRequest = z.infer<typeof CreateWorkspaceRequestSchema>;
+export type OwnerInvitationSummary = z.infer<typeof OwnerInvitationSummarySchema>;
+export type IssueOwnerInvitationRequest = z.infer<typeof IssueOwnerInvitationRequestSchema>;
+export type GetOwnerInvitationResponse = z.infer<typeof GetOwnerInvitationResponseSchema>;
 export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 
 // User schemas
@@ -30,6 +52,20 @@ export const UserSchema = z.object({
 });
 
 export type User = z.infer<typeof UserSchema>;
+
+export const CreateWorkspaceResponseSchema = z.object({
+  organization: OrganizationSchema,
+  owner: UserSchema.nullable(),
+  ownerInvitation: OwnerInvitationSummarySchema.nullable(),
+});
+
+export const IssueOwnerInvitationResponseSchema = z.object({
+  owner: UserSchema.nullable(),
+  ownerInvitation: OwnerInvitationSummarySchema.nullable(),
+});
+
+export type CreateWorkspaceResponse = z.infer<typeof CreateWorkspaceResponseSchema>;
+export type IssueOwnerInvitationResponse = z.infer<typeof IssueOwnerInvitationResponseSchema>;
 
 export const SetOrganizationOwnerSchema = z.object({
   userId: z.string().uuid(),
@@ -101,7 +137,7 @@ export const AdminInvitationResponseSchema = z.object({
   code: z.string(),
   email: z.string().email().nullable(),
   organizationId: z.string().uuid(),
-  role: z.enum(['admin', 'member']),
+  role: z.enum(['owner', 'admin', 'member']),
   expiresAt: z.string().datetime(),
   createdAt: z.string().datetime(),
 });

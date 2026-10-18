@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Loader2, AlertCircle, CheckCircle2, Building2, Users } from 'lucide-react';
+import {
+  ownerInviteJoinTitle,
+  YOUR_ROLE_OWNER_LABEL,
+} from '@yoink/api-contracts';
 import { getSession, validateInvitation, acceptInvitation, switchOrganization } from '@/api/auth';
 
 export const Route = createFileRoute('/join/$code')({
@@ -14,7 +18,7 @@ type InvitationInfo = {
   organizationId: string;
   organizationName: string;
   email: string | null;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   expiresAt: string;
 };
 
@@ -174,10 +178,16 @@ function JoinPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Building2 className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Join Organization</CardTitle>
-          <CardDescription>
-            You've been invited to join an organization
-          </CardDescription>
+          <CardTitle className="text-2xl">
+            {invitation.role === 'owner'
+              ? ownerInviteJoinTitle(invitation.organizationName)
+              : 'Join Organization'}
+          </CardTitle>
+          {invitation.role === 'owner' ? null : (
+            <CardDescription>
+              You've been invited to join an organization
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
@@ -194,8 +204,13 @@ function JoinPage() {
               <Users className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm text-muted-foreground">Your Role</p>
-                <p className="font-medium capitalize" data-testid="invitation-role">
-                  {invitation.role}
+                <p
+                  className={
+                    invitation.role === 'owner' ? 'font-medium' : 'font-medium capitalize'
+                  }
+                  data-testid="invitation-role"
+                >
+                  {invitation.role === 'owner' ? YOUR_ROLE_OWNER_LABEL : invitation.role}
                 </p>
               </div>
             </div>

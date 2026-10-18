@@ -16,9 +16,12 @@ import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
 import { registerWorkRoutes } from './work/infrastructure/http-work-routes.js';
 import { registerReviewRoutes } from './review/infrastructure/http-review-routes.js';
 import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
+import { registerOwnerlessWorkspaceFixtureRoutes } from './access/infrastructure/http-ownerless-workspace-fixture-routes.js';
 import {
   registerAdminRoutes,
+  type AdminRoutesDependencies,
   registerInvitationRoutes,
+  type InvitationRoutesDependencies,
   registerSignupRoutes,
   registerPasskeyRoutes,
   registerAuthRoutes,
@@ -59,6 +62,8 @@ import type {
 // TODO(8.5.4): store interfaces are not part of the access public API;
 // auth-routes should stop needing an OrganizationStore dependency
 import type { OrganizationStore } from './access/domain/organization-store.js';
+import type { InvitationStore } from './access/domain/invitation-store.js';
+import type { OrganizationMembershipStore } from './access/domain/organization-membership-store.js';
 import {
   DEFAULT_GLOBAL_RATE_LIMIT_MAX,
   DEFAULT_IP_RATE_LIMIT_MAX,
@@ -86,6 +91,9 @@ export type AdminConfig = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
+  createWorkspace: AdminRoutesDependencies['createWorkspace'];
+  issueOwnerInvitation: AdminRoutesDependencies['issueOwnerInvitation'];
+  getOwnerInvitation: AdminRoutesDependencies['getOwnerInvitation'];
 };
 
 export type SignupConfig = {
@@ -121,6 +129,10 @@ export type AppDependencies = {
   membershipService: MembershipService;
   organizationService: OrganizationService;
   organizationStore: OrganizationStore;
+  invitationStore?: InvitationStore;
+  membershipStore?: OrganizationMembershipStore;
+  userService: UserService;
+  acceptInvitation: InvitationRoutesDependencies['acceptInvitation'];
   signup?: SignupConfig;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
@@ -226,6 +238,19 @@ export const createApp = async (deps: AppDependencies) => {
       db: deps.database,
     });
   }
+  if (
+    deps.enableTestFixtures &&
+    deps.admin &&
+    deps.invitationStore &&
+    deps.membershipStore
+  ) {
+    await registerOwnerlessWorkspaceFixtureRoutes(app, {
+      adminSessionService: deps.admin.adminSessionService,
+      organizationStore: deps.organizationStore,
+      invitationStore: deps.invitationStore,
+      membershipStore: deps.membershipStore,
+    });
+  }
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
@@ -241,6 +266,8 @@ export const createApp = async (deps: AppDependencies) => {
     invitationService: deps.invitationService,
     membershipService: deps.membershipService,
     organizationService: deps.organizationService,
+    userService: deps.userService,
+    acceptInvitation: deps.acceptInvitation,
     authMiddleware,
   });
 

@@ -1,6 +1,20 @@
 import { chromium, type Browser, type BrowserContext, type Page, type CDPSession } from '@playwright/test';
 import type { Driver, DriverConfig } from '../types.js';
-import type { Actor, Admin, AnonymousActor } from '../../dsl/index.js';
+import {
+  NotFoundError,
+  ValidationError,
+  type Actor,
+  type Admin,
+  type AnonymousActor,
+} from '../../dsl/index.js';
+import {
+  INVITATION_ALREADY_USED_MESSAGE,
+  INVITATION_EXPIRED_MESSAGE,
+  INVITATION_NOT_FOUND_MESSAGE,
+  INVITATION_REPLACED_MESSAGE,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
+} from '@yoink/api-contracts';
 import { createHttpClient } from '../http/http-client.js';
 import { createHttpAdmin } from '../http/admin.js';
 import { createPlaywrightAdmin } from './admin.js';
@@ -12,6 +26,23 @@ import { SignupPage, VirtualAuthenticator } from './page-objects.js';
 type SignupSession = {
   user: { id: string };
   organizationId?: string;
+};
+
+const throwSignupInvitationError = (errorMsg: string | null, code: string): never => {
+  const text = errorMsg ?? '';
+  if (text.includes(INVITATION_NOT_FOUND_MESSAGE)) {
+    throw new NotFoundError('Invitation', code);
+  }
+  if (
+    text.includes(INVITATION_EXPIRED_MESSAGE) ||
+    text.includes(INVITATION_ALREADY_USED_MESSAGE) ||
+    text.includes(INVITATION_REPLACED_MESSAGE) ||
+    text.includes(OWNER_INVITE_WRONG_EMAIL_MESSAGE) ||
+    text.includes(WORKSPACE_ALREADY_HAS_OWNER_MESSAGE)
+  ) {
+    throw new ValidationError(text.trim());
+  }
+  throw new Error(`Signup failed: ${text}`);
 };
 
 /**
@@ -178,8 +209,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       
       // Check for errors during validation
       if (await signupPage.hasError()) {
-        const error = await signupPage.getErrorMessage();
-        throw new Error(`Signup validation failed: ${error}`);
+        throwSignupInvitationError(await signupPage.getErrorMessage(), invitationCode);
       }
       
       // Fill email and device name. Display name is set through admin after signup.
@@ -205,7 +235,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         if (result === 'error') {
           const errorMsg = await signupPage.getErrorMessage();
           debug(`Signup failed with error: ${errorMsg}`);
-          throw new Error(`Signup failed: ${errorMsg}`);
+          throwSignupInvitationError(errorMsg, invitationCode);
         }
       } catch (e) {
         // If both fail, log page state for debugging
@@ -232,7 +262,11 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       });
     },
 
-    async createActorWithInvitation(invitationCode: string, email: string): Promise<Actor> {
+    async createActorWithInvitation(
+      invitationCode: string,
+      email: string,
+      options?: { exactEmail?: boolean }
+    ): Promise<Actor> {
       if (!browser) {
         throw new Error('Driver not initialized. Call setup() first.');
       }
@@ -251,10 +285,13 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       actorContexts.push(context);
       debug('Created isolated browser context');
 
-      // Make email unique per actor to satisfy the global email uniqueness constraint
+      // Make email unique per actor to satisfy the global email uniqueness constraint,
+      // unless the invitation is locked to this exact address (owner invites).
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const [localPart, domain] = email.split('@');
-      const uniqueEmail = `${localPart}+${suffix}@${domain}`;
+      const uniqueEmail = options?.exactEmail
+        ? email
+        : `${localPart}+${suffix}@${domain}`;
       debug(`Creating actor with email: ${uniqueEmail}`);
 
       // Create a new page for this actor in their isolated context
@@ -277,8 +314,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
 
       // Check for errors during validation
       if (await signupPage.hasError()) {
-        const error = await signupPage.getErrorMessage();
-        throw new Error(`Signup validation failed: ${error}`);
+        throwSignupInvitationError(await signupPage.getErrorMessage(), invitationCode);
       }
 
       // Fill email and device name. Display name is set through admin after signup.
@@ -302,7 +338,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         if (result === 'error') {
           const errorMsg = await signupPage.getErrorMessage();
           debug(`Signup failed with error: ${errorMsg}`);
-          throw new Error(`Signup failed: ${errorMsg}`);
+          throwSignupInvitationError(errorMsg, invitationCode);
         }
       } catch (e) {
         debug(`Timeout waiting for signup result, current URL: ${page.url()}`);

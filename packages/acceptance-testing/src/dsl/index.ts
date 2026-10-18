@@ -38,6 +38,8 @@ export type {
   User,
   Token,
   Invitation,
+  OwnerInvitation,
+  IssueOwnerInvitationResult,
   Member,
   PasskeyCredentialInfo,
   CreateCaptureInput,

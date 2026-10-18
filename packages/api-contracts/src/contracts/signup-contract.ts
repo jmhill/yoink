@@ -22,9 +22,9 @@ export const signupContract = c.router({
     responses: {
       200: SignupOptionsResponseSchema,
       400: ErrorSchema, // Invalid email format
-      404: ErrorSchema, // Invitation not found
-      409: ErrorSchema, // Email already registered
-      410: ErrorSchema, // Invitation expired or already used
+      404: ErrorSchema, // This invite link isn't valid.
+      409: ErrorSchema, // That email already has an account. Sign in instead.
+      410: ErrorSchema, // Expired, replaced, or already used
       500: ErrorSchema,
     },
     summary: 'Get WebAuthn registration options for signup',
@@ -43,9 +43,9 @@ export const signupContract = c.router({
     responses: {
       201: SignupVerifyResponseSchema,
       400: ErrorSchema, // Invalid request or verification failed
-      404: ErrorSchema, // Invitation not found
-      409: ErrorSchema, // Email already registered
-      410: ErrorSchema, // Invitation expired, already used, or challenge expired
+      404: ErrorSchema, // This invite link isn't valid.
+      409: ErrorSchema, // That email already has an account. Sign in instead.
+      410: ErrorSchema, // Expired, replaced, or already used
       500: ErrorSchema,
     },
     summary: 'Complete signup with WebAuthn registration',

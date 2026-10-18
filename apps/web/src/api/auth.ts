@@ -6,6 +6,10 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 import {
+  EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE,
+  ErrorSchema,
+  INVITATION_EXPIRED_MESSAGE,
+  INVITATION_NOT_FOUND_MESSAGE,
   memberDisplayName,
   REMOVE_NOT_ALLOWED_MESSAGE,
   removeMemberFailedMessage,
@@ -13,6 +17,14 @@ import {
   type SignupVerifyResponse,
 } from '@yoink/api-contracts';
 import { z } from 'zod';
+
+const messageFromErrorBody = (body: unknown, fallback: string): string => {
+  const parsed = ErrorSchema.safeParse(body);
+  if (parsed.success && parsed.data.message.length > 0) {
+    return parsed.data.message;
+  }
+  return fallback;
+};
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string; handoverPath?: string };
 
@@ -211,7 +223,7 @@ export const validateInvitation = async (
     organizationId: string;
     organizationName: string;
     email: string | null;
-    role: 'admin' | 'member';
+    role: 'owner' | 'admin' | 'member';
     expiresAt: string;
   }>
 > => {
@@ -223,13 +235,17 @@ export const validateInvitation = async (
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 404) {
-      return { ok: false, error: 'Invitation not found' };
-    }
-    if (response.status === 410) {
-      return { ok: false, error: 'Invitation has expired or already been used' };
-    }
-    return { ok: false, error: body.message || 'Invalid invitation' };
+    return {
+      ok: false,
+      error: messageFromErrorBody(
+        body,
+        response.status === 404
+          ? INVITATION_NOT_FOUND_MESSAGE
+          : response.status === 410
+            ? INVITATION_EXPIRED_MESSAGE
+            : 'Invalid invitation'
+      ),
+    };
   }
 
   const data = await response.json();
@@ -247,7 +263,7 @@ export const acceptInvitation = async (
     id: string;
     organizationId: string;
     organizationName: string;
-    role: 'admin' | 'member';
+    role: 'owner' | 'admin' | 'member';
   }>
 > => {
   const response = await fetch('/api/invitations/accept', {
@@ -262,16 +278,10 @@ export const acceptInvitation = async (
     if (response.status === 401) {
       return { ok: false, error: 'Not authenticated' };
     }
-    if (response.status === 404) {
-      return { ok: false, error: 'Invitation not found' };
-    }
-    if (response.status === 409) {
-      return { ok: false, error: 'Already a member of this organization' };
-    }
-    if (response.status === 410) {
-      return { ok: false, error: 'Invitation has expired or already been used' };
-    }
-    return { ok: false, error: body.message || 'Failed to accept invitation' };
+    return {
+      ok: false,
+      error: messageFromErrorBody(body, 'Failed to accept invitation'),
+    };
   }
 
   const data = await response.json();
@@ -293,16 +303,17 @@ const getSignupOptions = async (options: {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 409) {
-      return { ok: false, error: 'An account with this email already exists' };
-    }
-    if (response.status === 404) {
-      return { ok: false, error: 'Invitation not found' };
-    }
-    if (response.status === 410) {
-      return { ok: false, error: 'Invitation has expired or already been used' };
-    }
-    return { ok: false, error: body.message || 'Failed to get signup options' };
+    return {
+      ok: false,
+      error: messageFromErrorBody(
+        body,
+        response.status === 409
+          ? EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE
+          : response.status === 404
+            ? INVITATION_NOT_FOUND_MESSAGE
+            : 'Failed to get signup options'
+      ),
+    };
   }
 
   const data = await response.json();
@@ -328,10 +339,13 @@ const verifySignup = async (options: {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 409) {
-      return { ok: false, error: 'An account with this email already exists' };
-    }
-    return { ok: false, error: body.message || 'Signup failed' };
+    return {
+      ok: false,
+      error: messageFromErrorBody(
+        body,
+        response.status === 409 ? EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE : 'Signup failed'
+      ),
+    };
   }
 
   const data = await response.json();
@@ -563,10 +577,13 @@ export const revokeInvitation = async (
     if (response.status === 403) {
       return { ok: false, error: 'You do not have permission to revoke this invitation' };
     }
-    if (response.status === 404) {
-      return { ok: false, error: 'Invitation not found' };
-    }
-    return { ok: false, error: body.message || 'Failed to revoke invitation' };
+    return {
+      ok: false,
+      error: messageFromErrorBody(
+        body,
+        response.status === 404 ? INVITATION_NOT_FOUND_MESSAGE : 'Failed to revoke invitation'
+      ),
+    };
   }
 
   return { ok: true, data: undefined };

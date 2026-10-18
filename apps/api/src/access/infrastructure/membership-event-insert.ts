@@ -1,4 +1,8 @@
-import type { MembershipEvent, MemberRoleChanged } from '../domain/membership-events.js';
+import type {
+  MembershipEvent,
+  MemberRoleChanged,
+  OwnerAssigned,
+} from '../domain/membership-events.js';
 
 export type MembershipEventInsertQuery = {
   sql: string;
@@ -21,6 +25,17 @@ const memberRoleChangedActorColumns = (
       return { actorKind: 'member', actorUserId: actor.userId };
     case 'app-admin':
       return { actorKind: 'app-admin', actorUserId: null };
+  }
+};
+
+const ownerAssignedActorColumns = (
+  actor: OwnerAssigned['actor']
+): { actorKind: 'app-admin' | 'self'; actorUserId: string | null } => {
+  switch (actor.kind) {
+    case 'app-admin':
+      return { actorKind: 'app-admin', actorUserId: null };
+    case 'self':
+      return { actorKind: 'self', actorUserId: actor.userId };
   }
 };
 
@@ -96,5 +111,24 @@ export const eventInsert = (event: MembershipEvent): MembershipEventInsertQuery 
           event.occurredAt,
         ],
       };
+    case 'OwnerAssigned': {
+      const actor = ownerAssignedActorColumns(event.actor);
+      return {
+        sql: EVENT_INSERT_SQL,
+        args: [
+          event.id,
+          event.type,
+          event.organizationId,
+          event.userId,
+          event.previousOwnerUserId,
+          null,
+          event.fromRole,
+          'owner',
+          actor.actorKind,
+          actor.actorUserId,
+          event.occurredAt,
+        ],
+      };
+    }
   }
 };

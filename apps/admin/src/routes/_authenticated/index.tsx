@@ -27,6 +27,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
+import {
+  COPY_LINK_LABEL,
+  CREATE_WORKSPACE_STORAGE_MESSAGE,
+  LINK_COPIED_TOAST,
+  OWNER_EMAIL_HELP,
+  OWNER_EMAIL_LABEL,
+  memberDisplayName,
+  ownerAssignedToast,
+  ownerInviteCreatedMessage,
+} from '@yoink/api-contracts';
 import { tsrAdmin, tsrPublic } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff } from 'lucide-react';
@@ -36,87 +46,113 @@ export const Route = createFileRoute('/_authenticated/')({
   component: OrganizationsPage,
 });
 
+const joinUrlForCode = (code: string): string => {
+  const baseUrl = window.location.origin.replace('admin.', '');
+  return `${baseUrl}/join/${code}`;
+};
+
+const messageFromBody = (body: unknown, fallback: string): string => {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+  return fallback;
+};
+
 function OrganizationsPage() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createdInviteUrl, setCreatedInviteUrl] = useState<string | null>(null);
+  const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null);
+  const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
+  const [isInviteResultOpen, setIsInviteResultOpen] = useState(false);
   const tsrQueryClient = tsrAdmin.useQueryClient();
 
   const { data, isPending, error } = tsrAdmin.listOrganizations.useQuery({
     queryKey: ['organizations'],
   });
 
+  const resetCreateForm = () => {
+    setNewOrgName('');
+    setOwnerEmail('');
+    setCreateError(null);
+  };
+
   const createMutation = tsrAdmin.createOrganization.useMutation({
-    onMutate: async ({ body }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({ queryKey: ['organizations'] });
-
-      // Snapshot current state for rollback
-      const previousData = tsrQueryClient.listOrganizations.getQueryData([
-        'organizations',
-      ]);
-
-      // Create optimistic organization with temp ID
-      const optimisticOrg = {
-        id: `temp-${Date.now()}`,
-        name: body.name,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (previousData?.status === 200) {
-        tsrQueryClient.listOrganizations.setQueryData(['organizations'], {
-          ...previousData,
-          body: {
-            ...previousData.body,
-            organizations: [...previousData.body.organizations, optimisticOrg],
-          },
-        });
+    onSuccess: (response) => {
+      if (response.status !== 201) {
+        setCreateError(messageFromBody(response.body, CREATE_WORKSPACE_STORAGE_MESSAGE));
+        return;
       }
 
-      // Clear form and close dialog immediately for snappy UX
-      setNewOrgName('');
+      const { organization, owner, ownerInvitation } = response.body;
+      resetCreateForm();
       setIsDialogOpen(false);
-
-      return { previousData, previousName: body.name };
-    },
-
-    onError: (err, _variables, context) => {
-      // Rollback on error
-      if (context?.previousData) {
-        tsrQueryClient.listOrganizations.setQueryData(
-          ['organizations'],
-          context.previousData
-        );
-      }
-      // Restore the form so user doesn't lose their input
-      if (context?.previousName) {
-        setNewOrgName(context.previousName);
-        setIsDialogOpen(true);
-      }
-
-      // Show error toast
-      if (isFetchError(err)) {
-        toast.error('Network error. Please check your connection.');
-      } else {
-        toast.error('Failed to create organization');
-      }
-    },
-
-    onSuccess: () => {
-      toast.success('Organization created');
-    },
-
-    onSettled: () => {
-      // Refetch to ensure consistency with server (replaces temp ID with real one)
       tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+
+      if (owner !== null) {
+        toast.success(ownerAssignedToast(memberDisplayName(owner), organization.name));
+        navigate({
+          to: '/organizations/$orgId',
+          params: { orgId: organization.id },
+        });
+        return;
+      }
+
+      if (ownerInvitation !== null) {
+        setCreatedInviteUrl(joinUrlForCode(ownerInvitation.code));
+        setCreatedInviteEmail(ownerInvitation.email);
+        setCreatedOrgId(organization.id);
+        setIsInviteResultOpen(true);
+      }
+    },
+    onError: (err) => {
+      if (isFetchError(err)) {
+        setCreateError('Network error. Please check your connection.');
+        return;
+      }
+      if (typeof err === 'object' && err !== null && 'body' in err) {
+        setCreateError(messageFromBody(err.body, CREATE_WORKSPACE_STORAGE_MESSAGE));
+        return;
+      }
+      setCreateError(CREATE_WORKSPACE_STORAGE_MESSAGE);
     },
   });
 
   const handleCreateOrganization = (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError(null);
     createMutation.mutate({
-      body: { name: newOrgName },
+      body: { name: newOrgName, ownerEmail },
     });
+  };
+
+  const handleCopyInviteUrl = async () => {
+    if (createdInviteUrl) {
+      await navigator.clipboard.writeText(createdInviteUrl);
+      toast.success(LINK_COPIED_TOAST);
+    }
+  };
+
+  const handleInviteResultOpenChange = (open: boolean) => {
+    setIsInviteResultOpen(open);
+    if (!open && createdOrgId) {
+      const orgId = createdOrgId;
+      setCreatedOrgId(null);
+      setCreatedInviteUrl(null);
+      setCreatedInviteEmail(null);
+      navigate({
+        to: '/organizations/$orgId',
+        params: { orgId },
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -128,7 +164,6 @@ function OrganizationsPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Error state
   if (error) {
     if (isFetchError(error)) {
       return (
@@ -170,9 +205,17 @@ function OrganizationsPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Organizations</h1>
         <div className="flex gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                resetCreateForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
-              <Button>Create Organization</Button>
+              <Button data-action="create-workspace">Create Organization</Button>
             </DialogTrigger>
             <DialogContent>
               <form onSubmit={handleCreateOrganization}>
@@ -193,6 +236,23 @@ function OrganizationsPage() {
                       required
                     />
                   </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="owner-email">{OWNER_EMAIL_LABEL}</Label>
+                    <Input
+                      id="owner-email"
+                      type="email"
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                      placeholder="owner@example.com"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">{OWNER_EMAIL_HELP}</p>
+                  </div>
+                  {createError ? (
+                    <p className="text-sm text-red-600" data-create-workspace-error>
+                      {createError}
+                    </p>
+                  ) : null}
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={createMutation.isPending}>
@@ -207,6 +267,28 @@ function OrganizationsPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={isInviteResultOpen} onOpenChange={handleInviteResultOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Owner invite</DialogTitle>
+            <DialogDescription>
+              {createdInviteEmail ? ownerInviteCreatedMessage(createdInviteEmail) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="my-4">
+            <div className="rounded-md bg-gray-100 p-3">
+              <code className="break-all text-sm">{createdInviteUrl}</code>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCopyInviteUrl} data-action="copy-owner-link">
+              {COPY_LINK_LABEL}
+            </Button>
+            <Button onClick={() => handleInviteResultOpenChange(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

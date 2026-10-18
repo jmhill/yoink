@@ -4,6 +4,7 @@ import { createFakeInvitationStore } from '../infrastructure/fake-invitation-sto
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
+import { createFakeSignupStore } from '../infrastructure/fake-signup-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import type { Invitation } from './invitation.js';
 import type { Organization } from './organization.js';
@@ -24,6 +25,7 @@ const createTestInvitation = (overrides: Partial<Invitation> = {}): Invitation =
   expiresAt: '2024-12-31T00:00:00.000Z',
   acceptedAt: null,
   acceptedByUserId: null,
+  replacedAt: null,
   createdAt: '2024-01-01T00:00:00.000Z',
   ...overrides,
 });
@@ -44,12 +46,19 @@ describe('SignupService', () => {
     userStore = createFakeUserStore();
     organizationStore = createFakeOrganizationStore({ initialOrganizations: [TEST_ORG] });
     membershipStore = createFakeOrganizationMembershipStore();
+    const signupStore = createFakeSignupStore({
+      userStore,
+      organizationStore,
+      membershipStore,
+      invitationStore,
+    });
 
     service = createSignupService({
       invitationStore,
       userStore,
       organizationStore,
       membershipStore,
+      signupStore,
       clock,
       idGenerator,
     });
@@ -286,6 +295,38 @@ describe('SignupService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('EMAIL_ALREADY_REGISTERED');
       }
+    });
+
+    it('leaves no user, org, membership, or accepted invite when signup persist fails', async () => {
+      const invitation = createTestInvitation();
+      await invitationStore.save(invitation);
+      const failingSignupStore = createFakeSignupStore({
+        userStore,
+        organizationStore,
+        membershipStore,
+        invitationStore,
+        shouldFailOnCompleteSignup: true,
+      });
+      const failingService = createSignupService({
+        invitationStore,
+        userStore,
+        organizationStore,
+        membershipStore,
+        signupStore: failingSignupStore,
+        clock,
+        idGenerator,
+      });
+
+      const result = await failingService.completeSignup({
+        code: 'ABCD1234',
+        email: 'alice@example.com',
+      });
+
+      expect(result.isErr()).toBe(true);
+      const users = await userStore.findByNormalizedEmail('alice@example.com');
+      expect(users.isOk() && users.value).toBeNull();
+      const stillPending = await invitationStore.findByCode('ABCD1234');
+      expect(stillPending.isOk() && stillPending.value?.acceptedAt).toBeNull();
     });
   });
 });

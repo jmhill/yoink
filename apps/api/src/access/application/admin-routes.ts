@@ -1,37 +1,79 @@
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import {
   adminPublicContract,
   adminProtectedContract,
+  CREATE_OWNER_INVITE_STORAGE_MESSAGE,
+  OWNER_EMAIL_REQUIRED_MESSAGE,
   THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminServiceError } from '../domain/admin-errors.js';
 import type { AdminSessionService } from '../domain/admin-session-service.js';
 import type { InvitationService } from '../domain/invitation-service.js';
+import type { Invitation } from '../domain/invitation.js';
+import type { User } from '../domain/user.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
 import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
-import { namedRequestValidationError } from '../../shared/request-validation.js';
+import {
+  namedRequestValidationError,
+  validationIssuePaths,
+} from '../../shared/request-validation.js';
 import type { ClientIpOf } from '../../shared/request-client-ip.js';
+import type { handleCreateWorkspace } from './handle-create-workspace.js';
+import type { handleIssueOwnerInvitation } from './handle-issue-owner-invitation.js';
+import type { handleGetOwnerInvitation } from './handle-get-owner-invitation.js';
+import {
+  adminCreateInvitationErrorResponse,
+  createWorkspaceErrorResponse,
+  issueOwnerInvitationErrorResponse,
+  logAndReturnStorageFailure,
+} from './access-http-errors.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
+  createWorkspace: (
+    command: Parameters<typeof handleCreateWorkspace>[0]
+  ) => ReturnType<typeof handleCreateWorkspace>;
+  issueOwnerInvitation: (
+    command: Parameters<typeof handleIssueOwnerInvitation>[0]
+  ) => ReturnType<typeof handleIssueOwnerInvitation>;
+  getOwnerInvitation: (
+    organizationId: Parameters<typeof handleGetOwnerInvitation>[0]
+  ) => ReturnType<typeof handleGetOwnerInvitation>;
   cookieConfig: CookieConfig;
   clientIpOf: ClientIpOf;
 };
 
-/**
- * Helper to convert storage errors to 500 responses
- */
-const storageErrorResponse = (message: string) => ({
-  status: 500 as const,
-  body: { message },
+const storageErrorResponse = (
+  request: FastifyRequest,
+  error: unknown,
+  message: string
+) => logAndReturnStorageFailure(request, error, message);
+
+const toOwnerInvitationSummary = (invitation: Invitation) => ({
+  id: invitation.id,
+  code: invitation.code,
+  email: invitation.email ?? '',
+  expiresAt: invitation.expiresAt,
 });
 
-const setOrganizationOwnerErrorResponse = (error: AdminServiceError) => {
+const toOwnerUser = (owner: User) => ({
+  id: owner.id,
+  email: owner.email,
+  name: owner.name,
+  kind: owner.kind,
+  role: 'owner' as const,
+  createdAt: owner.createdAt,
+});
+
+const setOrganizationOwnerErrorResponse = (
+  request: FastifyRequest,
+  error: AdminServiceError
+) => {
   switch (error.type) {
     case 'ORGANIZATION_NOT_FOUND':
       return {
@@ -73,16 +115,19 @@ const setOrganizationOwnerErrorResponse = (error: AdminServiceError) => {
     case 'ROLE_CHANGE_NOT_ALLOWED':
     case 'CANNOT_CHANGE_OWN_ROLE':
     case 'OWNER_ROLE_LOCKED':
-      return storageErrorResponse('Failed to set owner');
+      return storageErrorResponse(request, error, 'Failed to set owner');
     default: {
       const _never: never = error;
       void _never;
-      return storageErrorResponse('Failed to set owner');
+      return storageErrorResponse(request, error, 'Failed to set owner');
     }
   }
 };
 
-const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
+const changeMemberRoleErrorResponse = (
+  request: FastifyRequest,
+  error: AdminServiceError
+) => {
   switch (error.type) {
     case 'ORGANIZATION_NOT_FOUND':
       return {
@@ -124,11 +169,11 @@ const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
     case 'ROLE_CHANGE_NOT_ALLOWED':
     case 'CANNOT_CHANGE_OWN_ROLE':
     case 'OWNER_ROLE_LOCKED':
-      return storageErrorResponse('Failed to change member role');
+      return storageErrorResponse(request, error, 'Failed to change member role');
     default: {
       const _never: never = error;
       void _never;
-      return storageErrorResponse('Failed to change member role');
+      return storageErrorResponse(request, error, 'Failed to change member role');
     }
   }
 };
@@ -138,7 +183,16 @@ export const registerAdminRoutes = async (
   deps: AdminRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { adminService, adminSessionService, invitationService, cookieConfig, clientIpOf } = deps;
+  const {
+    adminService,
+    adminSessionService,
+    invitationService,
+    createWorkspace,
+    issueOwnerInvitation,
+    getOwnerInvitation,
+    cookieConfig,
+    clientIpOf,
+  } = deps;
   const s = initServer();
 
   // Register public admin routes with strict rate limiting
@@ -212,29 +266,112 @@ export const registerAdminRoutes = async (
         };
       },
 
-      listOrganizations: async () => {
+      listOrganizations: async ({ request }) => {
         const result = await adminService.listOrganizations();
         return result.match(
           (organizations) => ({
             status: 200 as const,
             body: { organizations },
           }),
-          () => storageErrorResponse('Failed to list organizations')
+          (error) => storageErrorResponse(request, error, 'Failed to list organizations')
         );
       },
 
-      createOrganization: async ({ body }: { body: { name: string } }) => {
-        const result = await adminService.createOrganization(body.name);
+      createOrganization: async ({ body, request }) => {
+        const result = await createWorkspace({
+          name: body.name,
+          ownerEmail: body.ownerEmail,
+        });
         return result.match(
-          (organization) => ({
-            status: 201 as const,
-            body: organization,
-          }),
-          () => storageErrorResponse('Failed to create organization')
+          (created) => {
+            if (created.kind === 'owner-assigned') {
+              return {
+                status: 201 as const,
+                body: {
+                  organization: created.organization,
+                  owner: toOwnerUser(created.owner),
+                  ownerInvitation: null,
+                },
+              };
+            }
+            return {
+              status: 201 as const,
+              body: {
+                organization: created.organization,
+                owner: null,
+                ownerInvitation: toOwnerInvitationSummary(created.invitation),
+              },
+            };
+          },
+          (error) => createWorkspaceErrorResponse(request, error)
         );
       },
 
-      getOrganization: async ({ params }: { params: { id: string } }) => {
+      issueOwnerInvitation: async ({ params, body, request }) => {
+        const result = await issueOwnerInvitation({
+          organizationId: params.id,
+          email: body.email,
+        });
+        return result.match(
+          (issued) => {
+            if (issued.kind === 'owner-assigned') {
+              return {
+                status: 201 as const,
+                body: {
+                  owner: toOwnerUser(issued.owner),
+                  ownerInvitation: null,
+                },
+              };
+            }
+            return {
+              status: 201 as const,
+              body: {
+                owner: null,
+                ownerInvitation: toOwnerInvitationSummary(issued.invitation),
+              },
+            };
+          },
+          (error) => issueOwnerInvitationErrorResponse(request, error)
+        );
+      },
+
+      getOwnerInvitation: async ({ params, request }) => {
+        const result = await getOwnerInvitation(params.id);
+        return result.match(
+          (invitation) => ({
+            status: 200 as const,
+            body: {
+              ownerInvitation: invitation ? toOwnerInvitationSummary(invitation) : null,
+            },
+          }),
+          (error) => {
+            switch (error.type) {
+              case 'ORGANIZATION_NOT_FOUND':
+                return {
+                  status: 404 as const,
+                  body: { message: 'Organization not found', code: error.type },
+                };
+              case 'ISSUE_OWNER_INVITATION_FAILED':
+                return storageErrorResponse(
+                  request,
+                  error,
+                  CREATE_OWNER_INVITE_STORAGE_MESSAGE
+                );
+              default: {
+                const _never: never = error;
+                void _never;
+                return storageErrorResponse(
+                  request,
+                  error,
+                  CREATE_OWNER_INVITE_STORAGE_MESSAGE
+                );
+              }
+            }
+          }
+        );
+      },
+
+      getOrganization: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
         const result = await adminService.getOrganization(params.id);
         return result.match(
           (organization) => {
@@ -249,11 +386,11 @@ export const registerAdminRoutes = async (
               body: organization,
             };
           },
-          () => storageErrorResponse('Failed to get organization')
+          (error) => storageErrorResponse(request, error, 'Failed to get organization')
         );
       },
 
-      updateOrganization: async ({ params, body }: { params: { id: string }; body: { name: string } }) => {
+      updateOrganization: async ({ params, body, request }: { params: { id: string }; body: { name: string }; request: FastifyRequest }) => {
         const result = await adminService.renameOrganization(params.id, body.name);
         return result.match(
           (organization) => {
@@ -268,16 +405,16 @@ export const registerAdminRoutes = async (
               body: organization,
             };
           },
-          () => storageErrorResponse('Failed to update organization')
+          (error) => storageErrorResponse(request, error, 'Failed to update organization')
         );
       },
 
-      listUsers: async ({ params }: { params: { organizationId: string } }) => {
+      listUsers: async ({ params, request }: { params: { organizationId: string }; request: FastifyRequest }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);
         const orgCheck = orgResult.match(
           (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
-          () => storageErrorResponse('Failed to check organization')
+          (error) => storageErrorResponse(request, error, 'Failed to check organization')
         );
         if (orgCheck) return orgCheck;
 
@@ -287,11 +424,11 @@ export const registerAdminRoutes = async (
             status: 200 as const,
             body: { users },
           }),
-          () => storageErrorResponse('Failed to list users')
+          (error) => storageErrorResponse(request, error, 'Failed to list users')
         );
       },
 
-      createUser: async ({ params, body }) => {
+      createUser: async ({ params, body, request }) => {
         const result = await adminService.createUser({
           organizationId: params.organizationId,
           email: body.email,
@@ -318,12 +455,12 @@ export const registerAdminRoutes = async (
                 body: { message: error.message, code: error.type },
               };
             }
-            return storageErrorResponse('Failed to create user');
+            return storageErrorResponse(request, error, 'Failed to create user');
           }
         );
       },
 
-      setOrganizationOwner: async ({ params, body }) => {
+      setOrganizationOwner: async ({ params, body, request }) => {
         const result = await adminService.setOrganizationOwner({
           organizationId: params.id,
           userId: body.userId,
@@ -334,11 +471,11 @@ export const registerAdminRoutes = async (
             status: 200 as const,
             body: member,
           }),
-          (error) => setOrganizationOwnerErrorResponse(error)
+          (error) => setOrganizationOwnerErrorResponse(request, error)
         );
       },
 
-      changeMemberRole: async ({ params, body }) => {
+      changeMemberRole: async ({ params, body, request }) => {
         const result = await adminService.changeMemberRole({
           organizationId: params.id,
           userId: params.userId,
@@ -350,11 +487,11 @@ export const registerAdminRoutes = async (
             status: 200 as const,
             body: member,
           }),
-          (error) => changeMemberRoleErrorResponse(error)
+          (error) => changeMemberRoleErrorResponse(request, error)
         );
       },
 
-      getUser: async ({ params }: { params: { id: string } }) => {
+      getUser: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
         const result = await adminService.getUser(params.id);
         return result.match(
           (user) => {
@@ -369,11 +506,11 @@ export const registerAdminRoutes = async (
               body: user,
             };
           },
-          () => storageErrorResponse('Failed to get user')
+          (error) => storageErrorResponse(request, error, 'Failed to get user')
         );
       },
 
-      updateUser: async ({ params, body }: { params: { id: string }; body: { name: string } }) => {
+      updateUser: async ({ params, body, request }: { params: { id: string }; body: { name: string }; request: FastifyRequest }) => {
         const result = await adminService.updateUser(params.id, body.name);
         return result.match(
           (user) => ({
@@ -387,7 +524,7 @@ export const registerAdminRoutes = async (
                 body: { message: 'User not found' },
               };
             }
-            return storageErrorResponse('Failed to update user');
+            return storageErrorResponse(request, error, 'Failed to update user');
           }
         );
       },
@@ -395,9 +532,11 @@ export const registerAdminRoutes = async (
       updateProjectCreatedAt: async ({
         params,
         body,
+        request,
       }: {
         params: { id: string };
         body: { createdAt: string };
+        request: FastifyRequest;
       }) => {
         const result = await adminService.updateProjectCreatedAt(params.id, body.createdAt);
         return result.match(
@@ -412,17 +551,17 @@ export const registerAdminRoutes = async (
                 body: { message: 'Project not found' },
               };
             }
-            return storageErrorResponse('Failed to update project');
+            return storageErrorResponse(request, error, 'Failed to update project');
           }
         );
       },
 
-      listTokens: async ({ params }: { params: { organizationId: string } }) => {
+      listTokens: async ({ params, request }: { params: { organizationId: string }; request: FastifyRequest }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);
         const orgCheck = orgResult.match(
           (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
-          () => storageErrorResponse('Failed to check organization')
+          (error) => storageErrorResponse(request, error, 'Failed to check organization')
         );
         if (orgCheck) return orgCheck;
 
@@ -432,16 +571,16 @@ export const registerAdminRoutes = async (
             status: 200 as const,
             body: { tokens },
           }),
-          () => storageErrorResponse('Failed to list tokens')
+          (error) => storageErrorResponse(request, error, 'Failed to list tokens')
         );
       },
 
-      createToken: async ({ params, body }: { params: { organizationId: string }; body: { userId: string; name: string } }) => {
+      createToken: async ({ params, body, request }: { params: { organizationId: string }; body: { userId: string; name: string }; request: FastifyRequest }) => {
         // Check if organization exists
         const orgResult = await adminService.getOrganization(params.organizationId);
         const orgCheck = orgResult.match(
           (org) => (org ? null : { status: 404 as const, body: { message: 'Organization not found' } }),
-          () => storageErrorResponse('Failed to check organization')
+          (error) => storageErrorResponse(request, error, 'Failed to check organization')
         );
         if (orgCheck) return orgCheck;
 
@@ -449,7 +588,7 @@ export const registerAdminRoutes = async (
         const userResult = await adminService.getUser(body.userId);
         const userCheck = userResult.match(
           (user) => (user ? null : { status: 404 as const, body: { message: 'User not found' } }),
-          () => storageErrorResponse('Failed to check user')
+          (error) => storageErrorResponse(request, error, 'Failed to check user')
         );
         if (userCheck) return userCheck;
 
@@ -466,11 +605,11 @@ export const registerAdminRoutes = async (
               rawToken: tokenResult.rawToken,
             },
           }),
-          () => storageErrorResponse('Failed to create token')
+          (error) => storageErrorResponse(request, error, 'Failed to create token')
         );
       },
 
-      revokeToken: async ({ params }: { params: { id: string } }) => {
+      revokeToken: async ({ params, request }: { params: { id: string }; request: FastifyRequest }) => {
         // We don't check if token exists - just delete it (idempotent)
         const result = await adminService.revokeToken(params.id);
         return result.match(
@@ -478,11 +617,11 @@ export const registerAdminRoutes = async (
             status: 204 as const,
             body: undefined,
           }),
-          () => storageErrorResponse('Failed to revoke token')
+          (error) => storageErrorResponse(request, error, 'Failed to revoke token')
         );
       },
 
-      createInvitation: async ({ params, body }: { params: { organizationId: string }; body: { role?: 'admin' | 'member'; email?: string; expiresInDays?: number } }) => {
+      createInvitation: async ({ params, body, request }: { params: { organizationId: string }; body: { role?: 'admin' | 'member'; email?: string; expiresInDays?: number }; request: FastifyRequest }) => {
         // Create invitation using the invitation service
         // Admin bypasses normal permission checks since they're the system admin
         // Note: Organization existence is validated by the invitation service
@@ -508,17 +647,7 @@ export const registerAdminRoutes = async (
               createdAt: invitation.createdAt,
             },
           }),
-          (error) => {
-            switch (error.type) {
-              case 'INVITATION_ORG_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Organization not found' },
-                };
-              default:
-                return storageErrorResponse('Failed to create invitation');
-            }
-          }
+          (error) => adminCreateInvitationErrorResponse(request, error)
         );
       },
     });
@@ -526,6 +655,13 @@ export const registerAdminRoutes = async (
     s.registerRouter(adminProtectedContract, protectedRouter, protectedApp, {
       responseValidation: true,
       requestValidationErrorHandler: (err, _request, reply) => {
+        const fields = validationIssuePaths(err);
+        if (fields.includes('ownerEmail')) {
+          return reply.status(400).send({
+            message: OWNER_EMAIL_REQUIRED_MESSAGE,
+            code: 'VALIDATION_FAILED',
+          });
+        }
         return reply.status(400).send(namedRequestValidationError(err));
       },
     });

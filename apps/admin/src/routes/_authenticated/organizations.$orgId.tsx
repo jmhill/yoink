@@ -19,7 +19,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
-import { BOT_CANNOT_BE_ADMIN_MESSAGE } from '@yoink/api-contracts';
+import {
+  BOT_CANNOT_BE_ADMIN_MESSAGE,
+  CANCEL_LABEL,
+  COPY_LINK_LABEL,
+  CREATE_OWNER_INVITE_LABEL,
+  CREATE_OWNER_INVITE_STORAGE_MESSAGE,
+  LINK_COPIED_TOAST,
+  MAKE_NEW_LINK_LABEL,
+  NEW_LINK_LABEL,
+  OWNER_EMAIL_LABEL,
+  USE_DIFFERENT_EMAIL_LABEL,
+  memberDisplayName,
+  newLinkConfirm,
+  ownerAssignedToast,
+  ownerInviteCreatedMessage,
+  ownerInvitePending,
+  ownerLabel,
+} from '@yoink/api-contracts';
 import { tsrAdmin } from '@/api/client';
 import { parseCreateUserKind, parseCreateUserRole } from '@/lib/parse-create-user-fields';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -46,11 +63,38 @@ function OrganizationDetailPage() {
   const [createUserKind, setCreateUserKind] = useState<'human' | 'agent'>('human');
   const [createUserRole, setCreateUserRole] = useState<'member' | 'admin'>('member');
   const [createUserError, setCreateUserError] = useState<string | null>(null);
+  const [ownerSectionError, setOwnerSectionError] = useState<string | null>(null);
+  const [isNewLinkConfirmOpen, setIsNewLinkConfirmOpen] = useState(false);
+  const [isDifferentEmailOpen, setIsDifferentEmailOpen] = useState(false);
+  const [isCreateOwnerInviteOpen, setIsCreateOwnerInviteOpen] = useState(false);
+  const [isOwnerInviteResultOpen, setIsOwnerInviteResultOpen] = useState(false);
+  const [differentOwnerEmail, setDifferentOwnerEmail] = useState('');
+  const [createOwnerInviteEmail, setCreateOwnerInviteEmail] = useState('');
+  const [ownerInviteUrl, setOwnerInviteUrl] = useState<string | null>(null);
+  const [ownerInviteEmail, setOwnerInviteEmail] = useState<string | null>(null);
   const tsrQueryClient = tsrAdmin.useQueryClient();
 
   const invalidateMembers = () => {
     tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
   };
+
+  const invalidateOwnerInvitation = () => {
+    tsrQueryClient.invalidateQueries({
+      queryKey: ['organizations', orgId, 'owner-invitation'],
+    });
+  };
+
+  const joinUrlForCode = (code: string): string => {
+    const baseUrl = window.location.origin.replace('admin.', '');
+    return `${baseUrl}/join/${code}`;
+  };
+
+  const formatInviteDate = (dateString: string): string =>
+    new Date(dateString).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
 
   const errorMessage = (body: unknown, fallback: string): string => {
     if (
@@ -82,6 +126,11 @@ function OrganizationDetailPage() {
   const { data: usersData, isPending: usersPending } = tsrAdmin.listUsers.useQuery({
     queryKey: ['organizations', orgId, 'users'],
     queryData: { params: { organizationId: orgId } },
+  });
+
+  const { data: ownerInvitationData } = tsrAdmin.getOwnerInvitation.useQuery({
+    queryKey: ['organizations', orgId, 'owner-invitation'],
+    queryData: { params: { id: orgId } },
   });
 
   const createInvitationMutation = tsrAdmin.createInvitation.useMutation({
@@ -159,6 +208,52 @@ function OrganizationDetailPage() {
       toast.success('Invitation URL copied to clipboard');
     }
   };
+
+  const handleCopyOwnerInviteUrl = async (url: string | null) => {
+    if (url) {
+      await navigator.clipboard.writeText(url);
+      toast.success(LINK_COPIED_TOAST);
+    }
+  };
+
+  const issueOwnerInvitationMutation = tsrAdmin.issueOwnerInvitation.useMutation({
+    onSuccess: (data) => {
+      if (data.status !== 201) {
+        setOwnerSectionError(
+          errorMessage(data.body, CREATE_OWNER_INVITE_STORAGE_MESSAGE)
+        );
+        return;
+      }
+      setOwnerSectionError(null);
+      invalidateMembers();
+      invalidateOwnerInvitation();
+      setIsNewLinkConfirmOpen(false);
+      setIsDifferentEmailOpen(false);
+      setIsCreateOwnerInviteOpen(false);
+      setDifferentOwnerEmail('');
+      setCreateOwnerInviteEmail('');
+
+      if (data.body.owner !== null) {
+        const workspaceName =
+          orgData?.status === 200 ? orgData.body.name : 'this workspace';
+        toast.success(
+          ownerAssignedToast(memberDisplayName(data.body.owner), workspaceName)
+        );
+        return;
+      }
+
+      if (data.body.ownerInvitation !== null) {
+        setOwnerInviteUrl(joinUrlForCode(data.body.ownerInvitation.code));
+        setOwnerInviteEmail(data.body.ownerInvitation.email);
+        setIsOwnerInviteResultOpen(true);
+      }
+    },
+    onError: (err) => {
+      setOwnerSectionError(
+        mutationErrorMessage(err, CREATE_OWNER_INVITE_STORAGE_MESSAGE)
+      );
+    },
+  });
 
   const updateOrgMutation = tsrAdmin.updateOrganization.useMutation({
     onMutate: async ({ body }) => {
@@ -255,6 +350,7 @@ function OrganizationDetailPage() {
           return next;
         });
         invalidateMembers();
+        invalidateOwnerInvitation();
         toast.success('Owner updated');
         return;
       }
@@ -362,6 +458,12 @@ function OrganizationDetailPage() {
 
   const organization = orgData?.status === 200 ? orgData.body : null;
   const users = usersData?.status === 200 ? usersData.body.users : [];
+  const ownerMember = users.find((user) => user.role === 'owner');
+  const pendingOwnerInvitation =
+    ownerInvitationData?.status === 200 ? ownerInvitationData.body.ownerInvitation : null;
+  const pendingOwnerInviteUrl = pendingOwnerInvitation
+    ? joinUrlForCode(pendingOwnerInvitation.code)
+    : null;
 
   if (!organization) {
     return (
@@ -579,6 +681,199 @@ function OrganizationDetailPage() {
           </Dialog>
         </div>
       </div>
+
+      <Card className="mb-6" data-owner-section>
+        <CardHeader>
+          <CardTitle>Owner</CardTitle>
+          <CardDescription>
+            Each workspace has one owner. Issue an owner invite when the workspace does not have one yet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ownerMember ? (
+            <p data-owner-name>{ownerLabel(ownerMember.name ?? ownerMember.email)}</p>
+          ) : pendingOwnerInvitation ? (
+            <div className="space-y-3">
+              <p data-owner-invite-pending>
+                {ownerInvitePending(
+                  pendingOwnerInvitation.email,
+                  formatInviteDate(pendingOwnerInvitation.expiresAt)
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-action="copy-owner-link"
+                  onClick={() => handleCopyOwnerInviteUrl(pendingOwnerInviteUrl)}
+                >
+                  {COPY_LINK_LABEL}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-action="new-owner-link"
+                  onClick={() => setIsNewLinkConfirmOpen(true)}
+                >
+                  {NEW_LINK_LABEL}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-action="use-different-owner-email"
+                  onClick={() => setIsDifferentEmailOpen(true)}
+                >
+                  {USE_DIFFERENT_EMAIL_LABEL}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              data-action="create-owner-invite"
+              onClick={() => setIsCreateOwnerInviteOpen(true)}
+            >
+              {CREATE_OWNER_INVITE_LABEL}
+            </Button>
+          )}
+          {ownerSectionError ? (
+            <p className="text-sm text-red-600" data-owner-section-error>
+              {ownerSectionError}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isNewLinkConfirmOpen} onOpenChange={setIsNewLinkConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{NEW_LINK_LABEL}</DialogTitle>
+            <DialogDescription>
+              {pendingOwnerInvitation
+                ? newLinkConfirm(pendingOwnerInvitation.email)
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewLinkConfirmOpen(false)}>
+              {CANCEL_LABEL}
+            </Button>
+            <Button
+              data-action="make-new-link"
+              disabled={issueOwnerInvitationMutation.isPending || pendingOwnerInvitation === null}
+              onClick={() => {
+                if (pendingOwnerInvitation) {
+                  issueOwnerInvitationMutation.mutate({
+                    params: { id: orgId },
+                    body: { email: pendingOwnerInvitation.email },
+                  });
+                }
+              }}
+            >
+              {MAKE_NEW_LINK_LABEL}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDifferentEmailOpen} onOpenChange={setIsDifferentEmailOpen}>
+        <DialogContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              issueOwnerInvitationMutation.mutate({
+                params: { id: orgId },
+                body: { email: differentOwnerEmail },
+              });
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>{USE_DIFFERENT_EMAIL_LABEL}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-2 py-4">
+              <Label htmlFor="different-owner-email">{OWNER_EMAIL_LABEL}</Label>
+              <Input
+                id="different-owner-email"
+                type="email"
+                value={differentOwnerEmail}
+                onChange={(event) => setDifferentOwnerEmail(event.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={issueOwnerInvitationMutation.isPending}>
+                {CREATE_OWNER_INVITE_LABEL}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateOwnerInviteOpen} onOpenChange={setIsCreateOwnerInviteOpen}>
+        <DialogContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              issueOwnerInvitationMutation.mutate({
+                params: { id: orgId },
+                body: { email: createOwnerInviteEmail },
+              });
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>{CREATE_OWNER_INVITE_LABEL}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-2 py-4">
+              <Label htmlFor="create-owner-invite-email">{OWNER_EMAIL_LABEL}</Label>
+              <Input
+                id="create-owner-invite-email"
+                type="email"
+                value={createOwnerInviteEmail}
+                onChange={(event) => setCreateOwnerInviteEmail(event.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                data-action="submit-create-owner-invite"
+                disabled={issueOwnerInvitationMutation.isPending}
+              >
+                {CREATE_OWNER_INVITE_LABEL}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isOwnerInviteResultOpen} onOpenChange={setIsOwnerInviteResultOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Owner invite</DialogTitle>
+            <DialogDescription>
+              {ownerInviteEmail ? ownerInviteCreatedMessage(ownerInviteEmail) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="my-4">
+            <div className="rounded-md bg-gray-100 p-3">
+              <code className="break-all text-sm">{ownerInviteUrl}</code>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              data-action="copy-owner-link"
+              onClick={() => handleCopyOwnerInviteUrl(ownerInviteUrl)}
+            >
+              {COPY_LINK_LABEL}
+            </Button>
+            <Button onClick={() => setIsOwnerInviteResultOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

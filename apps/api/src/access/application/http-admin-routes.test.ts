@@ -237,10 +237,10 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Polly UX' },
+        payload: { name: 'Polly UX', ownerEmail: 'pending-polly@example.com' },
       });
       expect(org.statusCode).toBe(201);
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
 
       const invite = await app.inject({
         method: 'POST',
@@ -291,9 +291,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Handover' },
+        payload: { name: 'Handover', ownerEmail: 'pending-handover@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
 
       const first = await app.inject({
         method: 'POST',
@@ -352,9 +352,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Guards' },
+        payload: { name: 'Guards', ownerEmail: 'pending-guards@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const created = await app.inject({
         method: 'POST',
         url: `/api/admin/organizations/${orgId}/users`,
@@ -422,9 +422,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Missing user' },
+        payload: { name: 'Missing user', ownerEmail: 'pending-missing@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
 
       const missing = await app.inject({
         method: 'PUT',
@@ -442,9 +442,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Bot owner' },
+        payload: { name: 'Bot owner', ownerEmail: 'pending-bot-owner@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const bot = await app.inject({
         method: 'POST',
         url: `/api/admin/organizations/${orgId}/users`,
@@ -471,9 +471,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Non-member owner' },
+        payload: { name: 'Non-member owner', ownerEmail: 'pending-non-member@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
 
       const outsider = await app.inject({
         method: 'PUT',
@@ -492,9 +492,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Switch' },
+        payload: { name: 'Switch', ownerEmail: 'pending-switch@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const owner = await app.inject({
         method: 'POST',
         url: `/api/admin/organizations/${orgId}/users`,
@@ -545,9 +545,9 @@ describe('admin HTTP routes', () => {
         method: 'POST',
         url: '/api/admin/organizations',
         cookies,
-        payload: { name: 'Ownerless' },
+        payload: { name: 'Ownerless', ownerEmail: 'pending-ownerless@example.com' },
       });
-      const { id: orgId } = org.json<{ id: string }>();
+      const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const created = await app.inject({
         method: 'POST',
         url: `/api/admin/organizations/${orgId}/users`,

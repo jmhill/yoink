@@ -21,7 +21,7 @@ export const invitationStorageError = (
 // Invitation Service Errors
 // ============================================================================
 
-/** Invitation not found */
+/** This invite link isn't valid. */
 export type InvitationNotFoundError = {
   readonly type: 'INVITATION_NOT_FOUND';
   readonly invitationId?: string;
@@ -36,7 +36,7 @@ export const invitationNotFoundError = (options: {
   ...options,
 });
 
-/** Invitation has expired */
+/** This invite has expired. Ask for a new link. */
 export type InvitationExpiredError = {
   readonly type: 'INVITATION_EXPIRED';
   readonly code: string;
@@ -52,7 +52,7 @@ export const invitationExpiredError = (
   expiresAt,
 });
 
-/** Invitation has already been accepted */
+/** This invite has already been used. */
 export type InvitationAlreadyAcceptedError = {
   readonly type: 'INVITATION_ALREADY_ACCEPTED';
   readonly code: string;
@@ -73,6 +73,7 @@ export type InvitationEmailMismatchError = {
   readonly type: 'INVITATION_EMAIL_MISMATCH';
   readonly code: string;
   readonly expectedEmail: string;
+  readonly message: string;
 };
 
 export const invitationEmailMismatchError = (
@@ -82,6 +83,7 @@ export const invitationEmailMismatchError = (
   type: 'INVITATION_EMAIL_MISMATCH',
   code,
   expectedEmail,
+  message: 'Email does not match invitation',
 });
 
 /** User is already a member of the organization */
@@ -153,18 +155,138 @@ export const insufficientInvitePermissionsError = (
   actualRole,
 });
 
+import {
+  INVITATION_REPLACED_MESSAGE,
+  OWNER_INVITE_ADMIN_ONLY_MESSAGE,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+  PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
+  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
+} from '@yoink/api-contracts';
 import type { OrganizationStorageError, MembershipStorageError } from './organization-errors.js';
+
+/** This invite was replaced. Ask for a new link. */
+export type InvitationReplacedError = {
+  readonly type: 'INVITATION_REPLACED';
+  readonly code: string;
+  readonly replacedAt: string;
+  readonly message: string;
+};
+
+export const invitationReplacedError = (
+  code: string,
+  replacedAt: string
+): InvitationReplacedError => ({
+  type: 'INVITATION_REPLACED',
+  code,
+  replacedAt,
+  message: INVITATION_REPLACED_MESSAGE,
+});
+
+export type WorkspaceAlreadyHasOwnerError = {
+  readonly type: 'WORKSPACE_ALREADY_HAS_OWNER';
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const workspaceAlreadyHasOwnerError = (
+  organizationId: string
+): WorkspaceAlreadyHasOwnerError => ({
+  type: 'WORKSPACE_ALREADY_HAS_OWNER',
+  organizationId,
+  message: WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
+});
+
+export type PersonalWorkspaceOwnerInvitationError = {
+  readonly type: 'PERSONAL_WORKSPACE_OWNER_INVITATION';
+  readonly organizationId: string;
+  readonly message: string;
+};
+
+export const personalWorkspaceOwnerInvitationError = (
+  organizationId: string
+): PersonalWorkspaceOwnerInvitationError => ({
+  type: 'PERSONAL_WORKSPACE_OWNER_INVITATION',
+  organizationId,
+  message: PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
+});
+
+export type OwnerInvitationAdminOnlyError = {
+  readonly type: 'OWNER_INVITATION_ADMIN_ONLY';
+  readonly invitationId: string;
+  readonly message: string;
+};
+
+export const ownerInvitationAdminOnlyError = (
+  invitationId: string
+): OwnerInvitationAdminOnlyError => ({
+  type: 'OWNER_INVITATION_ADMIN_ONLY',
+  invitationId,
+  message: OWNER_INVITE_ADMIN_ONLY_MESSAGE,
+});
+
+export type CreateWorkspaceFailedError = {
+  readonly type: 'CREATE_WORKSPACE_FAILED';
+  readonly cause: unknown;
+};
+
+export const createWorkspaceFailedError = (
+  cause: unknown
+): CreateWorkspaceFailedError => ({
+  type: 'CREATE_WORKSPACE_FAILED',
+  cause,
+});
+
+export type IssueOwnerInvitationFailedError = {
+  readonly type: 'ISSUE_OWNER_INVITATION_FAILED';
+  readonly cause: unknown;
+};
+
+export const issueOwnerInvitationFailedError = (
+  cause: unknown
+): IssueOwnerInvitationFailedError => ({
+  type: 'ISSUE_OWNER_INVITATION_FAILED',
+  cause,
+});
+
+export type AcceptInvitationFailedError = {
+  readonly type: 'ACCEPT_INVITATION_FAILED';
+  readonly cause: unknown;
+};
+
+export const acceptInvitationFailedError = (
+  cause: unknown
+): AcceptInvitationFailedError => ({
+  type: 'ACCEPT_INVITATION_FAILED',
+  cause,
+});
+
+export const ownerInviteEmailMismatchError = (
+  code: string,
+  expectedEmail: string
+): InvitationEmailMismatchError => ({
+  type: 'INVITATION_EMAIL_MISMATCH',
+  code,
+  expectedEmail,
+  message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+});
 
 export type InvitationServiceError =
   | InvitationNotFoundError
   | InvitationExpiredError
   | InvitationAlreadyAcceptedError
+  | InvitationReplacedError
   | InvitationEmailMismatchError
   | AlreadyMemberOfOrgError
   | EmailAlreadyExistsError
   | InvitationOrgNotFoundError
   | InvitationUserNotFoundError
   | InsufficientInvitePermissionsError
+  | OwnerInvitationAdminOnlyError
+  | WorkspaceAlreadyHasOwnerError
+  | PersonalWorkspaceOwnerInvitationError
+  | CreateWorkspaceFailedError
+  | IssueOwnerInvitationFailedError
+  | AcceptInvitationFailedError
   | InvitationStorageError
   | OrganizationStorageError
   | MembershipStorageError;

@@ -26,7 +26,7 @@ export const SignupOptionsResponseSchema = z.object({
   organizationId: z.string().uuid(),
   organizationName: z.string(),
   /** Role the user will have in the organization */
-  role: z.enum(['admin', 'member']),
+  role: z.enum(['owner', 'admin', 'member']),
 });
 
 export type SignupOptionsResponse = z.infer<typeof SignupOptionsResponseSchema>;
@@ -68,7 +68,7 @@ export const SignupVerifyResponseSchema = z.object({
   invitedOrganization: z.object({
     id: z.string().uuid(),
     name: z.string(),
-    role: z.enum(['admin', 'member']),
+    role: z.enum(['owner', 'admin', 'member']),
   }),
 });
 

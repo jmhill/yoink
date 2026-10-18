@@ -153,6 +153,19 @@ usingDrivers(['http'] as const, (ctx) => {
       expect(rawToken).toContain(':');
     });
 
+    it('assigns an existing user as owner when creating a workspace', async () => {
+      const host = await ctx.admin.createOrganization(`host-${Date.now()}`);
+      const justin = await ctx.admin.createUser(host.id, `justin-${Date.now()}@example.com`, {
+        name: 'Justin',
+      });
+      const garden = await ctx.admin.createOrganization(`garden-${Date.now()}`, {
+        ownerEmail: justin.email,
+      });
+      const users = await ctx.admin.listUsers(garden.id);
+      expect(users.find((entry) => entry.id === justin.id)?.role).toBe('owner');
+      expect(await ctx.admin.getOwnerInvitation(garden.id)).toBeNull();
+    });
+
     it('can set the owner of a zero-owner workspace', async () => {
       const org = await ctx.admin.createOrganization(`owner-set-org-${Date.now()}`);
       const user = await ctx.admin.createUser(org.id, `owner-set-${Date.now()}@example.com`);

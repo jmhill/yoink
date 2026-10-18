@@ -43,7 +43,11 @@ export type Driver = {
    * Used for testing multi-org scenarios.
    * Only supported by Playwright driver.
    */
-  createActorWithInvitation?(invitationCode: string, email: string): Promise<Actor>;
+  createActorWithInvitation?(
+    invitationCode: string,
+    email: string,
+    options?: { exactEmail?: boolean }
+  ): Promise<Actor>;
 
   /**
    * Create an unauthenticated actor.

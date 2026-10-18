@@ -44,8 +44,24 @@ export type MemberLeft = {
   occurredAt: string;
 };
 
+export type OwnerAssignedActor =
+  | { kind: 'app-admin' }
+  | { kind: 'self'; userId: string };
+
+export type OwnerAssigned = {
+  type: 'OwnerAssigned';
+  id: string;
+  organizationId: string;
+  userId: string;
+  fromRole: 'admin' | 'member' | null;
+  previousOwnerUserId: string | null;
+  actor: OwnerAssignedActor;
+  occurredAt: string;
+};
+
 export type MembershipEvent =
   | OwnershipTransferred
   | MemberRoleChanged
   | MemberRemoved
-  | MemberLeft;
+  | MemberLeft
+  | OwnerAssigned;

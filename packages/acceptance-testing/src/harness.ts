@@ -84,7 +84,11 @@ export type PlaywrightContext = Omit<BaseContext, 'createActor'> & {
    * Create an actor by accepting an invitation code.
    * Used for testing multi-org scenarios where a user joins an existing org.
    */
-  createActorWithInvitation: (invitationCode: string, email: string) => Promise<BrowserActor>;
+  createActorWithInvitation: (
+    invitationCode: string,
+    email: string,
+    options?: { exactEmail?: boolean }
+  ) => Promise<BrowserActor>;
 
   /**
    * Create an actor with specific pre-existing credentials.
@@ -136,11 +140,19 @@ const createPlaywrightContext = (driver: Driver): PlaywrightContext => ({
   health: driver.health,
   createActor: (email: string) => driver.createActor(email) as Promise<BrowserActor>,
   createAnonymousActor: () => driver.createAnonymousActor(),
-  createActorWithInvitation: (invitationCode: string, email: string) => {
+  createActorWithInvitation: (
+    invitationCode: string,
+    email: string,
+    options?: { exactEmail?: boolean }
+  ) => {
     if (!driver.createActorWithInvitation) {
       throw new UnsupportedOperationError('createActorWithInvitation', 'playwright');
     }
-    return driver.createActorWithInvitation(invitationCode, email) as Promise<BrowserActor>;
+    return driver.createActorWithInvitation(
+      invitationCode,
+      email,
+      options
+    ) as Promise<BrowserActor>;
   },
   createActorWithCredentials: (credentials: ActorCredentials) => {
     // For Playwright, we return a BrowserActor that throws UnsupportedOperationError

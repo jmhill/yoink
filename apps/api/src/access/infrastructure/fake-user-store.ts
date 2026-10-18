@@ -1,4 +1,5 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
+import { normalizeEmail } from '@yoink/api-contracts';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 import {
@@ -61,6 +62,14 @@ export const createFakeUserStore = (
         return errAsync(userStorageError('Find failed'));
       }
       const found = users.find((u) => u.email === email);
+      return okAsync(found ?? null);
+    },
+
+    findByNormalizedEmail: (email: string): ResultAsync<User | null, UserStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(userStorageError('Find failed'));
+      }
+      const found = users.find((u) => normalizeEmail(u.email) === email);
       return okAsync(found ?? null);
     },
 

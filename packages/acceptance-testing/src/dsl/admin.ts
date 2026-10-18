@@ -3,6 +3,8 @@ import type {
   User,
   Token,
   Invitation,
+  OwnerInvitation,
+  IssueOwnerInvitationResult,
   CreateTokenResult,
   CreateInvitationInput,
 } from './types.js';
@@ -21,10 +23,18 @@ export type Admin = {
   isLoggedIn(): Promise<boolean>;
 
   // Organization management
-  createOrganization(name: string): Promise<Organization>;
+  createOrganization(name: string, options?: { ownerEmail?: string }): Promise<Organization>;
   listOrganizations(): Promise<Organization[]>;
   getOrganization(id: string): Promise<Organization>;
   renameOrganization(id: string, newName: string): Promise<Organization>;
+  issueOwnerInvitation(
+    organizationId: string,
+    email: string
+  ): Promise<IssueOwnerInvitationResult>;
+  getOwnerInvitation(organizationId: string): Promise<OwnerInvitation | null>;
+  createOwnerlessWorkspace(name: string): Promise<Organization>;
+  expireInvitation(code: string): Promise<void>;
+  assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void>;
 
   // User management
   createUser(
@@ -75,5 +85,32 @@ export type Admin = {
   frameMember(userId: string): Promise<void>;
   useMobileViewport(): Promise<void>;
   useDesktopViewport(): Promise<void>;
-  saveWalkthroughScreenshot(input: { story: string; step: string }): Promise<void>;
+  saveWalkthroughScreenshot(input: {
+    story: string;
+    step: string;
+    includeToasts?: boolean;
+  }): Promise<void>;
+  openCreateWorkspace(): Promise<void>;
+  fillCreateWorkspace(input: { name: string; ownerEmail: string }): Promise<void>;
+  submitCreateWorkspace(): Promise<void>;
+  shouldSeeOwnerAssignedToast(name: string, workspace: string): Promise<void>;
+  shouldSeeOwnerInviteCreated(email: string): Promise<void>;
+  copyOwnerInviteLink(): Promise<void>;
+  closeOwnerInviteDialog(): Promise<void>;
+  shouldSeeOwner(name: string): Promise<void>;
+  shouldSeePendingOwnerInvite(email: string): Promise<void>;
+  clickNewOwnerLink(): Promise<void>;
+  confirmNewOwnerLink(): Promise<void>;
+  clickUseDifferentEmail(): Promise<void>;
+  submitDifferentOwnerEmail(email: string): Promise<void>;
+  clickCreateOwnerInvite(): Promise<void>;
+  submitCreateOwnerInvite(email: string): Promise<void>;
+  openUnsignedSignup(code: string): Promise<void>;
+  fillUnsignedSignupEmail(email: string): Promise<void>;
+  submitUnsignedSignup(): Promise<void>;
+  shouldSeeUnsignedSignupText(text: string): Promise<void>;
+  saveUnsignedWalkthroughScreenshot(input: {
+    story: string;
+    step: string;
+  }): Promise<void>;
 };

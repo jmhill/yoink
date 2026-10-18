@@ -3,6 +3,10 @@ import { z } from 'zod';
 import {
   OrganizationSchema,
   CreateOrganizationSchema,
+  CreateWorkspaceResponseSchema,
+  IssueOwnerInvitationRequestSchema,
+  IssueOwnerInvitationResponseSchema,
+  GetOwnerInvitationResponseSchema,
   UpdateOrganizationSchema,
   UserSchema,
   CreateUserSchema,
@@ -90,12 +94,47 @@ export const adminProtectedContract = c.router(
       path: '/api/admin/organizations',
       body: CreateOrganizationSchema,
       responses: {
-        201: OrganizationSchema,
+        201: CreateWorkspaceResponseSchema,
         400: ErrorSchema,
         401: ErrorSchema,
         500: ErrorSchema,
       },
-      summary: 'Create a new organization',
+      summary:
+        'Create a workspace. Existing account becomes owner in the same save; otherwise an owner invite is issued.',
+    },
+
+    issueOwnerInvitation: {
+      method: 'POST',
+      path: '/api/admin/organizations/:id/owner-invitation',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      body: IssueOwnerInvitationRequestSchema,
+      responses: {
+        201: IssueOwnerInvitationResponseSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        409: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary:
+        'Issue or replace the pending owner invite. An existing account becomes owner in the same save.',
+    },
+
+    getOwnerInvitation: {
+      method: 'GET',
+      path: '/api/admin/organizations/:id/owner-invitation',
+      pathParams: z.object({
+        id: z.string().uuid(),
+      }),
+      responses: {
+        200: GetOwnerInvitationResponseSchema,
+        401: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      summary: 'Get the pending owner invite for a workspace, if any.',
     },
 
     getOrganization: {

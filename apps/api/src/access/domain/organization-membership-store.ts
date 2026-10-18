@@ -2,10 +2,14 @@ import type { ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { MembershipStorageError } from './organization-errors.js';
 import type { OwnershipTransferPlan } from './owner-presence.js';
+import type { Invitation } from './invitation.js';
+import type { AcceptMembershipChange } from './decide-accept-invitation.js';
+import type { AssignOwnerPlan } from './assign-owner-plan.js';
 import type {
   MemberLeft,
   MemberRemoved,
   MemberRoleChanged,
+  OwnerAssigned,
   OwnershipTransferred,
 } from './membership-events.js';
 
@@ -35,10 +39,29 @@ export type OrganizationMembershipStore = {
   delete(id: string): ResultAsync<void, MembershipStorageError>;
 
   /**
-   * Atomically demote the old owner (if any) then promote the new owner.
+   * Atomically demote the old owner (if any) then promote the new owner,
+   * record OwnerAssigned, and mark a pending owner invite replaced.
    * Demote must run first so the one-owner unique index never sees two owners.
    */
-  setOwner(plan: OwnershipTransferPlan): ResultAsync<void, MembershipStorageError>;
+  setOwner(
+    plan: OwnershipTransferPlan,
+    event: OwnerAssigned,
+    replaced: Invitation | null
+  ): ResultAsync<void, MembershipStorageError>;
+
+  /** Add or promote the owner from an owner invite, plus event and replaced mark. */
+  assignOwnerFromInvite(
+    plan: AssignOwnerPlan,
+    event: OwnerAssigned,
+    replaced: Invitation | null
+  ): ResultAsync<void, MembershipStorageError>;
+
+  /** Mark the invite accepted, add or promote membership, and insert the event. */
+  acceptInvitation(
+    accepted: Invitation,
+    membershipChange: AcceptMembershipChange,
+    event: OwnerAssigned | null
+  ): ResultAsync<void, MembershipStorageError>;
 
   /**
    * Atomically demote, promote, and record the OwnershipTransferred event.

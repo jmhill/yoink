@@ -4,17 +4,30 @@ import { invitationContract } from '@yoink/api-contracts';
 import type { InvitationService } from '../domain/invitation-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { OrganizationService } from '../domain/organization-service.js';
+import type { UserService } from '../domain/user-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
+import { handleAcceptInvitation } from './handle-accept-invitation.js';
+import {
+  acceptInvitationErrorResponse,
+  createInvitationErrorResponse,
+  listPendingInvitationErrorResponse,
+  logAndReturnStorageFailure,
+  revokeInvitationErrorResponse,
+  validateInvitationErrorResponse,
+} from './access-http-errors.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;
   membershipService: MembershipService;
   organizationService: OrganizationService;
+  userService: UserService;
+  acceptInvitation: (
+    command: Parameters<typeof handleAcceptInvitation>[0]
+  ) => ReturnType<typeof handleAcceptInvitation>;
   authMiddleware: AuthMiddleware;
 };
 
-// Helper to check if a route needs authentication
 const isPublicRoute = (request: FastifyRequest): boolean => {
   return request.url.includes('/invitations/validate');
 };
@@ -23,64 +36,45 @@ export const registerInvitationRoutes = async (
   app: FastifyInstance,
   deps: InvitationRoutesDependencies
 ) => {
-  const { invitationService, membershipService, organizationService, authMiddleware } = deps;
+  const {
+    invitationService,
+    membershipService,
+    organizationService,
+    userService,
+    acceptInvitation,
+    authMiddleware,
+  } = deps;
   const s = initServer();
 
-  // Register all invitation routes
   await app.register(async (invitationApp) => {
-    // Apply auth middleware conditionally - skip for public routes
     invitationApp.addHook('preHandler', async (request, reply) => {
       if (isPublicRoute(request)) {
-        return; // Skip auth for public routes
+        return;
       }
       return authMiddleware(request, reply);
     });
 
     const router = s.router(invitationContract, {
-      validate: async ({ body }) => {
+      validate: async ({ body, request }) => {
         const result = await invitationService.validateInvitation({
           code: body.code,
           email: body.email,
         });
 
         if (result.isErr()) {
-          const error = result.error;
-          switch (error.type) {
-            case 'INVITATION_NOT_FOUND':
-              return {
-                status: 404 as const,
-                body: { message: 'Invitation not found' },
-              };
-            case 'INVITATION_EXPIRED':
-              return {
-                status: 410 as const,
-                body: { message: 'Invitation has expired' },
-              };
-            case 'INVITATION_ALREADY_ACCEPTED':
-              return {
-                status: 410 as const,
-                body: { message: 'Invitation has already been used' },
-              };
-            case 'INVITATION_EMAIL_MISMATCH':
-              return {
-                status: 400 as const,
-                body: { message: 'Email does not match invitation' },
-              };
-            default:
-              return {
-                status: 500 as const,
-                body: { message: 'Internal server error' },
-              };
-          }
+          return validateInvitationErrorResponse(request, result.error);
         }
 
         const invitation = result.value;
-
-        // Fetch organization name to include in response for display
         const orgResult = await organizationService.getOrganization(invitation.organizationId);
-        const organizationName = orgResult.isOk() && orgResult.value
-          ? orgResult.value.name
-          : undefined;
+        if (orgResult.isErr()) {
+          return logAndReturnStorageFailure(
+            request,
+            orgResult.error,
+            'Internal server error'
+          );
+        }
+        const organizationName = orgResult.value ? orgResult.value.name : undefined;
 
         return {
           status: 200 as const,
@@ -105,117 +99,41 @@ export const registerInvitationRoutes = async (
             status: 201 as const,
             body: invitation,
           }),
-          (error) => {
-            switch (error.type) {
-              case 'INVITATION_ORG_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Organization not found' },
-                };
-              case 'INSUFFICIENT_INVITE_PERMISSIONS':
-                return {
-                  status: 403 as const,
-                  body: { message: 'Insufficient permissions to create invitation' },
-                };
-              default:
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
+          (error) => createInvitationErrorResponse(request, error)
         );
       },
 
       accept: async ({ body, request }) => {
-        // First validate the invitation
-        const validateResult = await invitationService.validateInvitation({
+        const userResult = await userService.getUser(request.authContext.userId);
+        if (userResult.isErr()) {
+          return logAndReturnStorageFailure(request, userResult.error, 'Internal server error');
+        }
+        if (userResult.value === null) {
+          return logAndReturnStorageFailure(
+            request,
+            { type: 'USER_NOT_FOUND', userId: request.authContext.userId },
+            'Internal server error'
+          );
+        }
+
+        const result = await acceptInvitation({
           code: body.code,
+          account: {
+            userId: request.authContext.userId,
+            email: userResult.value.email,
+          },
         });
 
-        if (validateResult.isErr()) {
-          const error = validateResult.error;
-          switch (error.type) {
-            case 'INVITATION_NOT_FOUND':
-              return {
-                status: 404 as const,
-                body: { message: 'Invitation not found' },
-              };
-            case 'INVITATION_EXPIRED':
-              return {
-                status: 410 as const,
-                body: { message: 'Invitation has expired' },
-              };
-            case 'INVITATION_ALREADY_ACCEPTED':
-              return {
-                status: 410 as const,
-                body: { message: 'Invitation has already been used' },
-              };
-            default:
-              return {
-                status: 500 as const,
-                body: { message: 'Internal server error' },
-              };
-          }
-        }
-
-        const invitation = validateResult.value;
-
-        // Check if user is already a member
-        const membershipResult = await membershipService.getMembership({
-          userId: request.authContext.userId,
-          organizationId: invitation.organizationId,
-        });
-
-        if (membershipResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Internal server error' },
-          };
-        }
-
-        if (membershipResult.value !== null) {
-          return {
-            status: 409 as const,
-            body: { message: 'Already a member of this organization' },
-          };
-        }
-
-        // Accept the invitation
-        const acceptResult = await invitationService.acceptInvitation({
-          code: body.code,
-          userId: request.authContext.userId,
-        });
-
-        if (acceptResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Internal server error' },
-          };
-        }
-
-        // Create membership
-        const addMemberResult = await membershipService.addMember({
-          userId: request.authContext.userId,
-          organizationId: invitation.organizationId,
-          role: invitation.role,
-        });
-
-        if (addMemberResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to create membership' },
-          };
-        }
-
-        return {
-          status: 200 as const,
-          body: acceptResult.value,
-        };
+        return result.match(
+          (invitation) => ({
+            status: 200 as const,
+            body: invitation,
+          }),
+          (error) => acceptInvitationErrorResponse(request, error)
+        );
       },
 
       listPending: async ({ params, request }) => {
-        // Check permissions - user must be admin/owner of the organization
         const hasPermission = await membershipService.hasRole({
           userId: request.authContext.userId,
           organizationId: params.organizationId,
@@ -223,10 +141,11 @@ export const registerInvitationRoutes = async (
         });
 
         if (hasPermission.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Internal server error' },
-          };
+          return logAndReturnStorageFailure(
+            request,
+            hasPermission.error,
+            'Internal server error'
+          );
         }
 
         if (!hasPermission.value) {
@@ -245,10 +164,7 @@ export const registerInvitationRoutes = async (
             status: 200 as const,
             body: { invitations },
           }),
-          () => ({
-            status: 500 as const,
-            body: { message: 'Internal server error' },
-          })
+          (error) => listPendingInvitationErrorResponse(request, error)
         );
       },
 
@@ -263,25 +179,7 @@ export const registerInvitationRoutes = async (
             status: 204 as const,
             body: undefined,
           }),
-          (error) => {
-            switch (error.type) {
-              case 'INVITATION_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Invitation not found' },
-                };
-              case 'INSUFFICIENT_INVITE_PERMISSIONS':
-                return {
-                  status: 403 as const,
-                  body: { message: 'Insufficient permissions to revoke invitation' },
-                };
-              default:
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
+          (error) => revokeInvitationErrorResponse(request, error)
         );
       },
     });

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
+import { normalizeEmail } from '@yoink/api-contracts';
 import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { User } from '../domain/user.js';
@@ -185,6 +186,22 @@ describe('createSqliteUserStore', () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.value).toBeNull();
+      }
+    });
+  });
+
+  describe('findByNormalizedEmail', () => {
+    it('matches mixed case and surrounding spaces', async () => {
+      const user = createTestUser({ email: 'Justin@Example.com' });
+      await store.save(user);
+
+      const result = await store.findByNormalizedEmail(
+        normalizeEmail('  JUSTIN@EXAMPLE.COM  ')
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value?.id).toBe(user.id);
       }
     });
   });

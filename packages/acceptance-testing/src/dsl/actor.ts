@@ -1935,6 +1935,11 @@ export type BrowserActorOperations = {
     includeToasts?: boolean;
   }): Promise<void>;
 
+  openJoin(code: string): Promise<void>;
+  clickJoin(): Promise<void>;
+  shouldSeeInvitationError(message: string): Promise<void>;
+  shouldSeeJoinTitle(text: string): Promise<void>;
+
   /**
    * Open Capture, Process, Work, or Review from the mobile bottom tabs.
    */

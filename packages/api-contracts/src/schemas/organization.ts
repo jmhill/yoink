@@ -64,6 +64,38 @@ export const memberDisplayName = (member: {
   email: string;
 }): string => member.name ?? member.email;
 
+export const OWNER_EMAIL_LABEL = 'Owner email';
+export const OWNER_EMAIL_HELP =
+  "They'll be the owner. If they don't have an account yet, you'll get an invite link to send them.";
+export const OWNER_EMAIL_REQUIRED_MESSAGE = "Enter the owner's email.";
+export const COPY_LINK_LABEL = 'Copy link';
+export const LINK_COPIED_TOAST = 'Link copied.';
+export const NEW_LINK_LABEL = 'New link';
+export const USE_DIFFERENT_EMAIL_LABEL = 'Use a different email';
+export const CREATE_OWNER_INVITE_LABEL = 'Create owner invite';
+export const MAKE_NEW_LINK_LABEL = 'Make new link';
+export const CANCEL_LABEL = 'Cancel';
+export const WORKSPACE_ALREADY_HAS_OWNER_MESSAGE = 'This workspace already has an owner.';
+export const PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE =
+  "Personal workspaces can't get an owner invite.";
+export const CREATE_WORKSPACE_STORAGE_MESSAGE = "Couldn't create the workspace. Try again.";
+export const CREATE_OWNER_INVITE_STORAGE_MESSAGE =
+  "Couldn't create the owner invite. Try again.";
+
+export const ownerAssignedToast = (name: string, workspace: string): string =>
+  `${name} is now the owner of ${workspace}.`;
+
+export const ownerInviteCreatedMessage = (email: string): string =>
+  `Send this link to ${email}. They'll become the owner when they sign up with that email.`;
+
+export const ownerInvitePending = (email: string, date: string): string =>
+  `Waiting for ${email} to accept the owner invite. Expires ${date}.`;
+
+export const newLinkConfirm = (email: string): string =>
+  `Make a new link for ${email}? The old link will stop working.`;
+
+export const ownerLabel = (name: string): string => `Owner: ${name}`;
+
 // ============================================================================
 // Member
 // ============================================================================

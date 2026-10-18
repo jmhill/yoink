@@ -2,7 +2,13 @@ import { fileURLToPath } from 'node:url';
 import { type Page, expect } from '@playwright/test';
 import {
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
+  INVITATION_ALREADY_USED_MESSAGE,
+  INVITATION_EXPIRED_MESSAGE,
+  INVITATION_NOT_FOUND_MESSAGE,
+  INVITATION_REPLACED_MESSAGE,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
   OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
+  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
 } from '@yoink/api-contracts';
 import type {
   Actor,
@@ -3941,6 +3947,24 @@ export const createPlaywrightActor = (
       });
     },
 
+    async openJoin(code: string): Promise<void> {
+      await page.goto(`/join/${code}`);
+    },
+
+    async clickJoin(): Promise<void> {
+      const join = page.getByRole('button', { name: /^Join / });
+      await expect(join).toBeVisible();
+      await join.click();
+    },
+
+    async shouldSeeInvitationError(message: string): Promise<void> {
+      await expect(page.locator('[data-testid="invitation-error"]')).toHaveText(message);
+    },
+
+    async shouldSeeJoinTitle(text: string): Promise<void> {
+      await expect(page.getByRole('heading', { name: text })).toBeVisible();
+    },
+
     async openMobileBottomTab(tab: MobileTabKey): Promise<void> {
       await mobileNav.open(tab);
       if (tab === 'capture') {
@@ -6580,11 +6604,17 @@ export const createPlaywrightActor = (
         if (errorText?.includes('Already a member')) {
           throw new AlreadyMemberError();
         }
-        if (errorText?.includes('not found') || errorText?.includes('Not found')) {
+        if (errorText === INVITATION_NOT_FOUND_MESSAGE) {
           throw new NotFoundError('Invitation', code);
         }
-        if (errorText?.includes('expired') || errorText?.includes('already been used')) {
-          throw new ValidationError(errorText || 'Invitation expired or already used');
+        if (
+          errorText === INVITATION_EXPIRED_MESSAGE ||
+          errorText === INVITATION_ALREADY_USED_MESSAGE ||
+          errorText === INVITATION_REPLACED_MESSAGE ||
+          errorText === OWNER_INVITE_WRONG_EMAIL_MESSAGE ||
+          errorText === WORKSPACE_ALREADY_HAS_OWNER_MESSAGE
+        ) {
+          throw new ValidationError(errorText);
         }
         throw new Error(errorText || 'Failed to accept invitation');
       }
@@ -6593,7 +6623,12 @@ export const createPlaywrightActor = (
       const organizationName = await orgNameElement.textContent() || '';
       const roleElement = page.locator('[data-testid="invitation-role"]');
       const roleText = await roleElement.textContent() || 'member';
-      const role = roleText.toLowerCase().includes('admin') ? 'admin' : 'member';
+      const roleTextLower = roleText.toLowerCase();
+      const role = roleTextLower.includes('owner')
+        ? 'owner'
+        : roleTextLower.includes('admin')
+          ? 'admin'
+          : 'member';
 
       // Click join
       await joinButton.click();
@@ -6627,7 +6662,7 @@ export const createPlaywrightActor = (
       return {
         organizationId: sessionData.organizationId,
         organizationName: organizationName.trim(),
-        role: role as 'admin' | 'member',
+        role,
       };
     },
   };

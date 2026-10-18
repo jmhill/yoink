@@ -1,37 +1,85 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
-import type { OrganizationMembership, MembershipRole } from '../domain/organization-membership.js';
+import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
+import type { Invitation } from '../domain/invitation.js';
+import type { AcceptMembershipChange } from '../domain/decide-accept-invitation.js';
+import type { AssignOwnerPlan } from '../domain/assign-owner-plan.js';
 import {
   membershipStorageError,
   type MembershipStorageError,
 } from '../domain/organization-errors.js';
 import { eventInsert } from './membership-event-insert.js';
-import type { MemberLeft, MemberRemoved, MemberRoleChanged } from '../domain/membership-events.js';
+import type {
+  MemberLeft,
+  MemberRemoved,
+  MemberRoleChanged,
+  OwnerAssigned,
+} from '../domain/membership-events.js';
+import {
+  invitationMarkAcceptedQuery,
+  replacedQueries,
+} from './invitation-statements.js';
+import {
+  membershipFromRow,
+  membershipInsertQuery,
+  membershipRoleUpdateQuery,
+  planQueries,
+} from './membership-statements.js';
 
-type MembershipRow = {
-  id: string;
-  user_id: string;
-  organization_id: string;
-  role: string;
-  is_personal_org: number;
-  joined_at: string;
+const parseMembershipRow = (
+  row: Record<string, unknown> | undefined,
+  context: string
+): ResultAsync<OrganizationMembership | null, MembershipStorageError> => {
+  if (!row) {
+    return okAsync(null);
+  }
+  const membership = membershipFromRow(row);
+  if (!membership) {
+    return errAsync(membershipStorageError(context));
+  }
+  return okAsync(membership);
 };
 
-const rowToMembership = (row: MembershipRow): OrganizationMembership => ({
-  id: row.id,
-  userId: row.user_id,
-  organizationId: row.organization_id,
-  role: row.role as MembershipRole,
-  isPersonalOrg: row.is_personal_org === 1,
-  joinedAt: row.joined_at,
-});
+const membershipFromUnknown = (
+  row: Record<string, unknown>,
+  context: string
+): Result<OrganizationMembership, MembershipStorageError> => {
+  const membership = membershipFromRow(row);
+  return membership ? ok(membership) : err(membershipStorageError(context));
+};
 
-/**
- * Validates that the required database schema exists.
- * Throws an error if migrations have not been run.
- */
+const parseMembershipRows = (
+  rows: Record<string, unknown>[],
+  context: string
+): ResultAsync<OrganizationMembership[], MembershipStorageError> => {
+  const parsed = Result.combine(rows.map((row) => membershipFromUnknown(row, context)));
+  return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
+};
+
+const assignOwnerQueries = (
+  plan: AssignOwnerPlan,
+  event: OwnerAssigned,
+  replaced: Invitation | null
+) => [
+  ...(plan.kind === 'add' ? [membershipInsertQuery(plan.membership)] : planQueries(plan.plan)),
+  eventInsert(event),
+  ...replacedQueries(replaced),
+];
+
+const acceptQueries = (
+  accepted: Invitation,
+  membershipChange: AcceptMembershipChange,
+  event: OwnerAssigned | null
+) => [
+  invitationMarkAcceptedQuery(accepted),
+  membershipChange.kind === 'add'
+    ? membershipInsertQuery(membershipChange.membership)
+    : membershipRoleUpdateQuery(membershipChange.membership),
+  ...(event ? [eventInsert(event)] : []),
+];
+
 const validateSchema = async (db: Database): Promise<void> => {
   const result = await db.execute({
     sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='organization_memberships'`,
@@ -65,7 +113,7 @@ export const createSqliteOrganizationMembershipStore = async (
           sql: `
             INSERT INTO organization_memberships (id, user_id, organization_id, role, is_personal_org, joined_at)
             VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id, organization_id) DO UPDATE SET 
+            ON CONFLICT(user_id, organization_id) DO UPDATE SET
               role = excluded.role,
               is_personal_org = excluded.is_personal_org
           `,
@@ -89,10 +137,9 @@ export const createSqliteOrganizationMembershipStore = async (
           args: [id],
         }),
         (error) => membershipStorageError('Failed to find membership by id', error)
-      ).map((result) => {
-        const row = result.rows[0] as MembershipRow | undefined;
-        return row ? rowToMembership(row) : null;
-      });
+      ).andThen((result) =>
+        parseMembershipRow(result.rows[0], 'Failed to parse membership by id')
+      );
     },
 
     findByUserAndOrg: (
@@ -102,33 +149,29 @@ export const createSqliteOrganizationMembershipStore = async (
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            SELECT * FROM organization_memberships 
+            SELECT * FROM organization_memberships
             WHERE user_id = ? AND organization_id = ?
           `,
           args: [userId, organizationId],
         }),
         (error) => membershipStorageError('Failed to find membership', error)
-      ).map((result) => {
-        const row = result.rows[0] as MembershipRow | undefined;
-        return row ? rowToMembership(row) : null;
-      });
+      ).andThen((result) => parseMembershipRow(result.rows[0], 'Failed to parse membership'));
     },
 
     findByUserId: (userId: string): ResultAsync<OrganizationMembership[], MembershipStorageError> => {
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            SELECT * FROM organization_memberships 
+            SELECT * FROM organization_memberships
             WHERE user_id = ?
             ORDER BY joined_at ASC
           `,
           args: [userId],
         }),
         (error) => membershipStorageError('Failed to find memberships by user', error)
-      ).map((result) => {
-        const rows = result.rows as MembershipRow[];
-        return rows.map(rowToMembership);
-      });
+      ).andThen((result) =>
+        parseMembershipRows(result.rows, 'Failed to parse memberships by user')
+      );
     },
 
     findByOrganizationId: (
@@ -137,17 +180,16 @@ export const createSqliteOrganizationMembershipStore = async (
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            SELECT * FROM organization_memberships 
+            SELECT * FROM organization_memberships
             WHERE organization_id = ?
             ORDER BY joined_at ASC
           `,
           args: [organizationId],
         }),
         (error) => membershipStorageError('Failed to find memberships by organization', error)
-      ).map((result) => {
-        const rows = result.rows as MembershipRow[];
-        return rows.map(rowToMembership);
-      });
+      ).andThen((result) =>
+        parseMembershipRows(result.rows, 'Failed to parse memberships by organization')
+      );
     },
 
     delete: (id: string): ResultAsync<void, MembershipStorageError> => {
@@ -160,10 +202,16 @@ export const createSqliteOrganizationMembershipStore = async (
       ).map(() => undefined);
     },
 
-    setOwner: ({ demote, promote }): ResultAsync<void, MembershipStorageError> => {
-      const queries = planQueries({ demote, promote });
+    setOwner: (
+      plan: OwnershipTransferPlan,
+      event: OwnerAssigned,
+      replaced: Invitation | null
+    ): ResultAsync<void, MembershipStorageError> => {
       return ResultAsync.fromPromise(
-        db.batch(queries, 'write'),
+        db.batch(
+          [...planQueries(plan), eventInsert(event), ...replacedQueries(replaced)],
+          'write'
+        ),
         (error) => membershipStorageError('Failed to set owner', error)
       ).map(() => undefined);
     },
@@ -213,20 +261,27 @@ export const createSqliteOrganizationMembershipStore = async (
         (error) => membershipStorageError('Failed to remove member', error)
       ).map(() => undefined);
     },
+
+    assignOwnerFromInvite: (
+      plan: AssignOwnerPlan,
+      event: OwnerAssigned,
+      replaced: Invitation | null
+    ): ResultAsync<void, MembershipStorageError> => {
+      return ResultAsync.fromPromise(
+        db.batch(assignOwnerQueries(plan, event, replaced), 'write'),
+        (error) => membershipStorageError('Failed to assign owner from invite', error)
+      ).map(() => undefined);
+    },
+
+    acceptInvitation: (
+      accepted: Invitation,
+      membershipChange: AcceptMembershipChange,
+      event: OwnerAssigned | null
+    ): ResultAsync<void, MembershipStorageError> => {
+      return ResultAsync.fromPromise(
+        db.batch(acceptQueries(accepted, membershipChange, event), 'write'),
+        (error) => membershipStorageError('Failed to accept invitation', error)
+      ).map(() => undefined);
+    },
   };
 };
-
-const planQueries = ({ demote, promote }: OwnershipTransferPlan) => [
-  ...(demote
-    ? [
-        {
-          sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
-          args: [demote.role, demote.id],
-        },
-      ]
-    : []),
-  {
-    sql: `UPDATE organization_memberships SET role = ? WHERE id = ?`,
-    args: [promote.role, promote.id],
-  },
-];

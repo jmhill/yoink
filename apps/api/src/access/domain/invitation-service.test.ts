@@ -475,5 +475,64 @@ describe('InvitationService', () => {
         expect(result.value).toHaveLength(2);
       }
     });
+
+    it('excludes owner invites from the in-app pending list', async () => {
+      await invitationStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440200',
+        code: 'OWNER001',
+        email: 'libby@example.com',
+        organizationId: TEST_ORG.id,
+        invitedByUserId: null,
+        role: 'owner',
+        expiresAt: '2024-01-22T12:00:00.000Z',
+        acceptedAt: null,
+        acceptedByUserId: null,
+        replacedAt: null,
+        createdAt: '2024-01-15T12:00:00.000Z',
+      });
+      await service.createInvitation({
+        organizationId: TEST_ORG.id,
+        invitedByUserId: 'user-admin',
+        role: 'member',
+      });
+
+      const result = await service.listPendingInvitations({
+        organizationId: TEST_ORG.id,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.every((invitation) => invitation.role !== 'owner')).toBe(true);
+        expect(result.value).toHaveLength(1);
+      }
+    });
+  });
+
+  describe('revokeInvitation', () => {
+    it('refuses revoking an owner invite', async () => {
+      await invitationStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440201',
+        code: 'OWNER002',
+        email: 'libby@example.com',
+        organizationId: TEST_ORG.id,
+        invitedByUserId: null,
+        role: 'owner',
+        expiresAt: '2024-01-22T12:00:00.000Z',
+        acceptedAt: null,
+        acceptedByUserId: null,
+        replacedAt: null,
+        createdAt: '2024-01-15T12:00:00.000Z',
+      });
+
+      const result = await service.revokeInvitation({
+        invitationId: '550e8400-e29b-41d4-a716-446655440201',
+        revokedByUserId: 'user-admin',
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.type).toBe('OWNER_INVITATION_ADMIN_ONLY');
+      }
+    });
   });
 });

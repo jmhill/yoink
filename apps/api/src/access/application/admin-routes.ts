@@ -4,7 +4,7 @@ import { initServer } from '@ts-rest/fastify';
 import {
   adminPublicContract,
   adminProtectedContract,
-  CANNOT_CHANGE_LAST_ADMIN_MESSAGE,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
 import type { AdminService } from '../domain/admin-service.js';
 import type { AdminServiceError } from '../domain/admin-errors.js';
@@ -110,7 +110,7 @@ const changeMemberRoleErrorResponse = (error: AdminServiceError) => {
     case 'LAST_ADMIN':
       return {
         status: 409 as const,
-        body: { message: CANNOT_CHANGE_LAST_ADMIN_MESSAGE, code: error.type },
+        body: { message: THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE, code: error.type },
       };
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':

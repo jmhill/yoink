@@ -16,7 +16,10 @@ import {
 } from '../infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './handle-transfer-ownership.js';
-import { handleChangeMemberRole } from './handle-change-member-role.js';
+import {
+  handleChangeMemberRole,
+  type ChangeMemberRoleHandler,
+} from './handle-change-member-role.js';
 import { handleRemoveMember } from './handle-remove-member.js';
 import {
   ALREADY_OWNER_MESSAGE,
@@ -39,11 +42,13 @@ import {
   NOT_CURRENT_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
 } from '@yoink/api-contracts';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import { principalKindOf } from '../domain/user.js';
-import { ResultAsync } from 'neverthrow';
+import { errAsync, ResultAsync } from 'neverthrow';
+import { lastAdminError } from '../domain/organization-errors.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
@@ -422,6 +427,7 @@ describe('organization routes', () => {
     shouldFailOnChangeMemberRole?: boolean;
     shouldFailOnRemoveMember?: boolean;
     tokenShouldFailOnSave?: boolean;
+    changeMemberRole?: ChangeMemberRoleHandler;
   }): Promise<{ app: FastifyInstance; logs: PinoLogLine[] }> => {
     const logs: PinoLogLine[] = [];
     const stream = new Writable({
@@ -524,16 +530,18 @@ describe('organization routes', () => {
           nextId: () => idGenerator.generate(),
           now: () => clock.now().toISOString(),
         }),
-      changeMemberRole: (request) =>
-        handleChangeMemberRole(request, {
-          loadMembers: (organizationId) =>
-            failingMembershipStore.findByOrganizationId(organizationId),
-          loadUser: (userId) => userService.getUser(userId),
-          persistChange: ({ membership, event }) =>
-            failingMembershipStore.changeMemberRole(membership, event),
-          nextId: () => idGenerator.generate(),
-          now: () => clock.now().toISOString(),
-        }),
+      changeMemberRole:
+        options.changeMemberRole ??
+        ((request) =>
+          handleChangeMemberRole(request, {
+            loadMembers: (organizationId) =>
+              failingMembershipStore.findByOrganizationId(organizationId),
+            loadUser: (userId) => userService.getUser(userId),
+            persistChange: ({ membership, event }) =>
+              failingMembershipStore.changeMemberRole(membership, event),
+            nextId: () => idGenerator.generate(),
+            now: () => clock.now().toISOString(),
+          })),
       removeMember: (request) =>
         handleRemoveMember(request, {
           loadMembers: (organizationId) =>
@@ -1123,6 +1131,23 @@ describe('organization routes', () => {
       expect(response.statusCode).toBe(400);
       expect(response.json().code).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
       expect(response.json().message).toBe(BOT_CANNOT_BE_ADMIN_MESSAGE);
+    });
+
+    it('returns 409 LAST_ADMIN with the at-least-one-admin message', async () => {
+      const { app: failingApp } = await createLoggedOrgApp({
+        changeMemberRole: () => errAsync(lastAdminError(teamOrg.id)),
+      });
+      const response = await failingApp.inject({
+        method: 'PATCH',
+        url: roleUrl(testUser.id),
+        cookies: { [USER_SESSION_COOKIE]: teamAdminSession.id },
+        payload: { role: 'member' },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().code).toBe('LAST_ADMIN');
+      expect(response.json().message).toBe(THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE);
+      await failingApp.close();
     });
 
     it('returns 400 validation when the body role is owner', async () => {

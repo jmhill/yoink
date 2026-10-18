@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { initServer } from '@ts-rest/fastify';
 import {
   BOT_CANNOT_CHANGE_ROLES_MESSAGE,
-  CANNOT_CHANGE_LAST_ADMIN_MESSAGE,
+  THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
   CANNOT_CHANGE_OWN_ROLE_MESSAGE,
   CANNOT_REMOVE_SELF_MESSAGE,
   CHANGE_ROLE_STORAGE_MESSAGE,
@@ -206,7 +206,7 @@ const changeMemberRoleErrorResponse = (
     case 'LAST_ADMIN':
       return {
         status: 409 as const,
-        body: { message: CANNOT_CHANGE_LAST_ADMIN_MESSAGE, code: error.type },
+        body: { message: THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE, code: error.type },
       };
     case 'OWNER_MUST_TRANSFER':
       return {

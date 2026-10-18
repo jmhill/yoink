@@ -855,13 +855,15 @@ target is the caller, target not a member, target is the owner,
 | 409 | `OWNER_ROLE_LOCKED` | The owner's role can't be changed. |
 | 400 | `CANNOT_ASSIGN_OWNER_ROLE` | Owner can only be set from the admin panel |
 | 400 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | A bot can't be an admin. |
-| 409 | `LAST_ADMIN` | Cannot change the last admin |
+| 409 | `LAST_ADMIN` | There has to be at least one admin. |
 | 500 | (storage) | Couldn't change the role. Try again. |
 
 The admin panel uses the same `ChangeMemberRole` command with
 `by: { kind: 'app-admin' }`. It skips the in-app permission steps and
 `OWNER_ROLE_LOCKED`; demoting the owner is still `OWNER_MUST_TRANSFER`
 with `Transfer ownership first. Use Make owner on another member.`
+Last admin of an ownerless workspace is the same `LAST_ADMIN` copy:
+`There has to be at least one admin.`
 
 ## Remove a member
 

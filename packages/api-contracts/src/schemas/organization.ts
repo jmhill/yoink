@@ -45,7 +45,8 @@ export const CHANGE_ROLE_STORAGE_MESSAGE = "Couldn't change the role. Try again.
 export const REISSUE_TOKEN_STORAGE_MESSAGE = "Couldn't issue a new token. Try again.";
 export const MAKE_ADMIN_LABEL = 'Make admin';
 export const MAKE_MEMBER_LABEL = 'Make member';
-export const CANNOT_CHANGE_LAST_ADMIN_MESSAGE = 'Cannot change the last admin';
+export const THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE =
+  'There has to be at least one admin.';
 
 export const removeMemberFailedMessage = (name: string): string =>
   `Couldn't remove ${name}. Try again.`;

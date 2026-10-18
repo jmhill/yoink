@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoin
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  ownerInviteJoinTitle,
+  YOUR_ROLE_OWNER_LABEL,
+} from '@yoink/api-contracts';
 import { validateInvitation, signupWithPasskey } from '@/api/auth';
 import { suggestDeviceName } from '@/api/passkey';
 
@@ -23,7 +27,7 @@ type InvitationInfo = {
   organizationId: string;
   organizationName: string;
   email: string | null;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   expiresAt: string;
 };
 
@@ -125,10 +129,20 @@ function SignupPage() {
       <div className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Create your account</CardTitle>
+            <CardTitle className="text-2xl">
+              {invitation.role === 'owner'
+                ? ownerInviteJoinTitle(invitation.organizationName)
+                : 'Create your account'}
+            </CardTitle>
             <CardDescription>
-              You're joining <strong>{invitation.organizationName}</strong> as a{' '}
-              {invitation.role}
+              {invitation.role === 'owner' ? (
+                YOUR_ROLE_OWNER_LABEL
+              ) : (
+                <>
+                  You're joining <strong>{invitation.organizationName}</strong> as a{' '}
+                  {invitation.role}
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -141,10 +155,10 @@ function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  disabled={isLoading || !!invitation.email}
+                  disabled={isLoading || (!!invitation.email && invitation.role !== 'owner')}
                   required
                 />
-                {invitation.email && (
+                {invitation.email && invitation.role !== 'owner' && (
                   <p className="text-xs text-muted-foreground">
                     This invitation is restricted to this email address.
                   </p>
@@ -169,7 +183,7 @@ function SignupPage() {
               {error && (
                 <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{error}</span>
+                  <span data-testid="invitation-error">{error}</span>
                 </div>
               )}
 
@@ -235,7 +249,7 @@ function SignupPage() {
           {error && (
             <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+              <span data-testid="invitation-error">{error}</span>
             </div>
           )}
 

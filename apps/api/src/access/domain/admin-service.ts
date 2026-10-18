@@ -6,6 +6,8 @@ import type { MembershipRole, OrganizationMembership } from './organization-memb
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
 import { agentEmailFor, principalKindOf, type PrincipalKind, type User } from './user.js';
 import type { UserStore } from './user-store.js';
+import type { InvitationStore } from './invitation-store.js';
+import { membershipStorageError } from './organization-errors.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
 import { decideChangeMemberRole } from './decide-change-member-role.js';
 import { decideSetOwner } from './decide-set-owner.js';
@@ -27,6 +29,7 @@ export type AdminServiceDependencies = {
   organizationStore: OrganizationStore;
   organizationMembershipStore: OrganizationMembershipStore;
   userStore: UserStore;
+  invitationStore: InvitationStore;
   tokenStore: TokenStore;
   projectStore: ProjectStore;
   clock: Clock;
@@ -113,6 +116,7 @@ export const createAdminService = (
     organizationStore,
     organizationMembershipStore,
     userStore,
+    invitationStore,
     tokenStore,
     projectStore,
     clock,
@@ -204,17 +208,26 @@ export const createAdminService = (
             return errAsync(userNotFoundError(userId));
           }
           return organizationMembershipStore.findByOrganizationId(organizationId).andThen((members) => {
-            const decision = decideSetOwner({
-              command: { organizationId, userId },
-              members,
-              targetUser,
-            });
-            if (decision.isErr()) {
-              return errAsync(decision.error);
-            }
-            return organizationMembershipStore
-              .setOwner(decision.value)
-              .map(() => ({ ...targetUser, role: decision.value.promote.role }));
+            return invitationStore
+              .findLiveOwnerInvitation(organizationId)
+              .mapErr((error) => membershipStorageError(error.message, error.cause ?? error))
+              .andThen((pendingOwnerInvitation) => {
+                const now = clock.now().toISOString();
+                const decision = decideSetOwner({
+                  command: { organizationId, userId },
+                  members,
+                  targetUser,
+                  pendingOwnerInvitation,
+                  eventId: idGenerator.generate(),
+                  now,
+                });
+                if (decision.isErr()) {
+                  return errAsync(decision.error);
+                }
+                return organizationMembershipStore
+                  .setOwner(decision.value.plan, decision.value.event, decision.value.replaced)
+                  .map(() => ({ ...targetUser, role: decision.value.plan.promote.role }));
+              });
           });
         });
       });

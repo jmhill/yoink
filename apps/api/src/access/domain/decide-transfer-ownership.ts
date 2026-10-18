@@ -82,6 +82,9 @@ export const decideTransferOwnership = ({
     command: { organizationId: command.organizationId, userId: command.toUserId },
     members,
     targetUser,
+    pendingOwnerInvitation: null,
+    eventId,
+    now,
   });
   if (setOwner.isErr()) {
     return err(setOwner.error);
@@ -90,7 +93,7 @@ export const decideTransferOwnership = ({
   return ok({
     plan: {
       demote: { ...currentOwner, role: 'admin' },
-      promote: setOwner.value.promote,
+      promote: setOwner.value.plan.promote,
     },
     event: {
       type: 'OwnershipTransferred',

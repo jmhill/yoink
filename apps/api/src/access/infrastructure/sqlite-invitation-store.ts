@@ -1,42 +1,47 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
-import type { Invitation, InvitationRole } from '../domain/invitation.js';
+import { errAsync, okAsync, ResultAsync } from 'neverthrow';
+import type { Invitation } from '../domain/invitation.js';
 import type { InvitationStore } from '../domain/invitation-store.js';
 import {
   invitationStorageError,
   type InvitationStorageError,
 } from '../domain/invitation-errors.js';
+import {
+  invitationFromRow,
+  invitationInsertQuery,
+  invitationUpsertQuery,
+  replacedQueries,
+} from './invitation-statements.js';
 
-type InvitationRow = {
-  id: string;
-  code: string;
-  email: string | null;
-  organization_id: string;
-  invited_by_user_id: string;
-  role: string;
-  expires_at: string;
-  accepted_at: string | null;
-  accepted_by_user_id: string | null;
-  created_at: string;
+const parseInvitationRow = (
+  row: Record<string, unknown> | undefined,
+  context: string
+): ResultAsync<Invitation | null, InvitationStorageError> => {
+  if (!row) {
+    return okAsync(null);
+  }
+  const invitation = invitationFromRow(row);
+  if (!invitation) {
+    return errAsync(invitationStorageError(context));
+  }
+  return okAsync(invitation);
 };
 
-const rowToInvitation = (row: InvitationRow): Invitation => ({
-  id: row.id,
-  code: row.code,
-  email: row.email,
-  organizationId: row.organization_id,
-  invitedByUserId: row.invited_by_user_id,
-  role: row.role as InvitationRole,
-  expiresAt: row.expires_at,
-  acceptedAt: row.accepted_at,
-  acceptedByUserId: row.accepted_by_user_id,
-  createdAt: row.created_at,
-});
+const parseInvitationRows = (
+  rows: Record<string, unknown>[],
+  context: string
+): ResultAsync<Invitation[], InvitationStorageError> => {
+  const invitations: Invitation[] = [];
+  for (const row of rows) {
+    const invitation = invitationFromRow(row);
+    if (!invitation) {
+      return errAsync(invitationStorageError(context));
+    }
+    invitations.push(invitation);
+  }
+  return okAsync(invitations);
+};
 
-/**
- * Validates that the required database schema exists.
- * Throws an error if migrations have not been run.
- */
 const validateSchema = async (db: Database): Promise<void> => {
   const result = await db.execute({
     sql: `SELECT name FROM sqlite_master WHERE type='table' AND name='invitations'`,
@@ -57,34 +62,7 @@ export const createSqliteInvitationStore = async (
   return {
     save: (invitation: Invitation): ResultAsync<void, InvitationStorageError> => {
       return ResultAsync.fromPromise(
-        db.execute({
-          sql: `
-            INSERT INTO invitations (
-              id, code, email, organization_id, invited_by_user_id, 
-              role, expires_at, accepted_at, accepted_by_user_id, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET 
-              code = excluded.code,
-              email = excluded.email,
-              role = excluded.role,
-              expires_at = excluded.expires_at,
-              accepted_at = excluded.accepted_at,
-              accepted_by_user_id = excluded.accepted_by_user_id
-          `,
-          args: [
-            invitation.id,
-            invitation.code,
-            invitation.email,
-            invitation.organizationId,
-            invitation.invitedByUserId,
-            invitation.role,
-            invitation.expiresAt,
-            invitation.acceptedAt,
-            invitation.acceptedByUserId,
-            invitation.createdAt,
-          ],
-        }),
+        db.execute(invitationUpsertQuery(invitation)),
         (error) => invitationStorageError('Failed to save invitation', error)
       ).map(() => undefined);
     },
@@ -96,10 +74,9 @@ export const createSqliteInvitationStore = async (
           args: [id],
         }),
         (error) => invitationStorageError('Failed to find invitation by id', error)
-      ).map((result) => {
-        const row = result.rows[0] as InvitationRow | undefined;
-        return row ? rowToInvitation(row) : null;
-      });
+      ).andThen((result) =>
+        parseInvitationRow(result.rows[0], 'Failed to parse invitation by id')
+      );
     },
 
     findByCode: (code: string): ResultAsync<Invitation | null, InvitationStorageError> => {
@@ -109,10 +86,9 @@ export const createSqliteInvitationStore = async (
           args: [code],
         }),
         (error) => invitationStorageError('Failed to find invitation by code', error)
-      ).map((result) => {
-        const row = result.rows[0] as InvitationRow | undefined;
-        return row ? rowToInvitation(row) : null;
-      });
+      ).andThen((result) =>
+        parseInvitationRow(result.rows[0], 'Failed to parse invitation by code')
+      );
     },
 
     findPendingByOrganization: (
@@ -122,19 +98,19 @@ export const createSqliteInvitationStore = async (
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            SELECT * FROM invitations 
-            WHERE organization_id = ? 
-              AND accepted_at IS NULL 
+            SELECT * FROM invitations
+            WHERE organization_id = ?
+              AND accepted_at IS NULL
+              AND replaced_at IS NULL
               AND expires_at > ?
             ORDER BY created_at DESC
           `,
           args: [organizationId, currentTime],
         }),
         (error) => invitationStorageError('Failed to find pending invitations', error)
-      ).map((result) => {
-        const rows = result.rows as InvitationRow[];
-        return rows.map(rowToInvitation);
-      });
+      ).andThen((result) =>
+        parseInvitationRows(result.rows, 'Failed to parse pending invitations')
+      );
     },
 
     findByOrganization: (
@@ -143,17 +119,16 @@ export const createSqliteInvitationStore = async (
       return ResultAsync.fromPromise(
         db.execute({
           sql: `
-            SELECT * FROM invitations 
+            SELECT * FROM invitations
             WHERE organization_id = ?
             ORDER BY created_at DESC
           `,
           args: [organizationId],
         }),
         (error) => invitationStorageError('Failed to find invitations by organization', error)
-      ).map((result) => {
-        const rows = result.rows as InvitationRow[];
-        return rows.map(rowToInvitation);
-      });
+      ).andThen((result) =>
+        parseInvitationRows(result.rows, 'Failed to parse invitations by organization')
+      );
     },
 
     delete: (id: string): ResultAsync<void, InvitationStorageError> => {
@@ -163,6 +138,40 @@ export const createSqliteInvitationStore = async (
           args: [id],
         }),
         (error) => invitationStorageError('Failed to delete invitation', error)
+      ).map(() => undefined);
+    },
+
+    findLiveOwnerInvitation: (
+      organizationId: string
+    ): ResultAsync<Invitation | null, InvitationStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT * FROM invitations
+            WHERE organization_id = ?
+              AND role = 'owner'
+              AND accepted_at IS NULL
+              AND replaced_at IS NULL
+            LIMIT 1
+          `,
+          args: [organizationId],
+        }),
+        (error) => invitationStorageError('Failed to find live owner invitation', error)
+      ).andThen((result) =>
+        parseInvitationRow(result.rows[0], 'Failed to parse live owner invitation')
+      );
+    },
+
+    issueOwnerInvitation: (
+      invitation: Invitation,
+      replaced: Invitation | null
+    ): ResultAsync<void, InvitationStorageError> => {
+      return ResultAsync.fromPromise(
+        db.batch(
+          [...replacedQueries(replaced), invitationInsertQuery(invitation)],
+          'write'
+        ),
+        (error) => invitationStorageError('Failed to issue owner invitation', error)
       ).map(() => undefined);
     },
   };

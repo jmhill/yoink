@@ -45,6 +45,17 @@ const memberMembership: OrganizationMembership = {
   joinedAt: '2024-01-01T00:00:00.000Z',
 };
 
+const ownerAssignedEvent = {
+  type: 'OwnerAssigned' as const,
+  id: '550e8400-e29b-41d4-a716-446655440098',
+  organizationId: org.id,
+  userId: memberUser.id,
+  fromRole: 'member' as const,
+  previousOwnerUserId: ownerUser.id,
+  actor: { kind: 'app-admin' as const },
+  occurredAt: '2024-06-15T12:00:00.000Z',
+};
+
 const describeSetOwner = (
   name: string,
   createStore: () => Promise<OrganizationMembershipStore>
@@ -59,10 +70,14 @@ const describeSetOwner = (
     });
 
     it('sets the owner in one save and demotes the old owner to admin', async () => {
-      const result = await store.setOwner({
-        demote: { ...ownerMembership, role: 'admin' },
-        promote: { ...memberMembership, role: 'owner' },
-      });
+      const result = await store.setOwner(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        ownerAssignedEvent,
+        null
+      );
       expect(result.isOk()).toBe(true);
 
       const oldOwner = await store.findById(ownerMembership.id);
@@ -140,10 +155,14 @@ describe('organization membership store setOwner', () => {
         shouldFailOnSetOwner: true,
       });
 
-      const result = await store.setOwner({
-        demote: { ...ownerMembership, role: 'admin' },
-        promote: { ...memberMembership, role: 'owner' },
-      });
+      const result = await store.setOwner(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        ownerAssignedEvent,
+        null
+      );
       expect(result.isErr()).toBe(true);
 
       const oldOwner = await store.findById(ownerMembership.id);
@@ -181,10 +200,14 @@ describe('organization membership store setOwner', () => {
     });
 
     it('sets the owner in one save and demotes the old owner to admin', async () => {
-      const result = await store.setOwner({
-        demote: { ...ownerMembership, role: 'admin' },
-        promote: { ...memberMembership, role: 'owner' },
-      });
+      const result = await store.setOwner(
+        {
+          demote: { ...ownerMembership, role: 'admin' },
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        ownerAssignedEvent,
+        null
+      );
       expect(result.isOk()).toBe(true);
 
       const oldOwner = await store.findById(ownerMembership.id);
@@ -204,10 +227,14 @@ describe('organization membership store setOwner', () => {
     });
 
     it('leaves the old owner when the batch cannot promote a second owner', async () => {
-      const result = await store.setOwner({
-        demote: null,
-        promote: { ...memberMembership, role: 'owner' },
-      });
+      const result = await store.setOwner(
+        {
+          demote: null,
+          promote: { ...memberMembership, role: 'owner' },
+        },
+        { ...ownerAssignedEvent, previousOwnerUserId: null },
+        null
+      );
       expect(result.isErr()).toBe(true);
       const stillOwner = await store.findById(ownerMembership.id);
       expect(stillOwner.isOk() && stillOwner.value?.role).toBe('owner');

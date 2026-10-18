@@ -4,6 +4,7 @@ import { createAdminService, type AdminService } from './admin-service.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
+import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
 import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import type { Organization } from './organization.js';
@@ -31,6 +32,7 @@ describe('AdminService', () => {
       organizationStore,
       organizationMembershipStore,
       userStore,
+      invitationStore: createFakeInvitationStore(),
       tokenStore,
       projectStore: createFakeProjectStore(),
       clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
@@ -684,6 +686,7 @@ describe('AdminService', () => {
         organizationStore,
         organizationMembershipStore,
         userStore,
+        invitationStore: createFakeInvitationStore(),
         tokenStore,
         projectStore,
         clock: createFakeClock(new Date('2026-10-11T12:00:00.000Z')),

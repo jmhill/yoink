@@ -6,34 +6,27 @@ import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
 import type { UserStore } from './user-store.js';
-import { isInvitationExpired, isInvitationAccepted } from './invitation.js';
+import type { SignupStore } from './signup-store.js';
+import { decideAcceptInvitation } from './decide-accept-invitation.js';
+import {
+  acceptInvitationFailedError,
+  invitationEmailMismatchError,
+  type AcceptInvitationFailedError,
+  type AlreadyMemberOfOrgError,
+  type InvitationAlreadyAcceptedError,
+  type InvitationEmailMismatchError,
+  type InvitationExpiredError,
+  type InvitationNotFoundError,
+  type InvitationReplacedError,
+  type InvitationStorageError,
+  type WorkspaceAlreadyHasOwnerError,
+} from './invitation-errors.js';
+import { normalizeEmail } from '@yoink/api-contracts';
 
-// ============================================================================
-// Error Types
-// ============================================================================
-
-export type SignupInvitationNotFoundError = {
-  type: 'INVITATION_NOT_FOUND';
-  code: string;
-};
-
-export type SignupInvitationExpiredError = {
-  type: 'INVITATION_EXPIRED';
-  code: string;
-  expiresAt: string;
-};
-
-export type SignupInvitationAlreadyAcceptedError = {
-  type: 'INVITATION_ALREADY_ACCEPTED';
-  code: string;
-  acceptedAt: string;
-};
-
-export type SignupInvitationEmailMismatchError = {
-  type: 'INVITATION_EMAIL_MISMATCH';
-  code: string;
-  expectedEmail: string;
-};
+export type SignupInvitationNotFoundError = InvitationNotFoundError;
+export type SignupInvitationExpiredError = InvitationExpiredError;
+export type SignupInvitationAlreadyAcceptedError = InvitationAlreadyAcceptedError;
+export type SignupInvitationEmailMismatchError = InvitationEmailMismatchError;
 
 export type SignupEmailAlreadyRegisteredError = {
   type: 'EMAIL_ALREADY_REGISTERED';
@@ -52,37 +45,18 @@ export type SignupStorageError = {
 };
 
 export type SignupServiceError =
-  | SignupInvitationNotFoundError
-  | SignupInvitationExpiredError
-  | SignupInvitationAlreadyAcceptedError
-  | SignupInvitationEmailMismatchError
+  | InvitationNotFoundError
+  | InvitationExpiredError
+  | InvitationAlreadyAcceptedError
+  | InvitationReplacedError
+  | InvitationEmailMismatchError
+  | WorkspaceAlreadyHasOwnerError
+  | AlreadyMemberOfOrgError
   | SignupEmailAlreadyRegisteredError
   | SignupOrganizationNotFoundError
-  | SignupStorageError;
-
-// Error constructors
-const invitationNotFoundError = (code: string): SignupInvitationNotFoundError => ({
-  type: 'INVITATION_NOT_FOUND',
-  code,
-});
-
-const invitationExpiredError = (code: string, expiresAt: string): SignupInvitationExpiredError => ({
-  type: 'INVITATION_EXPIRED',
-  code,
-  expiresAt,
-});
-
-const invitationAlreadyAcceptedError = (code: string, acceptedAt: string): SignupInvitationAlreadyAcceptedError => ({
-  type: 'INVITATION_ALREADY_ACCEPTED',
-  code,
-  acceptedAt,
-});
-
-const invitationEmailMismatchError = (code: string, expectedEmail: string): SignupInvitationEmailMismatchError => ({
-  type: 'INVITATION_EMAIL_MISMATCH',
-  code,
-  expectedEmail,
-});
+  | AcceptInvitationFailedError
+  | SignupStorageError
+  | InvitationStorageError;
 
 const emailAlreadyRegisteredError = (email: string): SignupEmailAlreadyRegisteredError => ({
   type: 'EMAIL_ALREADY_REGISTERED',
@@ -99,10 +73,6 @@ const storageError = (message: string, cause?: unknown): SignupStorageError => (
   message,
   cause,
 });
-
-// ============================================================================
-// Commands and Queries
-// ============================================================================
 
 export type ValidateSignupRequestQuery = {
   code: string;
@@ -135,102 +105,98 @@ export type CompleteSignupResult = {
   };
 };
 
-// ============================================================================
-// Service Interface
-// ============================================================================
-
 export type SignupService = {
-  /**
-   * Validate a signup request.
-   * Checks invitation validity, email match, and that email is not already registered.
-   */
   validateSignupRequest(
     query: ValidateSignupRequestQuery
   ): ResultAsync<ValidateSignupResult, SignupServiceError>;
 
-  /**
-   * Complete signup process.
-   * Creates user, personal organization, and memberships.
-   * Marks invitation as accepted.
-   */
   completeSignup(
     command: CompleteSignupCommand
   ): ResultAsync<CompleteSignupResult, SignupServiceError>;
 };
-
-// ============================================================================
-// Dependencies
-// ============================================================================
 
 export type SignupServiceDependencies = {
   invitationStore: InvitationStore;
   userStore: UserStore;
   organizationStore: OrganizationStore;
   membershipStore: OrganizationMembershipStore;
+  signupStore: SignupStore;
   clock: Clock;
   idGenerator: IdGenerator;
 };
 
-// ============================================================================
-// Implementation
-// ============================================================================
-
 export const createSignupService = (deps: SignupServiceDependencies): SignupService => {
-  const { invitationStore, userStore, organizationStore, membershipStore, clock, idGenerator } = deps;
+  const {
+    invitationStore,
+    userStore,
+    organizationStore,
+    membershipStore,
+    signupStore,
+    clock,
+    idGenerator,
+  } = deps;
 
-  /**
-   * Internal helper to validate invitation and check email availability
-   */
-  const validateInvitationAndEmail = (
-    code: string,
+  const memberAdminEmailCheck = (
+    invitation: Invitation,
     email: string
+  ): ResultAsync<Invitation, SignupServiceError> => {
+    if (
+      invitation.role !== 'owner' &&
+      invitation.email !== null &&
+      invitation.email !== email
+    ) {
+      return errAsync(invitationEmailMismatchError(invitation.code, invitation.email));
+    }
+    return okAsync(invitation);
+  };
+
+  const loadInvitationContext = (
+    code: string,
+    email: string,
+    userId: string
   ): ResultAsync<{ invitation: Invitation; organization: Organization }, SignupServiceError> => {
     return invitationStore
       .findByCode(code)
-      .mapErr((e) => storageError('Failed to find invitation', e))
+      .mapErr((error) => storageError('Failed to find invitation', error))
       .andThen((invitation) => {
         if (!invitation) {
-          return errAsync(invitationNotFoundError(code));
+          return errAsync({ type: 'INVITATION_NOT_FOUND' as const, code });
         }
-
-        const currentTime = clock.now().toISOString();
-
-        // Check if expired
-        if (isInvitationExpired(invitation, currentTime)) {
-          return errAsync(invitationExpiredError(code, invitation.expiresAt));
-        }
-
-        // Check if already accepted
-        if (isInvitationAccepted(invitation)) {
-          return errAsync(invitationAlreadyAcceptedError(code, invitation.acceptedAt!));
-        }
-
-        // Check email match (if invitation has email restriction)
-        if (invitation.email && invitation.email !== email) {
-          return errAsync(invitationEmailMismatchError(code, invitation.email));
-        }
-
-        // Check if email is already registered
-        return userStore
-          .findByEmail(email)
-          .mapErr((e) => storageError('Failed to check email availability', e))
-          .andThen((existingUser) => {
-            if (existingUser) {
-              return errAsync(emailAlreadyRegisteredError(email));
-            }
-
-            // Get the organization
-            return organizationStore
-              .findById(invitation.organizationId)
-              .mapErr((e) => storageError('Failed to get organization', e))
-              .andThen((organization) => {
-                if (!organization) {
-                  return errAsync(organizationNotFoundError(invitation.organizationId));
-                }
-
-                return okAsync({ invitation, organization });
+        return memberAdminEmailCheck(invitation, email).andThen((checked) =>
+          membershipStore
+            .findByOrganizationId(checked.organizationId)
+            .mapErr((error) => storageError('Failed to load members', error))
+            .andThen((members) => {
+              const decision = decideAcceptInvitation({
+                command: { code, account: { userId, email } },
+                invitation: checked,
+                members,
+                now: clock.now().toISOString(),
+                eventId: idGenerator.generate(),
+                membershipId: idGenerator.generate(),
               });
-          });
+              if (decision.isErr()) {
+                return errAsync(decision.error);
+              }
+              return userStore
+                .findByNormalizedEmail(normalizeEmail(email))
+                .mapErr((error) => storageError('Failed to check email availability', error))
+                .andThen((existingUser) => {
+                  if (existingUser) {
+                    return errAsync(emailAlreadyRegisteredError(email));
+                  }
+                  return organizationStore
+                    .findById(checked.organizationId)
+                    .mapErr((error) => storageError('Failed to get organization', error))
+                    .andThen((organization) => {
+                      if (!organization) {
+                        return errAsync(organizationNotFoundError(checked.organizationId));
+                      }
+                      return okAsync({ invitation: checked, organization });
+                    });
+                });
+            })
+        );
       });
   };
 
@@ -238,85 +204,103 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
     validateSignupRequest(
       query: ValidateSignupRequestQuery
     ): ResultAsync<ValidateSignupResult, SignupServiceError> {
-      return validateInvitationAndEmail(query.code, query.email);
+      return loadInvitationContext(query.code, query.email, idGenerator.generate());
     },
 
     completeSignup(
       command: CompleteSignupCommand
     ): ResultAsync<CompleteSignupResult, SignupServiceError> {
       const { code, email } = command;
+      const now = clock.now().toISOString();
+      const userId = idGenerator.generate();
+      const personalOrgId = idGenerator.generate();
+      const personalOrgName = `${email}'s Workspace`;
+      const personalMembershipId = idGenerator.generate();
+      const invitedMembershipId = idGenerator.generate();
+      const eventId = idGenerator.generate();
 
-      return validateInvitationAndEmail(code, email).andThen(({ invitation, organization }) => {
-        const now = clock.now().toISOString();
-        const userId = idGenerator.generate();
-        const personalOrgId = idGenerator.generate();
-        const personalOrgName = `${email}'s Workspace`;
-
-        // Create user (no organizationId - memberships track org relationships)
-        const user = {
-          id: userId,
-          email,
-          createdAt: now,
-        };
-
-        // Create personal organization
-        const personalOrg = {
-          id: personalOrgId,
-          name: personalOrgName,
-          createdAt: now,
-        };
-
-        // Create personal org membership (owner)
-        const personalMembership = {
-          id: idGenerator.generate(),
-          userId,
-          organizationId: personalOrgId,
-          role: 'owner' as const,
-          isPersonalOrg: true,
-          joinedAt: now,
-        };
-
-        // Create invited org membership
-        const invitedMembership = {
-          id: idGenerator.generate(),
-          userId,
-          organizationId: invitation.organizationId,
-          role: invitation.role,
-          isPersonalOrg: false,
-          joinedAt: now,
-        };
-
-        // Mark invitation as accepted
-        const acceptedInvitation: Invitation = {
-          ...invitation,
-          acceptedAt: now,
-          acceptedByUserId: userId,
-        };
-
-        // Save all entities, mapping storage errors to signup errors
-        return organizationStore
-          .save(personalOrg)
-          .mapErr((e) => storageError('Failed to create personal organization', e))
-          .andThen(() => userStore.save(user).mapErr((e) => storageError('Failed to create user', e)))
-          .andThen(() => membershipStore.save(personalMembership).mapErr((e) => storageError('Failed to create personal membership', e)))
-          .andThen(() => membershipStore.save(invitedMembership).mapErr((e) => storageError('Failed to create invited membership', e)))
-          .andThen(() => invitationStore.save(acceptedInvitation).mapErr((e) => storageError('Failed to accept invitation', e)))
-          .map((): CompleteSignupResult => ({
-            user: {
-              id: userId,
-              email,
-            },
-            personalOrganization: {
-              id: personalOrgId,
-              name: personalOrgName,
-            },
-            invitedOrganization: {
-              id: invitation.organizationId,
-              name: organization.name,
-              role: invitation.role,
-            },
-          }));
-      });
+      return invitationStore
+        .findByCode(code)
+        .mapErr((error) => storageError('Failed to find invitation', error))
+        .andThen((invitation) => {
+          if (!invitation) {
+            return errAsync({ type: 'INVITATION_NOT_FOUND' as const, code });
+          }
+          return memberAdminEmailCheck(invitation, email).andThen((checked) =>
+            membershipStore
+              .findByOrganizationId(checked.organizationId)
+              .mapErr((error) => storageError('Failed to load members', error))
+              .andThen((members) => {
+                const decision = decideAcceptInvitation({
+                  command: { code, account: { userId, email } },
+                  invitation: checked,
+                  members,
+                  now,
+                  eventId,
+                  membershipId: invitedMembershipId,
+                });
+                if (decision.isErr()) {
+                  return errAsync(decision.error);
+                }
+                return userStore
+                  .findByNormalizedEmail(normalizeEmail(email))
+                  .mapErr((error) => storageError('Failed to check email availability', error))
+                  .andThen((existingUser) => {
+                    if (existingUser) {
+                      return errAsync(emailAlreadyRegisteredError(email));
+                    }
+                    return organizationStore
+                      .findById(checked.organizationId)
+                      .mapErr((error) => storageError('Failed to get organization', error))
+                      .andThen((organization) => {
+                        if (!organization) {
+                          return errAsync(organizationNotFoundError(checked.organizationId));
+                        }
+                        const user = { id: userId, email, createdAt: now };
+                        const personalOrg = {
+                          id: personalOrgId,
+                          name: personalOrgName,
+                          createdAt: now,
+                        };
+                        const personalMembership = {
+                          id: personalMembershipId,
+                          userId,
+                          organizationId: personalOrgId,
+                          role: 'owner' as const,
+                          isPersonalOrg: true,
+                          joinedAt: now,
+                        };
+                        return signupStore
+                          .completeSignup({
+                            user,
+                            personalOrganization: personalOrg,
+                            personalMembership,
+                            invitedMembership: decision.value.membership.membership,
+                            accepted: decision.value.accepted,
+                            event: decision.value.event,
+                          })
+                          .mapErr((error) =>
+                            acceptInvitationFailedError(error.cause ?? error)
+                          )
+                          .map(
+                            (): CompleteSignupResult => ({
+                              user: { id: userId, email },
+                              personalOrganization: {
+                                id: personalOrgId,
+                                name: personalOrgName,
+                              },
+                              invitedOrganization: {
+                                id: invitation.organizationId,
+                                name: organization.name,
+                                role: invitation.role,
+                              },
+                            })
+                          );
+                      });
+                  });
+              })
+          );
+        });
     },
   };
 };

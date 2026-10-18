@@ -6,6 +6,7 @@ import { invitationStorageError, type InvitationStorageError } from '../domain/i
 export type FakeInvitationStoreOptions = {
   shouldFailOnSave?: boolean;
   shouldFailOnFind?: boolean;
+  shouldFailOnIssueOwnerInvitation?: boolean;
   initialInvitations?: Invitation[];
 };
 
@@ -56,6 +57,7 @@ export const createFakeInvitationStore = (
         (i) =>
           i.organizationId === organizationId &&
           i.acceptedAt === null &&
+          i.replacedAt === null &&
           i.expiresAt > currentTime
       );
       // Sort by createdAt descending
@@ -83,6 +85,39 @@ export const createFakeInvitationStore = (
       if (index >= 0) {
         invitations.splice(index, 1);
       }
+      return okAsync(undefined);
+    },
+
+    findLiveOwnerInvitation: (
+      organizationId: string
+    ): ResultAsync<Invitation | null, InvitationStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(invitationStorageError('Find failed'));
+      }
+      const found = invitations.find(
+        (invitation) =>
+          invitation.organizationId === organizationId &&
+          invitation.role === 'owner' &&
+          invitation.acceptedAt === null &&
+          invitation.replacedAt === null
+      );
+      return okAsync(found ?? null);
+    },
+
+    issueOwnerInvitation: (
+      invitation: Invitation,
+      replaced: Invitation | null
+    ): ResultAsync<void, InvitationStorageError> => {
+      if (options.shouldFailOnIssueOwnerInvitation || options.shouldFailOnSave) {
+        return errAsync(invitationStorageError('Issue owner invitation failed'));
+      }
+      if (replaced) {
+        const index = invitations.findIndex((entry) => entry.id === replaced.id);
+        if (index >= 0) {
+          invitations[index] = replaced;
+        }
+      }
+      invitations.push(invitation);
       return okAsync(undefined);
     },
   };

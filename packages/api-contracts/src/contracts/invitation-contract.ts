@@ -42,8 +42,8 @@ export const invitationContract = c.router({
     responses: {
       200: InvitationSchema,
       400: ErrorSchema, // Invalid code format
-      404: ErrorSchema, // Not found
-      410: ErrorSchema, // Expired or already accepted
+      404: ErrorSchema, // This invite link isn't valid.
+      410: ErrorSchema, // Expired, replaced, or already used
       500: ErrorSchema,
     },
     summary: 'Validate an invitation code before accepting',
@@ -61,9 +61,9 @@ export const invitationContract = c.router({
       200: InvitationSchema,
       400: ErrorSchema,
       401: ErrorSchema,
-      404: ErrorSchema, // Not found
-      409: ErrorSchema, // Already a member
-      410: ErrorSchema, // Expired or already accepted
+      404: ErrorSchema, // This invite link isn't valid.
+      409: ErrorSchema, // Already a member, or workspace already has an owner
+      410: ErrorSchema, // Expired, replaced, or already used
       500: ErrorSchema,
     },
     summary: 'Accept an invitation and join the organization',
@@ -106,7 +106,7 @@ export const invitationContract = c.router({
       204: z.undefined(), // Success, no content
       401: ErrorSchema, // Not authenticated
       403: ErrorSchema, // Insufficient permissions
-      404: ErrorSchema, // Invitation not found
+      404: ErrorSchema, // This invite link isn't valid.
       500: ErrorSchema,
     },
     summary: 'Revoke a pending invitation',

@@ -65,6 +65,10 @@ import { handleReissueAgentToken } from './access/application/handle-reissue-age
 import { handleTransferOwnership } from './access/application/handle-transfer-ownership.js';
 import { handleChangeMemberRole } from './access/application/handle-change-member-role.js';
 import { handleRemoveMember } from './access/application/handle-remove-member.js';
+import { handleCreateWorkspace } from './access/application/handle-create-workspace.js';
+import { handleIssueOwnerInvitation } from './access/application/handle-issue-owner-invitation.js';
+import { handleGetOwnerInvitation } from './access/application/handle-get-owner-invitation.js';
+import { handleAcceptInvitation } from './access/application/handle-accept-invitation.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
 import { principalKindOf } from './access/domain/user.js';
@@ -76,6 +80,8 @@ import {
   createSqliteOrganizationMembershipStore,
   createSqliteInvitationStore,
   createSqliteUserStore,
+  createSqliteWorkspaceStore,
+  createSqliteSignupStore,
   seedAuthData,
 } from './access/infrastructure/index.js';
 import {
@@ -189,7 +195,46 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const tokenStore = await createSqliteTokenStore(database);
   const membershipStore = await createSqliteOrganizationMembershipStore(database);
   const invitationStore = await createSqliteInvitationStore(database);
+  const workspaceStore = createSqliteWorkspaceStore(database);
+  const signupStore = createSqliteSignupStore(database);
   const codeGenerator = createCodeGenerator();
+
+  const createWorkspace = (command: Parameters<typeof handleCreateWorkspace>[0]) =>
+    handleCreateWorkspace(command, {
+      userStore,
+      workspaceStore,
+      nextId: () => idGenerator.generate(),
+      nextCode: () => codeGenerator.generate(),
+      now: () => clock.now().toISOString(),
+    });
+
+  const issueOwnerInvitation = (
+    command: Parameters<typeof handleIssueOwnerInvitation>[0]
+  ) =>
+    handleIssueOwnerInvitation(command, {
+      organizationStore,
+      membershipStore,
+      invitationStore,
+      userStore,
+      nextId: () => idGenerator.generate(),
+      nextCode: () => codeGenerator.generate(),
+      now: () => clock.now().toISOString(),
+    });
+
+  const getOwnerInvitation = (organizationId: string) =>
+    handleGetOwnerInvitation(organizationId, {
+      organizationStore,
+      invitationStore,
+      now: () => clock.now().toISOString(),
+    });
+
+  const acceptInvitation = (command: Parameters<typeof handleAcceptInvitation>[0]) =>
+    handleAcceptInvitation(command, {
+      invitationStore,
+      membershipStore,
+      nextId: () => idGenerator.generate(),
+      now: () => clock.now().toISOString(),
+    });
 
   // Seed auth data if configured
   await seedAuthData({
@@ -278,6 +323,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       userStore,
       organizationStore,
       membershipStore,
+      signupStore,
       clock,
       idGenerator,
     });
@@ -620,6 +666,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       organizationStore,
       organizationMembershipStore: membershipStore,
       userStore,
+      invitationStore,
       tokenStore,
       projectStore,
       clock,
@@ -627,7 +674,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       passwordHasher,
     });
 
-    admin = { adminService, adminSessionService, invitationService };
+    admin = {
+      adminService,
+      adminSessionService,
+      invitationService,
+      createWorkspace,
+      issueOwnerInvitation,
+      getOwnerInvitation,
+    };
   }
 
   return createApp({
@@ -650,6 +704,8 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     membershipService,
     organizationService,
     organizationStore,
+    userService,
+    acceptInvitation,
     signup: signupConfig,
     admin,
     rateLimit: config.rateLimit,

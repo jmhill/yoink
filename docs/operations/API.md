@@ -902,13 +902,81 @@ membership events.
 | 403 | `REISSUE_NOT_ALLOWED` | Only the owner and admins can issue new tokens. |
 | 500 | (storage) | Couldn't issue a new token. Try again. |
 
+## Create a workspace (admin)
+
+`POST /api/admin/organizations` `{ "name", "ownerEmail" }`. Owner email
+is required. Capitals and surrounding spaces are ignored. Existing
+account becomes owner in the same save; otherwise an owner invite is
+issued (7 days, role `owner`). Response `201`
+`{ organization, owner, ownerInvitation }` — one of `owner` /
+`ownerInvitation` is set, the other is `null`.
+
+Refusal order: validation, look up the account, bot check, decide.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 400 | `VALIDATION_FAILED` | Enter the owner's email. (missing / not an email) |
+| 400 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | A bot can't be the owner. |
+| 500 | (storage) | Couldn't create the workspace. Try again. |
+
+## Owner invite (admin)
+
+`POST /api/admin/organizations/:id/owner-invitation` `{ "email" }` issues
+or replaces the pending owner invite (New link, Use a different email,
+Create owner invite). An existing account becomes owner in the same save
+and the old invite is marked replaced. `GET` the same path returns
+`{ ownerInvitation }` for the live pending invite, or `null`.
+
+Refusal order: workspace not found, personal workspace, already has an
+owner, account lookup, bot, decide.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 404 | `ORGANIZATION_NOT_FOUND` | Organization not found |
+| 400 | `PERSONAL_WORKSPACE_OWNER_INVITATION` | Personal workspaces can't get an owner invite. |
+| 409 | `WORKSPACE_ALREADY_HAS_OWNER` | This workspace already has an owner. |
+| 400 | `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` | A bot can't be the owner. |
+| 500 | (storage) | Couldn't create the owner invite. Try again. |
+
+In-app `GET /api/organizations/:organizationId/invitations` excludes
+owner invites. `DELETE` of an owner invite is `403`
+`OWNER_INVITATION_ADMIN_ONLY` `Only the Yoink admin can change the owner invite.`
+In-app `POST /api/invitations` `role: owner` is `400` validation.
+
+## Accept an invitation
+
+`POST /api/invitations/accept` (signed in) and
+`POST /api/auth/signup/options|verify` share `AcceptInvitation`.
+Owner invites refuse a different email; member/admin invites keep today's
+rules (no email lock). Refusal order: not found, replaced, expired,
+already used, email mismatch (owner), workspace already has an owner,
+already a member.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 404 | `INVITATION_NOT_FOUND` | This invite link isn't valid. |
+| 410 | `INVITATION_REPLACED` | This invite was replaced. Ask for a new link. |
+| 410 | `INVITATION_EXPIRED` | This invite has expired. Ask for a new link. |
+| 410 | `INVITATION_ALREADY_ACCEPTED` | This invite has already been used. |
+| 400 | `INVITATION_EMAIL_MISMATCH` | This invite is for a different email. (owner invites) |
+| 409 | `WORKSPACE_ALREADY_HAS_OWNER` | This workspace already has an owner. |
+| 409 | `EMAIL_ALREADY_REGISTERED` | That email already has an account. Sign in instead. (signup) |
+| 500 | (storage) | Couldn't accept the invite. Try again. |
+
+Migration `043-owner-invites` rebuilds `invitations` (`role` includes
+`owner`, `replaced_at`, one live owner invite per workspace) and adds
+`OwnerAssigned` to `membership_events`. Creating or replacing an invite
+is not recorded. Actor is `app-admin` when the admin assigns the owner,
+`self` when the person accepts the invite.
+
 ## Membership events
 
-Table `membership_events` (migration 042) stores four types, each in the
+Table `membership_events` (migration 043) stores five types, each in the
 same `db.batch` as its change:
 
 | type | When |
 | --- | --- |
+| `OwnerAssigned` | Admin create / new link for an existing account / Make owner / accepting an owner invite |
 | `OwnershipTransferred` | #190 handover |
 | `MemberRoleChanged` | In-app or admin-panel member/admin switch |
 | `MemberRemoved` | Someone removes another person |

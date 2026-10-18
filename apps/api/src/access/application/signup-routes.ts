@@ -9,6 +9,10 @@ import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../config/schema.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
 import type { ClientIpOf } from '../../shared/request-client-ip.js';
+import {
+  acceptInvitationErrorResponse,
+  logAndReturnStorageFailure,
+} from './access-http-errors.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;
@@ -48,15 +52,13 @@ export const registerSignupRoutes = async (
     }
 
     const router = s.router(signupContract, {
-      options: async ({ body }) => {
+      options: async ({ body, request }) => {
         const { code, email } = body;
 
-        // Validate the signup request
         const validateResult = await signupService.validateSignupRequest({ code, email });
 
         return validateResult.match(
           async ({ invitation, organization }) => {
-            // Generate registration options for signup (user doesn't exist yet)
             const optionsResult = await passkeyService.generateSignupRegistrationOptions({
               email,
               identifier: email,
@@ -73,51 +75,19 @@ export const registerSignupRoutes = async (
                   role: invitation.role,
                 },
               }),
-              () => ({
-                status: 500 as const,
-                body: { message: 'Failed to generate registration options' },
-              })
+              (error) =>
+                logAndReturnStorageFailure(
+                  request,
+                  error,
+                  'Failed to generate registration options'
+                )
             );
           },
-          (error) => {
-            switch (error.type) {
-              case 'INVITATION_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Invitation not found' },
-                };
-              case 'INVITATION_EXPIRED':
-                return {
-                  status: 410 as const,
-                  body: { message: 'Invitation has expired' },
-                };
-              case 'INVITATION_ALREADY_ACCEPTED':
-                return {
-                  status: 410 as const,
-                  body: { message: 'Invitation has already been used' },
-                };
-              case 'INVITATION_EMAIL_MISMATCH':
-                return {
-                  status: 400 as const,
-                  body: { message: 'Email does not match invitation' },
-                };
-              case 'EMAIL_ALREADY_REGISTERED':
-                return {
-                  status: 409 as const,
-                  body: { message: 'Email is already registered' },
-                };
-              case 'ORGANIZATION_NOT_FOUND':
-              case 'SIGNUP_STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
+          (error) => acceptInvitationErrorResponse(request, error)
         );
       },
 
-      verify: async ({ body, reply }) => {
+      verify: async ({ body, reply, request }) => {
         const { challenge, code, email, credential, credentialName } = body;
 
         // First complete the signup (creates user, org, memberships)
@@ -153,10 +123,11 @@ export const registerSignupRoutes = async (
             });
 
             if (sessionResult.isErr()) {
-              return {
-                status: 500 as const,
-                body: { message: 'Failed to create session' },
-              };
+              return logAndReturnStorageFailure(
+                request,
+                sessionResult.error,
+                'Failed to create session'
+              );
             }
 
             const session = sessionResult.value;
@@ -189,41 +160,7 @@ export const registerSignupRoutes = async (
               },
             };
           },
-          (error) => {
-            switch (error.type) {
-              case 'INVITATION_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Invitation not found' },
-                };
-              case 'INVITATION_EXPIRED':
-                return {
-                  status: 410 as const,
-                  body: { message: 'Invitation has expired' },
-                };
-              case 'INVITATION_ALREADY_ACCEPTED':
-                return {
-                  status: 410 as const,
-                  body: { message: 'Invitation has already been used' },
-                };
-              case 'INVITATION_EMAIL_MISMATCH':
-                return {
-                  status: 400 as const,
-                  body: { message: 'Email does not match invitation' },
-                };
-              case 'EMAIL_ALREADY_REGISTERED':
-                return {
-                  status: 409 as const,
-                  body: { message: 'Email is already registered' },
-                };
-              case 'ORGANIZATION_NOT_FOUND':
-              case 'SIGNUP_STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
+          (error) => acceptInvitationErrorResponse(request, error)
         );
       },
     });

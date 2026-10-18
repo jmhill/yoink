@@ -16,6 +16,13 @@ type UserRow = {
   created_at: string;
 };
 
+const isUserRow = (row: Record<string, unknown>): row is UserRow =>
+  typeof row.id === 'string' &&
+  typeof row.email === 'string' &&
+  (row.name === null || typeof row.name === 'string') &&
+  (row.kind === null || typeof row.kind === 'string') &&
+  typeof row.created_at === 'string';
+
 const rowToUser = (row: UserRow): User => ({
   id: row.id,
   email: row.email,
@@ -80,6 +87,25 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
       ).map((result) => {
         const row = result.rows[0] as UserRow | undefined;
         return row ? rowToUser(row) : null;
+      });
+    },
+
+    findByNormalizedEmail: (email: string): ResultAsync<User | null, UserStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT * FROM users WHERE lower(trim(email)) = ?`,
+          args: [email],
+        }),
+        (error) => userStorageError('Failed to find user by normalized email', error)
+      ).andThen((result) => {
+        const row = result.rows[0];
+        if (!row) {
+          return okAsync(null);
+        }
+        if (!isUserRow(row)) {
+          return errAsync(userStorageError('Failed to parse user by normalized email'));
+        }
+        return okAsync(rowToUser(row));
       });
     },
 

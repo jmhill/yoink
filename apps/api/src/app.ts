@@ -16,9 +16,12 @@ import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
 import { registerWorkRoutes } from './work/infrastructure/http-work-routes.js';
 import { registerReviewRoutes } from './review/infrastructure/http-review-routes.js';
 import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
+import { registerOwnerlessWorkspaceFixtureRoutes } from './access/infrastructure/http-ownerless-workspace-fixture-routes.js';
 import {
   registerAdminRoutes,
+  type AdminRoutesDependencies,
   registerInvitationRoutes,
+  type InvitationRoutesDependencies,
   registerSignupRoutes,
   registerPasskeyRoutes,
   registerAuthRoutes,
@@ -86,6 +89,9 @@ export type AdminConfig = {
   adminService: AdminService;
   adminSessionService: AdminSessionService;
   invitationService: InvitationService;
+  createWorkspace: AdminRoutesDependencies['createWorkspace'];
+  issueOwnerInvitation: AdminRoutesDependencies['issueOwnerInvitation'];
+  getOwnerInvitation: AdminRoutesDependencies['getOwnerInvitation'];
 };
 
 export type SignupConfig = {
@@ -121,6 +127,8 @@ export type AppDependencies = {
   membershipService: MembershipService;
   organizationService: OrganizationService;
   organizationStore: OrganizationStore;
+  userService: UserService;
+  acceptInvitation: InvitationRoutesDependencies['acceptInvitation'];
   signup?: SignupConfig;
   admin?: AdminConfig;
   rateLimit?: RateLimitConfig;
@@ -226,6 +234,12 @@ export const createApp = async (deps: AppDependencies) => {
       db: deps.database,
     });
   }
+  if (deps.enableTestFixtures && deps.admin) {
+    await registerOwnerlessWorkspaceFixtureRoutes(app, {
+      adminSessionService: deps.admin.adminSessionService,
+      organizationStore: deps.organizationStore,
+    });
+  }
 
   // Admin routes - only registered if admin config is provided
   if (deps.admin) {
@@ -241,6 +255,8 @@ export const createApp = async (deps: AppDependencies) => {
     invitationService: deps.invitationService,
     membershipService: deps.membershipService,
     organizationService: deps.organizationService,
+    userService: deps.userService,
+    acceptInvitation: deps.acceptInvitation,
     authMiddleware,
   });
 

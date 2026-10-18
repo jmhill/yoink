@@ -54,6 +54,7 @@ import { migration as notesMirrorBot } from './039-notes-mirror-bot.js';
 import { migration as oneOwnerPerWorkspace } from './040-one-owner-per-workspace.js';
 import { migration as membershipEvents } from './041-membership-events.js';
 import { migration as membershipEventsV2 } from './042-membership-events-v2.js';
+import { migration as ownerInvites } from './043-owner-invites.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -98,6 +99,7 @@ export const migrations: Migration[] = [
   oneOwnerPerWorkspace,
   membershipEvents,
   membershipEventsV2,
+  ownerInvites,
 ];
 
 export type { Migration };

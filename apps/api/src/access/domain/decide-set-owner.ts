@@ -1,9 +1,17 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { SetOwnerCommand } from './membership-commands.js';
 import type { OrganizationMembership } from './organization-membership.js';
+import type { Invitation } from './invitation.js';
+import { markInvitationReplaced } from './invitation.js';
+import type { OwnerAssigned } from './membership-events.js';
 import { principalKindOf, type User } from './user.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
-import { decideOwnerRemains, membershipsWithRole, planOwnershipTransfer, type OwnershipTransferPlan } from './owner-presence.js';
+import {
+  decideOwnerRemains,
+  membershipsWithRole,
+  planOwnershipTransfer,
+  type OwnershipTransferPlan,
+} from './owner-presence.js';
 import {
   targetNotWorkspaceMemberError,
   type BotCannotHavePrivilegedRoleError,
@@ -16,6 +24,15 @@ export type DecideSetOwnerInput = {
   command: SetOwnerCommand;
   members: readonly OrganizationMembership[];
   targetUser: User | null;
+  pendingOwnerInvitation: Invitation | null;
+  eventId: string;
+  now: string;
+};
+
+export type SetOwnerDecision = {
+  plan: OwnershipTransferPlan;
+  replaced: Invitation | null;
+  event: OwnerAssigned;
 };
 
 export type DecideSetOwnerError =
@@ -27,12 +44,16 @@ export type DecideSetOwnerError =
 /**
  * Panel set-owner: target must be a human already in the workspace.
  * Old owner (if any) becomes admin in the same OwnershipTransferPlan.
+ * A pending owner invite is marked replaced in the same save.
  */
 export const decideSetOwner = ({
   command,
   members,
   targetUser,
-}: DecideSetOwnerInput): Result<OwnershipTransferPlan, DecideSetOwnerError> => {
+  pendingOwnerInvitation,
+  eventId,
+  now,
+}: DecideSetOwnerInput): Result<SetOwnerDecision, DecideSetOwnerError> => {
   if (!targetUser) {
     return err(userNotFoundError(command.userId));
   }
@@ -60,5 +81,25 @@ export const decideSetOwner = ({
     return err(ownerCheck.error);
   }
 
-  return ok(plan);
+  const fromRole =
+    targetMembership.role === 'owner' ? null : targetMembership.role;
+  const event: OwnerAssigned = {
+    type: 'OwnerAssigned',
+    id: eventId,
+    organizationId: command.organizationId,
+    userId: command.userId,
+    fromRole,
+    previousOwnerUserId: plan.demote?.userId ?? null,
+    actor: { kind: 'app-admin' },
+    occurredAt: now,
+  };
+
+  return ok({
+    plan,
+    replaced:
+      pendingOwnerInvitation === null
+        ? null
+        : markInvitationReplaced(pendingOwnerInvitation, now),
+    event,
+  });
 };

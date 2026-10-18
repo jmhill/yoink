@@ -2406,6 +2406,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
     },
 
+    async openJoin(_code: string): Promise<void> {
+      throw new UnsupportedOperationError('openJoin', 'http');
+    },
+
+    async shouldSeeInvitationError(_message: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInvitationError', 'http');
+    },
+
+    async shouldSeeJoinTitle(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeJoinTitle', 'http');
+    },
+
     async openMobileBottomTab(_tab: 'capture' | 'process' | 'work' | 'review'): Promise<void> {
       throw new UnsupportedOperationError('openMobileBottomTab', 'http');
     },

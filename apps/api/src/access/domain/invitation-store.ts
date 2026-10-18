@@ -26,4 +26,18 @@ export type InvitationStore = {
 
   /** Delete an invitation by ID */
   delete(id: string): ResultAsync<void, InvitationStorageError>;
+
+  /**
+   * The live owner invite for a workspace: unaccepted and unreplaced,
+   * including expired rows so a new issue can mark them replaced.
+   */
+  findLiveOwnerInvitation(
+    organizationId: string
+  ): ResultAsync<Invitation | null, InvitationStorageError>;
+
+  /** Mark the previous live owner invite replaced, then insert the new one. */
+  issueOwnerInvitation(
+    invitation: Invitation,
+    replaced: Invitation | null
+  ): ResultAsync<void, InvitationStorageError>;
 };

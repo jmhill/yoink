@@ -1,8 +1,11 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
-import type { MembershipEvent } from '../domain/membership-events.js';
+import type { MembershipEvent, OwnerAssigned } from '../domain/membership-events.js';
 import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
+import type { Invitation } from '../domain/invitation.js';
+import type { AcceptMembershipChange } from '../domain/decide-accept-invitation.js';
+import type { AssignOwnerPlan } from '../domain/assign-owner-plan.js';
 import { membershipStorageError, type MembershipStorageError } from '../domain/organization-errors.js';
 
 export type FakeOrganizationMembershipStoreOptions = {
@@ -13,11 +16,15 @@ export type FakeOrganizationMembershipStoreOptions = {
   shouldFailOnTransferOwnership?: boolean;
   shouldFailOnChangeMemberRole?: boolean;
   shouldFailOnRemoveMember?: boolean;
+  shouldFailOnAssignOwnerFromInvite?: boolean;
+  shouldFailOnAcceptInvitation?: boolean;
   initialMemberships?: OrganizationMembership[];
 };
 
 export type FakeOrganizationMembershipStore = OrganizationMembershipStore & {
   recordedEvents(): readonly MembershipEvent[];
+  replacedInvitations(): readonly Invitation[];
+  acceptedInvitations(): readonly Invitation[];
 };
 
 export const createFakeOrganizationMembershipStore = (
@@ -25,18 +32,24 @@ export const createFakeOrganizationMembershipStore = (
 ): FakeOrganizationMembershipStore => {
   const memberships: OrganizationMembership[] = [...(options.initialMemberships ?? [])];
   const events: MembershipEvent[] = [];
+  const replaced: Invitation[] = [];
+  const accepted: Invitation[] = [];
+
+  const saveMembership = (membership: OrganizationMembership): void => {
+    const existingIndex = memberships.findIndex((entry) => entry.id === membership.id);
+    if (existingIndex >= 0) {
+      memberships[existingIndex] = membership;
+    } else {
+      memberships.push(membership);
+    }
+  };
 
   return {
     save: (membership: OrganizationMembership): ResultAsync<void, MembershipStorageError> => {
       if (options.shouldFailOnSave) {
         return errAsync(membershipStorageError('Save failed'));
       }
-      const existingIndex = memberships.findIndex((m) => m.id === membership.id);
-      if (existingIndex >= 0) {
-        memberships[existingIndex] = membership;
-      } else {
-        memberships.push(membership);
-      }
+      saveMembership(membership);
       return okAsync(undefined);
     },
 
@@ -90,11 +103,19 @@ export const createFakeOrganizationMembershipStore = (
       return okAsync(undefined);
     },
 
-    setOwner: ({ demote, promote }): ResultAsync<void, MembershipStorageError> => {
+    setOwner: (
+      plan: OwnershipTransferPlan,
+      event: OwnerAssigned,
+      replacedInvitation: Invitation | null
+    ): ResultAsync<void, MembershipStorageError> => {
       if (options.shouldFailOnSetOwner || options.shouldFailOnSave) {
         return errAsync(membershipStorageError('Set owner failed'));
       }
-      applyPlan(memberships, { demote, promote });
+      applyPlan(memberships, plan);
+      events.push(event);
+      if (replacedInvitation) {
+        replaced.push(replacedInvitation);
+      }
       return okAsync(undefined);
     },
 
@@ -129,7 +150,45 @@ export const createFakeOrganizationMembershipStore = (
       return okAsync(undefined);
     },
 
+    assignOwnerFromInvite: (
+      plan: AssignOwnerPlan,
+      event: OwnerAssigned,
+      replacedInvitation: Invitation | null
+    ): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnAssignOwnerFromInvite || options.shouldFailOnSave) {
+        return errAsync(membershipStorageError('Assign owner from invite failed'));
+      }
+      if (plan.kind === 'add') {
+        saveMembership(plan.membership);
+      } else {
+        applyPlan(memberships, plan.plan);
+      }
+      events.push(event);
+      if (replacedInvitation) {
+        replaced.push(replacedInvitation);
+      }
+      return okAsync(undefined);
+    },
+
+    acceptInvitation: (
+      acceptedInvitation: Invitation,
+      membershipChange: AcceptMembershipChange,
+      event: OwnerAssigned | null
+    ): ResultAsync<void, MembershipStorageError> => {
+      if (options.shouldFailOnAcceptInvitation || options.shouldFailOnSave) {
+        return errAsync(membershipStorageError('Accept invitation failed'));
+      }
+      accepted.push(acceptedInvitation);
+      saveMembership(membershipChange.membership);
+      if (event) {
+        events.push(event);
+      }
+      return okAsync(undefined);
+    },
+
     recordedEvents: () => events,
+    replacedInvitations: () => replaced,
+    acceptedInvitations: () => accepted,
   };
 };
 

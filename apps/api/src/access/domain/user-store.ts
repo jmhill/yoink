@@ -6,6 +6,7 @@ export type UserStore = {
   save(user: User): ResultAsync<void, UserStorageError>;
   findById(id: string): ResultAsync<User | null, UserStorageError>;
   findByEmail(email: string): ResultAsync<User | null, UserStorageError>;
+  findByNormalizedEmail(email: string): ResultAsync<User | null, UserStorageError>;
   findByIds(ids: string[]): ResultAsync<User[], UserStorageError>;
   updateName(id: string, name: string): ResultAsync<void, UserStorageError | UserNotFoundError>;
 };

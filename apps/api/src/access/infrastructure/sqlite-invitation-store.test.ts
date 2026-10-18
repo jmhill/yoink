@@ -29,6 +29,7 @@ const createTestInvitation = (overrides: Partial<Invitation> = {}): Invitation =
   expiresAt: '2024-01-08T00:00:00.000Z', // 7 days from createdAt
   acceptedAt: null,
   acceptedByUserId: null,
+  replacedAt: null,
   createdAt: '2024-01-01T00:00:00.000Z',
   ...overrides,
 });
@@ -336,6 +337,53 @@ describe('createSqliteInvitationStore', () => {
       if (result.isOk()) {
         expect(result.value).toEqual([]);
       }
+    });
+  });
+
+  describe('owner invitations', () => {
+    const ownerInvite = createTestInvitation({
+      id: '550e8400-e29b-41d4-a716-446655440040',
+      code: 'OWNER001',
+      email: 'libby@example.com',
+      invitedByUserId: null,
+      role: 'owner',
+    });
+
+    it('refuses a second live owner invite for the same workspace', async () => {
+      const first = await store.save(ownerInvite);
+      expect(first.isOk()).toBe(true);
+
+      const second = await store.save(
+        createTestInvitation({
+          id: '550e8400-e29b-41d4-a716-446655440041',
+          code: 'OWNER002',
+          email: 'other@example.com',
+          invitedByUserId: null,
+          role: 'owner',
+        })
+      );
+      expect(second.isErr()).toBe(true);
+    });
+
+    it('replaces a live owner invite in one batch', async () => {
+      await store.save(ownerInvite);
+      const replaced = {
+        ...ownerInvite,
+        replacedAt: '2024-01-02T00:00:00.000Z',
+      };
+      const next = createTestInvitation({
+        id: '550e8400-e29b-41d4-a716-446655440042',
+        code: 'OWNER003',
+        email: 'libby@example.com',
+        invitedByUserId: null,
+        role: 'owner',
+      });
+      const result = await store.issueOwnerInvitation(next, replaced);
+      expect(result.isOk()).toBe(true);
+      const oldRow = await store.findById(ownerInvite.id);
+      expect(oldRow.isOk() && oldRow.value?.replacedAt).toBe('2024-01-02T00:00:00.000Z');
+      const live = await store.findLiveOwnerInvitation(TEST_ORG.id);
+      expect(live.isOk() && live.value?.code).toBe('OWNER003');
     });
   });
 });

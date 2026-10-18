@@ -17,6 +17,12 @@ export { createFakeOrganizationMembershipStore } from './fake-organization-membe
 export { createSqliteInvitationStore } from './sqlite-invitation-store.js';
 export { createFakeInvitationStore } from './fake-invitation-store.js';
 
+export { createSqliteWorkspaceStore } from './sqlite-workspace-store.js';
+export { createFakeWorkspaceStore } from './fake-workspace-store.js';
+
+export { createSqliteSignupStore } from './sqlite-signup-store.js';
+export { createFakeSignupStore } from './fake-signup-store.js';
+
 // Token stores
 export { createSqliteTokenStore } from './sqlite-token-store.js';
 export { createFakeTokenStore } from './fake-token-store.js';

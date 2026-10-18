@@ -134,6 +134,7 @@ export const seedAuthData = async (deps: SeedDependencies): Promise<SeedResult> 
       expiresAt: expiresAt.toISOString(),
       acceptedAt: null,
       acceptedByUserId: null,
+      replacedAt: null,
       createdAt: now,
     });
 

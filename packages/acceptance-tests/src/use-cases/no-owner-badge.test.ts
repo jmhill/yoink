@@ -77,6 +77,7 @@ usingDrivers(['http'] as const, (ctx) => {
       const details = await ctx.admin.getOwnerInvitationDetails(garden.id);
       expect(details.ownerInvitation).toBeNull();
       expect(details.expiredOwnerInvitation?.email).toBe(libbyEmail);
+      expect(details.personal).toBe(false);
 
       await ctx.admin.issueOwnerInvitation(garden.id, libbyEmail);
       const waiting = (await ctx.admin.listOrganizations()).find((item) => item.id === garden.id);
@@ -118,6 +119,8 @@ usingDrivers(['http'] as const, (ctx) => {
       const listed = (await ctx.admin.listOrganizations()).find((item) => item.id === garden.id);
       expect(listed?.personal).toBe(true);
       expect(listed?.ownerStatus).toEqual({ kind: 'no-owner', expiredInvite: null });
+      const details = await ctx.admin.getOwnerInvitationDetails(garden.id);
+      expect(details.personal).toBe(true);
     });
   });
 });
@@ -160,7 +163,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const personalWorkspace = await ctx.admin.createOwnerlessWorkspace("Justin's Workspace", {
         personalUserId: justin.id,
       });
-      await ctx.admin.setOrganizationOwner(personalWorkspace.id, justin.id);
       const personalWorkspaceId = personalWorkspace.id;
 
       await ctx.admin.openOrganizationsList();
@@ -225,6 +227,19 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await ctx.admin.frameOrganizationRow(expiredGarden.id);
       await captureAdmin('list_after_one_click_invite');
 
+      const retypeEmail = `libby-retype-${stamp}@example.com`;
+      const retypeGarden = await ctx.admin.createOrganization('Garden Club', {
+        ownerEmail: `libby-clear-${stamp}@example.com`,
+      });
+      const retypeInvite = await ctx.admin.getOwnerInvitation(retypeGarden.id);
+      await ctx.admin.expireInvitation(retypeInvite?.code ?? '');
+      await ctx.admin.openOrganization(retypeGarden.id);
+      await ctx.admin.shouldSeeExpiredOwnerInvite(`libby-clear-${stamp}@example.com`);
+      await ctx.admin.shouldSeeOwnerInviteEmailPrefilled(`libby-clear-${stamp}@example.com`);
+      await ctx.admin.replaceExpiredOwnerInviteEmail(retypeEmail);
+      await ctx.admin.closeOwnerInviteDialog();
+      await ctx.admin.shouldSeePendingOwnerInvite(retypeEmail);
+
       await ctx.admin.openOrganizationsList();
       await ctx.admin.shouldSeeNoOwnerBadge(personalWorkspaceId);
       await ctx.admin.frameOrganizationRow(personalWorkspaceId);
@@ -232,8 +247,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
       await ctx.admin.openOrganization(personalWorkspaceId);
       await ctx.admin.shouldSeeNoCreateOwnerInvite();
-      await ctx.admin.shouldSeeOwner('Justin');
-      await ctx.admin.frameOwnerSection();
+      await ctx.admin.shouldSeeMakeOwner(justin.id);
+      await ctx.admin.frameOwnerAndUsers();
       await captureAdmin('personal_owner_section');
 
       const refreshGarden = await ctx.admin.createOwnerlessWorkspace('Garden Club');

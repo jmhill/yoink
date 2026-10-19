@@ -247,6 +247,7 @@ describe('owner invite HTTP routes', () => {
     expect(fetched.statusCode).toBe(200);
     expect(fetched.json().ownerInvitation.email).toBe('libby@example.com');
     expect(fetched.json().expiredOwnerInvitation).toBeNull();
+    expect(fetched.json().personal).toBe(false);
   });
 
   it('lists owner status for has-owner, waiting, no-owner, and expired', async () => {
@@ -340,6 +341,7 @@ describe('owner invite HTTP routes', () => {
     expect(fetchedExpired.statusCode).toBe(200);
     expect(fetchedExpired.json().ownerInvitation).toBeNull();
     expect(fetchedExpired.json().expiredOwnerInvitation.email).toBe('libby-expired@example.com');
+    expect(fetchedExpired.json().personal).toBe(false);
   });
 
   it('refuses owner invites on a workspace that already has an owner', async () => {

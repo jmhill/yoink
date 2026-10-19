@@ -5,6 +5,7 @@ import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-or
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import type { Organization } from '../domain/organization.js';
 import type { Invitation } from '../domain/invitation.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
 
 const now = '2024-06-15T12:00:00.000Z';
 const org: Organization = {
@@ -40,6 +41,7 @@ describe('handleGetOwnerInvitation', () => {
     if (result.isOk()) {
       expect(result.value.ownerInvitation?.email).toBe('libby@example.com');
       expect(result.value.expiredOwnerInvitation).toBeNull();
+      expect(result.value.personal).toBe(false);
     }
   });
 
@@ -61,6 +63,32 @@ describe('handleGetOwnerInvitation', () => {
         email: 'libby@example.com',
         expiredAt: '2024-06-15T12:00:00.000Z',
       });
+      expect(result.value.personal).toBe(false);
+    }
+  });
+
+  it('returns personal true when a membership is the personal workspace', async () => {
+    const personalMembership: OrganizationMembership = {
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      userId: '550e8400-e29b-41d4-a716-446655440010',
+      organizationId: org.id,
+      role: 'member',
+      isPersonalOrg: true,
+      joinedAt: now,
+    };
+    const result = await handleGetOwnerInvitation(org.id, {
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [org] }),
+      membershipStore: createFakeOrganizationMembershipStore({
+        initialMemberships: [personalMembership],
+      }),
+      invitationStore: createFakeInvitationStore(),
+      now: () => now,
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.personal).toBe(true);
+      expect(result.value.ownerInvitation).toBeNull();
+      expect(result.value.expiredOwnerInvitation).toBeNull();
     }
   });
 });

@@ -28,6 +28,7 @@ export type HandleGetOwnerInvitationDeps = {
 export type OwnerInvitationRead = {
   ownerInvitation: Invitation | null;
   expiredOwnerInvitation: { email: string; expiredAt: string } | null;
+  personal: boolean;
 };
 
 export type HandleGetOwnerInvitationError =
@@ -80,6 +81,7 @@ export const handleGetOwnerInvitation = (
               return okAsync({
                 ownerInvitation: pending,
                 expiredOwnerInvitation,
+                personal: decision.value.personal,
               });
             })
         );

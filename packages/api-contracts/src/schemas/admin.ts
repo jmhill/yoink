@@ -59,6 +59,7 @@ export const ExpiredOwnerInvitationSchema = z.object({
 export const GetOwnerInvitationResponseSchema = z.object({
   ownerInvitation: OwnerInvitationSummarySchema.nullable(),
   expiredOwnerInvitation: ExpiredOwnerInvitationSchema.nullable(),
+  personal: z.boolean(),
 });
 
 export const UpdateOrganizationSchema = z.object({

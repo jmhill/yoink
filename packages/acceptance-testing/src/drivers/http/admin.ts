@@ -404,6 +404,9 @@ export const createHttpAdmin = (
   async shouldSeeOwnerInviteEmailPrefilled() {
     throw new UnsupportedOperationError('shouldSeeOwnerInviteEmailPrefilled', 'http');
   },
+  async replaceExpiredOwnerInviteEmail() {
+    throw new UnsupportedOperationError('replaceExpiredOwnerInviteEmail', 'http');
+  },
   async shouldSeeNoCreateOwnerInvite() {
     throw new UnsupportedOperationError('shouldSeeNoCreateOwnerInvite', 'http');
   },

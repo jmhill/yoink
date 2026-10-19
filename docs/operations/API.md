@@ -951,10 +951,11 @@ Refusal order: validation, look up the account, bot check, decide.
 or replaces the pending owner invite (New link, Use a different email,
 Create owner invite). An existing account becomes owner in the same save
 and the old invite is marked replaced. `GET` the same path returns
-`{ ownerInvitation, expiredOwnerInvitation }`. `ownerInvitation` is the
-live pending invite, or `null`. `expiredOwnerInvitation` is
+`{ ownerInvitation, expiredOwnerInvitation, personal }`. `ownerInvitation`
+is the live pending invite, or `null`. `expiredOwnerInvitation` is
 `{ email, expiredAt }` when the latest owner invite expired and the
-workspace still has no owner; otherwise `null`.
+workspace still has no owner; otherwise `null`. `personal` is true when
+any membership has `is_personal_org = 1`.
 
 Refusal order: workspace not found, personal workspace, already has an
 owner, account lookup, bot, decide.

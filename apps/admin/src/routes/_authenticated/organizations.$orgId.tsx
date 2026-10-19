@@ -71,6 +71,8 @@ function OrganizationDetailPage() {
   const [isOwnerInviteResultOpen, setIsOwnerInviteResultOpen] = useState(false);
   const [differentOwnerEmail, setDifferentOwnerEmail] = useState('');
   const [createOwnerInviteEmail, setCreateOwnerInviteEmail] = useState('');
+  const [expiredFormOrgId, setExpiredFormOrgId] = useState(orgId);
+  const [expiredFormEmail, setExpiredFormEmail] = useState<string | null>(null);
   const [ownerInviteUrl, setOwnerInviteUrl] = useState<string | null>(null);
   const [ownerInviteEmail, setOwnerInviteEmail] = useState<string | null>(null);
   const tsrQueryClient = tsrAdmin.useQueryClient();
@@ -138,9 +140,10 @@ function OrganizationDetailPage() {
     queryData: { params: { id: orgId } },
   });
 
-  const { data: organizationsData } = tsrAdmin.listOrganizations.useQuery({
-    queryKey: ['organizations'],
-  });
+  if (expiredFormOrgId !== orgId) {
+    setExpiredFormOrgId(orgId);
+    setExpiredFormEmail(null);
+  }
 
   useEffect(() => {
     if (orgPending || usersPending) {
@@ -252,6 +255,7 @@ function OrganizationDetailPage() {
       setIsCreateOwnerInviteOpen(false);
       setDifferentOwnerEmail('');
       setCreateOwnerInviteEmail('');
+      setExpiredFormEmail(null);
 
       if (data.body.owner !== null) {
         const workspaceName =
@@ -489,14 +493,16 @@ function OrganizationDetailPage() {
   const pendingOwnerInviteUrl = pendingOwnerInvitation
     ? joinUrlForCode(pendingOwnerInvitation.code)
     : null;
-  const workspaceListItem =
-    organizationsData?.status === 200
-      ? organizationsData.body.organizations.find((item) => item.id === orgId)
-      : undefined;
-  const isPersonalWorkspace = workspaceListItem?.personal === true;
+  const ownerInvitationReady = ownerInvitationData?.status === 200;
+  const isPersonalWorkspace =
+    ownerInvitationReady && ownerInvitationData.body.personal === true;
   const canCreateOwnerInvite =
-    !ownerMember && !pendingOwnerInvitation && !isPersonalWorkspace && workspaceListItem !== undefined;
-  const ownerInviteEmailValue = createOwnerInviteEmail || expiredOwnerInvitation?.email || '';
+    ownerInvitationReady &&
+    !ownerMember &&
+    !pendingOwnerInvitation &&
+    !isPersonalWorkspace;
+  const ownerInviteEmailValue =
+    expiredFormEmail ?? expiredOwnerInvitation?.email ?? '';
 
   if (!organization) {
     return (
@@ -791,7 +797,7 @@ function OrganizationDetailPage() {
                       id="create-owner-invite-email"
                       type="email"
                       value={ownerInviteEmailValue}
-                      onChange={(event) => setCreateOwnerInviteEmail(event.target.value)}
+                      onChange={(event) => setExpiredFormEmail(event.target.value)}
                       required
                     />
                   </div>

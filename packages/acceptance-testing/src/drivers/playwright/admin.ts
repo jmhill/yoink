@@ -51,6 +51,15 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     });
   };
 
+  const restoreHiddenOrganizationRows = async (adminPage: Page): Promise<void> => {
+    await adminPage.locator('[data-screenshot-hidden-row]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-hidden-row');
+        el.removeAttribute('hidden');
+      }
+    });
+  };
+
   const ensureLoggedIn = async (): Promise<Page> => {
     if (page) {
       return page;
@@ -107,6 +116,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async openOrganization(organizationId: string): Promise<void> {
       const adminPage = await ensureLoggedIn();
+      await restoreHiddenOrganizationRows(adminPage);
       await adminPage.goto(`/admin/organizations/${organizationId}`);
       await expect(
         adminPage.getByText('Each workspace has at most one owner')
@@ -115,17 +125,23 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async openOrganizationsList(): Promise<void> {
       const adminPage = await ensureLoggedIn();
+      await restoreHiddenOrganizationRows(adminPage);
+      const heading = adminPage.getByRole('heading', { name: 'Organizations' });
       const breadcrumb = adminPage.getByRole('link', { name: 'Organizations' });
-      if (await breadcrumb.isVisible().catch(() => false)) {
+      await expect(breadcrumb.or(heading).first()).toBeVisible();
+      if (await breadcrumb.isVisible()) {
         await breadcrumb.click();
-      } else {
-        await adminPage.goto('/admin');
+        await expect(heading).toBeVisible();
+        return;
       }
-      await expect(adminPage.getByRole('heading', { name: 'Organizations' })).toBeVisible();
+      await expect(heading).toBeVisible();
+      await adminPage.goto('/admin');
+      await expect(heading).toBeVisible();
     },
 
     async frameOrganizationRow(orgId: string): Promise<void> {
       const adminPage = await ensureLoggedIn();
+      await restoreHiddenOrganizationRows(adminPage);
       const row = adminPage.locator(`[data-organization-id="${orgId}"]`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
@@ -133,6 +149,14 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       await row.evaluate((el) => {
         el.setAttribute('data-screenshot-focus', '');
       });
+      await adminPage.locator('tr[data-organization-id]').evaluateAll((rows, id) => {
+        for (const other of rows) {
+          if (other.getAttribute('data-organization-id') !== id) {
+            other.setAttribute('data-screenshot-hidden-row', '');
+            other.setAttribute('hidden', '');
+          }
+        }
+      }, orgId);
     },
 
     async frameOwnerSection(): Promise<void> {
@@ -178,6 +202,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async clickOwnerBadge(orgId: string): Promise<void> {
       const adminPage = await ensureLoggedIn();
+      await restoreHiddenOrganizationRows(adminPage);
       await adminPage.locator(`[data-organization-id="${orgId}"] [data-owner-badge]`).click();
       await expect(adminPage.locator('#owner')).toBeVisible();
     },
@@ -191,6 +216,18 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
 
     async shouldSeeOwnerInviteEmailPrefilled(email: string): Promise<void> {
       await expect(browserPage().locator('#create-owner-invite-email')).toHaveValue(email);
+    },
+
+    async replaceExpiredOwnerInviteEmail(email: string): Promise<void> {
+      const adminPage = browserPage();
+      const field = adminPage.locator('#create-owner-invite-email');
+      await field.fill('');
+      await expect(field).toHaveValue('');
+      await field.fill(email);
+      await adminPage.locator('[data-action="create-owner-invite"]').click();
+      const dialog = adminPage.locator(OPEN_DIALOG_CONTENT);
+      const pending = adminPage.locator('[data-owner-invite-pending]');
+      await expect(dialog.or(pending).first()).toBeVisible();
     },
 
     async shouldSeeNoCreateOwnerInvite(): Promise<void> {
@@ -365,6 +402,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       const adminPage = browserPage();
       const dialog = adminPage.locator(OPEN_DIALOG_CONTENT);
       await dialog.getByRole('button', { name: 'Done' }).click();
+      await expect(dialog).toHaveCount(0);
     },
 
     async shouldSeeOwner(name: string): Promise<void> {

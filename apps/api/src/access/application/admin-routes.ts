@@ -385,6 +385,7 @@ export const registerAdminRoutes = async (
                 ? toOwnerInvitationSummary(read.ownerInvitation)
                 : null,
               expiredOwnerInvitation: read.expiredOwnerInvitation,
+              personal: read.personal,
             },
           }),
           (error) => {

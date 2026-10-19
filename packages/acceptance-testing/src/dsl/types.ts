@@ -467,6 +467,7 @@ export type OwnerInvitation = {
 export type OwnerInvitationDetails = {
   ownerInvitation: OwnerInvitation | null;
   expiredOwnerInvitation: { email: string; expiredAt: string } | null;
+  personal: boolean;
 };
 
 export type IssueOwnerInvitationResult = {

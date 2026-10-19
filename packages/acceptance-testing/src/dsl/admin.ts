@@ -77,6 +77,7 @@ export type Admin = {
   clickOwnerBadge(orgId: string): Promise<void>;
   shouldSeeExpiredOwnerInvite(email: string): Promise<void>;
   shouldSeeOwnerInviteEmailPrefilled(email: string): Promise<void>;
+  replaceExpiredOwnerInviteEmail(email: string): Promise<void>;
   shouldSeeNoCreateOwnerInvite(): Promise<void>;
   frameOrganizationRow(orgId: string): Promise<void>;
   frameOwnerSection(): Promise<void>;

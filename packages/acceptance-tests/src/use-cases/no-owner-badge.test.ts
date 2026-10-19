@@ -14,12 +14,11 @@ usingDrivers(['http'] as const, (ctx) => {
 
     it('lists an ownerless workspace as no-owner and as has-owner after setOrganizationOwner', async () => {
       const stamp = `${Date.now()}`;
-      const host = await ctx.admin.createOrganization(`host-${stamp}`);
-      const justin = await ctx.admin.createUser(host.id, `justin-badge-${stamp}@example.com`, {
+      const garden = await ctx.admin.createOwnerlessWorkspace(`Garden Club ${stamp}`);
+      const justin = await ctx.admin.createUser(garden.id, `justin-badge-${stamp}@example.com`, {
         name: 'Justin',
         role: 'member',
       });
-      const garden = await ctx.admin.createOwnerlessWorkspace(`Garden Club ${stamp}`);
       const listed = await ctx.admin.listOrganizations();
       const before = listed.find((item) => item.id === garden.id);
       expect(before?.personal).toBe(false);

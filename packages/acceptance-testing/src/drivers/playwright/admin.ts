@@ -405,7 +405,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       await adminPage.locator('[data-action="create-owner-invite"]').click();
       const dialog = adminPage.locator(OPEN_DIALOG_CONTENT);
       const pending = adminPage.locator('[data-owner-invite-pending]');
-      await expect(dialog.or(pending)).toBeVisible();
+      await expect(dialog.or(pending).first()).toBeVisible();
     },
 
     async submitCreateOwnerInvite(email: string): Promise<void> {

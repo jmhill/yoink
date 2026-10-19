@@ -74,7 +74,6 @@ export type ApiTokenView = Omit<ApiToken, 'tokenHash'>;
 
 export type AdminService = {
   // Organizations
-  listOrganizations(): ResultAsync<Organization[], OrganizationStorageError>;
   getOrganization(id: string): ResultAsync<Organization | null, OrganizationStorageError>;
   createOrganization(name: string): ResultAsync<Organization, OrganizationStorageError>;
   renameOrganization(
@@ -126,10 +125,6 @@ export const createAdminService = (
 
   return {
     // Organizations
-    listOrganizations() {
-      return organizationStore.findAll();
-    },
-
     getOrganization(id: string) {
       return organizationStore.findById(id);
     },

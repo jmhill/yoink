@@ -25,8 +25,41 @@ export const IssueOwnerInvitationRequestSchema = z.object({
   email: z.string().email(),
 });
 
+export const WorkspaceOwnerStatusSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('has-owner'),
+    ownerUserId: z.string().uuid(),
+  }),
+  z.object({
+    kind: z.literal('waiting-for-owner'),
+    email: z.string().email(),
+    expiresAt: z.string().datetime(),
+  }),
+  z.object({
+    kind: z.literal('no-owner'),
+    expiredInvite: z
+      .object({
+        email: z.string().email(),
+        expiredAt: z.string().datetime(),
+      })
+      .nullable(),
+  }),
+]);
+
+export const AdminWorkspaceListItemSchema = OrganizationSchema.extend({
+  personal: z.boolean(),
+  ownerStatus: WorkspaceOwnerStatusSchema,
+});
+
+export const ExpiredOwnerInvitationSchema = z.object({
+  email: z.string().email(),
+  expiredAt: z.string().datetime(),
+});
+
 export const GetOwnerInvitationResponseSchema = z.object({
   ownerInvitation: OwnerInvitationSummarySchema.nullable(),
+  expiredOwnerInvitation: ExpiredOwnerInvitationSchema.nullable(),
+  personal: z.boolean(),
 });
 
 export const UpdateOrganizationSchema = z.object({
@@ -38,6 +71,9 @@ export type CreateOrganization = z.infer<typeof CreateOrganizationSchema>;
 export type CreateWorkspaceRequest = z.infer<typeof CreateWorkspaceRequestSchema>;
 export type OwnerInvitationSummary = z.infer<typeof OwnerInvitationSummarySchema>;
 export type IssueOwnerInvitationRequest = z.infer<typeof IssueOwnerInvitationRequestSchema>;
+export type WorkspaceOwnerStatus = z.infer<typeof WorkspaceOwnerStatusSchema>;
+export type AdminWorkspaceListItem = z.infer<typeof AdminWorkspaceListItemSchema>;
+export type ExpiredOwnerInvitation = z.infer<typeof ExpiredOwnerInvitationSchema>;
 export type GetOwnerInvitationResponse = z.infer<typeof GetOwnerInvitationResponseSchema>;
 export type UpdateOrganization = z.infer<typeof UpdateOrganizationSchema>;
 

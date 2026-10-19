@@ -274,11 +274,13 @@ const HIDE_TOASTS_STYLE = [
   '[data-sonner-toaster]{display:none !important}',
   '[data-project-history] button svg,[data-project-finished] button svg{transition:none !important}',
   '[data-screenshot-focus]{outline:3px solid #2563eb !important;outline-offset:3px !important;background:#dbeafe !important;box-shadow:0 0 0 3px rgba(37,99,235,0.35) !important}',
+  'tbody tr[data-organization-id]:not([data-screenshot-focus]){display:none !important}',
 ].join('');
 
 const SHOW_TOASTS_STYLE = [
   '[data-project-history] button svg,[data-project-finished] button svg{transition:none !important}',
   '[data-screenshot-focus]{outline:3px solid #2563eb !important;outline-offset:3px !important;background:#dbeafe !important;box-shadow:0 0 0 3px rgba(37,99,235,0.35) !important}',
+  'tbody tr[data-organization-id]:not([data-screenshot-focus]){display:none !important}',
 ].join('');
 
 export const saveWalkthroughPng = async (input: {

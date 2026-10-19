@@ -3,7 +3,10 @@ import type { Organization } from './organization.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { Invitation } from './invitation.js';
 import type { OwnerAssigned } from './membership-events.js';
-import type { OrganizationStorageError } from './organization-errors.js';
+import type {
+  OrganizationStorageError,
+  WorkspaceStorageError,
+} from './organization-errors.js';
 
 export type WorkspaceStore = {
   createWithOwner(
@@ -16,4 +19,6 @@ export type WorkspaceStore = {
     organization: Organization,
     invitation: Invitation
   ): ResultAsync<void, OrganizationStorageError>;
+
+  listOwnershipRows(): ResultAsync<readonly Record<string, unknown>[], WorkspaceStorageError>;
 };

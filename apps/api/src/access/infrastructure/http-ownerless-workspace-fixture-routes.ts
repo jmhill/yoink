@@ -8,6 +8,7 @@ import { createAdminSessionMiddleware } from '../application/admin-session-middl
 
 const OwnerlessBodySchema = z.object({
   name: z.string().min(1).max(200),
+  personalUserId: z.string().uuid().optional(),
 });
 
 const ExpireInvitationBodySchema = z.object({
@@ -57,6 +58,23 @@ export const registerOwnerlessWorkspaceFixtureRoutes = async (
       if (saved.isErr()) {
         request.log.error({ error: saved.error.cause ?? saved.error }, 'Failed to create ownerless workspace');
         return reply.status(500).send({ message: 'Failed to create ownerless workspace' });
+      }
+      if (parsed.data.personalUserId) {
+        const membership = await deps.membershipStore.save({
+          id: crypto.randomUUID(),
+          userId: parsed.data.personalUserId,
+          organizationId: organization.id,
+          role: 'member',
+          isPersonalOrg: true,
+          joinedAt: organization.createdAt,
+        });
+        if (membership.isErr()) {
+          request.log.error(
+            { error: membership.error.cause ?? membership.error },
+            'Failed to mark ownerless workspace personal'
+          );
+          return reply.status(500).send({ message: 'Failed to create ownerless workspace' });
+        }
       }
       return reply.status(201).send({ organization });
     });

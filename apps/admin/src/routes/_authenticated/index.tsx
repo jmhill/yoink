@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -31,11 +31,14 @@ import {
   COPY_LINK_LABEL,
   CREATE_WORKSPACE_STORAGE_MESSAGE,
   LINK_COPIED_TOAST,
+  NO_OWNER_BADGE,
   OWNER_EMAIL_HELP,
   OWNER_EMAIL_LABEL,
+  WAITING_FOR_OWNER_BADGE,
   memberDisplayName,
   ownerAssignedToast,
   ownerInviteCreatedMessage,
+  type AdminWorkspaceListItem,
 } from '@yoink/api-contracts';
 import { tsrAdmin, tsrPublic } from '@/api/client';
 import { isFetchError } from '@ts-rest/react-query/v5';
@@ -49,6 +52,26 @@ export const Route = createFileRoute('/_authenticated/')({
 const joinUrlForCode = (code: string): string => {
   const baseUrl = window.location.origin.replace('admin.', '');
   return `${baseUrl}/join/${code}`;
+};
+
+const ownerBadgeKind = (
+  workspace: AdminWorkspaceListItem
+): 'no-owner' | 'waiting-for-owner' | null => {
+  if (workspace.personal) {
+    return null;
+  }
+  switch (workspace.ownerStatus.kind) {
+    case 'has-owner':
+      return null;
+    case 'waiting-for-owner':
+      return 'waiting-for-owner';
+    case 'no-owner':
+      return 'no-owner';
+    default: {
+      const _never: never = workspace.ownerStatus;
+      return _never;
+    }
+  }
 };
 
 const messageFromBody = (body: unknown, fallback: string): string => {
@@ -311,21 +334,53 @@ function OrganizationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {organizations.map((org) => (
-                  <TableRow
-                    key={org.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() =>
-                      navigate({
-                        to: '/organizations/$orgId',
-                        params: { orgId: org.id },
-                      })
-                    }
-                  >
-                    <TableCell className="font-medium">{org.name}</TableCell>
-                    <TableCell>{formatDate(org.createdAt)}</TableCell>
-                  </TableRow>
-                ))}
+                {organizations.map((org) => {
+                  const badge = ownerBadgeKind(org);
+                  return (
+                    <TableRow
+                      key={org.id}
+                      data-organization-id={org.id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() =>
+                        navigate({
+                          to: '/organizations/$orgId',
+                          params: { orgId: org.id },
+                        })
+                      }
+                    >
+                      <TableCell className="font-medium">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <span>{org.name}</span>
+                          {badge === 'no-owner' ? (
+                            <Link
+                              to="/organizations/$orgId"
+                              params={{ orgId: org.id }}
+                              hash="owner"
+                              data-owner-badge="no-owner"
+                              className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 hover:bg-amber-200"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {NO_OWNER_BADGE}
+                            </Link>
+                          ) : null}
+                          {badge === 'waiting-for-owner' ? (
+                            <Link
+                              to="/organizations/$orgId"
+                              params={{ orgId: org.id }}
+                              hash="owner"
+                              data-owner-badge="waiting-for-owner"
+                              className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {WAITING_FOR_OWNER_BADGE}
+                            </Link>
+                          ) : null}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatDate(org.createdAt)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

@@ -94,6 +94,7 @@ export type AdminConfig = {
   createWorkspace: AdminRoutesDependencies['createWorkspace'];
   issueOwnerInvitation: AdminRoutesDependencies['issueOwnerInvitation'];
   getOwnerInvitation: AdminRoutesDependencies['getOwnerInvitation'];
+  listWorkspaces: AdminRoutesDependencies['listWorkspaces'];
 };
 
 export type SignupConfig = {

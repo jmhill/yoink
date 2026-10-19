@@ -15,11 +15,18 @@ import type { HandleAcceptInvitationError } from './handle-accept-invitation.js'
 import type { InvitationServiceError } from '../domain/invitation-errors.js';
 import type { SignupServiceError } from '../domain/signup-service.js';
 
+const asLoggedError = (value: unknown): unknown => {
+  if (value instanceof Error) {
+    return { name: value.name, message: value.message, stack: value.stack };
+  }
+  return value;
+};
+
 export const loggedCause = (error: unknown): unknown => {
   if (typeof error === 'object' && error !== null && 'cause' in error) {
-    return error.cause;
+    return asLoggedError(error.cause);
   }
-  return error;
+  return asLoggedError(error);
 };
 
 export const logAndReturnStorageFailure = (

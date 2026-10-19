@@ -3,9 +3,12 @@ import { expect, type Browser, type BrowserContext, type Page } from '@playwrigh
 import {
   CREATE_OWNER_INVITE_LABEL,
   MAKE_NEW_LINK_LABEL,
+  NO_OWNER_BADGE,
   OWNER_EMAIL_LABEL,
+  WAITING_FOR_OWNER_BADGE,
   ownerAssignedToast,
   ownerInviteCreatedMessage,
+  ownerInviteExpired,
 } from '@yoink/api-contracts';
 import type { Admin } from '../../dsl/index.js';
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './page-objects.js';
@@ -40,6 +43,14 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     return page;
   };
 
+  const clearScreenshotFocus = async (adminPage: Page): Promise<void> => {
+    await adminPage.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+  };
+
   const ensureLoggedIn = async (): Promise<Page> => {
     if (page) {
       return page;
@@ -68,7 +79,10 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     issueOwnerInvitation: (organizationId, email) =>
       deps.http.issueOwnerInvitation(organizationId, email),
     getOwnerInvitation: (organizationId) => deps.http.getOwnerInvitation(organizationId),
-    createOwnerlessWorkspace: (name) => deps.http.createOwnerlessWorkspace(name),
+    getOwnerInvitationDetails: (organizationId) =>
+      deps.http.getOwnerInvitationDetails(organizationId),
+    createOwnerlessWorkspace: (name, options) =>
+      deps.http.createOwnerlessWorkspace(name, options),
     expireInvitation: (code) => deps.http.expireInvitation(code),
     assignOwnerKeepingInvite: (organizationId, userId) =>
       deps.http.assignOwnerKeepingInvite(organizationId, userId),
@@ -97,6 +111,90 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
       await expect(
         adminPage.getByText('Each workspace has at most one owner')
       ).toBeVisible();
+    },
+
+    async openOrganizationsList(): Promise<void> {
+      const adminPage = await ensureLoggedIn();
+      const breadcrumb = adminPage.getByRole('link', { name: 'Organizations' });
+      if (await breadcrumb.isVisible().catch(() => false)) {
+        await breadcrumb.click();
+      } else {
+        await adminPage.goto('/admin');
+      }
+      await expect(adminPage.getByRole('heading', { name: 'Organizations' })).toBeVisible();
+    },
+
+    async frameOrganizationRow(orgId: string): Promise<void> {
+      const adminPage = await ensureLoggedIn();
+      const row = adminPage.locator(`[data-organization-id="${orgId}"]`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await clearScreenshotFocus(adminPage);
+      await row.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+    },
+
+    async frameOwnerSection(): Promise<void> {
+      const adminPage = browserPage();
+      const section = adminPage.locator('[data-owner-section]');
+      await section.scrollIntoViewIfNeeded();
+      await expect(section).toBeVisible();
+      await clearScreenshotFocus(adminPage);
+      await section.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+    },
+
+    async frameOwnerAndUsers(): Promise<void> {
+      const adminPage = browserPage();
+      const panel = adminPage.locator('[data-owner-users-panel]');
+      await panel.scrollIntoViewIfNeeded();
+      await expect(panel).toBeVisible();
+      await clearScreenshotFocus(adminPage);
+      await panel.evaluate((el) => {
+        el.setAttribute('data-screenshot-focus', '');
+      });
+    },
+
+    async shouldSeeOwnerBadge(
+      orgId: string,
+      kind: 'no-owner' | 'waiting-for-owner'
+    ): Promise<void> {
+      const adminPage = await ensureLoggedIn();
+      const badge = adminPage.locator(
+        `[data-organization-id="${orgId}"] [data-owner-badge="${kind}"]`
+      );
+      await expect(badge).toHaveText(kind === 'no-owner' ? NO_OWNER_BADGE : WAITING_FOR_OWNER_BADGE);
+    },
+
+    async shouldSeeNoOwnerBadge(orgId: string): Promise<void> {
+      const adminPage = await ensureLoggedIn();
+      await expect(adminPage.locator(`[data-organization-id="${orgId}"]`)).toBeVisible();
+      await expect(
+        adminPage.locator(`[data-organization-id="${orgId}"] [data-owner-badge]`)
+      ).toHaveCount(0);
+    },
+
+    async clickOwnerBadge(orgId: string): Promise<void> {
+      const adminPage = await ensureLoggedIn();
+      await adminPage.locator(`[data-organization-id="${orgId}"] [data-owner-badge]`).click();
+      await expect(adminPage.locator('#owner')).toBeVisible();
+    },
+
+    async shouldSeeExpiredOwnerInvite(email: string): Promise<void> {
+      const line = browserPage().locator('[data-owner-invite-expired]');
+      await expect(line).toBeVisible();
+      const expectedPrefix = ownerInviteExpired(email, '\u0000').split('\u0000')[0] ?? '';
+      await expect(line).toHaveText(new RegExp(`^${expectedPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    },
+
+    async shouldSeeOwnerInviteEmailPrefilled(email: string): Promise<void> {
+      await expect(browserPage().locator('#create-owner-invite-email')).toHaveValue(email);
+    },
+
+    async shouldSeeNoCreateOwnerInvite(): Promise<void> {
+      await expect(browserPage().locator('[data-action="create-owner-invite"]')).toHaveCount(0);
     },
 
     async makeOwner(userId: string): Promise<void> {
@@ -305,7 +403,9 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     async clickCreateOwnerInvite(): Promise<void> {
       const adminPage = browserPage();
       await adminPage.locator('[data-action="create-owner-invite"]').click();
-      await waitForSettledOpenDialog({ page: adminPage });
+      const dialog = adminPage.locator(OPEN_DIALOG_CONTENT);
+      const pending = adminPage.locator('[data-owner-invite-pending]');
+      await expect(dialog.or(pending)).toBeVisible();
     },
 
     async submitCreateOwnerInvite(email: string): Promise<void> {

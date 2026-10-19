@@ -105,6 +105,83 @@ describe('sqlite workspace store', () => {
     const loaded = await invitationStore.findByCode(invitation.code);
     expect(loaded.isOk() && loaded.value?.role).toBe('owner');
   });
+
+  it('returns one ownership row per workspace even with replaced and accepted owner invites', async () => {
+    const userStore = await createSqliteUserStore(db);
+    await userStore.save(justin);
+    const store = createSqliteWorkspaceStore(db);
+    await store.createWithOwner(org, membership, event);
+    const invitationStore = await createSqliteInvitationStore(db);
+    await invitationStore.save({
+      ...invitation,
+      id: '550e8400-e29b-41d4-a716-446655440031',
+      code: 'REPLACED1',
+      replacedAt: '2024-06-16T12:00:00.000Z',
+    });
+    await invitationStore.save({
+      ...invitation,
+      id: '550e8400-e29b-41d4-a716-446655440032',
+      code: 'ACCEPTED1',
+      acceptedAt: '2024-06-16T12:00:00.000Z',
+      acceptedByUserId: justin.id,
+    });
+    const result = await store.listOwnershipRows();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]).toMatchObject({
+        id: org.id,
+        name: 'Garden Club',
+        ownerUserId: justin.id,
+        liveOwnerInviteEmail: null,
+        liveOwnerInviteExpiresAt: null,
+      });
+      expect(Boolean(result.value[0]?.personal)).toBe(false);
+    }
+  });
+
+  it('reads personal = true for a personal workspace', async () => {
+    const userStore = await createSqliteUserStore(db);
+    await userStore.save(justin);
+    const store = createSqliteWorkspaceStore(db);
+    const personalOrg: Organization = {
+      id: '550e8400-e29b-41d4-a716-446655440099',
+      name: "justin@example.com's Workspace",
+      createdAt: '2024-01-02T00:00:00.000Z',
+    };
+    const personalMembership: OrganizationMembership = {
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      userId: justin.id,
+      organizationId: personalOrg.id,
+      role: 'owner',
+      isPersonalOrg: true,
+      joinedAt: '2024-01-02T00:00:00.000Z',
+    };
+    await store.createWithOwner(personalOrg, personalMembership, {
+      ...event,
+      id: '550e8400-e29b-41d4-a716-446655440097',
+      organizationId: personalOrg.id,
+    });
+    const result = await store.listOwnershipRows();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.id).toBe(personalOrg.id);
+      expect(result.value[0]?.ownerUserId).toBe(justin.id);
+      expect(Boolean(result.value[0]?.personal)).toBe(true);
+    }
+  });
+
+  it('returns a storage error when the list read fails', async () => {
+    const closed = await createTestDatabase();
+    await closed.close();
+    const store = createSqliteWorkspaceStore(closed);
+    const result = await store.listOwnershipRows();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('WORKSPACE_STORAGE_ERROR');
+    }
+  });
 });
 
 describe('fake workspace store', () => {
@@ -128,5 +205,95 @@ describe('fake workspace store', () => {
     expect(invited.isErr()).toBe(true);
     const invite = await invitationStore.findByCode(invitation.code);
     expect(invite.isOk() && invite.value).toBeNull();
+  });
+
+  it('returns one ownership row per workspace even with replaced and accepted owner invites', async () => {
+    const organizationStore = createFakeOrganizationStore();
+    const membershipStore = createFakeOrganizationMembershipStore();
+    const invitationStore = createFakeInvitationStore();
+    const store = createFakeWorkspaceStore({
+      organizationStore,
+      membershipStore,
+      invitationStore,
+    });
+    await store.createWithOwner(org, membership, event);
+    await invitationStore.save({
+      ...invitation,
+      id: '550e8400-e29b-41d4-a716-446655440031',
+      code: 'REPLACED1',
+      replacedAt: '2024-06-16T12:00:00.000Z',
+    });
+    await invitationStore.save({
+      ...invitation,
+      id: '550e8400-e29b-41d4-a716-446655440032',
+      code: 'ACCEPTED1',
+      acceptedAt: '2024-06-16T12:00:00.000Z',
+      acceptedByUserId: justin.id,
+    });
+    const result = await store.listOwnershipRows();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]).toMatchObject({
+        id: org.id,
+        name: 'Garden Club',
+        ownerUserId: justin.id,
+        personal: false,
+        liveOwnerInviteEmail: null,
+        liveOwnerInviteExpiresAt: null,
+      });
+    }
+  });
+
+  it('reads personal = true for a personal workspace', async () => {
+    const organizationStore = createFakeOrganizationStore();
+    const membershipStore = createFakeOrganizationMembershipStore();
+    const invitationStore = createFakeInvitationStore();
+    const store = createFakeWorkspaceStore({
+      organizationStore,
+      membershipStore,
+      invitationStore,
+    });
+    const personalOrg: Organization = {
+      id: '550e8400-e29b-41d4-a716-446655440099',
+      name: "justin@example.com's Workspace",
+      createdAt: '2024-01-02T00:00:00.000Z',
+    };
+    const personalMembership: OrganizationMembership = {
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      userId: justin.id,
+      organizationId: personalOrg.id,
+      role: 'owner',
+      isPersonalOrg: true,
+      joinedAt: '2024-01-02T00:00:00.000Z',
+    };
+    await store.createWithOwner(personalOrg, personalMembership, {
+      ...event,
+      id: '550e8400-e29b-41d4-a716-446655440097',
+      organizationId: personalOrg.id,
+    });
+    const result = await store.listOwnershipRows();
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0]).toMatchObject({
+        id: personalOrg.id,
+        personal: true,
+        ownerUserId: justin.id,
+      });
+    }
+  });
+
+  it('returns a storage error when listing is forced to fail', async () => {
+    const store = createFakeWorkspaceStore({
+      organizationStore: createFakeOrganizationStore(),
+      membershipStore: createFakeOrganizationMembershipStore(),
+      invitationStore: createFakeInvitationStore(),
+      shouldFailOnListOwnershipRows: true,
+    });
+    const result = await store.listOwnershipRows();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('WORKSPACE_STORAGE_ERROR');
+    }
   });
 });

@@ -57,9 +57,12 @@ import {
   acceptInvitationFailedError,
   createWorkspaceFailedError,
   issueOwnerInvitationFailedError,
+  listWorkspacesFailedError,
 } from '../domain/invitation-errors.js';
 import { createFakePasswordHasher } from '@yoink/infrastructure';
 import type { FastifyInstance } from 'fastify';
+
+process.env.YOINK_TEST_FIXTURES = 'true';
 
 const PINO_ERROR_LEVEL = 50;
 const UNKNOWN_ORG_ID = '550e8400-e29b-41d4-a716-446655440099';
@@ -243,6 +246,100 @@ describe('owner invite HTTP routes', () => {
     });
     expect(fetched.statusCode).toBe(200);
     expect(fetched.json().ownerInvitation.email).toBe('libby@example.com');
+    expect(fetched.json().expiredOwnerInvitation).toBeNull();
+  });
+
+  it('lists owner status for has-owner, waiting, no-owner, and expired', async () => {
+    const cookies = await loginAdmin();
+    const justin = await createHuman(cookies, 'justin-list@example.com', 'Justin');
+    const owned = await app.inject({
+      method: 'POST',
+      url: '/api/admin/organizations',
+      cookies,
+      payload: { name: 'Garden Club owned', ownerEmail: justin.email },
+    });
+    expect(owned.statusCode).toBe(201);
+    const waiting = await app.inject({
+      method: 'POST',
+      url: '/api/admin/organizations',
+      cookies,
+      payload: { name: 'Garden Club waiting', ownerEmail: 'libby-list@example.com' },
+    });
+    expect(waiting.statusCode).toBe(201);
+    const waitingId = waiting.json<{ organization: { id: string } }>().organization.id;
+    const ownerless = await app.inject({
+      method: 'POST',
+      url: '/api/test/ownerless-workspace',
+      cookies,
+      payload: { name: 'Garden Club empty' },
+    });
+    expect(ownerless.statusCode).toBe(201);
+    const expired = await app.inject({
+      method: 'POST',
+      url: '/api/admin/organizations',
+      cookies,
+      payload: { name: 'Garden Club expired', ownerEmail: 'libby-expired@example.com' },
+    });
+    const expiredInvite = expired.json<{
+      organization: { id: string };
+      ownerInvitation: { code: string };
+    }>();
+    const expire = await app.inject({
+      method: 'POST',
+      url: '/api/test/expire-invitation',
+      cookies,
+      payload: { code: expiredInvite.ownerInvitation.code },
+    });
+    expect(expire.statusCode).toBe(204);
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/admin/organizations',
+      cookies,
+    });
+    expect(listed.statusCode).toBe(200);
+    const organizations = listed.json<{
+      organizations: Array<{
+        id: string;
+        name: string;
+        personal: boolean;
+        ownerStatus: {
+          kind: string;
+          ownerUserId?: string;
+          email?: string;
+          expiredInvite?: { email: string } | null;
+        };
+      }>;
+    }>().organizations;
+    const ownedRow = organizations.find((item) => item.id === owned.json<{ organization: { id: string } }>().organization.id);
+    const waitingRow = organizations.find((item) => item.id === waitingId);
+    const emptyRow = organizations.find(
+      (item) => item.id === ownerless.json<{ organization: { id: string } }>().organization.id
+    );
+    const expiredRow = organizations.find((item) => item.id === expiredInvite.organization.id);
+    expect(ownedRow?.ownerStatus).toEqual({
+      kind: 'has-owner',
+      ownerUserId: justin.id,
+    });
+    expect(waitingRow?.ownerStatus).toMatchObject({
+      kind: 'waiting-for-owner',
+      email: 'libby-list@example.com',
+    });
+    expect(emptyRow?.ownerStatus).toEqual({ kind: 'no-owner', expiredInvite: null });
+    expect(expiredRow?.ownerStatus).toMatchObject({
+      kind: 'no-owner',
+      expiredInvite: { email: 'libby-expired@example.com' },
+    });
+    expect(ownedRow?.personal).toBe(false);
+
+    const fetchedExpired = await app.inject({
+      method: 'GET',
+      url: `/api/admin/organizations/${expiredInvite.organization.id}/owner-invitation`,
+      cookies,
+    });
+    expect(fetchedExpired.statusCode).toBe(200);
+    expect(fetchedExpired.json().ownerInvitation).toBeNull();
+    expect(fetchedExpired.json().expiredOwnerInvitation.email).toBe('libby-expired@example.com');
   });
 
   it('refuses owner invites on a workspace that already has an owner', async () => {
@@ -636,6 +733,8 @@ describe('owner invite storage failures log the original cause', () => {
           errAsync(issueOwnerInvitationFailedError(new Error('disk full'))),
         getOwnerInvitation: () =>
           errAsync(issueOwnerInvitationFailedError(new Error('disk full'))),
+        listWorkspaces: () =>
+          errAsync(listWorkspacesFailedError(new Error('disk full'))),
         cookieConfig: { secure: false, sessionName: 'yoink_session', maxAge: 60 },
         clientIpOf: () => '127.0.0.1',
       },
@@ -658,6 +757,26 @@ describe('owner invite storage failures log the original cause', () => {
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
+    const listed = await failingApp.inject({
+      method: 'GET',
+      url: '/api/admin/organizations',
+      cookies,
+    });
+    expect(listed.statusCode).toBe(500);
+    expect(listed.json()).toMatchObject({
+      message: 'Failed to list organizations',
+      code: 'LIST_WORKSPACES_FAILED',
+    });
+    expect(logs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: PINO_ERROR_LEVEL,
+          msg: 'Failed to list organizations',
+          error: expect.objectContaining({ message: 'disk full' }),
+        }),
+      ])
+    );
+
     expect(created.statusCode).toBe(500);
     expect(created.json().message).toBe(CREATE_WORKSPACE_STORAGE_MESSAGE);
     expect(logs).toEqual(

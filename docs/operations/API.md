@@ -902,6 +902,32 @@ membership events.
 | 403 | `REISSUE_NOT_ALLOWED` | Only the owner and admins can issue new tokens. |
 | 500 | (storage) | Couldn't issue a new token. Try again. |
 
+## List workspaces (admin)
+
+`GET /api/admin/organizations` returns every workspace, personal ones
+included, newest first. Response `{ organizations }` where each item is
+`{ id, name, createdAt, personal, ownerStatus }`. `ownerStatus` is a
+discriminated union:
+
+- `{ kind: "has-owner", ownerUserId }` when the workspace has an owner.
+  An owner wins even if a stale owner invite row is still live.
+- `{ kind: "waiting-for-owner", email, expiresAt }` when there is no
+  owner and a live owner invite is still pending (`expiresAt > now`).
+- `{ kind: "no-owner", expiredInvite }` when there is no owner and no
+  live pending invite. `expiredInvite` is `{ email, expiredAt }` when
+  the live owner invite expired (`expiresAt <= now`); otherwise `null`.
+
+`personal` is true when any membership has `is_personal_org = 1`. The
+list is one `SELECT`. Expiry uses the server clock. There is no invite
+code on the list.
+
+| Status | Code | Message |
+| --- | --- | --- |
+| 500 | `WORKSPACE_ROW_INVALID` | Failed to list organizations |
+| 500 | `LIST_WORKSPACES_FAILED` | Failed to list organizations |
+
+Both 500s are logged with the original error.
+
 ## Create a workspace (admin)
 
 `POST /api/admin/organizations` `{ "name", "ownerEmail" }`. Owner email
@@ -925,7 +951,10 @@ Refusal order: validation, look up the account, bot check, decide.
 or replaces the pending owner invite (New link, Use a different email,
 Create owner invite). An existing account becomes owner in the same save
 and the old invite is marked replaced. `GET` the same path returns
-`{ ownerInvitation }` for the live pending invite, or `null`.
+`{ ownerInvitation, expiredOwnerInvitation }`. `ownerInvitation` is the
+live pending invite, or `null`. `expiredOwnerInvitation` is
+`{ email, expiredAt }` when the latest owner invite expired and the
+workspace still has no owner; otherwise `null`.
 
 Refusal order: workspace not found, personal workspace, already has an
 owner, account lookup, bot, decide.

@@ -1,10 +1,12 @@
 import type {
   Admin,
   Organization,
+  WorkspaceListItem,
   User,
   Token,
   Invitation,
   OwnerInvitation,
+  OwnerInvitationDetails,
   IssueOwnerInvitationResult,
   CreateTokenResult,
   CreateInvitationInput,
@@ -104,8 +106,30 @@ export const createHttpAdmin = (
     return response.json<{ ownerInvitation: OwnerInvitation | null }>().ownerInvitation;
   },
 
-  async createOwnerlessWorkspace(name: string): Promise<Organization> {
-    const response = await client.post('/api/test/ownerless-workspace', { name });
+  async getOwnerInvitationDetails(organizationId: string): Promise<OwnerInvitationDetails> {
+    const response = await client.get(
+      `/api/admin/organizations/${organizationId}/owner-invitation`
+    );
+    if (response.statusCode === 401) {
+      throw new UnauthorizedError();
+    }
+    if (response.statusCode === 404) {
+      throw new NotFoundError('Organization', organizationId);
+    }
+    if (response.statusCode !== 200) {
+      throw new Error(`Failed to get owner invitation: ${response.body}`);
+    }
+    return response.json<OwnerInvitationDetails>();
+  },
+
+  async createOwnerlessWorkspace(
+    name: string,
+    options?: { personalUserId?: string }
+  ): Promise<Organization> {
+    const response = await client.post('/api/test/ownerless-workspace', {
+      name,
+      ...(options?.personalUserId ? { personalUserId: options.personalUserId } : {}),
+    });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -141,12 +165,12 @@ export const createHttpAdmin = (
     }
   },
 
-  async listOrganizations(): Promise<Organization[]> {
+  async listOrganizations(): Promise<WorkspaceListItem[]> {
     const response = await client.get('/api/admin/organizations');
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
-    return response.json<{ organizations: Organization[] }>().organizations;
+    return response.json<{ organizations: WorkspaceListItem[] }>().organizations;
   },
 
   async getOrganization(id: string): Promise<Organization> {
@@ -361,6 +385,37 @@ export const createHttpAdmin = (
 
   async openOrganization() {
     throw new UnsupportedOperationError('openOrganization', 'http');
+  },
+  async openOrganizationsList() {
+    throw new UnsupportedOperationError('openOrganizationsList', 'http');
+  },
+  async shouldSeeOwnerBadge() {
+    throw new UnsupportedOperationError('shouldSeeOwnerBadge', 'http');
+  },
+  async shouldSeeNoOwnerBadge() {
+    throw new UnsupportedOperationError('shouldSeeNoOwnerBadge', 'http');
+  },
+  async clickOwnerBadge() {
+    throw new UnsupportedOperationError('clickOwnerBadge', 'http');
+  },
+  async shouldSeeExpiredOwnerInvite() {
+    throw new UnsupportedOperationError('shouldSeeExpiredOwnerInvite', 'http');
+  },
+  async shouldSeeOwnerInviteEmailPrefilled() {
+    throw new UnsupportedOperationError('shouldSeeOwnerInviteEmailPrefilled', 'http');
+  },
+  async shouldSeeNoCreateOwnerInvite() {
+    throw new UnsupportedOperationError('shouldSeeNoCreateOwnerInvite', 'http');
+  },
+  async frameOrganizationRow() {
+    throw new UnsupportedOperationError('frameOrganizationRow', 'http');
+  },
+  async frameOwnerSection() {
+    throw new UnsupportedOperationError('frameOwnerSection', 'http');
+  },
+
+  async frameOwnerAndUsers(): Promise<void> {
+    throw new UnsupportedOperationError('frameOwnerAndUsers', 'http');
   },
   async makeOwner() {
     throw new UnsupportedOperationError('makeOwner', 'http');

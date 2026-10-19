@@ -1,5 +1,6 @@
 import type { Database } from '../../database/types.js';
-import { ResultAsync } from 'neverthrow';
+import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
+import { z } from 'zod';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import {
@@ -7,17 +8,38 @@ import {
   type OrganizationStorageError,
 } from '../domain/organization-errors.js';
 
-type OrganizationRow = {
-  id: string;
-  name: string;
-  created_at: string;
+const OrganizationRowSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  created_at: z.string().datetime(),
+});
+
+const organizationFromUnknown = (
+  row: Record<string, unknown>
+): Result<Organization, OrganizationStorageError> => {
+  const parsed = OrganizationRowSchema.safeParse(row);
+  if (!parsed.success) {
+    return err(organizationStorageError('Failed to parse organization row'));
+  }
+  return ok({
+    id: parsed.data.id,
+    name: parsed.data.name,
+    createdAt: parsed.data.created_at,
+  });
 };
 
-const rowToOrganization = (row: OrganizationRow): Organization => ({
-  id: row.id,
-  name: row.name,
-  createdAt: row.created_at,
-});
+const parseOrganizationRow = (
+  row: Record<string, unknown> | undefined
+): Result<Organization | null, OrganizationStorageError> => {
+  if (!row) {
+    return ok(null);
+  }
+  return organizationFromUnknown(row);
+};
+
+const parseOrganizationRows = (
+  rows: Record<string, unknown>[]
+): Result<Organization[], OrganizationStorageError> => Result.combine(rows.map(organizationFromUnknown));
 
 /**
  * Validates that the required database schema exists.
@@ -62,9 +84,9 @@ export const createSqliteOrganizationStore = async (
           args: [id],
         }),
         (error) => organizationStorageError('Failed to find organization', error)
-      ).map((result) => {
-        const row = result.rows[0] as OrganizationRow | undefined;
-        return row ? rowToOrganization(row) : null;
+      ).andThen((result) => {
+        const parsed = parseOrganizationRow(result.rows[0]);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
       });
     },
 
@@ -74,9 +96,9 @@ export const createSqliteOrganizationStore = async (
           sql: `SELECT * FROM organizations ORDER BY created_at DESC`,
         }),
         (error) => organizationStorageError('Failed to find all organizations', error)
-      ).map((result) => {
-        const rows = result.rows as OrganizationRow[];
-        return rows.map(rowToOrganization);
+      ).andThen((result) => {
+        const parsed = parseOrganizationRows(result.rows);
+        return parsed.isOk() ? okAsync(parsed.value) : errAsync(parsed.error);
       });
     },
   };

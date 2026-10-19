@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -34,6 +34,7 @@ import {
   newLinkConfirm,
   ownerAssignedToast,
   ownerInviteCreatedMessage,
+  ownerInviteExpired,
   ownerInvitePending,
   ownerLabel,
 } from '@yoink/api-contracts';
@@ -84,6 +85,10 @@ function OrganizationDetailPage() {
     });
   };
 
+  const invalidateOrganizations = () => {
+    tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+  };
+
   const joinUrlForCode = (code: string): string => {
     const baseUrl = window.location.origin.replace('admin.', '');
     return `${baseUrl}/join/${code}`;
@@ -132,6 +137,20 @@ function OrganizationDetailPage() {
     queryKey: ['organizations', orgId, 'owner-invitation'],
     queryData: { params: { id: orgId } },
   });
+
+  const { data: organizationsData } = tsrAdmin.listOrganizations.useQuery({
+    queryKey: ['organizations'],
+  });
+
+  useEffect(() => {
+    if (orgPending || usersPending) {
+      return;
+    }
+    if (window.location.hash !== '#owner') {
+      return;
+    }
+    document.getElementById('owner')?.scrollIntoView();
+  }, [orgPending, usersPending, orgId]);
 
   const createInvitationMutation = tsrAdmin.createInvitation.useMutation({
     onSuccess: (data) => {
@@ -227,6 +246,7 @@ function OrganizationDetailPage() {
       setOwnerSectionError(null);
       invalidateMembers();
       invalidateOwnerInvitation();
+      invalidateOrganizations();
       setIsNewLinkConfirmOpen(false);
       setIsDifferentEmailOpen(false);
       setIsCreateOwnerInviteOpen(false);
@@ -351,6 +371,7 @@ function OrganizationDetailPage() {
         });
         invalidateMembers();
         invalidateOwnerInvitation();
+        invalidateOrganizations();
         toast.success('Owner updated');
         return;
       }
@@ -461,9 +482,21 @@ function OrganizationDetailPage() {
   const ownerMember = users.find((user) => user.role === 'owner');
   const pendingOwnerInvitation =
     ownerInvitationData?.status === 200 ? ownerInvitationData.body.ownerInvitation : null;
+  const expiredOwnerInvitation =
+    ownerInvitationData?.status === 200
+      ? ownerInvitationData.body.expiredOwnerInvitation
+      : null;
   const pendingOwnerInviteUrl = pendingOwnerInvitation
     ? joinUrlForCode(pendingOwnerInvitation.code)
     : null;
+  const workspaceListItem =
+    organizationsData?.status === 200
+      ? organizationsData.body.organizations.find((item) => item.id === orgId)
+      : undefined;
+  const isPersonalWorkspace = workspaceListItem?.personal === true;
+  const canCreateOwnerInvite =
+    !ownerMember && !pendingOwnerInvitation && !isPersonalWorkspace && workspaceListItem !== undefined;
+  const ownerInviteEmailValue = createOwnerInviteEmail || expiredOwnerInvitation?.email || '';
 
   if (!organization) {
     return (
@@ -682,7 +715,8 @@ function OrganizationDetailPage() {
         </div>
       </div>
 
-      <Card className="mb-6" data-owner-section>
+      <div data-owner-users-panel>
+      <Card className="mb-6" id="owner" data-owner-section>
         <CardHeader>
           <CardTitle>Owner</CardTitle>
           <CardDescription>
@@ -731,13 +765,54 @@ function OrganizationDetailPage() {
               </div>
             </div>
           ) : (
-            <Button
-              type="button"
-              data-action="create-owner-invite"
-              onClick={() => setIsCreateOwnerInviteOpen(true)}
-            >
-              {CREATE_OWNER_INVITE_LABEL}
-            </Button>
+            <div className="space-y-3">
+              {expiredOwnerInvitation ? (
+                <p data-owner-invite-expired>
+                  {ownerInviteExpired(
+                    expiredOwnerInvitation.email,
+                    formatInviteDate(expiredOwnerInvitation.expiredAt)
+                  )}
+                </p>
+              ) : null}
+              {canCreateOwnerInvite && expiredOwnerInvitation ? (
+                <form
+                  className="space-y-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    issueOwnerInvitationMutation.mutate({
+                      params: { id: orgId },
+                      body: { email: ownerInviteEmailValue },
+                    });
+                  }}
+                >
+                  <div className="grid gap-2">
+                    <Label htmlFor="create-owner-invite-email">{OWNER_EMAIL_LABEL}</Label>
+                    <Input
+                      id="create-owner-invite-email"
+                      type="email"
+                      value={ownerInviteEmailValue}
+                      onChange={(event) => setCreateOwnerInviteEmail(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" data-action="create-owner-invite">
+                    {CREATE_OWNER_INVITE_LABEL}
+                  </Button>
+                </form>
+              ) : null}
+              {canCreateOwnerInvite && !expiredOwnerInvitation ? (
+                <Button
+                  type="button"
+                  data-action="create-owner-invite"
+                  onClick={() => {
+                    setCreateOwnerInviteEmail('');
+                    setIsCreateOwnerInviteOpen(true);
+                  }}
+                >
+                  {CREATE_OWNER_INVITE_LABEL}
+                </Button>
+              ) : null}
+            </div>
           )}
           {ownerSectionError ? (
             <p className="text-sm text-red-600" data-owner-section-error>
@@ -827,9 +902,9 @@ function OrganizationDetailPage() {
               <DialogTitle>{CREATE_OWNER_INVITE_LABEL}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-2 py-4">
-              <Label htmlFor="create-owner-invite-email">{OWNER_EMAIL_LABEL}</Label>
+              <Label htmlFor="dialog-create-owner-invite-email">{OWNER_EMAIL_LABEL}</Label>
               <Input
-                id="create-owner-invite-email"
+                id="dialog-create-owner-invite-email"
                 type="email"
                 value={createOwnerInviteEmail}
                 onChange={(event) => setCreateOwnerInviteEmail(event.target.value)}
@@ -977,6 +1052,7 @@ function OrganizationDetailPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

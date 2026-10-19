@@ -236,6 +236,16 @@ export const createWorkspaceFailedError = (
   cause,
 });
 
+export type ListWorkspacesFailed = {
+  readonly type: 'LIST_WORKSPACES_FAILED';
+  readonly cause: unknown;
+};
+
+export const listWorkspacesFailedError = (cause: unknown): ListWorkspacesFailed => ({
+  type: 'LIST_WORKSPACES_FAILED',
+  cause,
+});
+
 export type IssueOwnerInvitationFailedError = {
   readonly type: 'ISSUE_OWNER_INVITATION_FAILED';
   readonly cause: unknown;

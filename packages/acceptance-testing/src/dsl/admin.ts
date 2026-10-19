@@ -1,9 +1,11 @@
 import type {
   Organization,
+  WorkspaceListItem,
   User,
   Token,
   Invitation,
   OwnerInvitation,
+  OwnerInvitationDetails,
   IssueOwnerInvitationResult,
   CreateTokenResult,
   CreateInvitationInput,
@@ -24,7 +26,7 @@ export type Admin = {
 
   // Organization management
   createOrganization(name: string, options?: { ownerEmail?: string }): Promise<Organization>;
-  listOrganizations(): Promise<Organization[]>;
+  listOrganizations(): Promise<WorkspaceListItem[]>;
   getOrganization(id: string): Promise<Organization>;
   renameOrganization(id: string, newName: string): Promise<Organization>;
   issueOwnerInvitation(
@@ -32,7 +34,11 @@ export type Admin = {
     email: string
   ): Promise<IssueOwnerInvitationResult>;
   getOwnerInvitation(organizationId: string): Promise<OwnerInvitation | null>;
-  createOwnerlessWorkspace(name: string): Promise<Organization>;
+  getOwnerInvitationDetails(organizationId: string): Promise<OwnerInvitationDetails>;
+  createOwnerlessWorkspace(
+    name: string,
+    options?: { personalUserId?: string }
+  ): Promise<Organization>;
   expireInvitation(code: string): Promise<void>;
   assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void>;
 
@@ -65,6 +71,16 @@ export type Admin = {
    * Admin-panel UI. Playwright only — HTTP throws UnsupportedOperationError.
    */
   openOrganization(organizationId: string): Promise<void>;
+  openOrganizationsList(): Promise<void>;
+  shouldSeeOwnerBadge(orgId: string, kind: 'no-owner' | 'waiting-for-owner'): Promise<void>;
+  shouldSeeNoOwnerBadge(orgId: string): Promise<void>;
+  clickOwnerBadge(orgId: string): Promise<void>;
+  shouldSeeExpiredOwnerInvite(email: string): Promise<void>;
+  shouldSeeOwnerInviteEmailPrefilled(email: string): Promise<void>;
+  shouldSeeNoCreateOwnerInvite(): Promise<void>;
+  frameOrganizationRow(orgId: string): Promise<void>;
+  frameOwnerSection(): Promise<void>;
+  frameOwnerAndUsers(): Promise<void>;
   makeOwner(userId: string): Promise<void>;
   makeAdmin(userId: string): Promise<void>;
   shouldSeeMemberRole(userId: string, role: string): Promise<void>;

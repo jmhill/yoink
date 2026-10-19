@@ -58,6 +58,21 @@ export const organizationStorageError = (
   cause,
 });
 
+export type WorkspaceStorageError = {
+  readonly type: 'WORKSPACE_STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+};
+
+export const workspaceStorageError = (
+  message: string,
+  cause?: unknown
+): WorkspaceStorageError => ({
+  type: 'WORKSPACE_STORAGE_ERROR',
+  message,
+  cause,
+});
+
 // ============================================================================
 // Membership Storage Errors
 // ============================================================================

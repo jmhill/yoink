@@ -400,10 +400,25 @@ export type NowListRow = {
   count: number;
 };
 
+export type WorkspaceOwnerStatus =
+  | { kind: 'has-owner'; ownerUserId: string }
+  | { kind: 'waiting-for-owner'; email: string; expiresAt: string }
+  | {
+      kind: 'no-owner';
+      expiredInvite: { email: string; expiredAt: string } | null;
+    };
+
 export type Organization = {
   id: string;
   name: string;
   createdAt: string;
+  personal?: boolean;
+  ownerStatus?: WorkspaceOwnerStatus;
+};
+
+export type WorkspaceListItem = Organization & {
+  personal: boolean;
+  ownerStatus: WorkspaceOwnerStatus;
 };
 
 export type User = {
@@ -447,6 +462,11 @@ export type OwnerInvitation = {
   code: string;
   email: string;
   expiresAt: string;
+};
+
+export type OwnerInvitationDetails = {
+  ownerInvitation: OwnerInvitation | null;
+  expiredOwnerInvitation: { email: string; expiredAt: string } | null;
 };
 
 export type IssueOwnerInvitationResult = {

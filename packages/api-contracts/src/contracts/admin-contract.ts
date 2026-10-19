@@ -2,6 +2,7 @@ import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import {
   OrganizationSchema,
+  AdminWorkspaceListItemSchema,
   CreateOrganizationSchema,
   CreateWorkspaceResponseSchema,
   IssueOwnerInvitationRequestSchema,
@@ -81,7 +82,7 @@ export const adminProtectedContract = c.router(
       path: '/api/admin/organizations',
       responses: {
         200: z.object({
-          organizations: z.array(OrganizationSchema),
+          organizations: z.array(AdminWorkspaceListItemSchema),
         }),
         401: ErrorSchema,
         500: ErrorSchema,

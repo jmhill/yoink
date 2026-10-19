@@ -1,4 +1,4 @@
-import { errAsync, type ResultAsync } from 'neverthrow';
+import { errAsync, ResultAsync } from 'neverthrow';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { Invitation } from '../domain/invitation.js';
@@ -9,7 +9,9 @@ import type { InvitationStore } from '../domain/invitation-store.js';
 import type { WorkspaceStore } from '../domain/workspace-store.js';
 import {
   organizationStorageError,
+  workspaceStorageError,
   type OrganizationStorageError,
+  type WorkspaceStorageError,
 } from '../domain/organization-errors.js';
 
 export type FakeWorkspaceStoreOptions = {
@@ -17,6 +19,7 @@ export type FakeWorkspaceStoreOptions = {
   membershipStore: OrganizationMembershipStore;
   invitationStore: InvitationStore;
   shouldFailOnCreateWorkspace?: boolean;
+  shouldFailOnListOwnershipRows?: boolean;
 };
 
 export type FakeWorkspaceStore = WorkspaceStore & {
@@ -74,6 +77,62 @@ export const createFakeWorkspaceStore = (
               organizationStorageError(error.message, error.cause ?? error)
             )
         );
+    },
+
+    listOwnershipRows: (): ResultAsync<
+      readonly Record<string, unknown>[],
+      WorkspaceStorageError
+    > => {
+      if (options.shouldFailOnListOwnershipRows) {
+        return errAsync(
+          workspaceStorageError(
+            'Failed to list workspace ownership rows',
+            new Error('injected')
+          )
+        );
+      }
+      return options.organizationStore
+        .findAll()
+        .mapErr((error) => workspaceStorageError(error.message, error.cause ?? error))
+        .andThen((organizations) => {
+          const ordered = [...organizations].sort((left, right) =>
+            right.createdAt.localeCompare(left.createdAt)
+          );
+          return ResultAsync.combine(
+            ordered.map((organization) =>
+              options.membershipStore
+                .findByOrganizationId(organization.id)
+                .mapErr((error) =>
+                  workspaceStorageError(error.message, error.cause ?? error)
+                )
+                .andThen((members) =>
+                  options.invitationStore
+                    .findByOrganization(organization.id)
+                    .mapErr((error) =>
+                      workspaceStorageError(error.message, error.cause ?? error)
+                    )
+                    .map((invitations) => {
+                      const owner = members.find((membership) => membership.role === 'owner');
+                      const live = invitations.find(
+                        (invitation) =>
+                          invitation.role === 'owner' &&
+                          invitation.acceptedAt === null &&
+                          invitation.replacedAt === null
+                      );
+                      return {
+                        id: organization.id,
+                        name: organization.name,
+                        createdAt: organization.createdAt,
+                        ownerUserId: owner?.userId ?? null,
+                        personal: members.some((membership) => membership.isPersonalOrg),
+                        liveOwnerInviteEmail: live?.email ?? null,
+                        liveOwnerInviteExpiresAt: live?.expiresAt ?? null,
+                      };
+                    })
+                )
+            )
+          );
+        });
     },
 
     recordedEvents: () => events,

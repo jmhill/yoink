@@ -91,6 +91,12 @@ export const ownerInviteCreatedMessage = (email: string): string =>
 export const ownerInvitePending = (email: string, date: string): string =>
   `Waiting for ${email} to accept the owner invite. Expires ${date}.`;
 
+export const NO_OWNER_BADGE = 'No owner';
+export const WAITING_FOR_OWNER_BADGE = 'Waiting for owner';
+
+export const ownerInviteExpired = (email: string, date: string): string =>
+  `The owner invite for ${email} expired ${date}.`;
+
 export const newLinkConfirm = (email: string): string =>
   `Make a new link for ${email}? The old link will stop working.`;
 

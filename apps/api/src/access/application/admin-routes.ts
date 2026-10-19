@@ -24,10 +24,13 @@ import type { ClientIpOf } from '../../shared/request-client-ip.js';
 import type { handleCreateWorkspace } from './handle-create-workspace.js';
 import type { handleIssueOwnerInvitation } from './handle-issue-owner-invitation.js';
 import type { handleGetOwnerInvitation } from './handle-get-owner-invitation.js';
+import type { handleListWorkspaces } from './handle-list-workspaces.js';
+import type { HandleListWorkspacesError } from './handle-list-workspaces.js';
 import {
   adminCreateInvitationErrorResponse,
   createWorkspaceErrorResponse,
   issueOwnerInvitationErrorResponse,
+  loggedCause,
   logAndReturnStorageFailure,
 } from './access-http-errors.js';
 
@@ -44,6 +47,9 @@ export type AdminRoutesDependencies = {
   getOwnerInvitation: (
     organizationId: Parameters<typeof handleGetOwnerInvitation>[0]
   ) => ReturnType<typeof handleGetOwnerInvitation>;
+  listWorkspaces: (
+    query: Parameters<typeof handleListWorkspaces>[0]
+  ) => ReturnType<typeof handleListWorkspaces>;
   cookieConfig: CookieConfig;
   clientIpOf: ClientIpOf;
 };
@@ -53,6 +59,31 @@ const storageErrorResponse = (
   error: unknown,
   message: string
 ) => logAndReturnStorageFailure(request, error, message);
+
+const listWorkspacesErrorResponse = (
+  request: FastifyRequest,
+  error: HandleListWorkspacesError
+) => {
+  switch (error.type) {
+    case 'WORKSPACE_ROW_INVALID':
+    case 'LIST_WORKSPACES_FAILED': {
+      request.log.error({ error: loggedCause(error) }, 'Failed to list organizations');
+      return {
+        status: 500 as const,
+        body: { message: 'Failed to list organizations', code: error.type },
+      };
+    }
+    default: {
+      const _never: never = error;
+      void _never;
+      request.log.error({ error: loggedCause(error) }, 'Failed to list organizations');
+      return {
+        status: 500 as const,
+        body: { message: 'Failed to list organizations', code: 'LIST_WORKSPACES_FAILED' },
+      };
+    }
+  }
+};
 
 const toOwnerInvitationSummary = (invitation: Invitation) => ({
   id: invitation.id,
@@ -190,6 +221,7 @@ export const registerAdminRoutes = async (
     createWorkspace,
     issueOwnerInvitation,
     getOwnerInvitation,
+    listWorkspaces,
     cookieConfig,
     clientIpOf,
   } = deps;
@@ -267,13 +299,21 @@ export const registerAdminRoutes = async (
       },
 
       listOrganizations: async ({ request }) => {
-        const result = await adminService.listOrganizations();
+        const result = await listWorkspaces({ type: 'ListWorkspaces' });
         return result.match(
-          (organizations) => ({
+          (workspaces) => ({
             status: 200 as const,
-            body: { organizations },
+            body: {
+              organizations: workspaces.map((workspace) => ({
+                id: workspace.organization.id,
+                name: workspace.organization.name,
+                createdAt: workspace.organization.createdAt,
+                personal: workspace.personal,
+                ownerStatus: workspace.ownerStatus,
+              })),
+            },
           }),
-          (error) => storageErrorResponse(request, error, 'Failed to list organizations')
+          (error) => listWorkspacesErrorResponse(request, error)
         );
       },
 
@@ -338,10 +378,13 @@ export const registerAdminRoutes = async (
       getOwnerInvitation: async ({ params, request }) => {
         const result = await getOwnerInvitation(params.id);
         return result.match(
-          (invitation) => ({
+          (read) => ({
             status: 200 as const,
             body: {
-              ownerInvitation: invitation ? toOwnerInvitationSummary(invitation) : null,
+              ownerInvitation: read.ownerInvitation
+                ? toOwnerInvitationSummary(read.ownerInvitation)
+                : null,
+              expiredOwnerInvitation: read.expiredOwnerInvitation,
             },
           }),
           (error) => {
@@ -352,6 +395,7 @@ export const registerAdminRoutes = async (
                   body: { message: 'Organization not found', code: error.type },
                 };
               case 'ISSUE_OWNER_INVITATION_FAILED':
+              case 'WORKSPACE_ROW_INVALID':
                 return storageErrorResponse(
                   request,
                   error,

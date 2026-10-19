@@ -53,20 +53,6 @@ describe('AdminService', () => {
       }
     });
 
-    it('lists all organizations', async () => {
-      await service.createOrganization('Org 1');
-      await service.createOrganization('Org 2');
-
-      const result = await service.listOrganizations();
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value).toHaveLength(2);
-        expect(result.value[0].name).toBe('Org 1');
-        expect(result.value[1].name).toBe('Org 2');
-      }
-    });
-
     it('gets an organization by ID', async () => {
       const createResult = await service.createOrganization('My Org');
       expect(createResult.isOk()).toBe(true);

@@ -68,6 +68,7 @@ import { handleRemoveMember } from './access/application/handle-remove-member.js
 import { handleCreateWorkspace } from './access/application/handle-create-workspace.js';
 import { handleIssueOwnerInvitation } from './access/application/handle-issue-owner-invitation.js';
 import { handleGetOwnerInvitation } from './access/application/handle-get-owner-invitation.js';
+import { handleListWorkspaces } from './access/application/handle-list-workspaces.js';
 import { handleAcceptInvitation } from './access/application/handle-accept-invitation.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
@@ -224,7 +225,14 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const getOwnerInvitation = (organizationId: string) =>
     handleGetOwnerInvitation(organizationId, {
       organizationStore,
+      membershipStore,
       invitationStore,
+      now: () => clock.now().toISOString(),
+    });
+
+  const listWorkspaces = (query: Parameters<typeof handleListWorkspaces>[0]) =>
+    handleListWorkspaces(query, {
+      workspaceStore,
       now: () => clock.now().toISOString(),
     });
 
@@ -681,6 +689,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       createWorkspace,
       issueOwnerInvitation,
       getOwnerInvitation,
+      listWorkspaces,
     };
   }
 

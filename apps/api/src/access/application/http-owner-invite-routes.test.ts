@@ -491,6 +491,75 @@ describe('owner invite HTTP routes', () => {
     });
   });
 
+  it('refuses a member invite for the wrong email on validate, accept, and signup, and leaves it unused', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/invitations',
+      cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID },
+      payload: {
+        organizationId: TEST_ORG_ID,
+        role: 'member',
+        email: 'libby@example.com',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const code = created.json<{ code: string; id: string }>().code;
+    const invitationId = created.json<{ id: string }>().id;
+
+    const validateWrong = await app.inject({
+      method: 'POST',
+      url: '/api/invitations/validate',
+      payload: { code, email: 'other@example.com' },
+    });
+    expect(validateWrong.statusCode).toBe(400);
+    expect(validateWrong.json()).toMatchObject({
+      code: 'INVITATION_EMAIL_MISMATCH',
+      message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+    });
+
+    const validateCase = await app.inject({
+      method: 'POST',
+      url: '/api/invitations/validate',
+      payload: { code, email: 'Libby@Example.COM' },
+    });
+    expect(validateCase.statusCode).toBe(200);
+
+    const acceptWrong = await app.inject({
+      method: 'POST',
+      url: '/api/invitations/accept',
+      cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID },
+      payload: { code },
+    });
+    expect(acceptWrong.statusCode).toBe(400);
+    expect(acceptWrong.json()).toMatchObject({
+      code: 'INVITATION_EMAIL_MISMATCH',
+      message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+    });
+
+    const signupWrong = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup/options',
+      payload: { code, email: 'other@example.com' },
+    });
+    expect(signupWrong.statusCode).toBe(400);
+    expect(signupWrong.json()).toMatchObject({
+      code: 'INVITATION_EMAIL_MISMATCH',
+      message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+    });
+
+    const pending = await app.inject({
+      method: 'GET',
+      url: `/api/organizations/${TEST_ORG_ID}/invitations`,
+      cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID },
+    });
+    expect(pending.statusCode).toBe(200);
+    const invitations = pending.json<{ invitations: Array<{ id: string; acceptedAt: string | null }> }>()
+      .invitations;
+    expect(invitations.some((entry) => entry.id === invitationId && entry.acceptedAt === null)).toBe(
+      true
+    );
+  });
+
   it('returns the reworded signup messages', async () => {
     const missing = await app.inject({
       method: 'POST',
@@ -885,6 +954,8 @@ describe('owner invite storage failures log the original cause', () => {
       membershipService,
       organizationService,
       userService,
+      validateInvitation: () =>
+        errAsync({ type: 'INVITATION_STORAGE_ERROR', message: 'Find failed' }),
       acceptInvitation: () =>
         errAsync(acceptInvitationFailedError(new Error('disk full'))),
       authMiddleware: createCombinedAuthMiddleware({

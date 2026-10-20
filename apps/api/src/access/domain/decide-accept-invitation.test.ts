@@ -163,7 +163,7 @@ describe('decideAcceptInvitation', () => {
     expect(result.isErr() && result.error.type).toBe('INVITATION_NOT_FOUND');
   });
 
-  it('keeps member invites without an email lock and 409s if already a member', () => {
+  it('keeps member invites without an email as an open link and 409s if already a member', () => {
     const memberInvite = invite({ role: 'member', email: null });
     const otherEmail = decide({
       invitation: memberInvite,
@@ -182,7 +182,40 @@ describe('decideAcceptInvitation', () => {
     expect(already.isErr() && already.error.type).toBe('ALREADY_MEMBER_OF_ORG');
   });
 
-  it('keeps admin invites without becoming owner', () => {
+  it('refuses a member invite for a different email and leaves it unused', () => {
+    const pending = invite({ role: 'member', email: 'libby@example.com' });
+    const result = decide({
+      invitation: pending,
+      account: { userId: '550e8400-e29b-41d4-a716-446655440099', email: 'other@example.com' },
+    });
+    expect(result.isErr() && result.error.type).toBe('INVITATION_EMAIL_MISMATCH');
+    if (result.isErr() && result.error.type === 'INVITATION_EMAIL_MISMATCH') {
+      expect(result.error.message).toBe(OWNER_INVITE_WRONG_EMAIL_MESSAGE);
+    }
+    expect(pending.acceptedAt).toBeNull();
+  });
+
+  it('matches a member invite email ignoring capitals and spaces', () => {
+    const result = decide({
+      invitation: invite({ role: 'member', email: 'libby@example.com' }),
+      account: { ...libby, email: '  Libby@Example.COM  ' },
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.membership.membership.role).toBe('member');
+      expect(result.value.event).toBeNull();
+    }
+  });
+
+  it('refuses an admin invite for a different email', () => {
+    const result = decide({
+      invitation: invite({ role: 'admin', email: 'libby@example.com' }),
+      account: { userId: '550e8400-e29b-41d4-a716-446655440099', email: 'other@example.com' },
+    });
+    expect(result.isErr() && result.error.type).toBe('INVITATION_EMAIL_MISMATCH');
+  });
+
+  it('keeps admin invites without an email as an open link', () => {
     const result = decide({ invitation: invite({ role: 'admin', email: null }) });
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {

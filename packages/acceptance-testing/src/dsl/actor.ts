@@ -388,6 +388,16 @@ export type BrowserActorOperations = {
   frameOwnershipCard(): Promise<void>;
 
   /**
+   * Frame the pending invitations card for a walkthrough shot.
+   */
+  frameInvitationsCard(): Promise<void>;
+
+  /**
+   * Settings Organization tab: a pending invite with this code is visible.
+   */
+  shouldSeePendingInvitation(code: string): Promise<void>;
+
+  /**
    * Settings Organization tab: assert this member row is visible.
    * Human rows are keyed by email.
    */
@@ -1938,6 +1948,9 @@ export type BrowserActorOperations = {
   openJoin(code: string): Promise<void>;
   clickJoin(): Promise<void>;
   shouldSeeInvitationError(message: string): Promise<void>;
+  shouldSeeInvitationErrorHint(text: string): Promise<void>;
+  shouldNotSeeJoinButton(): Promise<void>;
+  shouldSeeJoinRole(role: string): Promise<void>;
   shouldSeeJoinTitle(text: string): Promise<void>;
 
   /**

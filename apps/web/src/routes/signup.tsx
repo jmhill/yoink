@@ -7,6 +7,8 @@ import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { Key, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
+  INVITE_WRONG_EMAIL_HINT,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
   ownerInviteJoinTitle,
   YOUR_ROLE_OWNER_LABEL,
 } from '@yoink/api-contracts';
@@ -155,14 +157,14 @@ function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  disabled={isLoading || (!!invitation.email && invitation.role !== 'owner')}
+                  disabled={isLoading}
                   required
                 />
-                {invitation.email && invitation.role !== 'owner' && (
+                {invitation.email ? (
                   <p className="text-xs text-muted-foreground">
                     This invitation is restricted to this email address.
                   </p>
-                )}
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -181,9 +183,16 @@ function SignupPage() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span data-testid="invitation-error">{error}</span>
+                <div className="flex items-start gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span data-testid="invitation-error">{error}</span>
+                    {error === OWNER_INVITE_WRONG_EMAIL_MESSAGE ? (
+                      <p className="mt-1" data-testid="invitation-error-hint">
+                        {INVITE_WRONG_EMAIL_HINT}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               )}
 
@@ -247,9 +256,16 @@ function SignupPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span data-testid="invitation-error">{error}</span>
+            <div className="flex items-start gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <span data-testid="invitation-error">{error}</span>
+                {error === OWNER_INVITE_WRONG_EMAIL_MESSAGE ? (
+                  <p className="mt-1" data-testid="invitation-error-hint">
+                    {INVITE_WRONG_EMAIL_HINT}
+                  </p>
+                ) : null}
+              </div>
             </div>
           )}
 

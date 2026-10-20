@@ -350,90 +350,21 @@ describe('InvitationService', () => {
         expect(result.error.type).toBe('INVITATION_EMAIL_MISMATCH');
       }
     });
-  });
 
-  describe('acceptInvitation', () => {
-    it('marks invitation as accepted', async () => {
+    it('matches a restricted email ignoring capitals', async () => {
       await service.createInvitation({
         organizationId: TEST_ORG.id,
         invitedByUserId: 'user-admin',
         role: 'member',
+        email: 'specific@example.com',
       });
 
-      const result = await service.acceptInvitation({
+      const result = await service.validateInvitation({
         code: 'TESTCODE',
-        userId: 'new-user-id',
+        email: 'Specific@Example.COM',
       });
 
       expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value.acceptedAt).toBe('2024-01-15T12:00:00.000Z');
-        expect(result.value.acceptedByUserId).toBe('new-user-id');
-      }
-
-      // Verify stored
-      const stored = await invitationStore.findByCode('TESTCODE');
-      if (stored.isOk() && stored.value) {
-        expect(stored.value.acceptedAt).toBe('2024-01-15T12:00:00.000Z');
-      }
-    });
-
-    it('fails when invitation does not exist', async () => {
-      const result = await service.acceptInvitation({
-        code: 'NONEXIST',
-        userId: 'new-user-id',
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe('INVITATION_NOT_FOUND');
-      }
-    });
-
-    it('fails when invitation is expired', async () => {
-      await service.createInvitation({
-        organizationId: TEST_ORG.id,
-        invitedByUserId: 'user-admin',
-        role: 'member',
-      });
-
-      // Advance time past expiration
-      clock.advanceBy(8 * 24 * 60 * 60 * 1000);
-
-      const result = await service.acceptInvitation({
-        code: 'TESTCODE',
-        userId: 'new-user-id',
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe('INVITATION_EXPIRED');
-      }
-    });
-
-    it('fails when invitation is already accepted', async () => {
-      await service.createInvitation({
-        organizationId: TEST_ORG.id,
-        invitedByUserId: 'user-admin',
-        role: 'member',
-      });
-
-      // Accept it once
-      await service.acceptInvitation({
-        code: 'TESTCODE',
-        userId: 'first-user',
-      });
-
-      // Try to accept again
-      const result = await service.acceptInvitation({
-        code: 'TESTCODE',
-        userId: 'second-user',
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe('INVITATION_ALREADY_ACCEPTED');
-      }
     });
   });
 

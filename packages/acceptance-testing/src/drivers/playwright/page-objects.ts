@@ -748,6 +748,23 @@ export class SettingsPage {
     await this.revealAbovePhoneChrome(card);
   }
 
+  async frameInvitationsCard(): Promise<void> {
+    const card = this.page.locator('[data-testid="pending-invitations"]');
+    await this.page.locator('[data-screenshot-focus]').evaluateAll((els) => {
+      for (const el of els) {
+        el.removeAttribute('data-screenshot-focus');
+      }
+    });
+    await card.evaluate((el) => {
+      el.setAttribute('data-screenshot-focus', '');
+    });
+    await this.revealAbovePhoneChrome(card);
+  }
+
+  async shouldSeePendingInvitation(code: string): Promise<void> {
+    await expect(this.page.locator(`[data-pending-invite="${code}"]`)).toBeVisible();
+  }
+
   private async revealAbovePhoneChrome(target: Locator): Promise<void> {
     await target.scrollIntoViewIfNeeded();
     const box = await target.boundingBox();

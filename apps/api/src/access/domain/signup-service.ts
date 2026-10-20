@@ -10,7 +10,6 @@ import type { SignupStore } from './signup-store.js';
 import { decideAcceptInvitation } from './decide-accept-invitation.js';
 import {
   acceptInvitationFailedError,
-  invitationEmailMismatchError,
   type AcceptInvitationFailedError,
   type AlreadyMemberOfOrgError,
   type InvitationAlreadyAcceptedError,
@@ -136,20 +135,6 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
     idGenerator,
   } = deps;
 
-  const memberAdminEmailCheck = (
-    invitation: Invitation,
-    email: string
-  ): ResultAsync<Invitation, SignupServiceError> => {
-    if (
-      invitation.role !== 'owner' &&
-      invitation.email !== null &&
-      invitation.email !== email
-    ) {
-      return errAsync(invitationEmailMismatchError(invitation.code, invitation.email));
-    }
-    return okAsync(invitation);
-  };
-
   const loadInvitationContext = (
     code: string,
     email: string,
@@ -162,41 +147,39 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
         if (!invitation) {
           return errAsync({ type: 'INVITATION_NOT_FOUND' as const, code });
         }
-        return memberAdminEmailCheck(invitation, email).andThen((checked) =>
-          membershipStore
-            .findByOrganizationId(checked.organizationId)
-            .mapErr((error) => storageError('Failed to load members', error))
-            .andThen((members) => {
-              const decision = decideAcceptInvitation({
-                command: { code, account: { userId, email } },
-                invitation: checked,
-                members,
-                now: clock.now().toISOString(),
-                eventId: idGenerator.generate(),
-                membershipId: idGenerator.generate(),
+        return membershipStore
+          .findByOrganizationId(invitation.organizationId)
+          .mapErr((error) => storageError('Failed to load members', error))
+          .andThen((members) => {
+            const decision = decideAcceptInvitation({
+              command: { code, account: { userId, email } },
+              invitation,
+              members,
+              now: clock.now().toISOString(),
+              eventId: idGenerator.generate(),
+              membershipId: idGenerator.generate(),
+            });
+            if (decision.isErr()) {
+              return errAsync(decision.error);
+            }
+            return userStore
+              .findByNormalizedEmail(normalizeEmail(email))
+              .mapErr((error) => storageError('Failed to check email availability', error))
+              .andThen((existingUser) => {
+                if (existingUser) {
+                  return errAsync(emailAlreadyRegisteredError(email));
+                }
+                return organizationStore
+                  .findById(invitation.organizationId)
+                  .mapErr((error) => storageError('Failed to get organization', error))
+                  .andThen((organization) => {
+                    if (!organization) {
+                      return errAsync(organizationNotFoundError(invitation.organizationId));
+                    }
+                    return okAsync({ invitation, organization });
+                  });
               });
-              if (decision.isErr()) {
-                return errAsync(decision.error);
-              }
-              return userStore
-                .findByNormalizedEmail(normalizeEmail(email))
-                .mapErr((error) => storageError('Failed to check email availability', error))
-                .andThen((existingUser) => {
-                  if (existingUser) {
-                    return errAsync(emailAlreadyRegisteredError(email));
-                  }
-                  return organizationStore
-                    .findById(checked.organizationId)
-                    .mapErr((error) => storageError('Failed to get organization', error))
-                    .andThen((organization) => {
-                      if (!organization) {
-                        return errAsync(organizationNotFoundError(checked.organizationId));
-                      }
-                      return okAsync({ invitation: checked, organization });
-                    });
-                });
-            })
-        );
+          });
       });
   };
 
@@ -226,80 +209,78 @@ export const createSignupService = (deps: SignupServiceDependencies): SignupServ
           if (!invitation) {
             return errAsync({ type: 'INVITATION_NOT_FOUND' as const, code });
           }
-          return memberAdminEmailCheck(invitation, email).andThen((checked) =>
-            membershipStore
-              .findByOrganizationId(checked.organizationId)
-              .mapErr((error) => storageError('Failed to load members', error))
-              .andThen((members) => {
-                const decision = decideAcceptInvitation({
-                  command: { code, account: { userId, email } },
-                  invitation: checked,
-                  members,
-                  now,
-                  eventId,
-                  membershipId: invitedMembershipId,
-                });
-                if (decision.isErr()) {
-                  return errAsync(decision.error);
-                }
-                return userStore
-                  .findByNormalizedEmail(normalizeEmail(email))
-                  .mapErr((error) => storageError('Failed to check email availability', error))
-                  .andThen((existingUser) => {
-                    if (existingUser) {
-                      return errAsync(emailAlreadyRegisteredError(email));
-                    }
-                    return organizationStore
-                      .findById(checked.organizationId)
-                      .mapErr((error) => storageError('Failed to get organization', error))
-                      .andThen((organization) => {
-                        if (!organization) {
-                          return errAsync(organizationNotFoundError(checked.organizationId));
-                        }
-                        const user = { id: userId, email, createdAt: now };
-                        const personalOrg = {
-                          id: personalOrgId,
-                          name: personalOrgName,
-                          createdAt: now,
-                        };
-                        const personalMembership = {
-                          id: personalMembershipId,
-                          userId,
-                          organizationId: personalOrgId,
-                          role: 'owner' as const,
-                          isPersonalOrg: true,
-                          joinedAt: now,
-                        };
-                        return signupStore
-                          .completeSignup({
-                            user,
-                            personalOrganization: personalOrg,
-                            personalMembership,
-                            invitedMembership: decision.value.membership.membership,
-                            accepted: decision.value.accepted,
-                            event: decision.value.event,
+          return membershipStore
+            .findByOrganizationId(invitation.organizationId)
+            .mapErr((error) => storageError('Failed to load members', error))
+            .andThen((members) => {
+              const decision = decideAcceptInvitation({
+                command: { code, account: { userId, email } },
+                invitation,
+                members,
+                now,
+                eventId,
+                membershipId: invitedMembershipId,
+              });
+              if (decision.isErr()) {
+                return errAsync(decision.error);
+              }
+              return userStore
+                .findByNormalizedEmail(normalizeEmail(email))
+                .mapErr((error) => storageError('Failed to check email availability', error))
+                .andThen((existingUser) => {
+                  if (existingUser) {
+                    return errAsync(emailAlreadyRegisteredError(email));
+                  }
+                  return organizationStore
+                    .findById(invitation.organizationId)
+                    .mapErr((error) => storageError('Failed to get organization', error))
+                    .andThen((organization) => {
+                      if (!organization) {
+                        return errAsync(organizationNotFoundError(invitation.organizationId));
+                      }
+                      const user = { id: userId, email, createdAt: now };
+                      const personalOrg = {
+                        id: personalOrgId,
+                        name: personalOrgName,
+                        createdAt: now,
+                      };
+                      const personalMembership = {
+                        id: personalMembershipId,
+                        userId,
+                        organizationId: personalOrgId,
+                        role: 'owner' as const,
+                        isPersonalOrg: true,
+                        joinedAt: now,
+                      };
+                      return signupStore
+                        .completeSignup({
+                          user,
+                          personalOrganization: personalOrg,
+                          personalMembership,
+                          invitedMembership: decision.value.membership.membership,
+                          accepted: decision.value.accepted,
+                          event: decision.value.event,
+                        })
+                        .mapErr((error) =>
+                          acceptInvitationFailedError(error.cause ?? error)
+                        )
+                        .map(
+                          (): CompleteSignupResult => ({
+                            user: { id: userId, email },
+                            personalOrganization: {
+                              id: personalOrgId,
+                              name: personalOrgName,
+                            },
+                            invitedOrganization: {
+                              id: invitation.organizationId,
+                              name: organization.name,
+                              role: invitation.role,
+                            },
                           })
-                          .mapErr((error) =>
-                            acceptInvitationFailedError(error.cause ?? error)
-                          )
-                          .map(
-                            (): CompleteSignupResult => ({
-                              user: { id: userId, email },
-                              personalOrganization: {
-                                id: personalOrgId,
-                                name: personalOrgName,
-                              },
-                              invitedOrganization: {
-                                id: invitation.organizationId,
-                                name: organization.name,
-                                role: invitation.role,
-                              },
-                            })
-                          );
-                      });
-                  });
-              })
-          );
+                        );
+                    });
+                });
+            });
         });
     },
   };

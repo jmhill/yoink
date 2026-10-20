@@ -139,7 +139,7 @@ export function InvitationsSection({ organizationId, organizationName }: Invitat
 
   return (
     <>
-      <Card>
+      <Card data-testid="pending-invitations">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -182,6 +182,7 @@ export function InvitationsSection({ organizationId, organizationName }: Invitat
                 {state.invitations.map((invitation) => (
                   <div
                     key={invitation.id}
+                    data-pending-invite={invitation.code}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card"
                   >
                     <div className="flex items-center gap-3 min-w-0">

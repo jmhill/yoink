@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '@yoink/api-contracts';
 import { createSignupService, type SignupService } from './signup-service.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
@@ -142,7 +143,24 @@ describe('SignupService', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.type).toBe('INVITATION_EMAIL_MISMATCH');
+        if (result.error.type === 'INVITATION_EMAIL_MISMATCH') {
+          expect(result.error.message).toBe(OWNER_INVITE_WRONG_EMAIL_MESSAGE);
+        }
       }
+    });
+
+    it('matches a restricted email ignoring capitals', async () => {
+      const invitation = createTestInvitation({
+        email: 'alice@example.com',
+      });
+      await invitationStore.save(invitation);
+
+      const result = await service.validateSignupRequest({
+        code: 'ABCD1234',
+        email: 'Alice@Example.COM',
+      });
+
+      expect(result.isOk()).toBe(true);
     });
 
     it('rejects when email already registered', async () => {

@@ -72,6 +72,8 @@ export const EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE =
   'That email already has an account. Sign in instead.';
 export const INVITATION_REPLACED_MESSAGE = 'This invite was replaced. Ask for a new link.';
 export const OWNER_INVITE_WRONG_EMAIL_MESSAGE = 'This invite is for a different email.';
+export const INVITE_WRONG_EMAIL_HINT =
+  'Sign in with that email, or ask for a new link.';
 export const OWNER_INVITE_ADMIN_ONLY_MESSAGE =
   'Only the Yoink admin can change the owner invite.';
 export const ACCEPT_INVITE_STORAGE_MESSAGE = "Couldn't accept the invite. Try again.";

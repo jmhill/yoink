@@ -3961,6 +3961,18 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-testid="invitation-error"]')).toHaveText(message);
     },
 
+    async shouldSeeInvitationErrorHint(text: string): Promise<void> {
+      await expect(page.locator('[data-testid="invitation-error-hint"]')).toHaveText(text);
+    },
+
+    async shouldNotSeeJoinButton(): Promise<void> {
+      await expect(page.getByRole('button', { name: /^Join / })).toHaveCount(0);
+    },
+
+    async shouldSeeJoinRole(role: string): Promise<void> {
+      await expect(page.locator('[data-testid="invitation-role"]')).toHaveText(role);
+    },
+
     async shouldSeeJoinTitle(text: string): Promise<void> {
       await expect(page.getByRole('heading', { name: text })).toBeVisible();
     },
@@ -6221,6 +6233,14 @@ export const createPlaywrightActor = (
 
     async frameOwnershipCard(): Promise<void> {
       await settingsPage.frameOwnershipCard();
+    },
+
+    async frameInvitationsCard(): Promise<void> {
+      await settingsPage.frameInvitationsCard();
+    },
+
+    async shouldSeePendingInvitation(code: string): Promise<void> {
+      await settingsPage.shouldSeePendingInvitation(code);
     },
 
     async shouldSeeMemberRow(label: string): Promise<void> {

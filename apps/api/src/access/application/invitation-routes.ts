@@ -8,6 +8,7 @@ import type { UserService } from '../domain/user-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
 import { handleAcceptInvitation } from './handle-accept-invitation.js';
+import { handleValidateInvitation } from './handle-validate-invitation.js';
 import {
   acceptInvitationErrorResponse,
   createInvitationErrorResponse,
@@ -22,6 +23,9 @@ export type InvitationRoutesDependencies = {
   membershipService: MembershipService;
   organizationService: OrganizationService;
   userService: UserService;
+  validateInvitation: (
+    query: Parameters<typeof handleValidateInvitation>[0]
+  ) => ReturnType<typeof handleValidateInvitation>;
   acceptInvitation: (
     command: Parameters<typeof handleAcceptInvitation>[0]
   ) => ReturnType<typeof handleAcceptInvitation>;
@@ -41,6 +45,7 @@ export const registerInvitationRoutes = async (
     membershipService,
     organizationService,
     userService,
+    validateInvitation,
     acceptInvitation,
     authMiddleware,
   } = deps;
@@ -56,7 +61,7 @@ export const registerInvitationRoutes = async (
 
     const router = s.router(invitationContract, {
       validate: async ({ body, request }) => {
-        const result = await invitationService.validateInvitation({
+        const result = await validateInvitation({
           code: body.code,
           email: body.email,
         });

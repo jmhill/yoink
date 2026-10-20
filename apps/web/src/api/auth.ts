@@ -216,7 +216,8 @@ export const logout = async (): Promise<ApiResponse<{ success: true }>> => {
  * Validate an invitation code.
  */
 export const validateInvitation = async (
-  code: string
+  code: string,
+  email?: string
 ): Promise<
   ApiResponse<{
     id: string;
@@ -230,7 +231,7 @@ export const validateInvitation = async (
   const response = await fetch('/api/invitations/validate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify(email === undefined ? { code } : { code, email }),
   });
 
   if (!response.ok) {

@@ -4,6 +4,8 @@ import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Loader2, AlertCircle, CheckCircle2, Building2, Users } from 'lucide-react';
 import {
+  INVITE_WRONG_EMAIL_HINT,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
   ownerInviteJoinTitle,
   YOUR_ROLE_OWNER_LABEL,
 } from '@yoink/api-contracts';
@@ -50,7 +52,7 @@ function JoinPage() {
       // User is authenticated - validate the invitation
       setState({ status: 'validating' });
 
-      const validateResult = await validateInvitation(code);
+      const validateResult = await validateInvitation(code, sessionResult.data.user.email);
 
       if (!validateResult.ok) {
         setState({ status: 'error', message: validateResult.error });
@@ -143,6 +145,11 @@ function JoinPage() {
             <CardDescription data-testid="invitation-error">
               {state.message}
             </CardDescription>
+            {state.message === OWNER_INVITE_WRONG_EMAIL_MESSAGE ? (
+              <p className="text-sm text-muted-foreground" data-testid="invitation-error-hint">
+                {INVITE_WRONG_EMAIL_HINT}
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent>
             <Button variant="outline" className="w-full" onClick={handleCancel}>

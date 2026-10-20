@@ -92,12 +92,14 @@ export const decideAcceptInvitation = ({
       break;
   }
 
+  if (invitation.email !== null && !emailsMatch(invitation.email, command.account.email)) {
+    return err(ownerInviteEmailMismatchError(invitation.code, invitation.email));
+  }
+
   if (invitation.role === 'owner') {
     const expectedEmail = invitation.email;
-    if (expectedEmail === null || !emailsMatch(expectedEmail, command.account.email)) {
-      return err(
-        ownerInviteEmailMismatchError(invitation.code, expectedEmail ?? '')
-      );
+    if (expectedEmail === null) {
+      return err(ownerInviteEmailMismatchError(invitation.code, ''));
     }
 
     if (ownerOf(members)) {

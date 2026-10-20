@@ -133,6 +133,7 @@ export type AppDependencies = {
   invitationStore?: InvitationStore;
   membershipStore?: OrganizationMembershipStore;
   userService: UserService;
+  validateInvitation: InvitationRoutesDependencies['validateInvitation'];
   acceptInvitation: InvitationRoutesDependencies['acceptInvitation'];
   signup?: SignupConfig;
   admin?: AdminConfig;
@@ -268,6 +269,7 @@ export const createApp = async (deps: AppDependencies) => {
     membershipService: deps.membershipService,
     organizationService: deps.organizationService,
     userService: deps.userService,
+    validateInvitation: deps.validateInvitation,
     acceptInvitation: deps.acceptInvitation,
     authMiddleware,
   });

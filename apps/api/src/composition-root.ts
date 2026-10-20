@@ -70,6 +70,7 @@ import { handleIssueOwnerInvitation } from './access/application/handle-issue-ow
 import { handleGetOwnerInvitation } from './access/application/handle-get-owner-invitation.js';
 import { handleListWorkspaces } from './access/application/handle-list-workspaces.js';
 import { handleAcceptInvitation } from './access/application/handle-accept-invitation.js';
+import { handleValidateInvitation } from './access/application/handle-validate-invitation.js';
 import { tokenStorageError } from './access/domain/auth-errors.js';
 import { MAX_TOKENS_PER_USER_PER_ORG } from './access/domain/token-limits.js';
 import { principalKindOf } from './access/domain/user.js';
@@ -233,6 +234,12 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
   const listWorkspaces = (query: Parameters<typeof handleListWorkspaces>[0]) =>
     handleListWorkspaces(query, {
       workspaceStore,
+      now: () => clock.now().toISOString(),
+    });
+
+  const validateInvitation = (query: Parameters<typeof handleValidateInvitation>[0]) =>
+    handleValidateInvitation(query, {
+      invitationStore,
       now: () => clock.now().toISOString(),
     });
 
@@ -716,6 +723,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     invitationStore,
     membershipStore,
     userService,
+    validateInvitation,
     acceptInvitation,
     signup: signupConfig,
     admin,

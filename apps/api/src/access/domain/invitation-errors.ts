@@ -1,3 +1,12 @@
+import {
+  INVITATION_REPLACED_MESSAGE,
+  OWNER_INVITE_ADMIN_ONLY_MESSAGE,
+  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
+  PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
+  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
+} from '@yoink/api-contracts';
+import type { OrganizationStorageError, MembershipStorageError } from './organization-errors.js';
+
 // ============================================================================
 // Invitation Storage Errors
 // ============================================================================
@@ -83,7 +92,7 @@ export const invitationEmailMismatchError = (
   type: 'INVITATION_EMAIL_MISMATCH',
   code,
   expectedEmail,
-  message: 'Email does not match invitation',
+  message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
 });
 
 /** User is already a member of the organization */
@@ -154,15 +163,6 @@ export const insufficientInvitePermissionsError = (
   requiredRole,
   actualRole,
 });
-
-import {
-  INVITATION_REPLACED_MESSAGE,
-  OWNER_INVITE_ADMIN_ONLY_MESSAGE,
-  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
-  PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
-  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
-} from '@yoink/api-contracts';
-import type { OrganizationStorageError, MembershipStorageError } from './organization-errors.js';
 
 /** This invite was replaced. Ask for a new link. */
 export type InvitationReplacedError = {
@@ -270,15 +270,7 @@ export const acceptInvitationFailedError = (
   cause,
 });
 
-export const ownerInviteEmailMismatchError = (
-  code: string,
-  expectedEmail: string
-): InvitationEmailMismatchError => ({
-  type: 'INVITATION_EMAIL_MISMATCH',
-  code,
-  expectedEmail,
-  message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
-});
+export const ownerInviteEmailMismatchError = invitationEmailMismatchError;
 
 export type InvitationServiceError =
   | InvitationNotFoundError

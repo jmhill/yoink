@@ -2418,6 +2418,18 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeInvitationError', 'http');
     },
 
+    async shouldSeeInvitationErrorHint(_text: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeInvitationErrorHint', 'http');
+    },
+
+    async shouldNotSeeJoinButton(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeJoinButton', 'http');
+    },
+
+    async shouldSeeJoinRole(_role: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeJoinRole', 'http');
+    },
+
     async shouldSeeJoinTitle(_text: string): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeJoinTitle', 'http');
     },
@@ -3442,6 +3454,14 @@ export const createHttpActor = (
 
     async frameOwnershipCard(): Promise<void> {
       throw new UnsupportedOperationError('frameOwnershipCard', 'http');
+    },
+
+    async frameInvitationsCard(): Promise<void> {
+      throw new UnsupportedOperationError('frameInvitationsCard', 'http');
+    },
+
+    async shouldSeePendingInvitation(_code: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeePendingInvitation', 'http');
     },
 
     async shouldSeeMemberRow(_label: string): Promise<void> {

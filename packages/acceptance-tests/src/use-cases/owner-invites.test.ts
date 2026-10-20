@@ -276,7 +276,6 @@ usingDrivers(['playwright'] as const, (ctx) => {
         code: wrongJoinInvite?.code ?? '',
         step: 'join_wrong_email',
         message: OWNER_INVITE_WRONG_EMAIL_MESSAGE,
-        clickJoin: true,
       });
 
       const alreadyOwnerEmail = `already-owner-${stamp}@example.com`;

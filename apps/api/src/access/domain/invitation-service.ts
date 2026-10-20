@@ -4,20 +4,17 @@ import type { Invitation, InvitationRole } from './invitation.js';
 import type { InvitationStore } from './invitation-store.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { OrganizationMembershipStore } from './organization-membership-store.js';
-import { normalizeEmail } from '@yoink/api-contracts';
 import {
   invitationNotFoundError,
-  invitationExpiredError,
-  invitationAlreadyAcceptedError,
-  invitationEmailMismatchError,
   invitationOrgNotFoundError,
-  invitationReplacedError,
   insufficientInvitePermissionsError,
-  ownerInviteEmailMismatchError,
   ownerInvitationAdminOnlyError,
   type InvitationServiceError,
 } from './invitation-errors.js';
-import { invitationStatus } from './invitation.js';
+import {
+  decideValidateInvitation,
+  type ValidateInvitation,
+} from './decide-validate-invitation.js';
 
 // ============================================================================
 // Commands (input types)
@@ -36,16 +33,7 @@ export type CreateInvitationCommand = {
   skipPermissionCheck?: boolean;
 };
 
-export type ValidateInvitationQuery = {
-  code: string;
-  /** If provided, checks that email matches the invitation's email restriction */
-  email?: string;
-};
-
-export type AcceptInvitationCommand = {
-  code: string;
-  userId: string;
-};
+export type ValidateInvitationQuery = ValidateInvitation;
 
 export type ListPendingInvitationsQuery = {
   organizationId: string;
@@ -76,14 +64,6 @@ export type InvitationService = {
    */
   validateInvitation(
     query: ValidateInvitationQuery
-  ): ResultAsync<Invitation, InvitationServiceError>;
-
-  /**
-   * Accept an invitation, marking it as used.
-   * Does NOT create membership - that's done by the signup flow.
-   */
-  acceptInvitation(
-    command: AcceptInvitationCommand
   ): ResultAsync<Invitation, InvitationServiceError>;
 
   /**
@@ -202,78 +182,13 @@ export const createInvitationService = (
     validateInvitation(
       query: ValidateInvitationQuery
     ): ResultAsync<Invitation, InvitationServiceError> {
-      const { code, email } = query;
-
-      return invitationStore.findByCode(code).andThen((invitation) => {
-        if (!invitation) {
-          return errAsync(invitationNotFoundError({ code }));
-        }
-
-        const currentTime = clock.now().toISOString();
-        const status = invitationStatus(invitation, currentTime);
-        switch (status) {
-          case 'replaced':
-            return errAsync(
-              invitationReplacedError(code, invitation.replacedAt ?? currentTime)
-            );
-          case 'expired':
-            return errAsync(invitationExpiredError(code, invitation.expiresAt));
-          case 'accepted':
-            return errAsync(
-              invitationAlreadyAcceptedError(code, invitation.acceptedAt ?? currentTime)
-            );
-          case 'pending':
-            break;
-        }
-
-        if (invitation.role === 'owner' && email) {
-          if (invitation.email === null || normalizeEmail(invitation.email) !== normalizeEmail(email)) {
-            return errAsync(
-              ownerInviteEmailMismatchError(code, invitation.email ?? '')
-            );
-          }
-        } else if (invitation.email && email && invitation.email !== email) {
-          return errAsync(invitationEmailMismatchError(code, invitation.email));
-        }
-
-        return okAsync(invitation);
-      });
-    },
-
-    acceptInvitation(
-      command: AcceptInvitationCommand
-    ): ResultAsync<Invitation, InvitationServiceError> {
-      const { code, userId } = command;
-
-      return invitationStore.findByCode(code).andThen((invitation) => {
-        if (!invitation) {
-          return errAsync(invitationNotFoundError({ code }));
-        }
-
-        const currentTime = clock.now().toISOString();
-        const status = invitationStatus(invitation, currentTime);
-        switch (status) {
-          case 'replaced':
-            return errAsync(
-              invitationReplacedError(code, invitation.replacedAt ?? currentTime)
-            );
-          case 'expired':
-            return errAsync(invitationExpiredError(code, invitation.expiresAt));
-          case 'accepted':
-            return errAsync(
-              invitationAlreadyAcceptedError(code, invitation.acceptedAt ?? currentTime)
-            );
-          case 'pending':
-            break;
-        }
-
-        const accepted: Invitation = {
-          ...invitation,
-          acceptedAt: currentTime,
-          acceptedByUserId: userId,
-        };
-
-        return invitationStore.save(accepted).map(() => accepted);
+      return invitationStore.findByCode(query.code).andThen((invitation) => {
+        const decision = decideValidateInvitation({
+          query,
+          invitation,
+          now: clock.now().toISOString(),
+        });
+        return decision.isOk() ? okAsync(decision.value) : errAsync(decision.error);
       });
     },
 

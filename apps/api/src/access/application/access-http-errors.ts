@@ -12,6 +12,7 @@ import {
 import type { HandleCreateWorkspaceError } from './handle-create-workspace.js';
 import type { HandleIssueOwnerInvitationError } from './handle-issue-owner-invitation.js';
 import type { HandleAcceptInvitationError } from './handle-accept-invitation.js';
+import type { HandleValidateInvitationError } from './handle-validate-invitation.js';
 import type { InvitationServiceError } from '../domain/invitation-errors.js';
 import type { SignupServiceError } from '../domain/signup-service.js';
 
@@ -211,7 +212,7 @@ const unexpectedInvitationServiceError = (
 
 export const validateInvitationErrorResponse = (
   request: FastifyRequest,
-  error: InvitationServiceError
+  error: HandleValidateInvitationError
 ) => {
   switch (error.type) {
     case 'INVITATION_NOT_FOUND':
@@ -239,20 +240,7 @@ export const validateInvitationErrorResponse = (
         status: 400 as const,
         body: { message: error.message, code: error.type },
       };
-    case 'ALREADY_MEMBER_OF_ORG':
-    case 'INSUFFICIENT_INVITE_PERMISSIONS':
-    case 'OWNER_INVITATION_ADMIN_ONLY':
-    case 'INVITATION_ORG_NOT_FOUND':
-    case 'WORKSPACE_ALREADY_HAS_OWNER':
-    case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
-    case 'EMAIL_ALREADY_EXISTS':
-    case 'INVITATION_USER_NOT_FOUND':
-    case 'CREATE_WORKSPACE_FAILED':
-    case 'ISSUE_OWNER_INVITATION_FAILED':
-    case 'ACCEPT_INVITATION_FAILED':
     case 'INVITATION_STORAGE_ERROR':
-    case 'ORGANIZATION_STORAGE_ERROR':
-    case 'MEMBERSHIP_STORAGE_ERROR':
       return invitationStorageFailure(request, error);
     default: {
       const _never: never = error;

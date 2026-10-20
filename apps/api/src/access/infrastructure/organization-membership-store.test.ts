@@ -3,11 +3,13 @@ import { createFakeOrganizationMembershipStore } from './fake-organization-membe
 import { createSqliteOrganizationMembershipStore } from './sqlite-organization-membership-store.js';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
+import { createSqliteInvitationStore } from './sqlite-invitation-store.js';
 import { createTestDatabase, type Database } from '../../database/test-utils.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { User } from '../domain/user.js';
 import type { Organization } from '../domain/organization.js';
+import type { Invitation } from '../domain/invitation.js';
 
 const org: Organization = {
   id: '550e8400-e29b-41d4-a716-446655440001',
@@ -523,6 +525,118 @@ describe('organization membership store changeMemberRole and removeMember', () =
       });
       expect(events.rows).toHaveLength(1);
       expect(events.rows[0]?.type).toBe('MemberRoleChanged');
+    });
+  });
+});
+
+const joinerUser: User = {
+  id: '550e8400-e29b-41d4-a716-446655440013',
+  email: 'libby@example.com',
+  createdAt: '2024-01-01T00:00:00.000Z',
+};
+
+const pendingInvite: Invitation = {
+  id: '550e8400-e29b-41d4-a716-446655440030',
+  code: 'MEMBER01',
+  email: 'libby@example.com',
+  organizationId: org.id,
+  invitedByUserId: ownerUser.id,
+  role: 'member',
+  expiresAt: '2024-06-22T12:00:00.000Z',
+  acceptedAt: null,
+  acceptedByUserId: null,
+  replacedAt: null,
+  createdAt: '2024-06-08T12:00:00.000Z',
+};
+
+const joinerMembership: OrganizationMembership = {
+  id: '550e8400-e29b-41d4-a716-446655440023',
+  userId: joinerUser.id,
+  organizationId: org.id,
+  role: 'member',
+  isPersonalOrg: false,
+  joinedAt: '2024-06-15T12:00:00.000Z',
+};
+
+describe('organization membership store acceptInvitation', () => {
+  describe('sqlite', () => {
+    let db: Database;
+    let store: OrganizationMembershipStore;
+
+    beforeAll(async () => {
+      db = await createTestDatabase();
+    });
+
+    afterAll(async () => {
+      await db.close();
+    });
+
+    beforeEach(async () => {
+      await db.execute({ sql: 'DELETE FROM membership_events' });
+      await db.execute({ sql: 'DELETE FROM invitations' });
+      await db.execute({ sql: 'DELETE FROM organization_memberships' });
+      await db.execute({ sql: 'DELETE FROM api_tokens' });
+      await db.execute({ sql: 'DELETE FROM users' });
+      await db.execute({ sql: 'DELETE FROM organizations' });
+
+      const orgStore = await createSqliteOrganizationStore(db);
+      await orgStore.save(org);
+      const userStore = await createSqliteUserStore(db);
+      await userStore.save(ownerUser);
+      await userStore.save(joinerUser);
+      store = await createSqliteOrganizationMembershipStore(db);
+      await store.save(ownerMembership);
+      const invitationStore = await createSqliteInvitationStore(db);
+      await invitationStore.save(pendingInvite);
+    });
+
+    it('marks the invite accepted and inserts membership in one save', async () => {
+      const accepted = {
+        ...pendingInvite,
+        acceptedAt: '2024-06-15T12:00:00.000Z',
+        acceptedByUserId: joinerUser.id,
+      };
+      const result = await store.acceptInvitation(
+        accepted,
+        { kind: 'add', membership: joinerMembership },
+        null
+      );
+      expect(result.isOk()).toBe(true);
+      const saved = await store.findById(joinerMembership.id);
+      expect(saved.isOk() && saved.value?.role).toBe('member');
+      const invitationStore = await createSqliteInvitationStore(db);
+      const loaded = await invitationStore.findByCode(pendingInvite.code);
+      expect(loaded.isOk() && loaded.value?.acceptedAt).toBe(accepted.acceptedAt);
+      const events = await db.execute({ sql: 'SELECT id FROM membership_events' });
+      expect(events.rows).toHaveLength(0);
+    });
+
+    it('leaves the invite unused when the membership insert fails', async () => {
+      await store.save(joinerMembership);
+      const accepted = {
+        ...pendingInvite,
+        acceptedAt: '2024-06-15T12:00:00.000Z',
+        acceptedByUserId: joinerUser.id,
+      };
+      const result = await store.acceptInvitation(
+        accepted,
+        {
+          kind: 'add',
+          membership: {
+            ...joinerMembership,
+            id: '550e8400-e29b-41d4-a716-446655440024',
+          },
+        },
+        null
+      );
+      expect(result.isErr()).toBe(true);
+      const invitationStore = await createSqliteInvitationStore(db);
+      const loaded = await invitationStore.findByCode(pendingInvite.code);
+      expect(loaded.isOk() && loaded.value?.acceptedAt).toBeNull();
+      const membership = await store.findById(joinerMembership.id);
+      expect(membership.isOk() && membership.value?.role).toBe('member');
+      const events = await db.execute({ sql: 'SELECT id FROM membership_events' });
+      expect(events.rows).toHaveLength(0);
     });
   });
 });

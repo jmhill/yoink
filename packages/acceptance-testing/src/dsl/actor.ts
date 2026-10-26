@@ -1347,9 +1347,44 @@ export type BrowserActorOperations = {
   openSomedayGroup(): Promise<void>;
 
   /**
+   * Open the rail Proposed group.
+   */
+  openProposedGroup(): Promise<void>;
+
+  /**
+   * Assert a project is listed under the rail's Proposed group.
+   */
+  shouldSeeProjectInProposedGroup(name: string): Promise<void>;
+
+  /**
+   * Assert the rail has no Proposed group.
+   */
+  shouldNotSeeProposedGroupOnRail(): Promise<void>;
+
+  /**
+   * Assert Proposed rail rows are these names, in order.
+   */
+  shouldSeeProposedGroupNames(names: string[]): Promise<void>;
+
+  /**
    * Open Review and expand All projects.
    */
   goToAllProjects(): Promise<void>;
+
+  /**
+   * Assert All projects lists this proposal under Proposed.
+   */
+  shouldSeeProjectInAllProjectsProposed(name: string): Promise<void>;
+
+  /**
+   * Assert All projects Proposed group does not list this project.
+   */
+  shouldNotSeeProjectInAllProjectsProposed(name: string): Promise<void>;
+
+  /**
+   * Assert All projects has no Proposed group.
+   */
+  shouldNotSeeAllProjectsProposedGroup(): Promise<void>;
 
   /**
    * Assert the All projects list lists this project and status.
@@ -1380,6 +1415,51 @@ export type BrowserActorOperations = {
    * Assert a Review section is visible.
    */
   shouldSeeReviewSection(section: 'noNextAction' | 'quiet' | 'waiting'): Promise<void>;
+
+  /**
+   * Assert a Review proposal card, including Confirm and Turn down.
+   */
+  shouldSeeReviewProposal(input: {
+    name: string;
+    proposedBy: string;
+    reason?: string;
+    suggestedNextAction?: string;
+  }): Promise<void>;
+
+  /**
+   * Assert Review proposal cards are these names, in order.
+   */
+  shouldSeeReviewProposalNames(names: string[]): Promise<void>;
+
+  /**
+   * Assert Review has no Proposed section.
+   */
+  shouldNotSeeReviewProposedSection(): Promise<void>;
+
+  /**
+   * Assert this proposal is not on Review.
+   */
+  shouldNotSeeReviewProposal(name: string): Promise<void>;
+
+  /**
+   * Open a Review proposal card.
+   */
+  openReviewProposal(name: string): Promise<void>;
+
+  /**
+   * Open Confirm on a Review proposal card.
+   */
+  openReviewProposalConfirm(name: string): Promise<void>;
+
+  /**
+   * Turn down a Review proposal card.
+   */
+  turnDownReviewProposal(name: string): Promise<void>;
+
+  /**
+   * Assert the open project picker does not list this project.
+   */
+  shouldNotSeeOpenProjectOption(name: string): Promise<void>;
 
   /**
    * Assert a Review row is in this section with these reasons.

@@ -18,9 +18,11 @@ import {
   INBOX_MODE_CUE,
   RAIL_LISTS_HEADING,
   RAIL_PROJECTS_HEADING,
+  RAIL_PROPOSED_HEADING,
   RAIL_SOMEDAY_HEADING,
   RAIL_TASK_FAMILY_HEADING,
   partitionRailProjects,
+  proposedRailProjects,
   shouldShowProjectsHeadingBefore,
 } from './app-rail';
 import { MOBILE_TABS, processBadgeCount, reviewBadgeCount } from './mobile-tabs';
@@ -290,6 +292,7 @@ describe('shouldShowProjectsHeadingBefore', () => {
 
     expect(RAIL_PROJECTS_HEADING).toBe('Projects');
     expect(RAIL_SOMEDAY_HEADING).toBe('Someday');
+    expect(RAIL_PROPOSED_HEADING).toBe('Proposed');
     expect(items[items.length - 1]).toMatchObject({ kind: 'new-project' });
     expect(flags[flags.length - 1]).toBe(true);
   });
@@ -374,6 +377,67 @@ describe('buildDesktopRailSections', () => {
     const review = sections.find((section) => section.key === 'review');
 
     expect(railItemLabels(review?.items ?? [])).toEqual(['New project']);
+  });
+
+  it('puts proposed projects in their own group and leaves the working set alone', () => {
+    const gunId = '00000000-0000-0000-0000-000000000032';
+    const sections = buildDesktopRailSections({
+      inboxCount: 0,
+      namedLists: [],
+      projects: [
+        { id: gardenId, name: 'Garden', status: 'active' },
+        { id: laterId, name: 'Later', status: 'someday' },
+        { id: gunId, name: 'gun storage', status: 'proposed' },
+      ],
+      proposals: [
+        { id: gunId, name: 'gun storage', status: 'proposed' },
+        { id: '00000000-0000-0000-0000-000000000033', name: 'Old', status: 'declined' },
+      ],
+    });
+    const review = sections.find((section) => section.key === 'review');
+
+    expect(railItemLabels(review?.items ?? [])).toEqual([
+      'Garden',
+      'gun storage',
+      'Later',
+      'New project',
+    ]);
+    expect(review?.items[1]).toMatchObject({ kind: 'proposed-project', projectId: gunId });
+    expect(proposedRailProjects([{ id: gunId, name: 'gun storage', status: 'proposed' }])).toEqual([
+      { id: gunId, name: 'gun storage', status: 'proposed' },
+    ]);
+  });
+
+  it('omits the Proposed group when there are no proposals', () => {
+    const sections = buildDesktopRailSections({
+      inboxCount: 0,
+      namedLists: [],
+      projects: [{ id: gardenId, name: 'Garden', status: 'active' }],
+    });
+    const review = sections.find((section) => section.key === 'review');
+
+    expect(railItemLabels(review?.items ?? [])).toEqual(['Garden', 'New project']);
+    expect(review?.items.some((item) => item.kind === 'proposed-project')).toBe(false);
+  });
+
+  it('lists proposed projects on the phone drawer between open projects and Someday', () => {
+    const gunId = '00000000-0000-0000-0000-000000000032';
+    const items = buildAppRailItems({
+      inboxCount: 0,
+      namedLists: [],
+      projects: [
+        { id: gardenId, name: 'Garden', status: 'active' },
+        { id: laterId, name: 'Later', status: 'someday' },
+      ],
+      proposals: [{ id: gunId, name: 'gun storage', status: 'proposed' }],
+    });
+
+    expect(railItemLabels(items).slice(-4)).toEqual([
+      'Garden',
+      'gun storage',
+      'Later',
+      'New project',
+    ]);
   });
 
   it('lists someday-only projects under Review without inventing open ones', () => {

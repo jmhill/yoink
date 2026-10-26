@@ -36,6 +36,7 @@ export type RailItem =
   | { kind: 'new-list'; label: 'New list' }
   | { kind: 'project'; projectId: string; label: string; missingNextAction: boolean }
   | { kind: 'someday-project'; projectId: string; label: string }
+  | { kind: 'proposed-project'; projectId: string; label: string }
   | { kind: 'new-project'; label: 'New project' };
 
 export type RailLocation = {
@@ -66,6 +67,9 @@ export const RAIL_PROJECTS_HEADING = 'Projects';
 /** Collapsed group label for someday projects. Not a rail item. */
 export const RAIL_SOMEDAY_HEADING = 'Someday';
 
+/** Collapsed group label for proposed projects. Not a rail item. */
+export const RAIL_PROPOSED_HEADING = 'Proposed';
+
 const byName = (left: { name: string }, right: { name: string }): number =>
   left.name.localeCompare(right.name);
 
@@ -85,15 +89,31 @@ export function partitionRailProjects(projects: RailProject[]): {
   };
 }
 
+/** Proposed projects for the rail group, by name. Declined stays hidden. */
+export function proposedRailProjects(projects: RailProject[]): RailProject[] {
+  return projects
+    .filter((project) => project.status === 'proposed')
+    .toSorted(byName);
+}
+
+const proposedRailItems = (projects: RailProject[]): RailItem[] =>
+  proposedRailProjects(projects).map((project) => ({
+    kind: 'proposed-project' as const,
+    projectId: project.id,
+    label: project.name,
+  }));
+
 /**
  * One rail: Inbox as a capture/triage **mode**, then the task family
  * (Now above Today → Done), then named lists, Unlisted last, then New list,
- * then Projects (active/waiting, collapsed Someday, New project).
+ * then Projects (active/waiting, collapsed Proposed, collapsed Someday, New project).
+ * Proposed comes from the separate `status=proposed` list, not the working set.
  */
 export function buildAppRailItems(input: {
   inboxCount: number;
   namedLists: RailNamedList[];
   projects?: RailProject[];
+  proposals?: RailProject[];
 }): RailItem[] {
   const { open, someday } = partitionRailProjects(input.projects ?? []);
   return [
@@ -119,6 +139,7 @@ export function buildAppRailItems(input: {
         nextActionTaskId: project.nextActionTaskId ?? null,
       }),
     })),
+    ...proposedRailItems(input.proposals ?? []),
     ...someday.map((project) => ({
       kind: 'someday-project' as const,
       projectId: project.id,
@@ -140,7 +161,10 @@ const isListsSectionItem = (item: RailItem): boolean =>
   item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list';
 
 const isProjectsSectionItem = (item: RailItem): boolean =>
-  item.kind === 'project' || item.kind === 'someday-project' || item.kind === 'new-project';
+  item.kind === 'project' ||
+  item.kind === 'proposed-project' ||
+  item.kind === 'someday-project' ||
+  item.kind === 'new-project';
 
 /**
  * Insert the Task family heading once, above Today (the first smart view),
@@ -194,7 +218,11 @@ export function isRailItemActive(item: RailItem, location: RailLocation): boolea
     return location.pathname === '/work';
   }
 
-  if (item.kind === 'project' || item.kind === 'someday-project') {
+  if (
+    item.kind === 'project' ||
+    item.kind === 'someday-project' ||
+    item.kind === 'proposed-project'
+  ) {
     return location.pathname === `/projects/${item.projectId}`;
   }
 
@@ -223,7 +251,11 @@ export function railItemKey(item: RailItem): string {
   if (item.kind === 'named') {
     return item.listId;
   }
-  if (item.kind === 'project' || item.kind === 'someday-project') {
+  if (
+    item.kind === 'project' ||
+    item.kind === 'someday-project' ||
+    item.kind === 'proposed-project'
+  ) {
     return item.projectId;
   }
   return item.kind;
@@ -270,7 +302,7 @@ const workSectionItems = (namedLists: RailNamedList[]): RailItem[] => [
   { kind: 'new-list', label: 'New list' },
 ];
 
-const reviewSectionItems = (projects: RailProject[]): RailItem[] => {
+const reviewSectionItems = (projects: RailProject[], proposals: RailProject[]): RailItem[] => {
   const { open, someday } = partitionRailProjects(projects);
   return [
     ...open.map((project) => ({
@@ -282,6 +314,7 @@ const reviewSectionItems = (projects: RailProject[]): RailItem[] => {
         nextActionTaskId: project.nextActionTaskId ?? null,
       }),
     })),
+    ...proposedRailItems(proposals),
     ...someday.map((project) => ({
       kind: 'someday-project' as const,
       projectId: project.id,
@@ -293,13 +326,13 @@ const reviewSectionItems = (projects: RailProject[]): RailItem[] => {
 
 const itemsForDesktopSection = (
   key: MobileTabKey,
-  input: { namedLists: RailNamedList[]; projects: RailProject[] }
+  input: { namedLists: RailNamedList[]; projects: RailProject[]; proposals: RailProject[] }
 ): RailItem[] => {
   if (key === 'work') {
     return workSectionItems(input.namedLists);
   }
   if (key === 'review') {
-    return reviewSectionItems(input.projects);
+    return reviewSectionItems(input.projects, input.proposals);
   }
   return [];
 };
@@ -307,21 +340,24 @@ const itemsForDesktopSection = (
 /**
  * Desktop sidebar: four section rows from the phone tabs, with Work’s
  * smart views + lists and Review’s projects indented underneath.
+ * Proposed is a collapsed group under Review, from the separate proposal list.
  */
 export function buildDesktopRailSections(input: {
   inboxCount: number;
   proposalCount?: number;
   namedLists: RailNamedList[];
   projects?: RailProject[];
+  proposals?: RailProject[];
   reviewBadge?: number;
 }): DesktopRailSection[] {
   const namedLists = input.namedLists;
   const projects = input.projects ?? [];
+  const proposals = input.proposals ?? [];
   return MOBILE_TAB_DESTINATIONS.map((tab) => ({
     key: tab.key,
     label: tab.label,
     to: tab.to,
-    items: itemsForDesktopSection(tab.key, { namedLists, projects }),
+    items: itemsForDesktopSection(tab.key, { namedLists, projects, proposals }),
     badge:
       tab.key === 'process'
         ? processBadgeCount(processBadgeTotal(input.inboxCount, input.proposalCount ?? 0))

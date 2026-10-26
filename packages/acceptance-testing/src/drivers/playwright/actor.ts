@@ -287,6 +287,11 @@ const expandAllProjectsList = async (page: Page): Promise<void> => {
 const reviewItemByName = (page: Page, name: string) =>
   page.locator('[data-review-item]').filter({ hasText: name });
 
+const reviewProposalByName = (page: Page, name: string) =>
+  page.locator('[data-review-section="proposed"] [data-review-proposal]').filter({
+    has: page.locator('[data-review-proposal-name]', { hasText: name }),
+  });
+
 const asInboxCaptures = (
   body: unknown
 ): Array<{ id: string; content: string }> | null => {
@@ -3279,6 +3284,41 @@ export const createPlaywrightActor = (
       }
     },
 
+    async openProposedGroup(): Promise<void> {
+      const summary = page.locator('[data-app-rail]:visible [data-rail-proposed-summary]');
+      await summary.scrollIntoViewIfNeeded();
+      await expect(summary).toBeVisible();
+      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
+      const open = await group.getAttribute('open');
+      if (open === null) {
+        await summary.click();
+      }
+    },
+
+    async shouldSeeProjectInProposedGroup(name: string): Promise<void> {
+      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
+      await expect(group).toBeVisible();
+      const item = group.locator(`[data-rail-item="proposed-project"][data-rail-label="${name}"]`);
+      await item.scrollIntoViewIfNeeded();
+      await expect(item).toBeVisible();
+    },
+
+    async shouldNotSeeProposedGroupOnRail(): Promise<void> {
+      await expect(
+        page.locator('[data-app-rail][data-rail-proposals-ready]:visible')
+      ).toBeVisible();
+      await expect(page.locator('[data-app-rail]:visible [data-rail-proposed-group]')).toHaveCount(0);
+    },
+
+    async shouldSeeProposedGroupNames(names: string[]): Promise<void> {
+      const items = page.locator(
+        '[data-app-rail]:visible [data-rail-item="proposed-project"]'
+      );
+      await expect.poll(async () => items.evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('data-rail-label'))
+      )).toEqual(names);
+    },
+
     async goToAllProjects(): Promise<void> {
       await page.goto('/projects');
       await waitForReviewReady(page);
@@ -3296,6 +3336,30 @@ export const createPlaywrightActor = (
         'data-project-index-status',
         input.status
       );
+    },
+
+    async shouldSeeProjectInAllProjectsProposed(name: string): Promise<void> {
+      await expandAllProjectsList(page);
+      const item = page.locator(`[data-all-projects-proposed-name="${name}"]`);
+      await item.scrollIntoViewIfNeeded();
+      await expect(item).toBeVisible();
+      await expect(item.locator('[data-all-projects-proposed-by]')).toContainText('Proposed by');
+      await expect(item.locator('[data-all-projects-proposed-status]')).toHaveAttribute(
+        'data-all-projects-proposed-status',
+        'proposed'
+      );
+    },
+
+    async shouldNotSeeProjectInAllProjectsProposed(name: string): Promise<void> {
+      await expect(page.locator('[data-review-proposals-ready]')).toBeVisible();
+      await expandAllProjectsList(page);
+      await expect(page.locator(`[data-all-projects-proposed-name="${name}"]`)).toHaveCount(0);
+    },
+
+    async shouldNotSeeAllProjectsProposedGroup(): Promise<void> {
+      await expect(page.locator('[data-review-proposals-ready]')).toBeVisible();
+      await expandAllProjectsList(page);
+      await expect(page.locator('[data-all-projects-proposed]')).toHaveCount(0);
     },
 
     async shouldSeeEditTaskDialogSubtitle(text: string): Promise<void> {
@@ -4557,6 +4621,68 @@ export const createPlaywrightActor = (
 
     async shouldSeeReviewSection(section: 'noNextAction' | 'quiet' | 'waiting'): Promise<void> {
       await expect(page.locator(`[data-review-section="${section}"]`)).toBeVisible();
+    },
+
+    async shouldSeeReviewProposal(input: {
+      name: string;
+      proposedBy: string;
+      reason?: string;
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      const card = reviewProposalByName(page, input.name);
+      await card.scrollIntoViewIfNeeded();
+      await expect(card).toBeVisible();
+      await expect(card.locator('[data-review-proposal-name]')).toHaveText(input.name);
+      await expect(card.locator('[data-review-proposal-meta]')).toContainText(
+        `Proposed by ${input.proposedBy}`
+      );
+      if (input.reason !== undefined) {
+        await expect(card.locator('[data-review-proposal-reason]')).toHaveText(input.reason);
+      }
+      if (input.suggestedNextAction !== undefined) {
+        await expect(card.locator('[data-review-proposal-next]')).toContainText(
+          input.suggestedNextAction
+        );
+      }
+      await expect(card.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Turn down', exact: true })).toBeVisible();
+    },
+
+    async shouldSeeReviewProposalNames(names: string[]): Promise<void> {
+      const labels = page.locator('[data-review-section="proposed"] [data-review-proposal-name]');
+      await expect.poll(async () => labels.allTextContents()).toEqual(names);
+    },
+
+    async shouldNotSeeReviewProposedSection(): Promise<void> {
+      await expect(page.locator('[data-review-proposals-ready]')).toBeVisible();
+      await expect(page.locator('[data-review-section="proposed"]')).toHaveCount(0);
+    },
+
+    async shouldNotSeeReviewProposal(name: string): Promise<void> {
+      await expect(page.locator('[data-review-proposal-name]').filter({ hasText: name })).toHaveCount(
+        0
+      );
+    },
+
+    async openReviewProposal(name: string): Promise<void> {
+      await reviewProposalByName(page, name).locator('[data-review-proposal-open]').click();
+      await page.waitForURL((url) => /^\/projects\/[^/]+$/.test(new URL(url).pathname));
+      await expect(page.locator('[data-proposal-banner]')).toBeVisible();
+    },
+
+    async openReviewProposalConfirm(name: string): Promise<void> {
+      await reviewProposalByName(page, name).locator('[data-review-proposal-confirm]').click();
+      await expect(page.locator('[data-confirm-proposal-sheet]')).toBeVisible();
+    },
+
+    async turnDownReviewProposal(name: string): Promise<void> {
+      await reviewProposalByName(page, name).locator('[data-review-proposal-decline]').click();
+    },
+
+    async shouldNotSeeOpenProjectOption(name: string): Promise<void> {
+      const listbox = page.getByRole('listbox');
+      await expect(listbox).toBeVisible();
+      await expect(listbox.getByRole('option', { name, exact: true })).toHaveCount(0);
     },
 
     async shouldSeeReviewItem(input: {

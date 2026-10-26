@@ -96,6 +96,19 @@ export function proposedRailProjects(projects: RailProject[]): RailProject[] {
     .toSorted(byName);
 }
 
+/**
+ * The Proposed heading is the rows. An empty list renders nothing,
+ * so the rail never shows a Proposed label with no projects under it.
+ */
+export function proposedGroupForRail(
+  items: readonly Extract<RailItem, { kind: 'proposed-project' }>[]
+): readonly Extract<RailItem, { kind: 'proposed-project' }>[] | null {
+  if (items.length === 0) {
+    return null;
+  }
+  return items;
+}
+
 const proposedRailItems = (projects: RailProject[]): RailItem[] =>
   proposedRailProjects(projects).map((project) => ({
     kind: 'proposed-project' as const,
@@ -106,7 +119,7 @@ const proposedRailItems = (projects: RailProject[]): RailItem[] =>
 /**
  * One rail: Inbox as a capture/triage **mode**, then the task family
  * (Now above Today → Done), then named lists, Unlisted last, then New list,
- * then Projects (active/waiting, collapsed Proposed, collapsed Someday, New project).
+ * then Projects (active/waiting, open Proposed, collapsed Someday, New project).
  * Proposed comes from the separate `status=proposed` list, not the working set.
  */
 export function buildAppRailItems(input: {
@@ -340,7 +353,7 @@ const itemsForDesktopSection = (
 /**
  * Desktop sidebar: four section rows from the phone tabs, with Work’s
  * smart views + lists and Review’s projects indented underneath.
- * Proposed is a collapsed group under Review, from the separate proposal list.
+ * Proposed stays open under Review, from the separate proposal list, and is omitted when empty.
  */
 export function buildDesktopRailSections(input: {
   inboxCount: number;

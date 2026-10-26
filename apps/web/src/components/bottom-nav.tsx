@@ -8,20 +8,20 @@ import {
   activeMobileTab,
   reviewBadgeCount,
 } from '@/lib/mobile-tabs';
-import { reviewAttentionCount } from '@/lib/review-sections';
+import { reviewAttentionTotal } from '@/lib/review-sections';
 import { useProcessCounts } from '@/lib/use-process-counts';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
 export function AppNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const active = activeMobileTab(pathname);
-  const { badge: processBadge } = useProcessCounts();
+  const { badge: processBadge, proposals } = useProcessCounts();
   const { data: reviewData } = tsrReview.list.useQuery({
     queryKey: ['review'],
     queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
   });
   const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
-  const reviewBadge = reviewBadgeCount(reviewAttentionCount(reviewProjects));
+  const reviewBadge = reviewBadgeCount(reviewAttentionTotal(reviewProjects, proposals.length));
 
   return (
     <>

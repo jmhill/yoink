@@ -22,6 +22,7 @@ import {
   RAIL_SOMEDAY_HEADING,
   RAIL_TASK_FAMILY_HEADING,
   partitionRailProjects,
+  proposedGroupForRail,
   proposedRailProjects,
   shouldShowProjectsHeadingBefore,
 } from './app-rail';
@@ -418,6 +419,7 @@ describe('buildDesktopRailSections', () => {
 
     expect(railItemLabels(review?.items ?? [])).toEqual(['Garden', 'New project']);
     expect(review?.items.some((item) => item.kind === 'proposed-project')).toBe(false);
+    expect(proposedGroupForRail([])).toBeNull();
   });
 
   it('lists proposed projects on the phone drawer between open projects and Someday', () => {

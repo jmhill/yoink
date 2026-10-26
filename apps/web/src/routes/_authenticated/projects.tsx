@@ -42,7 +42,7 @@ import { proposedProjectsByName } from '@/lib/review-proposals';
 import {
   groupWaitingProjects,
   partitionReviewSections,
-  reviewAttentionCount,
+  reviewAttentionTotal,
   reviewVersionOf,
 } from '@/lib/review-sections';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
@@ -167,7 +167,7 @@ function ReviewPage() {
   const ready = reviewQuery.data?.status === 200;
   const sections = partitionReviewSections(reviewProjects);
   const waitingGroups = groupWaitingProjects(sections.waiting);
-  const attentionCount = reviewAttentionCount(reviewProjects);
+  const attentionCount = reviewAttentionTotal(reviewProjects, proposals.length);
   const version = ready ? reviewVersionOf(reviewProjects) : '';
 
   const closeNextAction = () => setNextActionFor(null);

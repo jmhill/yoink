@@ -102,6 +102,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await justin.useMobileViewport();
       await justin.openReview();
       await seeProposalCards(justin);
+      await justin.shouldSeeReviewSubcopy('4 need attention');
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_proposed',
@@ -121,6 +122,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await justin.useDesktopViewport(DESKTOP);
       await justin.openRailReview();
       await seeProposalCards(justin);
+      await justin.shouldSeeReviewSubcopy('4 need attention');
+      await justin.shouldSeeProposedGroupNames(NAMES);
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_proposed',
@@ -146,6 +149,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
         await justin.shouldSeeProjectInAllProjectsProposed(name);
       }
       await justin.shouldSeeProjectOnAllProjects({ name: 'Garden', status: 'active' });
+      await justin.shouldSeeReviewSubcopy('5 need attention');
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'all_projects_proposed',
@@ -172,6 +176,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       for (const name of NAMES) {
         await justin.shouldSeeProjectInAllProjectsProposed(name);
       }
+      await justin.shouldSeeReviewSubcopy('5 need attention');
+      await justin.shouldSeeProposedGroupNames(NAMES);
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'all_projects_proposed',

@@ -36,6 +36,7 @@ import {
   buildAppRailItems,
   buildDesktopRailSections,
   isRailItemActive,
+  proposedGroupForRail,
   railItemHasOverflow,
   railItemKey,
   shouldShowInboxCount,
@@ -48,7 +49,7 @@ import {
 } from '@/lib/app-rail';
 import { namedPileSearch, todaySearch, unlistedPileSearch } from '@/lib/all-tasks-piles';
 import { MOBILE_TABS, type MobileTabKey } from '@/lib/mobile-tabs';
-import { reviewAttentionCount } from '@/lib/review-sections';
+import { reviewAttentionTotal } from '@/lib/review-sections';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
 export type AppRailSurface = 'desktop' | 'mobile-tasks';
@@ -251,15 +252,22 @@ const RailCollapsedProjects = ({
 }: {
   marker: 'someday' | 'proposed';
   heading: string;
-  items: Array<
+  items: ReadonlyArray<
     | Extract<RailItem, { kind: 'someday-project' }>
     | Extract<RailItem, { kind: 'proposed-project' }>
   >;
   shared: RailRowShared;
 }) => {
+  if (items.length === 0) {
+    return null;
+  }
   const attrs = collapsedGroupAttrs(marker);
   return (
-    <details {...{ [attrs.group]: '' }} className={cn('min-w-0', shared.indentClass)}>
+    <details
+      {...{ [attrs.group]: '' }}
+      open={marker === 'proposed' ? true : undefined}
+      className={cn('min-w-0', shared.indentClass)}
+    >
       <summary
         {...{ [attrs.summary]: '' }}
         className={
@@ -571,14 +579,15 @@ const renderChildItem = (
     return <RailProjectRow item={item} shared={shared} />;
   }
   if (item.kind === 'proposed-project') {
-    if (proposedItems[0] !== item) {
+    const rows = proposedGroupForRail(proposedItems);
+    if (rows === null || rows[0] !== item) {
       return null;
     }
     return (
       <RailCollapsedProjects
         marker="proposed"
         heading={RAIL_PROPOSED_HEADING}
-        items={proposedItems}
+        items={rows}
         shared={shared}
       />
     );
@@ -802,7 +811,7 @@ export function AppRailPanel({
   const unlistedOpenCount =
     workListsData?.status === 200 ? workListsData.body.unlisted.openTaskCount : undefined;
   const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
-  const reviewBadge = reviewAttentionCount(reviewProjects);
+  const reviewBadge = reviewAttentionTotal(reviewProjects, proposals.length);
   const drawerItems = buildAppRailItems({
     inboxCount,
     namedLists,

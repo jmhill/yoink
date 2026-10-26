@@ -57,6 +57,12 @@ export const reviewAttentionCount = (projects: readonly ReviewProject[]): number
       item.reasons.includes('quiet')
   ).length;
 
+/** Review heading and badge: whatever already needs attention, plus pending proposals. */
+export const reviewAttentionTotal = (
+  projects: readonly ReviewProject[],
+  proposalCount: number
+): number => reviewAttentionCount(projects) + proposalCount;
+
 export const reviewVersionOf = (projects: readonly ReviewProject[]): string =>
   projects
     .map((item) => `${item.project.id}:${item.reasons.join(',')}:${item.lastChangeAt}`)

@@ -3313,12 +3313,26 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeProposedGroupNames(names: string[]): Promise<void> {
+      await expect(
+        page.locator('[data-app-rail][data-rail-proposals-ready]:visible')
+      ).toBeVisible();
       const items = page.locator(
         '[data-app-rail]:visible [data-rail-item="proposed-project"]'
       );
       await expect.poll(async () => items.evaluateAll((nodes) =>
         nodes.map((node) => node.getAttribute('data-rail-label'))
       )).toEqual(names);
+      for (const name of names) {
+        const item = page.locator(
+          `[data-app-rail]:visible [data-rail-item="proposed-project"][data-rail-label="${name}"]`
+        );
+        await item.scrollIntoViewIfNeeded();
+        await expect(item).toBeVisible();
+      }
+      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
+      await group.evaluate((node) => {
+        node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
     },
 
     async goToAllProjects(): Promise<void> {

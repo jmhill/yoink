@@ -117,7 +117,10 @@ export function NamedListRailOverflow({
 
   return (
     <>
-      <div ref={triggerRef} className="mr-1 mt-1 inline-flex shrink-0">
+      <div
+        ref={triggerRef}
+        className={cn('inline-flex shrink-0', surface === 'mobile-tasks' && 'mr-1 mt-1')}
+      >
         <Button
           type="button"
           variant="ghost"

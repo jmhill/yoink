@@ -10,6 +10,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 
 ## Current Status
 
+**Desktop sidebar alignment (#205)** - Complete ✓ (desktop rail is a four-column grid on one baseline: icons, labels, counts, and ⋯ share left edges; labels stay one line; no wrap / overlap / spill. A desktop list name cut off with an ellipsis shows its full name on hover. Mobile Tasks drawer still wraps. Desktop sidebar is `w-80` so typical names fit.)
 **Phases 1-6: Foundation through Observability** - Complete ✓
 **Phase 7: Authentication Overhaul** - Complete ✓
 **Phase 8: Capture → Task Flow** - Complete ✓

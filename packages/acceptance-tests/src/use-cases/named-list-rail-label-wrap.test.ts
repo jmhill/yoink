@@ -3,16 +3,9 @@ import type { BrowserActor } from '@yoink/acceptance-testing';
 import { UnsupportedOperationError } from '@yoink/acceptance-testing';
 
 /**
- * Issue #94: named-list labels in the rail wrap instead of truncating.
- *
- * Justin (after hard-refresh): the always-visible desktop sidebar feels
- * too narrow — named list names all truncate. He nodded wrap (2026-09-12).
- *
- * Same rule in the mobile Tasks drawer. ⋯ / + New list / Inbox count /
- * navigation stay. No horizontal page scroll from the rail.
- *
- * Out of scope: widening the sidebar as the primary fix, #88 Edit,
- * #90 drag, nested lists.
+ * Issue #94 wrapped named-list labels in the rail.
+ * Issue #205: desktop sidebar must stay one aligned line (no wrap / spill).
+ * Mobile Tasks drawer still wraps long names.
  */
 
 const LONG_LIST_NAME =
@@ -20,18 +13,19 @@ const LONG_LIST_NAME =
 
 usingDrivers(['playwright'] as const, (ctx) => {
   describe(`Named-list rail labels wrap [${ctx.driverName}]`, () => {
-    it('shows a long named-list name on two or more lines on the desktop rail', async () => {
+    it('keeps a long named-list name on one line on the desktop rail', async () => {
       const alice = await ctx.createActor('alice-ui-story-18-rail-wrap-desktop@example.com');
       await alice.createNamedList(LONG_LIST_NAME);
 
       await alice.useDesktopViewport();
       await alice.openToday();
       await alice.shouldSeeDesktopAppRail();
-      await alice.shouldSeeWrappedRailNamedList(LONG_LIST_NAME);
+      await alice.shouldSeeRailLabelOnOneLine(LONG_LIST_NAME);
+      await alice.shouldSeeNamedListLabelsClearOfCountAndOverflow();
       await alice.shouldSeeNoHorizontalPageScrollFromRail();
     }, 60_000);
 
-    it('keeps highlight, overflow, and navigation on a wrapped desktop row', async () => {
+    it('keeps highlight, overflow, and navigation on a single-line desktop row', async () => {
       const alice = await ctx.createActor(
         'alice-ui-story-18-rail-wrap-desktop-actions@example.com'
       );
@@ -40,7 +34,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useDesktopViewport();
       await alice.openToday();
       await alice.shouldSeeDesktopAppRail();
-      await alice.shouldSeeWrappedRailNamedList(LONG_LIST_NAME);
+      await alice.shouldSeeRailLabelOnOneLine(LONG_LIST_NAME);
       await alice.shouldSeeNamedListOverflowOnDesktopSidebar(LONG_LIST_NAME);
       await alice.shouldNotNavigateWhenOpeningNamedListOverflow(LONG_LIST_NAME);
       await alice.shouldBeOnToday();
@@ -48,7 +42,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.openRailNamedList(LONG_LIST_NAME);
       await alice.shouldBeOnAllNamedPile(list.id);
       await alice.shouldSeeRailNamedListHighlighted(LONG_LIST_NAME);
-      await alice.shouldSeeWrappedRailNamedList(LONG_LIST_NAME);
+      await alice.shouldSeeRailLabelOnOneLine(LONG_LIST_NAME);
       await alice.shouldSeeNoHorizontalPageScrollFromRail();
     }, 60_000);
 

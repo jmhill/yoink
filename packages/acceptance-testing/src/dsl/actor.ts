@@ -1583,6 +1583,18 @@ export type BrowserActorOperations = {
   shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void>;
 
   /**
+   * Assert the always-visible desktop sidebar keeps icons, labels, and
+   * counts in shared columns on one baseline, with no wrap, overlap, or spill.
+   */
+  shouldSeeDesktopRailColumnsAligned(): Promise<void>;
+
+  /**
+   * A desktop named-list name that is cut off with an ellipsis exposes
+   * the full name on hover. Names that still fit fail this check.
+   */
+  shouldSeeCutOffDesktopListNameOnHover(label: string): Promise<void>;
+
+  /**
    * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
    */
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;
@@ -1943,6 +1955,8 @@ export type BrowserActorOperations = {
     story: string;
     step: string;
     includeToasts?: boolean;
+    /** Leave the pointer where it is so a hover tooltip stays in the shot. */
+    keepPointer?: boolean;
   }): Promise<void>;
 
   openJoin(code: string): Promise<void>;

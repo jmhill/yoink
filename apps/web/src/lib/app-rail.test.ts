@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DESKTOP_RAIL_ROW_CLASS,
+  RAIL_LABEL_DESKTOP_CLASS,
   RAIL_LABEL_WRAP_CLASS,
   RAIL_MY_TASKS_LABEL,
   activeDesktopRailRow,
@@ -212,6 +214,27 @@ describe('RAIL_LABEL_WRAP_CLASS', () => {
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bwhitespace-normal\b/);
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bmin-w-0\b/);
     expect(RAIL_LABEL_WRAP_CLASS).toMatch(/\bflex-1\b/);
+  });
+});
+
+describe('RAIL_LABEL_DESKTOP_CLASS', () => {
+  it('keeps desktop labels on one ellipsis line', () => {
+    expect(RAIL_LABEL_DESKTOP_CLASS).toMatch(/\btruncate\b/);
+    expect(RAIL_LABEL_DESKTOP_CLASS).toMatch(/\bwhitespace-nowrap\b/);
+    expect(RAIL_LABEL_DESKTOP_CLASS).toMatch(/\bmin-w-0\b/);
+    expect(RAIL_LABEL_DESKTOP_CLASS).toMatch(/\bw-full\b/);
+    expect(RAIL_LABEL_DESKTOP_CLASS).not.toMatch(/\bwhitespace-normal\b/);
+  });
+});
+
+describe('DESKTOP_RAIL_ROW_CLASS', () => {
+  it('uses a shared four-column grid on one baseline', () => {
+    expect(DESKTOP_RAIL_ROW_CLASS).toMatch(/\bgrid\b/);
+    expect(DESKTOP_RAIL_ROW_CLASS).toMatch(
+      /grid-cols-\[1\.25rem_minmax\(0,1fr\)_2rem_2rem\]/
+    );
+    expect(DESKTOP_RAIL_ROW_CLASS).toMatch(/\bitems-center\b/);
+    expect(DESKTOP_RAIL_ROW_CLASS).toMatch(/\bjustify-items-start\b/);
   });
 });
 

@@ -3377,6 +3377,29 @@ export const createPlaywrightActor = (
       await appRail.expectNamedListLabelsClearOfCountAndOverflow();
     },
 
+    async shouldSeeDesktopRailColumnsAligned(): Promise<void> {
+      await appRail.expectDesktopRailColumnsAligned();
+    },
+
+    async shouldSeeCutOffDesktopListNameOnHover(label: string): Promise<void> {
+      const text = page
+        .locator(`[data-rail-item="named"][data-rail-label="${label}"] [data-rail-label-text]`)
+        .first();
+      await expect(text).toBeVisible();
+      await expect(text).toHaveAttribute('title', label);
+      const cutOff = await text.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+      expect(cutOff).toBe(true);
+      await text.hover();
+      const shown = await text.evaluate((el) => {
+        const view = el.ownerDocument.defaultView;
+        if (view === null) {
+          return '';
+        }
+        return view.getComputedStyle(el, '::after').content;
+      });
+      expect(shown).toBe(`"${label}"`);
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void> {
       await appRail.waitForVisible();
       await expect(appRail.itemByLabel(label)).toBeVisible();
@@ -3892,6 +3915,7 @@ export const createPlaywrightActor = (
       story: string;
       step: string;
       includeToasts?: boolean;
+      keepPointer?: boolean;
     }): Promise<void> {
       const openSelect = page.locator('[data-slot="select-content"][data-state="open"]');
       if ((await openSelect.count()) > 0 && (await openSelect.last().isVisible())) {
@@ -3933,7 +3957,7 @@ export const createPlaywrightActor = (
         (await openSheet.isVisible().catch(() => false)) ||
         (await openRoleMenu.isVisible().catch(() => false));
       // Moving the pointer to 0,0 dismisses a non-modal row menu before the shot.
-      if (!overlayOpen) {
+      if (!overlayOpen && input.keepPointer !== true) {
         await page.mouse.move(0, 0);
       }
       await waitForFinishedPageAnimations({ page });

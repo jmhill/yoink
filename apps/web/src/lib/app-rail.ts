@@ -242,6 +242,12 @@ export function railItemHasOverflow(item: RailItem): boolean {
 export const RAIL_LABEL_WRAP_CLASS =
   'min-w-0 flex-1 whitespace-normal break-normal [overflow-wrap:normal]';
 
+/** Desktop rail stays one line; long names ellipsize instead of wrapping. */
+export const RAIL_LABEL_DESKTOP_CLASS = 'min-w-0 w-full truncate whitespace-nowrap';
+
+export const DESKTOP_RAIL_ROW_CLASS =
+  'grid w-full min-w-0 grid-cols-[1.25rem_minmax(0,1fr)_2rem_2rem] items-center justify-items-start gap-x-2 rounded-md px-3 py-2 text-sm transition-colors';
+
 export type DesktopRailSection = {
   key: MobileTabKey;
   label: string;

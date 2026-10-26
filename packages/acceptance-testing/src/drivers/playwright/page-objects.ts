@@ -2653,9 +2653,16 @@ export class AppRail {
         }
         const range = item.ownerDocument.createRange();
         range.selectNodeContents(text);
-        const textRects = [...range.getClientRects()].filter(
-          (rect) => rect.width > 0 && rect.height > 0
-        );
+        const clip = text.getBoundingClientRect();
+        const textRects = [...range.getClientRects()]
+          .filter((rect) => rect.width > 0 && rect.height > 0)
+          .map((rect) => ({
+            left: Math.max(rect.left, clip.left),
+            right: Math.min(rect.right, clip.right),
+            top: Math.max(rect.top, clip.top),
+            bottom: Math.min(rect.bottom, clip.bottom),
+          }))
+          .filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
         const count = row.querySelector('[data-rail-list-count]');
         const overflow = row.querySelector('[data-rail-overflow]');
         const countBox = count === null ? null : count.getBoundingClientRect();
@@ -2707,6 +2714,141 @@ export class AppRail {
           .join(', ')}`
       );
     }
+  }
+
+  /**
+   * Desktop sidebar: icons, labels, and counts share a column each and a
+   * baseline; nothing wraps, overlaps, or spills out of the rail.
+   */
+  async expectDesktopRailColumnsAligned(): Promise<void> {
+    await this.waitForVisible();
+    const rail = this.desktop();
+    await expect(rail).toBeVisible();
+
+    const report = await rail.evaluate((root) => {
+      const items = [...root.querySelectorAll('[data-rail-item]')];
+      const rows = items.map((item) => {
+        const label = item.getAttribute('data-rail-label') ?? '';
+        const icon = item.querySelector('svg');
+        const text = item.querySelector('[data-rail-label-text]');
+        const parent = item.parentElement;
+        const rowLike = parent !== null && parent.children.length <= 4;
+        const count =
+          item.querySelector('[data-inbox-count], [data-review-badge], [data-rail-list-count]') ??
+          (rowLike ? parent.querySelector(':scope > [data-rail-list-count]') : null);
+        const overflow =
+          item.querySelector('[data-rail-overflow]') ??
+          (rowLike ? parent.querySelector('[data-rail-overflow]') : null);
+        const view = item.ownerDocument.defaultView;
+        const textStyles = view === null || text === null ? null : view.getComputedStyle(text);
+        const iconBox =
+          icon === null || icon.getBoundingClientRect().width === 0
+            ? null
+            : icon.getBoundingClientRect();
+        const textBox = text === null ? null : text.getBoundingClientRect();
+        const countBox = count === null ? null : count.getBoundingClientRect();
+        const overflowBox = overflow === null ? null : overflow.getBoundingClientRect();
+        const railBox = root.getBoundingClientRect();
+        const lineHeight =
+          textStyles === null ? 0 : Number.parseFloat(textStyles.lineHeight);
+        return {
+          label,
+          iconLeft: iconBox === null ? null : iconBox.left,
+          iconCenterY: iconBox === null ? null : iconBox.top + iconBox.height / 2,
+          textLeft: textBox === null ? null : textBox.left,
+          textRight: textBox === null ? null : textBox.right,
+          textCenterY: textBox === null ? null : textBox.top + textBox.height / 2,
+          textHeight: textBox === null ? null : textBox.height,
+          lineHeight: Number.isFinite(lineHeight) ? lineHeight : null,
+          whiteSpace: textStyles?.whiteSpace ?? '',
+          countLeft: countBox === null || countBox.width === 0 ? null : countBox.left,
+          countCenterY: countBox === null || countBox.width === 0 ? null : countBox.top + countBox.height / 2,
+          overflowLeft: overflowBox === null ? null : overflowBox.left,
+          spills: textBox !== null && textBox.right > railBox.right + 1,
+          wraps: textBox !== null && lineHeight > 0 && textBox.height > lineHeight + 1,
+        };
+      });
+
+      const unique = (values: Array<number | null>): number[] => {
+        const sorted = values
+          .filter((value): value is number => value !== null)
+          .map((value) => Math.round(value))
+          .sort((a, b) => a - b);
+        const groups: number[] = [];
+        for (const value of sorted) {
+          const previous = groups[groups.length - 1];
+          if (previous === undefined || value - previous > 1) {
+            groups.push(value);
+          }
+        }
+        return groups;
+      };
+
+      return {
+        iconLefts: unique(rows.map((row) => row.iconLeft)),
+        textLefts: unique(rows.map((row) => row.textLeft)),
+        countLefts: unique(rows.map((row) => row.countLeft)),
+        overflowLefts: unique(rows.map((row) => row.overflowLeft)),
+        wraps: rows.filter((row) => row.wraps).map((row) => row.label),
+        spills: rows.filter((row) => row.spills).map((row) => row.label),
+        baseline: rows
+          .filter(
+            (row) =>
+              row.iconCenterY !== null &&
+              row.textCenterY !== null &&
+              Math.abs(row.iconCenterY - row.textCenterY) > 3
+          )
+          .map((row) => row.label),
+        countBaseline: rows
+          .filter(
+            (row) =>
+              row.textCenterY !== null &&
+              row.countCenterY !== null &&
+              Math.abs(row.textCenterY - row.countCenterY) > 3
+          )
+          .map((row) => row.label),
+      };
+    });
+
+    if (report.iconLefts.length !== 1) {
+      throw new Error(
+        `Desktop rail icons should share one left edge, got ${report.iconLefts.join(', ')}`
+      );
+    }
+    if (report.textLefts.length !== 1) {
+      throw new Error(
+        `Desktop rail labels should share one left edge, got ${report.textLefts.join(', ')}`
+      );
+    }
+    if (report.countLefts.length > 1) {
+      throw new Error(
+        `Desktop rail counts should share one left edge, got ${report.countLefts.join(', ')}`
+      );
+    }
+    if (report.overflowLefts.length > 1) {
+      throw new Error(
+        `Desktop rail overflow buttons should share one left edge, got ${report.overflowLefts.join(', ')}`
+      );
+    }
+    if (report.wraps.length > 0) {
+      throw new Error(`Desktop rail labels wrap: ${report.wraps.join(', ')}`);
+    }
+    if (report.spills.length > 0) {
+      throw new Error(`Desktop rail labels spill out of the rail: ${report.spills.join(', ')}`);
+    }
+    if (report.baseline.length > 0) {
+      throw new Error(
+        `Desktop rail icons and labels are off baseline: ${report.baseline.join(', ')}`
+      );
+    }
+    if (report.countBaseline.length > 0) {
+      throw new Error(
+        `Desktop rail counts are off the label baseline: ${report.countBaseline.join(', ')}`
+      );
+    }
+
+    await this.expectNamedListLabelsClearOfCountAndOverflow();
+    await this.expectNoHorizontalPageScroll();
   }
 
   /** Long rail labels must not push the page (or the rail) sideways. */

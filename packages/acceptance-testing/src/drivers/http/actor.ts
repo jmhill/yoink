@@ -2138,6 +2138,10 @@ export const createHttpActor = (
       );
     },
 
+    async shouldSeeDesktopRailColumnsAligned(): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeDesktopRailColumnsAligned', 'http');
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },

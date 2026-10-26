@@ -1583,6 +1583,12 @@ export type BrowserActorOperations = {
   shouldSeeNamedListLabelsClearOfCountAndOverflow(): Promise<void>;
 
   /**
+   * Assert the always-visible desktop sidebar keeps icons, labels, and
+   * counts in shared columns on one baseline, with no wrap, overlap, or spill.
+   */
+  shouldSeeDesktopRailColumnsAligned(): Promise<void>;
+
+  /**
    * Assert this rail row (Unlisted, Inbox, a smart view, New list) has no overflow.
    */
   shouldNotSeeNamedListOverflowOnRail(label: string): Promise<void>;

@@ -23,7 +23,9 @@ import { DeleteNamedListDialog } from '@/components/delete-named-list-dialog';
 import { NamedListRailOverflow } from '@/components/named-list-rail-overflow';
 import { NamedListRenameField } from '@/components/named-list-rename-field';
 import {
+  DESKTOP_RAIL_ROW_CLASS,
   INBOX_MODE_CUE,
+  RAIL_LABEL_DESKTOP_CLASS,
   RAIL_LABEL_WRAP_CLASS,
   RAIL_LISTS_HEADING,
   RAIL_PROJECTS_HEADING,
@@ -62,7 +64,7 @@ const SMART_VIEW_FILTER: Record<
   done: 'completed',
 };
 
-const RAIL_ICON_CLASS = 'h-5 w-5 shrink-0';
+const RAIL_ICON_CLASS = 'size-5 shrink-0';
 
 const renderRailIcon = (item: RailItem) => {
   if (item.kind === 'inbox') return <Inbox className={RAIL_ICON_CLASS} />;
@@ -125,6 +127,7 @@ type RailRowShared = {
   surface: AppRailSurface;
   location: RailLocation;
   railClassName: (active: boolean) => string;
+  labelClass: string;
   isActive: (item: RailItem) => boolean;
   onDestinationChosen?: () => void;
   listOpenCounts: Map<string, number>;
@@ -138,6 +141,11 @@ type RailRowShared = {
   indentClass: string;
 };
 
+const MOBILE_RAIL_ROW_CLASS =
+  'flex min-w-0 items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors';
+
+const desktopLinkSlot = 'col-span-2 grid min-w-0 grid-cols-subgrid items-center';
+
 const RailNewListRow = ({ shared }: { shared: RailRowShared }) => {
   return (
     <Button
@@ -148,12 +156,15 @@ const RailNewListRow = ({ shared }: { shared: RailRowShared }) => {
       className={cn(
         shared.railClassName(false),
         shared.indentClass,
-        'mt-1 h-auto w-full justify-start whitespace-normal border border-dashed border-border font-normal'
+        'mt-1 h-auto w-full justify-start font-normal [&_svg]:size-5',
+        shared.surface === 'desktop'
+          ? 'grid gap-x-2 whitespace-nowrap border-transparent outline outline-dashed outline-border'
+          : 'whitespace-normal border border-dashed border-border'
       )}
       onClick={shared.onCreateList}
     >
       {renderRailIcon({ kind: 'new-list', label: 'New list' })}
-      <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+      <span data-rail-label-text="" className={shared.labelClass}>
         + New list
       </span>
     </Button>
@@ -170,12 +181,15 @@ const RailNewProjectRow = ({ shared }: { shared: RailRowShared }) => {
       className={cn(
         shared.railClassName(false),
         shared.indentClass,
-        'mt-1 h-auto w-full justify-start whitespace-normal border border-dashed border-border font-normal'
+        'mt-1 h-auto w-full justify-start font-normal [&_svg]:size-5',
+        shared.surface === 'desktop'
+          ? 'grid gap-x-2 whitespace-nowrap border-transparent outline outline-dashed outline-border'
+          : 'whitespace-normal border border-dashed border-border'
       )}
       onClick={shared.onCreateProject}
     >
       {renderRailIcon({ kind: 'new-project', label: 'New project' })}
-      <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+      <span data-rail-label-text="" className={shared.labelClass}>
         + New project
       </span>
     </Button>
@@ -202,14 +216,17 @@ const RailProjectRow = ({
       onClick={active ? shared.onDestinationChosen : undefined}
     >
       {renderRailIcon(item)}
-      <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+      <span data-rail-label-text="" className={shared.labelClass}>
         {item.label}
       </span>
       {item.missingNextAction ? (
         <span
           data-rail-no-next-action=""
           aria-label="No next action"
-          className="ml-auto mt-1.5 size-1.5 shrink-0 rounded-full bg-warning"
+          className={cn(
+            'size-1.5 shrink-0 rounded-full bg-warning',
+            shared.surface === 'desktop' ? 'justify-self-end' : 'ml-auto mt-1.5'
+          )}
         />
       ) : null}
     </Link>
@@ -226,9 +243,15 @@ const RailSomedayGroup = ({
   <details data-rail-someday-group="" className={cn('min-w-0', shared.indentClass)}>
     <summary
       data-rail-someday-summary=""
-      className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+      className={
+        shared.surface === 'desktop'
+          ? 'grid cursor-pointer grid-cols-[1.25rem_minmax(0,1fr)_2rem_2rem] items-center justify-items-start gap-x-2 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
+          : 'cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
+      }
     >
-      {RAIL_SOMEDAY_HEADING}
+      <span className={shared.surface === 'desktop' ? 'col-start-2 min-w-0 truncate' : undefined}>
+        {RAIL_SOMEDAY_HEADING}
+      </span>
     </summary>
     {items.map((someday) => {
       const somedayActive = shared.isActive(someday);
@@ -245,7 +268,7 @@ const RailSomedayGroup = ({
           onClick={somedayActive ? shared.onDestinationChosen : undefined}
         >
           {renderRailIcon(someday)}
-          <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+          <span data-rail-label-text="" className={shared.labelClass}>
             {someday.label}
           </span>
         </Link>
@@ -262,15 +285,20 @@ const RailNamedRow = ({
   shared: RailRowShared;
 }) => {
   const active = shared.isActive(item);
+  const desktop = shared.surface === 'desktop';
   return (
     <div
-      className={cn(
-        'flex min-w-0 items-center rounded-md',
-        shared.indentClass,
-        active
-          ? 'bg-primary/10 text-primary'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      )}
+      className={
+        desktop
+          ? shared.railClassName(active)
+          : cn(
+              'flex min-w-0 items-center rounded-md',
+              shared.indentClass,
+              active
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )
+      }
     >
       {shared.renamingListId === item.listId ? (
         <div
@@ -278,7 +306,7 @@ const RailNamedRow = ({
           data-rail-label={item.label}
           data-rail-list-id={item.listId}
           data-rail-active={active ? 'true' : undefined}
-          className="flex min-w-0 flex-1 items-start"
+          className={desktop ? 'col-span-2 min-w-0' : 'flex min-w-0 flex-1 items-start'}
         >
           <NamedListRenameField
             listId={item.listId}
@@ -296,21 +324,25 @@ const RailNamedRow = ({
             data-rail-label={item.label}
             data-rail-list-id={item.listId}
             data-rail-active={active ? 'true' : undefined}
-            className={cn(
-              'flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-sm transition-colors',
-              active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
+            className={
+              desktop
+                ? desktopLinkSlot
+                : cn(
+                    'flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-sm transition-colors',
+                    active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  )
+            }
             onClick={active ? shared.onDestinationChosen : undefined}
           >
             {renderRailIcon(item)}
-            <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+            <span data-rail-label-text="" className={shared.labelClass}>
               {item.label}
             </span>
           </Link>
           {shared.listOpenCounts.has(item.listId) ? (
             <span
               data-rail-list-count={item.listId}
-              className="shrink-0 pr-1 tabular-nums text-xs text-muted-foreground"
+              className="shrink-0 tabular-nums text-xs text-muted-foreground"
             >
               {shared.listOpenCounts.get(item.listId)}
             </span>
@@ -353,10 +385,38 @@ const RailTaskLinkRow = ({
         onClick={active ? shared.onDestinationChosen : undefined}
       >
         {renderRailIcon(item)}
-        <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+        <span data-rail-label-text="" className={shared.labelClass}>
           {item.label}
         </span>
       </Link>
+    );
+  }
+  if (shared.surface === 'desktop') {
+    return (
+      <div className={shared.railClassName(active)}>
+        <Link
+          to="/tasks"
+          search={railTaskSearch(item)}
+          data-rail-item={item.kind === 'smart' ? item.key : item.kind}
+          data-rail-label={item.label}
+          data-rail-active={active ? 'true' : undefined}
+          className={desktopLinkSlot}
+          onClick={active ? shared.onDestinationChosen : undefined}
+        >
+          {renderRailIcon(item)}
+          <span data-rail-label-text="" className={shared.labelClass}>
+            {item.label}
+          </span>
+        </Link>
+        {item.kind === 'unlisted' && shared.unlistedOpenCount !== undefined ? (
+          <span
+            data-rail-list-count="unlisted"
+            className="shrink-0 tabular-nums text-xs text-muted-foreground"
+          >
+            {shared.unlistedOpenCount}
+          </span>
+        ) : null}
+      </div>
     );
   }
   return (
@@ -371,7 +431,7 @@ const RailTaskLinkRow = ({
         onClick={active ? shared.onDestinationChosen : undefined}
       >
         {renderRailIcon(item)}
-        <span data-rail-label-text="" className={RAIL_LABEL_WRAP_CLASS}>
+        <span data-rail-label-text="" className={shared.labelClass}>
           {item.label}
         </span>
       </Link>
@@ -454,14 +514,14 @@ const DesktopSectionRow = ({
       onClick={active ? onDestinationChosen : undefined}
     >
       {renderSectionIcon(section.key)}
-      <span data-rail-label-text="" className="min-w-0 shrink-0 whitespace-nowrap">
+      <span data-rail-label-text="" className={RAIL_LABEL_DESKTOP_CLASS}>
         {section.label}
       </span>
       {section.badge !== null ? (
         <span
           data-inbox-count={section.key === 'process' ? section.badge : undefined}
           data-review-badge={section.key === 'review' ? section.badge : undefined}
-          className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-foreground"
+          className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-foreground"
         >
           {section.badge}
         </span>
@@ -538,9 +598,11 @@ function DesktopRailSections({
                 {section.key === 'work' && index === listsStart && listsStart >= 0 ? (
                   <div
                     data-rail-heading="lists"
-                    className={cn(RAIL_SECTION_HEADING_CLASS, 'pl-7 pt-2')}
+                    className="grid grid-cols-[1.25rem_minmax(0,1fr)_2rem_2rem] items-center justify-items-start gap-x-2 px-3 pb-1 pt-2"
                   >
-                    {RAIL_LISTS_HEADING}
+                    <span className="col-start-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {RAIL_LISTS_HEADING}
+                    </span>
                   </div>
                 ) : null}
                 {renderChildItem(item, shared, somedayItems)}
@@ -698,7 +760,7 @@ export function AppRailPanel({
 
   const railClassName = (active: boolean) =>
     cn(
-      'flex min-w-0 items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+      surface === 'desktop' ? DESKTOP_RAIL_ROW_CLASS : MOBILE_RAIL_ROW_CLASS,
       active
         ? 'bg-primary/10 text-primary'
         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -708,6 +770,7 @@ export function AppRailPanel({
     surface,
     location,
     railClassName,
+    labelClass: surface === 'desktop' ? RAIL_LABEL_DESKTOP_CLASS : RAIL_LABEL_WRAP_CLASS,
     isActive:
       surface === 'desktop'
         ? (item) => activeRow === railItemKey(item)
@@ -721,7 +784,7 @@ export function AppRailPanel({
     onDelete: setDeletingList,
     onCreateList: openCreateList,
     onCreateProject: openCreateProject,
-    indentClass: surface === 'desktop' ? 'pl-6' : '',
+    indentClass: '',
   };
 
   return (

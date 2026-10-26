@@ -72,8 +72,7 @@ const seedProposals = async (lane: CoreActor): Promise<void> => {
   }
 };
 
-const seeAllOnReview = async (actor: BrowserActor): Promise<void> => {
-  await actor.openReview();
+const seeProposalCards = async (actor: BrowserActor): Promise<void> => {
   await actor.shouldSeeReviewProposalNames(NAMES);
   for (const proposal of BY_NAME) {
     await actor.shouldSeeReviewProposal({
@@ -101,7 +100,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(working).toEqual([]);
 
       await justin.useMobileViewport();
-      await seeAllOnReview(justin);
+      await justin.openReview();
+      await seeProposalCards(justin);
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_proposed',
@@ -116,8 +116,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
         step: 'proposal_page',
       });
 
+      // Back from the project page through the rail. A document reload here
+      // never commits while the service worker is controlling the page.
       await justin.useDesktopViewport(DESKTOP);
-      await seeAllOnReview(justin);
+      await justin.openRailReview();
+      await seeProposalCards(justin);
       await justin.saveWalkthroughScreenshot({
         story: WALKTHROUGH_STORY,
         step: 'review_proposed',

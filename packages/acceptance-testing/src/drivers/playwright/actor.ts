@@ -281,7 +281,9 @@ const expandAllProjectsList = async (page: Page): Promise<void> => {
   if (open === null) {
     await details.locator('summary').click();
   }
-  await expect(page.locator('[data-projects-index]')).toBeVisible();
+  // An empty working list has no box, so visibility is the wrong signal.
+  // The open attribute is what shows the Proposed rows inside.
+  await expect.poll(async () => details.getAttribute('open')).not.toBeNull();
 };
 
 const reviewItemByName = (page: Page, name: string) =>
@@ -3995,7 +3997,7 @@ export const createPlaywrightActor = (
       } else {
         const closingDialog = page.locator('[data-slot="dialog-content"]');
         if ((await closingDialog.count()) > 0) {
-          await closingDialog.last().waitFor({ state: 'hidden' });
+          await closingDialog.last().waitFor({ state: 'hidden', timeout: 3_000 });
         }
       }
       const openSheet = page.locator(OPEN_SHEET_CONTENT);
@@ -4008,7 +4010,7 @@ export const createPlaywrightActor = (
         if (openDrawer === 'open' || openDrawer === null) {
           await waitForSettledOpenDrawer({ page });
         } else {
-          await drawer.last().waitFor({ state: 'hidden' });
+          await drawer.last().waitFor({ state: 'hidden', timeout: 3_000 });
         }
       }
       if (input.includeToasts) {
@@ -4665,8 +4667,12 @@ export const createPlaywrightActor = (
     },
 
     async openReviewProposal(name: string): Promise<void> {
-      await reviewProposalByName(page, name).locator('[data-review-proposal-open]').click();
-      await page.waitForURL((url) => /^\/projects\/[^/]+$/.test(new URL(url).pathname));
+      await reviewProposalByName(page, name)
+        .locator('[data-review-proposal-open]')
+        .click({ timeout: 15_000 });
+      await page.waitForURL((url) => /^\/projects\/[^/]+$/.test(new URL(url).pathname), {
+        timeout: 15_000,
+      });
       await expect(page.locator('[data-proposal-banner]')).toBeVisible();
     },
 

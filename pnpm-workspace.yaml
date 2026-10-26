@@ -17,6 +17,8 @@ overrides:
   ws: '>=8.21.0'
   picomatch: '>=4.0.4'
   browserslist: '>=4.28.7'
+  vite: '^6.4.4'
+  launch-editor: '>=2.14.2'
 
 auditConfig:
   ignoreGhsas:
@@ -31,6 +33,8 @@ auditConfig:
     - GHSA-9q9j-q6p8-xq58
     # braces has no patched release.
     - GHSA-vfj7-8cjw-p6xm
+    # Every zod below 4.6.6 is affected. Zod 3 has no patched release. Tracked by the Zod 4 upgrade (#207).
+    - GHSA-mrhx-c7xc-m3w5
 
 allowBuilds:
   '@sentry/cli': true

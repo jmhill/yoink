@@ -5,6 +5,10 @@ import type { TokenService } from '../domain/token-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import { actorFromSession, actorFromToken } from '../../shared/auth-context.js';
 import { principalKindOf } from '../domain/user.js';
+import {
+  replyTokenValidationFailure,
+  validationDurationMs,
+} from './token-validation-response.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -86,30 +90,35 @@ export const createCombinedAuthMiddleware = (
     // Try Bearer token as fallback
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
+      const startedAt = performance.now();
       const tokenResult = await tokenService.validateToken({ plaintext: token });
 
-      if (tokenResult.isOk()) {
-        request.authContext = {
-          organizationId: tokenResult.value.organization.id,
-          userId: tokenResult.value.user.id,
-          principalKind: principalKindOf(tokenResult.value.user),
-          actor: actorFromToken(
-            tokenResult.value.token,
-            principalKindOf(tokenResult.value.user)
-          ),
-        };
-
-        // Bind auth context to request logger
-        request.log = request.log.child({
-          userId: request.authContext.userId,
-          orgId: request.authContext.organizationId,
-        });
-
-        return;
+      if (tokenResult.isErr()) {
+        return replyTokenValidationFailure(
+          request,
+          reply,
+          tokenResult.error,
+          validationDurationMs(startedAt)
+        );
       }
 
-      // Token was provided but invalid - return 401 with token error message
-      return reply.status(401).send({ message: 'Invalid token' });
+      request.authContext = {
+        organizationId: tokenResult.value.organization.id,
+        userId: tokenResult.value.user.id,
+        principalKind: principalKindOf(tokenResult.value.user),
+        actor: actorFromToken(
+          tokenResult.value.token,
+          principalKindOf(tokenResult.value.user)
+        ),
+      };
+
+      // Bind auth context to request logger
+      request.log = request.log.child({
+        userId: request.authContext.userId,
+        orgId: request.authContext.organizationId,
+      });
+
+      return;
     }
 
     // If session cookie was provided but invalid (and no token), give session-specific error

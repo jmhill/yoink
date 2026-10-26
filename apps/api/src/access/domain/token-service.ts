@@ -1,26 +1,18 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Clock, PasswordHasher } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
-import { organizationNotFoundError } from './organization-errors.js';
-import type { User } from './user.js';
 import type { UserStore } from './user-store.js';
-import { userNotFoundError } from './user-errors.js';
-import type { ApiToken } from './api-token.js';
 import type { TokenStore } from './token-store.js';
 import type { ValidateTokenQuery } from './token-queries.js';
+import type { TokenValidationError } from './auth-errors.js';
 import {
-  invalidTokenFormatError,
-  tokenNotFoundError,
-  invalidSecretError,
-  type TokenValidationError,
-} from './auth-errors.js';
+  decideValidateToken,
+  parseToken,
+  type ValidateTokenFacts,
+  type ValidatedToken,
+} from './decide-validate-token.js';
 
-export type AuthResult = {
-  organization: Organization;
-  user: User;
-  token: ApiToken;
-};
+export type AuthResult = ValidatedToken;
 
 export type TokenService = {
   validateToken(query: ValidateTokenQuery): ResultAsync<AuthResult, TokenValidationError>;
@@ -34,92 +26,117 @@ export type TokenServiceDependencies = {
   clock: Clock;
 };
 
-type ParsedToken = {
-  tokenId: string;
-  secret: string;
+// Real bcrypt hash of an unrelated password. compare() returns false for every
+// other secret, including when the token row is missing, instead of throwing
+// on a malformed dummy hash and looking like "token not found".
+const DUMMY_HASH = '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+
+const compareSecret = (
+  compare: PasswordHasher['compare'],
+  secret: string,
+  hash: string
+): ResultAsync<boolean, unknown> => {
+  try {
+    return ResultAsync.fromPromise(compare(secret, hash), (cause) => cause);
+  } catch (cause) {
+    return errAsync(cause);
+  }
 };
 
-const parseToken = (token: string): ParsedToken | null => {
-  const colonIndex = token.indexOf(':');
-  if (colonIndex === -1) {
-    return null;
-  }
-
-  const tokenId = token.slice(0, colonIndex);
-  const secret = token.slice(colonIndex + 1);
-
-  if (tokenId.length === 0 || secret.length === 0) {
-    return null;
-  }
-
-  return { tokenId, secret };
-};
-
-// Pre-computed dummy hash for constant-time comparison when token not found.
-// This is a valid bcrypt hash that will never match any real secret.
-// The actual value doesn't matter - we just need to ensure the bcrypt
-// comparison runs in constant time regardless of whether the token exists.
-const DUMMY_HASH = '$2b$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-
-export const createTokenService = (
+const loadValidateTokenFacts = async (
+  query: ValidateTokenQuery,
   deps: TokenServiceDependencies
-): TokenService => {
-  const { organizationStore, userStore, tokenStore, passwordHasher, clock } = deps;
+): Promise<ValidateTokenFacts> => {
+  const parsed = parseToken(query.plaintext);
+  if (!parsed) {
+    return { kind: 'unparsed' };
+  }
+
+  const found = await deps.tokenStore.findById(parsed.tokenId);
+  if (found.isErr()) {
+    return {
+      kind: 'storage-failed',
+      tokenId: parsed.tokenId,
+      message: found.error.message,
+      cause: found.error.cause ?? found.error,
+    };
+  }
+
+  const token = found.value;
+  const compared = await compareSecret(
+    deps.passwordHasher.compare,
+    parsed.secret,
+    token?.tokenHash ?? DUMMY_HASH
+  );
+  if (compared.isErr()) {
+    return {
+      kind: 'hash-failed',
+      tokenId: parsed.tokenId,
+      cause: compared.error,
+    };
+  }
+
+  if (!token || !compared.value || token.revokedAt) {
+    return {
+      kind: 'compared',
+      tokenId: parsed.tokenId,
+      token,
+      secretMatches: compared.value,
+      organization: null,
+      user: null,
+    };
+  }
+
+  const organization = await deps.organizationStore.findById(token.organizationId);
+  if (organization.isErr()) {
+    return {
+      kind: 'storage-failed',
+      tokenId: parsed.tokenId,
+      message: organization.error.message,
+      cause: organization.error.cause ?? organization.error,
+    };
+  }
+
+  if (!organization.value) {
+    return {
+      kind: 'compared',
+      tokenId: parsed.tokenId,
+      token,
+      secretMatches: true,
+      organization: null,
+      user: null,
+    };
+  }
+
+  const user = await deps.userStore.findById(token.userId);
+  if (user.isErr()) {
+    return {
+      kind: 'storage-failed',
+      tokenId: parsed.tokenId,
+      message: user.error.message,
+      cause: user.error.cause ?? user.error,
+    };
+  }
 
   return {
-    validateToken: (query: ValidateTokenQuery): ResultAsync<AuthResult, TokenValidationError> => {
-      // Parse tokenId:secret format
-      const parsed = parseToken(query.plaintext);
-      if (!parsed) {
-        return errAsync(invalidTokenFormatError());
-      }
-
-      // Lookup token by ID (O(1))
-      return tokenStore.findById(parsed.tokenId).andThen((token) => {
-        // Use actual hash if token exists, otherwise use dummy hash.
-        // This ensures constant-time behavior to prevent timing oracle attacks
-        // that could enumerate valid token IDs.
-        const hashToCompare = token?.tokenHash ?? DUMMY_HASH;
-
-        // Verify secret against stored hash (or dummy hash)
-        // Wrap the Promise-based compare in a ResultAsync
-        return ResultAsync.fromPromise(
-          passwordHasher.compare(parsed.secret, hashToCompare),
-          () => tokenNotFoundError(parsed.tokenId) // This shouldn't happen in practice
-        ).andThen((isMatch) => {
-          // If token doesn't exist, return not found error (after doing the comparison)
-          if (!token) {
-            return errAsync(tokenNotFoundError(parsed.tokenId));
-          }
-
-          if (!isMatch) {
-            return errAsync(invalidSecretError(parsed.tokenId));
-          }
-
-          if (token.revokedAt) {
-            return errAsync(tokenNotFoundError(parsed.tokenId));
-          }
-
-          // Use token.organizationId to determine the org context
-          // Tokens are now scoped to organizations, so we use the token's org, not the user's
-          return organizationStore.findById(token.organizationId).andThen((organization) => {
-            if (!organization) {
-              return errAsync(organizationNotFoundError(token.organizationId));
-            }
-
-            return userStore.findById(token.userId).andThen((user) => {
-              if (!user) {
-                return errAsync(userNotFoundError(token.userId));
-              }
-
-              // Update lastUsedAt (fire and forget - we don't want to fail validation if this fails)
-              tokenStore.updateLastUsed(token.id, clock.now().toISOString());
-
-              return okAsync({ organization, user, token });
-            });
-          });
-        });
-      });
-    },
+    kind: 'compared',
+    tokenId: parsed.tokenId,
+    token,
+    secretMatches: true,
+    organization: organization.value,
+    user: user.value,
   };
 };
+
+export const createTokenService = (deps: TokenServiceDependencies): TokenService => ({
+  validateToken: (query) =>
+    ResultAsync.fromSafePromise(loadValidateTokenFacts(query, deps)).andThen((facts) => {
+      const decision = decideValidateToken(facts);
+      if (decision.isErr()) {
+        return errAsync(decision.error);
+      }
+
+      void deps.tokenStore.updateLastUsed(decision.value.token.id, deps.clock.now().toISOString());
+      return okAsync(decision.value);
+    }),
+});

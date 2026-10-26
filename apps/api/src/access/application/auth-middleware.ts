@@ -3,6 +3,10 @@ import type { AuthContext } from '../../shared/auth-context.js';
 import type { TokenService } from '../domain/token-service.js';
 import { actorFromToken } from '../../shared/auth-context.js';
 import { principalKindOf } from '../domain/user.js';
+import {
+  replyTokenValidationFailure,
+  validationDurationMs,
+} from './token-validation-response.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -30,12 +34,16 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
     }
 
     const token = authHeader.slice(7);
-
+    const startedAt = performance.now();
     const result = await tokenService.validateToken({ plaintext: token });
 
     if (result.isErr()) {
-      // For security, we don't reveal specific error details to the client
-      return reply.status(401).send({ message: 'Invalid token' });
+      return replyTokenValidationFailure(
+        request,
+        reply,
+        result.error,
+        validationDurationMs(startedAt)
+      );
     }
 
     request.authContext = {

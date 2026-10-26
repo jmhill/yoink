@@ -73,6 +73,7 @@ export const createSqliteTokenStore = async (db: Database): Promise<TokenStore> 
         db.execute({
           sql: `SELECT * FROM api_tokens WHERE id = ?`,
           args: [id],
+          access: 'read',
         }),
         (error) => tokenStorageError('Failed to find token', error)
       ).map((result) => {

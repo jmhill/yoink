@@ -6,7 +6,11 @@ import type { User } from './user.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import type { ApiToken } from './api-token.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
+import {
+  createBcryptPasswordHasher,
+  createFakePasswordHasher,
+  createFakeClock,
+} from '@yoink/infrastructure';
 
 describe('TokenService', () => {
   const testOrg: Organization = {
@@ -126,7 +130,7 @@ describe('TokenService', () => {
     }
   });
 
-  it('returns USER_NOT_FOUND error when token exists but user not found', async () => {
+  it('returns TOKEN_NOT_FOUND for the user when the token exists but the user does not', async () => {
     // Create a token for a non-existent user
     const orphanToken: ApiToken = {
       id: 'orphan-token-id',
@@ -155,11 +159,15 @@ describe('TokenService', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('USER_NOT_FOUND');
+      expect(result.error).toMatchObject({
+        type: 'TOKEN_NOT_FOUND',
+        tokenId: orphanToken.id,
+        subject: 'user',
+      });
     }
   });
 
-  it('returns ORGANIZATION_NOT_FOUND error when user exists but organization not found', async () => {
+  it('returns TOKEN_NOT_FOUND for the organization when the user exists but the organization does not', async () => {
     // Create user belonging to non-existent org
     const orphanUser: User = {
       id: 'orphan-user-id',
@@ -194,7 +202,11 @@ describe('TokenService', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('ORGANIZATION_NOT_FOUND');
+      expect(result.error).toMatchObject({
+        type: 'TOKEN_NOT_FOUND',
+        tokenId: orphanToken.id,
+        subject: 'organization',
+      });
     }
   });
 
@@ -216,8 +228,111 @@ describe('TokenService', () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe('TOKEN_NOT_FOUND');
+      expect(result.error).toEqual({ type: 'TOKEN_REVOKED', tokenId: testToken.id });
     }
+  });
+
+  it('returns TOKEN_STORAGE_ERROR with the token id when a lookup fails', async () => {
+    const failingStore = createFakeTokenStore({
+      shouldFailOnFind: true,
+      initialTokens: [testToken],
+    });
+    const service = createTokenService({
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [testOrg] }),
+      userStore: createFakeUserStore({ initialUsers: [testUser] }),
+      tokenStore: failingStore,
+      passwordHasher: createFakePasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await service.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe('TOKEN_STORAGE_ERROR');
+      if (result.error.type === 'TOKEN_STORAGE_ERROR') {
+        expect(result.error.tokenId).toBe(testToken.id);
+        expect(JSON.stringify(result.error)).not.toContain('my-secret-token');
+      }
+    }
+  });
+
+  it('returns TOKEN_STORAGE_ERROR when the user lookup fails', async () => {
+    const service = createTokenService({
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [testOrg] }),
+      userStore: createFakeUserStore({ shouldFailOnFind: true, initialUsers: [testUser] }),
+      tokenStore,
+      passwordHasher: createFakePasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await service.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr() && result.error.type).toBe('TOKEN_STORAGE_ERROR');
+  });
+
+  it('returns TOKEN_STORAGE_ERROR when the organization lookup fails', async () => {
+    const service = createTokenService({
+      organizationStore: createFakeOrganizationStore({
+        shouldFailOnFind: true,
+        initialOrganizations: [testOrg],
+      }),
+      userStore: createFakeUserStore({ initialUsers: [testUser] }),
+      tokenStore,
+      passwordHasher: createFakePasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await service.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr() && result.error.type).toBe('TOKEN_STORAGE_ERROR');
+  });
+
+  it('returns TOKEN_HASH_ERROR when comparing the secret throws', async () => {
+    const cause = new Error('bcrypt stalled');
+    const service = createTokenService({
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [testOrg] }),
+      userStore: createFakeUserStore({ initialUsers: [testUser] }),
+      tokenStore,
+      passwordHasher: {
+        hash: () => Promise.resolve('unused'),
+        compare: () => {
+          throw cause;
+        },
+      },
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await service.validateToken({ plaintext: VALID_TOKEN });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({
+        type: 'TOKEN_HASH_ERROR',
+        tokenId: testToken.id,
+        cause,
+      });
+      expect(JSON.stringify(result.error)).not.toContain('my-secret-token');
+    }
+  });
+
+  it('reports a missing token as not found when bcrypt compares the dummy hash', async () => {
+    const service = createTokenService({
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [testOrg] }),
+      userStore: createFakeUserStore({ initialUsers: [testUser] }),
+      tokenStore: createFakeTokenStore({ initialTokens: [] }),
+      passwordHasher: createBcryptPasswordHasher(),
+      clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+    });
+
+    const result = await service.validateToken({
+      plaintext: '550e8400-e29b-41d4-a716-446655440099:not-the-dummy-password',
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      type: 'TOKEN_NOT_FOUND',
+      subject: 'token',
+    });
   });
 
   it('does not update lastUsedAt on failed validation', async () => {

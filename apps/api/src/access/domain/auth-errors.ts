@@ -1,5 +1,5 @@
 import type { UserStorageError, UserNotFoundError, UserServiceError } from './user-errors.js';
-import type { OrganizationStorageError, OrganizationNotFoundError, MembershipServiceError } from './organization-errors.js';
+import type { MembershipServiceError } from './organization-errors.js';
 import type {
   BotCannotManageTokensError,
   InvalidTokenNameError,
@@ -13,6 +13,8 @@ export type TokenStorageError = {
   readonly type: 'TOKEN_STORAGE_ERROR';
   readonly message: string;
   readonly cause?: unknown;
+  /** Present when the failure happened while checking a parsed token id. */
+  readonly tokenId?: string;
 };
 
 export type PasskeyCredentialStorageError = {
@@ -29,11 +31,13 @@ export type SessionStorageError = {
 
 export const tokenStorageError = (
   message: string,
-  cause?: unknown
+  cause?: unknown,
+  tokenId?: string
 ): TokenStorageError => ({
   type: 'TOKEN_STORAGE_ERROR',
   message,
-  cause,
+  ...(cause !== undefined ? { cause } : {}),
+  ...(tokenId !== undefined ? { tokenId } : {}),
 });
 
 export const passkeyCredentialStorageError = (
@@ -62,9 +66,12 @@ export type InvalidTokenFormatError = {
   readonly type: 'INVALID_TOKEN_FORMAT';
 };
 
+export type TokenNotFoundSubject = 'token' | 'user' | 'organization';
+
 export type TokenNotFoundError = {
   readonly type: 'TOKEN_NOT_FOUND';
   readonly tokenId: string;
+  readonly subject: TokenNotFoundSubject;
 };
 
 export type InvalidSecretError = {
@@ -72,28 +79,54 @@ export type InvalidSecretError = {
   readonly tokenId: string;
 };
 
+export type TokenRevokedError = {
+  readonly type: 'TOKEN_REVOKED';
+  readonly tokenId: string;
+};
+
+export type TokenHashError = {
+  readonly type: 'TOKEN_HASH_ERROR';
+  readonly message: string;
+  readonly tokenId: string;
+  readonly cause: unknown;
+};
+
 export type TokenValidationError =
   | InvalidTokenFormatError
   | TokenNotFoundError
   | InvalidSecretError
-  | UserNotFoundError
-  | OrganizationNotFoundError
-  | UserStorageError
-  | OrganizationStorageError
-  | TokenStorageError;
+  | TokenRevokedError
+  | TokenStorageError
+  | TokenHashError;
 
 export const invalidTokenFormatError = (): InvalidTokenFormatError => ({
   type: 'INVALID_TOKEN_FORMAT',
 });
 
-export const tokenNotFoundError = (tokenId: string): TokenNotFoundError => ({
+export const tokenNotFoundError = (
+  tokenId: string,
+  subject: TokenNotFoundSubject = 'token'
+): TokenNotFoundError => ({
   type: 'TOKEN_NOT_FOUND',
   tokenId,
+  subject,
 });
 
 export const invalidSecretError = (tokenId: string): InvalidSecretError => ({
   type: 'INVALID_SECRET',
   tokenId,
+});
+
+export const tokenRevokedError = (tokenId: string): TokenRevokedError => ({
+  type: 'TOKEN_REVOKED',
+  tokenId,
+});
+
+export const tokenHashError = (tokenId: string, cause: unknown): TokenHashError => ({
+  type: 'TOKEN_HASH_ERROR',
+  message: 'Failed to compare token secret',
+  tokenId,
+  cause,
 });
 
 // ============================================================================

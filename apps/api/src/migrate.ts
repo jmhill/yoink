@@ -15,6 +15,7 @@
  */
 
 import { createDatabase } from './database/database.js';
+import { TURSO_MIGRATION_TIMEOUT_MS } from './database/run-turso-call.js';
 import { runMigrations } from './database/migrator.js';
 import { migrations } from './database/migrations.js';
 import { getDatabasePath, loadDatabaseConfig } from './config/config.js';
@@ -23,7 +24,9 @@ const main = async () => {
   const config = loadDatabaseConfig();
   console.log(`Running migrations on database: ${getDatabasePath(config)}`);
 
-  const database = createDatabase(config);
+  const database = createDatabase(config, {
+    tursoCallTimeoutMs: TURSO_MIGRATION_TIMEOUT_MS,
+  });
 
   try {
     const result = await runMigrations(database, migrations);

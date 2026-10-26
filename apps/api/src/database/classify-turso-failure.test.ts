@@ -37,5 +37,12 @@ describe('classifyTursoFailure', () => {
         })
       )
     ).toBe('query');
+    expect(classifyTursoFailure(withCode('database is locked: timeout', 'SQLITE_BUSY'))).toBe(
+      'query'
+    );
+    expect(
+      classifyTursoFailure(withCode('network error while checking constraint', 'SQLITE_CONSTRAINT'))
+    ).toBe('query');
+    expect(classifyTursoFailure(new Error('query exceeded the timeout budget'))).toBe('query');
   });
 });

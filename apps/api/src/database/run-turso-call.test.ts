@@ -16,10 +16,23 @@ describe('runTursoCall', () => {
       return Promise.resolve('row');
     };
 
-    const result = await runTursoCall(operation, { timeoutMs: 20 });
+    const result = await runTursoCall(operation, { timeoutMs: 20, retry: true });
 
     expect(calls).toEqual([1, 2]);
     expect(result.isOk() && result.value).toBe('row');
+  });
+
+  it('does not retry a write that times out', async () => {
+    const calls: number[] = [];
+    const operation = () => {
+      calls.push(calls.length + 1);
+      return new Promise<string>(() => undefined);
+    };
+
+    const result = await runTursoCall(operation, { timeoutMs: 20, retry: false });
+
+    expect(calls).toEqual([1]);
+    expect(result.isErr() && result.error).toMatchObject({ code: 'TURSO_CALL_TIMEOUT' });
   });
 
   it('retries a connection failure once and then returns that failure', async () => {
@@ -30,7 +43,7 @@ describe('runTursoCall', () => {
       return Promise.reject(failure);
     };
 
-    const result = await runTursoCall(operation, { timeoutMs: 20 });
+    const result = await runTursoCall(operation, { timeoutMs: 20, retry: true });
 
     expect(calls).toEqual([1, 2]);
     expect(result.isErr() && result.error).toBe(failure);
@@ -44,7 +57,7 @@ describe('runTursoCall', () => {
       return Promise.reject(failure);
     };
 
-    const result = await runTursoCall(operation, { timeoutMs: 20 });
+    const result = await runTursoCall(operation, { timeoutMs: 20, retry: true });
 
     expect(calls).toHaveLength(1);
     expect(result.isErr() && result.error).toBe(failure);
@@ -57,7 +70,7 @@ describe('runTursoCall', () => {
         calls.push(1);
         return Promise.resolve('ok');
       },
-      { timeoutMs: 50 }
+      { timeoutMs: 50, retry: true }
     );
 
     expect(calls).toEqual([1]);

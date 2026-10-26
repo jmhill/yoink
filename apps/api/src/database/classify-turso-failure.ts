@@ -59,14 +59,11 @@ const httpStatus = (error: unknown): number | undefined => {
 
 const messageLooksLikeConnectionLoss = (message: string): boolean =>
   message.includes('fetch failed') ||
-  message.includes('network') ||
-  message.includes('socket') ||
   message.includes('timed out') ||
-  message.includes('timeout') ||
   message.includes('econnreset') ||
-  message.includes('connection reset') ||
-  message.includes('connection closed') ||
-  message.includes('aborted');
+  message.includes('connection reset');
+
+const isSqlCode = (code: string): boolean => code.startsWith('SQLITE_');
 
 const isConnectionFailure = (error: unknown): boolean => {
   const name = readString(error, 'name');
@@ -82,12 +79,15 @@ const isConnectionFailure = (error: unknown): boolean => {
   if (code !== undefined && CONNECTION_CODES.has(code)) {
     return true;
   }
+  if (code !== undefined && isSqlCode(code)) {
+    return false;
+  }
 
   const message = readString(error, 'message');
   return message !== undefined && messageLooksLikeConnectionLoss(message.toLowerCase());
 };
 
-/** Connection losses are retried once. SQL and client errors are not. */
+/** Connection losses can be retried on a read. SQL and client errors are not. */
 export const classifyTursoFailure = (error: unknown): TursoFailureClass => {
   const second = readCause(error);
   const third = second === undefined ? undefined : readCause(second);

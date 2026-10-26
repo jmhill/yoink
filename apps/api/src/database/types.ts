@@ -16,13 +16,18 @@ export type QueryResult = {
 export type Database = {
   /**
    * Execute a single SQL statement.
-   * Use for SELECT, INSERT, UPDATE, DELETE.
+   * `access: 'read'` may be retried once after a Turso connection failure.
+   * Omit `access`, or pass `'write'`, for anything that might commit: those calls time out but are never retried.
    */
-  execute: (query: { sql: string; args?: unknown[] }) => Promise<QueryResult>;
+  execute: (query: {
+    sql: string;
+    args?: unknown[];
+    access?: 'read' | 'write';
+  }) => Promise<QueryResult>;
 
   /**
    * Execute multiple SQL statements in a batch (one transaction).
-   * Use for migrations, multi-statement operations, or a consistent read.
+   * Mode `'read'` may be retried once. `'write'` (the default) is never retried.
    */
   batch: (
     queries: { sql: string; args?: unknown[] }[],

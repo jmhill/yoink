@@ -74,7 +74,8 @@ const settleCall = <T>(operation: () => Promise<T>): Promise<Result<T, unknown>>
  *
  * Supports three modes:
  * - `turso`: Connect to Turso cloud database (requires URL and auth token).
- *   Each call times out and retries once on a connection failure.
+ *   Each call times out. A read is tried once more after a connection failure.
+ *   A write is not retried, because the first request may already have committed.
  * - `file`: Local file-based SQLite via LibSQL
  * - `memory`: In-memory SQLite for tests
  */
@@ -88,8 +89,11 @@ export const createDatabase = (
 
   const timeoutMs = options.tursoCallTimeoutMs ?? TURSO_CALL_TIMEOUT_MS;
   const client = createClient(clientConfig(config, timeoutMs));
-  const run = <T>(operation: () => Promise<T>): Promise<Result<T, unknown>> =>
-    config.type === 'turso' ? runTursoCall(operation, { timeoutMs }) : settleCall(operation);
+  const run = <T>(
+    operation: () => Promise<T>,
+    retry: boolean
+  ): Promise<Result<T, unknown>> =>
+    config.type === 'turso' ? runTursoCall(operation, { timeoutMs, retry }) : settleCall(operation);
 
   return {
     execute: async (query): Promise<QueryResult> => {
@@ -97,8 +101,9 @@ export const createDatabase = (
       if (args.isErr()) {
         return Promise.reject(args.error);
       }
-      const settled = await run(() =>
-        client.execute({ sql: query.sql, args: [...args.value] })
+      const settled = await run(
+        () => client.execute({ sql: query.sql, args: [...args.value] }),
+        query.access === 'read'
       );
       if (settled.isErr()) {
         return Promise.reject(settled.error);
@@ -115,15 +120,17 @@ export const createDatabase = (
       if (invalid?.args.isErr()) {
         return Promise.reject(invalid.args.error);
       }
-      const settled = await run(() =>
-        client.batch(
-          statements.flatMap((statement) =>
-            statement.args.isOk()
-              ? [{ sql: statement.sql, args: [...statement.args.value] }]
-              : []
+      const settled = await run(
+        () =>
+          client.batch(
+            statements.flatMap((statement) =>
+              statement.args.isOk()
+                ? [{ sql: statement.sql, args: [...statement.args.value] }]
+                : []
+            ),
+            mode
           ),
-          mode
-        )
+        mode === 'read'
       );
       if (settled.isErr()) {
         return Promise.reject(settled.error);

@@ -24,11 +24,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4
+        with:
+          fetch-depth: 0
 
       - name: Check for extension changes
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # Empty token uses local git instead of the PR files API, which
+          # 502s with "diff is temporarily unavailable due to heavy server load".
+          token: ''
           filters: |
             extension:
               - 'apps/extension/**'

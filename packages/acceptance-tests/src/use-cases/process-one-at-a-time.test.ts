@@ -100,6 +100,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const shed = await alice.createProject({ name: 'Shed' });
       await alice.createCapture({ content: 'Paint the door' });
       await alice.createCapture({ content: 'Still in the queue' });
+      // Promote's date input uses min=today; a hardcoded past day blocks submit.
+      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('process');
@@ -108,11 +110,11 @@ usingDrivers(['playwright'] as const, (ctx) => {
       const task = await alice.confirmPromoteOnListAndProject({
         listName: 'Chores',
         projectName: 'Shed',
-        dueDate: '2026-10-20',
+        dueDate,
       });
       expect(task.listId).toBe(chores.id);
       expect(task.projectId).toBe(shed.id);
-      expect(task.dueDate).toBe('2026-10-20');
+      expect(task.dueDate).toBe(dueDate);
 
       await alice.shouldSeeTaskCreatedToast();
       await alice.shouldSeeProcessCurrent('Still in the queue');

@@ -521,12 +521,11 @@ export class InboxPage {
 
   async selectPromoteListByName(name: string): Promise<void> {
     await this.promoteList().click();
-    const option = this.page
-      .getByRole('listbox')
-      .locator('[data-slot="select-item"]')
-      .filter({ hasText: name });
+    const listbox = this.page.getByRole('listbox');
+    const option = listbox.locator('[data-slot="select-item"]').filter({ hasText: name });
     await option.waitFor({ state: 'visible' });
     await option.click();
+    await listbox.waitFor({ state: 'hidden' });
   }
 
   promoteProject() {
@@ -535,11 +534,9 @@ export class InboxPage {
 
   async selectPromoteProjectByName(name: string): Promise<void> {
     await this.openPromoteProjectPicker(name);
-    await this.page
-      .getByRole('listbox')
-      .locator('[data-slot="select-item"]')
-      .filter({ hasText: name })
-      .click();
+    const listbox = this.page.getByRole('listbox');
+    await listbox.locator('[data-slot="select-item"]').filter({ hasText: name }).click();
+    await listbox.waitFor({ state: 'hidden' });
   }
 
   async openPromoteProjectPicker(visibleName: string): Promise<void> {
@@ -552,6 +549,7 @@ export class InboxPage {
   }
 
   async confirmPromote(): Promise<void> {
+    await this.page.getByRole('listbox').waitFor({ state: 'hidden' });
     await this.promoteSheet().getByRole('button', { name: 'Promote' }).click();
   }
 

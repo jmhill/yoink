@@ -335,7 +335,12 @@ const RailNamedRow = ({
             onClick={active ? shared.onDestinationChosen : undefined}
           >
             {renderRailIcon(item)}
-            <span data-rail-label-text="" className={shared.labelClass}>
+            <span
+              data-rail-label-text=""
+              title={desktop ? item.label : undefined}
+              data-rail-anchor={desktop ? `--rail-list-${item.listId}` : undefined}
+              className={shared.labelClass}
+            >
               {item.label}
             </span>
           </Link>

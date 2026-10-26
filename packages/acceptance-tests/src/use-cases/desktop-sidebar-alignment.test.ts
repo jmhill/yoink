@@ -57,6 +57,20 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeRailLabelOnOneLine('Work');
       await alice.shouldSeeRailLabelOnOneLine('Household Shopping');
     }, 90_000);
+
+    it('shows the full name of a cut-off desktop list on hover', async () => {
+      const name = 'Weekend shopping and household errands for everyone at home';
+      await alice.createNamedList(name);
+      await alice.useDesktopViewport({ width: 1280, height: 800 });
+      await alice.openRailWork();
+      await alice.shouldSeeDesktopAppRail();
+      await alice.shouldSeeCutOffDesktopListNameOnHover(name);
+      await alice.saveWalkthroughScreenshot({
+        story: STORY,
+        step: 'list_name_hover',
+        keepPointer: true,
+      });
+    }, 60_000);
   });
 });
 
@@ -72,6 +86,9 @@ usingDrivers(['http'] as const, (ctx) => {
       }) as BrowserActor;
 
       await expect(actor.shouldSeeDesktopRailColumnsAligned()).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.shouldSeeCutOffDesktopListNameOnHover('Household Shopping')).rejects.toThrow(
         UnsupportedOperationError
       );
     });

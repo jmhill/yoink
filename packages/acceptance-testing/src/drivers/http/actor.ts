@@ -2142,6 +2142,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeDesktopRailColumnsAligned', 'http');
     },
 
+    async shouldSeeCutOffDesktopListNameOnHover(_label: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeCutOffDesktopListNameOnHover', 'http');
+    },
+
     async shouldNotSeeNamedListOverflowOnRail(_label: string): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeNamedListOverflowOnRail', 'http');
     },
@@ -2406,6 +2410,7 @@ export const createHttpActor = (
       story: string;
       step: string;
       includeToasts?: boolean;
+      keepPointer?: boolean;
     }): Promise<void> {
       throw new UnsupportedOperationError('saveWalkthroughScreenshot', 'http');
     },

@@ -1,8 +1,10 @@
+import { Writable } from 'node:stream';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
+import { AUTH_TRY_AGAIN_MESSAGE } from './token-validation-response.js';
 import { createTokenService } from '../domain/token-service.js';
 import { createSessionService } from '../domain/session-service.js';
 import type { Organization } from '../domain/organization.js';
@@ -300,5 +302,123 @@ describe('combinedAuthMiddleware', () => {
       expect(response.statusCode).toBe(401);
       expect(response.json().message).toBe('Not authenticated');
     });
+  });
+});
+
+describe('combined token check responses', () => {
+  const tokenId = '550e8400-e29b-41d4-a716-446655440003';
+  const secret = 'lane-bot-secret-9f3a';
+
+  const start = async (failFind = false) => {
+    const lines: string[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        lines.push(String(chunk));
+        callback();
+      },
+    });
+    const organization: Organization = {
+      id: '550e8400-e29b-41d4-a716-446655440001',
+      name: 'Test Org',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const user: User = {
+      id: '550e8400-e29b-41d4-a716-446655440002',
+      email: 'lane@example.com',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const token: ApiToken = {
+      id: tokenId,
+      userId: user.id,
+      organizationId: organization.id,
+      tokenHash: `fake-hash:${secret}`,
+      name: 'Lane',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const app = Fastify({ logger: { level: 'info', stream } });
+    await app.register(cookie);
+    app.addHook(
+      'preHandler',
+      createCombinedAuthMiddleware({
+        tokenService: createTokenService({
+          organizationStore: createFakeOrganizationStore({ initialOrganizations: [organization] }),
+          userStore: createFakeUserStore({ initialUsers: [user] }),
+          tokenStore: createFakeTokenStore({
+            shouldFailOnFind: failFind,
+            initialTokens: [token],
+          }),
+          passwordHasher: createFakePasswordHasher(),
+          clock,
+        }),
+        sessionService: createSessionService({
+          sessionStore: createFakeUserSessionStore(),
+          userService: createUserService({
+            userStore: createFakeUserStore({ initialUsers: [user] }),
+          }),
+          membershipService: createMembershipService({
+            membershipStore: createFakeOrganizationMembershipStore(),
+            userService: createUserService({
+              userStore: createFakeUserStore({ initialUsers: [user] }),
+            }),
+            organizationStore: createFakeOrganizationStore({ initialOrganizations: [organization] }),
+            clock,
+            idGenerator: createFakeIdGenerator(),
+          }),
+          clock,
+          idGenerator: createFakeIdGenerator(),
+          sessionTtlMs: 1000,
+          refreshThresholdMs: 1000,
+        }),
+        sessionCookieName: USER_SESSION_COOKIE,
+      })
+    );
+    app.get('/test', async () => ({ ok: true }));
+    await app.ready();
+    return { app, lines };
+  };
+
+  it('accepts a valid bearer token and does not call it invalid', async () => {
+    const { app, lines } = await start();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: { authorization: `Bearer ${tokenId}:${secret}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.stringify(response.json())).not.toContain('Invalid token');
+    expect(lines.join('')).not.toContain(secret);
+    await app.close();
+  });
+
+  it('asks the caller to try again when the database fails, even if a session cookie was also sent', async () => {
+    const { app, lines } = await start(true);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: { authorization: `Bearer ${tokenId}:${secret}` },
+      cookies: { [USER_SESSION_COOKIE]: 'not-a-session' },
+    });
+
+    expect(response.statusCode).not.toBe(401);
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ message: AUTH_TRY_AGAIN_MESSAGE });
+    expect(lines.join('')).not.toContain(secret);
+    expect(lines.join('')).not.toContain('Invalid token');
+    await app.close();
+  });
+
+  it('still tells a truly bad token that it is invalid', async () => {
+    const { app } = await start();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: { authorization: 'Bearer not-a-valid-token-zzzz' },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ message: 'Invalid token' });
+    await app.close();
   });
 });

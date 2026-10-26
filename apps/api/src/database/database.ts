@@ -1,62 +1,134 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { createClient, type Client, type InValue } from '@libsql/client';
+import { err, ok, type Result } from 'neverthrow';
+import { createClient, type Config, type InValue } from '@libsql/client';
 import type { DatabaseConfig } from '../config/schema.js';
 import type { Database, QueryResult } from './types.js';
+import { runTursoCall, TURSO_CALL_TIMEOUT_MS } from './run-turso-call.js';
+import { fetchWithTimeout } from './turso-fetch.js';
+
+export type DatabaseOptions = {
+  readonly tursoCallTimeoutMs?: number;
+};
+
+const isInValue = (value: unknown): value is InValue =>
+  value === null ||
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'bigint' ||
+  typeof value === 'boolean' ||
+  value instanceof Uint8Array ||
+  value instanceof ArrayBuffer ||
+  value instanceof Date;
+
+const inArgs = (args: readonly unknown[] | undefined): Result<InValue[], Error> => {
+  const values = args ?? [];
+  const invalid = values.find((value) => !isInValue(value));
+  if (invalid !== undefined) {
+    return err(new Error('Query argument is not a LibSQL value'));
+  }
+  return ok(values.flatMap((value) => (isInValue(value) ? [value] : [])));
+};
+
+const isRow = (row: unknown): row is Record<string, unknown> =>
+  typeof row === 'object' && row !== null;
+
+const toQueryResult = (result: {
+  readonly rows: readonly unknown[];
+  readonly rowsAffected: number;
+  readonly lastInsertRowid?: number | bigint;
+}): QueryResult => ({
+  rows: result.rows.flatMap((row) => (isRow(row) ? [row] : [])),
+  rowsAffected: result.rowsAffected,
+  lastInsertRowid: result.lastInsertRowid ?? undefined,
+});
+
+const clientConfig = (config: DatabaseConfig, timeoutMs: number): Config => {
+  switch (config.type) {
+    case 'turso':
+      return {
+        url: config.url,
+        authToken: config.authToken,
+        fetch: fetchWithTimeout(timeoutMs),
+      };
+    case 'memory':
+      return { url: ':memory:' };
+    case 'file':
+      return { url: `file:${config.path}` };
+    default: {
+      const _never: never = config;
+      void _never;
+      return { url: ':memory:' };
+    }
+  }
+};
+
+const settleCall = <T>(operation: () => Promise<T>): Promise<Result<T, unknown>> =>
+  operation().then(
+    (value) => ok(value),
+    (error: unknown) => err(error)
+  );
 
 /**
  * Create a database connection based on the provided configuration.
  *
  * Supports three modes:
- * - `turso`: Connect to Turso cloud database (requires URL and auth token)
+ * - `turso`: Connect to Turso cloud database (requires URL and auth token).
+ *   Each call times out and retries once on a connection failure.
  * - `file`: Local file-based SQLite via LibSQL
  * - `memory`: In-memory SQLite for tests
  */
-export const createDatabase = (config: DatabaseConfig): Database => {
-  let client: Client;
-
-  switch (config.type) {
-    case 'turso':
-      client = createClient({
-        url: config.url,
-        authToken: config.authToken,
-      });
-      break;
-    case 'memory':
-      client = createClient({ url: ':memory:' });
-      break;
-    case 'file':
-      mkdirSync(dirname(config.path), { recursive: true });
-      client = createClient({ url: `file:${config.path}` });
-      break;
+export const createDatabase = (
+  config: DatabaseConfig,
+  options: DatabaseOptions = {}
+): Database => {
+  if (config.type === 'file') {
+    mkdirSync(dirname(config.path), { recursive: true });
   }
+
+  const timeoutMs = options.tursoCallTimeoutMs ?? TURSO_CALL_TIMEOUT_MS;
+  const client = createClient(clientConfig(config, timeoutMs));
+  const run = <T>(operation: () => Promise<T>): Promise<Result<T, unknown>> =>
+    config.type === 'turso' ? runTursoCall(operation, { timeoutMs }) : settleCall(operation);
 
   return {
     execute: async (query): Promise<QueryResult> => {
-      const result = await client.execute({
-        sql: query.sql,
-        args: (query.args ?? []) as InValue[],
-      });
-      return {
-        rows: result.rows as Record<string, unknown>[],
-        rowsAffected: result.rowsAffected,
-        lastInsertRowid: result.lastInsertRowid ?? undefined,
-      };
+      const args = inArgs(query.args);
+      if (args.isErr()) {
+        return Promise.reject(args.error);
+      }
+      const settled = await run(() =>
+        client.execute({ sql: query.sql, args: [...args.value] })
+      );
+      if (settled.isErr()) {
+        return Promise.reject(settled.error);
+      }
+      return toQueryResult(settled.value);
     },
 
     batch: async (queries, mode = 'write'): Promise<QueryResult[]> => {
-      const results = await client.batch(
-        queries.map((q) => ({
-          sql: q.sql,
-          args: (q.args ?? []) as InValue[],
-        })),
-        mode
-      );
-      return results.map((result) => ({
-        rows: result.rows as Record<string, unknown>[],
-        rowsAffected: result.rowsAffected,
-        lastInsertRowid: result.lastInsertRowid ?? undefined,
+      const statements = queries.map((query) => ({
+        sql: query.sql,
+        args: inArgs(query.args),
       }));
+      const invalid = statements.find((statement) => statement.args.isErr());
+      if (invalid?.args.isErr()) {
+        return Promise.reject(invalid.args.error);
+      }
+      const settled = await run(() =>
+        client.batch(
+          statements.flatMap((statement) =>
+            statement.args.isOk()
+              ? [{ sql: statement.sql, args: [...statement.args.value] }]
+              : []
+          ),
+          mode
+        )
+      );
+      if (settled.isErr()) {
+        return Promise.reject(settled.error);
+      }
+      return settled.value.map(toQueryResult);
     },
 
     close: async () => {

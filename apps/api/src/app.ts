@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { FastifyLoggerOptions, PinoLoggerOptions } from 'fastify/types/logger.js';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -72,7 +73,7 @@ import {
   type CookieConfig,
 } from './config/schema.js';
 import type { Database } from './database/types.js';
-import { createLoggerOptions } from './logging/index.js';
+import { createLoggerOptions, registerRequestCompletedLog } from './logging/index.js';
 import { shouldHandleError } from './logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
 import {
@@ -145,8 +146,18 @@ export type AppDependencies = {
   viaFly?: boolean;
 };
 
-export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log), trustProxy: TRUST_PROXY_HOPS });
+export const createFastifyInstance = (
+  log: LogConfig,
+  logger: PinoLoggerOptions & FastifyLoggerOptions = {}
+): FastifyInstance => {
+  const app = Fastify({
+    logger: { ...createLoggerOptions(log), ...logger },
+    trustProxy: TRUST_PROXY_HOPS,
+    disableRequestLogging: true,
+  });
+  registerRequestCompletedLog(app);
+  return app;
+};
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {

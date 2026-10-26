@@ -1,7 +1,10 @@
+import { Writable } from 'node:stream';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import type { PasswordHasher } from '@yoink/infrastructure';
 import { createAuthMiddleware } from './auth-middleware.js';
+import { AUTH_TRY_AGAIN_MESSAGE } from './token-validation-response.js';
 import { createTokenService } from '../domain/token-service.js';
 import type { Organization } from '../domain/organization.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
@@ -156,5 +159,222 @@ describe('authMiddleware', () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.json().message).toBe('Invalid token');
+  });
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const logEntries = (lines: readonly string[]): Record<string, unknown>[] =>
+  lines
+    .join('')
+    .split('\n')
+    .flatMap((line) => {
+      if (line.trim().length === 0) {
+        return [];
+      }
+      const parsed: unknown = JSON.parse(line);
+      return isRecord(parsed) ? [parsed] : [];
+    });
+
+const validationFailure = (lines: readonly string[]) =>
+  logEntries(lines).find((entry) => entry.msg === 'Token validation failed');
+
+describe('token check responses', () => {
+  const tokenId = '550e8400-e29b-41d4-a716-446655440003';
+  const secret = 'lane-bot-secret-9f3a';
+  const userId = '550e8400-e29b-41d4-a716-446655440002';
+  const organizationId = '550e8400-e29b-41d4-a716-446655440001';
+
+  const organization: Organization = {
+    id: organizationId,
+    name: 'Test Org',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const user: User = {
+    id: userId,
+    email: 'lane@example.com',
+    name: 'Lane',
+    kind: 'agent',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const token: ApiToken = {
+    id: tokenId,
+    userId,
+    organizationId,
+    tokenHash: `fake-hash:${secret}`,
+    name: 'Lane',
+    createdAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  const start = async (options: {
+    failFind?: boolean;
+    revoke?: boolean;
+    hasher?: PasswordHasher;
+  } = {}) => {
+    const lines: string[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        lines.push(String(chunk));
+        callback();
+      },
+    });
+    const tokenStore = createFakeTokenStore({
+      shouldFailOnFind: options.failFind,
+      initialTokens: [token],
+    });
+    if (options.revoke) {
+      await tokenStore.revoke(tokenId, '2026-10-09T12:00:00.000Z');
+    }
+
+    const app = Fastify({ logger: { level: 'info', stream } });
+    app.addHook(
+      'preHandler',
+      createAuthMiddleware({
+        tokenService: createTokenService({
+          organizationStore: createFakeOrganizationStore({ initialOrganizations: [organization] }),
+          userStore: createFakeUserStore({ initialUsers: [user] }),
+          tokenStore,
+          passwordHasher: options.hasher ?? createFakePasswordHasher(),
+          clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
+        }),
+      })
+    );
+    app.get('/test', async () => ({ ok: true }));
+    await app.ready();
+    return { app, lines };
+  };
+
+  const bearer = (value: string) => ({ authorization: `Bearer ${value}` });
+
+  it('accepts a valid token and does not call it invalid', async () => {
+    const { app, lines } = await start();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(`${tokenId}:${secret}`),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.stringify(response.json())).not.toContain('Invalid token');
+    expect(lines.join('')).not.toContain(secret);
+    await app.close();
+  });
+
+  it('asks the caller to try again when the database fails, and does not say the token is invalid', async () => {
+    const { app, lines } = await start({ failFind: true });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(`${tokenId}:${secret}`),
+    });
+
+    expect(response.statusCode).not.toBe(401);
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ message: AUTH_TRY_AGAIN_MESSAGE });
+    expect(response.headers['retry-after']).toBe('1');
+    const failure = validationFailure(lines);
+    expect(failure).toMatchObject({
+      reason: 'TOKEN_STORAGE_ERROR',
+      tokenId,
+      error: { message: 'Find failed' },
+    });
+    expect(typeof failure?.durationMs).toBe('number');
+    expect(lines.join('')).not.toContain(secret);
+    await app.close();
+  });
+
+  it('asks the caller to try again when the hash comparison throws', async () => {
+    const { app, lines } = await start({
+      hasher: {
+        hash: () => Promise.resolve('unused'),
+        compare: () => {
+          throw new Error('bcrypt stalled');
+        },
+      },
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(`${tokenId}:${secret}`),
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json().message).toBe(AUTH_TRY_AGAIN_MESSAGE);
+    expect(validationFailure(lines)).toMatchObject({
+      reason: 'TOKEN_HASH_ERROR',
+      tokenId,
+      error: { message: 'bcrypt stalled' },
+    });
+    expect(lines.join('')).not.toContain(secret);
+    await app.close();
+  });
+
+  it('still tells a truly bad token that it is invalid', async () => {
+    const { app, lines } = await start();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(`${tokenId}:wrong-secret-value`),
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ message: 'Invalid token' });
+    expect(validationFailure(lines)).toMatchObject({
+      reason: 'INVALID_SECRET',
+      tokenId,
+    });
+    expect(lines.join('')).not.toContain('wrong-secret-value');
+    await app.close();
+  });
+
+  it('logs not-found, revoked, and malformed tokens without the secret', async () => {
+    const missing = await start();
+    const missingResponse = await missing.app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer('missing-token-id:missing-secret-value'),
+    });
+    expect(missingResponse.statusCode).toBe(401);
+    expect(missingResponse.json().message).toBe('Invalid token');
+    expect(validationFailure(missing.lines)).toMatchObject({
+      reason: 'TOKEN_NOT_FOUND',
+      tokenId: 'missing-token-id',
+      subject: 'token',
+    });
+    expect(missing.lines.join('')).not.toContain('missing-secret-value');
+    await missing.app.close();
+
+    const revoked = await start({ revoke: true });
+    const revokedResponse = await revoked.app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(`${tokenId}:${secret}`),
+    });
+    expect(revokedResponse.statusCode).toBe(401);
+    expect(revokedResponse.json().message).toBe('Invalid token');
+    expect(validationFailure(revoked.lines)).toMatchObject({
+      reason: 'TOKEN_REVOKED',
+      tokenId,
+    });
+    expect(revoked.lines.join('')).not.toContain(secret);
+    await revoked.app.close();
+
+    const malformed = await start();
+    const malformedToken = 'not-a-valid-token-zzzz';
+    const malformedResponse = await malformed.app.inject({
+      method: 'GET',
+      url: '/test',
+      headers: bearer(malformedToken),
+    });
+    expect(malformedResponse.statusCode).toBe(401);
+    expect(malformedResponse.json().message).toBe('Invalid token');
+    expect(validationFailure(malformed.lines)).toMatchObject({
+      reason: 'INVALID_TOKEN_FORMAT',
+    });
+    expect(malformed.lines.join('')).not.toContain(malformedToken);
+    await malformed.app.close();
   });
 });

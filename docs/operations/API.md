@@ -1,6 +1,10 @@
 # API
 
 Yoink’s HTTP API is token-authenticated (`Authorization: Bearer <tokenId:secret>`).
+A bad, missing, or revoked token is `401` `{ "message": "Invalid token" }`.
+A slow or failing database, or a hash comparison that fails, is `503`
+`{ "message": "Authentication is temporarily unavailable. Try again." }`
+with `Retry-After: 1`. Treat that `503` as “try again”; the token is still valid.
 List endpoints never omit a page marker: every list response includes `hasMore`
 (boolean) and `nextCursor` (`string` or explicit `null` when the page is the
 last). They also include `total` (the matching row count).

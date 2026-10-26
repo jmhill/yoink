@@ -44,3 +44,5 @@ fly secrets set SENTRY_LOGS_ENABLED=false -a jhtc-yoink-api
 Authorization headers, cookies, `x-api-key`, session / `yoink_session` values, and token values are redacted before a log is serialized, so they should not appear in Sentry.
 
 Sentry keeps logs for **30 days** on Developer, Team, and Business plans. The searchable query window is shorter on some plans (7 days on Developer, 14 days on Team, 30 days on Business).
+
+Each API request writes `incoming request` (`url`, `method`) and `request completed` (`url`, `statusCode`, `responseTime`) as top-level fields, so Sentry can search them. A failed token check adds `Token validation failed` with `reason`, `durationMs`, and the token id when one was parsed. The secret is never logged. Turso calls time out after 5 seconds and are tried once more on a connection failure; a SQL error is not retried. After that, auth answers `503` and asks the caller to try again.

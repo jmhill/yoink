@@ -13,7 +13,6 @@ import {
 import type { Admin } from '../../dsl/index.js';
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './page-objects.js';
 import { SignupPage } from './page-objects.js';
-import { openTestBrowserContext } from './test-browser-context.js';
 import {
   OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
@@ -69,7 +68,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     if (!browser) {
       throw new Error('Driver not initialized. Call setup() first.');
     }
-    context = await openTestBrowserContext(browser, {
+    context = await browser.newContext({
       baseURL: deps.baseUrl,
       reducedMotion: 'reduce',
     });
@@ -460,7 +459,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
         throw new Error('Driver not initialized. Call setup() first.');
       }
       if (!unsignedContext) {
-        unsignedContext = await openTestBrowserContext(browser, {
+        unsignedContext = await browser.newContext({
           baseURL: deps.baseUrl,
           reducedMotion: 'reduce',
         });

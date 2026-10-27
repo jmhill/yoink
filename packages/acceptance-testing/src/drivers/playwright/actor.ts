@@ -89,6 +89,7 @@ import {
   SnoozedPage,
   TasksPage,
 } from './page-objects.js';
+import { proposedGroupExpectation } from './proposed-rail-check.js';
 import {
   OPEN_DIALOG_CONTENT,
   OPEN_SHEET_CONTENT,
@@ -272,6 +273,38 @@ const waitForReviewReady = async (page: Page): Promise<void> => {
   await page.waitForURL((url) => new URL(url).pathname === '/projects');
   await expect(page.locator('[data-review-ready]')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
+};
+
+/**
+ * Phone screens leave the desktop rail unmounted (CSS hidden) until the
+ * Tasks drawer is open. Waiting for a Proposed marker there never resolves.
+ */
+const expectMountedAppRail = async (page: Page) => {
+  const rail = page.locator('[data-app-rail]:visible');
+  await expect(rail, 'App rail is not mounted on this screen').toBeVisible();
+  return rail;
+};
+
+/**
+ * `data-rail-proposals-ready` lives on the rail that is actually showing.
+ * An empty proposal list still sets it; a missing rail must not wait for it.
+ */
+const expectRailProposalsLoaded = async (page: Page) => {
+  const rail = await expectMountedAppRail(page);
+  await expect(
+    rail.and(page.locator('[data-rail-proposals-ready]')),
+    'App rail has not finished loading proposals'
+  ).toBeVisible();
+  return rail;
+};
+
+/** The group node is absent when there are no proposals. Do not wait for it. */
+const expectProposedGroupOmitted = async (page: Page): Promise<void> => {
+  const rail = await expectRailProposalsLoaded(page);
+  await expect(
+    rail.locator('[data-rail-proposed-group]'),
+    'Proposed group should be omitted when it has no projects'
+  ).toHaveCount(0);
 };
 
 const expandAllProjectsList = async (page: Page): Promise<void> => {
@@ -3287,10 +3320,11 @@ export const createPlaywrightActor = (
     },
 
     async openProposedGroup(): Promise<void> {
-      const summary = page.locator('[data-app-rail]:visible [data-rail-proposed-summary]');
-      await summary.scrollIntoViewIfNeeded();
-      await expect(summary).toBeVisible();
-      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
+      const rail = await expectRailProposalsLoaded(page);
+      const summary = rail.locator('[data-rail-proposed-summary]');
+      await expect(summary, 'Proposed rail group is not shown').toBeVisible();
+      const group = rail.locator('[data-rail-proposed-group]');
+      await expect(group, 'Proposed rail group is not shown').toBeVisible();
       const open = await group.getAttribute('open');
       if (open === null) {
         await summary.click();
@@ -3298,38 +3332,45 @@ export const createPlaywrightActor = (
     },
 
     async shouldSeeProjectInProposedGroup(name: string): Promise<void> {
-      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
-      await expect(group).toBeVisible();
-      const item = group.locator(`[data-rail-item="proposed-project"][data-rail-label="${name}"]`);
-      await item.scrollIntoViewIfNeeded();
-      await expect(item).toBeVisible();
+      const rail = await expectRailProposalsLoaded(page);
+      const item = rail.locator(
+        `[data-rail-proposed-group] [data-rail-item="proposed-project"][data-rail-label="${name}"]`
+      );
+      await expect(item, `Proposed rail row "${name}" is not visible`).toBeVisible();
     },
 
     async shouldNotSeeProposedGroupOnRail(): Promise<void> {
-      await expect(
-        page.locator('[data-app-rail][data-rail-proposals-ready]:visible')
-      ).toBeVisible();
-      await expect(page.locator('[data-app-rail]:visible [data-rail-proposed-group]')).toHaveCount(0);
+      await expectProposedGroupOmitted(page);
     },
 
     async shouldSeeProposedGroupNames(names: string[]): Promise<void> {
-      await expect(
-        page.locator('[data-app-rail][data-rail-proposals-ready]:visible')
-      ).toBeVisible();
-      const items = page.locator(
-        '[data-app-rail]:visible [data-rail-item="proposed-project"]'
-      );
-      await expect.poll(async () => items.evaluateAll((nodes) =>
-        nodes.map((node) => node.getAttribute('data-rail-label'))
-      )).toEqual(names);
-      for (const name of names) {
-        const item = page.locator(
-          `[data-app-rail]:visible [data-rail-item="proposed-project"][data-rail-label="${name}"]`
-        );
-        await item.scrollIntoViewIfNeeded();
-        await expect(item).toBeVisible();
+      const expectation = proposedGroupExpectation(names);
+      switch (expectation) {
+        case 'omitted':
+          await expectProposedGroupOmitted(page);
+          return;
+        case 'rows':
+          break;
+        default: {
+          const neverCheck: never = expectation;
+          return neverCheck;
+        }
       }
-      const group = page.locator('[data-app-rail]:visible [data-rail-proposed-group]');
+      const rail = await expectRailProposalsLoaded(page);
+      const items = rail.locator('[data-rail-item="proposed-project"]');
+      await expect
+        .poll(async () =>
+          items.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-rail-label')))
+        )
+        .toEqual(names);
+      for (const name of names) {
+        await expect(
+          rail.locator(`[data-rail-item="proposed-project"][data-rail-label="${name}"]`),
+          `Proposed rail row "${name}" is not visible`
+        ).toBeVisible();
+      }
+      const group = rail.locator('[data-rail-proposed-group]');
+      await expect(group, 'Proposed rail group is missing its rows').toBeVisible();
       await group.evaluate((node) => {
         node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       });

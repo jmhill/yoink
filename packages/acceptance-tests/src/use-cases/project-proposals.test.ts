@@ -6,7 +6,8 @@ import { ForbiddenError } from '@yoink/acceptance-testing';
  * Projects plan story 16 (#148): Bots propose projects.
  *
  * Bots POST proposed. Process mixes them with captures. People confirm
- * or turn down. Default list / rail / Review hide proposed and declined.
+ * or turn down. The default project list hides proposed and declined.
+ * Review, All projects, and the rail show pending proposals under Proposed.
  * Bots list their own pending and declined proposals in one GET.
  */
 
@@ -205,7 +206,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
     }, 60_000);
 
-    it('hides proposals from the default list and rail', async () => {
+    it('keeps proposals out of the default list and shows them under Proposed', async () => {
       await lane.createProject({ name: 'Harbor shed', status: 'proposed' });
       const garden = await justin.createProject({ name: 'Garden' });
 
@@ -213,10 +214,15 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(working.map((project) => project.name)).toEqual(['Garden']);
 
       await justin.useDesktopViewport(DESKTOP);
+      await justin.openReview();
+      await justin.shouldSeeReviewProposal({ name: 'Harbor shed', proposedBy: 'Lane' });
       await justin.goToAllProjects();
       await justin.shouldSeeProjectOnAllProjects({ name: 'Garden', status: 'active' });
+      await justin.shouldSeeProjectInAllProjectsProposed('Harbor shed');
       await justin.shouldSeeProjectOnRail(garden.name);
-    }, 60_000);
+      await justin.openProposedGroup();
+      await justin.shouldSeeProjectInProposedGroup('Harbor shed');
+    }, 90_000);
 
     it('saves phone walkthrough shots', async () => {
       const proposed = await lane.createProject({

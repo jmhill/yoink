@@ -251,21 +251,24 @@ export const waitForFinishedPageAnimations = async (input: {
     evaluate: (pageFunction: string) => Promise<unknown>;
   };
 }): Promise<void> => {
+  // A cancelled or paused animation's `finished` promise never settles.
+  // Cap the wait the same way open dialogs and drawers do.
   await input.page.evaluate(`(() => {
-    const animations = document.getAnimations();
-    return Promise.all(
-      animations.map((animation) => {
-        const effect = animation.effect;
-        if (
-          effect !== null &&
-          typeof effect.getComputedTiming === 'function' &&
-          effect.getComputedTiming().iterations === Infinity
-        ) {
-          return undefined;
-        }
-        return animation.finished.catch(() => undefined);
-      })
-    );
+    const pending = document.getAnimations().flatMap((animation) => {
+      const effect = animation.effect;
+      if (
+        effect !== null &&
+        typeof effect.getComputedTiming === 'function' &&
+        effect.getComputedTiming().iterations === Infinity
+      ) {
+        return [];
+      }
+      return [animation.finished.catch(() => undefined)];
+    });
+    return Promise.race([
+      Promise.all(pending),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
   })()`);
 };
 

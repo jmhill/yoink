@@ -4,6 +4,7 @@ import {
   groupWaitingProjects,
   partitionReviewSections,
   reviewAttentionCount,
+  reviewAttentionTotal,
   reviewSectionOf,
   reviewVersionOf,
   waitingGroupKey,
@@ -137,6 +138,10 @@ describe('review sections', () => {
       reasons: ['waiting'],
     });
     expect(reviewAttentionCount([needs, both, quiet, waiting])).toBe(3);
+    expect(reviewAttentionTotal([], 4)).toBe(4);
+    expect(reviewAttentionTotal([needs], 4)).toBe(5);
+    expect(reviewAttentionTotal([needs], 0)).toBe(1);
+    expect(reviewAttentionTotal([waiting], 4)).toBe(4);
     expect(reviewVersionOf([needs, quiet])).toBe(
       `${needs.project.id}:noNextAction:${needs.lastChangeAt}|${quiet.project.id}:quiet:${quiet.lastChangeAt}`
     );

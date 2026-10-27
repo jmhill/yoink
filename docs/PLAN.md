@@ -10,6 +10,7 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 
 ## Current Status
 
+**Work: due items above next actions (#212)** - Complete ✓ (Work screen Due group is first on phone and desktop. Overdue before due today, keeping the existing order within each. Empty Due is hidden. A task that is due and a next action shows once, under Due. Header counts stay the API totals. Today, Upcoming, and My tasks are unchanged. Ordering is `workScreenSections` in `apps/web/src/lib/work-screen.ts`.)
 **Desktop sidebar alignment (#205)** - Complete ✓ (desktop rail is a four-column grid on one baseline: icons, labels, counts, and ⋯ share left edges; labels stay one line; no wrap / overlap / spill. A desktop list name cut off with an ellipsis shows its full name on hover. Mobile Tasks drawer still wraps. Desktop sidebar is `w-80` so typical names fit.)
 **Phases 1-6: Foundation through Observability** - Complete ✓
 **Phase 7: Authentication Overhaul** - Complete ✓
@@ -106,6 +107,8 @@ For initial product vision and roadmap, see [PRODUCT_VISION.md](./design/PRODUCT
 
 Recent updates:
 - Show proposed projects on Review, All projects, and the sidebar (#204): screen only. Review’s Proposed section reuses `useProcessCounts` (`GET /api/projects?status=proposed`) and the existing Confirm / Turn down sheet. The rail’s Proposed group stays open and is omitted when empty, so the heading never appears without its projects. Walkthrough checks wait for that group only when proposals exist, and a missing rail fails instead of waiting. Review’s “N need attention” adds those proposals to the existing attention count (`reviewAttentionTotal`). All projects and the phone drawer use the same group. Default `GET /api/projects` and project pickers are unchanged. Walkthrough shots under `docs/pr-artifacts/proposed-projects/`.
+
+- Work: due items above next actions (#212): screen-only. `workScreenSections` orders Due first (overdue, then due today, due-list order then due next actions the due query left out). A task in both lists is one Due row and is dropped from Next actions. An empty group is omitted, so nothing due has no Due heading and next actions start at the top. Header “N next actions · N due” still uses the API totals. Today, Upcoming, and My tasks are unchanged. Walkthrough shots under `docs/pr-artifacts/work-due-first/`.
 
 - CI audit and E2E unblock (GHSA-587h-7wmj-h5pm, GHSA-mrhx-c7xc-m3w5): `pnpm.overrides` pins `vite` to `^6.4.4` (resolved 6.4.5) and `launch-editor` to `>=2.14.2`. Every zod below 4.6.6 is affected; Zod 3 has no patched release, so `GHSA-mrhx-c7xc-m3w5` is ignored until the Zod 4 upgrade (#207). Process E2E Promote uses a due date a week ahead of today. Detect Changes fetches full history and diffs against main locally. No app or domain change.
 

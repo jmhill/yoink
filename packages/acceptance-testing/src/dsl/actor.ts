@@ -747,6 +747,11 @@ export type BrowserActorOperations = {
   shouldSeeNowDueRows(rows: NowDueRow[]): Promise<void>;
 
   /**
+   * Assert Now section names in DOM order. An omitted name is not on screen.
+   */
+  shouldSeeNowSections(names: Array<'due' | 'next-actions'>): Promise<void>;
+
+  /**
    * Assert the single empty-Now card is showing.
    */
   shouldSeeNowEmpty(): Promise<void>;

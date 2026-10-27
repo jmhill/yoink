@@ -8,8 +8,11 @@ import { UnsupportedOperationError } from '@yoink/acceptance-testing';
  * Polly lock (Sun Oct 11): /work now; phone Work tab opens it; desktop
  * Now sits above Today. Mine is a heading toggle (`?mine=true`), reset
  * to everyone on each visit. Owner labels hide the viewer and unowned
- * rows. Next actions: dated first, then project name. Due is Today’s
- * rule minus shown next actions. List counts ignore Mine and count
+ * rows. Next actions: dated first, then project name. The Due API is
+ * Today’s rule minus shown next actions. On the screen, Due is the
+ * first group: overdue, then due today, in the existing order within
+ * each, and a due next action appears only there. List counts ignore
+ * Mine and count
  * named lists only. Completing a next action from Now offers What’s next.
  */
 
@@ -302,16 +305,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowMinePressed(false);
       await alice.shouldSeeNowSubcopy(nowSubcopyFor(4, 3));
-      await alice.shouldSeeNowNextActionRows([
-        { title: 'Alpha next', project: 'Alpha', owner: '' },
-        { title: 'Bravo next', project: 'Bravo', owner: '' },
-        { title: 'Charlie next', project: 'Charlie', owner: '' },
-        { title: 'Delta next', project: 'Delta', owner: 'Lane' },
-      ]);
+      await alice.shouldSeeNowSections(['due', 'next-actions']);
       await alice.shouldSeeNowDueRows([
         { title: 'Alice overdue loose', owner: '' },
         { title: 'Echo waiting next', owner: '' },
         { title: 'Golf leftover', owner: '' },
+        { title: 'Alpha next', owner: '' },
+      ]);
+      await alice.shouldSeeNowNextActionRows([
+        { title: 'Bravo next', project: 'Bravo', owner: '' },
+        { title: 'Charlie next', project: 'Charlie', owner: '' },
+        { title: 'Delta next', project: 'Delta', owner: 'Lane' },
       ]);
       await alice.shouldSeeRailItems([
         'Capture',
@@ -345,10 +349,12 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.shouldSeeNowReady('me');
       await alice.shouldSeeNowMinePressed(true);
       await alice.shouldSeeNowSubcopy(nowSubcopyFor(1, 1));
-      await alice.shouldSeeNowNextActionRows([
-        { title: 'Alpha next', project: 'Alpha', owner: '' },
+      await alice.shouldSeeNowSections(['due']);
+      await alice.shouldSeeNowDueRows([
+        { title: 'Alice overdue loose', owner: '' },
+        { title: 'Alpha next', owner: '' },
       ]);
-      await alice.shouldSeeNowDueRows([{ title: 'Alice overdue loose', owner: '' }]);
+      await alice.shouldSeeNowNextActionRows([]);
       await alice.shouldSeeRailListCount(seeded.chores.id, 1);
       await alice.shouldSeeRailListCount(seeded.weekend.id, 2);
       await alice.shouldSeeRailListCount('unlisted', 7);
@@ -356,8 +362,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('all');
       await alice.shouldSeeNowMinePressed(false);
+      await alice.shouldSeeNowSections(['due', 'next-actions']);
       await alice.shouldSeeNowNextActionRows([
-        { title: 'Alpha next', project: 'Alpha', owner: '' },
         { title: 'Bravo next', project: 'Bravo', owner: '' },
         { title: 'Charlie next', project: 'Charlie', owner: '' },
         { title: 'Delta next', project: 'Delta', owner: 'Lane' },
@@ -378,8 +384,14 @@ usingDrivers(['playwright'] as const, (ctx) => {
       await alice.useMobileViewport();
       await alice.openMobileBottomTab('work');
       await alice.shouldSeeNowReady('all');
+      await alice.shouldSeeNowSections(['due', 'next-actions']);
+      await alice.shouldSeeNowDueRows([
+        { title: 'Alice overdue loose', owner: '' },
+        { title: 'Echo waiting next', owner: '' },
+        { title: 'Golf leftover', owner: '' },
+        { title: 'Alpha next', owner: '' },
+      ]);
       await alice.shouldSeeNowNextActionRows([
-        { title: 'Alpha next', project: 'Alpha', owner: '' },
         { title: 'Bravo next', project: 'Bravo', owner: '' },
         { title: 'Charlie next', project: 'Charlie', owner: '' },
         { title: 'Delta next', project: 'Delta', owner: 'Lane' },
@@ -518,16 +530,17 @@ usingDrivers(['playwright'] as const, (ctx) => {
       });
       await alice.toggleNowMine();
       await alice.shouldSeeNowReady('all');
-      await alice.shouldSeeNowNextActionRows([
-        { title: 'Alpha next', project: 'Alpha', owner: '' },
-        { title: 'Bravo next', project: 'Bravo', owner: '' },
-        { title: 'Charlie next', project: 'Charlie', owner: '' },
-        { title: 'Delta next', project: 'Delta', owner: 'Lane' },
-      ]);
+      await alice.shouldSeeNowSections(['due', 'next-actions']);
       await alice.shouldSeeNowDueRows([
         { title: 'Alice overdue loose', owner: '' },
         { title: 'Echo waiting next', owner: '' },
         { title: 'Golf leftover', owner: '' },
+        { title: 'Alpha next', owner: '' },
+      ]);
+      await alice.shouldSeeNowNextActionRows([
+        { title: 'Bravo next', project: 'Bravo', owner: '' },
+        { title: 'Charlie next', project: 'Charlie', owner: '' },
+        { title: 'Delta next', project: 'Delta', owner: 'Lane' },
       ]);
       await alice.openNowListsSheet();
       await alice.shouldSeeNowListRows([
@@ -606,6 +619,7 @@ usingDrivers(['http'] as const, (ctx) => {
       await expect(actor.openRailWork()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.toggleNowMine()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeNowReady('all')).rejects.toThrow(UnsupportedOperationError);
+      await expect(actor.shouldSeeNowSections(['due'])).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.openNowListsSheet()).rejects.toThrow(UnsupportedOperationError);
       await expect(actor.shouldSeeRailLabelOnOneLine('Weekend')).rejects.toThrow(
         UnsupportedOperationError

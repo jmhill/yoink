@@ -19,19 +19,18 @@ overrides:
   browserslist: '>=4.28.7'
   vite: '^6.4.4'
   launch-editor: '>=2.14.2'
+  # Fastify 5 resolves find-my-way 9.x; 9.7.0 fixes GHSA-c96f-x56v-gq3h.
+  find-my-way: '>=9.7.0'
+
+peerDependencyRules:
+  allowedVersions:
+    # @ts-rest/fastify@3.52.1 peers on Fastify 4. There is no stable Fastify 5 release.
+    '@ts-rest/fastify>fastify': '5'
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-jx2c-rxcm-jvmq
-    - GHSA-83w8-p2f5-377r
-    - GHSA-c96f-x56v-gq3h
-    - GHSA-f88m-g3jw-g9cj
-    # Fastify 4 has no patch; these are fixed only in 5.12.2.
-    - GHSA-667r-xxjv-c9mm
-    - GHSA-p68q-wchp-6fh7
-    - GHSA-hwr6-493r-vm6h
-    - GHSA-9q9j-q6p8-xq58
-    # braces has no patched release.
+    # braces 3.0.3 is still the latest npm release. GHSA-vfj7-8cjw-p6xm has no patched version
+    # (withdrawn 2026-10-23 as not practically exploitable). Kept so a republish does not fail audit.
     - GHSA-vfj7-8cjw-p6xm
     # Every zod below 4.6.6 is affected. Zod 3 has no patched release. Tracked by the Zod 4 upgrade (#207).
     - GHSA-mrhx-c7xc-m3w5

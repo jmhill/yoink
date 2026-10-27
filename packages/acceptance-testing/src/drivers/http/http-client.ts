@@ -92,10 +92,15 @@ export const createHttpClient = (baseUrl: string): HttpClient => {
     return cookies;
   };
 
-  const request = async (options: RequestOptions): Promise<HttpResponse> => {
+    const request = async (options: RequestOptions): Promise<HttpResponse> => {
     const cookieHeader = buildCookieHeader();
+    // Fastify 5 rejects DELETE (and any method) whose Content-Type is
+    // application/json when the body is empty. The web client already omits
+    // that header when there is no body; this driver matches it.
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(options.payload === undefined
+        ? {}
+        : { 'Content-Type': 'application/json' }),
       ...options.headers,
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
     };

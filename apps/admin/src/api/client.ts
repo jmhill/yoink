@@ -4,12 +4,11 @@ import {
   adminProtectedContract,
 } from '@yoink/api-contracts';
 
+// No Content-Type base header. ts-rest adds application/json only when a
+// body is present. Fastify 5 rejects an empty JSON body, including DELETE.
 const commonOptions = {
   baseUrl: '',
   credentials: 'include' as const,
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
 };
 
 /**

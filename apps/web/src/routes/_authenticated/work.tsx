@@ -18,7 +18,8 @@ import { isBlockingQueryFailure } from '@/lib/live-query';
 import { listsRowLabel, localDateLabel, nowSubcopy, ownerLabelFor } from '@/lib/now';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { TASK_SURFACE_TEST_ID } from '@/lib/inbox-pane';
-import { viewerTimeZone } from '@/lib/viewer-today';
+import { calendarDateInTimeZone, viewerTimeZone } from '@/lib/viewer-today';
+import { workScreenSectionCopy, workScreenSections } from '@/lib/work-screen';
 
 const searchSchema = z.object({
   mine: z.boolean().optional(),
@@ -127,10 +128,10 @@ function WorkPage() {
     : null;
 
   const ownerOf = (task: Task) => ownerLabelFor(task, currentUserId, members);
-  const shownNextIds = new Set(nextActions.map((item) => item.task.id));
-  const dueRows = dueTasks.filter((task) => !shownNextIds.has(task.id));
+  const today = calendarDateInTimeZone(new Date(), timeZone);
+  const sections = workScreenSections({ nextActions, dueTasks, today });
 
-  const bothEmpty = ready && nextActions.length === 0 && dueRows.length === 0;
+  const bothEmpty = ready && nextActions.length === 0 && dueTasks.length === 0;
 
   return (
     <div
@@ -188,31 +189,25 @@ function WorkPage() {
         </Card>
       ) : (
         <div className="space-y-8">
-          <NowSection
-            name="next-actions"
-            title="Next actions"
-            emptyMessage="No next actions"
-            rows={nextActions.map((item) => ({
-              task: item.task,
-              projectLabel: item.project.name,
-              ownerLabel: ownerOf(item.task),
-            }))}
-            onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
-            onEdit={setEditingTask}
-            isLoading={completeMutation.isPending}
-          />
-          <NowSection
-            name="due"
-            title="Due"
-            emptyMessage="Nothing due"
-            rows={dueRows.map((task) => ({
-              task,
-              ownerLabel: ownerOf(task),
-            }))}
-            onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
-            onEdit={setEditingTask}
-            isLoading={completeMutation.isPending}
-          />
+          {sections.map((section) => {
+            const copy = workScreenSectionCopy(section.name);
+            return (
+              <NowSection
+                key={section.name}
+                name={section.name}
+                title={copy.title}
+                emptyMessage={copy.emptyMessage}
+                rows={section.rows.map((row) => ({
+                  task: row.task,
+                  projectLabel: row.projectLabel,
+                  ownerLabel: ownerOf(row.task),
+                }))}
+                onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+                onEdit={setEditingTask}
+                isLoading={completeMutation.isPending}
+              />
+            );
+          })}
         </div>
       )}
 

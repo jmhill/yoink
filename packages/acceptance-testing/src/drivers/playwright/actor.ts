@@ -1716,6 +1716,18 @@ export const createPlaywrightActor = (
       }).toEqual(rows);
     },
 
+    async shouldSeeNowSections(names: Array<'due' | 'next-actions'>): Promise<void> {
+      await expect.poll(async () => {
+        const sections = page.locator('[data-now-section]');
+        const count = await sections.count();
+        const found: string[] = [];
+        for (let index = 0; index < count; index += 1) {
+          found.push((await sections.nth(index).getAttribute('data-now-section')) ?? '');
+        }
+        return found;
+      }).toEqual(names);
+    },
+
     async shouldSeeNowEmpty(): Promise<void> {
       await expect(page.getByText('Nothing in Now', { exact: true })).toBeVisible();
       await expect(page.locator('[data-now-section]')).toHaveCount(0);

@@ -1259,6 +1259,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeNowDueRows', 'http');
     },
 
+    async shouldSeeNowSections(_names: Array<'due' | 'next-actions'>): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeNowSections', 'http');
+    },
+
     async shouldSeeNowEmpty(): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeNowEmpty', 'http');
     },

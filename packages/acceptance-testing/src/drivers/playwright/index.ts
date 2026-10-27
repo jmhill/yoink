@@ -22,6 +22,7 @@ import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
 import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
+import { openTestBrowserContext } from './test-browser-context.js';
 
 type SignupSession = {
   user: { id: string };
@@ -160,7 +161,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       };
 
       // Create an isolated browser context for this actor (cookie isolation)
-      const context = await browser.newContext({
+      const context = await openTestBrowserContext(browser, {
         baseURL: config.baseUrl,
         reducedMotion: 'reduce',
       });
@@ -278,7 +279,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       };
 
       // Create an isolated browser context for this actor (cookie isolation)
-      const context = await browser.newContext({
+      const context = await openTestBrowserContext(browser, {
         baseURL: config.baseUrl,
         reducedMotion: 'reduce',
       });
@@ -370,6 +371,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       if (!browser) {
         throw new Error('Driver not initialized. Call setup() first.');
       }
+      const launched = browser;
 
       // Create a dedicated context for anonymous actor
       let context: BrowserContext | null = null;
@@ -378,7 +380,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const getPage = async (): Promise<Page> => {
         if (!page) {
           if (!context) {
-            context = await browser!.newContext({
+            context = await openTestBrowserContext(launched, {
               baseURL: config.baseUrl,
               reducedMotion: 'reduce',
             });

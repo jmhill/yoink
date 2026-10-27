@@ -16,17 +16,17 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fastify/cookie": "^9.4.0",
-    "@fastify/helmet": "11",
-    "@fastify/rate-limit": "9",
-    "@fastify/static": "^7.0.4",
+    "@fastify/cookie": "^11.1.3",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.2.1",
+    "@fastify/static": "^10.1.1",
     "@libsql/client": "^0.15.15",
     "@sentry/node": "^10.32.1",
     "@simplewebauthn/server": "^13.2.2",
-    "@ts-rest/fastify": "^3.52.0",
+    "@ts-rest/fastify": "3.52.1",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",
-    "fastify": "^4.28.0",
+    "fastify": "^5.12.7",
     "neverthrow": "^8.2.0",
     "zod": "^3.24.0"
   },

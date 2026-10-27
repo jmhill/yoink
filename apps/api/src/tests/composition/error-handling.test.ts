@@ -41,4 +41,130 @@ describe('Error Response Format', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ message: 'Not found' });
   });
+
+  it('pins the Fastify message for malformed JSON', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/captures',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '{',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_INVALID_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body is not valid JSON but content-type is set to 'application/json'",
+    });
+  });
+
+  it('accepts a JSON DELETE whose body is empty and undeclared', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ message: 'Capture not found' });
+  });
+
+  it('rejects a JSON DELETE that declares an empty body', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+        'content-length': '0',
+      },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_EMPTY_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body cannot be empty when content-type is set to 'application/json'",
+    });
+  });
+
+  it('rejects malformed JSON on DELETE', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '{',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_INVALID_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body is not valid JSON but content-type is set to 'application/json'",
+    });
+  });
+
+  it('rejects an empty JSON body on POST', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/captures',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_EMPTY_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body cannot be empty when content-type is set to 'application/json'",
+    });
+  });
+
+  it('still accepts a DELETE that does not claim to be JSON', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ message: 'Capture not found' });
+  });
+
+  it('rejects a malformed URL before the not-found handler', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/%',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_BAD_URL',
+      error: 'Bad Request',
+      message: "'/%' is not a valid url component",
+    });
+  });
 });

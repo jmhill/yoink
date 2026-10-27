@@ -38,12 +38,21 @@ export const cacheControlForStaticPath = (
   return undefined;
 };
 
+type StaticCacheReply = {
+  header: (name: string, value: string) => void;
+};
+
+/**
+ * @fastify/static v10 calls setHeaders with the Fastify reply.
+ * reply.header is what that reply exposes; Node's setHeader is not.
+ */
 export const applyStaticCacheHeaders = (
-  res: { setHeader: (name: string, value: string) => void },
+  reply: StaticCacheReply,
   filePath: string
 ): void => {
   const cacheControl = cacheControlForStaticPath(filePath);
-  if (cacheControl) {
-    res.setHeader('Cache-Control', cacheControl);
+  if (cacheControl === undefined) {
+    return;
   }
+  reply.header('Cache-Control', cacheControl);
 };

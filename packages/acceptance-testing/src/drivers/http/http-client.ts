@@ -92,10 +92,15 @@ export const createHttpClient = (baseUrl: string): HttpClient => {
     return cookies;
   };
 
-  const request = async (options: RequestOptions): Promise<HttpResponse> => {
+    const request = async (options: RequestOptions): Promise<HttpResponse> => {
     const cookieHeader = buildCookieHeader();
+    // Match the web client: send application/json only when there is a body.
+    // A bodyless request is valid either way. The API still accepts a DELETE
+    // that sends the header with no body.
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(options.payload === undefined
+        ? {}
+        : { 'Content-Type': 'application/json' }),
       ...options.headers,
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
     };

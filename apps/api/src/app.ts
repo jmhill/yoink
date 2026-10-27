@@ -82,10 +82,9 @@ import {
 } from './shared/rate-limit-policy.js';
 import { createInMemoryRateLimitConsume } from './shared/in-memory-rate-limit-consume.js';
 import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
+import { registerJsonBodyParser } from './json-body.js';
+import { trustImmediateProxy } from './trust-proxy.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-/** Trust only the last proxy hop (Fly). Do not trust client-set X-Forwarded-For. */
-export const TRUST_PROXY_HOPS = 1;
 
 export type AdminConfig = {
   adminService: AdminService;
@@ -145,8 +144,14 @@ export type AppDependencies = {
   viaFly?: boolean;
 };
 
-export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log), trustProxy: TRUST_PROXY_HOPS });
+export const createFastifyInstance = (log: LogConfig): FastifyInstance => {
+  const app = Fastify({
+    logger: createLoggerOptions(log),
+    trustProxy: trustImmediateProxy,
+  });
+  registerJsonBodyParser(app);
+  return app;
+};
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {

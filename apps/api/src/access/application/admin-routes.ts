@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { initServer } from '@ts-rest/fastify';
 import {
@@ -240,7 +240,7 @@ export const registerAdminRoutes = async (
     }
 
     const publicRouter = s.router(adminPublicContract, {
-      login: async ({ body, reply }: { body: { password: string }; reply: FastifyReply }) => {
+      login: async ({ body, reply }) => {
         const result = adminSessionService.login(body.password);
 
         if (!result.success) {
@@ -264,7 +264,7 @@ export const registerAdminRoutes = async (
         };
       },
 
-      logout: async ({ reply }: { reply: FastifyReply }) => {
+      logout: async ({ reply }) => {
         reply.clearCookie(ADMIN_SESSION_COOKIE, {
           path: '/',
         });

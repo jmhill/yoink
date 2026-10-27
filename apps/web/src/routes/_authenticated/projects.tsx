@@ -25,6 +25,7 @@ import {
   tsrProjects,
   tsrReview,
 } from '@/api/client';
+import { ConfirmProposalSheet } from '@/components/confirm-proposal-sheet';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { ErrorState } from '@/components/error-state';
 import { Header } from '@/components/header';
@@ -32,16 +33,21 @@ import { NextActionPicker } from '@/components/next-action-picker';
 import { PlaceHeading } from '@/components/place-heading';
 import { ProjectStatusControl } from '@/components/project-status-control';
 import { ReviewAllProjects, ReviewDoneThisWeekSlot } from '@/components/review-all-projects';
+import { ReviewProposalCard } from '@/components/review-proposal-card';
 import { ReviewRow } from '@/components/review-row';
 import { isBlockingQueryFailure } from '@/lib/live-query';
+import { proposerLabel } from '@/lib/proposal-copy';
 import { reviewSubcopy } from '@/lib/review-copy';
+import { proposedProjectsByName } from '@/lib/review-proposals';
 import {
   groupWaitingProjects,
   partitionReviewSections,
-  reviewAttentionCount,
+  reviewAttentionTotal,
   reviewVersionOf,
 } from '@/lib/review-sections';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
+import { useProcessCounts } from '@/lib/use-process-counts';
+import { useProposalActions } from '@/lib/use-proposal-actions';
 import { useReviewActions } from '@/lib/use-review-actions';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
@@ -65,6 +71,7 @@ function ReviewPage() {
   const [waitingFormOpen, setWaitingFormOpen] = useState(false);
   const queryClient = tsrReview.useQueryClient();
   const actions = useReviewActions();
+  const { proposals: proposedPage, proposalsQuery } = useProcessCounts();
 
   const reviewQuery = tsrReview.list.useQuery({
     queryKey: ['review'],
@@ -96,6 +103,9 @@ function ReviewPage() {
   });
   const organizationId =
     sessionQuery.data?.status === 200 ? sessionQuery.data.body.organizationId : undefined;
+  const viewerId = sessionQuery.data?.status === 200 ? sessionQuery.data.body.user.id : undefined;
+  const viewerEmail =
+    sessionQuery.data?.status === 200 ? sessionQuery.data.body.user.email : undefined;
   const membersQuery = tsrOrganizations.listMembers.useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
     queryData: { params: { organizationId: organizationId ?? '' } },
@@ -113,8 +123,32 @@ function ReviewPage() {
     enabled: sheetProjectId.length > 0,
   });
 
+  const memberRecords =
+    membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const viewerMember = memberRecords.find((member) => member.userId === viewerId);
+  const restoredByName = proposerLabel(
+    viewerMember ?? (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
+  );
+  const proposalActions = useProposalActions(restoredByName);
+  const proposals = proposedProjectsByName(proposedPage);
+  const proposerName = (project: Project) =>
+    proposerLabel(memberRecords.find((member) => member.userId === project.createdById));
+
   if (isBlockingQueryFailure(reviewQuery.error, reviewQuery.data) && reviewQuery.error) {
     return <ErrorState error={reviewQuery.error} onRetry={() => reviewQuery.refetch()} />;
+  }
+  if (
+    isBlockingQueryFailure(proposalsQuery.error, proposalsQuery.data) &&
+    proposalsQuery.error
+  ) {
+    return (
+      <ErrorState
+        error={proposalsQuery.error}
+        onRetry={() => {
+          void proposalsQuery.refetch();
+        }}
+      />
+    );
   }
 
   const reviewProjects = reviewQuery.data?.status === 200 ? reviewQuery.data.body.projects : [];
@@ -133,7 +167,7 @@ function ReviewPage() {
   const ready = reviewQuery.data?.status === 200;
   const sections = partitionReviewSections(reviewProjects);
   const waitingGroups = groupWaitingProjects(sections.waiting);
-  const attentionCount = reviewAttentionCount(reviewProjects);
+  const attentionCount = reviewAttentionTotal(reviewProjects, proposals.length);
   const version = ready ? reviewVersionOf(reviewProjects) : '';
 
   const closeNextAction = () => setNextActionFor(null);
@@ -160,6 +194,7 @@ function ReviewPage() {
   return (
     <div
       data-review-ready={ready ? '' : undefined}
+      data-review-proposals-ready={proposalsQuery.data?.status === 200 ? '' : undefined}
       data-review-version={ready ? version : undefined}
       className="container mx-auto max-w-2xl p-4"
     >
@@ -170,7 +205,25 @@ function ReviewPage() {
         subcopyTestId="review-subcopy"
       />
 
-      {ready && reviewProjects.length === 0 ? (
+      {proposals.length > 0 ? (
+        <section data-review-section="proposed" className="mt-6 space-y-2">
+          <h2 className="text-sm font-medium text-foreground">Proposed</h2>
+          <ul className="space-y-2">
+            {proposals.map((project) => (
+              <ReviewProposalCard
+                key={project.id}
+                project={project}
+                proposerName={proposerName(project)}
+                onConfirm={proposalActions.openConfirm}
+                onTurnDown={proposalActions.handleTurnDown}
+                disabled={proposalActions.isBusy}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {ready && reviewProjects.length === 0 && proposals.length === 0 ? (
         <p data-review-empty="" className="text-sm text-muted-foreground">
           Nothing needs attention
         </p>
@@ -260,7 +313,18 @@ function ReviewPage() {
 
       <ReviewAllProjects
         projects={allProjects}
+        proposals={proposals}
+        proposerName={proposerName}
         onNewProject={() => setCreateOpen(true)}
+      />
+
+      <ConfirmProposalSheet
+        open={proposalActions.confirmOpen}
+        onOpenChange={proposalActions.setConfirmOpen}
+        project={proposalActions.activeProject}
+        onConfirm={proposalActions.handleConfirm}
+        isLoading={proposalActions.isBusy}
+        error={proposalActions.confirmError}
       />
 
       <CreateProjectDialog

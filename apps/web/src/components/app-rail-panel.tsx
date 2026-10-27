@@ -29,12 +29,14 @@ import {
   RAIL_LABEL_WRAP_CLASS,
   RAIL_LISTS_HEADING,
   RAIL_PROJECTS_HEADING,
+  RAIL_PROPOSED_HEADING,
   RAIL_SOMEDAY_HEADING,
   RAIL_TASK_FAMILY_HEADING,
   activeDesktopRailRow,
   buildAppRailItems,
   buildDesktopRailSections,
   isRailItemActive,
+  proposedGroupForRail,
   railItemHasOverflow,
   railItemKey,
   shouldShowInboxCount,
@@ -47,7 +49,7 @@ import {
 } from '@/lib/app-rail';
 import { namedPileSearch, todaySearch, unlistedPileSearch } from '@/lib/all-tasks-piles';
 import { MOBILE_TABS, type MobileTabKey } from '@/lib/mobile-tabs';
-import { reviewAttentionCount } from '@/lib/review-sections';
+import { reviewAttentionTotal } from '@/lib/review-sections';
 import { viewerTimeZone } from '@/lib/viewer-today';
 
 export type AppRailSurface = 'desktop' | 'mobile-tasks';
@@ -73,7 +75,7 @@ const renderRailIcon = (item: RailItem) => {
   if (item.kind === 'new-list' || item.kind === 'new-project') {
     return <Plus className={RAIL_ICON_CLASS} />;
   }
-  if (item.kind === 'project' || item.kind === 'someday-project') {
+  if (item.kind === 'project' || item.kind === 'someday-project' || item.kind === 'proposed-project') {
     return <FolderKanban className={RAIL_ICON_CLASS} />;
   }
   if (item.key === 'today') return <Calendar className={RAIL_ICON_CLASS} />;
@@ -233,49 +235,75 @@ const RailProjectRow = ({
   );
 };
 
-const RailSomedayGroup = ({
+const collapsedGroupAttrs = (marker: 'someday' | 'proposed') =>
+  marker === 'someday'
+    ? { group: 'data-rail-someday-group', summary: 'data-rail-someday-summary' }
+    : { group: 'data-rail-proposed-group', summary: 'data-rail-proposed-summary' };
+
+/**
+ * Someday and Proposed share one collapsed row so the desktop four-column
+ * grid (icon, label, count, overflow) stays aligned with the other rail rows.
+ */
+const RailCollapsedProjects = ({
+  marker,
+  heading,
   items,
   shared,
 }: {
-  items: Extract<RailItem, { kind: 'someday-project' }>[];
+  marker: 'someday' | 'proposed';
+  heading: string;
+  items: ReadonlyArray<
+    | Extract<RailItem, { kind: 'someday-project' }>
+    | Extract<RailItem, { kind: 'proposed-project' }>
+  >;
   shared: RailRowShared;
-}) => (
-  <details data-rail-someday-group="" className={cn('min-w-0', shared.indentClass)}>
-    <summary
-      data-rail-someday-summary=""
-      className={
-        shared.surface === 'desktop'
-          ? 'grid cursor-pointer grid-cols-[1.25rem_minmax(0,1fr)_2rem_2rem] items-center justify-items-start gap-x-2 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
-          : 'cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
-      }
+}) => {
+  if (items.length === 0) {
+    return null;
+  }
+  const attrs = collapsedGroupAttrs(marker);
+  return (
+    <details
+      {...{ [attrs.group]: '' }}
+      open={marker === 'proposed' ? true : undefined}
+      className={cn('min-w-0', shared.indentClass)}
     >
-      <span className={shared.surface === 'desktop' ? 'col-start-2 min-w-0 truncate' : undefined}>
-        {RAIL_SOMEDAY_HEADING}
-      </span>
-    </summary>
-    {items.map((someday) => {
-      const somedayActive = shared.isActive(someday);
-      return (
-        <Link
-          key={someday.projectId}
-          to="/projects/$projectId"
-          params={{ projectId: someday.projectId }}
-          data-rail-item="someday-project"
-          data-rail-label={someday.label}
-          data-rail-project-id={someday.projectId}
-          data-rail-active={somedayActive ? 'true' : undefined}
-          className={shared.railClassName(somedayActive)}
-          onClick={somedayActive ? shared.onDestinationChosen : undefined}
-        >
-          {renderRailIcon(someday)}
-          <span data-rail-label-text="" className={shared.labelClass}>
-            {someday.label}
-          </span>
-        </Link>
-      );
-    })}
-  </details>
-);
+      <summary
+        {...{ [attrs.summary]: '' }}
+        className={
+          shared.surface === 'desktop'
+            ? 'grid cursor-pointer grid-cols-[1.25rem_minmax(0,1fr)_2rem_2rem] items-center justify-items-start gap-x-2 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
+            : 'cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground'
+        }
+      >
+        <span className={shared.surface === 'desktop' ? 'col-start-2 min-w-0 truncate' : undefined}>
+          {heading}
+        </span>
+      </summary>
+      {items.map((grouped) => {
+        const groupedActive = shared.isActive(grouped);
+        return (
+          <Link
+            key={grouped.projectId}
+            to="/projects/$projectId"
+            params={{ projectId: grouped.projectId }}
+            data-rail-item={grouped.kind}
+            data-rail-label={grouped.label}
+            data-rail-project-id={grouped.projectId}
+            data-rail-active={groupedActive ? 'true' : undefined}
+            className={shared.railClassName(groupedActive)}
+            onClick={groupedActive ? shared.onDestinationChosen : undefined}
+          >
+            {renderRailIcon(grouped)}
+            <span data-rail-label-text="" className={shared.labelClass}>
+              {grouped.label}
+            </span>
+          </Link>
+        );
+      })}
+    </details>
+  );
+};
 
 const RailNamedRow = ({
   item,
@@ -538,7 +566,8 @@ const DesktopSectionRow = ({
 const renderChildItem = (
   item: RailItem,
   shared: RailRowShared,
-  somedayItems: Extract<RailItem, { kind: 'someday-project' }>[]
+  somedayItems: Extract<RailItem, { kind: 'someday-project' }>[],
+  proposedItems: Extract<RailItem, { kind: 'proposed-project' }>[]
 ) => {
   if (item.kind === 'new-list') {
     return <RailNewListRow shared={shared} />;
@@ -549,11 +578,32 @@ const renderChildItem = (
   if (item.kind === 'project') {
     return <RailProjectRow item={item} shared={shared} />;
   }
+  if (item.kind === 'proposed-project') {
+    const rows = proposedGroupForRail(proposedItems);
+    if (rows === null || rows[0] !== item) {
+      return null;
+    }
+    return (
+      <RailCollapsedProjects
+        marker="proposed"
+        heading={RAIL_PROPOSED_HEADING}
+        items={rows}
+        shared={shared}
+      />
+    );
+  }
   if (item.kind === 'someday-project') {
     if (somedayItems[0] !== item) {
       return null;
     }
-    return <RailSomedayGroup items={somedayItems} shared={shared} />;
+    return (
+      <RailCollapsedProjects
+        marker="someday"
+        heading={RAIL_SOMEDAY_HEADING}
+        items={somedayItems}
+        shared={shared}
+      />
+    );
   }
   if (item.kind === 'named') {
     return <RailNamedRow item={item} shared={shared} />;
@@ -584,6 +634,10 @@ function DesktopRailSections({
           (item): item is Extract<RailItem, { kind: 'someday-project' }> =>
             item.kind === 'someday-project'
         );
+        const proposedItems = section.items.filter(
+          (item): item is Extract<RailItem, { kind: 'proposed-project' }> =>
+            item.kind === 'proposed-project'
+        );
         const listsStart = section.items.findIndex(
           (item) => item.kind === 'named' || item.kind === 'unlisted' || item.kind === 'new-list'
         );
@@ -610,7 +664,7 @@ function DesktopRailSections({
                     </span>
                   </div>
                 ) : null}
-                {renderChildItem(item, shared, somedayItems)}
+                {renderChildItem(item, shared, somedayItems, proposedItems)}
               </Fragment>
             ))}
           </Fragment>
@@ -630,6 +684,10 @@ function MobileTasksRailItems({
   const somedayItems = items.filter(
     (item): item is Extract<RailItem, { kind: 'someday-project' }> =>
       item.kind === 'someday-project'
+  );
+  const proposedItems = items.filter(
+    (item): item is Extract<RailItem, { kind: 'proposed-project' }> =>
+      item.kind === 'proposed-project'
   );
   return (
     <>
@@ -673,7 +731,7 @@ function MobileTasksRailItems({
             {taskFamilyHeading}
             {listsHeading}
             {projectsHeading}
-            {renderChildItem(item, shared, somedayItems)}
+            {renderChildItem(item, shared, somedayItems, proposedItems)}
           </Fragment>
         );
       })}
@@ -713,7 +771,7 @@ export function AppRailPanel({
     setCreateProjectOpen(true);
   };
 
-  const { inboxCount, proposalCount } = useProcessCounts();
+  const { inboxCount, proposalCount, proposals, proposalsQuery } = useProcessCounts();
   const { data: listsData } = tsrLists.list.useQuery({
     queryKey: ['lists'],
     queryData: { query: { limit: PILE_SAFETY_CAP } },
@@ -733,6 +791,18 @@ export function AppRailPanel({
 
   const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
   const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const proposedForRail = proposals.flatMap((project) =>
+    project.status === 'proposed'
+      ? [
+          {
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            nextActionTaskId: project.nextActionTaskId,
+          },
+        ]
+      : []
+  );
   const listOpenCounts = new Map(
     workListsData?.status === 200
       ? workListsData.body.lists.map((list) => [list.id, list.openTaskCount])
@@ -741,13 +811,19 @@ export function AppRailPanel({
   const unlistedOpenCount =
     workListsData?.status === 200 ? workListsData.body.unlisted.openTaskCount : undefined;
   const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
-  const reviewBadge = reviewAttentionCount(reviewProjects);
-  const drawerItems = buildAppRailItems({ inboxCount, namedLists, projects });
+  const reviewBadge = reviewAttentionTotal(reviewProjects, proposals.length);
+  const drawerItems = buildAppRailItems({
+    inboxCount,
+    namedLists,
+    projects,
+    proposals: proposedForRail,
+  });
   const desktopSections = buildDesktopRailSections({
     inboxCount,
     proposalCount,
     namedLists,
     projects,
+    proposals: proposedForRail,
     reviewBadge,
   });
   const location: RailLocation = {
@@ -797,6 +873,7 @@ export function AppRailPanel({
       <nav
         data-app-rail=""
         data-app-rail-surface={surface}
+        data-rail-proposals-ready={proposalsQuery.data?.status === 200 ? '' : undefined}
         aria-label="App rail"
         className={className}
       >

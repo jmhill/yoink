@@ -1946,6 +1946,22 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('openSomedayGroup', 'http');
     },
 
+    async openProposedGroup(): Promise<void> {
+      throw new UnsupportedOperationError('openProposedGroup', 'http');
+    },
+
+    async shouldSeeProjectInProposedGroup(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectInProposedGroup', 'http');
+    },
+
+    async shouldNotSeeProposedGroupOnRail(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeProposedGroupOnRail', 'http');
+    },
+
+    async shouldSeeProposedGroupNames(_names: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProposedGroupNames', 'http');
+    },
+
     async goToAllProjects(): Promise<void> {
       throw new UnsupportedOperationError('goToAllProjects', 'http');
     },
@@ -1955,6 +1971,18 @@ export const createHttpActor = (
       status: string;
     }): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeProjectOnAllProjects', 'http');
+    },
+
+    async shouldSeeProjectInAllProjectsProposed(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeProjectInAllProjectsProposed', 'http');
+    },
+
+    async shouldNotSeeProjectInAllProjectsProposed(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeProjectInAllProjectsProposed', 'http');
+    },
+
+    async shouldNotSeeAllProjectsProposedGroup(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeAllProjectsProposedGroup', 'http');
     },
 
     async openReview(): Promise<void> {
@@ -1977,6 +2005,43 @@ export const createHttpActor = (
       _section: 'noNextAction' | 'quiet' | 'waiting'
     ): Promise<void> {
       throw new UnsupportedOperationError('shouldSeeReviewSection', 'http');
+    },
+
+    async shouldSeeReviewProposal(_input: {
+      name: string;
+      proposedBy: string;
+      reason?: string;
+      suggestedNextAction?: string;
+    }): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewProposal', 'http');
+    },
+
+    async shouldSeeReviewProposalNames(_names: string[]): Promise<void> {
+      throw new UnsupportedOperationError('shouldSeeReviewProposalNames', 'http');
+    },
+
+    async shouldNotSeeReviewProposedSection(): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeReviewProposedSection', 'http');
+    },
+
+    async shouldNotSeeReviewProposal(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeReviewProposal', 'http');
+    },
+
+    async openReviewProposal(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openReviewProposal', 'http');
+    },
+
+    async openReviewProposalConfirm(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('openReviewProposalConfirm', 'http');
+    },
+
+    async turnDownReviewProposal(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('turnDownReviewProposal', 'http');
+    },
+
+    async shouldNotSeeOpenProjectOption(_name: string): Promise<void> {
+      throw new UnsupportedOperationError('shouldNotSeeOpenProjectOption', 'http');
     },
 
     async shouldSeeReviewItem(_input: {

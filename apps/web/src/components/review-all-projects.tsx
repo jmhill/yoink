@@ -10,13 +10,22 @@ import {
   showsDoneProjectChip,
 } from '@/lib/done-list';
 import { showsNoNextActionWarning } from '@/lib/project-next-action';
+import { proposedByLine } from '@/lib/proposal-copy';
 
 type ReviewAllProjectsProps = {
   projects: readonly Project[];
+  proposals: readonly Project[];
+  proposerName: (project: Project) => string;
   onNewProject: () => void;
 };
 
-export function ReviewAllProjects({ projects, onNewProject }: ReviewAllProjectsProps) {
+export function ReviewAllProjects({
+  projects,
+  proposals,
+  proposerName,
+  onNewProject,
+}: ReviewAllProjectsProps) {
+  const listedCount = projects.length + proposals.length;
   return (
     <div className="mt-8 space-y-3">
       <details data-review-all-projects="" className="rounded-md border border-border">
@@ -24,9 +33,47 @@ export function ReviewAllProjects({ projects, onNewProject }: ReviewAllProjectsP
           data-review-all-projects-summary=""
           className="cursor-pointer px-3 py-2 text-sm font-medium"
         >
-          All projects ({projects.length})
+          All projects ({listedCount})
         </summary>
-        <ul className="space-y-2 border-t border-border p-3" data-projects-index="">
+        <div className="space-y-3 border-t border-border p-3">
+          {proposals.length > 0 ? (
+            <div data-all-projects-proposed="" className="space-y-2">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Proposed
+              </h3>
+              <ul className="space-y-2">
+                {proposals.map((project) => (
+                  <li key={project.id}>
+                    <Link
+                      to="/projects/$projectId"
+                      params={{ projectId: project.id }}
+                      data-all-projects-proposed-item={project.id}
+                      data-all-projects-proposed-name={project.name}
+                      className="flex min-w-0 flex-col rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+                    >
+                      <span className="font-medium">{project.name}</span>
+                      <span
+                        data-all-projects-proposed-by=""
+                        className="text-xs text-muted-foreground"
+                      >
+                        {proposedByLine({
+                          proposerName: proposerName(project),
+                          createdAt: project.createdAt,
+                        })}
+                      </span>
+                      <span
+                        className="text-xs capitalize text-muted-foreground"
+                        data-all-projects-proposed-status="proposed"
+                      >
+                        proposed
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        <ul className="space-y-2" data-projects-index="">
           {projects.map((project) => (
             <li key={project.id}>
               <Link
@@ -56,6 +103,7 @@ export function ReviewAllProjects({ projects, onNewProject }: ReviewAllProjectsP
             </li>
           ))}
         </ul>
+        </div>
       </details>
       <Button
         type="button"

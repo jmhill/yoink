@@ -94,9 +94,9 @@ export const createHttpClient = (baseUrl: string): HttpClient => {
 
     const request = async (options: RequestOptions): Promise<HttpResponse> => {
     const cookieHeader = buildCookieHeader();
-    // Fastify 5 rejects DELETE (and any method) whose Content-Type is
-    // application/json when the body is empty. The web client already omits
-    // that header when there is no body; this driver matches it.
+    // Match the web client: send application/json only when there is a body.
+    // A bodyless request is valid either way. The API still accepts a DELETE
+    // that sends the header with no body.
     const headers: Record<string, string> = {
       ...(options.payload === undefined
         ? {}

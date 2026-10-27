@@ -63,10 +63,68 @@ describe('Error Response Format', () => {
     });
   });
 
-  it('pins the Fastify message for an empty-body JSON DELETE', async () => {
+  it('accepts a JSON DELETE whose body is empty and undeclared', async () => {
     const response = await app.inject({
       method: 'DELETE',
       url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ message: 'Capture not found' });
+  });
+
+  it('rejects a JSON DELETE that declares an empty body', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+        'content-length': '0',
+      },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_EMPTY_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body cannot be empty when content-type is set to 'application/json'",
+    });
+  });
+
+  it('rejects malformed JSON on DELETE', async () => {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/captures/00000000-0000-4000-8000-000000000099',
+      headers: {
+        authorization: `Bearer ${TEST_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      payload: '{',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      code: 'FST_ERR_CTP_INVALID_JSON_BODY',
+      error: 'Bad Request',
+      message:
+        "Body is not valid JSON but content-type is set to 'application/json'",
+    });
+  });
+
+  it('rejects an empty JSON body on POST', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/captures',
       headers: {
         authorization: `Bearer ${TEST_TOKEN}`,
         'content-type': 'application/json',

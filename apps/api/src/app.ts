@@ -82,14 +82,9 @@ import {
 } from './shared/rate-limit-policy.js';
 import { createInMemoryRateLimitConsume } from './shared/in-memory-rate-limit-consume.js';
 import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
+import { registerJsonBodyParser } from './json-body.js';
+import { trustImmediateProxy } from './trust-proxy.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-/**
- * Fastify 5 ignores a numeric trustProxy: hop-count trust cannot tell Fly's
- * proxy from a direct client, so X-Forwarded-* is not used. Rate-limit
- * identity stays the socket address, or Fly-Client-IP when this process is
- * on Fly.
- */
 
 export type AdminConfig = {
   adminService: AdminService;
@@ -149,8 +144,14 @@ export type AppDependencies = {
   viaFly?: boolean;
 };
 
-export const createFastifyInstance = (log: LogConfig): FastifyInstance =>
-  Fastify({ logger: createLoggerOptions(log), trustProxy: false });
+export const createFastifyInstance = (log: LogConfig): FastifyInstance => {
+  const app = Fastify({
+    logger: createLoggerOptions(log),
+    trustProxy: trustImmediateProxy,
+  });
+  registerJsonBodyParser(app);
+  return app;
+};
 
 // Default rate limit configuration
 const defaultRateLimitConfig: RateLimitConfig = {

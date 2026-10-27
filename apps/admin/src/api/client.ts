@@ -5,7 +5,7 @@ import {
 } from '@yoink/api-contracts';
 
 // No Content-Type base header. ts-rest adds application/json only when a
-// body is present. Fastify 5 rejects an empty JSON body, including DELETE.
+// body is present. A bodyless request is valid with or without that header.
 const commonOptions = {
   baseUrl: '',
   credentials: 'include' as const,

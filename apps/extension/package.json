@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint --config eslint.config.js \"src/**/*.{ts,tsx,js,jsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "pnpm --filter @yoink/api-contracts build && vitest run"
   },
   "dependencies": {
     "@orpc/client": "2.0.0-beta.48",

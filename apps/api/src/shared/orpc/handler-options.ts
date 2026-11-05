@@ -1,5 +1,10 @@
-import { COMMON_ERROR_STATUS_MAP, ORPCError } from '@orpc/server';
+import { COMMON_ERROR_STATUS_MAP, ORPCError, type AnyORPCError } from '@orpc/server';
 import type { StandardHandlerInterceptor } from '@orpc/server/standard';
+import {
+  namedRequestValidationError,
+  type RequestValidationErr,
+  type RequestValidationHttpError,
+} from '../request-validation.js';
 import type { OrpcHttpContext } from './http-context.js';
 import { serverFailureLog } from './server-failure-log.js';
 import { yoinkErrorBody } from './yoink-error-body.js';
@@ -30,11 +35,15 @@ const serverFailureInterceptor: StandardHandlerInterceptor<OrpcHttpContext> = as
   }
 };
 
-export const yoinkOpenApiHandlerOptions = {
+export const openApiHandlerOptions = (
+  validation: (err: RequestValidationErr) => RequestValidationHttpError = namedRequestValidationError
+) => ({
   errorStatusMap: {
     ...COMMON_ERROR_STATUS_MAP,
     INVALID_CURSOR: 400,
   },
-  errorResponseBodyEncoder: yoinkErrorBody,
+  errorResponseBodyEncoder: (error: AnyORPCError) => yoinkErrorBody(error, validation),
   interceptors: [serverFailureInterceptor],
-};
+});
+
+export const yoinkOpenApiHandlerOptions = openApiHandlerOptions();

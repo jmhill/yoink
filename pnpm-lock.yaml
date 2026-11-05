@@ -369,6 +369,12 @@ importers:
 
   packages/api-contracts:
     dependencies:
+      '@orpc/contract':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48(fastify@5.12.7)
       '@ts-rest/core':
         specifier: ^3.52.0
         version: 3.52.1(@types/node@25.0.10)(zod@3.25.76)

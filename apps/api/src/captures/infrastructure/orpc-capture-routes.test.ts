@@ -15,7 +15,12 @@ import {
   TEST_USER_ID,
 } from '../../tests/helpers/test-app.js';
 import type { CaptureHandlers } from '../application/create-capture-handlers.js';
-import { storageError } from '../domain/capture-errors.js';
+import {
+  captureAlreadyTrashedError,
+  captureNotInTrashError,
+  storageError,
+} from '../domain/capture-errors.js';
+import type { CaptureProcessingService } from '../../processing/application/create-processing-handlers.js';
 import { registerOrpcCaptureRoutes } from './orpc-capture-routes.js';
 
 const bearer = { authorization: `Bearer ${TEST_TOKEN}` };
@@ -60,6 +65,26 @@ const handlers = (overrides: Partial<CaptureHandlers>): CaptureHandlers => ({
   ...overrides,
 });
 
+const processing: CaptureProcessingService = {
+  processCaptureToTask: unused,
+  processCaptureToProject: unused,
+};
+
+const mount = async (
+  app: FastifyInstance,
+  options: {
+    authMiddleware?: AuthMiddleware;
+    captureHandlers?: CaptureHandlers;
+    captureProcessingService?: CaptureProcessingService;
+  } = {}
+) => {
+  await registerOrpcCaptureRoutes(app, {
+    authMiddleware: options.authMiddleware ?? authAs(humanContext),
+    captureHandlers: options.captureHandlers ?? handlers({}),
+    captureProcessingService: options.captureProcessingService ?? processing,
+  });
+};
+
 const loggedApp = (): { app: FastifyInstance; lines: string[] } => {
   const lines: string[] = [];
   const app = Fastify({
@@ -88,8 +113,7 @@ describe('oRPC capture create and list', () => {
   it('logs the original storage error and returns the generic 500 body', async () => {
     const cause = storageError('disk full', new Error('sqlite'));
     const { app, lines } = loggedApp();
-    await registerOrpcCaptureRoutes(app, {
-      authMiddleware: authAs(humanContext),
+    await mount(app, {
       captureHandlers: handlers({
         create: () => errAsync(cause),
       }),
@@ -112,8 +136,7 @@ describe('oRPC capture create and list', () => {
 
   it('returns invalid_cursor without calling out to a different envelope', async () => {
     const { app } = loggedApp();
-    await registerOrpcCaptureRoutes(app, {
-      authMiddleware: authAs(humanContext),
+    await mount(app, {
       captureHandlers: handlers({
         list: () => errAsync(invalidCursorError()),
       }),
@@ -130,8 +153,7 @@ describe('oRPC capture create and list', () => {
 
   it('returns the capture view on 201', async () => {
     const { app } = loggedApp();
-    await registerOrpcCaptureRoutes(app, {
-      authMiddleware: authAs(humanContext),
+    await mount(app, {
       captureHandlers: handlers({
         create: () =>
           okAsync({
@@ -165,7 +187,7 @@ describe('oRPC capture create and list', () => {
   it('refuses an agent before the handler runs', async () => {
     let calls = 0;
     const { app } = loggedApp();
-    await registerOrpcCaptureRoutes(app, {
+    await mount(app, {
       authMiddleware: authAs(agentContext),
       captureHandlers: handlers({
         create: () => {
@@ -183,6 +205,127 @@ describe('oRPC capture create and list', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({ message: 'Agents cannot create captures' });
     expect(calls).toBe(0);
+    await app.close();
+  });
+});
+
+describe('oRPC capture lifecycle', () => {
+  it('gets, updates, trashes, and restores on the capture paths', async () => {
+    const { app } = loggedApp();
+    await mount(app, {
+      captureHandlers: handlers({
+        find: () => okAsync(captureView),
+        update: () =>
+          okAsync({
+            event: null,
+            view: { ...captureView, content: 'Updated' },
+          }),
+        trash: () =>
+          okAsync({
+            event: null,
+            view: { ...captureView, status: 'trashed' },
+          }),
+        restore: () =>
+          okAsync({
+            event: null,
+            view: captureView,
+          }),
+      }),
+    });
+
+    const fetched = await app.inject({
+      method: 'GET',
+      url: `/api/captures/${captureView.id}`,
+    });
+    expect(fetched.statusCode).toBe(200);
+    expect(fetched.json()).toMatchObject({ id: captureView.id, content: 'Hello' });
+
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: `/api/captures/${captureView.id}`,
+      payload: { content: 'Updated' },
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json()).toMatchObject({ content: 'Updated' });
+
+    const trashed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${captureView.id}/trash`,
+      payload: {},
+    });
+    expect(trashed.statusCode).toBe(200);
+    expect(trashed.json()).toMatchObject({ status: 'trashed' });
+
+    const restored = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${captureView.id}/restore`,
+      payload: {},
+    });
+    expect(restored.statusCode).toBe(200);
+    expect(restored.json()).toMatchObject({ status: 'inbox' });
+    await app.close();
+  });
+
+  it('rejects a trashed snooze, deletes only from trash, and empties trash', async () => {
+    const { app } = loggedApp();
+    await mount(app, {
+      captureHandlers: handlers({
+        snooze: () => errAsync(captureAlreadyTrashedError(captureView.id)),
+        delete: () => errAsync(captureNotInTrashError(captureView.id)),
+        emptyTrash: () =>
+          okAsync({
+            event: { type: 'CaptureTrashEmptied', organizationId: captureView.organizationId },
+            deletedCount: 2,
+          }),
+      }),
+    });
+
+    const snoozed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${captureView.id}/snooze`,
+      payload: { until: '2027-12-31T00:00:00.000Z' },
+    });
+    expect(snoozed.statusCode).toBe(400);
+    expect(snoozed.json()).toEqual({ message: 'Cannot snooze a trashed capture' });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/captures/${captureView.id}`,
+    });
+    expect(deleted.statusCode).toBe(409);
+    expect(deleted.json()).toEqual({
+      message: 'Capture must be in trash before it can be deleted',
+    });
+
+    const emptied = await app.inject({
+      method: 'POST',
+      url: '/api/captures/trash/empty',
+      payload: {},
+    });
+    expect(emptied.statusCode).toBe(200);
+    expect(emptied.json()).toEqual({ deletedCount: 2 });
+    await app.close();
+  });
+
+  it('returns an empty 204 when a trashed capture is deleted', async () => {
+    const { app } = loggedApp();
+    await mount(app, {
+      captureHandlers: handlers({
+        delete: () =>
+          okAsync({
+            type: 'CaptureDeleted',
+            id: captureView.id,
+            organizationId: captureView.organizationId,
+          }),
+      }),
+    });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/captures/${captureView.id}`,
+    });
+    expect(deleted.statusCode).toBe(204);
+    expect(deleted.body).toBe('');
     await app.close();
   });
 });
@@ -318,5 +461,95 @@ describe('capture create and list on the composed app', () => {
     expect(listed.json<CaptureListPage>().captures.map((item) => item.content)).toContain(
       'From session'
     );
+
+    const proposed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${created.json<Capture>().id}/process-to-project`,
+      headers: { authorization: `Bearer ${rawToken}` },
+      payload: { name: 'Lane project', status: 'active' },
+    });
+    expect(proposed.statusCode).toBe(403);
+    expect(proposed.json()).toEqual({
+      message: 'Creating a project requires a person',
+      code: 'PROJECT_CREATE_REQUIRES_PERSON',
+    });
+  });
+
+  it('trashes, deletes, processes, and keeps project validation codes', async () => {
+    const app = await createTestApp();
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/captures',
+      headers: bearer,
+      payload: { content: 'Buy milk https://example.com/milk' },
+    });
+    expect(created.statusCode).toBe(201);
+    const capture = created.json<Capture>();
+
+    const blank = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${capture.id}/process-to-project`,
+      headers: bearer,
+      payload: { name: '   ', status: 'active' },
+    });
+    expect(blank.statusCode).toBe(400);
+    expect(blank.json()).toEqual({
+      message: "Name can't be blank",
+      code: 'PROJECT_NAME_BLANK',
+    });
+
+    const processed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${capture.id}/process`,
+      headers: bearer,
+      payload: { type: 'task', data: { title: 'Buy milk' } },
+    });
+    expect(processed.statusCode).toBe(201);
+    expect(processed.json()).toMatchObject({ title: 'Buy milk' });
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/captures',
+      headers: bearer,
+      payload: { content: 'Throw this away' },
+    });
+    const thrown = second.json<Capture>();
+
+    const notTrashed = await app.inject({
+      method: 'DELETE',
+      url: `/api/captures/${thrown.id}`,
+      headers: bearer,
+    });
+    expect(notTrashed.statusCode).toBe(409);
+    expect(notTrashed.json()).toEqual({
+      message: 'Capture must be in trash before it can be deleted',
+    });
+
+    const trashed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${thrown.id}/trash`,
+      headers: bearer,
+      payload: {},
+    });
+    expect(trashed.statusCode).toBe(200);
+    expect(trashed.json()).toMatchObject({ status: 'trashed' });
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/captures/${thrown.id}`,
+      headers: bearer,
+    });
+    expect(deleted.statusCode).toBe(204);
+    expect(deleted.body).toBe('');
+
+    const emptied = await app.inject({
+      method: 'POST',
+      url: '/api/captures/trash/empty',
+      headers: bearer,
+      payload: {},
+    });
+    expect(emptied.statusCode).toBe(200);
+    expect(emptied.json()).toEqual({ deletedCount: 0 });
   });
 });

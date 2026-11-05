@@ -1,3 +1,7 @@
+/**
+ * ts-rest contract for the web and extension clients.
+ * The API serves these paths from `@yoink/api-contracts/orpc`.
+ */
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import { CaptureSchema, CaptureStatusSchema, CreateCaptureSchema, UpdateCaptureSchema } from '../schemas/capture.js';

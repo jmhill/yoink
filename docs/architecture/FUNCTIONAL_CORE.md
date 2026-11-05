@@ -22,7 +22,9 @@ captures/
   infrastructure/    # adapters
     store-backed-persist.ts    # event → existing CaptureStore
     sqlite-capture-store.ts    # leftover CRUD (processing still uses it)
-    http-capture-routes.ts     # ts-rest: body+auth → command; event/view → status/body
+    http-capture-routes.ts     # ts-rest for everything except create + list
+    orpc-capture-routes.ts     # spike: oRPC OpenAPI for POST/GET /api/captures
+                               # Result stays in the handler; only this adapter throws ORPCError
 ```
 
 ## Flow

@@ -48,6 +48,12 @@ export type ProcessCaptureToProjectResponse = z.infer<
 
 const c = initContract();
 
+/** Query string for `GET /api/captures`. Reused by the oRPC spike adapter. */
+export const CaptureListQuerySchema = ListPageQuerySchema.extend({
+  status: CaptureStatusSchema.optional(),
+  snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
+});
+
 export const captureContract = c.router({
   create: {
     method: 'POST',
@@ -66,10 +72,7 @@ export const captureContract = c.router({
   list: {
     method: 'GET',
     path: '/api/captures',
-    query: ListPageQuerySchema.extend({
-      status: CaptureStatusSchema.optional(),
-      snoozed: z.coerce.boolean().optional(), // true = only snoozed, false = exclude snoozed
-    }),
+    query: CaptureListQuerySchema,
     responses: {
       200: CaptureListPageSchema,
       400: ErrorSchema,

@@ -1,17 +1,17 @@
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import type { ReviewCounts, ReviewProject } from '@yoink/api-contracts';
+import { reviewOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import {
-  reviewContract,
-  type DoneListPage,
-  type ReviewCounts,
-  type ReviewProject,
-} from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import { invalidCursorHttp } from '../../listing/infrastructure/http-listed-page.js';
 import type { ListedPage } from '../../listing/domain/listed-page.js';
 import { listedRequestValidationError } from '../../shared/request-validation.js';
-import type { RankedReviewProject } from '../domain/review-order.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
 import type { ReviewHandlers } from '../application/create-review-handlers.js';
+import type { RankedReviewProject } from '../domain/review-order.js';
+import { mapListDoneError, mapListReviewError } from './orpc-review-errors.js';
 
 export type ReviewRoutesDependencies = {
   reviewHandlers: ReviewHandlers;
@@ -42,76 +42,54 @@ export const registerReviewRoutes = async (
   app: FastifyInstance,
   deps: ReviewRoutesDependencies
 ) => {
-  const { reviewHandlers, authMiddleware } = deps;
-  const s = initServer();
+  const review = implement(reviewOrpcContract).$context<OrpcHttpContext>();
+  const router = review.router({
+    list: review.list.handler(async ({ input, context }) => {
+      const result = await deps.reviewHandlers.list({
+        organizationId: context.request.authContext.organizationId,
+        limit: input.limit,
+        cursor: input.cursor,
+        timeZone: input.timeZone,
+      });
+
+      return result.match(
+        (page) => toReviewBody(page),
+        (error) => {
+          throw mapListReviewError(error);
+        }
+      );
+    }),
+    done: review.done.handler(async ({ input, context }) => {
+      const result = await deps.reviewHandlers.done({
+        organizationId: context.request.authContext.organizationId,
+        week: input.week,
+        limit: input.limit,
+        cursor: input.cursor,
+      });
+
+      return result.match(
+        (page) => page,
+        (error) => {
+          throw mapListDoneError(error);
+        }
+      );
+    }),
+  });
+
+  const handler = new OpenAPIHandler(router, openApiHandlerOptions(listedRequestValidationError));
 
   await app.register(async (authedApp) => {
-    authedApp.addHook('preHandler', authMiddleware);
+    authedApp.addHook('preHandler', deps.authMiddleware);
 
-    const reviewRouter = s.router(reviewContract, {
-      list: async ({ query, request }) => {
-        const result = await reviewHandlers.list({
-          organizationId: request.authContext.organizationId,
-          limit: query.limit,
-          cursor: query.cursor,
-          timeZone: query.timeZone,
-        });
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toReviewBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-      done: async ({ query, request }) => {
-        const result = await reviewHandlers.done({
-          organizationId: request.authContext.organizationId,
-          week: query.week,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-        return result.match(
-          (page: DoneListPage) => ({
-            status: 200 as const,
-            body: page,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'INVALID_WEEK':
-                return {
-                  status: 400 as const,
-                  body: { message: error.message, code: 'INVALID_WEEK' },
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-    });
+    const mount = (url: string) => {
+      authedApp.route({
+        method: 'GET',
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-    s.registerRouter(reviewContract, reviewRouter, authedApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(listedRequestValidationError(err));
-      },
-    });
+    mount('/api/review/done');
+    mount('/api/review');
   });
 };

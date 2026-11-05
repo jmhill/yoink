@@ -29,6 +29,8 @@ import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
 
+/** ts-rest contract for clients. The API serves these paths from `@yoink/api-contracts/orpc`. */
+
 /**
  * Public admin routes - no authentication required
  */

@@ -1,3 +1,7 @@
+/**
+ * ts-rest contract for clients.
+ * The API serves these paths from `@yoink/api-contracts/orpc`.
+ */
 import { initContract } from '@ts-rest/core';
 import { ListPageQuerySchema, TaskListPageSchema } from '../schemas/list-page.js';
 import { ErrorSchema } from '../schemas/error.js';

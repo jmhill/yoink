@@ -1,15 +1,23 @@
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { workOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import { workContract } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import {
-  invalidCursorHttp,
   toTaskListBody,
   toWorkListsBody,
   toWorkNextActionsBody,
 } from '../../listing/infrastructure/http-listed-page.js';
 import { listedRequestValidationError } from '../../shared/request-validation.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
 import type { WorkHandlers } from '../application/create-work-handlers.js';
+import {
+  mapListDueError,
+  mapListNextActionsError,
+  mapListWorkListsError,
+} from './orpc-work-errors.js';
 
 export type WorkRoutesDependencies = {
   workHandlers: WorkHandlers;
@@ -20,100 +28,72 @@ export const registerWorkRoutes = async (
   app: FastifyInstance,
   deps: WorkRoutesDependencies
 ) => {
-  const { workHandlers, authMiddleware } = deps;
-  const s = initServer();
+  const work = implement(workOrpcContract).$context<OrpcHttpContext>();
+  const router = work.router({
+    listNextActions: work.listNextActions.handler(async ({ input, context }) => {
+      const result = await deps.workHandlers.listNextActions({
+        organizationId: context.request.authContext.organizationId,
+        callerId: context.request.authContext.userId,
+        owner: input.owner,
+        limit: input.limit,
+        cursor: input.cursor,
+      });
+
+      return result.match(
+        (page) => toWorkNextActionsBody(page),
+        (error) => {
+          throw mapListNextActionsError(error);
+        }
+      );
+    }),
+    listDue: work.listDue.handler(async ({ input, context }) => {
+      const result = await deps.workHandlers.listDue({
+        organizationId: context.request.authContext.organizationId,
+        callerId: context.request.authContext.userId,
+        owner: input.owner,
+        limit: input.limit,
+        cursor: input.cursor,
+        timeZone: input.timeZone,
+      });
+
+      return result.match(
+        (page) => toTaskListBody(page),
+        (error) => {
+          throw mapListDueError(error);
+        }
+      );
+    }),
+    listLists: work.listLists.handler(async ({ input, context }) => {
+      const result = await deps.workHandlers.listLists({
+        organizationId: context.request.authContext.organizationId,
+        limit: input.limit,
+        cursor: input.cursor,
+      });
+
+      return result.match(
+        (page) => toWorkListsBody(page),
+        (error) => {
+          throw mapListWorkListsError(error);
+        }
+      );
+    }),
+  });
+
+  const handler = new OpenAPIHandler(router, openApiHandlerOptions(listedRequestValidationError));
 
   await app.register(async (authedApp) => {
-    authedApp.addHook('preHandler', authMiddleware);
+    authedApp.addHook('preHandler', deps.authMiddleware);
 
-    const workRouter = s.router(workContract, {
-      listNextActions: async ({ query, request }) => {
-        const result = await workHandlers.listNextActions({
-          organizationId: request.authContext.organizationId,
-          callerId: request.authContext.userId,
-          owner: query.owner,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toWorkNextActionsBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
+    const mount = (url: string) => {
+      authedApp.route({
+        method: 'GET',
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-      listDue: async ({ query, request }) => {
-        const result = await workHandlers.listDue({
-          organizationId: request.authContext.organizationId,
-          callerId: request.authContext.userId,
-          owner: query.owner,
-          limit: query.limit,
-          cursor: query.cursor,
-          timeZone: query.timeZone,
-        });
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toTaskListBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      listLists: async ({ query, request }) => {
-        const result = await workHandlers.listLists({
-          organizationId: request.authContext.organizationId,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toWorkListsBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-    });
-
-    s.registerRouter(workContract, workRouter, authedApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(listedRequestValidationError(err));
-      },
-    });
+    mount('/api/work/next-actions');
+    mount('/api/work/due');
+    mount('/api/work/lists');
   });
 };

@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import { tokenContract } from '@yoink/api-contracts';
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
 import type { SessionService } from '../domain/session-service.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { TokenHandlers } from './create-token-handlers.js';
-import { namedRequestValidationError } from '../../shared/request-validation.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -13,6 +13,11 @@ import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
 } from './with-authenticated-rate-limit.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import type { CreateTokenError, ListTokensError, RevokeTokenError } from '../domain/token-errors.js';
+import { accessHttpError, accessStorageError } from './access-http-errors.js';
 
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;
@@ -22,12 +27,57 @@ export type TokenRoutesDependencies = {
   applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
+const listTokensFailure = (error: ListTokensError) => {
+  switch (error.type) {
+    case 'TOKEN_STORAGE_ERROR':
+      return accessStorageError(error, 'Failed to list tokens');
+  }
+};
+
+const createTokenFailure = (error: CreateTokenError) => {
+  switch (error.type) {
+    case 'INVALID_TOKEN_NAME':
+      return accessHttpError({ code: 'BAD_REQUEST', message: error.message });
+    case 'BOT_CANNOT_MANAGE_TOKENS':
+      return accessHttpError({ code: 'FORBIDDEN', message: error.message });
+    case 'TOKEN_OWNERSHIP_ERROR':
+      return accessHttpError({ code: 'FORBIDDEN', message: 'You do not own this token' });
+    case 'TOKEN_LIMIT_REACHED':
+      return accessHttpError({
+        code: 'CONFLICT',
+        message: `You can have at most ${error.limit} API tokens per organization`,
+      });
+    case 'TOKEN_STORAGE_ERROR':
+      return accessStorageError(error, 'Failed to create token');
+    default: {
+      const _never: never = error;
+      return accessStorageError(_never, 'Failed to create token');
+    }
+  }
+};
+
+const deleteTokenFailure = (error: RevokeTokenError) => {
+  switch (error.type) {
+    case 'BOT_CANNOT_MANAGE_TOKENS':
+      return accessHttpError({ code: 'FORBIDDEN', message: error.message });
+    case 'TOKEN_OWNERSHIP_ERROR':
+      return accessHttpError({ code: 'FORBIDDEN', message: 'You do not own this token' });
+    case 'USER_TOKEN_NOT_FOUND':
+      return accessHttpError({ code: 'NOT_FOUND', message: 'Token not found' });
+    case 'TOKEN_STORAGE_ERROR':
+      return accessStorageError(error, 'Failed to delete token');
+    default: {
+      const _never: never = error;
+      return accessStorageError(_never, 'Failed to delete token');
+    }
+  }
+};
+
 export const registerTokenRoutes = async (
   app: FastifyInstance,
   deps: TokenRoutesDependencies
 ) => {
   const { tokenHandlers, sessionService, tokenService, sessionCookieName } = deps;
-  const s = initServer();
 
   const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
     tokenService,
@@ -41,123 +91,64 @@ export const registerTokenRoutes = async (
       ? resolvedAuth
       : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
+  const tokens = implement(tokenOrpcContract).$context<OrpcHttpContext>();
+  const tokenRouter = tokens.router({
+    list: tokens.list.handler(async ({ context }) => {
+      const { userId, organizationId, actor } = context.request.authContext;
+      const result = await tokenHandlers.list({ actor, userId, organizationId });
+      return result.match(
+        (page) => page,
+        (error) => {
+          throw listTokensFailure(error);
+        }
+      );
+    }),
+    create: tokens.create.handler(async ({ input, context }) => {
+      const { userId, organizationId, actor } = context.request.authContext;
+      const result = await tokenHandlers.create({
+        actor,
+        userId,
+        organizationId,
+        name: input.name,
+      });
+      return result.match(
+        ({ token, rawToken }) => ({ token, rawToken }),
+        (error) => {
+          throw createTokenFailure(error);
+        }
+      );
+    }),
+    delete: tokens.delete.handler(async ({ input, context }) => {
+      const { userId, organizationId, actor } = context.request.authContext;
+      const result = await tokenHandlers.revoke({
+        actor,
+        tokenId: input.tokenId,
+        userId,
+        organizationId,
+      });
+      return result.match(
+        () => ({ success: true as const }),
+        (error) => {
+          throw deleteTokenFailure(error);
+        }
+      );
+    }),
+  });
+
+  const handler = new OpenAPIHandler(tokenRouter, yoinkOpenApiHandlerOptions);
+
   await app.register(async (protectedApp) => {
     protectedApp.addHook('preHandler', authMiddleware);
 
-    const router = s.router(tokenContract, {
-      list: async ({ request }) => {
-        const { userId, organizationId, actor } = request.authContext;
-        const result = await tokenHandlers.list({ actor, userId, organizationId });
-
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: page,
-          }),
-          (error) => {
-            request.log.error({ error }, 'Failed to list tokens');
-            return {
-              status: 500 as const,
-              body: { message: 'Failed to list tokens' },
-            };
-          }
-        );
-      },
-
-      create: async ({ body, request }) => {
-        const { userId, organizationId, actor } = request.authContext;
-        const result = await tokenHandlers.create({
-          actor,
-          userId,
-          organizationId,
-          name: body.name,
-        });
-
-        return result.match(
-          ({ token, rawToken }) => ({
-            status: 201 as const,
-            body: { token, rawToken },
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_TOKEN_NAME':
-                return {
-                  status: 400 as const,
-                  body: { message: error.message },
-                };
-              case 'BOT_CANNOT_MANAGE_TOKENS':
-              case 'TOKEN_OWNERSHIP_ERROR':
-                return {
-                  status: 403 as const,
-                  body: { message: error.type === 'TOKEN_OWNERSHIP_ERROR' ? 'You do not own this token' : error.message },
-                };
-              case 'TOKEN_LIMIT_REACHED':
-                return {
-                  status: 409 as const,
-                  body: {
-                    message: `You can have at most ${error.limit} API tokens per organization`,
-                  },
-                };
-              default:
-                request.log.error({ error }, 'Failed to create token');
-                return {
-                  status: 500 as const,
-                  body: { message: 'Failed to create token' },
-                };
-            }
-          }
-        );
-      },
-
-      delete: async ({ params, request }) => {
-        const { userId, organizationId, actor } = request.authContext;
-        const result = await tokenHandlers.revoke({
-          actor,
-          tokenId: params.tokenId,
-          userId,
-          organizationId,
-        });
-
-        return result.match(
-          () => ({
-            status: 200 as const,
-            body: { success: true as const },
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'BOT_CANNOT_MANAGE_TOKENS':
-                return {
-                  status: 403 as const,
-                  body: { message: error.message },
-                };
-              case 'TOKEN_OWNERSHIP_ERROR':
-                return {
-                  status: 403 as const,
-                  body: { message: 'You do not own this token' },
-                };
-              case 'USER_TOKEN_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: { message: 'Token not found' },
-                };
-              default:
-                request.log.error({ error }, 'Failed to delete token');
-                return {
-                  status: 500 as const,
-                  body: { message: 'Failed to delete token' },
-                };
-            }
-          }
-        );
-      },
+    protectedApp.route({
+      method: ['GET', 'POST'],
+      url: '/api/auth/tokens',
+      handler: async (request, reply) => dispatchOrpc(handler, request, reply),
     });
-
-    s.registerRouter(tokenContract, router, protectedApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(namedRequestValidationError(err));
-      },
+    protectedApp.route({
+      method: 'DELETE',
+      url: '/api/auth/tokens/:tokenId',
+      handler: async (request, reply) => dispatchOrpc(handler, request, reply),
     });
   });
 };

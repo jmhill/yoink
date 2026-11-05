@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
-import { initServer } from '@ts-rest/fastify';
-import { authContract } from '@yoink/api-contracts';
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { authOrpcContract } from '@yoink/api-contracts/orpc';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
@@ -14,12 +15,16 @@ import {
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { RateLimitConfig } from '../../config/schema.js';
-import { namedRequestValidationError } from '../../shared/request-validation.js';
 import type { ClientIpOf } from '../../shared/request-client-ip.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { PasskeyServiceError } from '../domain/auth-errors.js';
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
 } from './with-authenticated-rate-limit.js';
+import { accessHttpError, accessStorageError } from './access-http-errors.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;
@@ -40,15 +45,68 @@ export type AuthRoutesDependencies = {
   applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
 };
 
-// Helper to check if a route is public (no auth required)
 const isPublicRoute = (request: FastifyRequest): boolean => {
   return request.url.includes('/auth/login/');
 };
 
-// Helper to check if request is a login verification attempt
-// Only these should be rate limited (brute force protection)
 const isLoginVerifyRoute = (request: FastifyRequest): boolean => {
   return request.url.includes('/auth/login/verify') && request.method === 'POST';
+};
+
+const isAuthenticationResponse = (value: unknown): value is AuthenticationResponseJSON =>
+  typeof value === 'object' && value !== null;
+
+const authenticationOptionsFailure = (error: PasskeyServiceError) => {
+  switch (error.type) {
+    case 'USER_NOT_FOUND':
+    case 'CREDENTIAL_NOT_FOUND':
+    case 'CHALLENGE_EXPIRED':
+    case 'CHALLENGE_MISMATCH':
+    case 'VERIFICATION_FAILED':
+    case 'COUNTER_REPLAY':
+    case 'ORIGIN_MISMATCH':
+    case 'RP_ID_MISMATCH':
+    case 'CANNOT_DELETE_LAST_PASSKEY':
+    case 'CREDENTIAL_OWNERSHIP_ERROR':
+    case 'AGENT_CANNOT_USE_PASSKEY':
+    case 'PASSKEY_CREDENTIAL_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return accessStorageError(error, 'Failed to generate authentication options');
+    default: {
+      const _never: never = error;
+      return accessStorageError(_never, 'Failed to generate authentication options');
+    }
+  }
+};
+
+const loginVerifyFailure = (error: PasskeyServiceError) => {
+  switch (error.type) {
+    case 'CHALLENGE_EXPIRED':
+      return accessHttpError({ code: 'GONE', message: 'Challenge has expired' });
+    case 'CREDENTIAL_NOT_FOUND':
+      return accessHttpError({ code: 'UNAUTHORIZED', message: 'Passkey not recognized' });
+    case 'VERIFICATION_FAILED':
+      return accessHttpError({ code: 'BAD_REQUEST', message: error.reason });
+    case 'USER_NOT_FOUND':
+    case 'CHALLENGE_MISMATCH':
+    case 'COUNTER_REPLAY':
+    case 'ORIGIN_MISMATCH':
+    case 'RP_ID_MISMATCH':
+    case 'CANNOT_DELETE_LAST_PASSKEY':
+    case 'CREDENTIAL_OWNERSHIP_ERROR':
+    case 'AGENT_CANNOT_USE_PASSKEY':
+    case 'PASSKEY_CREDENTIAL_STORAGE_ERROR':
+    case 'USER_STORAGE_ERROR':
+      return accessHttpError({ code: 'BAD_REQUEST', message: 'Authentication failed' });
+    default: {
+      const _never: never = error;
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: 'Authentication failed',
+        cause: _never,
+      });
+    }
+  }
 };
 
 export const registerAuthRoutes = async (
@@ -56,10 +114,18 @@ export const registerAuthRoutes = async (
   deps: AuthRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { passkeyService, sessionService, userService, membershipService, organizationStore, tokenService, sessionCookieName, cookieOptions, clientIpOf } = deps;
-  const s = initServer();
+  const {
+    passkeyService,
+    sessionService,
+    userService,
+    membershipService,
+    organizationStore,
+    tokenService,
+    sessionCookieName,
+    cookieOptions,
+    clientIpOf,
+  } = deps;
 
-  // Create combined auth middleware if tokenService is provided
   const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = tokenService
     ? { tokenService, sessionService, sessionCookieName }
     : {
@@ -81,210 +147,152 @@ export const registerAuthRoutes = async (
       ? resolvedAuth
       : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
 
+  const sessionCookieBase = {
+    httpOnly: cookieOptions.httpOnly,
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    path: cookieOptions.path,
+  };
+
+  const auth = implement(authOrpcContract).$context<OrpcHttpContext>();
+  const authRouter = auth.router({
+    loginOptions: auth.loginOptions.handler(async () => {
+      const result = await passkeyService.generateAuthenticationOptions();
+      return result.match(
+        (options) => ({
+          options: options.options,
+          challenge: options.challenge,
+        }),
+        (error) => {
+          throw authenticationOptionsFailure(error);
+        }
+      );
+    }),
+    loginVerify: auth.loginVerify.handler(async ({ input, context }) => {
+      if (!isAuthenticationResponse(input.credential)) {
+        throw accessHttpError({ code: 'BAD_REQUEST', message: 'Authentication failed' });
+      }
+
+      const verifyResult = await passkeyService.verifyAuthentication({
+        challenge: input.challenge,
+        response: input.credential,
+      });
+
+      if (verifyResult.isErr()) {
+        throw loginVerifyFailure(verifyResult.error);
+      }
+
+      const { userId } = verifyResult.value;
+      const userResult = await userService.getUser(userId);
+      if (userResult.isErr() || userResult.value === null) {
+        throw accessStorageError(
+          userResult.isErr() ? userResult.error : { type: 'USER_NOT_FOUND', userId },
+          'Failed to get user info'
+        );
+      }
+      const user = userResult.value;
+
+      const sessionResult = await sessionService.createSession({ userId });
+      if (sessionResult.isErr()) {
+        throw accessStorageError(sessionResult.error, 'Failed to create session');
+      }
+      const session = sessionResult.value;
+
+      context.reply.setCookie(sessionCookieName, session.id, {
+        ...sessionCookieBase,
+        maxAge: cookieOptions.maxAge,
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      };
+    }),
+    logout: auth.logout.handler(async ({ context }) => {
+      const session = context.request.userSession;
+      if (session) {
+        await sessionService.revokeSession(session.id);
+      }
+
+      context.reply.clearCookie(sessionCookieName, sessionCookieBase);
+
+      return { success: true as const };
+    }),
+    session: auth.session.handler(async ({ context }) => {
+      const { userId, organizationId } = context.request.authContext;
+      const userResult = await userService.getUser(userId);
+      if (userResult.isErr() || userResult.value === null) {
+        throw accessStorageError(
+          userResult.isErr() ? userResult.error : { type: 'USER_NOT_FOUND', userId },
+          'Failed to get user info'
+        );
+      }
+      const user = userResult.value;
+
+      const membershipsResult = await membershipService.listMemberships({ userId });
+      if (membershipsResult.isErr()) {
+        throw accessStorageError(membershipsResult.error, 'Failed to get memberships');
+      }
+
+      const organizations = await Promise.all(
+        membershipsResult.value.map(async (membership) => {
+          const orgResult = await organizationStore.findById(membership.organizationId);
+          const org = orgResult.isOk() ? orgResult.value : null;
+          return {
+            id: membership.organizationId,
+            name: org?.name ?? 'Unknown Organization',
+            isPersonal: membership.isPersonalOrg,
+            role: membership.role,
+          };
+        })
+      );
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+        organizationId,
+        organizations,
+      };
+    }),
+  });
+
+  const handler = new OpenAPIHandler(authRouter, yoinkOpenApiHandlerOptions);
+
   await app.register(async (authApp) => {
-    // Apply strict rate limiting only to login verify endpoint (brute force protection)
-    // The /login/options endpoint is not rate limited as it doesn't validate credentials
-    // Only if rate limiting is enabled
     if (rateLimitConfig.enabled) {
       await authApp.register(rateLimit, {
         max: rateLimitConfig.authLoginMax,
         timeWindow: rateLimitConfig.authLoginTimeWindow,
         keyGenerator: (request) => clientIpOf(request),
-        // Only apply rate limiting to the login verify endpoint
         allowList: (request) => !isLoginVerifyRoute(request),
       });
     }
 
-    // Apply auth middleware conditionally - skip for public routes
     authApp.addHook('preHandler', async (request, reply) => {
       if (isPublicRoute(request)) {
-        return; // Skip auth for login routes
+        return;
       }
       return authMiddleware(request, reply);
     });
 
-    const router = s.router(authContract, {
-      loginOptions: async () => {
-        // Generate authentication options for discoverable credentials
-        // No userId = empty allowCredentials = user selects passkey on device
-        const result = await passkeyService.generateAuthenticationOptions();
+    const mount = (
+      method: 'GET' | 'POST' | Array<'GET' | 'POST'>,
+      url: string
+    ) => {
+      authApp.route({
+        method,
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-        return result.match(
-          (options) => ({
-            status: 200 as const,
-            body: {
-              options: options.options,
-              challenge: options.challenge,
-            },
-          }),
-          () => ({
-            status: 500 as const,
-            body: { message: 'Failed to generate authentication options' },
-          })
-        );
-      },
-
-      loginVerify: async ({ body, reply }) => {
-        const { challenge, credential } = body;
-
-        // Verify the passkey authentication
-        const verifyResult = await passkeyService.verifyAuthentication({
-          challenge,
-          response: credential as AuthenticationResponseJSON,
-        });
-
-        if (verifyResult.isErr()) {
-          const error = verifyResult.error;
-          switch (error.type) {
-            case 'CHALLENGE_EXPIRED':
-              return {
-                status: 410 as const,
-                body: { message: 'Challenge has expired' },
-              };
-            case 'CREDENTIAL_NOT_FOUND':
-              return {
-                status: 401 as const,
-                body: { message: 'Passkey not recognized' },
-              };
-            case 'VERIFICATION_FAILED':
-              return {
-                status: 400 as const,
-                body: { message: error.reason },
-              };
-            default:
-              return {
-                status: 400 as const,
-                body: { message: 'Authentication failed' },
-              };
-          }
-        }
-
-        const { userId } = verifyResult.value;
-
-        // Get user info
-        const userResult = await userService.getUser(userId);
-        if (userResult.isErr() || !userResult.value) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to get user info' },
-          };
-        }
-
-        const user = userResult.value;
-
-        // Create a new session for the user
-        const sessionResult = await sessionService.createSession({ userId });
-
-        if (sessionResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to create session' },
-          };
-        }
-
-        const session = sessionResult.value;
-
-        // Set session cookie
-        reply.setCookie(sessionCookieName, session.id, {
-          httpOnly: cookieOptions.httpOnly,
-          secure: cookieOptions.secure,
-          sameSite: cookieOptions.sameSite,
-          path: cookieOptions.path,
-          maxAge: cookieOptions.maxAge,
-        });
-
-        return {
-          status: 200 as const,
-          body: {
-            user: {
-              id: user.id,
-              email: user.email,
-            },
-          },
-        };
-      },
-
-      logout: async ({ request, reply }) => {
-        const session = request.userSession;
-
-        if (session) {
-          // Revoke the session
-          await sessionService.revokeSession(session.id);
-        }
-
-        // Clear the session cookie
-        reply.clearCookie(sessionCookieName, {
-          httpOnly: cookieOptions.httpOnly,
-          secure: cookieOptions.secure,
-          sameSite: cookieOptions.sameSite,
-          path: cookieOptions.path,
-        });
-
-        return {
-          status: 200 as const,
-          body: { success: true as const },
-        };
-      },
-
-      session: async ({ request }) => {
-        const { userId, organizationId } = request.authContext;
-
-        // Get user info
-        const userResult = await userService.getUser(userId);
-        if (userResult.isErr() || !userResult.value) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to get user info' },
-          };
-        }
-
-        const user = userResult.value;
-
-        // Get user's memberships
-        const membershipsResult = await membershipService.listMemberships({ userId });
-        if (membershipsResult.isErr()) {
-          return {
-            status: 500 as const,
-            body: { message: 'Failed to get memberships' },
-          };
-        }
-
-        const memberships = membershipsResult.value;
-
-        // Fetch organization details for each membership
-        const organizations = await Promise.all(
-          memberships.map(async (membership) => {
-            const orgResult = await organizationStore.findById(membership.organizationId);
-            const org = orgResult.isOk() ? orgResult.value : null;
-            return {
-              id: membership.organizationId,
-              name: org?.name ?? 'Unknown Organization',
-              isPersonal: membership.isPersonalOrg,
-              role: membership.role,
-            };
-          })
-        );
-
-        return {
-          status: 200 as const,
-          body: {
-            user: {
-              id: user.id,
-              email: user.email,
-            },
-            organizationId,
-            organizations,
-          },
-        };
-      },
-    });
-
-    s.registerRouter(authContract, router, authApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(namedRequestValidationError(err));
-      },
-    });
+    mount('POST', '/api/auth/login/options');
+    mount('POST', '/api/auth/login/verify');
+    mount('POST', '/api/auth/logout');
+    mount('GET', '/api/auth/session');
   });
 };

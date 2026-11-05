@@ -40,29 +40,55 @@ const stringArray = (value: unknown): readonly string[] | undefined => {
   return value;
 };
 
+const isJsonValue = (value: unknown): boolean => {
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonValue);
+  }
+  if (typeof value === 'object') {
+    return Object.values(value).every(isJsonValue);
+  }
+  return false;
+};
+
+const reservedDataKeys = new Set(['code', 'fields', 'publicMessage']);
+
+const extraDataFields = (data: object): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(data).filter(([key, value]) => !reservedDataKeys.has(key) && isJsonValue(value))
+  );
+
 const domainErrorData = (
   data: unknown
-): { readonly code?: string; readonly fields?: readonly string[] } => {
+): {
+  readonly code?: string;
+  readonly fields?: readonly string[];
+  readonly publicMessage?: string;
+  readonly extra: Record<string, unknown>;
+} => {
   if (typeof data !== 'object' || data === null) {
-    return {};
+    return { extra: {} };
   }
   const code = 'code' in data && typeof data.code === 'string' ? data.code : undefined;
   const fields = 'fields' in data ? stringArray(data.fields) : undefined;
-  return { code, fields };
+  const publicMessage =
+    'publicMessage' in data && typeof data.publicMessage === 'string' ? data.publicMessage : undefined;
+  return { code, fields, publicMessage, extra: extraDataFields(data) };
 };
 
-const messageBody = (error: AnyORPCError) => {
+const messageBody = (error: AnyORPCError, message = error.message) => {
   const extra = domainErrorData(error.data);
-  if (extra.code !== undefined && extra.fields !== undefined) {
-    return { message: error.message, code: extra.code, fields: extra.fields };
-  }
-  if (extra.code !== undefined) {
-    return { message: error.message, code: extra.code };
-  }
-  if (extra.fields !== undefined) {
-    return { message: error.message, fields: extra.fields };
-  }
-  return { message: error.message };
+  const coded =
+    extra.code !== undefined && extra.fields !== undefined
+      ? { message, code: extra.code, fields: extra.fields }
+      : extra.code !== undefined
+        ? { message, code: extra.code }
+        : extra.fields !== undefined
+          ? { message, fields: extra.fields }
+          : { message };
+  return { ...coded, ...extra.extra };
 };
 
 const validationBody = (
@@ -109,8 +135,10 @@ export const yoinkErrorBody = (
       return { message: error.message, code: 'invalid_cursor' };
     case 'SERVICE_UNAVAILABLE':
       return { status: 'unhealthy', database: 'disconnected' };
-    case 'INTERNAL_SERVER_ERROR':
-      return { message: 'Internal server error' };
+    case 'INTERNAL_SERVER_ERROR': {
+      const extra = domainErrorData(error.data);
+      return messageBody(error, extra.publicMessage ?? 'Internal server error');
+    }
     default:
       return messageBody(error);
   }

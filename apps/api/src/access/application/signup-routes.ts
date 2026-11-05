@@ -1,17 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
-import { initServer } from '@ts-rest/fastify';
-import { signupContract } from '@yoink/api-contracts';
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { signupOrpcContract } from '@yoink/api-contracts/orpc';
 import type { SignupService } from '../domain/signup-service.js';
 import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../config/schema.js';
-import { namedRequestValidationError } from '../../shared/request-validation.js';
 import type { ClientIpOf } from '../../shared/request-client-ip.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
-  logAndReturnStorageFailure,
+  accessHttpError,
+  accessStorageError,
 } from './access-http-errors.js';
 
 export type SignupRoutesDependencies = {
@@ -31,18 +35,118 @@ export type SignupRoutesDependencies = {
   clientIpOf: ClientIpOf;
 };
 
+const isRegistrationResponse = (value: unknown): value is RegistrationResponseJSON =>
+  typeof value === 'object' && value !== null;
+
 export const registerSignupRoutes = async (
   app: FastifyInstance,
   deps: SignupRoutesDependencies,
   rateLimitConfig: RateLimitConfig
 ) => {
-  const { signupService, passkeyService, sessionService, sessionCookieName, cookieOptions, clientIpOf } = deps;
-  const s = initServer();
+  const {
+    signupService,
+    passkeyService,
+    sessionService,
+    sessionCookieName,
+    cookieOptions,
+    clientIpOf,
+  } = deps;
 
-  // All signup routes are public (no auth required)
+  const sessionCookieBase = {
+    httpOnly: cookieOptions.httpOnly,
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    path: cookieOptions.path,
+  };
+
+  const signup = implement(signupOrpcContract).$context<OrpcHttpContext>();
+  const signupRouter = signup.router({
+    options: signup.options.handler(async ({ input }) => {
+      const validateResult = await signupService.validateSignupRequest({
+        code: input.code,
+        email: input.email,
+      });
+      if (validateResult.isErr()) {
+        throw acceptInvitationErrorResponse(validateResult.error);
+      }
+
+      const { invitation, organization } = validateResult.value;
+      const optionsResult = await passkeyService.generateSignupRegistrationOptions({
+        email: input.email,
+        identifier: input.email,
+      });
+      if (optionsResult.isErr()) {
+        throw accessStorageError(optionsResult.error, 'Failed to generate registration options');
+      }
+
+      return {
+        options: optionsResult.value.options,
+        challenge: optionsResult.value.challenge,
+        organizationId: organization.id,
+        organizationName: organization.name,
+        role: invitation.role,
+      };
+    }),
+    verify: signup.verify.handler(async ({ input, context }) => {
+      const signupResult = await signupService.completeSignup({
+        code: input.code,
+        email: input.email,
+      });
+      if (signupResult.isErr()) {
+        throw acceptInvitationErrorResponse(signupResult.error);
+      }
+
+      const { user, personalOrganization, invitedOrganization } = signupResult.value;
+      if (!isRegistrationResponse(input.credential)) {
+        throw accessHttpError({ code: 'BAD_REQUEST', message: 'Passkey registration failed' });
+      }
+
+      const verifyResult = await passkeyService.verifyRegistration({
+        userId: user.id,
+        challenge: input.challenge,
+        response: input.credential,
+        credentialName: input.credentialName,
+        skipUserIdCheck: true,
+      });
+
+      if (verifyResult.isErr()) {
+        throw accessHttpError({ code: 'BAD_REQUEST', message: 'Passkey registration failed' });
+      }
+
+      const sessionResult = await sessionService.createSession({
+        userId: user.id,
+        organizationId: personalOrganization.id,
+      });
+      if (sessionResult.isErr()) {
+        throw accessStorageError(sessionResult.error, 'Failed to create session');
+      }
+
+      context.reply.setCookie(sessionCookieName, sessionResult.value.id, {
+        ...sessionCookieBase,
+        maxAge: cookieOptions.maxAge,
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+        personalOrganization: {
+          id: personalOrganization.id,
+          name: personalOrganization.name,
+        },
+        invitedOrganization: {
+          id: invitedOrganization.id,
+          name: invitedOrganization.name,
+          role: invitedOrganization.role,
+        },
+      };
+    }),
+  });
+
+  const handler = new OpenAPIHandler(signupRouter, yoinkOpenApiHandlerOptions);
+
   await app.register(async (publicApp) => {
-    // Apply strict rate limiting for signup (abuse prevention)
-    // Only if rate limiting is enabled
     if (rateLimitConfig.enabled) {
       await publicApp.register(rateLimit, {
         max: rateLimitConfig.signupMax,
@@ -51,126 +155,15 @@ export const registerSignupRoutes = async (
       });
     }
 
-    const router = s.router(signupContract, {
-      options: async ({ body, request }) => {
-        const { code, email } = body;
+    const mount = (url: string) => {
+      publicApp.route({
+        method: 'POST',
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-        const validateResult = await signupService.validateSignupRequest({ code, email });
-
-        return validateResult.match(
-          async ({ invitation, organization }) => {
-            const optionsResult = await passkeyService.generateSignupRegistrationOptions({
-              email,
-              identifier: email,
-            });
-
-            return optionsResult.match(
-              (options) => ({
-                status: 200 as const,
-                body: {
-                  options: options.options,
-                  challenge: options.challenge,
-                  organizationId: organization.id,
-                  organizationName: organization.name,
-                  role: invitation.role,
-                },
-              }),
-              (error) =>
-                logAndReturnStorageFailure(
-                  request,
-                  error,
-                  'Failed to generate registration options'
-                )
-            );
-          },
-          (error) => acceptInvitationErrorResponse(request, error)
-        );
-      },
-
-      verify: async ({ body, reply, request }) => {
-        const { challenge, code, email, credential, credentialName } = body;
-
-        // First complete the signup (creates user, org, memberships)
-        const signupResult = await signupService.completeSignup({ code, email });
-
-        return signupResult.match(
-          async ({ user, personalOrganization, invitedOrganization }) => {
-            // Verify the passkey registration
-            // skipUserIdCheck is true because the challenge was created with email as identifier
-            // during /signup/options, before the user existed
-            const verifyResult = await passkeyService.verifyRegistration({
-              userId: user.id,
-              challenge,
-              response: credential as RegistrationResponseJSON,
-              credentialName,
-              skipUserIdCheck: true,
-            });
-
-            if (verifyResult.isErr()) {
-              // If passkey verification fails, the user was already created
-              // In production, this should be a transaction
-              // TODO: Wrap in database transaction
-              return {
-                status: 400 as const,
-                body: { message: 'Passkey registration failed' },
-              };
-            }
-
-            // Create a session for the new user
-            const sessionResult = await sessionService.createSession({
-              userId: user.id,
-              organizationId: personalOrganization.id, // Start in personal org
-            });
-
-            if (sessionResult.isErr()) {
-              return logAndReturnStorageFailure(
-                request,
-                sessionResult.error,
-                'Failed to create session'
-              );
-            }
-
-            const session = sessionResult.value;
-
-            // Set session cookie
-            reply.setCookie(sessionCookieName, session.id, {
-              httpOnly: cookieOptions.httpOnly,
-              secure: cookieOptions.secure,
-              sameSite: cookieOptions.sameSite,
-              path: cookieOptions.path,
-              maxAge: cookieOptions.maxAge,
-            });
-
-            return {
-              status: 201 as const,
-              body: {
-                user: {
-                  id: user.id,
-                  email: user.email,
-                },
-                personalOrganization: {
-                  id: personalOrganization.id,
-                  name: personalOrganization.name,
-                },
-                invitedOrganization: {
-                  id: invitedOrganization.id,
-                  name: invitedOrganization.name,
-                  role: invitedOrganization.role,
-                },
-              },
-            };
-          },
-          (error) => acceptInvitationErrorResponse(request, error)
-        );
-      },
-    });
-
-    s.registerRouter(signupContract, router, publicApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(namedRequestValidationError(err));
-      },
-    });
+    mount('/api/auth/signup/options');
+    mount('/api/auth/signup/verify');
   });
 };

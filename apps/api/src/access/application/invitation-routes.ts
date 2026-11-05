@@ -1,19 +1,23 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import { invitationContract } from '@yoink/api-contracts';
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { invitationOrpcContract } from '@yoink/api-contracts/orpc';
 import type { InvitationService } from '../domain/invitation-service.js';
 import type { MembershipService } from '../domain/membership-service.js';
 import type { OrganizationService } from '../domain/organization-service.js';
 import type { UserService } from '../domain/user-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
-import { namedRequestValidationError } from '../../shared/request-validation.js';
 import { handleAcceptInvitation } from './handle-accept-invitation.js';
 import { handleValidateInvitation } from './handle-validate-invitation.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
+  accessHttpError,
+  accessInternalError,
   createInvitationErrorResponse,
   listPendingInvitationErrorResponse,
-  logAndReturnStorageFailure,
   revokeInvitationErrorResponse,
   validateInvitationErrorResponse,
 } from './access-http-errors.js';
@@ -49,7 +53,109 @@ export const registerInvitationRoutes = async (
     acceptInvitation,
     authMiddleware,
   } = deps;
-  const s = initServer();
+
+  const invitations = implement(invitationOrpcContract).$context<OrpcHttpContext>();
+  const invitationRouter = invitations.router({
+    validate: invitations.validate.handler(async ({ input }) => {
+      const result = await validateInvitation({
+        code: input.code,
+        email: input.email,
+      });
+      if (result.isErr()) {
+        throw validateInvitationErrorResponse(result.error);
+      }
+
+      const invitation = result.value;
+      const orgResult = await organizationService.getOrganization(invitation.organizationId);
+      if (orgResult.isErr()) {
+        throw accessInternalError(orgResult.error);
+      }
+      const organizationName = orgResult.value ? orgResult.value.name : undefined;
+
+      return {
+        ...invitation,
+        organizationName,
+      };
+    }),
+    create: invitations.create.handler(async ({ input, context }) => {
+      const result = await invitationService.createInvitation({
+        organizationId: input.organizationId,
+        invitedByUserId: context.request.authContext.userId,
+        role: input.role,
+        email: input.email,
+        expiresInDays: input.expiresInDays,
+      });
+      return result.match(
+        (invitation) => invitation,
+        (error) => {
+          throw createInvitationErrorResponse(error);
+        }
+      );
+    }),
+    accept: invitations.accept.handler(async ({ input, context }) => {
+      const userResult = await userService.getUser(context.request.authContext.userId);
+      if (userResult.isErr()) {
+        throw accessInternalError(userResult.error);
+      }
+      if (userResult.value === null) {
+        throw accessInternalError({
+          type: 'USER_NOT_FOUND',
+          userId: context.request.authContext.userId,
+        });
+      }
+
+      const result = await acceptInvitation({
+        code: input.code,
+        account: {
+          userId: context.request.authContext.userId,
+          email: userResult.value.email,
+        },
+      });
+      return result.match(
+        (invitation) => invitation,
+        (error) => {
+          throw acceptInvitationErrorResponse(error);
+        }
+      );
+    }),
+    listPending: invitations.listPending.handler(async ({ input, context }) => {
+      const hasPermission = await membershipService.hasRole({
+        userId: context.request.authContext.userId,
+        organizationId: input.organizationId,
+        requiredRole: 'admin',
+      });
+      if (hasPermission.isErr()) {
+        throw accessInternalError(hasPermission.error);
+      }
+      if (!hasPermission.value) {
+        throw accessHttpError({ code: 'FORBIDDEN', message: 'Insufficient permissions' });
+      }
+
+      const result = await invitationService.listPendingInvitations({
+        organizationId: input.organizationId,
+      });
+      return result.match(
+        (pending) => ({ invitations: pending }),
+        (error) => {
+          throw listPendingInvitationErrorResponse(error);
+        }
+      );
+    }),
+    revoke: invitations.revoke.handler(async ({ input, context }) => {
+      const result = await invitationService.revokeInvitation({
+        invitationId: input.invitationId,
+        revokedByUserId: context.request.authContext.userId,
+      });
+      return result.match(
+        () => undefined,
+        (error) => {
+          throw revokeInvitationErrorResponse(error);
+        }
+      );
+    }),
+  });
+
+  const handler = new OpenAPIHandler(invitationRouter, yoinkOpenApiHandlerOptions);
 
   await app.register(async (invitationApp) => {
     invitationApp.addHook('preHandler', async (request, reply) => {
@@ -59,142 +165,21 @@ export const registerInvitationRoutes = async (
       return authMiddleware(request, reply);
     });
 
-    const router = s.router(invitationContract, {
-      validate: async ({ body, request }) => {
-        const result = await validateInvitation({
-          code: body.code,
-          email: body.email,
-        });
+    const mount = (
+      method: 'GET' | 'POST' | 'DELETE',
+      url: string
+    ) => {
+      invitationApp.route({
+        method,
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-        if (result.isErr()) {
-          return validateInvitationErrorResponse(request, result.error);
-        }
-
-        const invitation = result.value;
-        const orgResult = await organizationService.getOrganization(invitation.organizationId);
-        if (orgResult.isErr()) {
-          return logAndReturnStorageFailure(
-            request,
-            orgResult.error,
-            'Internal server error'
-          );
-        }
-        const organizationName = orgResult.value ? orgResult.value.name : undefined;
-
-        return {
-          status: 200 as const,
-          body: {
-            ...invitation,
-            organizationName,
-          },
-        };
-      },
-
-      create: async ({ body, request }) => {
-        const result = await invitationService.createInvitation({
-          organizationId: body.organizationId,
-          invitedByUserId: request.authContext.userId,
-          role: body.role,
-          email: body.email,
-          expiresInDays: body.expiresInDays,
-        });
-
-        return result.match(
-          (invitation) => ({
-            status: 201 as const,
-            body: invitation,
-          }),
-          (error) => createInvitationErrorResponse(request, error)
-        );
-      },
-
-      accept: async ({ body, request }) => {
-        const userResult = await userService.getUser(request.authContext.userId);
-        if (userResult.isErr()) {
-          return logAndReturnStorageFailure(request, userResult.error, 'Internal server error');
-        }
-        if (userResult.value === null) {
-          return logAndReturnStorageFailure(
-            request,
-            { type: 'USER_NOT_FOUND', userId: request.authContext.userId },
-            'Internal server error'
-          );
-        }
-
-        const result = await acceptInvitation({
-          code: body.code,
-          account: {
-            userId: request.authContext.userId,
-            email: userResult.value.email,
-          },
-        });
-
-        return result.match(
-          (invitation) => ({
-            status: 200 as const,
-            body: invitation,
-          }),
-          (error) => acceptInvitationErrorResponse(request, error)
-        );
-      },
-
-      listPending: async ({ params, request }) => {
-        const hasPermission = await membershipService.hasRole({
-          userId: request.authContext.userId,
-          organizationId: params.organizationId,
-          requiredRole: 'admin',
-        });
-
-        if (hasPermission.isErr()) {
-          return logAndReturnStorageFailure(
-            request,
-            hasPermission.error,
-            'Internal server error'
-          );
-        }
-
-        if (!hasPermission.value) {
-          return {
-            status: 403 as const,
-            body: { message: 'Insufficient permissions' },
-          };
-        }
-
-        const result = await invitationService.listPendingInvitations({
-          organizationId: params.organizationId,
-        });
-
-        return result.match(
-          (invitations) => ({
-            status: 200 as const,
-            body: { invitations },
-          }),
-          (error) => listPendingInvitationErrorResponse(request, error)
-        );
-      },
-
-      revoke: async ({ params, request }) => {
-        const result = await invitationService.revokeInvitation({
-          invitationId: params.invitationId,
-          revokedByUserId: request.authContext.userId,
-        });
-
-        return result.match(
-          () => ({
-            status: 204 as const,
-            body: undefined,
-          }),
-          (error) => revokeInvitationErrorResponse(request, error)
-        );
-      },
-    });
-
-    s.registerRouter(invitationContract, router, invitationApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(namedRequestValidationError(err));
-      },
-    });
+    mount('POST', '/api/invitations');
+    mount('POST', '/api/invitations/validate');
+    mount('POST', '/api/invitations/accept');
+    mount('GET', '/api/organizations/:organizationId/invitations');
+    mount('DELETE', '/api/invitations/:invitationId');
   });
 };

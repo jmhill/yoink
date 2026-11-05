@@ -21,6 +21,9 @@ overrides:
   launch-editor: '>=2.14.2'
   # Fastify 5 resolves find-my-way 9.x; 9.7.0 fixes GHSA-c96f-x56v-gq3h.
   find-my-way: '>=9.7.0'
+  # Admin TanStack router-core pulls seroval. 1.6.3 is vulnerable
+  # (GHSA-97r2-qh9m-474h, GHSA-wp97-x4hv-qvhp, GHSA-7rv5-mrxv-xcr9); patched in >=1.6.8.
+  seroval: '>=1.6.8'
 
 peerDependencyRules:
   allowedVersions:

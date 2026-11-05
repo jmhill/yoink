@@ -3,6 +3,12 @@ import { initServer } from '@ts-rest/fastify';
 import { healthContract } from '@yoink/api-contracts';
 import type { HealthChecker } from '../domain/health-checker.js';
 
+/**
+ * ts-rest health router, kept so the spike can be compared with the oRPC adapter.
+ * Not mounted: Fastify rejects a second GET /api/health. `registerOrpcHealthRoutes`
+ * serves that path.
+ */
+
 export type HealthRoutesDependencies = {
   healthChecker: HealthChecker;
 };

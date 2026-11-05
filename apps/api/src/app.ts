@@ -7,8 +7,9 @@ import * as Sentry from '@sentry/node';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { registerHealthRoutes } from './health/application/index.js';
+import { registerOrpcHealthRoutes } from './health/application/index.js';
 import { registerCaptureRoutes } from './captures/infrastructure/http-capture-routes.js';
+import { registerOrpcCaptureRoutes } from './captures/infrastructure/orpc-capture-routes.js';
 import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
 import { registerProjectRoutes } from './projects/infrastructure/http-project-routes.js';
 import { registerNoteRoutes } from './notes/infrastructure/http-note-routes.js';
@@ -205,8 +206,15 @@ export const createApp = async (deps: AppDependencies) => {
     });
   }
 
-  // Register routes
-  await registerHealthRoutes(app, { healthChecker: deps.healthChecker });
+  // oRPC OpenAPI serves GET /api/health and capture create + list on the
+  // production paths. Fastify rejects a second registration of the same
+  // method and path, so those routes are not also mounted with ts-rest.
+  // Every other contract, including the rest of captureContract, stays ts-rest.
+  await registerOrpcHealthRoutes(app, { healthChecker: deps.healthChecker });
+  await registerOrpcCaptureRoutes(app, {
+    captureHandlers: deps.captureHandlers,
+    authMiddleware,
+  });
   await registerCaptureRoutes(app, {
     captureHandlers: deps.captureHandlers,
     captureProcessingService: deps.captureProcessingService,

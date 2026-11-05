@@ -4,10 +4,6 @@ import { captureContract, ProcessedToTypeSchema } from '@yoink/api-contracts';
 import type { CaptureProcessingService } from '../../processing/application/create-processing-handlers.js';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { CaptureHandlers } from '../application/create-capture-handlers.js';
-import {
-  invalidCursorHttp,
-  toCaptureListBody,
-} from '../../listing/infrastructure/http-listed-page.js';
 import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
 import { namedRequestValidationError } from '../../shared/request-validation.js';
 
@@ -16,6 +12,16 @@ export type CaptureRoutesDependencies = {
   captureProcessingService: CaptureProcessingService;
   authMiddleware: AuthMiddleware;
 };
+
+// create and list are served by the oRPC adapter on the same paths.
+// Fastify cannot mount both. The route objects stay on captureContract for clients.
+const {
+  create: servedByOrpcCreate,
+  list: servedByOrpcList,
+  ...captureLifecycleContract
+} = captureContract;
+void servedByOrpcCreate.path;
+void servedByOrpcList.path;
 
 export const registerCaptureRoutes = async (
   app: FastifyInstance,
@@ -27,70 +33,7 @@ export const registerCaptureRoutes = async (
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', authMiddleware);
 
-    const captureRouter = s.router(captureContract, {
-      create: async ({ body, request }) => {
-        if (request.authContext.principalKind === 'agent') {
-          return {
-            status: 403 as const,
-            body: { message: 'Agents cannot create captures' },
-          };
-        }
-
-        const result = await captureHandlers.create({
-          content: body.content,
-          title: body.title,
-          sourceUrl: body.sourceUrl,
-          sourceApp: body.sourceApp,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-        });
-
-        return result.match(
-          ({ view }) => ({
-            status: 201 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'STORAGE_ERROR':
-              default:
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      list: async ({ query, request }) => {
-        const result = await captureHandlers.list({
-          organizationId: request.authContext.organizationId,
-          status: query.status,
-          snoozed: query.snoozed,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toCaptureListBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
+    const captureRouter = s.router(captureLifecycleContract, {
       get: async ({ params, request }) => {
         const result = await captureHandlers.find({
           id: params.id,
@@ -465,7 +408,7 @@ export const registerCaptureRoutes = async (
       },
     });
 
-    s.registerRouter(captureContract, captureRouter, authedApp, {
+    s.registerRouter(captureLifecycleContract, captureRouter, authedApp, {
       jsonQuery: true,
       responseValidation: true,
       requestValidationErrorHandler: (err, request, reply) => {

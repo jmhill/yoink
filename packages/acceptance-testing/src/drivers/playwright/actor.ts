@@ -5621,6 +5621,9 @@ export const createPlaywrightActor = (
           get() { return true; },
         });
         document.dispatchEvent(new Event('visibilitychange'));
+        // TanStack Query's focus manager listens on window, not document.
+        // A document-only event leaves the live-query timer stopped.
+        window.dispatchEvent(new Event('visibilitychange'));
         window.dispatchEvent(new Event('blur'));
       })()`);
     },
@@ -5636,6 +5639,7 @@ export const createPlaywrightActor = (
           get() { return false; },
         });
         document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('visibilitychange'));
         window.dispatchEvent(new Event('focus'));
       })()`);
     },

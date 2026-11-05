@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract';
 import { openapi } from '@orpc/openapi';
-import { HealthResponseSchema } from '@yoink/api-contracts';
+import { HealthResponseSchema } from '../schemas/health.js';
 
 export const healthOrpcContract = oc.router({
   check: oc

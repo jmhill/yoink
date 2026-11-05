@@ -44,5 +44,17 @@ describe('yoinkErrorBody', () => {
     expect(yoinkErrorBody(new ORPCError('NOT_FOUND', { message: 'missing' }))).toEqual({
       message: 'missing',
     });
+
+    expect(
+      yoinkErrorBody(
+        new ORPCError('FORBIDDEN', {
+          message: 'Creating a project requires a person',
+          data: { code: 'PROJECT_CREATE_REQUIRES_PERSON' },
+        })
+      )
+    ).toEqual({
+      message: 'Creating a project requires a person',
+      code: 'PROJECT_CREATE_REQUIRES_PERSON',
+    });
   });
 });

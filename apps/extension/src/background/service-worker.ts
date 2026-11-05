@@ -1,6 +1,6 @@
 // Background service worker for context menu and keyboard shortcut handling
 
-import { createCaptureApi } from '@/lib/api-client';
+import { createCaptureApi, httpStatusOf } from '@/lib/api-client';
 
 // Helper to show notifications with unique IDs
 const showNotification = (
@@ -75,24 +75,22 @@ async function handleCapture(text: string, sourceUrl?: string) {
       return;
     }
 
-    const response = await api.create({
-      body: {
-        content: text,
-        sourceUrl,
-        sourceApp: 'browser-extension',
-      },
+    await api.create({
+      content: text,
+      sourceUrl,
+      sourceApp: 'browser-extension',
     });
-
-    if (response.status === 201) {
-      showNotification('success', 'Captured successfully!');
-    } else if (response.status === 401) {
-      showNotification('error', 'Invalid API token. Please check your settings.');
-    } else {
-      showNotification('error', `Failed to capture: ${response.status}`);
-    }
+    showNotification('success', 'Captured successfully!');
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to capture';
-    showNotification('error', message);
+    const status = httpStatusOf(error);
+    if (status === 401) {
+      showNotification('error', 'Invalid API token. Please check your settings.');
+    } else if (status !== undefined) {
+      showNotification('error', `Failed to capture: ${status}`);
+    } else {
+      const message = error instanceof Error ? error.message : 'Failed to capture';
+      showNotification('error', message);
+    }
   }
 }
 

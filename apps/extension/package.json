@@ -12,7 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ts-rest/core": "^3.52.0",
+    "@orpc/client": "2.0.0-beta.48",
+    "@orpc/contract": "2.0.0-beta.48",
+    "@orpc/openapi": "2.0.0-beta.48",
     "@yoink/api-contracts": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { storage } from '@/lib/storage';
-import { createCaptureApi } from '@/lib/api-client';
+import { createCaptureApi, httpStatusOf } from '@/lib/api-client';
 import { getPageInfo, getActiveTabInfo } from '@/lib/messages';
 
 type Status = 'loading' | 'not-configured' | 'ready' | 'capturing' | 'success' | 'error';
@@ -60,28 +60,26 @@ export function Popup() {
         return;
       }
 
-      const response = await api.create({
-        body: {
-          content: content.trim(),
-          sourceUrl: sourceUrl || undefined,
-          sourceApp: 'browser-extension',
-        },
+      await api.create({
+        content: content.trim(),
+        sourceUrl: sourceUrl || undefined,
+        sourceApp: 'browser-extension',
       });
 
-      if (response.status === 201) {
-        setStatus('success');
-        // Close popup after short delay
-        setTimeout(() => window.close(), 800);
-      } else if (response.status === 401) {
+      setStatus('success');
+      setTimeout(() => window.close(), 800);
+    } catch (err) {
+      const status = httpStatusOf(err);
+      if (status === 401) {
         setError('Invalid API token. Please check your settings.');
         setStatus('error');
+      } else if (status !== undefined) {
+        setError(`Failed to capture: ${status}`);
+        setStatus('error');
       } else {
-        setError(`Failed to capture: ${response.status}`);
+        setError(err instanceof Error ? err.message : 'Failed to capture');
         setStatus('error');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to capture');
-      setStatus('error');
     }
   };
 

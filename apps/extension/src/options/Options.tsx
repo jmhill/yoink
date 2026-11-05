@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { storage } from '@/lib/storage';
-import { createCaptureApiWithConfig } from '@/lib/api-client';
+import { createCaptureApiWithConfig, httpStatusOf } from '@/lib/api-client';
 
 type Status = 'idle' | 'loading' | 'validating' | 'success' | 'error';
 
@@ -57,21 +57,8 @@ export function Options() {
         token: token.trim(),
       });
 
-      const response = await api.list({ query: { limit: 1 } });
+      await api.list({ limit: 1 });
 
-      if (response.status === 401) {
-        setError('Invalid API token');
-        setStatus('error');
-        return;
-      }
-
-      if (response.status !== 200) {
-        setError(`API error: ${response.status}`);
-        setStatus('error');
-        return;
-      }
-
-      // Save config
       await storage.set({
         apiUrl: apiUrl.trim(),
         token: token.trim(),
@@ -80,9 +67,14 @@ export function Options() {
       setStatus('success');
       setTimeout(() => setStatus('idle'), 2000);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to connect to API'
-      );
+      const status = httpStatusOf(err);
+      if (status === 401) {
+        setError('Invalid API token');
+      } else if (status !== undefined) {
+        setError(`API error: ${status}`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to connect to API');
+      }
       setStatus('error');
     }
   };

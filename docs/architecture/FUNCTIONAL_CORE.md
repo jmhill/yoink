@@ -22,7 +22,7 @@ captures/
   infrastructure/    # adapters
     store-backed-persist.ts    # event → existing CaptureStore
     sqlite-capture-store.ts    # leftover CRUD (processing still uses it)
-    orpc-capture-routes.ts     # oRPC OpenAPI for every capture path
+    orpc-*-routes.ts           # oRPC OpenAPI adapters (domain stays Result)
                                # Result stays in the handler; only this adapter throws ORPCError
 ```
 

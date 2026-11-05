@@ -1,14 +1,33 @@
+import { OpenAPIHandler } from '@orpc/openapi/fastify';
+import { implement } from '@orpc/server';
+import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
-import { initServer } from '@ts-rest/fastify';
-import { projectContract } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import type { ProjectHandlers } from '../application/create-project-handlers.js';
 import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
+import { toProjectListBody, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
+import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import type { ProjectHandlers } from '../application/create-project-handlers.js';
+import type { SetProjectNextActionCommand } from '../domain/project-commands.js';
 import {
-  invalidCursorHttp,
-  toProjectListBody,
-  toTaskListBody,
-} from '../../listing/infrastructure/http-listed-page.js';
+  mapApplyImportError,
+  mapChangeProjectStatusError,
+  mapConfirmProposalError,
+  mapCreateProjectError,
+  mapDeclineProposalError,
+  mapDiscardImportError,
+  mapGetImportError,
+  mapGetProjectError,
+  mapListImportsError,
+  mapListProjectHistoryError,
+  mapListProjectsError,
+  mapListProjectTasksError,
+  mapRestoreProposalError,
+  mapSetNextActionError,
+  mapStageImportError,
+  mapUpdateProjectError,
+} from './orpc-project-errors.js';
 import { projectRequestValidationError } from './project-http-errors.js';
 
 export type ProjectRoutesDependencies = {
@@ -17,704 +36,318 @@ export type ProjectRoutesDependencies = {
   authMiddleware: AuthMiddleware;
 };
 
-const projectErrorBody = (error: { type: string; message: string }) => ({
-  message: error.message,
-  code: error.type,
-});
-
-const importInvalidHttp = (error: {
-  message: string;
-  errors: readonly { index: number; name: string; field: string; code: string; message: string }[];
-}) => ({
-  status: 400 as const,
-  body: {
-    message: error.message,
-    code: 'IMPORT_INVALID' as const,
-    errors: [...error.errors],
-  },
-});
+type RouteMethod = 'GET' | 'POST' | 'PATCH' | 'PUT';
 
 export const registerProjectRoutes = async (
   app: FastifyInstance,
   deps: ProjectRoutesDependencies
 ) => {
   const { projectHandlers, historyHandlers, authMiddleware } = deps;
-  const s = initServer();
+  const projects = implement(projectOrpcContract).$context<OrpcHttpContext>();
+  const projectRouter = projects.router({
+    list: projects.list.handler(async ({ input, context }) => {
+      const result = await projectHandlers.list({
+        organizationId: context.request.authContext.organizationId,
+        limit: input.limit,
+        cursor: input.cursor,
+        status: input.status,
+        createdById: input.createdById,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        (page) => toProjectListBody(page),
+        (error) => {
+          throw mapListProjectsError(error);
+        }
+      );
+    }),
+    create: projects.create.handler(async ({ input, context }) => {
+      const result = await projectHandlers.create({
+        name: input.name,
+        objective: input.objective,
+        status: input.status,
+        reason: input.reason,
+        suggestedNextAction: input.suggestedNextAction,
+        organizationId: context.request.authContext.organizationId,
+        createdById: context.request.authContext.userId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view }) => view,
+        (error) => {
+          throw mapCreateProjectError(error);
+        }
+      );
+    }),
+    stageImport: projects.stageImport.handler(async ({ input, context }) => {
+      const result = await projectHandlers.stageImport({
+        projects: input.projects,
+        organizationId: context.request.authContext.organizationId,
+        createdById: context.request.authContext.userId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        (view) => view,
+        (error) => {
+          throw mapStageImportError(error);
+        }
+      );
+    }),
+    listImports: projects.listImports.handler(async ({ context }) => {
+      const result = await projectHandlers.listImports({
+        organizationId: context.request.authContext.organizationId,
+      });
+
+      return result.match(
+        (body) => body,
+        (error) => {
+          throw mapListImportsError(error);
+        }
+      );
+    }),
+    getImport: projects.getImport.handler(async ({ input, context }) => {
+      const result = await projectHandlers.getImport({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        createdById: context.request.authContext.userId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        (view) => view,
+        (error) => {
+          throw mapGetImportError(error);
+        }
+      );
+    }),
+    applyImport: projects.applyImport.handler(async ({ input, context }) => {
+      const result = await projectHandlers.applyImport({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        (view) => view,
+        (error) => {
+          throw mapApplyImportError(error);
+        }
+      );
+    }),
+    discardImport: projects.discardImport.handler(async ({ input, context }) => {
+      const result = await projectHandlers.discardImport({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        (view) => view,
+        (error) => {
+          throw mapDiscardImportError(error);
+        }
+      );
+    }),
+    get: projects.get.handler(async ({ input, context }) => {
+      const result = await projectHandlers.get({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+      });
+
+      return result.match(
+        (view) => view,
+        (error) => {
+          throw mapGetProjectError(error);
+        }
+      );
+    }),
+    listHistory: projects.listHistory.handler(async ({ input, context }) => {
+      const result = await historyHandlers.listProjectHistory({
+        projectId: input.id,
+        organizationId: context.request.authContext.organizationId,
+        limit: input.limit,
+        cursor: input.cursor,
+      });
+
+      return result.match(
+        (page) => page,
+        (error) => {
+          throw mapListProjectHistoryError(error);
+        }
+      );
+    }),
+    listOpenTasks: projects.listOpenTasks.handler(async ({ input, context }) => {
+      const result =
+        input.status === 'finished'
+          ? await historyHandlers.listFinishedTasks({
+              projectId: input.id,
+              organizationId: context.request.authContext.organizationId,
+              limit: input.limit,
+              cursor: input.cursor,
+            })
+          : await projectHandlers.listOpenTasks({
+              projectId: input.id,
+              organizationId: context.request.authContext.organizationId,
+              limit: input.limit,
+              cursor: input.cursor,
+            });
+
+      return result.match(
+        (page) => toTaskListBody(page),
+        (error) => {
+          throw mapListProjectTasksError(error);
+        }
+      );
+    }),
+    update: projects.update.handler(async ({ input, context }) => {
+      const result = await projectHandlers.update({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        name: input.name,
+        objective: input.objective,
+        notebookPages: input.notebookPages,
+        reason: input.reason,
+        suggestedNextAction: input.suggestedNextAction,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view }) => view,
+        (error) => {
+          throw mapUpdateProjectError(error);
+        }
+      );
+    }),
+    changeStatus: projects.changeStatus.handler(async ({ input, context }) => {
+      const result = await projectHandlers.changeStatus({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        status: input.status,
+        waitingOn: input.waitingOn,
+        waitingSince: input.waitingSince,
+        openTasks: input.openTasks,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view, completedTaskCount, removedTaskCount }) => ({
+          project: view,
+          completedTaskCount,
+          removedTaskCount,
+        }),
+        (error) => {
+          throw mapChangeProjectStatusError(error);
+        }
+      );
+    }),
+    confirmProposal: projects.confirmProposal.handler(async ({ input, context }) => {
+      const result = await projectHandlers.confirmProposal({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        name: input.name,
+        objective: input.objective,
+        status: input.status,
+        waitingOn: input.waitingOn,
+        waitingSince: input.waitingSince,
+        suggestedNextAction: input.suggestedNextAction,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view, task }) => ({
+          project: view,
+          ...(task ? { task: { id: task.id, title: task.title } } : {}),
+        }),
+        (error) => {
+          throw mapConfirmProposalError(error);
+        }
+      );
+    }),
+    declineProposal: projects.declineProposal.handler(async ({ input, context }) => {
+      const result = await projectHandlers.declineProposal({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view }) => view,
+        (error) => {
+          throw mapDeclineProposalError(error);
+        }
+      );
+    }),
+    restoreProposal: projects.restoreProposal.handler(async ({ input, context }) => {
+      const result = await projectHandlers.restoreProposal({
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        actor: context.request.authContext.actor,
+      });
+
+      return result.match(
+        ({ view }) => view,
+        (error) => {
+          throw mapRestoreProposalError(error);
+        }
+      );
+    }),
+    setNextAction: projects.setNextAction.handler(async ({ input, context }) => {
+      const base = {
+        id: input.id,
+        organizationId: context.request.authContext.organizationId,
+        actor: context.request.authContext.actor,
+      };
+      const command: SetProjectNextActionCommand =
+        'newTask' in input
+          ? { type: 'newTask', ...base, newTask: input.newTask }
+          : input.taskId === null
+            ? { type: 'clear', ...base }
+            : { type: 'set', ...base, taskId: input.taskId };
+      const result = await projectHandlers.setNextAction(command);
+
+      return result.match(
+        ({ view, task }) => ({
+          project: view,
+          ...(task ? { task: { id: task.id, title: task.title } } : {}),
+        }),
+        (error) => {
+          throw mapSetNextActionError(error);
+        }
+      );
+    }),
+  });
+
+  const handler = new OpenAPIHandler(
+    projectRouter,
+    openApiHandlerOptions(projectRequestValidationError)
+  );
 
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', authMiddleware);
 
-    const projectRouter = s.router(projectContract, {
-      list: async ({ query, request }) => {
-        const result = await projectHandlers.list({
-          organizationId: request.authContext.organizationId,
-          limit: query.limit,
-          cursor: query.cursor,
-          status: query.status,
-          createdById: query.createdById,
-          actor: request.authContext.actor,
-        });
+    const mount = (method: RouteMethod | readonly RouteMethod[], url: string) => {
+      authedApp.route({
+        method: typeof method === 'string' ? method : [...method],
+        url,
+        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+      });
+    };
 
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toProjectListBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'INVALID_PROJECT_STATUS':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      create: async ({ body, request }) => {
-        const result = await projectHandlers.create({
-          name: body.name,
-          objective: body.objective,
-          status: body.status,
-          reason: body.reason,
-          suggestedNextAction: body.suggestedNextAction,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view }) => ({
-            status: 201 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_NAME_BLANK':
-              case 'INVALID_PROJECT_NAME':
-              case 'INVALID_PROJECT_STATUS':
-              case 'INVALID_PROJECT_REASON':
-              case 'INVALID_SUGGESTED_NEXT_ACTION':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'DUPLICATE_PROJECT_NAME':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_CREATE_REQUIRES_PERSON':
-              case 'PROJECT_PROPOSE_REQUIRES_BOT':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      stageImport: async ({ body, request }) => {
-        const result = await projectHandlers.stageImport({
-          projects: body.projects,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          (view) => ({
-            status: 201 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'IMPORT_INVALID':
-                return importInvalidHttp(error);
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      listImports: async ({ request }) => {
-        const result = await projectHandlers.listImports({
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (body) => ({
-            status: 200 as const,
-            body,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      getImport: async ({ params, request }) => {
-        const result = await projectHandlers.getImport({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          createdById: request.authContext.userId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          (view) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'IMPORT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      applyImport: async ({ params, request }) => {
-        const result = await projectHandlers.applyImport({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          (view) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'IMPORT_INVALID':
-                return importInvalidHttp(error);
-              case 'IMPORT_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'IMPORT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'IMPORT_NOT_PENDING':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'DUPLICATE_PROJECT_NAME':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      discardImport: async ({ params, request }) => {
-        const result = await projectHandlers.discardImport({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          (view) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'IMPORT_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'IMPORT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'IMPORT_NOT_PENDING':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      get: async ({ params, request }) => {
-        const result = await projectHandlers.get({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-        });
-
-        return result.match(
-          (view) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      listHistory: async ({ params, query, request }) => {
-        const result = await historyHandlers.listProjectHistory({
-          projectId: params.id,
-          organizationId: request.authContext.organizationId,
-          limit: query.limit,
-          cursor: query.cursor,
-        });
-
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: page,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error', code: 'STORAGE_ERROR' },
-                };
-            }
-          }
-        );
-      },
-
-      listOpenTasks: async ({ params, query, request }) => {
-        const result =
-          query.status === 'finished'
-            ? await historyHandlers.listFinishedTasks({
-                projectId: params.id,
-                organizationId: request.authContext.organizationId,
-                limit: query.limit,
-                cursor: query.cursor,
-              })
-            : await projectHandlers.listOpenTasks({
-                projectId: params.id,
-                organizationId: request.authContext.organizationId,
-                limit: query.limit,
-                cursor: query.cursor,
-              });
-
-        return result.match(
-          (page) => ({
-            status: 200 as const,
-            body: toTaskListBody(page),
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_CURSOR':
-                return invalidCursorHttp(error);
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      update: async ({ params, body, request }) => {
-        const result = await projectHandlers.update({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          name: body.name,
-          objective: body.objective,
-          notebookPages: body.notebookPages,
-          reason: body.reason,
-          suggestedNextAction: body.suggestedNextAction,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view }) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_NAME_BLANK':
-              case 'INVALID_PROJECT_NAME':
-              case 'INVALID_PROJECT_REASON':
-              case 'INVALID_SUGGESTED_NEXT_ACTION':
-              case 'INVALID_NOTEBOOK_PATH':
-              case 'NOTEBOOK_PAGE_DUPLICATE':
-              case 'NOTEBOOK_PAGES_TOO_MANY':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'DUPLICATE_PROJECT_NAME':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      changeStatus: async ({ params, body, request }) => {
-        const result = await projectHandlers.changeStatus({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          status: body.status,
-          waitingOn: body.waitingOn,
-          waitingSince: body.waitingSince,
-          openTasks: body.openTasks,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view, completedTaskCount, removedTaskCount }) => ({
-            status: 200 as const,
-            body: {
-              project: view,
-              completedTaskCount,
-              removedTaskCount,
-            },
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'INVALID_PROJECT_STATUS':
-              case 'PROJECT_NOT_PROPOSED':
-              case 'PROJECT_WAITING_ON_REQUIRED':
-              case 'PROJECT_WAITING_ON_BLANK':
-              case 'PROJECT_WAITING_ON_TOO_LONG':
-              case 'INVALID_WAITING_SINCE':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_DONE_REQUIRES_PERSON':
-              case 'PROJECT_REOPEN_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_HAS_OPEN_TASKS':
-              case 'OPEN_TASKS_UNREAD':
-                return {
-                  status: 409 as const,
-                  body: {
-                    ...projectErrorBody(error),
-                    openTaskCount: error.openTaskCount,
-                  },
-                };
-              case 'STORAGE_ERROR':
-              case 'OPEN_TASK_PLAN_FAILED':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      confirmProposal: async ({ params, body, request }) => {
-        const result = await projectHandlers.confirmProposal({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          name: body.name,
-          objective: body.objective,
-          status: body.status,
-          waitingOn: body.waitingOn,
-          waitingSince: body.waitingSince,
-          suggestedNextAction: body.suggestedNextAction,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view, task }) => ({
-            status: 200 as const,
-            body: {
-              project: view,
-              ...(task ? { task: { id: task.id, title: task.title } } : {}),
-            },
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_NAME_BLANK':
-              case 'INVALID_PROJECT_NAME':
-              case 'INVALID_PROJECT_STATUS':
-              case 'INVALID_SUGGESTED_NEXT_ACTION':
-              case 'PROJECT_WAITING_ON_REQUIRED':
-              case 'PROJECT_WAITING_ON_BLANK':
-              case 'PROJECT_WAITING_ON_TOO_LONG':
-              case 'INVALID_WAITING_SINCE':
-              case 'TASK_TITLE_BLANK':
-              case 'TASK_TITLE_TOO_LONG':
-              case 'LIST_NOT_IN_ORGANIZATION':
-              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
-              case 'PROJECT_DONE':
-              case 'PROJECT_PROPOSED':
-              case 'TASK_NOT_OPEN':
-              case 'TASK_NOT_IN_PROJECT':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_CONFIRM_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-              case 'TASK_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_PROPOSED':
-              case 'DUPLICATE_PROJECT_NAME':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-              case 'OPEN_TASK_PLAN_FAILED':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      declineProposal: async ({ params, request }) => {
-        const result = await projectHandlers.declineProposal({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view }) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_DECLINE_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_PROPOSED':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      restoreProposal: async ({ params, request }) => {
-        const result = await projectHandlers.restoreProposal({
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          actor: request.authContext.actor,
-        });
-
-        return result.match(
-          ({ view }) => ({
-            status: 200 as const,
-            body: view,
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'PROJECT_RESTORE_REQUIRES_PERSON':
-                return {
-                  status: 403 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_DECLINED':
-              case 'DUPLICATE_PROJECT_NAME':
-                return {
-                  status: 409 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-
-      setNextAction: async ({ params, body, request }) => {
-        const base = {
-          id: params.id,
-          organizationId: request.authContext.organizationId,
-          actor: request.authContext.actor,
-        };
-        const command =
-          'newTask' in body
-            ? { type: 'newTask' as const, ...base, newTask: body.newTask }
-            : body.taskId === null
-              ? { type: 'clear' as const, ...base }
-              : { type: 'set' as const, ...base, taskId: body.taskId };
-        const result = await projectHandlers.setNextAction(command);
-
-        return result.match(
-          ({ view, task }) => ({
-            status: 200 as const,
-            body: {
-              project: view,
-              ...(task ? { task: { id: task.id, title: task.title } } : {}),
-            },
-          }),
-          (error) => {
-            switch (error.type) {
-              case 'TASK_NOT_OPEN':
-              case 'TASK_NOT_IN_PROJECT':
-              case 'PROJECT_DONE':
-              case 'PROJECT_PROPOSED':
-              case 'TASK_TITLE_BLANK':
-              case 'TASK_TITLE_TOO_LONG':
-              case 'LIST_NOT_IN_ORGANIZATION':
-              case 'ASSIGNEE_NOT_IN_ORGANIZATION':
-                return {
-                  status: 400 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'PROJECT_NOT_FOUND':
-              case 'TASK_NOT_FOUND':
-                return {
-                  status: 404 as const,
-                  body: projectErrorBody(error),
-                };
-              case 'STORAGE_ERROR':
-              case 'OPEN_TASK_PLAN_FAILED':
-                return {
-                  status: 500 as const,
-                  body: { message: 'Internal server error' },
-                };
-            }
-          }
-        );
-      },
-    });
-
-    s.registerRouter(projectContract, projectRouter, authedApp, {
-      jsonQuery: true,
-      responseValidation: true,
-      requestValidationErrorHandler: (err, _request, reply) => {
-        return reply.status(400).send(projectRequestValidationError(err));
-      },
-    });
+    mount(['GET', 'POST'], '/api/projects');
+    mount(['GET', 'POST'], '/api/projects/imports');
+    mount('GET', '/api/projects/imports/:id');
+    mount('POST', '/api/projects/imports/:id/apply');
+    mount('POST', '/api/projects/imports/:id/discard');
+    mount(['GET', 'PATCH'], '/api/projects/:id');
+    mount('GET', '/api/projects/:id/tasks');
+    mount('GET', '/api/projects/:id/history');
+    mount('PUT', '/api/projects/:id/status');
+    mount('POST', '/api/projects/:id/confirm');
+    mount('POST', '/api/projects/:id/decline');
+    mount('POST', '/api/projects/:id/restore');
+    mount('PUT', '/api/projects/:id/next-action');
   });
 };

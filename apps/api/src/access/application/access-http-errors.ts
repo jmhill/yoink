@@ -1,4 +1,4 @@
-import type { FastifyRequest } from 'fastify';
+import { ORPCError } from '@orpc/server';
 import {
   ACCEPT_INVITE_STORAGE_MESSAGE,
   CREATE_OWNER_INVITE_STORAGE_MESSAGE,
@@ -9,12 +9,24 @@ import {
   INVITATION_NOT_FOUND_MESSAGE,
   OWNER_INVITE_ADMIN_ONLY_MESSAGE,
 } from '@yoink/api-contracts';
+import {
+  yoinkPublicServerError,
+  yoinkServerError,
+} from '../../shared/orpc/yoink-http-error.js';
 import type { HandleCreateWorkspaceError } from './handle-create-workspace.js';
 import type { HandleIssueOwnerInvitationError } from './handle-issue-owner-invitation.js';
 import type { HandleAcceptInvitationError } from './handle-accept-invitation.js';
 import type { HandleValidateInvitationError } from './handle-validate-invitation.js';
 import type { InvitationServiceError } from '../domain/invitation-errors.js';
 import type { SignupServiceError } from '../domain/signup-service.js';
+
+type AccessClientCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'GONE';
 
 const asLoggedError = (value: unknown): unknown => {
   if (value instanceof Error) {
@@ -30,157 +42,175 @@ export const loggedCause = (error: unknown): unknown => {
   return asLoggedError(error);
 };
 
-export const logAndReturnStorageFailure = (
-  request: FastifyRequest,
-  error: unknown,
-  message: string
-) => {
-  request.log.error({ error: loggedCause(error) }, message);
-  return {
-    status: 500 as const,
-    body: { message },
-  };
+export const accessHttpError = (failure: {
+  readonly code: AccessClientCode;
+  readonly message: string;
+  readonly bodyCode?: string;
+  readonly handoverPath?: string;
+  readonly cause?: unknown;
+}) => {
+  if (failure.bodyCode === undefined && failure.handoverPath === undefined) {
+    return new ORPCError(failure.code, {
+      message: failure.message,
+      cause: failure.cause,
+    });
+  }
+  const data: { code?: string; handoverPath?: string } =
+    failure.bodyCode === undefined
+      ? { handoverPath: failure.handoverPath }
+      : failure.handoverPath === undefined
+        ? { code: failure.bodyCode }
+        : { code: failure.bodyCode, handoverPath: failure.handoverPath };
+  return new ORPCError(failure.code, {
+    message: failure.message,
+    data,
+    cause: failure.cause,
+  });
 };
 
-export const createWorkspaceErrorResponse = (
-  request: FastifyRequest,
-  error: HandleCreateWorkspaceError
-) => {
+export const accessStorageError = (
+  cause: unknown,
+  bodyMessage: string,
+  logMessage: string = bodyMessage,
+  bodyCode?: string
+) =>
+  yoinkPublicServerError({
+    message: logMessage,
+    bodyMessage,
+    bodyCode,
+    cause,
+  });
+
+export const accessInternalError = (cause: unknown) =>
+  yoinkServerError('Internal server error', cause);
+
+const storageFailure = (error: unknown, message: string) =>
+  accessStorageError(loggedCause(error), message);
+
+export const createWorkspaceErrorResponse = (error: HandleCreateWorkspaceError) => {
   switch (error.type) {
     case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
-      return {
-        status: 400 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'CREATE_WORKSPACE_FAILED':
-      return logAndReturnStorageFailure(
-        request,
-        error,
-        CREATE_WORKSPACE_STORAGE_MESSAGE
-      );
+      return storageFailure(error, CREATE_WORKSPACE_STORAGE_MESSAGE);
     default: {
       const _never: never = error;
       void _never;
-      return logAndReturnStorageFailure(
-        request,
-        error,
-        CREATE_WORKSPACE_STORAGE_MESSAGE
-      );
+      return storageFailure(error, CREATE_WORKSPACE_STORAGE_MESSAGE);
     }
   }
 };
 
-export const issueOwnerInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: HandleIssueOwnerInvitationError
-) => {
+export const issueOwnerInvitationErrorResponse = (error: HandleIssueOwnerInvitationError) => {
   switch (error.type) {
     case 'ORGANIZATION_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: 'Organization not found', code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: 'Organization not found',
+        bodyCode: error.type,
+      });
     case 'PERSONAL_WORKSPACE_OWNER_INVITATION':
-      return {
-        status: 400 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'WORKSPACE_ALREADY_HAS_OWNER':
-      return {
-        status: 409 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'CONFLICT',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
-      return {
-        status: 400 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'ISSUE_OWNER_INVITATION_FAILED':
-      return logAndReturnStorageFailure(
-        request,
-        error,
-        CREATE_OWNER_INVITE_STORAGE_MESSAGE
-      );
+      return storageFailure(error, CREATE_OWNER_INVITE_STORAGE_MESSAGE);
     default: {
       const _never: never = error;
       void _never;
-      return logAndReturnStorageFailure(
-        request,
-        error,
-        CREATE_OWNER_INVITE_STORAGE_MESSAGE
-      );
+      return storageFailure(error, CREATE_OWNER_INVITE_STORAGE_MESSAGE);
     }
   }
 };
 
 export const acceptInvitationErrorResponse = (
-  request: FastifyRequest,
   error: HandleAcceptInvitationError | SignupServiceError
 ) => {
   switch (error.type) {
     case 'INVITATION_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: INVITATION_NOT_FOUND_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: INVITATION_NOT_FOUND_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_REPLACED':
-      return {
-        status: 410 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'INVITATION_EXPIRED':
-      return {
-        status: 410 as const,
-        body: { message: INVITATION_EXPIRED_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: INVITATION_EXPIRED_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_ALREADY_ACCEPTED':
-      return {
-        status: 410 as const,
-        body: { message: INVITATION_ALREADY_USED_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: INVITATION_ALREADY_USED_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_EMAIL_MISMATCH':
-      return {
-        status: 400 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'WORKSPACE_ALREADY_HAS_OWNER':
-      return {
-        status: 409 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'CONFLICT',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'ALREADY_MEMBER_OF_ORG':
-      return {
-        status: 409 as const,
-        body: { message: 'Already a member of this organization', code: error.type },
-      };
+      return accessHttpError({
+        code: 'CONFLICT',
+        message: 'Already a member of this organization',
+        bodyCode: error.type,
+      });
     case 'EMAIL_ALREADY_REGISTERED':
-      return {
-        status: 409 as const,
-        body: { message: EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'CONFLICT',
+        message: EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'ORGANIZATION_NOT_FOUND':
-      return logAndReturnStorageFailure(request, error, ACCEPT_INVITE_STORAGE_MESSAGE);
+      return storageFailure(error, ACCEPT_INVITE_STORAGE_MESSAGE);
     case 'ACCEPT_INVITATION_FAILED':
     case 'SIGNUP_STORAGE_ERROR':
     case 'INVITATION_STORAGE_ERROR':
-      return logAndReturnStorageFailure(request, error, ACCEPT_INVITE_STORAGE_MESSAGE);
+      return storageFailure(error, ACCEPT_INVITE_STORAGE_MESSAGE);
     default: {
       const _never: never = error;
       void _never;
-      return logAndReturnStorageFailure(request, error, ACCEPT_INVITE_STORAGE_MESSAGE);
+      return storageFailure(error, ACCEPT_INVITE_STORAGE_MESSAGE);
     }
   }
 };
 
-const invitationStorageFailure = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => logAndReturnStorageFailure(request, error, 'Internal server error');
+const invitationStorageFailure = (error: InvitationServiceError) =>
+  accessInternalError(loggedCause(error));
 
-const unexpectedInvitationServiceError = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => {
+const unexpectedInvitationServiceError = (error: InvitationServiceError) => {
   switch (error.type) {
     case 'INVITATION_NOT_FOUND':
     case 'INVITATION_REPLACED':
@@ -201,73 +231,71 @@ const unexpectedInvitationServiceError = (
     case 'INVITATION_STORAGE_ERROR':
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     default: {
       const _never: never = error;
       void _never;
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     }
   }
 };
 
-export const validateInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: HandleValidateInvitationError
-) => {
+export const validateInvitationErrorResponse = (error: HandleValidateInvitationError) => {
   switch (error.type) {
     case 'INVITATION_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: INVITATION_NOT_FOUND_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: INVITATION_NOT_FOUND_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_REPLACED':
-      return {
-        status: 410 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'INVITATION_EXPIRED':
-      return {
-        status: 410 as const,
-        body: { message: INVITATION_EXPIRED_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: INVITATION_EXPIRED_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_ALREADY_ACCEPTED':
-      return {
-        status: 410 as const,
-        body: { message: INVITATION_ALREADY_USED_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'GONE',
+        message: INVITATION_ALREADY_USED_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_EMAIL_MISMATCH':
-      return {
-        status: 400 as const,
-        body: { message: error.message, code: error.type },
-      };
+      return accessHttpError({
+        code: 'BAD_REQUEST',
+        message: error.message,
+        bodyCode: error.type,
+      });
     case 'INVITATION_STORAGE_ERROR':
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     default: {
       const _never: never = error;
       void _never;
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     }
   }
 };
 
-export const createInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => {
+export const createInvitationErrorResponse = (error: InvitationServiceError) => {
   switch (error.type) {
     case 'INVITATION_ORG_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: 'Organization not found', code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: 'Organization not found',
+        bodyCode: error.type,
+      });
     case 'INSUFFICIENT_INVITE_PERMISSIONS':
-      return {
-        status: 403 as const,
-        body: {
-          message: 'Insufficient permissions to create invitation',
-          code: error.type,
-        },
-      };
+      return accessHttpError({
+        code: 'FORBIDDEN',
+        message: 'Insufficient permissions to create invitation',
+        bodyCode: error.type,
+      });
     case 'INVITATION_NOT_FOUND':
     case 'INVITATION_REPLACED':
     case 'INVITATION_EXPIRED':
@@ -285,43 +313,38 @@ export const createInvitationErrorResponse = (
     case 'INVITATION_STORAGE_ERROR':
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     default: {
       const _never: never = error;
       void _never;
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     }
   }
 };
 
-export const listPendingInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => unexpectedInvitationServiceError(request, error);
+export const listPendingInvitationErrorResponse = (error: InvitationServiceError) =>
+  unexpectedInvitationServiceError(error);
 
-export const revokeInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => {
+export const revokeInvitationErrorResponse = (error: InvitationServiceError) => {
   switch (error.type) {
     case 'INVITATION_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: INVITATION_NOT_FOUND_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: INVITATION_NOT_FOUND_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INSUFFICIENT_INVITE_PERMISSIONS':
-      return {
-        status: 403 as const,
-        body: {
-          message: 'Insufficient permissions to revoke invitation',
-          code: error.type,
-        },
-      };
+      return accessHttpError({
+        code: 'FORBIDDEN',
+        message: 'Insufficient permissions to revoke invitation',
+        bodyCode: error.type,
+      });
     case 'OWNER_INVITATION_ADMIN_ONLY':
-      return {
-        status: 403 as const,
-        body: { message: OWNER_INVITE_ADMIN_ONLY_MESSAGE, code: error.type },
-      };
+      return accessHttpError({
+        code: 'FORBIDDEN',
+        message: OWNER_INVITE_ADMIN_ONLY_MESSAGE,
+        bodyCode: error.type,
+      });
     case 'INVITATION_REPLACED':
     case 'INVITATION_EXPIRED':
     case 'INVITATION_ALREADY_ACCEPTED':
@@ -338,25 +361,23 @@ export const revokeInvitationErrorResponse = (
     case 'INVITATION_STORAGE_ERROR':
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     default: {
       const _never: never = error;
       void _never;
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     }
   }
 };
 
-export const adminCreateInvitationErrorResponse = (
-  request: FastifyRequest,
-  error: InvitationServiceError
-) => {
+export const adminCreateInvitationErrorResponse = (error: InvitationServiceError) => {
   switch (error.type) {
     case 'INVITATION_ORG_NOT_FOUND':
-      return {
-        status: 404 as const,
-        body: { message: 'Organization not found', code: error.type },
-      };
+      return accessHttpError({
+        code: 'NOT_FOUND',
+        message: 'Organization not found',
+        bodyCode: error.type,
+      });
     case 'INVITATION_NOT_FOUND':
     case 'INVITATION_REPLACED':
     case 'INVITATION_EXPIRED':
@@ -375,11 +396,11 @@ export const adminCreateInvitationErrorResponse = (
     case 'INVITATION_STORAGE_ERROR':
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'MEMBERSHIP_STORAGE_ERROR':
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     default: {
       const _never: never = error;
       void _never;
-      return invitationStorageFailure(request, error);
+      return invitationStorageFailure(error);
     }
   }
 };

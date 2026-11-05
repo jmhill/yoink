@@ -1,3 +1,7 @@
+/**
+ * ts-rest contract for clients.
+ * The API serves these paths from `@yoink/api-contracts/orpc`.
+ */
 import { initContract } from '@ts-rest/core';
 import { ErrorSchema } from '../schemas/error.js';
 import {

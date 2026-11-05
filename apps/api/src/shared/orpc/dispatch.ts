@@ -15,7 +15,7 @@ export const dispatchOrpc = async (
     request.body = null;
   }
   const result = await handler.handle(request, reply, {
-    context: { request },
+    context: { request, reply },
   });
   if (!result.matched) {
     return reply.status(404).send({ message: 'Not found' });

@@ -11,6 +11,8 @@ import { ErrorSchema } from '../schemas/error.js';
 
 const c = initContract();
 
+/** ts-rest contract for clients. The API serves these paths from `@yoink/api-contracts/orpc`. */
+
 export const passkeyContract = c.router({
   /**
    * Get WebAuthn registration options for adding a new passkey.

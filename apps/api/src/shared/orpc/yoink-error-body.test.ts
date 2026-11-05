@@ -57,4 +57,37 @@ describe('yoinkErrorBody', () => {
       code: 'PROJECT_CREATE_REQUIRES_PERSON',
     });
   });
+
+  it('keeps extra closed-error fields and a public 500 message', () => {
+    expect(
+      yoinkErrorBody(
+        new ORPCError('CONFLICT', {
+          message: 'Hand over ownership first',
+          data: { code: 'OWNER_MUST_TRANSFER', handoverPath: '/settings/members' },
+        })
+      )
+    ).toEqual({
+      message: 'Hand over ownership first',
+      code: 'OWNER_MUST_TRANSFER',
+      handoverPath: '/settings/members',
+    });
+
+    expect(
+      yoinkErrorBody(
+        new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'Failed to remove member',
+          data: { publicMessage: "Couldn't remove Libby. Try again." },
+        })
+      )
+    ).toEqual({ message: "Couldn't remove Libby. Try again." });
+
+    expect(
+      yoinkErrorBody(
+        new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'Failed to list history',
+          data: { code: 'STORAGE_ERROR' },
+        })
+      )
+    ).toEqual({ message: 'Internal server error', code: 'STORAGE_ERROR' });
+  });
 });

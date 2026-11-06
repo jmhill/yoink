@@ -137,14 +137,14 @@ Mounted only when `deps.signup` is set. All use the app `authMiddleware`.
 
 ### Session-only token mutations
 
-Mounted only when `deps.signup` is set. The registrar still uses combined auth, so a bearer token reaches the handler. `requireWebSessionPerson` (`access/domain/require-web-session-person.ts`) then refuses `actor.via !== 'session'`. Personal API tokens and agent tokens both fail. The domain error is `BOT_CANNOT_MANAGE_TOKENS` with message `API tokens cannot create, reissue, or revoke tokens; sign in to the web app.` Create and delete map that to `FORBIDDEN` in `token-routes.ts`. Mint maps it to `FORBIDDEN` in `mintAgentFailure`. Reissue maps it to `FORBIDDEN` with `bodyCode: BOT_CANNOT_MANAGE_TOKENS` in `reissueAgentTokenErrorResponse`. Do not change those statuses or messages. `GET /api/auth/tokens` is not in this table: listing has no session gate and is integration.
+Mounted only when `deps.signup` is set. The registrar still uses combined auth, so a bearer token reaches the handler. `requireWebSessionPerson` (`access/domain/require-web-session-person.ts`) then refuses `actor.via !== 'session'`. Personal API tokens and agent tokens both fail. The domain error is `BOT_CANNOT_MANAGE_TOKENS` with message `API tokens cannot create, reissue, or revoke tokens; sign in to the web app.` Create and delete map that to `FORBIDDEN` in `token-routes.ts`. Mint maps it to `FORBIDDEN` in `mintAgentFailure`. Reissue maps it to `FORBIDDEN` with `bodyCode: BOT_CANNOT_MANAGE_TOKENS` in `reissueAgentTokenErrorResponse`. Do not change those statuses or messages. The HTTP actor in `packages/acceptance-testing` lists, creates, and deletes tokens with a bearer token (`actor.ts` `listTokens`, `createToken`, `revokeToken`). `GET /api/auth/tokens` is not in this table: listing has no session gate and is integration.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
 | POST /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-create-token.ts` calls `requireWebSessionPerson`. Web settings: `apps/web/src/components/tokens-section.tsx`. |
 | DELETE /api/auth/tokens/{tokenId} | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-revoke-token.ts` calls `requireWebSessionPerson`. |
 | POST /api/organizations/{organizationId}/agents | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `agent-service.ts` documents a web-session person. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
-| POST /api/organizations/{organizationId}/members/{userId}/token | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. |
+| POST /api/organizations/{organizationId}/members/{userId}/token | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. Reissue returns a new raw token. |
 
 
 ## Integration
@@ -265,7 +265,7 @@ Web Work and Review screens. The token acceptance driver calls them too. No exte
 
 ### Token list (1)
 
-`GET /api/auth/tokens` is the read a bearer token can complete. Create and delete are client-only above.
+`GET /api/auth/tokens` is the read a bearer token can complete. The HTTP actor lists with a bearer token (`listTokens`). Create and delete are client-only above.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|

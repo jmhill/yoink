@@ -1,6 +1,12 @@
 # ADR-001 route inventory (M0.4)
 
-Inventory of every HTTP route `apps/api/src/app.ts` registers, including the registrars it calls. No route moved. Classification follows ADR §9 and does not change it. Rows that §9 does not settle are **ambiguous** and are listed again under [Ambiguous rows](#ambiguous-rows). Justin decides those before M3.1. This file does not decide them.
+Inventory of every HTTP route `apps/api/src/app.ts` registers, including the registrars it calls. No route moved. Classification follows ADR §9 and plan M3.1–M3.3. Every row is classified. There is no open classification list.
+
+A route is **integration** when a bearer token can complete it, or when the handler returns a resource refusal that is already part of that route's HTTP contract. ADR §9's "used by bots, agents, tools or the extension" names the public-API audience in §8.1 (bots, agents, `tools/notes-mirror`, future MCP). It does not require a caller inside this repo. Absence of a hit in `apps/extension` or `tools/` does not prove there is no public consumer. Plan M3.2 names the captures, tasks, lists, projects, notes, work, review, and history handlers as the integration handlers.
+
+**Client-only** stays the group ADR §9 names (admin, session, passkey, signup, invitation) plus the organization-settings routes plan M3.3 names, plus the four mutations whose domain already refuses every non-session actor. Those four are not a new auth mode.
+
+M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body, rooted at `/api/v1`. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check.
 
 Paths are the OpenAPI `path:` strings in `packages/api-contracts/src/orpc/`. Fastify mounts the same URL with `:param` instead of `{param}` (`/api/captures/{id}` and `/api/captures/:id` are one route). Fixture routes have no contract `path:`; their URL is the Fastify path.
 
@@ -30,11 +36,11 @@ Static files and the SPA not-found handler are [not API procedures](#static-file
 
 | Classification | Rows | Where it goes (ADR §9 / plan) |
 |---|---:|---|
-| integration | 4 | v1 and the `/api` alias |
-| client-only | 41 | legacy until that client's edge |
+| integration | 59 | frozen v1 and the `/api` alias (M3.1, M3.2) |
+| client-only | 45 | legacy until that client's edge (M3.3) |
 | ops | 1 | stays `/api/health`, not v1 |
 | test fixture | 5 | later `/test-api/` |
-| ambiguous | 59 | not guessed; see below |
+| ambiguous | 0 | none |
 | **Total** | **110** | |
 
 ## Ops
@@ -57,7 +63,7 @@ No contract `path:`. Admin-session fixtures use `createAdminSessionMiddleware`. 
 
 ## Client-only
 
-ADR §9: admin (`/api/admin/...`), plus session, passkey, signup, and invitation flows used by the web app, are never aliased into v1. Organization settings below are the same group: migration plan M3.3 names them, and the only production caller is the web app. Agent mint and token reissue are not in this table; they are ambiguous.
+ADR §9: admin (`/api/admin/...`), plus session, passkey, signup, and invitation flows used by the web app, are never aliased into v1. Organization settings are the same group: plan M3.3 names them. The four session-only mutations at the end of this section are included because `requireWebSessionPerson` already refuses a bearer token. Their middleware stays combined. The refusal body stays as it is.
 
 ### Admin
 
@@ -128,9 +134,31 @@ Mounted only when `deps.signup` is set. All use the app `authMiddleware`.
 | PATCH /api/organizations/{organizationId}/members/{userId}/role | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
 | DELETE /api/organizations/{organizationId}/members/{userId} | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
 
+
+### Session-only token mutations
+
+Mounted only when `deps.signup` is set. The registrar still uses combined auth, so a bearer token reaches the handler. `requireWebSessionPerson` (`access/domain/require-web-session-person.ts`) then refuses `actor.via !== 'session'`. Personal API tokens and agent tokens both fail. The domain error is `BOT_CANNOT_MANAGE_TOKENS` with message `API tokens cannot create, reissue, or revoke tokens; sign in to the web app.` Create and delete map that to `FORBIDDEN` in `token-routes.ts`. Mint maps it to `FORBIDDEN` in `mintAgentFailure`. Reissue maps it to `FORBIDDEN` with `bodyCode: BOT_CANNOT_MANAGE_TOKENS` in `reissueAgentTokenErrorResponse`. Do not change those statuses or messages. `GET /api/auth/tokens` is not in this table: listing has no session gate and is integration.
+
+| Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
+|---|---|---|---|---|---|---|
+| POST /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-create-token.ts` calls `requireWebSessionPerson`. Web settings: `apps/web/src/components/tokens-section.tsx`. |
+| DELETE /api/auth/tokens/{tokenId} | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-revoke-token.ts` calls `requireWebSessionPerson`. |
+| POST /api/organizations/{organizationId}/agents | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `agent-service.ts` documents a web-session person. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
+| POST /api/organizations/{organizationId}/members/{userId}/token | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. |
+
+
 ## Integration
 
-Usable with a bearer token, and an in-repo integrator calls them. Extension callers are `POST /api/captures` and `GET /api/captures` (`apps/extension/src/lib/api-client.ts`). The notes-mirror bot calls the two note routes (`tools/notes-mirror/src/infrastructure/yoink-api.ts`).
+These 59 routes are the frozen v1 surface. M3.1 copies each contract unchanged. M3.2 serves that copy at `/api/v1` with token-only auth and at `/api/` with today's combined auth. In-repo integrators are evidence, not the boundary: the extension calls `POST /api/captures` and `GET /api/captures` (`apps/extension/src/lib/api-client.ts`); notes-mirror calls `GET /api/notes/changed` and `POST /api/notes/import` (`tools/notes-mirror/src/infrastructure/yoink-api.ts`). The other rows below are the same token-capable resource API. A missing extension or tools caller does not move them to client-only.
+
+Refusals that already exist stay in the copied contract. Do not retarget them:
+
+- `POST /api/captures` refuses an agent with `FORBIDDEN` and message `Agents cannot create captures` (`mapAgentCaptureRefusal`).
+- `POST /api/captures/{id}/process` maps `CAPTURE_NOT_IN_INBOX` to `BAD_REQUEST` and message `Capture must be in inbox to be processed` (`mapProcessCaptureError`). That 400 stays. It is not retargeted to 409.
+- `POST /api/captures/{id}/process-to-project` keeps its own mapping (`mapProcessCaptureToProjectError`): `PROJECT_CREATE_REQUIRES_PERSON` is `FORBIDDEN` with the domain message; `CAPTURE_NOT_IN_INBOX` is `CONFLICT` and message `Capture must be in the inbox`. Person-only project routes (`apply`, `discard`, `confirm`, `decline`, `restore`) keep the contract summaries and the handlers' current refusals.
+- `GET /api/auth/tokens` stays integration. `handleListTokens` lists by the auth context's user and organization and does not call `requireWebSessionPerson`, so a bearer token receives today's list body.
+
+§8.2 screen composition is how the future web edge may assemble Now and Review. It does not drop `GET /api/work/*` or `GET /api/review` from v1. Those handlers have no session-only gate.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
@@ -139,31 +167,22 @@ Usable with a bearer token, and an in-repo integrator calls them. Extension call
 | GET /api/notes/changed | notes/infrastructure/http-note-routes.ts | notes | combined | tools, tests | integration | Contract summary: notes-mirror bot. Web does not call `noteClient.listChanged`. |
 | POST /api/notes/import | notes/infrastructure/http-note-routes.ts | notes | combined | tools, tests | integration | Contract summary: Obsidian mirror import. Web does not call `noteClient.importFromObsidian`. |
 
-## Ambiguous rows
-
-These accept a bearer token, so they could be v1, but no caller in `apps/extension` or `tools/` was found. The web app and/or the token acceptance driver do call them. Two readings, not picked:
-
-- **Integration.** Same combined-auth resource routers M3.2 names (captures, tasks, lists, projects, notes, work, review, history). The HTTP actor (`packages/acceptance-testing/src/drivers/http/actor.ts`) calls them with a bearer token. Some contract summaries mention bots.
-- **Client-only.** The only production UI is the web app, which later moves to `/web-api/`. Work and review match the screen composition ADR §8.2 assigns to an edge. Token self-service, agent mint, and token reissue match the auth and organization-settings legacy group, except that §9 does not name them.
-
-59 rows. Each is also in the table below.
-
 ### Captures other than the two extension routes (10)
 
 Web calls every row except PATCH. The token acceptance driver calls all ten. `POST .../process` and `POST .../process-to-project` are mounted from the capture registrar and call the processing workflow.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| PATCH /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | tests | ambiguous | No `captureClient.update` in `apps/web`. |
-| POST /api/captures/{id}/trash | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| POST /api/captures/{id}/restore | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| POST /api/captures/{id}/snooze | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| POST /api/captures/{id}/unsnooze | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| DELETE /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| POST /api/captures/trash/empty | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | ambiguous | |
-| POST /api/captures/{id}/process | captures/infrastructure/orpc-capture-routes.ts | processing | combined | web, tests | ambiguous | Processing workflow, capture registrar. |
-| POST /api/captures/{id}/process-to-project | captures/infrastructure/orpc-capture-routes.ts | processing | combined | web, tests | ambiguous | Separate contract `processCaptureToProjectOrpcContract`. Contract summary: person only. |
+| GET /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| PATCH /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | tests | integration | No `captureClient.update` in `apps/web`. |
+| POST /api/captures/{id}/trash | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| POST /api/captures/{id}/restore | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| POST /api/captures/{id}/snooze | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| POST /api/captures/{id}/unsnooze | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| DELETE /api/captures/{id} | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| POST /api/captures/trash/empty | captures/infrastructure/orpc-capture-routes.ts | captures | combined | web, tests | integration | |
+| POST /api/captures/{id}/process | captures/infrastructure/orpc-capture-routes.ts | processing | combined | web, tests | integration | Processing workflow, capture registrar. `CAPTURE_NOT_IN_INBOX` stays `BAD_REQUEST` / `Capture must be in inbox to be processed`. |
+| POST /api/captures/{id}/process-to-project | captures/infrastructure/orpc-capture-routes.ts | processing | combined | web, tests | integration | Separate contract `processCaptureToProjectOrpcContract`. Contract summary: person only. `CAPTURE_NOT_IN_INBOX` stays `CONFLICT` / `Capture must be in the inbox`. `PROJECT_CREATE_REQUIRES_PERSON` stays `FORBIDDEN`. |
 
 ### Tasks (10)
 
@@ -171,16 +190,16 @@ Web does not call get, pin, unpin, or task history.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/tasks | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
-| GET /api/tasks | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
-| GET /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | ambiguous | No `taskClient.get` in `apps/web`. |
-| PATCH /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
-| POST /api/tasks/{id}/complete | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
-| POST /api/tasks/{id}/uncomplete | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
-| POST /api/tasks/{id}/pin | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | ambiguous | No `taskClient.pin` in `apps/web`. |
-| POST /api/tasks/{id}/unpin | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | ambiguous | No `taskClient.unpin` in `apps/web`. |
-| GET /api/tasks/{id}/history | tasks/infrastructure/http-task-routes.ts | history | combined | tests | ambiguous | History handler, task registrar. Web reads project history, not task history. |
-| DELETE /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | ambiguous | |
+| POST /api/tasks | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
+| GET /api/tasks | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
+| GET /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | integration | No `taskClient.get` in `apps/web`. |
+| PATCH /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
+| POST /api/tasks/{id}/complete | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
+| POST /api/tasks/{id}/uncomplete | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
+| POST /api/tasks/{id}/pin | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | integration | No `taskClient.pin` in `apps/web`. |
+| POST /api/tasks/{id}/unpin | tasks/infrastructure/http-task-routes.ts | tasks | combined | tests | integration | No `taskClient.unpin` in `apps/web`. |
+| GET /api/tasks/{id}/history | tasks/infrastructure/http-task-routes.ts | history | combined | tests | integration | History handler, task registrar. Web reads project history, not task history. |
+| DELETE /api/tasks/{id} | tasks/infrastructure/http-task-routes.ts | tasks | combined | web, tests | integration | |
 
 ### Lists and the unlisted pile (8)
 
@@ -188,14 +207,14 @@ Web calls all eight (`listClient`).
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/lists | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| POST /api/lists | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| PATCH /api/lists/{id} | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| DELETE /api/lists/{id} | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| GET /api/lists/{id}/tasks | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| PUT /api/lists/{id}/tasks/order | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| GET /api/unlisted/tasks | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
-| PUT /api/unlisted/tasks/order | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | ambiguous | |
+| GET /api/lists | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| POST /api/lists | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| PATCH /api/lists/{id} | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| DELETE /api/lists/{id} | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| GET /api/lists/{id}/tasks | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| PUT /api/lists/{id}/tasks/order | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| GET /api/unlisted/tasks | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
+| PUT /api/unlisted/tasks/order | lists/infrastructure/http-list-routes.ts | lists | combined | web, tests | integration | |
 
 ### Projects, imports, and project history (16)
 
@@ -203,65 +222,55 @@ Web does not call `POST /api/projects/imports` (`projectClient.stageImport` is u
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/projects | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| POST /api/projects | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: a person creates, a bot proposes. |
-| POST /api/projects/imports | projects/infrastructure/http-project-routes.ts | projects | combined | tests | ambiguous | No web caller. Contract summary names bots and people. |
-| GET /api/projects/imports | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| GET /api/projects/imports/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| POST /api/projects/imports/{id}/apply | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: person only. |
-| POST /api/projects/imports/{id}/discard | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: person only. |
-| GET /api/projects/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| PATCH /api/projects/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| GET /api/projects/{id}/tasks | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| GET /api/projects/{id}/history | projects/infrastructure/http-project-routes.ts | history | combined | web, tests | ambiguous | History handler, project registrar. |
-| PUT /api/projects/{id}/status | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
-| POST /api/projects/{id}/confirm | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: person only. |
-| POST /api/projects/{id}/decline | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: person only. |
-| POST /api/projects/{id}/restore | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | Contract summary: person only. |
-| PUT /api/projects/{id}/next-action | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | ambiguous | |
+| GET /api/projects | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| POST /api/projects | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: a person creates, a bot proposes. |
+| POST /api/projects/imports | projects/infrastructure/http-project-routes.ts | projects | combined | tests | integration | No web caller. Contract summary names bots and people. |
+| GET /api/projects/imports | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| GET /api/projects/imports/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| POST /api/projects/imports/{id}/apply | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: person only. |
+| POST /api/projects/imports/{id}/discard | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: person only. |
+| GET /api/projects/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| PATCH /api/projects/{id} | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| GET /api/projects/{id}/tasks | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| GET /api/projects/{id}/history | projects/infrastructure/http-project-routes.ts | history | combined | web, tests | integration | History handler, project registrar. |
+| PUT /api/projects/{id}/status | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
+| POST /api/projects/{id}/confirm | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: person only. |
+| POST /api/projects/{id}/decline | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: person only. |
+| POST /api/projects/{id}/restore | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | Contract summary: person only. |
+| PUT /api/projects/{id}/next-action | projects/infrastructure/http-project-routes.ts | projects | combined | web, tests | integration | |
 
 ### Project note CRUD (5)
 
-Not the notes-mirror routes, which are integration. Web `noteClient` calls these five.
+Not the notes-mirror routes above. Web `noteClient` calls these five. Same integration class.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/projects/{projectId}/notes | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | ambiguous | |
-| POST /api/projects/{projectId}/notes | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | ambiguous | Contract summary: people and bots. |
-| GET /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | ambiguous | |
-| PATCH /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | ambiguous | |
-| DELETE /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | ambiguous | |
+| GET /api/projects/{projectId}/notes | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | integration | |
+| POST /api/projects/{projectId}/notes | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | integration | Contract summary: people and bots. |
+| GET /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | integration | |
+| PATCH /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | integration | |
+| DELETE /api/projects/{projectId}/notes/{noteId} | notes/infrastructure/http-note-routes.ts | notes | combined | web, tests | integration | |
 
-### Work and review screens (5)
+### Work and review (5)
 
-Web Work and Review screens. The token acceptance driver calls them too. No extension or tools caller. ADR §8.2 describes this kind of screen composition as edge work. M3.2 names the work and review route files only if this inventory classifies them integration.
-
-| Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
-|---|---|---|---|---|---|---|
-| GET /api/work/next-actions | work/infrastructure/http-work-routes.ts | work | combined | web, tests | ambiguous | |
-| GET /api/work/due | work/infrastructure/http-work-routes.ts | work | combined | web, tests | ambiguous | |
-| GET /api/work/lists | work/infrastructure/http-work-routes.ts | work | combined | web, tests | ambiguous | |
-| GET /api/review | review/infrastructure/http-review-routes.ts | review | combined | web, tests | ambiguous | |
-| GET /api/review/done | review/infrastructure/http-review-routes.ts | review | combined | web, tests | ambiguous | |
-
-### Token self-service (3)
-
-Mounted only when `deps.signup` is set. Combined middleware built in `token-routes.ts`. Production caller is the web token settings screen (`apps/web/src/components/tokens-section.tsx`). The HTTP actor also lists, creates, and deletes tokens with a bearer token. §9's client-only list does not name token self-service. M3.3 groups "auth" as client-only.
+Web Work and Review screens. The token acceptance driver calls them too. No extension or tools caller. Classified integration anyway: the handlers accept a bearer token and do not apply `requireWebSessionPerson`. M3.2 includes these route files in the v1 move.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | ambiguous | |
-| POST /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | ambiguous | |
-| DELETE /api/auth/tokens/{tokenId} | access/application/token-routes.ts | tokens | combined | web, tests | ambiguous | |
+| GET /api/work/next-actions | work/infrastructure/http-work-routes.ts | work | combined | web, tests | integration | |
+| GET /api/work/due | work/infrastructure/http-work-routes.ts | work | combined | web, tests | integration | |
+| GET /api/work/lists | work/infrastructure/http-work-routes.ts | work | combined | web, tests | integration | |
+| GET /api/review | review/infrastructure/http-review-routes.ts | review | combined | web, tests | integration | |
+| GET /api/review/done | review/infrastructure/http-review-routes.ts | review | combined | web, tests | integration | |
 
-### Agent credentials (2)
+### Token list (1)
 
-Web organization settings (`apps/web/src/api/auth.ts` mints; `members-section.tsx` reissues). The HTTP actor comment says minting is web-session only and that personal and agent tokens both get 403 on `POST /agents`. Reissue returns a new raw token. Not named in the §9 examples.
+`GET /api/auth/tokens` is the read a bearer token can complete. Create and delete are client-only above.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/organizations/{organizationId}/agents | access/application/organization-routes.ts | organizations | combined | web, tests | ambiguous | |
-| POST /api/organizations/{organizationId}/members/{userId}/token | access/application/organization-routes.ts | organizations | combined | web, tests | ambiguous | |
+| GET /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | integration | `handleListTokens` has no session gate. Web settings also calls it (`tokens-section.tsx`). Copy the list body unchanged into v1. |
+
 
 ## Static files and the SPA fallback
 

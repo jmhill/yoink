@@ -1,5 +1,6 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
-import type { Clock, IdGenerator } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
+import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { UserSession } from './user-session.js';
 import type { UserSessionStore } from './user-session-store.js';
 import type { UserService } from './user-service.js';

@@ -585,8 +585,8 @@ export default [
   },
   {
     // Hexagonal: domain and application must not import adapters.
-    // Tests may import fakes. `@yoink/infrastructure` (Clock, etc.) is a
-    // shared kernel, not a feature adapter, so it is not in this pattern.
+    // Tests may import fakes. Clock, IdGenerator, and PasswordHasher types
+    // live in kernel. The package still holds the runtime implementations.
     files: ['src/**/{domain,application}/**/*.ts'],
     ignores: ['**/*.test.ts'],
     rules: {
@@ -598,6 +598,11 @@ export default [
               group: ['**/infrastructure/**', '**/infrastructure/*'],
               message:
                 'domain and application must not import hexagonal infrastructure adapters',
+            },
+            {
+              group: ['@yoink/infrastructure', '@yoink/infrastructure/*'],
+              message:
+                'domain and application import Clock, IdGenerator, and PasswordHasher from kernel. Runtime values stay in @yoink/infrastructure for platform, the composition root, and tests.',
             },
           ],
         },

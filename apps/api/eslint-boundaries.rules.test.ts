@@ -257,4 +257,44 @@ describe('boundaries target rules', () => {
       }),
     ]);
   });
+
+  it('rejects a domain or application runtime import of @yoink/infrastructure', async () => {
+    const root = await writeTree({
+      'src/kernel/clock.ts': 'export type Clock = { now(): Date };\n',
+      'src/access/domain/passkey.ts': `
+        import { createSystemClock } from '@yoink/infrastructure';
+        export const clock = createSystemClock;
+      `,
+      'src/access/domain/ports.ts': `
+        import type { Clock } from '../../kernel/clock.js';
+        export const read = (clock: Clock) => clock.now();
+      `,
+      'src/access/domain/passkey.test.ts': `
+        import { createFakeClock } from '@yoink/infrastructure';
+        export const clock = createFakeClock;
+      `,
+      'src/access/application/routes.ts': `
+        import { createUuidGenerator } from '@yoink/infrastructure';
+        export const ids = createUuidGenerator;
+      `,
+    });
+
+    const diagnostics = await lintBoundaries(root);
+    const messagesFor = (relativePath: string) => diagnostics.get(relativePath) ?? [];
+
+    expect(messagesFor('src/access/domain/ports.ts')).toEqual([]);
+    expect(messagesFor('src/access/domain/passkey.test.ts')).toEqual([]);
+    expect(messagesFor('src/access/domain/passkey.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'no-restricted-imports',
+        message: expect.stringContaining('@yoink/infrastructure'),
+      }),
+    ]);
+    expect(messagesFor('src/access/application/routes.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'no-restricted-imports',
+        message: expect.stringContaining('@yoink/infrastructure'),
+      }),
+    ]);
+  });
 });

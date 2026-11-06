@@ -11,7 +11,7 @@ import type {
   AuthenticationResponseJSON,
 } from '@simplewebauthn/server';
 import { ResultAsync, errAsync } from 'neverthrow';
-import type { Clock } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
 import type { PasskeyCredential, PasskeyTransport } from './passkey-credential.js';
 import type { PasskeyCredentialStore } from './passkey-credential-store.js';
 import type { UserService } from './user-service.js';

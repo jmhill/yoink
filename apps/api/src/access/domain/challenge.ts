@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ok, err, type Result } from 'neverthrow';
-import type { Clock } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
 
 /**
  * Challenge payload embedded in the challenge string.

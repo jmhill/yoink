@@ -1,15 +1,17 @@
 # ESLint baseline
 
-Measured **2026-11-06** against commit `11da9800fe063d0e7b168a320dd1a61d69da1dcc` (`main` at the time of the run). Lint configuration was left as it was. This write-up replaces the 2026-07-29 text in this file. Counts below come from the commands in [How this was measured](#how-this-was-measured).
+Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured).
+
+The previous measurement is M0.5, on `11da9800fe063d0e7b168a320dd1a61d69da1dcc`, merged as `93584ce`. That run is not restated as if this config had been in place. Its totals were **4 errors** and **196 warnings** (`boundaries/element-types` 112, `boundaries/no-unknown` 19, `@typescript-eslint/no-explicit-any` 33, `react-hooks/set-state-in-effect` 25, `react-hooks/exhaustive-deps` 7).
 
 ## Result
 
-`pnpm lint` **exits 1**. The failure is 4 **errors**. The same run's finished packages also report **196 warnings**. Warnings do not fail a package: Turbo marked `@yoink/api` and `@yoink/web` successful after they printed warnings.
+`pnpm lint` **exits 1**. The failure is the same 4 **errors** in `@yoink/acceptance-tests`. This run's finished packages report **212 warnings**.
 
 | Package | Errors | Warnings | eslint summary |
 |---|---:|---:|---|
 | `@yoink/acceptance-tests` | 4 | 0 | `✖ 4 problems (4 errors, 0 warnings)` |
-| `@yoink/api` | 0 | 164 | `✖ 164 problems (0 errors, 164 warnings)` |
+| `@yoink/api` | 0 | 180 | `✖ 180 problems (0 errors, 180 warnings)` |
 | `@yoink/web` | 0 | 32 | `✖ 32 problems (0 errors, 32 warnings)` |
 | `@yoink/acceptance-testing` | 0 | 0 | no diagnostics, exit 0 |
 | `@yoink/admin` | 0 | 0 | no diagnostics, exit 0 |
@@ -18,24 +20,45 @@ Measured **2026-11-06** against commit `11da9800fe063d0e7b168a320dd1a61d69da1dcc
 | `@yoink/infrastructure` | 0 | 0 | no diagnostics, exit 0 |
 | `@yoink/notes-mirror` | 0 | 0 | no diagnostics, exit 0 |
 | `@yoink/ui-base` | 0 | 0 | no diagnostics, exit 0 |
-| **Total** | **4** | **196** | |
+| **Total** | **4** | **212** | |
 
-Plain `pnpm lint` does not print the API or web summaries. Turbo cancelled those two in-flight tasks after acceptance-tests failed. The table is from `pnpm lint --force --continue`, which let every package finish and still exited 1. See below.
+Plain `pnpm lint` does not print an API summary. Turbo cancelled that in-flight task after acceptance-tests failed. Web did finish and printed 32 warnings. The table is from `pnpm lint --force --continue`, which let every package finish and still exited 1.
+
+`pnpm quality` is `turbo run lint build typecheck test --filter=!@yoink/acceptance-tests`. It does not lint the package that owns the 4 errors. On the first M1.1 tree, `mise exec -- pnpm quality` exited 0: 33 successful / 33 total, 30 cached, 39.484s. `@yoink/api` test was a cache miss: 244 files, 1893 passed, 38.54s. No test timed out. The review follow-up re-ran quality; see [Review re-measure](#review-re-measure).
 
 ## Counts per rule
 
-Parsed from that continue run. Package totals match the eslint `✖` lines: 112 + 19 + 33 = 164 API warnings, 25 + 7 = 32 web warnings.
+Parsed from the continue run. Package totals match the eslint `✖` lines: 147 + 33 = 180 API warnings, 25 + 7 = 32 web warnings.
 
 | Rule | Reported as | Configured level | Count | Where |
 |---|---|---|---:|---|
-| `boundaries/element-types` | warning | `warn` | 112 | `@yoink/api` |
-| `boundaries/no-unknown` | warning | `warn` | 19 | `@yoink/api` |
+| `boundaries/element-types` | warning | `warn` | 147 | `@yoink/api` |
+| `boundaries/no-unknown` | warning | `warn` | 0 | `@yoink/api` |
+| `boundaries/entry-point` | warning | `warn` | 0 | `@yoink/api` |
+| `boundaries/external` | warning | `warn` | 0 | `@yoink/api` |
 | `@typescript-eslint/no-explicit-any` | warning | `warn` | 33 | `@yoink/api` |
 | `react-hooks/set-state-in-effect` | warning | `warn` | 25 | `@yoink/web` |
 | `react-hooks/exhaustive-deps` | warning | `warn` | 7 | `@yoink/web` |
 | `@typescript-eslint/no-unused-vars` | error | `error` | 4 | `@yoink/acceptance-tests` |
 
-`no-restricted-imports` is configured as `error` on `apps/api/src/**/{domain,application}/**/*.ts`, with tests excluded. It produced no diagnostic. No other rule produced a diagnostic in this run.
+`no-restricted-imports` stays `error` on `src/**/{domain,application}/**/*.ts`, tests excluded. It produced no diagnostic on this tree.
+
+`boundaries/entry-point` and `boundaries/external` are on at `warn`. They produced no diagnostic because nothing under `apps/api/src` lives in the target layout yet. That is not a suppressed warning. See [Target rules](#target-rules).
+
+## Delta from the M0.5 measurement
+
+Warnings went from 196 to 212 (**+16**). Errors stayed 4. The move is coverage, not a cleanup.
+
+| | M0.5 | M1.1 | Change |
+|---|---:|---:|---|
+| `boundaries/element-types` | 112 | 147 | +35 |
+| `boundaries/no-unknown` | 19 | 0 | −19 |
+| other rules | 65 | 65 | 0 |
+| **warnings** | **196** | **212** | **+16** |
+
+The +35 element-types warnings are the old 19 unknown imports, now typed and disallowed, plus 16 imports in `notes`, `review`, and `work`, which the old config did not visit. 112 + 19 + 16 = 147.
+
+Every M0.5 element-types pair is still present at the same count. Those 112 were not removed to shrink the baseline. `@typescript-eslint/no-explicit-any` is still 33, in the same three access tests. The web hooks warnings are still 25 and 7. The four unused locals are still the four errors below.
 
 ## How this was measured
 
@@ -51,60 +74,99 @@ Each script is `eslint` over that package's `src/**/*.{ts,tsx}` (several package
 
 | Tool | Version |
 |---|---|
-| Node | v24.22.2 (`mise.toml` pins Node 24; mise was not on `PATH`, so this was nvm's Node 24. The machine default `node` was v22.23.4 and was not used) |
-| pnpm | 11.24.0 (matches `packageManager`) |
+| Node | v24.22.2 (`mise.toml` pins Node 24; this run used `mise exec`) |
+| pnpm | 11.24.0 |
 | Turbo | 2.10.11 |
 | ESLint | 10.9.0 |
 | `@eslint/js` | 10.0.1 |
 | `@typescript-eslint/eslint-plugin` and `parser` | 8.67.0 |
 | `eslint-plugin-boundaries` | 5.4.0 |
-| `@boundaries/elements` (dependency of that plugin) | 1.2.0 |
+| `@boundaries/elements` | 1.2.0 |
 | `eslint-import-resolver-typescript` | 4.4.5 |
 | `eslint-plugin-react-hooks` | 7.1.1 |
 | TypeScript | 5.9.3 |
 
-`apps/api` still sets `import/resolver` to `eslint-import-resolver-typescript` with the API `tsconfig.json`, so ESM `.js` specifiers can be matched back to `.ts` files. That setting was not changed.
+Installed rule ids are `boundaries/element-types`, `boundaries/entry-point`, `boundaries/external`, `boundaries/no-unknown`, `boundaries/no-unknown-files`, `boundaries/no-ignored`, and `boundaries/no-private`. The four ADR names match. No rename was required. `no-unknown-files`, `no-ignored`, and `no-private` are not enabled.
 
-### Plain `pnpm lint` (exit 1, incomplete)
+`apps/api` still sets `import/resolver` to `eslint-import-resolver-typescript` with the API `tsconfig.json`.
+
+### Plain `pnpm lint` (exit 1, API cancelled)
 
 ```text
-Tasks:    7 successful, 10 total
-Cached:    0 cached, 10 total
-  Time:    9.358s
+Tasks:    8 successful, 10 total
+Cached:    8 cached, 10 total
+  Time:    3.054s
 Failed:    @yoink/acceptance-tests#lint
 ```
 
-`@yoink/acceptance-tests#lint` exited 1 and printed the 4 errors below. Turbo then reported `[ELIFECYCLE] Command failed` for the in-flight `@yoink/api#lint` and `@yoink/web#lint` tasks. Those two printed no eslint summary, so this invocation is not a full warning census.
+`@yoink/acceptance-tests#lint` exited 1 and printed the 4 errors below. `@yoink/web:lint` finished first and printed `✖ 32 problems (0 errors, 32 warnings)`. Turbo then reported `[ELIFECYCLE] Command failed` for in-flight `@yoink/api#lint` with no eslint summary.
 
 ### Complete census: `pnpm lint --force --continue` (exit 1)
 
-This forwards to `turbo run lint --force --continue`.
-
-- `--continue` keeps going after a package failure, so API and web finish.
-- `--force` was used because the plain run above had already filled the Turbo cache for the packages it managed to finish. A clean tree can use `pnpm lint --continue` without `--force`.
+This forwards to `turbo run lint --force --continue`. `--continue` lets API finish after acceptance-tests fails. `--force` was required because the plain run had already cached the packages it finished.
 
 ```text
 Tasks:    9 successful, 10 total
 Cached:    0 cached, 10 total
-  Time:    11.112s
+  Time:    11.968s
 Failed:    @yoink/acceptance-tests#lint
 ```
 
 Exit code was still 1. The 9 successes are the 7 clean packages plus API and web (warnings only).
 
-## `boundaries/element-types` (112 warnings)
+### `pnpm quality` (exit 0)
 
-Enabled at `warn` in `apps/api` only. Default policy is `disallow`. A warning is an import from one recognized element to a different recognized element that the allow-list does not permit. The message is `No rule allowing this dependency was found. File is of type '<from>'. Dependency is of type '<to>'`.
+```text
+Tasks:    33 successful, 33 total
+Cached:    30 cached, 33 total
+  Time:    39.484s
+```
 
-Allowances that produced no warnings in this run:
+`@yoink/api` lint was a cache hit of the continue run above. `@yoink/api` build, typecheck, and test executed. API tests: 244 files, 1893 passed, 38.54s.
 
-- every element may import `shared`, `listing`, `config`, `database`, and `logging`
-- `history` may import `projects` and `tasks`
-- `projects` and `tasks` may import `history`
-- `access`, `captures`, `health`, `lists`, and `processing` may import their own type
-- `app`, `composition`, `entrypoint`, and `tests` are allowed to import anything, and those four elements currently match no files (see [Element omissions](#element-omissions))
+## Element classification
 
-38 of the 112 warnings are in `*.test.ts` files inside a registered directory. 74 are in other files. A test file under `src/access/**` (and the other directory elements) is typed as that directory, so the module rule applies to the colocated test. The `tests` pattern does not take those files.
+`@boundaries/elements` 1.2.0 describes all **729** `apps/api/src/**/*.{ts,tsx}` files. **0** are unknown. `boundaries/no-unknown` is 0 for that reason: every local import resolves to a typed file.
+
+Folder mode is still the default. Until a parent matches, the matcher tests `pattern/**/*` against the path suffix, so `src/app.ts` never matched `src/app.ts`. A `mode: 'full'` pattern is tested against the whole path on the first pass, and the first match wins. A full-mode `src/**/*.test.ts` would take `src/access/foo.test.ts` before the access directory pattern could, and those files would stop being type `access`. That would drop warnings. It is not used.
+
+Current directories stay folder mode, including colocated tests. Exact files, `src/tests/**`, and `src/*.test.ts` are `mode: 'full'`. Target patterns are also `mode: 'full'` and are listed before the directory they sit in, so a `*.test.ts` under `modules/*/domain/` is `module-test`, not `module-domain`.
+
+| Type | Files |
+|---|---:|
+| `access` | 177 |
+| `projects` | 84 |
+| `database` | 81 |
+| `tasks` | 59 |
+| `captures` | 52 |
+| `lists` | 48 |
+| `notes` | 46 |
+| `shared` | 42 |
+| `review` | 33 |
+| `work` | 20 |
+| `listing` | 18 |
+| `processing` | 15 |
+| `history` | 12 |
+| `tests` | 12 |
+| `health` | 9 |
+| `logging` | 9 |
+| `entrypoint` | 4 |
+| `config` | 3 |
+| `server` | 3 |
+| `app` | 1 |
+| `composition` | 1 |
+
+`server` is `src/json-body.ts`, `src/static-cache-control.ts`, and `src/trust-proxy.ts`. `tests` is `src/tests/**` plus root `src/*.test.ts` (7 files), not colocated feature tests. `src/access/application/organization-routes.test.ts` is type `access`. No production file is a target type (`module-*`, `workflow-*`, `edge*`, `kernel`, `platform*`). Those patterns are registered and match only when a file is there.
+
+## `boundaries/element-types` (147 warnings)
+
+Enabled at `warn`. Default is `disallow`. 64 of the 147 are in `*.test.ts` files. 83 are in other files. A test under `src/access/**` is type `access`, so the feature rule applies to it.
+
+The old `from: '*'` allow of `shared`, `listing`, `config`, `database`, and `logging` is now the same allow from the current-layout types by name. A `from: '*'` rule would have granted that list to target layers. Naming the current types leaves today's allows in place. `notes`, `review`, and `work` may import themselves, on top of that shared set. They are not on the shared allow list. `server` may import `server`.
+
+### Unchanged pairs (112)
+
+These are the M0.5 pairs, at the same counts.
 
 | From | To | Warnings |
 |---|---|---:|
@@ -126,79 +188,99 @@ Allowances that produced no warnings in this run:
 | `tasks` | `access` | 1 |
 | `tasks` | `captures` | 1 |
 
-Groups:
+### Reclassified unknown imports (19)
 
-- **Processing reaches other feature directories (49).** `processing` may import only `processing` plus the shared set. The 49 warnings are `captures` (19), `projects` (14), `tasks` (13), and `lists` (3, all in tests). They sit in processing `domain`, `application`, and `infrastructure`.
-- **Projects and tasks import each other (40), plus a few task/list test imports (5).** `projects` → `tasks` is 31 (22 non-test, 9 test) across projects `domain`, `application`, and `infrastructure`. `tasks` → `projects` is 9 (7 non-test, 2 test). `projects` may import `history`, and `tasks` may import `history`; neither may import the other. On top of that, lists tests import tasks (4) and one tasks test imports a captures fake (1).
-- **Access imports projects (5).** `access/domain/admin-service.ts` imports `ProjectStore` and `projectNotFoundError`. `access/domain/admin-errors.ts` imports project error types. Two tests import `createFakeProjectStore`.
-- **HTTP adapters import access, and captures imports processing (10).** `AuthMiddleware` from `access/application/index.js` is imported by captures routes (2, including one test), `lists/infrastructure/http-list-routes.ts` (1), `projects/infrastructure/http-project-routes.ts` (1), and `tasks/infrastructure/http-task-routes.ts` (1). Captures infrastructure also imports processing handler/error types (4) and `projectRequestValidationError` (1).
-- **Health imports access (2).** `health/infrastructure/sqlite-health-checker.ts` imports the `TokenStore` type. Its test imports `createFakeTokenStore`.
-- **Logging imports history (1).** `logging/history-read-logger.ts` imports the `HistoryReadLogger` type from `history/application/ports.js`.
+M0.5 reported these as `boundaries/no-unknown` because `src/tests/helpers/test-app.ts` and `src/composition-root.ts` matched no element. Both files now have a type (`tests` and `composition`). Feature modules are not allowed to import them, so the same imports warn as `element-types`. None of the 19 was deleted.
 
-## `boundaries/no-unknown` (19 warnings)
+| From | To | Warnings | What |
+|---|---|---:|---|
+| `projects` | `tests` | 5 | `src/tests/helpers/test-app.ts` |
+| `tasks` | `tests` | 4 | `src/tests/helpers/test-app.ts` |
+| `access` | `tests` | 2 | `src/tests/helpers/test-app.ts` |
+| `captures` | `tests` | 2 | `src/tests/helpers/test-app.ts` |
+| `lists` | `tests` | 2 | `src/tests/helpers/test-app.ts` |
+| `health` | `tests` | 1 | `src/tests/helpers/test-app.ts` |
+| `history` | `tests` | 1 | `src/tests/helpers/test-app.ts` |
+| `processing` | `tests` | 1 | `src/tests/helpers/test-app.ts` |
+| `access` | `composition` | 1 | `access/application/http-owner-invite-routes.test.ts` imports `composition-root.ts` |
 
-Enabled at `warn` in `apps/api` only. All 19 are warnings in `*.test.ts` files that the plugin typed as a module element. The message is `Importing unknown elements is not allowed`. The rule reports a local file that resolved and matched no element. npm packages are not in this count.
+### Newly checked `notes`, `review`, and `work` (16)
 
-| Importer directory | Warnings | Import |
-|---|---:|---|
-| `projects` | 5 | `src/tests/helpers/test-app.ts` |
-| `tasks` | 4 | `src/tests/helpers/test-app.ts` |
-| `access` | 2 | `src/tests/helpers/test-app.ts` |
-| `captures` | 2 | `src/tests/helpers/test-app.ts` |
-| `lists` | 2 | `src/tests/helpers/test-app.ts` |
-| `health` | 1 | `src/tests/helpers/test-app.ts` |
-| `history` | 1 | `src/tests/helpers/test-app.ts` |
-| `processing` | 1 | `src/tests/helpers/test-app.ts` |
-| `access` | 1 | `src/composition-root.ts` (`access/application/http-owner-invite-routes.test.ts`) |
+These files had no element type in M0.5, so their imports were not visited. They are visited now. The warnings are the rule applying, not a behavior change.
 
-18 warnings are the shared HTTP test helper. One is the composition root. None of the 19 is an import of `notes`, `review`, or `work`.
+| File | From | To |
+|---|---|---|
+| `notes/infrastructure/http-note-routes.ts` | `notes` | `access` |
+| `notes/infrastructure/http-note-routes.test.ts` | `notes` | `tests` |
+| `review/infrastructure/http-review-routes.ts` | `review` | `access` |
+| `review/infrastructure/http-review-fixture-routes.ts` | `review` | `access` |
+| `review/infrastructure/parse-review-row.ts` | `review` | `projects` |
+| `review/infrastructure/parse-done-row.ts` | `review` | `projects` |
+| `review/infrastructure/parse-done-row.ts` | `review` | `tasks` |
+| `review/infrastructure/sqlite-review-store.test.ts` | `review` | `projects` |
+| `review/infrastructure/sqlite-review-store.test.ts` | `review` | `tasks` |
+| `review/infrastructure/http-review-routes.test.ts` | `review` | `tests` |
+| `work/infrastructure/http-work-routes.ts` | `work` | `access` |
+| `work/infrastructure/parse-now-next-action-row.ts` | `work` | `tasks` |
+| `work/infrastructure/sqlite-work-store.ts` | `work` | `tasks` |
+| `work/infrastructure/sqlite-work-store.test.ts` | `work` | `projects` |
+| `work/infrastructure/sqlite-work-store.test.ts` | `work` | `tasks` |
+| `work/infrastructure/http-work-routes.test.ts` | `work` | `tests` |
 
-## Element omissions
+`app.ts` and `composition-root.ts` import notes, review, and work. They are type `app` and `composition`, which may import anything, so those imports do not warn. In M0.5 they did not warn either, because both files were unknown. The count does not drop.
 
-`apps/api/eslint.config.js` registers these elements. This task did not edit that file.
+## `boundaries/no-unknown` (0 warnings)
 
-Directory patterns: `access`, `captures`, `config`, `database`, `health`, `history`, `listing`, `lists`, `logging`, `processing`, `projects`, `shared`, `tasks`.
+The rule still runs at `warn`. It reports a local resolved import whose file has no element type. npm packages are not this rule. With every `apps/api/src` file typed, the count is 0.
 
-Exact-file patterns: `app` (`src/app.ts`), `composition` (`src/composition-root.ts`), `entrypoint` (`src/index.ts`, `src/instrument.ts`, `src/migrate.ts`, `src/test-migrations.ts`), `tests` (`src/**/*.test.ts`).
+## Target rules
 
-### `notes`, `review`, and `work` are not registered
+ADR §10 rules 1–7 are registered at `warn`. Nothing promotes them to `error`.
 
-Those three directories exist under `apps/api/src`. On this tree they hold 34, 22, and 16 non-test TypeScript files, and 12, 11, and 4 colocated tests. They are not in `boundaries/elements`.
+v5 `entry-point` has no `from`. It only looks at the target element's `internalPath`, and it skips imports inside one element. Layer files are separate element types so element-types can tell domain from application from infrastructure. Entry-point's default is `disallow`. Current-layout types and target layer types allow `**` (a single `*` does not match `domain/foo.ts`). `module-entry` and `workflow-entry` allow `index.ts`. `module-testing` allows `testing.ts`. Who may import `testing.ts` is element-types: test types only. A later `from: '*'` disallow of `module-testing` overrides `allow: '*'` on `app`, `composition`, and `entrypoint`, and the test types opt back in.
 
-They add **zero** warnings, and that is a hole in coverage.
+`boundaries/dependency-nodes` is `import` and `export`. The plugin default is import only, so `export type` from `@yoink/api-contracts` and `export { adapter } from './infrastructure/...'` were not visited. Export declarations are checked the same way as imports.
 
-`boundaries/element-types` and `boundaries/no-unknown` are dependency rules. In `eslint-plugin-boundaries` 5.4.0, the rule visits a file only when that file already has an element type. A file under `notes/`, `review/`, or `work/` is skipped, so its own imports are not checked. The same unknown helper that accounts for 18 warnings above is imported by `notes/infrastructure/http-note-routes.test.ts`, `review/infrastructure/http-review-routes.test.ts`, and `work/infrastructure/http-work-routes.test.ts`, and those three files contribute no diagnostic.
+`external` default is `disallow`. Domain, application, module entry, module testing, kernel, and workflow layers allow `neverthrow` and `zod`. Module infrastructure and `module-fakes` allow Fastify, `@fastify/*`, `@orpc/*`, `@libsql/client`, `@sentry/node`, `@simplewebauthn/server`, and `node:*` (baseSource of `node:fs/promises` is `node:fs`). Platform adds `@yoink/infrastructure`. Edges add `@yoink/api-contracts`. `@yoink/api-contracts` is not on the module lists, so a module import or re-export warns, including `import type` and `export type`. Current-layout types allow `*` and `**`, because `*` does not match a scoped baseSource such as `@yoink/api-contracts`. That keeps today's files with no new external warning.
 
-The production files that import those directories are `src/app.ts` and `src/composition-root.ts` (note, work, and review handlers and stores). Both files are themselves unknown to the plugin, so those imports are not reported either. Detail next.
+Full mode makes each edge file its own element. An edge may import and re-export another file with the same captured edge name. A different edge is not allowed. `module-fakes` is `modules/*/infrastructure/fakes/**`, listed before the rest of infrastructure. ADR §4.1 has `testing.ts` re-export that module's fakes. It may not import that module's persistence, or another module's fakes. `index.ts` still may not re-export infrastructure.
 
-### Registered exact-file elements match no files
+Workspace packages resolve outside `apps/api`, so the plugin would treat them as local and `external` would not see them. `boundaries/flag-as-external` names `@yoink/api-contracts` and `@yoink/infrastructure`. Current types still allow every external source.
 
-A separate debug trace, `ESLINT_PLUGIN_BOUNDARIES_DEBUG=1` with the same ESLint 10.9.0 and `eslint-plugin-boundaries` 5.4.0, classified these paths as unknown type:
+There is no `workflows/*/infrastructure` element. A file there would be unknown. An import of it from a typed file would be `no-unknown`.
 
-- `src/app.ts`, `src/composition-root.ts`
-- `src/index.ts`, `src/instrument.ts`, `src/migrate.ts`, `src/test-migrations.ts`
-- `src/composition-root.test.ts`, `src/tests/composition/auth-wiring.test.ts`
-- `src/notes/application/create-note-handlers.ts`, `src/review/application/create-review-handlers.ts`, `src/work/application/create-work-handlers.ts`
-- `src/json-body.ts`, `src/static-cache-control.ts`, `src/trust-proxy.ts`
-- `src/tests/helpers/test-app.ts`, `src/tests/helpers/http-client.ts`
+These rules were checked with temporary files under `src/modules`, `src/workflows`, `src/edges`, `src/kernel`, and `src/platform`, then deleted before the census. They are not in the tree and not in the counts above. The check showed:
 
-The same trace typed `src/access/application/http-owner-invite-routes.test.ts` as `access`, and typed its imports of `../../composition-root.js` and `../../tests/helpers/test-app.js` as unknown. That matches the two `no-unknown` warnings in that file.
+- same-module domain imports are allowed, and `access` domain importing `captures` domain warns
+- application importing its own infrastructure warns, and `no-restricted-imports` is still an error on that import
+- a module `index.ts` may import its application and may not import its infrastructure
+- a workflow may import `modules/access/index.ts` and may not import `modules/access/domain/`
+- an edge may import module and workflow index files and `platform/clock.ts`, and may not import `platform/database` or `testing.ts`
+- `edges/test-fixtures` may import `platform/database`
+- `platform/database` may not import a module index, and may import `@libsql/client`
+- kernel may import `neverthrow` and may not import `fastify`
+- `import type` from `@yoink/api-contracts` warns in module domain and infrastructure, and `@yoink/infrastructure` warns in domain and does not warn in platform
 
-The plugin's default element mode is `folder` (`@boundaries/elements` 1.2.0). Descriptors in `apps/api/eslint.config.js` do not set `mode`. In folder mode, until a parent element has matched, the matcher uses `pattern/**/*`. A directory pattern such as `src/access/**` still matches files under `access`. An exact file pattern such as `src/app.ts` becomes `src/app.ts/**/*` and does not match `src/app.ts`. The `tests` pattern `src/**/*.test.ts` becomes `src/**/*.test.ts/**/*` and does not match a test file. Test files are typed only when they sit inside a directory element.
+The review cases are committed in `apps/api/eslint-boundaries.rules.test.ts` (outside `src/`, so they are not in the 729 files or the counts). That test lints a temp tree with this config. Clean: `edges/web/routes.ts` importing and re-exporting `./map.ts`; `testing.ts` re-exporting `./infrastructure/fakes/store.ts`; `modules/access/index.ts` re-exporting `./application/use.ts`; `workflows/processing/index.ts` re-exporting `./application/run.ts`. Warned: `routes.ts` re-exporting `../admin/map.ts` (`element-types`, edge `admin`); `testing.ts` re-exporting `./infrastructure/sqlite.ts` (`module-infrastructure`) and `../captures/infrastructure/fakes/store.ts` (module `captures`); `index.ts` re-exporting `./infrastructure/sqlite.ts`; `domain/model.ts` `export type` from `@yoink/api-contracts` (`external`); `captures/domain` re-exporting `access/index.ts` (`module-entry`). `application/leak.ts` re-exporting infrastructure is `no-restricted-imports` at error and `element-types` at warn.
 
-So the registered `app`, `composition`, `entrypoint`, and `tests` elements currently classify no files. Their allow-all rules do not apply to any file in this run. `no-unknown-files` is not enabled, so an unknown file is not itself a warning. It shows up only when a file that does have a type imports it.
+## Review re-measure
 
-Other unknown files that produced no diagnostic of their own in `pnpm lint`:
+The census above was taken again after those three config changes (`dependency-nodes` includes `export`, same-edge allow, `module-fakes`). `pnpm lint --force --continue` exited 1. API `✖ 180 problems (0 errors, 180 warnings)`. Web `✖ 32 problems (0 errors, 32 warnings)`. Acceptance-tests `✖ 4 problems (4 errors, 0 warnings)`.
 
-- `src/json-body.ts`, `src/static-cache-control.ts`, and `src/trust-proxy.ts` are imported from `src/app.ts`, which is unknown.
-- `src/tests/helpers/http-client.ts` has no importer under `apps/api/src`.
-- Root tests such as `src/json-body.test.ts`, `src/trust-proxy.test.ts`, `src/static-cache-control.test.ts`, and `src/rate-limit.test.ts` are unknown, so their imports of those root modules and of `test-app.ts` are not checked.
+```text
+Tasks:    9 successful, 10 total
+Cached:    0 cached, 10 total
+  Time:    13.365s
+Failed:    @yoink/acceptance-tests#lint
+```
 
-Registering `notes`, `review`, and `work`, and making the exact-file elements actually match, is M1.1. This baseline does not change the config.
+Parsed counts match the table: `element-types` 147, and the original 112 pairs are still the same counts. `no-unknown`, `entry-point`, and `external` are 0. Export nodes added no production diagnostic. No file under `apps/api/src` is a target-layout element, so the same-edge and fakes allows do not move this census. Totals stay **4 errors** and **212 warnings**.
+
+`mise exec -- pnpm quality` on this follow-up exited 0: 33 successful / 33 total, 29 cached, 49.2s. `@yoink/api` lint, build, typecheck, and test were cache misses. API tests: 245 files, 1894 passed, 48.08s. The extra file is `eslint-boundaries.rules.test.ts`. No test timed out.
 
 ## `@typescript-eslint/no-explicit-any` (33 warnings)
 
-Configured at `warn` in `eslint.config.base.js`. All 33 are in `@yoink/api` access tests:
+Configured at `warn` in `eslint.config.base.js`. All 33 are in `@yoink/api` access tests, unchanged from M0.5:
 
 | File | Warnings |
 |---|---:|
@@ -206,11 +288,9 @@ Configured at `warn` in `eslint.config.base.js`. All 33 are in `@yoink/api` acce
 | `apps/api/src/access/application/auth-routes.test.ts` | 8 |
 | `apps/api/src/access/application/passkey-routes.test.ts` | 4 |
 
-No other package reported this rule.
-
 ## `react-hooks/set-state-in-effect` (25 warnings)
 
-Configured at `warn` in `eslint.config.base.js` for `src/**/*.{tsx,jsx}`. All 25 are in `@yoink/web`. The message is the plugin's "Calling setState synchronously within an effect" warning. 20 are in `src/components/`, 5 in `src/routes/`.
+Configured at `warn` in `eslint.config.base.js` for `src/**/*.{tsx,jsx}`. All 25 are in `@yoink/web`. Unchanged from M0.5: 20 in `src/components/`, 5 in `src/routes/`.
 
 | File | Warnings |
 |---|---:|
@@ -236,7 +316,7 @@ Configured at `warn` in `eslint.config.base.js` for `src/**/*.{tsx,jsx}`. All 25
 
 ## `react-hooks/exhaustive-deps` (7 warnings)
 
-Configured at `warn` in `eslint.config.base.js`. All 7 are in `@yoink/web`, one per file. Each is a `useEffect` missing a dependency (`loadInvitations`, `loadMembers`, `closeSnoozeMenu`, `proposalActions`, `membersQuery`, or `handleValidateCode`).
+Configured at `warn` in `eslint.config.base.js`. All 7 are in `@yoink/web`, one per file. Unchanged from M0.5.
 
 - `src/components/invitations-section.tsx`
 - `src/components/members-section.tsx`
@@ -246,11 +326,9 @@ Configured at `warn` in `eslint.config.base.js`. All 7 are in `@yoink/web`, one 
 - `src/routes/_authenticated/tasks.tsx`
 - `src/routes/signup.tsx`
 
-No other `react-hooks/*` rule fired. `@yoink/admin`, `@yoink/extension`, and `@yoink/ui-base` use the same base config and reported no hooks diagnostics.
-
 ## `@typescript-eslint/no-unused-vars` (4 errors)
 
-Configured as `error` in `eslint.config.base.js` (names matching `/^_/` are allowed). These four are why `pnpm lint` exits 1. They were already present on the measured commit. This baseline does not change them.
+Configured as `error` in `eslint.config.base.js` (names matching `/^_/` are allowed). These four are why `pnpm lint` exits 1. They are unchanged. This task does not edit them. They are outside `pnpm quality`.
 
 | File | Line | Name |
 |---|---:|---|
@@ -261,6 +339,4 @@ Configured as `error` in `eslint.config.base.js` (names matching `/^_/` are allo
 
 ## What this baseline is
 
-A record of one lint run on unchanged config. `boundaries/element-types` and `boundaries/no-unknown` stay at `warn`. The 4 unused-var errors stay errors. oRPC stays at `2.0.0-beta.48` and Zod stays at `^3.24.0` in `apps/api`; this task did not touch dependencies.
-
-`pnpm quality` includes `pnpm lint`, so it fails on the same 4 errors. This document does not claim that `pnpm quality` passed, and it does not claim a docs-only CI run.
+The measured warning set after registering current and target elements and ADR §10 rules 1–7 at `warn`. Rules are not promoted to `error`. Production behavior is unchanged. oRPC stays `2.0.0-beta.48` and Zod stays on 3. The 212 warnings are the baseline later tasks must not grow, except where a move genuinely subjects new files to a target rule that this tree does not contain yet.

@@ -2,7 +2,19 @@
 
 Fastify API server implementing hexagonal architecture with multi-tenant token-based authentication.
 
-## Hexagonal Architecture
+## Architecture
+
+**Target:** [ADR-001: Modules, workflows, and edges](../../docs/architecture/adr/001-modules-workflows-edges.md). The migration is in progress; see the [migration plan](../../docs/architecture/adr/001-migration-plan.md) and `docs/PLAN.md`. Read the ADR before structural changes. In short:
+
+- `src/modules/<name>/`: bounded contexts that own state, organized by lifecycle (access, captures, task-management, notes, review, history). The only entry point is `index.ts` (plus `testing.ts` for tests). **Modules never import each other.** A module that needs another module's data declares a consumer-owned port, and the composition root adapts it.
+- `src/workflows/<name>/`: orchestration across modules (processing). Owns no tables.
+- `src/edges/<client>/`: all HTTP, one edge per client (`web`, `admin`, `extension`, `public-api/v1`, `ops`, `test-fixtures`). No SQL, no business rules. One command or workflow per handler.
+- `src/kernel/` (pure shared code) and `src/platform/` (database, config, logging, unit of work).
+- **No storage dependencies between modules.** Every table has one owner. Atomic changes across modules go through the unit of work. Integration events go to history, which owns `change_log`.
+
+While the migration is underway, new code follows the ADR wherever the surrounding module has already been migrated, and follows the existing local pattern otherwise. Don't add new cross-module table access or imports. The lint baseline and the table-ownership allowlist must not grow.
+
+### Current layout (before migration)
 
 Most modules still follow this structure:
 

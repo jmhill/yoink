@@ -4,7 +4,7 @@ This document proposes architectural changes to improve module boundaries, aggre
 
 ## Status
 
-**Status:** Draft — **partially superseded, see addendum below**
+**Status:** **Superseded by [ADR-001: Modules, workflows, and edges](./adr/001-modules-workflows-edges.md)** (2026-11-06). Kept for history.
 **Created:** 2026-01-06
 **Last Updated:** 2026-07-29
 

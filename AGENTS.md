@@ -28,7 +28,7 @@ See `docs/operations/CI.md` to bump a digest.
 
 ## Architecture
 
-This is a monorepo with a Fastify API server (`apps/api/`) and shared packages (`packages/api-contracts/`, `packages/infrastructure/`). The API follows hexagonal architecture — see `apps/api/AGENTS.md` for details.
+This is a monorepo with a Fastify API server (`apps/api/`) and shared packages (`packages/api-contracts/`, `packages/infrastructure/`). The API follows hexagonal architecture — see `apps/api/AGENTS.md` for details. The API is migrating to the target architecture in `docs/architecture/adr/001-modules-workflows-edges.md` (modules, workflows, edges); the task list is `docs/architecture/adr/001-migration-plan.md`.
 
 ## UI design handoff
 

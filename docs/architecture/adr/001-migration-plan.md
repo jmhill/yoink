@@ -1,0 +1,527 @@
+# ADR-001 migration plan
+
+- **Implements:** ADR-001 (modules, workflows, and edges). Contributes evidence to ADR-002 (module kit, deferred).
+- **Progress:** tracked in `docs/PLAN.md` (phase "ADR-001 migration").
+- **Supersedes:** the open items in `docs/PLAN.md` Phase 8.5 (8.5.4, 8.5.5, 8.5.6). Each is folded into a task below, as noted.
+
+## How to use this plan
+
+Each task can be handed to an agent on its own. Before starting a task, the agent reads:
+1. `docs/architecture/adr/001-modules-workflows-edges.md` (the ADR; sections are cited as §n)
+2. this plan's **Definition of done** and the task itself
+3. the repo instructions: `AGENTS.md`, `apps/api/AGENTS.md`, `docs/conventions/CODESTYLE.md`, `docs/testing/TESTING.md`
+
+Tasks list their dependencies. Tasks without a dependency between them may run in parallel, but **never** in parallel when both touch `composition-root.ts` or `app.ts`.
+
+## Definition of done (applies to every task)
+
+1. **Releasable.** `pnpm quality` passes. If the task touches HTTP, auth, persistence or the composition root, `pnpm e2e:test` also passes.
+2. **No behaviour change** unless the task says otherwise. Moves and renames preserve git history (`git mv`).
+3. **Expand/migrate/contract.** A task never removes an old path, route, column or adapter that still has callers. Removal is its own task, or its own final step once callers are gone.
+4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations.
+5. **Docs updated:**
+   - mark the task in `docs/PLAN.md`
+   - update `apps/api/AGENTS.md` if the task changes where things live
+   - update the ADR if the task changes a decision (spikes especially)
+6. **Lessons log.** Add an entry to ADR-002 §5 recording any repeated boilerplate or wiring pain. Write "none" in the task summary if there was nothing to record.
+7. **Tests follow `docs/testing/TESTING.md`.** New units get colocated tests. Moved code keeps its tests next to it.
+
+## Phase overview
+
+| Phase | Goal | Tasks |
+|---|---|---|
+| M0 | Adopt the ADRs, prove the risky mechanisms, take inventory | M0.1–M0.5 |
+| M1 | Enforcement in place at `warn`, with baselines | M1.1–M1.3 |
+| M2 | Kernel, platform and `edges/_shared` extracted (mechanical moves) | M2.1–M2.4 |
+| M3 | All HTTP moved out of modules into edges; public API v1 and alias live | M3.1–M3.6 |
+| M4 | Unit of work, integration events, and history as event sink | M4.1–M4.4 |
+| M5 | Modules migrated one at a time to the final module shape | M5.1–M5.13 |
+| M6 | Client edges (extension, web, admin) | M6.1–M6.6 |
+| M7 | Contract: retire legacy, enforce at `error`, review lessons | M7.1–M7.7 |
+
+---
+
+## M0: Adopt, prove, inventory
+
+### M0.1 Adopt the ADRs into the repo
+- **Depends on:** none
+- **Do:**
+  - Move `adr-001-modules-workflows-edges.md` → `docs/architecture/adr/001-modules-workflows-edges.md`, `adr-002-module-kit.md` → `docs/architecture/adr/002-module-kit.md`, and this plan → `docs/architecture/adr/001-migration-plan.md`.
+  - Mark `docs/architecture/MODULAR_MONOLITH.md` and `docs/architecture/DOMAIN_EVENTS.md` **Superseded by ADR-001** (a status line at the top; keep the content).
+  - In `docs/architecture/FUNCTIONAL_CORE.md`, replace the module layout and "What stayed out of this pilot" sections with a pointer to ADR-001. Keep the decide → plan → persist layer pattern.
+  - In `apps/api/AGENTS.md`, replace the hexagonal-structure section with a summary of the target layout (ADR §3, §4) and a link to the ADR.
+  - In `docs/PLAN.md`:
+    - add a new phase, "ADR-001 migration", listing M0–M7 with each task's status
+    - mark 8.5.4, 8.5.5 and 8.5.6 **Superseded**, with pointers (8.5.4 → M2.2 and M5.13; 8.5.5 → M1 and M7.5; 8.5.6 → M5.12)
+    - update "Current Focus"
+- **Accept:** docs only, with links working. No code changes.
+
+### M0.2 Spike: unit-of-work batch guards (ADR §6.1, §12)
+- **Depends on:** none
+- **Do:** in a throwaway branch or test file, using the real `Database` abstraction, against local libsql **and** a Turso dev database:
+  1. Create a guard table: `CHECK (ok = 1)`, owned by platform.
+  2. In one `db.batch(..., 'write')`, run a conditional `UPDATE ... WHERE <condition>`, then `INSERT INTO <guard> (ok) VALUES (changes() > 0)`. Confirm:
+     - the batch commits when the update matched
+     - the **whole batch rolls back** when it didn't
+  3. Confirm the batch error identifies the **index** of the failing statement (inspect `LibsqlBatchError` or the equivalent).
+  4. Run a batch of about 1,000 task updates plus about 1,000 change-log inserts. Record its duration and any limits hit.
+- **Output:** ADR §6.1 updated with the result. If U2 is confirmed, delete "Fallback" or keep it as history. If U2 fails, document U1 as the chosen implementation, with its rules. Also record the exact assertion SQL and the error-mapping approach.
+- **Accept:** findings committed to the ADR. Production code unchanged.
+
+### M0.3 Spike: oRPC contract and router spreading (ADR §9, §12)
+- **Depends on:** none
+- **Do:** with the pinned oRPC version (`2.0.0-beta.48`):
+  - build a two-procedure contract `v1`, and `v2 = { ...v1, one: changed }`
+  - implement both routers, spreading v1's implemented procedures into v2
+  - mount v1 at `/api/v1` and again at `/api/` (as the alias), and v2 at `/api/v2`, on one Fastify instance
+  - confirm typecheck passes, OpenAPI output is correct for each, and all three mounts serve requests
+  - also confirm a per-request hook can add `Deprecation`, `Sunset` and `Link` headers on the alias mount only
+- **Output:** ADR §9 updated, either with the confirmed pattern and a short code example, or with the fallback (list procedures explicitly per version).
+- **Accept:** findings committed. Production code unchanged.
+
+### M0.4 Route inventory (ADR §9)
+- **Depends on:** none
+- **Do:** produce `docs/architecture/adr/001-route-inventory.md`. It's a table of **every** HTTP route registered by `app.ts`, with these columns:
+  - method and path
+  - current file
+  - auth mode accepted (session / token / admin session / none / combined)
+  - which clients call it (web, admin, extension, bots/tools, tests), found by searching `apps/web`, `apps/admin`, `apps/extension`, `tools/` and `packages/acceptance-testing`
+  - classification: **integration** (→ v1 + alias), **client-only** (→ legacy until its client's edge), **ops**, **test fixture**
+- **Accept:** every registered route is classified. Anything ambiguous is listed for a human decision.
+
+### M0.5 Refresh the ESLint baseline
+- **Depends on:** none
+- **Do:** run `pnpm lint` and rewrite `docs/architecture/ESLINT_BASELINE.md` with the current counts per rule (about 112 `element-types`, 19 `no-unknown` and 33 `no-explicit-any` at last count), plus a short explanation of each group. Note that the module list is missing notes, review and work.
+- **Accept:** the baseline matches `pnpm lint` output.
+
+---
+
+## M1: Enforcement at `warn`
+
+### M1.1 Boundaries elements and rules for the target layout (ADR §10)
+- **Depends on:** M0.5
+- **Do:** in `apps/api/eslint.config.js`:
+  - Register boundaries elements for **both** the current layout (so nothing is unknown) **and** the target layout (`edges/*`, `workflows/*`, `modules/*/{domain,application,infrastructure}`, `modules/*/index.ts`, `modules/*/testing.ts`, `kernel`, `platform`).
+  - Add the ADR §10 rules 1–7 at `warn`:
+    - layer direction
+    - modules never import modules
+    - entry points only (`index.ts`, `testing.ts` from tests)
+    - workflow and edge import rules
+    - kernel and platform rules
+    - npm packages allowed per layer (`boundaries/external`)
+    - `@yoink/api-contracts` limited to edges
+  - Check the rule names and options against `eslint-plugin-boundaries` v5's documentation.
+  - Keep the existing `no-restricted-imports` `error` rule (domain/application ↛ infrastructure).
+- **Accept:**
+  - `boundaries/no-unknown` = 0
+  - the new warnings are recorded as the new baseline in `ESLINT_BASELINE.md`, grouped by rule
+  - `pnpm quality` passes
+
+### M1.2 Table-ownership architecture test (ADR §5.1, §10)
+- **Depends on:** none
+- **Do:**
+  - Add `apps/api/src/platform/table-ownership.ts` (create `platform/` if needed) mapping each table to its owner, with **target** owners (task-management, history, …).
+  - Add a test that runs as part of `pnpm test`. It scans non-test `.ts` files under `apps/api/src` for SQL (the heuristic in ADR §10) and maps each file to its owner, either by its target path or by a temporary path map for the current layout.
+  - The test fails on any violation **not** in a checked-in **allowlist** (`table-ownership.allowlist.ts`). The allowlist must contain today's violations. Each entry has a comment naming the task that removes it.
+  - The test also fails if any allowlist entry no longer matches (so a stale allowlist can't hide new violations), and if any `workflows/*/infrastructure/` directory exists.
+- **Accept:** the test passes on the current code with the allowlist, and fails on a deliberately added violation (shown in the test's own tests).
+
+### M1.3 Migration ownership (ADR §5.4)
+- **Depends on:** M1.2
+- **Do:**
+  - Add `owner: ModuleName | 'platform'` to the `Migration` type. It's required for migrations numbered above `043`; `001`–`043` are exempt (make the field optional only for those, e.g. through a separate legacy type or an exemption list).
+  - Extend the table-ownership test so new migrations may only touch tables their owner owns, unless they're `owner: 'platform'` with a non-empty `reason`.
+  - Also fail on a new foreign key to another module's table, other than `organizations(id)` and `users(id)`.
+- **Accept:** tests cover allowed and rejected migrations. Existing migrations are untouched.
+
+---
+
+## M2: Kernel, platform, `edges/_shared` (mechanical moves)
+
+All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a codemod (for example ts-morph, or `git mv` plus a scripted rewrite of relative specifiers) rather than hand edits. Each task also updates the M1.1 element patterns and the M1.2 path map.
+
+### M2.1 Create `kernel/`
+- **Depends on:** M1.1
+- **Move** (ADR §3.4, §3.5):
+  - `shared/auth-context.ts`, `shared/name.ts` and `shared/domain/*` → `kernel/`
+  - `listing/domain/*` and `listing/application/*` → `kernel/listing/`
+  - `shared/change-log/application/command-log.ts` (`withCommandLog`) → `kernel/`
+  - `CommandLogger` and `HistoryReadLogger` *types* (from `logging/`) → `kernel/`
+
+  Add `kernel/module-name.ts` (the `ModuleName` union).
+- **Accept:** kernel imports only kernel, `neverthrow` and `zod`, with no new lint warnings. `pnpm quality` passes.
+
+### M2.2 Create `platform/` (closes the 8.5.4 health item)
+- **Depends on:** M1.1
+- **Move:**
+  - `config/` → `platform/config/`
+  - `database/` (including migrations) → `platform/database/`
+  - `logging/` → `platform/logging/` (except the port types moved in M2.1)
+  - `listing/infrastructure/page-sqlite.ts` and `sql-keyset.ts` → `platform/sql/`
+  - the health checker → `platform/health/`
+- **Change:** the health checker runs a plain connectivity query (`SELECT 1`) and no longer uses access's `TokenStore` (removes `TODO(8.5.4)`). This is the only behaviour change: `/api/health` responds the same way.
+- **Accept:** `/api/health` acceptance and E2E checks pass. Fly's health path is unchanged.
+
+### M2.3 Split `@yoink/infrastructure` (ADR §3.4)
+- **Depends on:** M2.1, M2.2
+- **Do:**
+  - `Clock`, `IdGenerator` and `PasswordHasher` *types* are reachable from `kernel/`, either re-exported from a types-only entry of the package or moved into `kernel/`.
+  - Implementations (real and fake) are imported only from platform, the composition root and tests.
+  - Don't rename the package (deferred).
+- **Accept:** no domain or application file imports a runtime value from `@yoink/infrastructure`. Lint shows this.
+
+### M2.4 Create `edges/_shared/`
+- **Depends on:** M2.1
+- **Move:**
+  - `shared/orpc/*` → `edges/_shared/orpc/`
+  - `shared/request-validation.ts`, `shared/infrastructure/request-validation-http.ts` and `shared/infrastructure/parse-json.ts` → `edges/_shared/`
+  - `shared/rate-limit-policy.ts`, `shared/request-client-ip.ts` and `shared/in-memory-rate-limit-consume.ts` → `edges/_shared/`
+  - `listing/infrastructure/http-listed-page.ts` → `edges/_shared/`
+  - `json-body.ts`, `trust-proxy.ts` and `static-cache-control.ts` → `edges/_shared/server/`
+- **Note:** `lists/domain` and `projects/domain` import `request-validation`. They keep importing it from its new path (a lint warning). The import is removed in M5.4.
+- **Accept:** `shared/` contains only `change-log/`, which moves in M4.2. `pnpm quality` and `pnpm e2e:test` pass.
+
+---
+
+## M3: HTTP out of modules, public API v1 live
+
+### M3.1 Public API v1 contracts (frozen copy)
+- **Depends on:** M0.3, M0.4
+- **Do:** create `packages/api-contracts/src/public-api/v1/` containing the contracts of every **integration** route from the inventory, **copied unchanged** in path suffix, shapes and errors, but rooted at `/api/v1`. Today's `orpc/` contracts stay as they are (legacy).
+- **Accept:** a contract test shows that each v1 procedure matches its legacy counterpart's input and output schemas.
+
+### M3.2 `edges/public-api/v1/` mounted at `/api/v1` and the `/api` alias
+- **Depends on:** M3.1, M2.4
+- **Do:**
+  - Implement the v1 router by **moving** today's integration route handlers (`*-routes.ts` for captures, tasks, lists, projects, notes, work, review and history, as classified in the inventory) into `edges/public-api/v1/`. Temporarily they still call module handlers and services by deep import; that's allowed with a lint warning and an allowlist comment pointing to the M5 task that fixes it.
+  - Mount at `/api/v1` with **token-only** auth.
+  - Mount the same router at `/api/` as the alias, with **today's auth** (combined session plus token, because the web app still calls these paths).
+  - The alias adds `Deprecation`, `Sunset` and `Link` headers. Leave the sunset date unset until M7.1, or use a far-future placeholder.
+- **Usage logging:** through `edges/_shared/`, each request's log context includes the token id (when present), the API version, and whether the request came through the alias (ADR §9).
+- **Accept:**
+  - every existing acceptance test passes unchanged (they use the alias)
+  - new acceptance tests show `/api/v1/...` works with a token and rejects session-only requests
+  - the alias responds with deprecation headers
+
+### M3.3 `edges/legacy/` for client-only routes
+- **Depends on:** M0.4, M2.4
+- **Do:** move every **client-only** route (admin, auth, passkey, signup, invitation, organization settings, …) out of `access/application/` and the other modules into `edges/legacy/<area>/`, keeping **identical paths and auth**. These later move to their client's edge (M6) and are removed (M7).
+- **Accept:** no route file remains under any module's `application/` or `infrastructure/`. `pnpm e2e:test` passes.
+
+### M3.4 `edges/ops/` and `edges/test-fixtures/`
+- **Depends on:** M2.2, M3.3
+- **Do:**
+  - Move the health route to `edges/ops/`. The path stays `/api/health`.
+  - Move `http-review-fixture-routes` and `http-ownerless-workspace-fixture-routes` to `edges/test-fixtures/`, re-rooted at `/test-api/...`.
+  - Update `packages/acceptance-testing/src/drivers/http/{admin,actor}.ts` and `drivers/playwright/actor.ts` to the new paths.
+  - Exempt `edges/test-fixtures/` in the table-ownership test.
+  - Register `/test-api` in the SPA fallback (`app.ts`), in the PWA `navigateFallbackDenylist` (`apps/web/src/lib/pwa-navigate-fallback`), and in the dev proxies if the tests use them.
+- **Accept:** `pnpm e2e:test` passes. Nothing is served at `/api/test/` any more.
+
+### M3.5 Auth middlewares to `edges/_shared/`
+- **Depends on:** M3.2, M3.3
+- **Do:** move `auth-middleware`, `user-session-middleware`, `admin-session-middleware`, `combined-auth-middleware` and `with-authenticated-rate-limit` from `access/application/` to `edges/_shared/auth/`. They depend on access through its current services; that's allowed by allowlist until M5.13 provides an access interface. Rate-limit configuration becomes per edge (ADR §8.1).
+- **Accept:** access contains no Fastify or oRPC imports. Lint shows this.
+
+### M3.6 Retire HTTP tests from module folders
+- **Depends on:** M3.2–M3.5
+- **Do:** move the `http-*.test.ts` and `orpc-*.test.ts` files that remained in module folders next to the routes they test, under `edges/`.
+- **Accept:** no module directory contains HTTP tests.
+
+---
+
+## M4: Unit of work, integration events, history as sink
+
+### M4.1 Kernel unit-of-work types, plus SQLite and in-memory implementations
+- **Depends on:** M0.2, M2.1, M2.2
+- **Do:**
+  - Add the kernel types from ADR §6.1 and §6.3 (`Step`, `StepFailure`, `Work`, `UnitOfWork`, `SqlParticipant`, `FakeParticipant`, `GuardedStatement`, `Policy`) and the `IntegrationEvent` envelope (§7.1).
+  - Add `platform/unit-of-work/`:
+    - the SQLite implementation (participant registry, batch assembly, guard assertions, mapping errors back by statement index)
+    - the in-memory implementation (snapshot and restore across fake participants)
+    - a platform-owned migration for the guard table (`owner: 'platform'`)
+  - Use whichever implementation M0.2 chose.
+- **Accept:** unit tests for both implementations cover commit, guard failure (with typed `Conflict` and the right `owner`), a storage failure, rollback of every participant, and policies (one level only, refusal aborts the commit). Nothing uses it yet.
+
+### M4.2 Create `modules/history/` and move the change log
+- **Depends on:** M4.1, M2.4
+- **Do:**
+  - Move `shared/change-log/domain/*` and `infrastructure/*` into `modules/history/`, along with the current `history/` module.
+  - Give history an `index.ts` and `testing.ts`.
+  - Move `HIDDEN_CHANGE_LOG_KINDS` and `countsTowardLastChanged` into history's domain.
+  - Other modules keep calling `insertChangeLogQuery` from its new path for now, tracked in the allowlist with a pointer to their M5 task.
+- **Accept:** `shared/` is gone. `pnpm quality` and `pnpm e2e:test` pass.
+
+### M4.3 History as the event sink
+- **Depends on:** M4.2
+- **Do:**
+  - Implement history's event-sink participant: **prepare** maps integration events to timeline records and assigns ids with `IdGenerator`; **compile** turns records into `change_log` inserts. Provide a fake participant too.
+  - Start a mapping table from integration event `type` to record builder. It's empty until modules publish events in M5.
+  - Register the sink with both unit-of-work implementations in the composition root.
+- **Accept:** a test publishes a sample integration event through the unit of work and finds the expected `change_log` row (SQLite) or fake record.
+
+### M4.4 Remove guards that read across modules (finishing step)
+- **Depends on:** all M5 module tasks that remove their callers of `existsClause` and `insertChangeLogIfChangedQuery`
+- **Do:** delete `existsClause` and any `EXISTS (SELECT … FROM <another module's table>)` guard left in history's SQL.
+- **Accept:** there are no history allowlist entries in the table-ownership test.
+
+---
+
+## M5: Modules, one at a time
+
+**Standard module checklist.** Every M5 module task completes all of these steps unless the task says otherwise. Reviewers check each one.
+
+1. **Location and buckets.** Move to `modules/<name>/` and apply the folder buckets (ADR §4.2) when a layer has more than about 10 non-test files. Remove layer barrels.
+2. **Entry points.** `index.ts` exports only the factory and the published types. `testing.ts` exports the fake-backed factory and the fake participants.
+3. **Public interface.** `create-<module>.ts` builds `{ commands, queries, prepare }` (ADR §4.3). Commands are named by intent. Every command is prepare, then `uow.commit`. Only publish the `prepare` functions that some workflow or policy uses.
+4. **Persistence participants.** An `SqlParticipant` (plan → guarded statements) and a `FakeParticipant`. Hand-written snapshot and restore code in fakes is removed. Port contract tests move to `infrastructure/`.
+5. **Integration events.** Types and mappers in `application/integration-events/`, consumed by history's sink. The module's `change-log-records.ts` moves into history's mapping table. Record ids are no longer generated by handlers. The timeline output (verified by the existing history tests) is unchanged.
+6. **Consumer-owned ports.** Every read from another module goes through a port in `application/ports.ts` with only the fields it needs, adapted in the composition root (ADR §4.4). No imports from other modules.
+7. **Edges switch to the interface.** Routes in `edges/public-api/v1/` and `edges/legacy/` that used this module's handlers or services by deep import now go through `index.ts`.
+8. **Allowlists shrink.** Remove this module's table-ownership allowlist entries and its lint warnings.
+9. **Docs.** `docs/PLAN.md`, plus ADR §6.4 if any operation's classification changes.
+
+Own types (dropping `@yoink/api-contracts` from domain and application) are a **separate task per module** (M5.11), so the module moves stay reviewable.
+
+### M5.1 Captures (pilot)
+- **Depends on:** M3.6, M4.3
+- **Do:** the standard checklist. Publish `prepare.markProcessed` (with the inbox-claim guard) and `prepare.deleteProcessedCapture` for the processing workflow and policy. `queries.findInboxCapture` is needed by processing.
+- **Accept:** the standard checklist is complete. This pilot's lessons go into ADR-002 §5 **in detail**, and the plan template above is refined if the pilot shows a better shape.
+
+### M5.2 Task Management: structural merge (no behaviour change)
+- **Depends on:** M5.1
+- **Do:**
+  - Move `tasks/`, `projects/` and `lists/` into `modules/task-management/` with buckets.
+  - Unify their errors and ports where they're duplicates. Calls between tasks, projects and lists become internal.
+  - Move `work/`'s queries (next actions, due, work lists) and `now-order.ts` into task-management queries. Keep the `/api/work/*` routes in `edges/public-api/v1/`, now calling task-management queries.
+  - Delete the `work/` module.
+- **Scope note:** this task covers checklist steps 1, 2, 7 and 8 only. Steps 3–6 are M5.3.
+- **Accept:** every task, project, list and work acceptance test passes unchanged.
+
+### M5.3 Task Management: interface, unit of work, events
+- **Depends on:** M5.2
+- **Do:** checklist steps 3–6:
+  - Persistence for tasks, projects, lists and project imports goes through participants. That includes the "project done completes open tasks" path (up to `OPEN_TASKS_FETCH_LIMIT`) and imports, both as one commit.
+  - Publish `prepare.createTask` and `prepare.createProject` (from a `TaskStarter` / `ProjectStarter` document) for processing.
+  - `TaskDeleted` carries `source: { kind: 'capture', id }` when the task came from a capture.
+  - The assignee check uses a consumer-owned port adapted to access (an interim adapter over today's access store until M5.13).
+- **Accept:** standard checklist complete. Large-batch behaviour is covered by a test using the SQLite unit of work.
+
+### M5.4 Task Management: legacy services and the domain importing HTTP code
+- **Depends on:** M5.3
+- **Do:**
+  - Migrate `tasks/domain/task-service.ts` (whatever remains, e.g. pin and delete paths) to decide → plan → participant.
+  - Remove the domain's imports of `edges/_shared/request-validation`: validation errors become domain refusals, and edges map them.
+  - Remove the store-object interfaces (`task-store.ts`, `project-store.ts`, `list-store.ts`) from the public surface. They're internal to persistence, or deleted.
+- **Accept:** no `domain/services/` or `domain/ports/` in task-management. No lint warnings for task-management except the `@yoink/api-contracts` ones, which M5.11 handles.
+
+### M5.5 Processing workflow and delete-source-capture policy
+- **Depends on:** M5.1, M5.3
+- **Do:**
+  - Move `processing/` to `workflows/processing/` with `domain/`, `application/`, `policies/` and `index.ts`, and **no `infrastructure/`**.
+  - Rewrite process-to-task and process-to-project as pipelines: query → prepare in Task Management (`TaskStarter`) → prepare a capture claim → one `uow.commit` (ADR §6.2).
+  - Delete `persist-process.ts`, `process-row-statements.ts` and the cross-module fake persist adapters.
+  - Implement the **delete-source-capture** policy (ADR §6.3) and register it in the composition root. Remove `softDeleteCaptureQuery` from task-management's SQL.
+  - Migrate `processing-service.ts` (legacy) away.
+- **Accept:**
+  - processing acceptance tests pass, including the race (a capture processed twice → second attempt gets a `Conflict`)
+  - deleting a task that came from a capture still soft-deletes the capture, through any edge
+  - the table-ownership test shows no captures, tasks or projects SQL outside their owners
+
+### M5.6 Remove `tasks.capture_id → captures` foreign key
+- **Depends on:** M5.5
+- **Do:** a task-management-owned migration that rebuilds `tasks` without the foreign-key constraint (using `table-rebuild`), keeping the `capture_id` column as an opaque id. Migration tests cover it.
+- **Accept:** migration test passes. Behaviour unchanged.
+
+### M5.7 Notes
+- **Depends on:** M5.3
+- **Do:**
+  - The standard checklist.
+  - Project lookups and actor and person lookups go through consumer-owned ports (Task Management and access).
+  - Move `notes/test-support/fake-notes-backend.ts` into `infrastructure/fakes/`.
+- **Accept:** standard checklist complete.
+
+### M5.8 Notes settings table and the mirror-bot column
+- **Depends on:** M5.7
+- **Do:** expand/migrate/contract, one step per commit:
+  1. A notes-owned migration creates `notes_settings`.
+  2. Backfill it from `organizations.notes_mirror_bot_user_id`.
+  3. Switch reads and writes to `notes_settings`. `load-notes-mirror-bot.ts` stops writing `organizations`.
+  4. An access-owned migration drops the old column, in its own commit after a release.
+- **Accept:** notes import and mirror-bot acceptance tests pass at every step.
+
+### M5.9 Remove `project_notes.project_id → projects` foreign key
+- **Depends on:** M5.7
+- **Do:** a notes-owned migration rebuilding `project_notes` without the constraint. Deleting a project (if possible) or changing its status no longer depends on notes rows.
+- **Accept:** migration test passes. Behaviour unchanged.
+
+### M5.10 Review and history (queries)
+- **Depends on:** M5.3, M4.3
+- **Do:**
+  - **Review** gets the standard checklist. Its current read models become Task Management queries consumed through consumer-owned ports, or move to edge composition in M6.3, whichever keeps Task Management's queries meaningful in its own terms. The organization time zone comes through an access port. The review fixture routes stay in `edges/test-fixtures/` (see M7.4).
+  - **History** gets the standard checklist for its queries. Lookups for task, project, note and user names go through consumer-owned ports instead of reading `tasks`, `projects`, `project_notes` and `users`.
+- **Accept:** no review or history SQL touches another module's tables. Standard checklist complete.
+
+### M5.11 Own types per module (repeat for each module)
+- **Depends on:** that module's M5 task
+- **Do:** for one module per commit series (captures, task-management, notes, review, history, access):
+  - define the module's own document types
+  - remove `@yoink/api-contracts` imports from its domain and application
+  - edges map module documents to contract types
+- **Accept:** zero `@yoink/api-contracts` lint warnings for that module. When the last module is done, the transitional rule moves to `error`.
+
+### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
+- **Depends on:** M4.3, M3.5
+- **Do:**
+  - The standard checklist for access.
+  - Publish queries for other modules and edges: authenticate token, authenticate session, organization time zone, principal exists in organization, user display names.
+  - Signup (user + organization + memberships + passkey + session) commits as **one** unit-of-work batch, replacing 8.5.6's `UserIdentityStore` idea.
+  - Merge the duplicated error factories in `admin-errors.ts` (from 8.5.4).
+  - Replace the interim access adapters created in M5.3, M5.7 and M5.10 with adapters over the new queries.
+- **Accept:** standard checklist complete. Signup has an atomicity test (a failure in the last step leaves no rows behind). `edges/_shared/auth` uses access's interface.
+
+### M5.13 Access: migrate legacy services (closes 8.5.4)
+- **Depends on:** M5.12
+- **Do:**
+  - Migrate every remaining `*-service.ts` in access (admin, admin-session, agent, invitation, membership, organization, passkey, session, signup, token, user) to decide → plan → participant, one service per commit series.
+  - Move the `node:crypto` and `@simplewebauthn/server` uses into infrastructure behind ports (a hasher or HMAC port, a WebAuthn verifier port).
+  - Remove the `config` import from `passkey-service`.
+  - Review the invitation-to-membership seam (8.5.4).
+- **Accept:** no `domain/services/` and no npm-package lint warnings in access.
+
+---
+
+## M6: Client edges
+
+### M6.1 Extension edge (`/extension-api/v1/`)
+- **Depends on:** M5.1, M3.2
+- **Do:**
+  - `packages/api-contracts/src/extension/v1/`, containing what the extension uses (capture creation, plus anything else the inventory shows).
+  - `edges/extension/v1/` with token auth, mounted at `/extension-api/v1/`.
+  - The extension sends an `X-Yoink-Extension-Version` header, and edges log it (ADR §9).
+  - Switch `apps/extension` to the new contract and path. The old `/api` alias keeps serving older installed versions.
+  - Register the prefix in the SPA fallback, the PWA denylist and the dev proxies.
+- **Accept:** extension tests and capture acceptance tests pass. Old and new extension builds both work.
+
+### M6.2 Web edge foundation (`/web-api/`)
+- **Depends on:** M3.5
+- **Do:**
+  - Add `packages/api-contracts/src/web/` and `edges/web/`, mounted at `/web-api/`, with `combined-auth-middleware` (session plus legacy token until PLAN 7.7c).
+  - The web app sends an `X-Yoink-Build` header, and edges log it.
+  - Register `/web-api` in the SPA fallback, `apps/web/src/lib/pwa-navigate-fallback`, and the web dev proxy.
+  - Move one simple screen end to end as the template. Suggested: Inbox (captures list and create).
+- **Accept:** the web app works with one screen on `/web-api/` and the rest on the alias.
+
+### M6.3 Web edge screens
+- **Depends on:** M6.2, plus the module tasks each screen needs (M5.3 for Work, Tasks and Projects; M5.7 for notes; M5.10 for Review and history)
+- **Do:** move the web app's screens one at a time, one commit series each, with screen-shaped reads and writes:
+  - Inbox and process
+  - Tasks and lists
+  - Work (Now = next actions + loose dated tasks, header counts, owner labels and display ordering are composed in the edge, per ADR §8.2)
+  - Projects and project page
+  - Notes
+  - Review
+  - History and timelines
+  - Settings and organizations
+  - Auth, passkey, signup, join (client-only legacy routes)
+
+  Follow the one-command-per-handler rule. Where a screen needs two changes to succeed together, stop and raise it: it's a workflow (ADR §8.2).
+- **Accept per screen:** that screen's Playwright and HTTP acceptance tests pass, and the web app no longer calls the alias or legacy routes for that screen.
+
+### M6.4 Admin edge (`/admin-api/`)
+- **Depends on:** M5.12
+- **Do:**
+  - Add `packages/api-contracts/src/admin/` and `edges/admin/` with admin-session auth, mounted at `/admin-api/`.
+  - The admin app sends `X-Yoink-Build`.
+  - Update `apps/admin/vite.config.ts`'s dev proxy (it currently proxies `/api/admin`) and the SPA fallback.
+  - Move every admin screen.
+- **Accept:** admin acceptance tests pass, and the admin app makes no `/api/admin/...` calls.
+
+### M6.5 Remove client-only legacy routes
+- **Depends on:** M6.3 (web) and M6.4 (admin), each removing its own group
+- **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the web edge's expand/contract window has passed (ADR §8.2: no requests from builds that use them for a set number of days, based on `X-Yoink-Build` logs).
+- **Accept:** `edges/legacy/` is gone.
+
+### M6.6 Remove `/api/admin/...` from the dev proxy and docs
+- **Depends on:** M6.4, M6.5
+- **Do:** clean up leftover references in Vite configs, docs and the acceptance drivers.
+- **Accept:** nothing in the repo references `/api/admin`.
+
+---
+
+## M7: Contract, enforce, review
+
+### M7.1 Announce the `/api` alias sunset
+- **Depends on:** M6.1, M6.3, M6.4
+- **Do:** set the `Sunset` date (≥ 90 days out, ADR §9) on alias responses. Record the date in the ADR and in `docs/operations/`. Check alias usage per token from the logs.
+- **Accept:** the headers carry the real date.
+
+### M7.2 Remove the `/api` alias
+- **Depends on:** M7.1 plus the conditions in ADR §9: the sunset date has passed, the alias has seen no calls for 30 days, and any remaining token owners have been contacted
+- **Do:** unmount the alias. Keep `/api/health` and `/api/v1`.
+- **Accept:** acceptance tests use `/api/v1`, and the HTTP driver is updated.
+
+### M7.3 Retire `combined-auth-middleware`
+- **Depends on:** PLAN 7.7c (removing the web app's legacy token fallback), M7.2
+- **Do:** the web edge uses session-only auth. Delete `combined-auth-middleware`.
+- **Accept:** auth acceptance tests pass.
+
+### M7.4 Review and remove test fixture routes (ADR §11)
+- **Depends on:** M5.10, M5.12
+- **Do:**
+  - For each fixture route in `edges/test-fixtures/`, document **why it exists**, for example backdating `occurredAt`, finishing a task at a given time, or creating an ownerless workspace.
+  - Replace each one with setup through public commands. The options are an injected `Clock` in test configuration, seeding through the unit of work in the test harness, or admin commands that already exist.
+  - Delete the fixture edge if every route is replaced. Otherwise document the remaining ones and the reason in the ADR.
+- **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
+
+### M7.5 All enforcement at `error` (absorbs 8.5.5)
+- **Depends on:** all of M5, M6.5
+- **Do:**
+  - Every ADR §10 rule goes to `error`.
+  - The table-ownership allowlist is empty, then removed.
+  - Confirm `pnpm lint` runs in CI.
+  - Update `ESLINT_BASELINE.md` to "zero, enforced".
+- **Accept:** `pnpm quality` passes with no boundaries warnings.
+
+### M7.6 Remove legacy contracts and leftovers
+- **Depends on:** M7.2, M6.5
+- **Do:**
+  - Delete `packages/api-contracts/src/orpc/` and any schema no longer used.
+  - Delete remaining empty top-level folders under `apps/api/src`.
+  - Final update of `apps/api/AGENTS.md`.
+- **Accept:** `apps/api/src` matches ADR §3 exactly.
+
+### M7.7 Review ADR-002's lessons log
+- **Depends on:** M7.5
+- **Do:** group ADR-002 §5's entries by theme. Check them against ADR-002 §6's conditions for starting. Either draft ADR-002 in full, or close it as **Rejected (not needed)** with the reasoning.
+- **Accept:** ADR-002's status is updated.
+
+---
+
+## Dependency summary
+
+```
+M0.1  M0.2  M0.3  M0.4  M0.5
+              │     │     │
+              │     │   M1.1 ── M2.1 ── M2.3
+              │     │     │       │
+            M1.2 ── M1.3  M2.2 ───┤
+                                  M2.4
+                     M0.3+M0.4 ── M3.1 ── M3.2 ─┬─ M3.5 ── M3.6
+                              M0.4 ── M3.3 ─────┤
+                                      M3.4 ─────┘
+         M0.2+M2.* ── M4.1 ── M4.2 ── M4.3
+                                         │
+       M5.1 (captures) ── M5.2 ── M5.3 ──┬── M5.4
+                │                        ├── M5.5 (processing) ── M5.6
+                │                        ├── M5.7 (notes) ── M5.8, M5.9
+                │                        └── M5.10 (review, history)
+                │        M5.12 (access) ── M5.13
+                │        M5.11 (own types, per module, after each)
+                └── M6.1 (extension)
+   M3.5 ── M6.2 ── M6.3 (screens, as modules land)    M5.12 ── M6.4 (admin)
+                       M6.5 ── M6.6
+   M7.1 ── M7.2 ── M7.3 (after PLAN 7.7c)      M7.4      M7.5 ── M7.6, M7.7
+```
+
+M4.4 runs after every M5 task that removes callers of history's cross-module guards.

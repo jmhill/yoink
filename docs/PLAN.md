@@ -615,7 +615,9 @@ Baseline documented in `docs/architecture/ESLINT_BASELINE.md`.
 
 **Deliverable:** Clean entry points with no re-exports ✓
 
-### 8.5.4 Fix Service Boundary Violations - Scope Reduced
+> **Superseded (2026-11-06):** the open items 8.5.4–8.5.6 below are folded into the [ADR-001 migration](#adr-001-migration-modules-workflows-and-edges): 8.5.4 → M2.2 + M5.13, 8.5.5 → M1 + M7.5, 8.5.6 → M5.12. They're kept here for history; don't work them directly.
+
+### 8.5.4 Fix Service Boundary Violations - Superseded (→ M2.2, M5.13)
 Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context consolidation (intra-context store access is legitimate). Remaining:
 - [ ] `health` → `access` TokenStore deep import: depend on an access service or narrower port
 - [ ] `app.ts` → OrganizationStore deep import: auth-routes should take a service dependency
@@ -624,7 +626,7 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Deliverable:** No cross-context store imports
 
-### 8.5.5 Enforce Boundaries - Not Started
+### 8.5.5 Enforce Boundaries - Superseded (→ M1, M7.5)
 - [ ] Decide type-only allowances for cross-context imports (captures/tasks/health → access)
 - [ ] Change ESLint rules from warn to error
 - [ ] Enable entry-point restrictions (index.ts-only for cross-context imports)
@@ -634,13 +636,85 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Deliverable:** Strict boundary enforcement in CI
 
-### 8.5.6 Aggregate Persistence - Not Started
+### 8.5.6 Aggregate Persistence - Superseded (→ M5.12)
 - [ ] Create `UserIdentityStore` for atomic user+org+membership creation
 - [ ] Refactor `SignupService` to use `UserIdentityStore`
 - [ ] Test atomic behavior with `db.batch()`
 - [ ] Document `db.batch()` patterns
 
 **Deliverable:** Atomic aggregate persistence for signup
+
+---
+
+## ADR-001 Migration: Modules, Workflows, and Edges
+
+**Goal**: Move the API to the architecture in [ADR-001](./architecture/adr/001-modules-workflows-edges.md): lifecycle-shaped modules with no storage dependencies between them, workflows and policies for cross-module rules, a unit of work for atomic changes, history as the event sink, and one HTTP edge per client plus a versioned public API.
+
+**Plan:** [001-migration-plan.md](./architecture/adr/001-migration-plan.md) has every task, its dependencies, acceptance criteria and the shared definition of done. Each task can be handed to an agent on its own. **Deferred:** [ADR-002 (module kit)](./architecture/adr/002-module-kit.md). Every task adds to its lessons log.
+
+### M0: Adopt, prove, inventory - In Progress
+- [x] M0.1 Adopt the ADRs into the repo
+- [ ] M0.2 Spike: unit-of-work batch guards
+- [ ] M0.3 Spike: oRPC contract and router spreading
+- [ ] M0.4 Route inventory
+- [ ] M0.5 Refresh the ESLint baseline
+
+### M1: Enforcement at `warn` - Not Started
+- [ ] M1.1 Boundaries elements and rules for the target layout
+- [ ] M1.2 Table-ownership architecture test
+- [ ] M1.3 Migration ownership
+
+### M2: Kernel, platform, `edges/_shared` - Not Started
+- [ ] M2.1 Create `kernel/`
+- [ ] M2.2 Create `platform/` (closes the 8.5.4 health item)
+- [ ] M2.3 Split `@yoink/infrastructure`
+- [ ] M2.4 Create `edges/_shared/`
+
+### M3: HTTP out of modules, public API v1 live - Not Started
+- [ ] M3.1 Public API v1 contracts (frozen copy)
+- [ ] M3.2 `edges/public-api/v1/` at `/api/v1` and the `/api` alias
+- [ ] M3.3 `edges/legacy/` for client-only routes
+- [ ] M3.4 `edges/ops/` and `edges/test-fixtures/`
+- [ ] M3.5 Auth middlewares to `edges/_shared/`
+- [ ] M3.6 Retire HTTP tests from module folders
+
+### M4: Unit of work, integration events, history as sink - Not Started
+- [ ] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
+- [ ] M4.2 Create `modules/history/` and move the change log
+- [ ] M4.3 History as the event sink
+- [ ] M4.4 Remove guards that read across modules (finishing step)
+
+### M5: Modules, one at a time - Not Started
+- [ ] M5.1 Captures (pilot)
+- [ ] M5.2 Task Management: structural merge
+- [ ] M5.3 Task Management: interface, unit of work, events
+- [ ] M5.4 Task Management: legacy services and the domain importing HTTP code
+- [ ] M5.5 Processing workflow and delete-source-capture policy
+- [ ] M5.6 Remove `tasks.capture_id → captures` foreign key
+- [ ] M5.7 Notes
+- [ ] M5.8 Notes settings table and the mirror-bot column
+- [ ] M5.9 Remove `project_notes.project_id → projects` foreign key
+- [ ] M5.10 Review and history (queries)
+- [ ] M5.11 Own types per module
+- [ ] M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
+- [ ] M5.13 Access: migrate legacy services (closes 8.5.4)
+
+### M6: Client edges - Not Started
+- [ ] M6.1 Extension edge (`/extension-api/v1/`)
+- [ ] M6.2 Web edge foundation (`/web-api/`)
+- [ ] M6.3 Web edge screens
+- [ ] M6.4 Admin edge (`/admin-api/`)
+- [ ] M6.5 Remove client-only legacy routes
+- [ ] M6.6 Remove `/api/admin/...` from the dev proxy and docs
+
+### M7: Contract, enforce, review - Not Started
+- [ ] M7.1 Announce the `/api` alias sunset
+- [ ] M7.2 Remove the `/api` alias
+- [ ] M7.3 Retire `combined-auth-middleware` (after 7.7c)
+- [ ] M7.4 Review and remove test fixture routes
+- [ ] M7.5 All enforcement at `error` (absorbs 8.5.5)
+- [ ] M7.6 Remove legacy contracts and leftovers
+- [ ] M7.7 Review ADR-002's lessons log
 
 ---
 
@@ -2030,7 +2104,11 @@ When resuming work on this project:
 4. **Examine acceptance tests** for the feature area you're working on
 5. Continue with TDD: write failing test → implement → refactor
 
-### Current Focus: Judge captures/lists/task-update sandwich, then 8.5.4
+### Current Focus: ADR-001 migration
+
+**ADR-001 is accepted, pending spikes.** Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then pick the next task from the [migration plan](./architecture/adr/001-migration-plan.md). M0.1 is done. Next: **M0.2** (unit-of-work batch-guard spike) and **M0.3** (oRPC router-spreading spike), which can run in parallel, plus **M0.4** (route inventory) and **M0.5** (ESLint baseline). Phase 8.5's open items are superseded by this migration.
+
+### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 
 **Named lists story 8 is in.** A member can see and change the open-task order of the unlisted pile (`GET`/`PUT` `/api/unlisted/tasks`, `decideReorderOpenTasks` with `listId: null`). Same complete/uncomplete/land-at-end rules as story 7. All/Today/Mine/Upcoming stay pin-then-created. Kit up/down on `/lists/unlisted`. Named-list order stays as story 7.
 
@@ -2096,7 +2174,7 @@ When resuming work on this project:
 
 **Captures I/O sandwich pilot is in.** See [FUNCTIONAL_CORE.md](./architecture/FUNCTIONAL_CORE.md). Lists view/create/delete and task create/PATCH follow it. Next: keep, adjust, or abandon before touching access or folders/notes.
 
-### Current Focus: Phase 8.5 (Architecture Cleanup)
+### Earlier focus: Phase 8.5 (Architecture Cleanup), superseded by the ADR-001 migration
 
 **Phases 1-8 Complete!** The foundation is solid:
 - Capture → Task flow working

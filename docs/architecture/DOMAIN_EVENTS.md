@@ -1,5 +1,7 @@
 # Domain Events Architecture
 
+> **Status:** **Superseded by [ADR-001: Modules, workflows, and edges](./adr/001-modules-workflows-edges.md)** (2026-11-06), which defines domain vs. integration events, workflows, policies, and a unit of work. Kept for history.
+
 > **Note:** This document is partially outdated. The `withTransaction` helper has been removed because it doesn't work with Turso HTTP connections. See [MODULAR_MONOLITH.md](./MODULAR_MONOLITH.md) for the current architectural direction, which uses `db.batch()` for aggregate atomicity and defers event sourcing to a future spike.
 
 This document explores domain events as an architectural pattern and how it could fit into this codebase.

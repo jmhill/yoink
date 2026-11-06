@@ -2,10 +2,13 @@
 
 **Status:** Pilot — `captures/` plus `lists/` view/create/rename/delete/list-open-tasks/reorder (named list or unlisted pile) plus task create/PATCH/complete/uncomplete/pin/unpin/delete plus `projects/` create/update/list/get
 **Created:** 2026-08-19
+**Amended by:** [ADR-001: Modules, workflows, and edges](./adr/001-modules-workflows-edges.md) (2026-11-06). The decide → plan → persist pattern below still applies inside every module. The **module layout**, **ports**, **persistence** (unit of work) and **cross-module rules** are now defined by ADR-001 §3–§7. Where this document and ADR-001 disagree, ADR-001 wins.
 
 The captures module is an I/O sandwich: a pure core decides, adapters persist and serve HTTP. `lists/` uses the same shape for view (query loads and returns) and create/rename/delete/reorder (decide → `planListChange` → persist). Task create, PATCH (set or clear `listId`), complete, uncomplete, pin, unpin, and delete use the same sandwich (`decide` → `planTaskChange` → persist). The handler plans once (pre-generated ids, `occurredAt` on the event) and returns that view. Persist only turns the plan into SQL statements in one `db.batch`. Do not copy this shape into access until the pilot is judged a success.
 
 ## Layers
+
+This is the pilot's current layout. The target layout (`modules/<name>/` with folder buckets, one `index.ts`, no HTTP code in modules) is ADR-001 §4.
 
 ```
 captures/
@@ -54,10 +57,11 @@ The sandwich is the reusable idea, not a generic handler type. Create, update-is
 
 ## What stayed out of this pilot
 
-- `ProcessCaptureToTask` still lives in `processing/` and talks to `CaptureStore` directly.
-- `CaptureStore` remains for processing and as the persist adapter’s backend.
-- Capture entity type is still the HTTP Zod schema from `@yoink/api-contracts`.
-- Signup / access is unchanged.
+Superseded. ADR-001 and its [migration plan](./adr/001-migration-plan.md) now cover each of these:
+- processing becomes a workflow (M5.5)
+- store objects become internal to persistence (M5 checklist)
+- modules get their own types instead of `@yoink/api-contracts` (M5.11)
+- access moves to this pattern (M5.12, M5.13)
 
 ## Success checks
 

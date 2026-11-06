@@ -13,7 +13,7 @@ import type {
   Project,
   Task,
 } from '@yoink/api-contracts';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
 
 describe('project status HTTP', () => {

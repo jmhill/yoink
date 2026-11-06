@@ -1,4 +1,4 @@
-import type { HistoryReadLogger } from '../kernel/history-read-logger.js';
+import type { HistoryReadLogger } from '../../kernel/history-read-logger.js';
 
 type PinoWarnLogger = {
   warn: (obj: Record<string, unknown>) => void;

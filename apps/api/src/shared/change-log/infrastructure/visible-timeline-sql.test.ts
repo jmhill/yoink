@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDatabase } from '../../../database/test-utils.js';
-import type { Database } from '../../../database/types.js';
+import { createTestDatabase } from '../../../platform/database/test-utils.js';
+import type { Database } from '../../../platform/database/types.js';
 import { taskUpdatedShowsOnTimeline } from '../domain/to-timeline-entry.js';
 import type { TaskUpdatedPayloadV1 } from '../domain/payloads.js';
 import { VISIBLE_TIMELINE_SQL } from './sql.js';

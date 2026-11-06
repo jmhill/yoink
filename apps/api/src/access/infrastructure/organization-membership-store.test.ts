@@ -4,7 +4,7 @@ import { createSqliteOrganizationMembershipStore } from './sqlite-organization-m
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createSqliteInvitationStore } from './sqlite-invitation-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { User } from '../domain/user.js';

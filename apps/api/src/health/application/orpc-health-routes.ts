@@ -5,7 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
-import type { HealthChecker } from '../domain/health-checker.js';
+import type { HealthChecker } from '../../platform/health/health-checker.js';
 import { mapHealthCheckError } from './orpc-health-errors.js';
 
 export type OrpcHealthRoutesDependencies = {

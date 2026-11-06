@@ -1,7 +1,7 @@
 import { errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { DEFAULT_VIEWER_TIME_ZONE } from '../../kernel/viewer-today.js';
-import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import { pageSqlite } from '../../platform/sql/page-sqlite.js';
 import { pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
 import { doneListDirection, reviewDirection, reviewKeys } from '../../kernel/listing/domain/list-keys.js';
 import { buildReviewItems, type ReviewCandidate } from '../domain/build-review.js';

@@ -7,7 +7,7 @@ import { createFakeWorkspaceStore } from './fake-workspace-store.js';
 import { createFakeOrganizationStore } from './fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from './fake-organization-membership-store.js';
 import { createFakeInvitationStore } from './fake-invitation-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { Invitation } from '../domain/invitation.js';

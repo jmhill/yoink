@@ -321,7 +321,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   // They are non-test .ts, so the scanner sees them. Moving the SQL into a *.test.ts file removes the hit.
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'api_tokens',
     count: 1,
@@ -329,7 +329,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'captures',
     count: 2,
@@ -337,7 +337,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'invitations',
     count: 2,
@@ -345,7 +345,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'organization_memberships',
     count: 3,
@@ -353,7 +353,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'organizations',
     count: 1,
@@ -361,7 +361,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'passkey_credentials',
     count: 1,
@@ -369,7 +369,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'tasks',
     count: 2,
@@ -377,7 +377,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'user_sessions',
     count: 1,
@@ -385,7 +385,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M7.5
   {
-    path: 'database/migration-seeder.ts',
+    path: 'platform/database/migration-seeder.ts',
     keyword: 'INTO',
     table: 'users',
     count: 2,

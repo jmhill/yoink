@@ -1,7 +1,7 @@
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import { ImportProjectSchema } from '@yoink/api-contracts';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { parseJson } from '../../shared/infrastructure/parse-json.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
 import type { ProjectImportRecord } from '../domain/project-import.js';

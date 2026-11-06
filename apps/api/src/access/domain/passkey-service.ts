@@ -15,7 +15,7 @@ import type { Clock } from '@yoink/infrastructure';
 import type { PasskeyCredential, PasskeyTransport } from './passkey-credential.js';
 import type { PasskeyCredentialStore } from './passkey-credential-store.js';
 import type { UserService } from './user-service.js';
-import type { WebAuthnConfig } from '../../config/schema.js';
+import type { WebAuthnConfig } from '../../platform/config/schema.js';
 import { createChallengeManager, type ChallengeManager } from './challenge.js';
 import {
   credentialNotFoundError,

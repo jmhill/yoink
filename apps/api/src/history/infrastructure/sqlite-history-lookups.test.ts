@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDatabase } from '../../database/test-utils.js';
-import type { Database } from '../../database/types.js';
+import { createTestDatabase } from '../../platform/database/test-utils.js';
+import type { Database } from '../../platform/database/types.js';
 import { UNKNOWN_ACTOR_NAME } from '../../shared/change-log/domain/to-timeline-entry.js';
 import { createSqliteTimelineLookups } from './sqlite-history-lookups.js';
 

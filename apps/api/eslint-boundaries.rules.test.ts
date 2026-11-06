@@ -215,4 +215,46 @@ describe('boundaries target rules', () => {
       }),
     ]);
   });
+
+  it('lets current code import platform and keeps kernel and platform from crossing', async () => {
+    const root = await writeTree({
+      'src/platform/database/types.ts':
+        'export type Database = { execute(sql: string): Promise<void> };\n',
+      'src/platform/health/checker.ts': `
+        import type { Database } from '../database/types.js';
+        export const check = (database: Database) => database;
+      `,
+      'src/kernel/pure.ts': `
+        import type { Database } from '../platform/database/types.js';
+        export type Leak = Database;
+      `,
+      'src/captures/infrastructure/store.ts': `
+        import type { Database } from '../../platform/database/types.js';
+        export const store = (database: Database) => database;
+      `,
+      'src/captures/domain/model.ts': 'export const model = {};\n',
+      'src/platform/leak.ts': `
+        import { model } from '../captures/domain/model.js';
+        export const leak = model;
+      `,
+    });
+
+    const diagnostics = await lintBoundaries(root);
+    const messagesFor = (relativePath: string) => diagnostics.get(relativePath) ?? [];
+
+    expect(messagesFor('src/platform/health/checker.ts')).toEqual([]);
+    expect(messagesFor('src/captures/infrastructure/store.ts')).toEqual([]);
+    expect(messagesFor('src/kernel/pure.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'boundaries/element-types',
+        message: expect.stringContaining("type 'platform-database'"),
+      }),
+    ]);
+    expect(messagesFor('src/platform/leak.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'boundaries/element-types',
+        message: expect.stringContaining("type 'captures'"),
+      }),
+    ]);
+  });
 });

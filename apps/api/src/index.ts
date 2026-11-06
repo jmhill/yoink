@@ -1,4 +1,4 @@
-import { loadConfig } from './config/config.js';
+import { loadConfig } from './platform/config/config.js';
 import { bootstrapApp } from './composition-root.js';
 
 const main = async () => {

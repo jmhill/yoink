@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
-import { loadLogConfig, loadSentryConfig } from './config/config.js';
-import { initSentry } from './logging/sentry.js';
+import { loadLogConfig, loadSentryConfig } from './platform/config/config.js';
+import { initSentry } from './platform/logging/sentry.js';
 
 const sentry = loadSentryConfig();
 const log = loadLogConfig();

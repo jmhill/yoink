@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { legacyMigrationCutoffIs43, type Migration } from '../database/types.js';
-import { migrations } from '../database/migrations/index.js';
+import { legacyMigrationCutoffIs43, type Migration } from './database/types.js';
+import { migrations } from './database/migrations/index.js';
 import { TABLE_OWNERSHIP_ALLOWLIST } from './table-ownership.allowlist.js';
 import {
   FIXTURE_ROUTE_PATHS,
@@ -229,7 +229,7 @@ describe('path ownership', () => {
       kind: 'module-other',
       owner: 'review',
     });
-    expect(classifyApiPath('database/migrator.ts')).toEqual({ kind: 'platform' });
+    expect(classifyApiPath('platform/database/migrator.ts')).toEqual({ kind: 'platform' });
     expect(classifyApiPath('platform/table-ownership.ts')).toEqual({ kind: 'platform' });
     expect(classifyApiPath('kernel/listing/cursor.ts')).toEqual({ kind: 'no-sql', area: 'kernel' });
     expect(classifyApiPath('workflows/processing/domain/pipeline.ts')).toEqual({
@@ -249,15 +249,16 @@ describe('path ownership', () => {
       kind: 'exempt',
       reason: 'test-fixtures',
     });
-    expect(classifyApiPath('listing/infrastructure/page-sqlite.ts')).toEqual({
+    expect(classifyApiPath('platform/sql/page-sqlite.ts')).toEqual({ kind: 'platform' });
+    expect(classifyApiPath('listing/infrastructure/http-listed-page.ts')).toEqual({
       kind: 'no-sql',
       area: 'listing',
     });
-    expect(classifyApiPath(`database/migrations/0${LEGACY_MIGRATION_VERSION}-owner-invites.ts`)).toEqual({
+    expect(classifyApiPath(`platform/database/migrations/0${LEGACY_MIGRATION_VERSION}-owner-invites.ts`)).toEqual({
       kind: 'exempt',
       reason: 'legacy-migration',
     });
-    const laterMigration = `database/migrations/${String(LEGACY_MIGRATION_VERSION + 1).padStart(3, '0')}-next.ts`;
+    const laterMigration = `platform/database/migrations/${String(LEGACY_MIGRATION_VERSION + 1).padStart(3, '0')}-next.ts`;
     expect(classifyApiPath(laterMigration)).toEqual({
       kind: 'exempt',
       reason: 'later-migration',
@@ -370,12 +371,12 @@ describe('planted ownership failures', () => {
         'export const sql = "REFERENCES captures(id)";'
       ),
       scanned(
-        'database/migrations/043-legacy.ts',
+        'platform/database/migrations/043-legacy.ts',
         'export const sql = "REFERENCES captures(id)";'
       ),
       // Later migration files are not platform code. checkMigrationOwnership owns them.
       scanned(
-        'database/migrations/044-new.ts',
+        'platform/database/migrations/044-new.ts',
         'export const sql = "CREATE TABLE tasks (id TEXT)";'
       ),
       scanned('edges/test-fixtures/review.ts', 'export const sql = "UPDATE tasks SET completed_at = ?";'),
@@ -475,10 +476,10 @@ describe('table inventory', () => {
     const files = scanSourceFiles(apiSrc);
     const byPath = new Map(files.map((file) => [file.path, file.literals]));
     const live = new Set<string>();
-    applySchemaLiterals(byPath.get('database/migrator.ts') ?? [], live);
+    applySchemaLiterals(byPath.get('platform/database/migrator.ts') ?? [], live);
 
     const migrationVersion = (path: string): number | undefined => {
-      const match = /^database\/migrations\/(\d+)-/.exec(path);
+      const match = /^platform\/database\/migrations\/(\d+)-/.exec(path);
       return match?.[1] === undefined ? undefined : Number(match[1]);
     };
     const migrationPaths = [...byPath.keys()]
@@ -497,7 +498,7 @@ describe('table inventory', () => {
     const schemaProbe = new RegExp(schemaStatement.source, 'i');
     const outside = files.filter((file) => {
       const version = migrationVersion(file.path);
-      if (file.path === 'database/migrator.ts') {
+      if (file.path === 'platform/database/migrator.ts') {
         return false;
       }
       if (version !== undefined && version >= 1 && version <= LEGACY_MIGRATION_VERSION) {
@@ -579,7 +580,7 @@ describe('current tree', () => {
     expect(count('shared/change-log/infrastructure/sql.ts', 'INTO', 'change_log')).toBe(1);
     expect(count('notes/infrastructure/note-row-statements.ts', 'JOIN', 'users')).toBe(4);
     expect(count('notes/infrastructure/note-row-statements.ts', 'FROM', 'project_notes')).toBe(2);
-    expect(count('listing/infrastructure/page-sqlite.ts', 'FROM', 'tasks')).toBe(0);
+    expect(count('platform/sql/page-sqlite.ts', 'FROM', 'tasks')).toBe(0);
     expect(
       refsIn('access/infrastructure/http-ownerless-workspace-fixture-routes.ts')
     ).toEqual([]);
@@ -846,7 +847,7 @@ describe('migration ownership', () => {
 
     const files = scanSourceFiles(apiSrc);
     const onDisk = files
-      .map((file) => /^database\/migrations\/(\d+)-[^/]+\.ts$/.exec(file.path))
+      .map((file) => /^platform\/database\/migrations\/(\d+)-[^/]+\.ts$/.exec(file.path))
       .flatMap((match) => (match?.[1] === undefined ? [] : [Number(match[1])]))
       .sort((left, right) => left - right);
     expect(onDisk).toEqual(indexed);
@@ -854,7 +855,7 @@ describe('migration ownership', () => {
     for (const version of indexed) {
       const padded = String(version).padStart(3, '0');
       const file = files.find((candidate) =>
-        candidate.path.startsWith(`database/migrations/${padded}-`)
+        candidate.path.startsWith(`platform/database/migrations/${padded}-`)
       );
       expect(file, padded).toBeDefined();
       const source = readFileSync(join(apiSrc, file?.path ?? ''), 'utf8');

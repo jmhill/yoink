@@ -15,7 +15,7 @@ import type { InvitationService } from '../domain/invitation-service.js';
 import type { Invitation } from '../domain/invitation.js';
 import type { User } from '../domain/user.js';
 import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
-import type { RateLimitConfig, CookieConfig } from '../../config/schema.js';
+import type { RateLimitConfig, CookieConfig } from '../../platform/config/schema.js';
 import {
   namedRequestValidationError,
   validationIssuePaths,

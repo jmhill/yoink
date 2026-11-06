@@ -5,7 +5,7 @@ import { createFakePasskeyCredentialStore } from '../infrastructure/fake-passkey
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createUserService } from './user-service.js';
 import type { User } from './user.js';
-import type { WebAuthnConfig } from '../../config/schema.js';
+import type { WebAuthnConfig } from '../../platform/config/schema.js';
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
 
 // Mock the simplewebauthn functions

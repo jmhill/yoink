@@ -15,9 +15,9 @@
  *   ./scripts/test-migrations.sh
  */
 
-import { createDatabase } from './database/database.js';
-import { testPendingMigrations } from './database/migration-test-runner.js';
-import { migrations } from './database/migrations/index.js';
+import { createDatabase } from './platform/database/database.js';
+import { testPendingMigrations } from './platform/database/migration-test-runner.js';
+import { migrations } from './platform/database/migrations/index.js';
 
 const main = async (): Promise<void> => {
   const tursoUrl = process.env.TURSO_DATABASE_URL;

@@ -16,8 +16,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { createDatabase } from '../../../../apps/api/src/database/database.ts';
-import type { Database } from '../../../../apps/api/src/database/types.ts';
+import { createDatabase } from '../../../../apps/api/src/platform/database/database.ts';
+import type { Database } from '../../../../apps/api/src/platform/database/types.ts';
 
 const ORG = 'org-spike';
 const OCCURRED = '2026-11-06T21:00:00.000Z';

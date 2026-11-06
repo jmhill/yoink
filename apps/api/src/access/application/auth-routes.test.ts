@@ -18,7 +18,7 @@ import type { Organization } from '../domain/organization.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { PasskeyCredential } from '../domain/passkey-credential.js';
-import type { WebAuthnConfig, RateLimitConfig } from '../../config/schema.js';
+import type { WebAuthnConfig, RateLimitConfig } from '../../platform/config/schema.js';
 import {
   createFakeClock,
   createFakeIdGenerator,

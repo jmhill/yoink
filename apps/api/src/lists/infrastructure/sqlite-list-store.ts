@@ -1,11 +1,11 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
 import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
-import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import { pageSqlite } from '../../platform/sql/page-sqlite.js';
 import { namedListDirection } from '../../kernel/listing/domain/list-keys.js';
 import { parseListRow } from './parse-list-row.js';
 

@@ -1,7 +1,7 @@
 import { describe, beforeAll, afterAll, beforeEach, it, expect } from 'vitest';
 import { createFakeClock } from '@yoink/infrastructure';
 import { createSqliteCaptureStore } from './sqlite-capture-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import { runCaptureStoreContractTests } from '../domain/capture-store.contract.js';
 
 describe('SqliteCaptureStore', () => {

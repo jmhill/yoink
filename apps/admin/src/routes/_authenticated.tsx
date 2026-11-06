@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect, isRedirect } from '@tanstack/react-router';
-import { tsrAdmin } from '@/api/client';
+import { adminClient } from '@/api/client';
 import { useTheme, type ThemeMode, type ColorTheme } from '@/lib/use-theme';
 import { Button } from '@yoink/ui-base/components/button';
 import { Sun, Moon, Monitor, Palette } from 'lucide-react';
@@ -7,11 +7,7 @@ import { Sun, Moon, Monitor, Palette } from 'lucide-react';
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
     try {
-      // Use direct query for session check (outside React context)
-      const response = await tsrAdmin.getSession.query();
-      if (response.status !== 200) {
-        throw redirect({ to: '/login' });
-      }
+      await adminClient.getSession();
     } catch (error) {
       // Don't catch redirect errors - let them propagate
       if (isRedirect(error)) {

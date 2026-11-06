@@ -69,18 +69,21 @@ importers:
 
   apps/admin:
     dependencies:
+      '@orpc/client':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48
+      '@orpc/contract':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48(fastify@5.12.7)
       '@tanstack/react-query':
         specifier: ^5.90.16
         version: 5.102.2(react@18.3.1)
       '@tanstack/react-router':
         specifier: ^1.144.0
         version: 1.170.32(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@ts-rest/core':
-        specifier: ^3.52.0
-        version: 3.52.1(@types/node@22.20.1)(zod@3.25.76)
-      '@ts-rest/react-query':
-        specifier: ^3.52.0
-        version: 3.52.1(@tanstack/react-query@5.102.2(react@18.3.1))(@ts-rest/core@3.52.1(@types/node@22.20.1)(zod@3.25.76))(react@18.3.1)(zod@3.25.76)
       '@yoink/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -136,6 +139,9 @@ importers:
       vite:
         specifier: ^6.4.4
         version: 6.4.5(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.23.12)(yaml@2.8.2)
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(lightningcss@1.32.0)(supports-color@7.2.0)(terser@5.46.0)(tsx@4.23.12)(yaml@2.8.2)
 
   apps/api:
     dependencies:

@@ -4,7 +4,7 @@ import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
-import { tsrPublic } from '@/api/client';
+import { httpStatusOf, publicClient } from '@/api/client';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -22,18 +22,14 @@ function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Use direct mutation for login (fire-and-forget, no caching needed)
-      const response = await tsrPublic.login.mutate({
-        body: { password },
-      });
-
-      if (response.status === 200) {
-        navigate({ to: '/' });
-      } else if (response.status === 401) {
+      await publicClient.login({ password });
+      navigate({ to: '/' });
+    } catch (error) {
+      if (httpStatusOf(error) === 401) {
         setError('Invalid password');
+      } else {
+        setError('An error occurred. Please try again.');
       }
-    } catch {
-      setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

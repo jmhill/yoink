@@ -63,7 +63,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.2 Spike: unit-of-work batch guards (ADR §6.1, §12)
 
-**Execution:** `M0.2`. Pending publication; pending user Submit. No issue URL. Local libsql evidence is in ADR §6.1 (2026-11-06). The task is not done. The Turso half has not run.
+**Execution:** `M0.2`. Pending publication; pending user Submit. No issue URL. Local libsql evidence is in ADR §6.1 (2026-11-06) and [#303](https://github.com/jmhill/yoink/pull/303). The task is not done. The Turso half has not run.
 
 - **Depends on:** none
 - **Do:** in a throwaway branch or test file, using the real `Database` abstraction, against local libsql **and** a Turso dev database:
@@ -700,7 +700,7 @@ The logical dependencies plus the serialization edges were checked together. The
 
 | ID | Logical dependencies | Serialize after | Status | Gate | GitHub |
 |---|---|---|---|---|---|
-| `M0.2` | — | — | Local recorded; not done | Close only after the same proof on a disposable Turso dev database. This run had no dev URL or token. Not `yoink-prod`, and not the CI read-only token. The credential grant needs Justin. | pending publication; pending user Submit |
+| `M0.2` | — | — | Local recorded ([#303](https://github.com/jmhill/yoink/pull/303)); not done | Close only after the same proof on a disposable Turso dev database. This run had no dev URL or token. Not `yoink-prod`, and not the CI read-only token. The credential grant needs Justin. | pending publication; pending user Submit |
 | `M0.3` | — | `M0.2` | Not started | None. | [#224](https://github.com/jmhill/yoink/issues/224) |
 | `M0.4` | — | — | Done ([#301](https://github.com/jmhill/yoink/pull/301)) | None. Every route is classified. No ambiguous rows. | [#223](https://github.com/jmhill/yoink/issues/223) |
 | `M0.5` | — | — | Done (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)) | None. | [#225](https://github.com/jmhill/yoink/issues/225) |

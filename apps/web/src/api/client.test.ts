@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { captureClient, httpFailureBody, httpStatusOf } from './client';
+import { captureClient, httpFailureBody, httpStatusOf, taskClient } from './client';
 import { tokenStorage } from '@/lib/token';
 
 const jsonResponse = (status: number, body: unknown) =>
@@ -21,6 +21,7 @@ describe('web OpenAPI client', () => {
       credentials: RequestCredentials | undefined;
       authorization: string | null;
       contentType: string | null;
+      redirect: RequestRedirect | undefined;
     }[] = [];
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       const headers = new Headers(init.headers);
@@ -29,6 +30,7 @@ describe('web OpenAPI client', () => {
         credentials: init.credentials,
         authorization: headers.get('Authorization'),
         contentType: headers.get('content-type'),
+        redirect: init.redirect,
       });
       return jsonResponse(200, {
         captures: [],
@@ -48,6 +50,19 @@ describe('web OpenAPI client', () => {
     expect(call?.credentials).toBe('include');
     expect(call?.authorization).toBe('Bearer token-id:secret');
     expect(call?.contentType).toBeNull();
+    expect(call?.redirect).toBe('follow');
+  });
+
+  it('accepts a bodyless 204 when deleting a task', async () => {
+    const calls: { method: string | undefined; redirect: RequestRedirect | undefined }[] = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      calls.push({ method: init.method, redirect: init.redirect });
+      return new Response(null, { status: 204 });
+    });
+
+    await taskClient.delete({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    expect(calls).toEqual([{ method: 'DELETE', redirect: 'follow' }]);
   });
 
   it('reports a 401 body from the session response', async () => {

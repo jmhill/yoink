@@ -112,11 +112,19 @@ const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => 
       ...init,
       headers,
       credentials: 'include',
+      // The OpenAPI transport sets redirect: 'manual' and rejects
+      // opaqueredirect. The previous client followed redirects.
+      redirect: 'follow',
     })
-    .then((response) => {
+    .then(async (response) => {
       if (response.status === 401) {
         redirectToLogin();
       }
+      // oRPC does not read a body it classifies as empty. Chromium then has
+      // nothing for Network.getResponseBody, and Playwright's response.text()
+      // fails on a 204. The previous client always read the body before the
+      // fetch settled. A clone leaves the original stream for the decoder.
+      await response.clone().arrayBuffer();
       return response;
     });
 };

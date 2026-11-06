@@ -331,7 +331,7 @@ describe('oRPC capture lifecycle', () => {
 });
 
 describe('capture create and list on the composed app', () => {
-  it('creates and lists through bearer auth, and still trashes through ts-rest', async () => {
+  it('creates, lists, and trashes through bearer auth', async () => {
     const app = await createTestApp();
 
     const missing = await app.inject({

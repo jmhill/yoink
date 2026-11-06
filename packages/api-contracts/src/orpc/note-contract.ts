@@ -13,8 +13,8 @@ import {
 } from '../schemas/note.js';
 
 /**
- * ts-rest parsed these queries with JSON.parse (`jsonQuery: true`).
- * `json` style is the same parse-or-keep-string rule.
+ * Query values are JSON-parsed (`queryStyles: 'json'`), so numbers stay
+ * numbers and `false` stays false.
  */
 const noteListQueryStyles = {
   limit: 'json',

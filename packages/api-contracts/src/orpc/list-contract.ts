@@ -15,8 +15,8 @@ import {
 import { TaskSchema } from '../schemas/task.js';
 
 /**
- * ts-rest parsed these queries with JSON.parse (`jsonQuery: true`).
- * `json` style is the same parse-or-keep-string rule.
+ * Query values are JSON-parsed (`queryStyles: 'json'`), so numbers stay
+ * numbers and `false` stays false.
  */
 const listPageQueryStyles = {
   limit: 'json',

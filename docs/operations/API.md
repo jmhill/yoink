@@ -1027,9 +1027,8 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 
 Project, task, work list, and `POST /api/captures/:id/process-to-project`
 return `{ "message": "…", "code": "…" }`. `code` is stable; `message` is for
-humans. On those routes, request validation uses a specific code instead of
-the generic `[ts-rest] request validation failed` text. Those
-`VALIDATION_FAILED` bodies name the failing fields in `message` and `fields`.
+humans. On those routes, request validation is `VALIDATION_FAILED` and
+names the failing fields in `message` and `fields`.
 
 `PROJECT_HAS_OPEN_TASKS` and `OPEN_TASKS_UNREAD` also include
 `openTaskCount`.

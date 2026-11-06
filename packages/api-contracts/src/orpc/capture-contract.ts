@@ -13,12 +13,11 @@ import {
   ProcessCaptureBodySchema,
   ProcessCaptureToProjectResponseSchema,
   ProcessCaptureToProjectSchema,
-} from '../contracts/capture-contract.js';
+} from '../schemas/process-capture.js';
 
 /**
- * ts-rest parses query values with JSON.parse (`jsonQuery: true`).
- * oRPC otherwise leaves them as strings, and `z.coerce.boolean()` turns the
- * string `"false"` into `true`. `json` style is the same parse-or-keep-string rule.
+ * Query values are JSON-parsed (`queryStyles: 'json'`).
+ * Otherwise they stay strings, and `z.coerce.boolean()` turns `"false"` into `true`.
  */
 const captureListQueryStyles = {
   limit: 'json',

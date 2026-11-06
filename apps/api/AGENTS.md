@@ -29,7 +29,7 @@ captures/  and  lists/  and  tasks/ create + PATCH + complete + uncomplete
 
 ## Key Patterns
 
-**ts-rest**: Type-safe API contracts shared between client and server. Contracts are defined in `packages/api-contracts/src/contracts/`, schemas in `packages/api-contracts/src/schemas/`.
+**oRPC OpenAPI**: Type-safe HTTP contracts shared between client and server. Contracts live in `packages/api-contracts/src/orpc/` (`@orpc/openapi/fastify` on the API, `OpenAPILink` on clients). Zod schemas live in `packages/api-contracts/src/schemas/`. Domain code returns `Result`; only the HTTP adapter throws `ORPCError`.
 
 **Token Format**: `tokenId:secret` for O(1) database lookups. The middleware parses the token, looks up by tokenId, then verifies the secret against a bcrypt hash.
 

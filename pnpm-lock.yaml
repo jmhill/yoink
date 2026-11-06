@@ -175,9 +175,6 @@ importers:
       '@simplewebauthn/server':
         specifier: ^13.2.2
         version: 13.3.2
-      '@ts-rest/fastify':
-        specifier: 3.52.1
-        version: 3.52.1(@ts-rest/core@3.52.1(@types/node@25.0.10)(zod@3.25.76))(fastify@5.12.7)(zod@3.25.76)
       '@yoink/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -390,9 +387,6 @@ importers:
       '@orpc/openapi':
         specifier: 2.0.0-beta.48
         version: 2.0.0-beta.48(fastify@5.12.7)
-      '@ts-rest/core':
-        specifier: ^3.52.0
-        version: 3.52.1(@types/node@25.0.10)(zod@3.25.76)
       zod:
         specifier: ^3.24.0
         version: 3.25.76
@@ -2833,27 +2827,6 @@ packages:
   '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1':
     resolution: {integrity: sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==}
     engines: {node: '>=12'}
-
-  '@ts-rest/core@3.52.1':
-    resolution: {integrity: sha512-tAjz7Kxq/grJodcTA1Anop4AVRDlD40fkksEV5Mmal88VoZeRKAG8oMHsDwdwPZz+B/zgnz0q2sF+cm5M7Bc7g==}
-    peerDependencies:
-      '@types/node': ^18.18.7 || >=20.8.4
-      zod: ^3.22.3
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      zod:
-        optional: true
-
-  '@ts-rest/fastify@3.52.1':
-    resolution: {integrity: sha512-y+w3ENayNI77T0l2gcr9mobF3Nfc4yIb4487mvNMsMUkGLMHmaWzhLy3Mo/mswuoA+tVdOkrD8tJD38bLY7iYQ==}
-    peerDependencies:
-      '@ts-rest/core': ~3.52.0
-      fastify: ^4.0.0
-      zod: ^3.22.3
-    peerDependenciesMeta:
-      zod:
-        optional: true
 
   '@turbo/darwin-64@2.10.11':
     resolution: {integrity: sha512-v3R+1R/Ysozyo+p7Ri8MCIbndOvYt3DgPFrGLhrhQHfvyvbxyH3WyJj+A/2JTNmNleuAlh3JUyCV0iSVHIONTA==}
@@ -8183,18 +8156,6 @@ snapshots:
       json5: 2.2.3
       magic-string: 0.30.21
       string.prototype.matchall: 4.0.12
-
-  '@ts-rest/core@3.52.1(@types/node@25.0.10)(zod@3.25.76)':
-    optionalDependencies:
-      '@types/node': 25.0.10
-      zod: 3.25.76
-
-  '@ts-rest/fastify@3.52.1(@ts-rest/core@3.52.1(@types/node@25.0.10)(zod@3.25.76))(fastify@5.12.7)(zod@3.25.76)':
-    dependencies:
-      '@ts-rest/core': 3.52.1(@types/node@25.0.10)(zod@3.25.76)
-      fastify: 5.12.7
-    optionalDependencies:
-      zod: 3.25.76
 
   '@turbo/darwin-64@2.10.11':
     optional: true

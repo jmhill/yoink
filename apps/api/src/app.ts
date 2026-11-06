@@ -206,8 +206,7 @@ export const createApp = async (deps: AppDependencies) => {
   }
 
   // oRPC OpenAPI serves the HTTP API. Fastify rejects a second registration
-  // of the same method and path. The unmounted ts-rest health registrar is
-  // not on this app. Fixture routes stay raw Fastify.
+  // of the same method and path. Fixture routes stay raw Fastify.
   await registerOrpcHealthRoutes(app, { healthChecker: deps.healthChecker });
   await registerOrpcCaptureRoutes(app, {
     captureHandlers: deps.captureHandlers,

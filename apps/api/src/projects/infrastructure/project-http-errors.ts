@@ -33,7 +33,7 @@ const isBlankStringIssue = (issue: ValidationIssue): boolean =>
   issue.code === 'too_small' || issue.code === 'invalid_type';
 
 /**
- * Map ts-rest / Zod request failures on project routes to a clear
+ * Map Zod request failures on project routes to a clear
  * message and a stable code. Blank name is PROJECT_NAME_BLANK (not
  * INVALID_PROJECT_NAME) so clients can show "Name can't be blank"
  * without parsing the message. A wrong-type name is VALIDATION_FAILED.

@@ -48,7 +48,7 @@ export async function createCaptureApi(): Promise<CaptureClient | null> {
 
 /**
  * Creates an API client with explicit config (for validation).
- * Calls the same REST paths (`/api/captures`) as the previous ts-rest client.
+ * Calls `POST /api/captures` and `GET /api/captures`.
  */
 export function createCaptureApiWithConfig(options: {
   apiUrl: string;

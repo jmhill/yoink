@@ -20,8 +20,7 @@ import {
 } from '../schemas/project.js';
 
 /**
- * ts-rest parses query values with JSON.parse (`jsonQuery: true`).
- * `json` style is that parse-or-keep-string rule, so limits stay numbers
+ * Query values are JSON-parsed (`queryStyles: 'json'`), so limits stay numbers
  * and status filters such as `proposed,declined` stay strings.
  */
 const projectListQueryStyles = {

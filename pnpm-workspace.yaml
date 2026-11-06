@@ -25,11 +25,6 @@ overrides:
   # (GHSA-97r2-qh9m-474h, GHSA-wp97-x4hv-qvhp, GHSA-7rv5-mrxv-xcr9); patched in >=1.6.8.
   seroval: '>=1.6.8'
 
-peerDependencyRules:
-  allowedVersions:
-    # @ts-rest/fastify@3.52.1 peers on Fastify 4. There is no stable Fastify 5 release.
-    '@ts-rest/fastify>fastify': '5'
-
 auditConfig:
   ignoreGhsas:
     # braces 3.0.3 is still the latest npm release. GHSA-vfj7-8cjw-p6xm has no patched version

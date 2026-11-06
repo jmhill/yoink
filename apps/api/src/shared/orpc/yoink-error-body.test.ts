@@ -4,7 +4,7 @@ import { ORPCError } from '@orpc/server';
 import { yoinkErrorBody } from './yoink-error-body.js';
 
 describe('yoinkErrorBody', () => {
-  it('maps input issues onto the ts-rest validation body', () => {
+  it('maps input issues onto the Yoink validation body', () => {
     const error = new ORPCError('BAD_REQUEST', {
       message: 'Input validation failed',
       cause: new ValidationError({

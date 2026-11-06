@@ -10,7 +10,7 @@ describe('validationIssuePaths', () => {
   it('collects field paths from every request part', () => {
     expect(
       validationIssuePaths({
-        message: '[ts-rest] request validation failed',
+        message: 'Request validation failed',
         body: { issues: [{ path: ['title'], code: 'too_small' }] },
         query: { issues: [{ path: ['filter'], code: 'invalid_enum_value' }] },
         pathParams: { issues: [{ path: ['id'], code: 'invalid_string' }] },
@@ -33,7 +33,7 @@ describe('listedRequestValidationError', () => {
   it('keeps a bad time zone as INVALID_TIME_ZONE', () => {
     expect(
       listedRequestValidationError({
-        message: '[ts-rest] request validation failed',
+        message: 'Request validation failed',
         query: { issues: [{ path: ['timeZone'], code: 'custom' }] },
       })
     ).toEqual({
@@ -45,7 +45,7 @@ describe('listedRequestValidationError', () => {
   it('names other failing fields on VALIDATION_FAILED', () => {
     expect(
       listedRequestValidationError({
-        message: '[ts-rest] request validation failed',
+        message: 'Request validation failed',
         query: { issues: [{ path: ['filter'], code: 'invalid_enum_value' }] },
       })
     ).toEqual({
@@ -57,10 +57,10 @@ describe('listedRequestValidationError', () => {
 });
 
 describe('namedRequestValidationError', () => {
-  it('turns a ts-rest error into a field-named 400 body', () => {
+  it('turns a validation error into a field-named 400 body', () => {
     expect(
       namedRequestValidationError({
-        message: '[ts-rest] request validation failed',
+        message: 'Request validation failed',
         body: { issues: [{ path: ['name'], code: 'invalid_type' }] },
       })
     ).toEqual({

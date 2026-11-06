@@ -10,6 +10,7 @@ export * from './list-page.js';
 export * from './note.js';
 export * from './organization.js';
 export * from './passkey.js';
+export * from './process-capture.js';
 export * from './project.js';
 export * from './review.js';
 export * from './signup.js';

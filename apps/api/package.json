@@ -26,7 +26,6 @@
     "@orpc/server": "2.0.0-beta.48",
     "@sentry/node": "^10.32.1",
     "@simplewebauthn/server": "^13.2.2",
-    "@ts-rest/fastify": "3.52.1",
     "@yoink/api-contracts": "workspace:*",
     "@yoink/infrastructure": "workspace:*",
     "fastify": "^5.12.7",

@@ -59,7 +59,7 @@ export const namedRequestValidationError = (
 };
 
 /**
- * Map ts-rest / Zod request failures on work and task list routes.
+ * Map Zod request failures on work and task list routes.
  * A bad IANA zone is INVALID_TIME_ZONE; everything else is VALIDATION_FAILED
  * and names the failing fields.
  */

@@ -111,7 +111,7 @@ const validationBody = (
 };
 
 /**
- * ts-rest error bodies are `{ message, code?, fields? }`. oRPC's default body is
+ * Yoink error bodies are `{ message, code?, fields? }`. oRPC's default body is
  * `{ defined, code, message, data }`. This encoder is the only place that
  * shape is rewritten.
  *

@@ -92,7 +92,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.4 Route inventory (ADR §9)
 
-**Execution:** `M0.4`. [#223](https://github.com/jmhill/yoink/issues/223).
+**Execution:** `M0.4`. Done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)). That status is true when the pull request merges.
 
 - **Depends on:** none
 - **Do:** produce `docs/architecture/adr/001-route-inventory.md`. It's a table of **every** HTTP route registered by `app.ts`, with these columns:
@@ -101,7 +101,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
   - auth mode accepted (session / token / admin session / none / combined)
   - which clients call it (web, admin, extension, bots/tools, tests), found by searching `apps/web`, `apps/admin`, `apps/extension`, `tools/` and `packages/acceptance-testing`
   - classification: **integration** (→ v1 + alias), **client-only** (→ legacy until its client's edge), **ops**, **test fixture**
-- **Accept:** every registered route is classified. Anything ambiguous is listed for a human decision.
+- **Accept:** every registered route is classified in `docs/architecture/adr/001-route-inventory.md` (integration 59, client-only 45, ops 1, test fixture 5, ambiguous 0). No open classification list. M3.1 copies every integration row unchanged, including `GET /api/auth/tokens`. M3.2 follows that classification and keeps today's combined auth on the `/api` alias. The four session-only token mutations stay client-only.
 
 ### M0.5 Refresh the ESLint baseline
 
@@ -690,7 +690,7 @@ Docs-only tasks and unmerged spikes follow the issue's Tests section. When that 
 
 Stable task keys for the 78 tasks that follow M0.1. M0.1 stays complete and has no issue. Logical dependencies are the plan's dependencies. "Serialize after" is an execution edge for a shared file (`composition-root.ts`, `app.ts`, ADR-001, or one access-service series). It does not add a logical dependency and it does not rewrite the task prose above.
 
-Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)).
+Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)). M0.4 is Done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)). That status is true when the pull request merges.
 
 M0.2 stays pending publication, pending user Submit. Its marketplace create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not create, edit, resubmit, or duplicate that form. Do not close an issue from this update. `approved-plan` is not applied.
 
@@ -702,7 +702,7 @@ The logical dependencies plus the serialization edges were checked together. The
 |---|---|---|---|---|---|
 | `M0.2` | — | — | Not started | Close only after a real Turso run. Local half may start. The credential grant needs Justin. | pending publication; pending user Submit |
 | `M0.3` | — | `M0.2` | Not started | None. | [#224](https://github.com/jmhill/yoink/issues/224) |
-| `M0.4` | — | — | Not started | The inventory itself is not blocked. Justin decides any ambiguous row before M3.1. | [#223](https://github.com/jmhill/yoink/issues/223) |
+| `M0.4` | — | — | Done ([#301](https://github.com/jmhill/yoink/pull/301)) | None. Every route is classified. No ambiguous rows. | [#223](https://github.com/jmhill/yoink/issues/223) |
 | `M0.5` | — | — | Done (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)) | None. | [#225](https://github.com/jmhill/yoink/issues/225) |
 | `M1.1` | `M0.5` | — | Not started | None. | [#226](https://github.com/jmhill/yoink/issues/226) |
 | `M1.2` | — | — | Not started | None. | [#227](https://github.com/jmhill/yoink/issues/227) |

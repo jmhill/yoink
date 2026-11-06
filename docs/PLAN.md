@@ -658,7 +658,7 @@ The execution index in that plan is the handoff list (task keys, dependencies, s
 - [x] M0.1 Adopt the ADRs into the repo
 - [ ] M0.2 Spike: unit-of-work batch guards
 - [ ] M0.3 Spike: oRPC contract and router spreading
-- [ ] M0.4 Route inventory
+- [x] M0.4 Route inventory ([#301](https://github.com/jmhill/yoink/pull/301), [#223](https://github.com/jmhill/yoink/issues/223))
 - [x] M0.5 Refresh the ESLint baseline (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225))
 
 ### M1: Enforcement at `warn` - Not Started
@@ -2108,7 +2108,7 @@ When resuming work on this project:
 
 ### Current Focus: ADR-001 migration
 
-**ADR-001 is accepted.** M0.1 and M0.5 are done. M0.5 is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)): `docs/architecture/ESLINT_BASELINE.md` only. Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then take the next open task from the [migration plan](./architecture/adr/001-migration-plan.md) execution index. Seventy-seven issues are published there. The open M0 tasks are M0.2, M0.3, and M0.4. M0.2 stays pending publication, pending user Submit, and has no issue URL. **M0.2** and **M0.3** both write ADR-001, so the index serializes M0.3 after M0.2. **M0.4** has no shared-file edge with them. M1.1's dependency on M0.5 is satisfied. M0.2 cannot close without a real Turso run. Phase 8.5's open items are superseded by this migration.
+**ADR-001 is accepted.** M0.1 and M0.5 are done. M0.5 is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)): `docs/architecture/ESLINT_BASELINE.md` only. M0.4 is recorded done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)); that checkbox is true when the pull request merges. Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then take the next open task from the [migration plan](./architecture/adr/001-migration-plan.md) execution index. Seventy-seven issues are published there. The open M0 tasks are M0.2 and M0.3. M0.2 stays pending publication, pending user Submit, and has no issue URL. **M0.2** and **M0.3** both write ADR-001, so the index serializes M0.3 after M0.2. M1.1's dependency on M0.5 is satisfied. M0.2 cannot close without a real Turso run. Phase 8.5's open items are superseded by this migration.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

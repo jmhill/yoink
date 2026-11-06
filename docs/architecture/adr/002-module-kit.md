@@ -55,6 +55,9 @@ Each migration task under ADR-001 adds entries here when it hits repeated boiler
 | Date | Task / phase | Observation | Where (files) | Repeats | Possible kit feature |
 |---|---|---|---|---|---|
 | 2026-11-06 | M0.5 | none | — | — | — |
+| 2026-11-06 | M1.1 | none | — | — | — |
+| 2026-11-06 | M1.2 | none | — | — | — |
+| 2026-11-06 | M1.3 | none | — | — | — |
 
 ## 6. When to start the full ADR
 

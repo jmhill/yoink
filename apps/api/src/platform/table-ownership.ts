@@ -33,8 +33,10 @@
  *
  * - Comments, including JSDoc examples.
  * - `*.test.ts` files (the walker and {@link classifyApiPath} both skip them).
- * - Migrations `001`–`043`. M1.3 owns later migration checks. This task does
- *   not add `owner` to `Migration`.
+ * - Migrations `001`–`043`. A later migration file is not platform code: the
+ *   path rule skips it, and {@link checkMigrationOwnership} applies the owner,
+ *   reason, and foreign-key rules. That checker is still this keyword
+ *   heuristic. It does not parse `ALTER` columns or backfill prose.
  * - A table named only by interpolation: `` `FROM ${options.from}` ``,
  *   `pageSqlite({ from: 'tasks' })`, `PRAGMA table_info(${table})`, and
  *   `hasColumn(db, 'users', ...)`.
@@ -68,13 +70,32 @@
  * guard table has no name until M4.1; add that name here when it exists.
  * `notes_settings` is in the map now (M5.8a creates it) so the first SQL
  * statement is already owned.
+ *
+ * A migration after {@link LEGACY_MIGRATION_VERSION} declares `owner` and,
+ * for `platform`, a non-empty `reason` (`owner: 'platform'` / `reason: '...'`
+ * with `'` or `"`). {@link readMigrationFields} does not read a template
+ * literal or an unquoted owner. Comments and string contents are not
+ * declarations.
  */
 
+import {
+  LEGACY_MIGRATION_VERSION,
+  MIGRATION_OWNERS,
+  type MigrationOwner,
+} from '../database/types.js';
 import type { ModuleName } from '../kernel/module-name.js';
 
-export const LEGACY_MIGRATION_VERSION = 43;
-
+export { LEGACY_MIGRATION_VERSION };
 export type { ModuleName };
+
+type ModuleOwnersMatch =
+  (<T>() => T extends ModuleName ? 1 : 2) extends
+  (<T>() => T extends Exclude<MigrationOwner, 'platform'> ? 1 : 2)
+    ? true
+    : false;
+
+/** Compile-time lock: the migration owner union and the table-owner modules stay the same. */
+export const moduleOwnersMatchMigrationOwners: ModuleOwnersMatch = true;
 
 export type TableOwner = ModuleName | 'platform';
 
@@ -117,7 +138,10 @@ export const FIXTURE_ROUTE_PATHS = [
 const FIXTURE_ROUTE_PATH_SET = new Set<string>(FIXTURE_ROUTE_PATHS);
 
 export type FileRole =
-  | { kind: 'exempt'; reason: 'test-file' | 'legacy-migration' | 'test-fixtures' }
+  | {
+      kind: 'exempt';
+      reason: 'test-file' | 'legacy-migration' | 'later-migration' | 'test-fixtures';
+    }
   | { kind: 'module-infrastructure'; owner: ModuleName }
   | { kind: 'module-other'; owner: ModuleName }
   | { kind: 'platform' }
@@ -234,9 +258,13 @@ export const classifyApiPath = (relativePath: string): FileRole => {
   if (FIXTURE_ROUTE_PATH_SET.has(path)) {
     return { kind: 'no-sql', area: 'fixture-route' };
   }
-  const legacyMigration = /^database\/migrations\/(\d+)-[^/]+\.ts$/.exec(path);
-  if (legacyMigration?.[1] !== undefined && Number(legacyMigration[1]) <= LEGACY_MIGRATION_VERSION) {
-    return { kind: 'exempt', reason: 'legacy-migration' };
+  const migrationFile = /^database\/migrations\/(\d+)-[^/]+\.ts$/.exec(path);
+  if (migrationFile?.[1] !== undefined) {
+    const version = Number(migrationFile[1]);
+    return {
+      kind: 'exempt',
+      reason: version <= LEGACY_MIGRATION_VERSION ? 'legacy-migration' : 'later-migration',
+    };
   }
 
   const segments = path.split('/');
@@ -495,11 +523,150 @@ export const collectOwnershipFailures = (input: {
   workflowInfrastructure: input.directories.filter(isWorkflowInfrastructurePath).sort(),
 });
 
+export type MigrationOwnershipFailure =
+  | { kind: 'missing-owner'; version: number }
+  | { kind: 'invalid-owner'; version: number; owner: string }
+  | { kind: 'platform-reason'; version: number }
+  | { kind: 'cross-module-foreign-key'; version: number; table: TableName }
+  | {
+      kind: 'cross-owner-table';
+      version: number;
+      keyword: SqlKeyword;
+      table: TableName;
+    };
+
+export type DeclaredMigration = {
+  version: number;
+  owner?: string;
+  reason?: string;
+  literals: readonly string[];
+};
+
+const MIGRATION_OWNER_SET = new Set<string>(MIGRATION_OWNERS);
+
+const writtenReason = (reason: string | undefined): boolean =>
+  reason !== undefined && reason.trim().length > 0;
+
+const failureRank: Record<MigrationOwnershipFailure['kind'], number> = {
+  'missing-owner': 0,
+  'invalid-owner': 1,
+  'platform-reason': 2,
+  'cross-module-foreign-key': 3,
+  'cross-owner-table': 4,
+};
+
+const failureKey = (failure: MigrationOwnershipFailure): string => {
+  switch (failure.kind) {
+    case 'missing-owner':
+    case 'platform-reason':
+      return failure.kind;
+    case 'invalid-owner':
+      return `${failure.kind}\0${failure.owner}`;
+    case 'cross-module-foreign-key':
+      return `${failure.kind}\0${failure.table}`;
+    case 'cross-owner-table':
+      return `${failure.kind}\0${failure.keyword}\0${failure.table}`;
+  }
+};
+
+/**
+ * Ownership rules for a migration newer than {@link LEGACY_MIGRATION_VERSION}.
+ * Legacy versions return no failures. This does not run the migration.
+ */
+export const checkMigrationOwnership = (
+  migration: DeclaredMigration
+): MigrationOwnershipFailure[] => {
+  if (migration.version <= LEGACY_MIGRATION_VERSION) {
+    return [];
+  }
+
+  const failures: MigrationOwnershipFailure[] = [];
+  const seen = new Set<string>();
+  const push = (failure: MigrationOwnershipFailure): void => {
+    const key = failureKey(failure);
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    failures.push(failure);
+  };
+
+  const owner = migration.owner;
+  const known = owner !== undefined && MIGRATION_OWNER_SET.has(owner);
+  if (owner === undefined || owner.trim() === '') {
+    push({ kind: 'missing-owner', version: migration.version });
+  } else if (!known) {
+    push({ kind: 'invalid-owner', version: migration.version, owner });
+  } else if (owner === 'platform' && !writtenReason(migration.reason)) {
+    push({ kind: 'platform-reason', version: migration.version });
+  }
+
+  const moduleOwner = known && owner !== 'platform' ? owner : undefined;
+  const platformException = owner === 'platform' && writtenReason(migration.reason);
+
+  for (const literal of migration.literals) {
+    for (const reference of tableReferencesInLiteral(literal)) {
+      if (reference.identityAnchor) {
+        continue;
+      }
+      const tableOwner = TABLE_OWNERS[reference.table];
+      if (reference.keyword === 'REFERENCES') {
+        const sameModule = moduleOwner !== undefined && tableOwner === moduleOwner;
+        const platformTable = owner === 'platform' && tableOwner === 'platform';
+        if (!sameModule && !platformTable) {
+          push({
+            kind: 'cross-module-foreign-key',
+            version: migration.version,
+            table: reference.table,
+          });
+        }
+        continue;
+      }
+      if (platformException) {
+        continue;
+      }
+      if (moduleOwner !== undefined && tableOwner === moduleOwner) {
+        continue;
+      }
+      if (owner === 'platform' && tableOwner === 'platform') {
+        continue;
+      }
+      push({
+        kind: 'cross-owner-table',
+        version: migration.version,
+        keyword: reference.keyword,
+        table: reference.table,
+      });
+    }
+  }
+
+  failures.sort((left, right) => {
+    const rank = failureRank[left.kind] - failureRank[right.kind];
+    if (rank !== 0) {
+      return rank;
+    }
+    return failureKey(left).localeCompare(failureKey(right));
+  });
+  return failures;
+};
+
 // --- TypeScript string literals. Not a SQL parser and not the TS compiler. ---
 
 type ScanCursor = {
   index: number;
   slashIsRegex: boolean;
+  /** Set only while reading `owner` / `reason` declarations. */
+  fields?: { owner?: string; reason?: string };
+  property?: 'owner' | 'reason';
+  awaitingValue?: boolean;
+};
+
+const dropMigrationField = (cursor: ScanCursor): void => {
+  if (cursor.fields === undefined) {
+    return;
+  }
+  cursor.property = undefined;
+  cursor.awaitingValue = false;
 };
 
 const REGEX_AFTER_WORD = new Set([
@@ -679,6 +846,7 @@ const scanCode = (
       continue;
     }
     if (char === '/' && source[cursor.index + 1] === '/') {
+      dropMigrationField(cursor);
       cursor.index += 2;
       while (cursor.index < source.length && source[cursor.index] !== '\n') {
         cursor.index += 1;
@@ -686,6 +854,7 @@ const scanCode = (
       continue;
     }
     if (char === '/' && source[cursor.index + 1] === '*') {
+      dropMigrationField(cursor);
       cursor.index += 2;
       while (
         cursor.index + 1 < source.length &&
@@ -697,16 +866,23 @@ const scanCode = (
       continue;
     }
     if (char === "'" || char === '"') {
-      literals.push(readQuoted(source, cursor, char));
+      const value = readQuoted(source, cursor, char);
+      literals.push(value);
+      if (cursor.fields !== undefined && cursor.awaitingValue === true && cursor.property !== undefined) {
+        cursor.fields[cursor.property] = value;
+      }
+      dropMigrationField(cursor);
       cursor.slashIsRegex = false;
       continue;
     }
     if (char === '`') {
+      dropMigrationField(cursor);
       readTemplate(source, cursor, literals);
       cursor.slashIsRegex = false;
       continue;
     }
     if (char === '/' && cursor.slashIsRegex) {
+      dropMigrationField(cursor);
       skipRegex(source, cursor);
       cursor.slashIsRegex = false;
       continue;
@@ -717,10 +893,20 @@ const scanCode = (
       while (cursor.index < source.length && isIdentPart(source[cursor.index] ?? '')) {
         cursor.index += 1;
       }
-      cursor.slashIsRegex = REGEX_AFTER_WORD.has(source.slice(start, cursor.index));
+      const word = source.slice(start, cursor.index);
+      if (cursor.fields !== undefined) {
+        if (word === 'owner' || word === 'reason') {
+          cursor.property = word;
+          cursor.awaitingValue = false;
+        } else {
+          dropMigrationField(cursor);
+        }
+      }
+      cursor.slashIsRegex = REGEX_AFTER_WORD.has(word);
       continue;
     }
     if (isDigit(char) || (char === '.' && isDigit(source[cursor.index + 1]))) {
+      dropMigrationField(cursor);
       cursor.index += 1;
       while (cursor.index < source.length && /[0-9a-zA-Z._]/.test(source[cursor.index] ?? '')) {
         cursor.index += 1;
@@ -729,12 +915,14 @@ const scanCode = (
       continue;
     }
     if (char === '{') {
+      dropMigrationField(cursor);
       braceDepth += 1;
       cursor.index += 1;
       cursor.slashIsRegex = true;
       continue;
     }
     if (char === '}') {
+      dropMigrationField(cursor);
       if (stopAtTemplateBrace && braceDepth === 0) {
         cursor.index += 1;
         return;
@@ -744,6 +932,18 @@ const scanCode = (
       cursor.slashIsRegex = false;
       continue;
     }
+    if (
+      cursor.fields !== undefined &&
+      char === ':' &&
+      cursor.property !== undefined &&
+      cursor.awaitingValue !== true
+    ) {
+      cursor.awaitingValue = true;
+      cursor.index += 1;
+      cursor.slashIsRegex = true;
+      continue;
+    }
+    dropMigrationField(cursor);
     cursor.index += 1;
     cursor.slashIsRegex = REGEX_AFTER_PUNCT.has(char);
   }
@@ -784,4 +984,13 @@ export const stringLiteralsInTypescript = (source: string): string[] => {
   const literals: string[] = [];
   scanCode(source, { index: 0, slashIsRegex: true }, literals, false);
   return literals;
+};
+
+/** `owner` and `reason` property strings. Not a TypeScript parser. */
+export const readMigrationFields = (
+  source: string
+): { owner?: string; reason?: string } => {
+  const fields: { owner?: string; reason?: string } = {};
+  scanCode(source, { index: 0, slashIsRegex: true, fields }, [], false);
+  return fields;
 };

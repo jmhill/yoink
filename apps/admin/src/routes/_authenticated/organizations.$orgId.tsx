@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -37,10 +38,17 @@ import {
   ownerInviteExpired,
   ownerInvitePending,
   ownerLabel,
+  type AdminWorkspaceListItem,
+  type Organization,
 } from '@yoink/api-contracts';
-import { tsrAdmin } from '@/api/client';
+import {
+  adminClient,
+  httpFailureBody,
+  httpStatusOf,
+  isNetworkFailure,
+  type AdminClient,
+} from '@/api/client';
 import { parseCreateUserKind, parseCreateUserRole } from '@/lib/parse-create-user-fields';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff, Mail, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -75,20 +83,20 @@ function OrganizationDetailPage() {
   const [expiredFormEmail, setExpiredFormEmail] = useState<string | null>(null);
   const [ownerInviteUrl, setOwnerInviteUrl] = useState<string | null>(null);
   const [ownerInviteEmail, setOwnerInviteEmail] = useState<string | null>(null);
-  const tsrQueryClient = tsrAdmin.useQueryClient();
+  const queryClient = useQueryClient();
 
   const invalidateMembers = () => {
-    tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
+    queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'users'] });
   };
 
   const invalidateOwnerInvitation = () => {
-    tsrQueryClient.invalidateQueries({
+    queryClient.invalidateQueries({
       queryKey: ['organizations', orgId, 'owner-invitation'],
     });
   };
 
   const invalidateOrganizations = () => {
-    tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+    queryClient.invalidateQueries({ queryKey: ['organizations'] });
   };
 
   const joinUrlForCode = (code: string): string => {
@@ -116,28 +124,25 @@ function OrganizationDetailPage() {
   };
 
   const mutationErrorMessage = (err: unknown, fallback: string): string => {
-    if (isFetchError(err)) {
+    if (isNetworkFailure(err)) {
       return 'Network error. Please check your connection.';
     }
-    if (typeof err === 'object' && err !== null && 'body' in err) {
-      return errorMessage(err.body, fallback);
-    }
-    return fallback;
+    return errorMessage(httpFailureBody(err), fallback);
   };
 
-  const { data: orgData, isPending: orgPending, error: orgError } = tsrAdmin.getOrganization.useQuery({
+  const { data: orgData, isPending: orgPending, error: orgError } = useQuery({
     queryKey: ['organizations', orgId],
-    queryData: { params: { id: orgId } },
+    queryFn: () => adminClient.getOrganization({ id: orgId }),
   });
 
-  const { data: usersData, isPending: usersPending } = tsrAdmin.listUsers.useQuery({
+  const { data: usersData, isPending: usersPending } = useQuery({
     queryKey: ['organizations', orgId, 'users'],
-    queryData: { params: { organizationId: orgId } },
+    queryFn: () => adminClient.listUsers({ organizationId: orgId }),
   });
 
-  const { data: ownerInvitationData } = tsrAdmin.getOwnerInvitation.useQuery({
+  const { data: ownerInvitationData } = useQuery({
     queryKey: ['organizations', orgId, 'owner-invitation'],
-    queryData: { params: { id: orgId } },
+    queryFn: () => adminClient.getOwnerInvitation({ id: orgId }),
   });
 
   if (expiredFormOrgId !== orgId) {
@@ -155,19 +160,22 @@ function OrganizationDetailPage() {
     document.getElementById('owner')?.scrollIntoView();
   }, [orgPending, usersPending, orgId]);
 
-  const createInvitationMutation = tsrAdmin.createInvitation.useMutation({
-    onSuccess: (data) => {
-      if (data.status === 201) {
-        // Construct the invitation URL from the code
-        const baseUrl = window.location.origin.replace('admin.', '');
-        setCreatedInviteUrl(`${baseUrl}/join/${data.body.code}`);
-        setInviteEmail('');
-        setIsInviteDialogOpen(false);
-        setIsInviteResultDialogOpen(true);
-      }
+  const createInvitationMutation = useMutation({
+    mutationFn: (input: { email?: string }) =>
+      adminClient.createInvitation({
+        organizationId: orgId,
+        role: 'member',
+        ...input,
+      }),
+    onSuccess: (invitation) => {
+      const baseUrl = window.location.origin.replace('admin.', '');
+      setCreatedInviteUrl(`${baseUrl}/join/${invitation.code}`);
+      setInviteEmail('');
+      setIsInviteDialogOpen(false);
+      setIsInviteResultDialogOpen(true);
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to create invitation');
@@ -177,13 +185,7 @@ function OrganizationDetailPage() {
 
   const handleCreateInvitation = (e: React.FormEvent) => {
     e.preventDefault();
-    createInvitationMutation.mutate({
-      params: { organizationId: orgId },
-      body: {
-        role: 'member',
-        ...(inviteEmail ? { email: inviteEmail } : {}),
-      },
-    });
+    createInvitationMutation.mutate(inviteEmail ? { email: inviteEmail } : {});
   };
 
   const resetCreateUserForm = () => {
@@ -194,16 +196,14 @@ function OrganizationDetailPage() {
     setCreateUserError(null);
   };
 
-  const createUserMutation = tsrAdmin.createUser.useMutation({
-    onSuccess: (data) => {
-      if (data.status === 201) {
-        invalidateMembers();
-        resetCreateUserForm();
-        setIsCreateUserDialogOpen(false);
-        toast.success('User created');
-        return;
-      }
-      setCreateUserError(errorMessage(data.body, 'Failed to create user'));
+  const createUserMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['createUser']>[0]) =>
+      adminClient.createUser(input),
+    onSuccess: () => {
+      invalidateMembers();
+      resetCreateUserForm();
+      setIsCreateUserDialogOpen(false);
+      toast.success('User created');
     },
     onError: (err) => {
       setCreateUserError(mutationErrorMessage(err, 'Failed to create user'));
@@ -214,13 +214,11 @@ function OrganizationDetailPage() {
     e.preventDefault();
     setCreateUserError(null);
     createUserMutation.mutate({
-      params: { organizationId: orgId },
-      body: {
-        email: createUserEmail,
-        role: createUserRole,
-        kind: createUserKind,
-        ...(createUserName.trim() ? { name: createUserName.trim() } : {}),
-      },
+      organizationId: orgId,
+      email: createUserEmail,
+      role: createUserRole,
+      kind: createUserKind,
+      ...(createUserName.trim() ? { name: createUserName.trim() } : {}),
     });
   };
 
@@ -238,14 +236,10 @@ function OrganizationDetailPage() {
     }
   };
 
-  const issueOwnerInvitationMutation = tsrAdmin.issueOwnerInvitation.useMutation({
-    onSuccess: (data) => {
-      if (data.status !== 201) {
-        setOwnerSectionError(
-          errorMessage(data.body, CREATE_OWNER_INVITE_STORAGE_MESSAGE)
-        );
-        return;
-      }
+  const issueOwnerInvitationMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['issueOwnerInvitation']>[0]) =>
+      adminClient.issueOwnerInvitation(input),
+    onSuccess: (issued) => {
       setOwnerSectionError(null);
       invalidateMembers();
       invalidateOwnerInvitation();
@@ -257,18 +251,15 @@ function OrganizationDetailPage() {
       setCreateOwnerInviteEmail('');
       setExpiredFormEmail(null);
 
-      if (data.body.owner !== null) {
-        const workspaceName =
-          orgData?.status === 200 ? orgData.body.name : 'this workspace';
-        toast.success(
-          ownerAssignedToast(memberDisplayName(data.body.owner), workspaceName)
-        );
+      if (issued.owner !== null) {
+        const workspaceName = orgData?.name ?? 'this workspace';
+        toast.success(ownerAssignedToast(memberDisplayName(issued.owner), workspaceName));
         return;
       }
 
-      if (data.body.ownerInvitation !== null) {
-        setOwnerInviteUrl(joinUrlForCode(data.body.ownerInvitation.code));
-        setOwnerInviteEmail(data.body.ownerInvitation.email);
+      if (issued.ownerInvitation !== null) {
+        setOwnerInviteUrl(joinUrlForCode(issued.ownerInvitation.code));
+        setOwnerInviteEmail(issued.ownerInvitation.email);
         setIsOwnerInviteResultOpen(true);
       }
     },
@@ -279,76 +270,58 @@ function OrganizationDetailPage() {
     },
   });
 
-  const updateOrgMutation = tsrAdmin.updateOrganization.useMutation({
-    onMutate: async ({ body }) => {
-      // Cancel in-flight queries to prevent overwrites
-      await tsrQueryClient.cancelQueries({
+  const updateOrgMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['updateOrganization']>[0]) =>
+      adminClient.updateOrganization(input),
+    onMutate: async ({ name }) => {
+      await queryClient.cancelQueries({
         queryKey: ['organizations', orgId],
       });
-      await tsrQueryClient.cancelQueries({ queryKey: ['organizations'] });
+      await queryClient.cancelQueries({ queryKey: ['organizations'] });
 
-      // Snapshot current state for rollback
-      const previousOrg = tsrQueryClient.getOrganization.getQueryData([
-        'organizations',
-        orgId,
-      ]);
-      const previousList = tsrQueryClient.listOrganizations.getQueryData([
+      const previousOrg = queryClient.getQueryData<Organization>(['organizations', orgId]);
+      const previousList = queryClient.getQueryData<{ organizations: AdminWorkspaceListItem[] }>([
         'organizations',
       ]);
 
-      // Optimistically update org detail
-      if (previousOrg?.status === 200) {
-        tsrQueryClient.getOrganization.setQueryData(['organizations', orgId], {
+      if (previousOrg) {
+        queryClient.setQueryData<Organization>(['organizations', orgId], {
           ...previousOrg,
-          body: { ...previousOrg.body, name: body.name },
+          name,
         });
       }
 
-      // Also update in org list if cached
-      if (previousList?.status === 200) {
-        tsrQueryClient.listOrganizations.setQueryData(['organizations'], {
+      if (previousList) {
+        queryClient.setQueryData<{ organizations: AdminWorkspaceListItem[] }>(['organizations'], {
           ...previousList,
-          body: {
-            ...previousList.body,
-            organizations: previousList.body.organizations.map((org) =>
-              org.id === orgId ? { ...org, name: body.name } : org
-            ),
-          },
+          organizations: previousList.organizations.map((org) =>
+            org.id === orgId ? { ...org, name } : org
+          ),
         });
       }
 
-      // Close dialog immediately for snappy UX
       setIsRenameDialogOpen(false);
 
       return {
         previousOrg,
         previousList,
-        previousName: previousOrg?.status === 200 ? previousOrg.body.name : '',
+        previousName: previousOrg?.name ?? '',
       };
     },
 
     onError: (err, _variables, context) => {
-      // Rollback on error
       if (context?.previousOrg) {
-        tsrQueryClient.getOrganization.setQueryData(
-          ['organizations', orgId],
-          context.previousOrg
-        );
+        queryClient.setQueryData(['organizations', orgId], context.previousOrg);
       }
       if (context?.previousList) {
-        tsrQueryClient.listOrganizations.setQueryData(
-          ['organizations'],
-          context.previousList
-        );
+        queryClient.setQueryData(['organizations'], context.previousList);
       }
-      // Restore the dialog so user can retry
       if (context?.previousName) {
         setNewOrgName(context.previousName);
         setIsRenameDialogOpen(true);
       }
 
-      // Show error toast
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to rename organization');
@@ -360,69 +333,55 @@ function OrganizationDetailPage() {
     },
 
     onSettled: () => {
-      // Refetch to ensure consistency with server
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
   });
 
-  const setOwnerMutation = tsrAdmin.setOrganizationOwner.useMutation({
-    onSuccess: (data, variables) => {
-      if (data.status === 200) {
-        setMemberErrors((current) => {
-          const next = { ...current };
-          delete next[variables.body.userId];
-          return next;
-        });
-        invalidateMembers();
-        invalidateOwnerInvitation();
-        invalidateOrganizations();
-        toast.success('Owner updated');
-        return;
-      }
-      setMemberErrors((current) => ({
-        ...current,
-        [variables.body.userId]: errorMessage(data.body, 'Failed to set owner'),
-      }));
+  const setOwnerMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['setOrganizationOwner']>[0]) =>
+      adminClient.setOrganizationOwner(input),
+    onSuccess: (_data, variables) => {
+      setMemberErrors((current) => {
+        const next = { ...current };
+        delete next[variables.userId];
+        return next;
+      });
+      invalidateMembers();
+      invalidateOwnerInvitation();
+      invalidateOrganizations();
+      toast.success('Owner updated');
     },
     onError: (err, variables) => {
       setMemberErrors((current) => ({
         ...current,
-        [variables.body.userId]: mutationErrorMessage(err, 'Failed to set owner'),
+        [variables.userId]: mutationErrorMessage(err, 'Failed to set owner'),
       }));
     },
   });
 
-  const changeRoleMutation = tsrAdmin.changeMemberRole.useMutation({
-    onSuccess: (data, variables) => {
-      if (data.status === 200) {
-        setMemberErrors((current) => {
-          const next = { ...current };
-          delete next[variables.params.userId];
-          return next;
-        });
-        invalidateMembers();
-        toast.success('Role updated');
-        return;
-      }
-      setMemberErrors((current) => ({
-        ...current,
-        [variables.params.userId]: errorMessage(data.body, 'Failed to change role'),
-      }));
+  const changeRoleMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['changeMemberRole']>[0]) =>
+      adminClient.changeMemberRole(input),
+    onSuccess: (_data, variables) => {
+      setMemberErrors((current) => {
+        const next = { ...current };
+        delete next[variables.userId];
+        return next;
+      });
+      invalidateMembers();
+      toast.success('Role updated');
     },
     onError: (err, variables) => {
       setMemberErrors((current) => ({
         ...current,
-        [variables.params.userId]: mutationErrorMessage(err, 'Failed to change role'),
+        [variables.userId]: mutationErrorMessage(err, 'Failed to change role'),
       }));
     },
   });
 
   const handleRenameOrganization = (e: React.FormEvent) => {
     e.preventDefault();
-    updateOrgMutation.mutate({
-      params: { id: orgId },
-      body: { name: newOrgName },
-    });
+    updateOrgMutation.mutate({ id: orgId, name: newOrgName });
   };
 
   const openRenameDialog = () => {
@@ -438,7 +397,7 @@ function OrganizationDetailPage() {
 
   // Error state
   if (orgError) {
-    if (isFetchError(orgError)) {
+    if (isNetworkFailure(orgError)) {
       return (
         <div className="container mx-auto p-6">
           <Card>
@@ -451,7 +410,7 @@ function OrganizationDetailPage() {
         </div>
       );
     }
-    if (orgError.status === 404) {
+    if (httpStatusOf(orgError) === 404) {
       return (
         <div className="container mx-auto p-6">
           <p className="text-red-600">Organization not found</p>
@@ -466,7 +425,7 @@ function OrganizationDetailPage() {
         <Card>
           <CardContent className="py-8 text-center text-red-600">
             <p>Failed to load organization</p>
-            <p className="text-sm">Status: {orgError.status}</p>
+            <p className="text-sm">Status: {httpStatusOf(orgError)}</p>
           </CardContent>
         </Card>
       </div>
@@ -481,21 +440,16 @@ function OrganizationDetailPage() {
     );
   }
 
-  const organization = orgData?.status === 200 ? orgData.body : null;
-  const users = usersData?.status === 200 ? usersData.body.users : [];
+  const organization = orgData ?? null;
+  const users = usersData?.users ?? [];
   const ownerMember = users.find((user) => user.role === 'owner');
-  const pendingOwnerInvitation =
-    ownerInvitationData?.status === 200 ? ownerInvitationData.body.ownerInvitation : null;
-  const expiredOwnerInvitation =
-    ownerInvitationData?.status === 200
-      ? ownerInvitationData.body.expiredOwnerInvitation
-      : null;
+  const pendingOwnerInvitation = ownerInvitationData?.ownerInvitation ?? null;
+  const expiredOwnerInvitation = ownerInvitationData?.expiredOwnerInvitation ?? null;
   const pendingOwnerInviteUrl = pendingOwnerInvitation
     ? joinUrlForCode(pendingOwnerInvitation.code)
     : null;
-  const ownerInvitationReady = ownerInvitationData?.status === 200;
-  const isPersonalWorkspace =
-    ownerInvitationReady && ownerInvitationData.body.personal === true;
+  const ownerInvitationReady = ownerInvitationData !== undefined;
+  const isPersonalWorkspace = ownerInvitationReady && ownerInvitationData.personal === true;
   const canCreateOwnerInvite =
     ownerInvitationReady &&
     !ownerMember &&
@@ -786,8 +740,8 @@ function OrganizationDetailPage() {
                   onSubmit={(event) => {
                     event.preventDefault();
                     issueOwnerInvitationMutation.mutate({
-                      params: { id: orgId },
-                      body: { email: ownerInviteEmailValue },
+                      id: orgId,
+                      email: ownerInviteEmailValue,
                     });
                   }}
                 >
@@ -848,8 +802,8 @@ function OrganizationDetailPage() {
               onClick={() => {
                 if (pendingOwnerInvitation) {
                   issueOwnerInvitationMutation.mutate({
-                    params: { id: orgId },
-                    body: { email: pendingOwnerInvitation.email },
+                    id: orgId,
+                    email: pendingOwnerInvitation.email,
                   });
                 }
               }}
@@ -866,8 +820,8 @@ function OrganizationDetailPage() {
             onSubmit={(event) => {
               event.preventDefault();
               issueOwnerInvitationMutation.mutate({
-                params: { id: orgId },
-                body: { email: differentOwnerEmail },
+                id: orgId,
+                email: differentOwnerEmail,
               });
             }}
           >
@@ -899,8 +853,8 @@ function OrganizationDetailPage() {
             onSubmit={(event) => {
               event.preventDefault();
               issueOwnerInvitationMutation.mutate({
-                params: { id: orgId },
-                body: { email: createOwnerInviteEmail },
+                id: orgId,
+                email: createOwnerInviteEmail,
               });
             }}
           >
@@ -1018,10 +972,7 @@ function OrganizationDetailPage() {
                             data-action="make-owner"
                             disabled={setOwnerMutation.isPending}
                             onClick={() =>
-                              setOwnerMutation.mutate({
-                                params: { id: orgId },
-                                body: { userId: user.id },
-                              })
+                              setOwnerMutation.mutate({ id: orgId, userId: user.id })
                             }
                           >
                             Make owner
@@ -1036,8 +987,9 @@ function OrganizationDetailPage() {
                             disabled={changeRoleMutation.isPending}
                             onClick={() =>
                               changeRoleMutation.mutate({
-                                params: { id: orgId, userId: user.id },
-                                body: { role: user.role === 'admin' ? 'member' : 'admin' },
+                                id: orgId,
+                                userId: user.id,
+                                role: user.role === 'admin' ? 'member' : 'admin',
                               })
                             }
                           >

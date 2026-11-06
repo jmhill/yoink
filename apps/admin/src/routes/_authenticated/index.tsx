@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
@@ -40,8 +41,13 @@ import {
   ownerInviteCreatedMessage,
   type AdminWorkspaceListItem,
 } from '@yoink/api-contracts';
-import { tsrAdmin, tsrPublic } from '@/api/client';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import {
+  adminClient,
+  httpFailureBody,
+  httpStatusOf,
+  isNetworkFailure,
+  publicClient,
+} from '@/api/client';
 import { WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,10 +102,11 @@ function OrganizationsPage() {
   const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null);
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
   const [isInviteResultOpen, setIsInviteResultOpen] = useState(false);
-  const tsrQueryClient = tsrAdmin.useQueryClient();
+  const queryClient = useQueryClient();
 
-  const { data, isPending, error } = tsrAdmin.listOrganizations.useQuery({
+  const { data, isPending, error } = useQuery({
     queryKey: ['organizations'],
+    queryFn: () => adminClient.listOrganizations(),
   });
 
   const resetCreateForm = () => {
@@ -108,17 +115,14 @@ function OrganizationsPage() {
     setCreateError(null);
   };
 
-  const createMutation = tsrAdmin.createOrganization.useMutation({
-    onSuccess: (response) => {
-      if (response.status !== 201) {
-        setCreateError(messageFromBody(response.body, CREATE_WORKSPACE_STORAGE_MESSAGE));
-        return;
-      }
-
-      const { organization, owner, ownerInvitation } = response.body;
+  const createMutation = useMutation({
+    mutationFn: (input: { name: string; ownerEmail: string }) =>
+      adminClient.createOrganization(input),
+    onSuccess: (created) => {
+      const { organization, owner, ownerInvitation } = created;
       resetCreateForm();
       setIsDialogOpen(false);
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
 
       if (owner !== null) {
         toast.success(ownerAssignedToast(memberDisplayName(owner), organization.name));
@@ -137,24 +141,18 @@ function OrganizationsPage() {
       }
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         setCreateError('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'body' in err) {
-        setCreateError(messageFromBody(err.body, CREATE_WORKSPACE_STORAGE_MESSAGE));
-        return;
-      }
-      setCreateError(CREATE_WORKSPACE_STORAGE_MESSAGE);
+      setCreateError(messageFromBody(httpFailureBody(err), CREATE_WORKSPACE_STORAGE_MESSAGE));
     },
   });
 
   const handleCreateOrganization = (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
-    createMutation.mutate({
-      body: { name: newOrgName, ownerEmail },
-    });
+    createMutation.mutate({ name: newOrgName, ownerEmail });
   };
 
   const handleCopyInviteUrl = async () => {
@@ -179,7 +177,11 @@ function OrganizationsPage() {
   };
 
   const handleLogout = async () => {
-    await tsrPublic.logout.mutate({ body: {} });
+    try {
+      await publicClient.logout({});
+    } catch {
+      // Leave the admin UI even when the logout request fails.
+    }
     navigate({ to: '/login' });
   };
 
@@ -188,7 +190,7 @@ function OrganizationsPage() {
   };
 
   if (error) {
-    if (isFetchError(error)) {
+    if (isNetworkFailure(error)) {
       return (
         <div className="container mx-auto p-6">
           <Card>
@@ -206,7 +208,7 @@ function OrganizationsPage() {
         <Card>
           <CardContent className="py-8 text-center text-red-600">
             <p>Failed to load organizations</p>
-            <p className="text-sm">Status: {error.status}</p>
+            <p className="text-sm">Status: {httpStatusOf(error)}</p>
           </CardContent>
         </Card>
       </div>
@@ -221,7 +223,7 @@ function OrganizationsPage() {
     );
   }
 
-  const organizations = data?.status === 200 ? data.body.organizations : [];
+  const organizations = data?.organizations ?? [];
 
   return (
     <div className="container mx-auto p-6">

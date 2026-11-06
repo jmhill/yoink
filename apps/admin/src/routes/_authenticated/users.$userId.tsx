@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
@@ -28,8 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@yoink/ui-base/components/dialog';
-import { tsrAdmin } from '@/api/client';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import { adminClient, httpStatusOf, isNetworkFailure, type AdminClient } from '@/api/client';
 import { WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,46 +50,46 @@ function UserDetailPage() {
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
-  const tsrQueryClient = tsrAdmin.useQueryClient();
+  const queryClient = useQueryClient();
 
-  const { data: userData, isPending: userPending, error: userError } = tsrAdmin.getUser.useQuery({
+  const { data: userData, isPending: userPending, error: userError } = useQuery({
     queryKey: ['users', userId],
-    queryData: { params: { id: userId } },
+    queryFn: () => adminClient.getUser({ id: userId }),
   });
 
-  const user = userData?.status === 200 ? userData.body : null;
+  const user = userData ?? null;
 
-  // Fetch organization from the search param
-  const { data: orgData, isPending: orgPending } = tsrAdmin.getOrganization.useQuery({
+  const { data: orgData, isPending: orgPending } = useQuery({
     queryKey: ['organizations', orgId],
-    queryData: { params: { id: orgId } },
+    queryFn: () => adminClient.getOrganization({ id: orgId }),
   });
 
-  // Tokens are scoped to organizations
-  const { data: tokensData, isPending: tokensPending } = tsrAdmin.listTokens.useQuery({
+  const { data: tokensData, isPending: tokensPending } = useQuery({
     queryKey: ['organizations', orgId, 'tokens'],
-    queryData: { params: { organizationId: orgId } },
+    queryFn: () => adminClient.listTokens({ organizationId: orgId }),
   });
 
-  const createTokenMutation = tsrAdmin.createToken.useMutation({
-    onSuccess: (data) => {
-      if (data.status === 201) {
-        tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
-        setCreatedToken(data.body.rawToken);
-        setNewTokenName('');
-        setIsCreateDialogOpen(false);
-        setIsTokenDialogOpen(true);
-      }
+  const createTokenMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['createToken']>[0]) =>
+      adminClient.createToken(input),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
+      setCreatedToken(created.rawToken);
+      setNewTokenName('');
+      setIsCreateDialogOpen(false);
+      setIsTokenDialogOpen(true);
     },
   });
 
-  const revokeTokenMutation = tsrAdmin.revokeToken.useMutation({
+  const revokeTokenMutation = useMutation({
+    mutationFn: (input: Parameters<AdminClient['revokeToken']>[0]) =>
+      adminClient.revokeToken(input),
     onSuccess: () => {
-      tsrQueryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'tokens'] });
       toast.success('Token revoked');
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to revoke token');
@@ -100,17 +100,14 @@ function UserDetailPage() {
   const handleCreateToken = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    createTokenMutation.mutate({
-      params: { organizationId: orgId },
-      body: { userId, name: newTokenName },
-    });
+    createTokenMutation.mutate({ organizationId: orgId, userId, name: newTokenName });
   };
 
   const handleRevokeToken = (tokenId: string, tokenName: string) => {
     if (!confirm(`Are you sure you want to revoke the token "${tokenName}"?`)) {
       return;
     }
-    revokeTokenMutation.mutate({ params: { id: tokenId } });
+    revokeTokenMutation.mutate({ id: tokenId });
   };
 
   const handleCopyToken = async () => {
@@ -126,7 +123,7 @@ function UserDetailPage() {
 
   // Error state
   if (userError) {
-    if (isFetchError(userError)) {
+    if (isNetworkFailure(userError)) {
       return (
         <div className="container mx-auto p-6">
           <Card>
@@ -139,7 +136,7 @@ function UserDetailPage() {
         </div>
       );
     }
-    if (userError.status === 404) {
+    if (httpStatusOf(userError) === 404) {
       return (
         <div className="container mx-auto p-6">
           <p className="text-red-600">User not found</p>
@@ -154,7 +151,7 @@ function UserDetailPage() {
         <Card>
           <CardContent className="py-8 text-center text-red-600">
             <p>Failed to load user</p>
-            <p className="text-sm">Status: {userError.status}</p>
+            <p className="text-sm">Status: {httpStatusOf(userError)}</p>
           </CardContent>
         </Card>
       </div>
@@ -169,9 +166,8 @@ function UserDetailPage() {
     );
   }
 
-  const organization = orgData?.status === 200 ? orgData.body : null;
-  // Filter tokens to only show those belonging to this user
-  const allTokens = tokensData?.status === 200 ? tokensData.body.tokens : [];
+  const organization = orgData ?? null;
+  const allTokens = tokensData?.tokens ?? [];
   const tokens = allTokens.filter(token => token.userId === userId);
 
   if (!user || !organization) {

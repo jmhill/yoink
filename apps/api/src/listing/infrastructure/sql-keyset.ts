@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { KeysetCursor, KeysetValue } from '../domain/keyset-cursor.js';
-import type { KeysetDirection } from '../domain/keyset-window.js';
+import type { KeysetCursor, KeysetValue } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetDirection } from '../../kernel/listing/domain/keyset-window.js';
 
 export type SqlKeysetError = {
   readonly type: 'STORAGE_ERROR';

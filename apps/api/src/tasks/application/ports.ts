@@ -2,7 +2,7 @@ import type { ResultAsync } from 'neverthrow';
 import type { NamedList, Project, Task } from '@yoink/api-contracts';
 import type { StorageError, TaskNotFoundError } from '../domain/task-errors.js';
 import type { FindByOrganizationOptions } from '../domain/task-store.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { TaskChangePlan } from '../domain/plan-task-change.js';
 import type { ProjectChangePlan } from '../../projects/domain/plan-project-change.js';
 

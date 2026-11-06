@@ -1,9 +1,9 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthContext } from '../../shared/auth-context.js';
+import type { AuthContext } from '../../kernel/auth-context.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { SessionService } from '../domain/session-service.js';
-import { actorFromSession, actorFromToken } from '../../shared/auth-context.js';
+import { actorFromSession, actorFromToken } from '../../kernel/auth-context.js';
 import { principalKindOf } from '../domain/user.js';
 
 declare module 'fastify' {

@@ -10,7 +10,7 @@ import type {
   LoadTasksByIds,
   LoadUserName,
 } from './ports.js';
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 
 export type LoadImportContextDeps = {
   list: ListProjects;

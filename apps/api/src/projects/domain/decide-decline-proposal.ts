@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
-import { requirePerson } from '../../shared/auth-context.js';
+import { requirePerson } from '../../kernel/auth-context.js';
 import type { DeclineProposedProjectCommand } from './project-commands.js';
 import type { ProjectStatusChanged } from './events.js';
 import {

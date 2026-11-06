@@ -1,4 +1,4 @@
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 import type { ProjectStatus } from '@yoink/api-contracts';
 
 export type ListProjectsQuery = {

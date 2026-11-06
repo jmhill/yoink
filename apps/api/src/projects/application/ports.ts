@@ -10,8 +10,8 @@ import type { ProjectChangePlan } from '../domain/plan-project-change.js';
 import type { ImportWritePlan } from '../domain/plan-project-import.js';
 import type { ProjectImportRecord } from '../domain/project-import.js';
 import type { TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 
 export type ListProjects = (organizationId: string) => ResultAsync<Project[], StorageError>;
 

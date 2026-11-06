@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 import { PROJECT_WAITING_ON_MAX_LENGTH } from '@yoink/api-contracts';
-import { parseIsoDate } from '../../shared/domain/iso-date.js';
+import { parseIsoDate } from '../../kernel/iso-date.js';
 import {
   invalidWaitingSinceError,
   projectWaitingOnBlankError,

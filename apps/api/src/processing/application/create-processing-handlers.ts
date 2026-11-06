@@ -3,7 +3,7 @@ import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-
 import {
   withCommandLog,
   type CommandLogger,
-} from '../../shared/change-log/application/command-log.js';
+} from '../../kernel/command-log.js';
 import {
   handleProcessCaptureToProject,
   type HandleProcessCaptureToProjectDeps,

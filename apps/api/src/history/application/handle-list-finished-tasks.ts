@@ -1,14 +1,14 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
+import type { InvalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
 import {
   asFinishedTask,
   finishedProjectTaskCursor,
   type FinishedTask,
-} from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+} from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import {
   projectNotFoundError,
   storageError,
@@ -53,7 +53,7 @@ export const handleListFinishedTasksOnProject = (
             completedBefore: query.completedBefore,
           })
           .andThen((page) => {
-            const rows: FinishedTask[] = [];
+            const rows: FinishedTask<Task>[] = [];
             for (const task of page.rows) {
               const finished = asFinishedTask(task);
               if (!finished) {

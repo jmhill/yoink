@@ -2,13 +2,13 @@ import type { ResultAsync } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import type { ListCapturesQuery } from '../domain/capture-commands.js';
 import type { ListCapturesError } from '../domain/capture-errors.js';
-import { listKindForCaptureList, resolveListLimit } from '../../listing/domain/list-kind.js';
+import { listKindForCaptureList, resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
 import {
   captureFeedCursor,
   snoozedCaptureCursor,
-} from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+} from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type { ListCaptures } from './ports.js';
 
 export type HandleListCapturesDeps = {

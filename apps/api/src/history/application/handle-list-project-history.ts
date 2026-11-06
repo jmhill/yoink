@@ -1,9 +1,9 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { HistoryPage } from '@yoink/api-contracts';
-import type { InvalidCursorError } from '../../listing/domain/invalid-cursor.js';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { projectHistoryCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import type { InvalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { projectHistoryCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
 import {
   projectNotFoundError,
   type ProjectNotFoundError,

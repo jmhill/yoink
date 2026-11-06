@@ -6,7 +6,7 @@ import { compareOpenOrder, nextOpenOrder } from '../domain/open-order.js';
 import {
   compareKeyset,
   pageOrdered,
-} from '../../listing/domain/keyset-window.js';
+} from '../../kernel/listing/domain/keyset-window.js';
 import {
   asFinishedTask,
   completedTaskDirection,
@@ -19,9 +19,9 @@ import {
   projectTaskKeys,
   taskBoardDirection,
   taskBoardKeys,
-} from '../../listing/domain/list-keys.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
+} from '../../kernel/listing/domain/list-keys.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
 
 export type FakeTaskStoreOptions = {
   shouldFailOnSave?: boolean;

@@ -2,8 +2,8 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
 import { projectNotFoundError, type StorageError } from '../domain/project-errors.js';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 
 export type FakeProjectStore = ProjectStore & {
   captureSnapshot: () => () => void;

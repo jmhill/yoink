@@ -7,13 +7,13 @@ import { taskUpdatedShowsOnTimeline } from '../domain/to-timeline-entry.js';
 import {
   compareKeyset,
   pageOrdered,
-} from '../../../listing/domain/keyset-window.js';
+} from '../../../kernel/listing/domain/keyset-window.js';
 import {
   projectHistoryDirection,
   projectHistoryKeys,
   taskHistoryDirection,
   taskHistoryKeys,
-} from '../../../listing/domain/list-keys.js';
+} from '../../../kernel/listing/domain/list-keys.js';
 import type { ChangeLogStore, ListChangeLogError } from './sqlite-change-log-store.js';
 
 export type FakeChangeLogStore = ChangeLogStore & {

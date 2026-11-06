@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { invalidCursorError } from '../../listing/domain/invalid-cursor.js';
+import { invalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
 import { yoinkErrorBody } from '../../shared/orpc/yoink-error-body.js';
 import { storageError } from '../domain/capture-errors.js';
 import {

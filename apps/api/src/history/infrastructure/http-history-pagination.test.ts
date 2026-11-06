@@ -7,7 +7,7 @@ import {
   type TaskListPage,
 } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
+import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
 import {
   createTestApp,
   createTestAppAndDatabase,

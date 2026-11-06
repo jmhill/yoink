@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Capture } from '@yoink/api-contracts';
 import type { CaptureStore } from './capture-store.js';
-import { captureFeedKeys } from '../../listing/domain/list-keys.js';
+import { captureFeedKeys } from '../../kernel/listing/domain/list-keys.js';
 
 const createTestCapture = (overrides: Partial<Capture> = {}): Capture => ({
   id: `capture-${Math.random().toString(36).slice(2)}`,

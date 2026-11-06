@@ -1,8 +1,8 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { ImportPreview, ImportPreviewProject, ImportProject, Project, Task } from '@yoink/api-contracts';
 import { IMPORT_TASKS_MAX, PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
-import type { Actor } from '../../shared/auth-context.js';
-import { parseIsoDate } from '../../shared/domain/iso-date.js';
+import type { Actor } from '../../kernel/auth-context.js';
+import { parseIsoDate } from '../../kernel/iso-date.js';
 import { decideCreateTask, type DecideCreateTaskError } from '../../tasks/domain/decide-create.js';
 import type { LoadedProject } from '../../tasks/domain/task-commands.js';
 import type { TaskCreated, TaskUpdated } from '../../tasks/domain/events.js';

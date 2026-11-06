@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { Project, Task, WorkListsPage, WorkNextActionsPage } from '@yoink/api-contracts';
-import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
-import { workDueCursor, workListCursor, workNextActionCursor } from '../../listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
+import { workDueCursor, workListCursor, workNextActionCursor } from '../../kernel/listing/domain/list-keys.js';
 import { createTestApp, TEST_TOKEN, TEST_USER_ID } from '../../tests/helpers/test-app.js';
 
 describe('GET /api/work', () => {

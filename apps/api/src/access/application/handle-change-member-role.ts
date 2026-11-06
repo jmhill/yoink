@@ -11,7 +11,7 @@ import {
 } from '../domain/decide-change-member-role.js';
 import type { MembershipStorageError } from '../domain/organization-errors.js';
 import { userNotFoundError, type UserServiceError } from '../domain/user-errors.js';
-import type { ActorVia } from '../../shared/auth-context.js';
+import type { ActorVia } from '../../kernel/auth-context.js';
 
 export type LoadMembers = (
   organizationId: string

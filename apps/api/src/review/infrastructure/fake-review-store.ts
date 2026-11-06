@@ -1,8 +1,8 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import { DEFAULT_VIEWER_TIME_ZONE } from '../../shared/domain/viewer-today.js';
-import { pageOrdered } from '../../listing/domain/keyset-window.js';
-import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../listing/domain/list-keys.js';
+import { DEFAULT_VIEWER_TIME_ZONE } from '../../kernel/viewer-today.js';
+import { pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
+import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../kernel/listing/domain/list-keys.js';
 import {
   buildReviewItems,
   latestIsoInstant,

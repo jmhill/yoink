@@ -1,8 +1,8 @@
 import { errAsync, ok, ResultAsync } from 'neverthrow';
 import type { Database } from '../../database/types.js';
-import type { KeysetCursor } from '../domain/keyset-cursor.js';
-import type { KeysetRows } from '../domain/listed-page.js';
-import type { KeysetDirection } from '../domain/keyset-window.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { KeysetDirection } from '../../kernel/listing/domain/keyset-window.js';
 import { sqlKeysetClause } from './sql-keyset.js';
 
 export const pageSqlite = <T>(options: {

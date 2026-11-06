@@ -303,9 +303,11 @@ export default [
             // The previous `from: '*'` would also grant this list to target
             // layers once those files exist. Naming the current types keeps
             // today's allows and leaves target layers on the rules below.
+            // `kernel` is ADR §3.4: any current layer may import kernel.
+            // Kernel itself stays on the kernel-only rule further down.
             {
               from: currentTypes,
-              allow: ['shared', 'listing', 'config', 'database', 'logging'],
+              allow: ['shared', 'listing', 'config', 'database', 'logging', 'kernel'],
             },
             { from: 'app', allow: ['*'] },
             { from: 'composition', allow: ['*'] },

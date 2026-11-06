@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Capture, CaptureStatus, ProcessedToType } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { CaptureNotInInboxError, StorageError } from './capture-errors.js';
 
 export type MarkAsProcessedOptions = {

@@ -18,7 +18,7 @@ import type {
 import {
   withCommandLog,
   type CommandLogger,
-} from '../../shared/change-log/application/command-log.js';
+} from '../../kernel/command-log.js';
 import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
 
 export type ListHandlerDeps = {

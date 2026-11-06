@@ -4,6 +4,9 @@
  * `platform/` does not exist as a moved tree until M2.2. M2.2 must keep this
  * file and update {@link classifyApiPath} when files move. The current-layout
  * branch of that function is the compatibility map for today's directories.
+ * M2.1 put pure shared and listing code under `kernel/`. That branch is
+ * already no-sql. Listing infrastructure and `shared/change-log` stay on
+ * their current branches.
  *
  * This module is not wired into the server. Nothing in `app.ts` or the
  * composition root should import it.
@@ -67,18 +70,13 @@
  * statement is already owned.
  */
 
+import type { ModuleName } from '../kernel/module-name.js';
+
 export const LEGACY_MIGRATION_VERSION = 43;
 
-export type TableOwner =
-  | 'access'
-  | 'captures'
-  | 'task-management'
-  | 'notes'
-  | 'review'
-  | 'history'
-  | 'platform';
+export type { ModuleName };
 
-export type ModuleName = Exclude<TableOwner, 'platform'>;
+export type TableOwner = ModuleName | 'platform';
 
 export const TABLE_OWNERS = {
   users: 'access',
@@ -159,14 +157,16 @@ export type OwnershipReport = {
   staleAllowlist: TableOwnershipAllowlistEntry[];
 };
 
-const TARGET_MODULE: Record<string, ModuleName> = {
+const MODULE_DIRECTORY_OWNERS = {
   access: 'access',
   captures: 'captures',
   'task-management': 'task-management',
   notes: 'notes',
   review: 'review',
   history: 'history',
-};
+} as const satisfies Record<ModuleName, ModuleName>;
+
+const TARGET_MODULE: Record<string, ModuleName> = MODULE_DIRECTORY_OWNERS;
 
 const CURRENT_MODULE_ROOT: Record<string, ModuleName> = {
   access: 'access',
@@ -258,6 +258,7 @@ export const classifyApiPath = (relativePath: string): FileRole => {
   if (root === 'platform') {
     return { kind: 'platform' };
   }
+  // Pure files moved here in M2.1. No SQL, so this stays no-sql.
   if (root === 'kernel') {
     return { kind: 'no-sql', area: 'kernel' };
   }

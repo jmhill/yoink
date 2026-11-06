@@ -1,13 +1,12 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Actor } from '../../auth-context.js';
-import type { ChangeLogKind } from '../domain/kinds.js';
+import type { Actor } from './auth-context.js';
 
 export type CommandLogFields = {
   command: string;
   actorUserId: string;
   actorKind: 'user' | 'bot';
   organizationId: string;
-  eventKinds?: ChangeLogKind[];
+  eventKinds?: readonly string[];
   errorType?: string;
 };
 
@@ -31,13 +30,15 @@ const actorFields = (actor: Actor) => ({
 });
 
 /**
- * Shared command wrapper: one structured log line per command outcome.
- * Pure-ish — takes a logger port, never logs payload values or titles.
+ * One structured log line per command outcome. The logger is a port.
+ * This function imports no I/O and no change-log domain. Callers pass the
+ * kind strings they already decided (today those are change-log kinds).
+ * Payload values and titles are not logged.
  */
 export const withCommandLog = <T, E extends DomainError>(
   logger: CommandLogger,
   meta: CommandLogMeta,
-  eventKindsOf: (value: T) => ChangeLogKind[],
+  eventKindsOf: (value: T) => readonly string[],
   run: () => ResultAsync<T, E>
 ): ResultAsync<T, E> => {
   const base = {

@@ -3,8 +3,8 @@ import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskStore, FindByOrganizationOptions } from '../domain/task-store.js';
 import { storageError, type StorageError } from '../domain/task-errors.js';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import {
   completedTaskDirection,
@@ -12,7 +12,7 @@ import {
   openPileTaskDirection,
   projectTaskDirection,
   taskBoardDirection,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 import { parseTaskRow } from './parse-task-row.js';
 
 const parseRows = (rows: Record<string, unknown>[]): Result<Task[], StorageError> =>

@@ -13,7 +13,7 @@ Each task can be handed to an agent on its own. Before starting a task, the agen
 
 Tasks list their dependencies. Tasks without a dependency between them may run in parallel, but **never** in parallel when both touch `composition-root.ts` or `app.ts`.
 
-The [execution index](#execution-index) is the handoff list: task keys, logical dependencies, serialization, status, and release or human gates. GitHub links are pending publication. A serialization edge is an execution rule for a shared file. It does not change the logical dependency written on the task.
+The [execution index](#execution-index) is the handoff list: task keys, logical dependencies, serialization, status, release or human gates, and GitHub issue links. Seventy-seven issues are published. M0.2 stays pending publication, pending user Submit, and has no issue URL. A serialization edge is an execution rule for a shared file. It does not change the logical dependency written on the task.
 
 ## Definition of done (applies to every task)
 
@@ -63,7 +63,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.2 Spike: unit-of-work batch guards (ADR §6.1, §12)
 
-**Execution:** `M0.2`. GitHub link pending publication.
+**Execution:** `M0.2`. Pending publication; pending user Submit. No issue URL.
 
 - **Depends on:** none
 - **Do:** in a throwaway branch or test file, using the real `Database` abstraction, against local libsql **and** a Turso dev database:
@@ -78,7 +78,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.3 Spike: oRPC contract and router spreading (ADR §9, §12)
 
-**Execution:** `M0.3`. GitHub link pending publication.
+**Execution:** `M0.3`. [#224](https://github.com/jmhill/yoink/issues/224).
 
 - **Depends on:** none
 - **Do:** with the pinned oRPC version (`2.0.0-beta.48`):
@@ -92,7 +92,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.4 Route inventory (ADR §9)
 
-**Execution:** `M0.4`. GitHub link pending publication.
+**Execution:** `M0.4`. [#223](https://github.com/jmhill/yoink/issues/223).
 
 - **Depends on:** none
 - **Do:** produce `docs/architecture/adr/001-route-inventory.md`. It's a table of **every** HTTP route registered by `app.ts`, with these columns:
@@ -105,7 +105,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.5 Refresh the ESLint baseline
 
-**Execution:** `M0.5`. GitHub link pending publication.
+**Execution:** `M0.5`. Done in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)).
 
 - **Depends on:** none
 - **Do:** run `pnpm lint` and rewrite `docs/architecture/ESLINT_BASELINE.md` with the current counts per rule (about 112 `element-types`, 19 `no-unknown` and 33 `no-explicit-any` at last count), plus a short explanation of each group. Note that the module list is missing notes, review and work.
@@ -117,7 +117,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M1.1 Boundaries elements and rules for the target layout (ADR §10)
 
-**Execution:** `M1.1`. GitHub link pending publication.
+**Execution:** `M1.1`. [#226](https://github.com/jmhill/yoink/issues/226).
 
 - **Depends on:** M0.5
 - **Do:** in `apps/api/eslint.config.js`:
@@ -139,7 +139,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M1.2 Table-ownership architecture test (ADR §5.1, §10)
 
-**Execution:** `M1.2`. GitHub link pending publication.
+**Execution:** `M1.2`. [#227](https://github.com/jmhill/yoink/issues/227).
 
 - **Depends on:** none
 - **Do:**
@@ -151,7 +151,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M1.3 Migration ownership (ADR §5.4)
 
-**Execution:** `M1.3`. GitHub link pending publication.
+**Execution:** `M1.3`. [#228](https://github.com/jmhill/yoink/issues/228).
 
 - **Depends on:** M1.2
 - **Do:**
@@ -168,7 +168,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M2.1 Create `kernel/`
 
-**Execution:** `M2.1`. GitHub link pending publication.
+**Execution:** `M2.1`. [#229](https://github.com/jmhill/yoink/issues/229).
 
 - **Depends on:** M1.1
 - **Move** (ADR §3.4, §3.5):
@@ -182,7 +182,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M2.2 Create `platform/` (closes the 8.5.4 health item)
 
-**Execution:** `M2.2`. GitHub link pending publication.
+**Execution:** `M2.2`. [#230](https://github.com/jmhill/yoink/issues/230).
 
 - **Depends on:** M1.1
 - **Move:**
@@ -196,7 +196,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M2.3 Split `@yoink/infrastructure` (ADR §3.4)
 
-**Execution:** `M2.3`. GitHub link pending publication.
+**Execution:** `M2.3`. [#231](https://github.com/jmhill/yoink/issues/231).
 
 - **Depends on:** M2.1, M2.2
 - **Do:**
@@ -207,7 +207,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M2.4 Create `edges/_shared/`
 
-**Execution:** `M2.4`. GitHub link pending publication.
+**Execution:** `M2.4`. [#232](https://github.com/jmhill/yoink/issues/232).
 
 - **Depends on:** M2.1
 - **Move:**
@@ -225,7 +225,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.1 Public API v1 contracts (frozen copy)
 
-**Execution:** `M3.1`. GitHub link pending publication.
+**Execution:** `M3.1`. [#233](https://github.com/jmhill/yoink/issues/233).
 
 - **Depends on:** M0.3, M0.4
 - **Do:** create `packages/api-contracts/src/public-api/v1/` containing the contracts of every **integration** route from the inventory, **copied unchanged** in path suffix, shapes and errors, but rooted at `/api/v1`. Today's `orpc/` contracts stay as they are (legacy).
@@ -233,7 +233,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.2 `edges/public-api/v1/` mounted at `/api/v1` and the `/api` alias
 
-**Execution:** `M3.2`. GitHub link pending publication.
+**Execution:** `M3.2`. [#234](https://github.com/jmhill/yoink/issues/234).
 
 - **Depends on:** M3.1, M2.4
 - **Do:**
@@ -249,7 +249,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.3 `edges/legacy/` for client-only routes
 
-**Execution:** `M3.3`. GitHub link pending publication.
+**Execution:** `M3.3`. [#235](https://github.com/jmhill/yoink/issues/235).
 
 - **Depends on:** M0.4, M2.4
 - **Do:** move every **client-only** route (admin, auth, passkey, signup, invitation, organization settings, …) out of `access/application/` and the other modules into `edges/legacy/<area>/`, keeping **identical paths and auth**. These later move to their client's edge (M6) and are removed (M7).
@@ -257,7 +257,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.4 `edges/ops/` and `edges/test-fixtures/`
 
-**Execution:** `M3.4`. GitHub link pending publication.
+**Execution:** `M3.4`. [#236](https://github.com/jmhill/yoink/issues/236).
 
 - **Depends on:** M2.2, M3.3
 - **Do:**
@@ -270,7 +270,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.5 Auth middlewares to `edges/_shared/`
 
-**Execution:** `M3.5`. GitHub link pending publication.
+**Execution:** `M3.5`. [#237](https://github.com/jmhill/yoink/issues/237).
 
 - **Depends on:** M3.2, M3.3
 - **Do:** move `auth-middleware`, `user-session-middleware`, `admin-session-middleware`, `combined-auth-middleware` and `with-authenticated-rate-limit` from `access/application/` to `edges/_shared/auth/`. They depend on access through its current services; that's allowed by allowlist until M5.13 provides an access interface. Rate-limit configuration becomes per edge (ADR §8.1).
@@ -278,7 +278,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M3.6 Retire HTTP tests from module folders
 
-**Execution:** `M3.6`. GitHub link pending publication.
+**Execution:** `M3.6`. [#238](https://github.com/jmhill/yoink/issues/238).
 
 - **Depends on:** M3.2–M3.5
 - **Do:** move the `http-*.test.ts` and `orpc-*.test.ts` files that remained in module folders next to the routes they test, under `edges/`.
@@ -290,7 +290,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M4.1 Kernel unit-of-work types, plus SQLite and in-memory implementations
 
-**Execution:** `M4.1`. GitHub link pending publication.
+**Execution:** `M4.1`. [#239](https://github.com/jmhill/yoink/issues/239).
 
 - **Depends on:** M0.2, M2.1, M2.2
 - **Do:**
@@ -304,7 +304,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M4.2 Create `modules/history/` and move the change log
 
-**Execution:** `M4.2`. GitHub link pending publication.
+**Execution:** `M4.2`. [#240](https://github.com/jmhill/yoink/issues/240).
 
 - **Depends on:** M4.1, M2.4
 - **Do:**
@@ -316,7 +316,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M4.3 History as the event sink
 
-**Execution:** `M4.3`. GitHub link pending publication.
+**Execution:** `M4.3`. [#241](https://github.com/jmhill/yoink/issues/241).
 
 - **Depends on:** M4.2
 - **Do:**
@@ -327,7 +327,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 ### M4.4 Remove guards that read across modules (finishing step)
 
-**Execution:** `M4.4`. GitHub link pending publication.
+**Execution:** `M4.4`. [#242](https://github.com/jmhill/yoink/issues/242).
 
 - **Depends on:** all M5 module tasks that remove their callers of `existsClause` and `insertChangeLogIfChangedQuery`
 - **Do:** delete `existsClause` and any `EXISTS (SELECT … FROM <another module's table>)` guard left in history's SQL.
@@ -353,7 +353,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.1 Captures (pilot)
 
-**Execution:** `M5.1-check` (history `subject_type` CHECK, same release, before the first capture event) and `M5.1`. GitHub links pending publication.
+**Execution:** `M5.1-check` (history `subject_type` CHECK, same release, before the first capture event) and `M5.1`. [#246](https://github.com/jmhill/yoink/issues/246), [#247](https://github.com/jmhill/yoink/issues/247).
 
 - **Depends on:** M3.6, M4.3
 - **Do:** the standard checklist. Publish `prepare.markProcessed` (with the inbox-claim guard) and `prepare.deleteProcessedCapture` for the processing workflow and policy. `queries.findInboxCapture` is needed by processing.
@@ -361,7 +361,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.2 Task Management: structural merge (no behaviour change)
 
-**Execution:** `M5.2`, after `CL-WORK`. That decision stays open with a recommendation. It is not pre-marked blocked on Justin. GitHub links pending publication.
+**Execution:** `M5.2`, after `CL-WORK`. That decision stays open with a recommendation. It is not pre-marked blocked on Justin. [#248](https://github.com/jmhill/yoink/issues/248), [#243](https://github.com/jmhill/yoink/issues/243).
 
 - **Depends on:** M5.1
 - **Do:**
@@ -374,7 +374,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.3 Task Management: interface, unit of work, events
 
-**Execution:** `M5.3`. GitHub link pending publication.
+**Execution:** `M5.3`. [#249](https://github.com/jmhill/yoink/issues/249).
 
 - **Depends on:** M5.2
 - **Do:** checklist steps 3–6:
@@ -386,7 +386,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.4 Task Management: legacy services and the domain importing HTTP code
 
-**Execution:** `M5.4`. GitHub link pending publication.
+**Execution:** `M5.4`. [#250](https://github.com/jmhill/yoink/issues/250).
 
 - **Depends on:** M5.3
 - **Do:**
@@ -397,7 +397,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.5 Processing workflow and delete-source-capture policy
 
-**Execution:** `M5.5`. GitHub link pending publication.
+**Execution:** `M5.5`. [#251](https://github.com/jmhill/yoink/issues/251).
 
 - **Depends on:** M5.1, M5.3
 - **Do:**
@@ -413,7 +413,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.6 Remove `tasks.capture_id → captures` foreign key
 
-**Execution:** `M5.6`. GitHub link pending publication.
+**Execution:** `M5.6`. [#252](https://github.com/jmhill/yoink/issues/252).
 
 - **Depends on:** M5.5
 - **Do:** a task-management-owned migration that rebuilds `tasks` without the foreign-key constraint (using `table-rebuild`), keeping the `capture_id` column as an opaque id. Migration tests cover it.
@@ -421,7 +421,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.7 Notes
 
-**Execution:** `M5.7`. GitHub link pending publication.
+**Execution:** `M5.7`. [#253](https://github.com/jmhill/yoink/issues/253).
 
 - **Depends on:** M5.3
 - **Do:**
@@ -432,7 +432,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.8 Notes settings table and the mirror-bot column
 
-**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. GitHub links pending publication.
+**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. [#254](https://github.com/jmhill/yoink/issues/254), [#255](https://github.com/jmhill/yoink/issues/255), [#256](https://github.com/jmhill/yoink/issues/256), [#257](https://github.com/jmhill/yoink/issues/257).
 
 - **Depends on:** M5.7
 - **Do:** expand/migrate/contract, one step per commit:
@@ -444,7 +444,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.9 Remove `project_notes.project_id → projects` foreign key
 
-**Execution:** `M5.9`. GitHub link pending publication.
+**Execution:** `M5.9`. [#258](https://github.com/jmhill/yoink/issues/258).
 
 - **Depends on:** M5.7
 - **Do:** a notes-owned migration rebuilding `project_notes` without the constraint. Deleting a project (if possible) or changing its status no longer depends on notes rows.
@@ -452,7 +452,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.10 Review and history (queries)
 
-**Execution:** `M5.10-review` (after `CL-REVIEW`) and `M5.10-history`. `CL-REVIEW` stays open with a recommendation. It is not pre-marked blocked on Justin. GitHub links pending publication.
+**Execution:** `M5.10-review` (after `CL-REVIEW`) and `M5.10-history`. `CL-REVIEW` stays open with a recommendation. It is not pre-marked blocked on Justin. [#259](https://github.com/jmhill/yoink/issues/259), [#244](https://github.com/jmhill/yoink/issues/244), [#260](https://github.com/jmhill/yoink/issues/260).
 
 - **Depends on:** M5.3, M4.3
 - **Do:**
@@ -462,7 +462,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.11 Own types per module (repeat for each module)
 
-**Execution:** one issue per module: `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`. GitHub links pending publication.
+**Execution:** one issue per module: `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`. [#261](https://github.com/jmhill/yoink/issues/261), [#262](https://github.com/jmhill/yoink/issues/262), [#263](https://github.com/jmhill/yoink/issues/263), [#264](https://github.com/jmhill/yoink/issues/264), [#265](https://github.com/jmhill/yoink/issues/265), [#266](https://github.com/jmhill/yoink/issues/266).
 
 - **Depends on:** that module's M5 task
 - **Do:** for one module per commit series (captures, task-management, notes, review, history, access):
@@ -473,7 +473,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 
-**Execution:** `M5.12`. GitHub link pending publication.
+**Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267).
 
 - **Depends on:** M4.3, M3.5
 - **Do:**
@@ -486,7 +486,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.13 Access: migrate legacy services (closes 8.5.4)
 
-**Execution:** one issue per service, serialized: `M5.13-admin`, `M5.13-admin-session`, `M5.13-agent`, `M5.13-invitation`, `M5.13-membership`, `M5.13-organization`, `M5.13-passkey`, `M5.13-session`, `M5.13-signup`, `M5.13-token`, `M5.13-user`. GitHub links pending publication.
+**Execution:** one issue per service, serialized: `M5.13-admin`, `M5.13-admin-session`, `M5.13-agent`, `M5.13-invitation`, `M5.13-membership`, `M5.13-organization`, `M5.13-passkey`, `M5.13-session`, `M5.13-signup`, `M5.13-token`, `M5.13-user`. [#268](https://github.com/jmhill/yoink/issues/268), [#269](https://github.com/jmhill/yoink/issues/269), [#270](https://github.com/jmhill/yoink/issues/270), [#271](https://github.com/jmhill/yoink/issues/271), [#272](https://github.com/jmhill/yoink/issues/272), [#273](https://github.com/jmhill/yoink/issues/273), [#274](https://github.com/jmhill/yoink/issues/274), [#275](https://github.com/jmhill/yoink/issues/275), [#276](https://github.com/jmhill/yoink/issues/276), [#277](https://github.com/jmhill/yoink/issues/277), [#278](https://github.com/jmhill/yoink/issues/278).
 
 - **Depends on:** M5.12
 - **Do:**
@@ -502,7 +502,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.1 Extension edge (`/extension-api/v1/`)
 
-**Execution:** `M6.1`. GitHub link pending publication.
+**Execution:** `M6.1`. [#279](https://github.com/jmhill/yoink/issues/279).
 
 - **Depends on:** M5.1, M3.2
 - **Do:**
@@ -515,7 +515,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.2 Web edge foundation (`/web-api/`)
 
-**Execution:** `M6.2`. GitHub link pending publication.
+**Execution:** `M6.2`. [#280](https://github.com/jmhill/yoink/issues/280).
 
 - **Depends on:** M3.5
 - **Do:**
@@ -527,7 +527,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.3 Web edge screens
 
-**Execution:** one issue per screen series: `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`. GitHub links pending publication.
+**Execution:** one issue per screen series: `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`. [#281](https://github.com/jmhill/yoink/issues/281), [#282](https://github.com/jmhill/yoink/issues/282), [#283](https://github.com/jmhill/yoink/issues/283), [#284](https://github.com/jmhill/yoink/issues/284), [#285](https://github.com/jmhill/yoink/issues/285), [#286](https://github.com/jmhill/yoink/issues/286), [#287](https://github.com/jmhill/yoink/issues/287), [#288](https://github.com/jmhill/yoink/issues/288), [#289](https://github.com/jmhill/yoink/issues/289).
 
 - **Depends on:** M6.2, plus the module tasks each screen needs (M5.3 for Work, Tasks and Projects; M5.7 for notes; M5.10 for Review and history)
 - **Do:** move the web app's screens one at a time, one commit series each, with screen-shaped reads and writes:
@@ -546,7 +546,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.4 Admin edge (`/admin-api/`)
 
-**Execution:** `M6.4`. GitHub link pending publication.
+**Execution:** `M6.4`. [#290](https://github.com/jmhill/yoink/issues/290).
 
 - **Depends on:** M5.12
 - **Do:**
@@ -558,7 +558,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.5 Remove client-only legacy routes
 
-**Execution:** `M6.5-web` and `M6.5-admin`. Unknown window lengths stay gates. GitHub links pending publication.
+**Execution:** `M6.5-web` and `M6.5-admin`. Unknown window lengths stay gates. [#291](https://github.com/jmhill/yoink/issues/291), [#292](https://github.com/jmhill/yoink/issues/292).
 
 - **Depends on:** M6.3 (web) and M6.4 (admin), each removing its own group
 - **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the web edge's expand/contract window has passed (ADR §8.2: no requests from builds that use them for a set number of days, based on `X-Yoink-Build` logs).
@@ -566,7 +566,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.6 Remove `/api/admin/...` from the dev proxy and docs
 
-**Execution:** `M6.6`. GitHub link pending publication.
+**Execution:** `M6.6`. [#293](https://github.com/jmhill/yoink/issues/293).
 
 - **Depends on:** M6.4, M6.5
 - **Do:** clean up leftover references in Vite configs, docs and the acceptance drivers.
@@ -578,7 +578,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.1 Announce the `/api` alias sunset
 
-**Execution:** `M7.1`. GitHub link pending publication.
+**Execution:** `M7.1`. [#294](https://github.com/jmhill/yoink/issues/294).
 
 - **Depends on:** M6.1, M6.3, M6.4
 - **Do:** set the `Sunset` date (≥ 90 days out, ADR §9) on alias responses. Record the date in the ADR and in `docs/operations/`. Check alias usage per token from the logs.
@@ -586,7 +586,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.2 Remove the `/api` alias
 
-**Execution:** `M7.2`. GitHub link pending publication.
+**Execution:** `M7.2`. [#295](https://github.com/jmhill/yoink/issues/295).
 
 - **Depends on:** M7.1 plus the conditions in ADR §9: the sunset date has passed, the alias has seen no calls for 30 days, and any remaining token owners have been contacted
 - **Do:** unmount the alias. Keep `/api/health` and `/api/v1`.
@@ -594,7 +594,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.3 Retire `combined-auth-middleware`
 
-**Execution:** `M7.3`. GitHub link pending publication.
+**Execution:** `M7.3`. [#296](https://github.com/jmhill/yoink/issues/296).
 
 - **Depends on:** PLAN 7.7c (removing the web app's legacy token fallback), M7.2
 - **Do:** the web edge uses session-only auth. Delete `combined-auth-middleware`.
@@ -602,7 +602,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.4 Review and remove test fixture routes (ADR §11)
 
-**Execution:** `M7.4`. GitHub link pending publication.
+**Execution:** `M7.4`. [#297](https://github.com/jmhill/yoink/issues/297).
 
 - **Depends on:** M5.10, M5.12
 - **Do:**
@@ -613,7 +613,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.5 All enforcement at `error` (absorbs 8.5.5)
 
-**Execution:** `M7.5`. GitHub link pending publication.
+**Execution:** `M7.5`. [#298](https://github.com/jmhill/yoink/issues/298).
 
 - **Depends on:** all of M5, M6.5
 - **Do:**
@@ -625,7 +625,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.6 Remove legacy contracts and leftovers
 
-**Execution:** `M7.6`. GitHub link pending publication.
+**Execution:** `M7.6`. [#299](https://github.com/jmhill/yoink/issues/299).
 
 - **Depends on:** M7.2, M6.5
 - **Do:**
@@ -636,7 +636,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.7 Review ADR-002's lessons log
 
-**Execution:** `M7.7`. GitHub link pending publication.
+**Execution:** `M7.7`. [#300](https://github.com/jmhill/yoink/issues/300).
 
 - **Depends on:** M7.5
 - **Do:** group ADR-002 §5's entries by theme. Check them against ADR-002 §6's conditions for starting. Either draft ADR-002 in full, or close it as **Rejected (not needed)** with the reasoning.
@@ -688,9 +688,11 @@ Docs-only tasks and unmerged spikes follow the issue's Tests section. When that 
 
 ## Execution index
 
-Stable task keys for the 78 issues that follow M0.1. M0.1 stays complete and has no issue. Logical dependencies are the plan's dependencies. "Serialize after" is an execution edge for a shared file (`composition-root.ts`, `app.ts`, ADR-001, or one access-service series). It does not add a logical dependency and it does not rewrite the task prose above.
+Stable task keys for the 78 tasks that follow M0.1. M0.1 stays complete and has no issue. Logical dependencies are the plan's dependencies. "Serialize after" is an execution edge for a shared file (`composition-root.ts`, `app.ts`, ADR-001, or one access-service series). It does not add a logical dependency and it does not rewrite the task prose above.
 
-As of this setup commit, zero GitHub issues have been published. The M0.2 create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is pending user review. That form is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not resubmit or duplicate that form from this commit. Fill the GitHub column when publication succeeds. Do not close an issue from this commit. `approved-plan` is not applied.
+Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)).
+
+M0.2 stays pending publication, pending user Submit. Its marketplace create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not create, edit, resubmit, or duplicate that form. Do not close an issue from this update. `approved-plan` is not applied.
 
 The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
 
@@ -698,81 +700,81 @@ The logical dependencies plus the serialization edges were checked together. The
 
 | ID | Logical dependencies | Serialize after | Status | Gate | GitHub |
 |---|---|---|---|---|---|
-| `M0.2` | — | — | Not started | Close only after a real Turso run. Local half may start. The credential grant needs Justin. | pending publication |
-| `M0.3` | — | `M0.2` | Not started | None. | pending publication |
-| `M0.4` | — | — | Not started | The inventory itself is not blocked. Justin decides any ambiguous row before M3.1. | pending publication |
-| `M0.5` | — | — | Not started | None. | pending publication |
-| `M1.1` | `M0.5` | — | Not started | None. | pending publication |
-| `M1.2` | — | — | Not started | None. | pending publication |
-| `M1.3` | `M1.2` | — | Not started | None. | pending publication |
-| `M2.1` | `M1.1` | — | Not started | None. | pending publication |
-| `M2.2` | `M1.1` | `M2.1` | Not started | None. | pending publication |
-| `M2.3` | `M2.1`, `M2.2` | — | Not started | None. | pending publication |
-| `M2.4` | `M2.1` | `M2.2` | Not started | None. | pending publication |
-| `M3.1` | `M0.3`, `M0.4` | — | Not started | None. | pending publication |
-| `M3.2` | `M3.1`, `M2.4` | — | Not started | None. | pending publication |
-| `M3.3` | `M0.4`, `M2.4` | `M3.2` | Not started | None. | pending publication |
-| `M3.4` | `M2.2`, `M3.3` | — | Not started | None. | pending publication |
-| `M3.5` | `M3.2`, `M3.3` | — | Not started | None. | pending publication |
-| `M3.6` | `M3.2`, `M3.3`, `M3.4`, `M3.5` | — | Not started | None. | pending publication |
-| `M4.1` | `M0.2`, `M2.1`, `M2.2` | — | Not started | None. | pending publication |
-| `M4.2` | `M4.1`, `M2.4` | — | Not started | None. | pending publication |
-| `M4.3` | `M4.2` | — | Not started | None. | pending publication |
-| `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | Not started | None. | pending publication |
-| `CL-WORK` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | pending publication |
-| `CL-REVIEW` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | pending publication |
-| `M5.1-check` | `M1.3`, `M4.2` | — | Not started | None. | pending publication |
-| `M5.1` | `M3.6`, `M4.3`, `M5.1-check` | — | Not started | None. | pending publication |
-| `M5.2` | `M5.1`, `CL-WORK` | — | Not started | None. | pending publication |
-| `M5.3` | `M5.2` | — | Not started | None. | pending publication |
-| `M5.4` | `M5.3` | — | Not started | None. | pending publication |
-| `M5.5` | `M5.1`, `M5.3` | — | Not started | None. | pending publication |
-| `M5.6` | `M5.5` | — | Not started | None. | pending publication |
-| `M5.7` | `M5.3` | — | Not started | None. | pending publication |
-| `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | pending publication |
-| `M5.8b` | `M5.8a` | — | Not started | None. | pending publication |
-| `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | pending publication |
-| `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | pending publication |
-| `M5.9` | `M5.7` | — | Not started | None. | pending publication |
-| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | None. | pending publication |
-| `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | pending publication |
-| `M5.11-captures` | `M5.1` | — | Not started | None. | pending publication |
-| `M5.11-task-management` | `M5.4` | — | Not started | None. | pending publication |
-| `M5.11-notes` | `M5.7` | — | Not started | None. | pending publication |
-| `M5.11-review` | `M5.10-review` | — | Not started | None. | pending publication |
-| `M5.11-history` | `M5.10-history` | — | Not started | None. | pending publication |
-| `M5.11-access` | `M5.13-user` | — | Not started | None. | pending publication |
-| `M5.12` | `M4.3`, `M3.5` | — | Not started | None. | pending publication |
-| `M5.13-admin` | `M5.12` | — | Not started | None. | pending publication |
-| `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | pending publication |
-| `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | pending publication |
-| `M5.13-invitation` | `M5.12` | `M5.13-agent` | Not started | None. | pending publication |
-| `M5.13-membership` | `M5.12` | `M5.13-invitation` | Not started | None. | pending publication |
-| `M5.13-organization` | `M5.12` | `M5.13-membership` | Not started | None. | pending publication |
-| `M5.13-passkey` | `M5.12` | `M5.13-organization` | Not started | None. | pending publication |
-| `M5.13-session` | `M5.12` | `M5.13-passkey` | Not started | None. | pending publication |
-| `M5.13-signup` | `M5.12` | `M5.13-session` | Not started | None. | pending publication |
-| `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | pending publication |
-| `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | pending publication |
-| `M6.1` | `M5.1`, `M3.2` | — | Not started | None. | pending publication |
-| `M6.2` | `M3.5`, `M5.1` | — | Not started | None. | pending publication |
-| `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | pending publication |
-| `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | pending publication |
-| `M6.3-work` | `M6.2`, `M5.3`, `CL-WORK` | — | Not started | None. | pending publication |
-| `M6.3-project-page` | `M6.2`, `M5.3` | — | Not started | None. | pending publication |
-| `M6.3-notes` | `M6.2`, `M5.7` | `M6.3-project-page` | Not started | None. | pending publication |
-| `M6.3-review` | `M6.2`, `M5.10-review` | — | Not started | None. | pending publication |
-| `M6.3-history` | `M6.2`, `M5.10-history` | `M6.3-project-page`, `M6.3-tasks-lists` | Not started | None. | pending publication |
-| `M6.3-settings` | `M6.2`, `M5.12` | — | Not started | None. | pending publication |
-| `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Not started | None. | pending publication |
-| `M6.4` | `M5.12` | — | Not started | None. | pending publication |
-| `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | pending publication |
-| `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | pending publication |
-| `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | pending publication |
-| `M7.1` | `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. | pending publication |
-| `M7.2` | `M7.1` | — | Not started | Sunset has passed, 30 days with no alias calls, and a person has contacted any remaining token owner. Do not send outreach. | pending publication |
-| `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | pending publication |
-| `M7.4` | `M5.10-review`, `M5.12` | — | Not started | Stop if replacing a fixture needs a new product command. | pending publication |
-| `M7.5` | `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | pending publication |
-| `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | pending publication |
-| `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | pending publication |
+| `M0.2` | — | — | Not started | Close only after a real Turso run. Local half may start. The credential grant needs Justin. | pending publication; pending user Submit |
+| `M0.3` | — | `M0.2` | Not started | None. | [#224](https://github.com/jmhill/yoink/issues/224) |
+| `M0.4` | — | — | Not started | The inventory itself is not blocked. Justin decides any ambiguous row before M3.1. | [#223](https://github.com/jmhill/yoink/issues/223) |
+| `M0.5` | — | — | Done (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)) | None. | [#225](https://github.com/jmhill/yoink/issues/225) |
+| `M1.1` | `M0.5` | — | Not started | None. | [#226](https://github.com/jmhill/yoink/issues/226) |
+| `M1.2` | — | — | Not started | None. | [#227](https://github.com/jmhill/yoink/issues/227) |
+| `M1.3` | `M1.2` | — | Not started | None. | [#228](https://github.com/jmhill/yoink/issues/228) |
+| `M2.1` | `M1.1` | — | Not started | None. | [#229](https://github.com/jmhill/yoink/issues/229) |
+| `M2.2` | `M1.1` | `M2.1` | Not started | None. | [#230](https://github.com/jmhill/yoink/issues/230) |
+| `M2.3` | `M2.1`, `M2.2` | — | Not started | None. | [#231](https://github.com/jmhill/yoink/issues/231) |
+| `M2.4` | `M2.1` | `M2.2` | Not started | None. | [#232](https://github.com/jmhill/yoink/issues/232) |
+| `M3.1` | `M0.3`, `M0.4` | — | Not started | None. | [#233](https://github.com/jmhill/yoink/issues/233) |
+| `M3.2` | `M3.1`, `M2.4` | — | Not started | None. | [#234](https://github.com/jmhill/yoink/issues/234) |
+| `M3.3` | `M0.4`, `M2.4` | `M3.2` | Not started | None. | [#235](https://github.com/jmhill/yoink/issues/235) |
+| `M3.4` | `M2.2`, `M3.3` | — | Not started | None. | [#236](https://github.com/jmhill/yoink/issues/236) |
+| `M3.5` | `M3.2`, `M3.3` | — | Not started | None. | [#237](https://github.com/jmhill/yoink/issues/237) |
+| `M3.6` | `M3.2`, `M3.3`, `M3.4`, `M3.5` | — | Not started | None. | [#238](https://github.com/jmhill/yoink/issues/238) |
+| `M4.1` | `M0.2`, `M2.1`, `M2.2` | — | Not started | None. | [#239](https://github.com/jmhill/yoink/issues/239) |
+| `M4.2` | `M4.1`, `M2.4` | — | Not started | None. | [#240](https://github.com/jmhill/yoink/issues/240) |
+| `M4.3` | `M4.2` | — | Not started | None. | [#241](https://github.com/jmhill/yoink/issues/241) |
+| `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | Not started | None. | [#242](https://github.com/jmhill/yoink/issues/242) |
+| `CL-WORK` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | [#243](https://github.com/jmhill/yoink/issues/243) |
+| `CL-REVIEW` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | [#244](https://github.com/jmhill/yoink/issues/244) |
+| `M5.1-check` | `M1.3`, `M4.2` | — | Not started | None. | [#246](https://github.com/jmhill/yoink/issues/246) |
+| `M5.1` | `M3.6`, `M4.3`, `M5.1-check` | — | Not started | None. | [#247](https://github.com/jmhill/yoink/issues/247) |
+| `M5.2` | `M5.1`, `CL-WORK` | — | Not started | None. | [#248](https://github.com/jmhill/yoink/issues/248) |
+| `M5.3` | `M5.2` | — | Not started | None. | [#249](https://github.com/jmhill/yoink/issues/249) |
+| `M5.4` | `M5.3` | — | Not started | None. | [#250](https://github.com/jmhill/yoink/issues/250) |
+| `M5.5` | `M5.1`, `M5.3` | — | Not started | None. | [#251](https://github.com/jmhill/yoink/issues/251) |
+| `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
+| `M5.7` | `M5.3` | — | Not started | None. | [#253](https://github.com/jmhill/yoink/issues/253) |
+| `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | [#254](https://github.com/jmhill/yoink/issues/254) |
+| `M5.8b` | `M5.8a` | — | Not started | None. | [#255](https://github.com/jmhill/yoink/issues/255) |
+| `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | [#256](https://github.com/jmhill/yoink/issues/256) |
+| `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | [#257](https://github.com/jmhill/yoink/issues/257) |
+| `M5.9` | `M5.7` | — | Not started | None. | [#258](https://github.com/jmhill/yoink/issues/258) |
+| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | None. | [#259](https://github.com/jmhill/yoink/issues/259) |
+| `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | [#260](https://github.com/jmhill/yoink/issues/260) |
+| `M5.11-captures` | `M5.1` | — | Not started | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
+| `M5.11-task-management` | `M5.4` | — | Not started | None. | [#262](https://github.com/jmhill/yoink/issues/262) |
+| `M5.11-notes` | `M5.7` | — | Not started | None. | [#263](https://github.com/jmhill/yoink/issues/263) |
+| `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |
+| `M5.11-history` | `M5.10-history` | — | Not started | None. | [#265](https://github.com/jmhill/yoink/issues/265) |
+| `M5.11-access` | `M5.13-user` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
+| `M5.12` | `M4.3`, `M3.5` | — | Not started | None. | [#267](https://github.com/jmhill/yoink/issues/267) |
+| `M5.13-admin` | `M5.12` | — | Not started | None. | [#268](https://github.com/jmhill/yoink/issues/268) |
+| `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
+| `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | [#270](https://github.com/jmhill/yoink/issues/270) |
+| `M5.13-invitation` | `M5.12` | `M5.13-agent` | Not started | None. | [#271](https://github.com/jmhill/yoink/issues/271) |
+| `M5.13-membership` | `M5.12` | `M5.13-invitation` | Not started | None. | [#272](https://github.com/jmhill/yoink/issues/272) |
+| `M5.13-organization` | `M5.12` | `M5.13-membership` | Not started | None. | [#273](https://github.com/jmhill/yoink/issues/273) |
+| `M5.13-passkey` | `M5.12` | `M5.13-organization` | Not started | None. | [#274](https://github.com/jmhill/yoink/issues/274) |
+| `M5.13-session` | `M5.12` | `M5.13-passkey` | Not started | None. | [#275](https://github.com/jmhill/yoink/issues/275) |
+| `M5.13-signup` | `M5.12` | `M5.13-session` | Not started | None. | [#276](https://github.com/jmhill/yoink/issues/276) |
+| `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | [#277](https://github.com/jmhill/yoink/issues/277) |
+| `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | [#278](https://github.com/jmhill/yoink/issues/278) |
+| `M6.1` | `M5.1`, `M3.2` | — | Not started | None. | [#279](https://github.com/jmhill/yoink/issues/279) |
+| `M6.2` | `M3.5`, `M5.1` | — | Not started | None. | [#280](https://github.com/jmhill/yoink/issues/280) |
+| `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | [#281](https://github.com/jmhill/yoink/issues/281) |
+| `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | [#282](https://github.com/jmhill/yoink/issues/282) |
+| `M6.3-work` | `M6.2`, `M5.3`, `CL-WORK` | — | Not started | None. | [#283](https://github.com/jmhill/yoink/issues/283) |
+| `M6.3-project-page` | `M6.2`, `M5.3` | — | Not started | None. | [#284](https://github.com/jmhill/yoink/issues/284) |
+| `M6.3-notes` | `M6.2`, `M5.7` | `M6.3-project-page` | Not started | None. | [#285](https://github.com/jmhill/yoink/issues/285) |
+| `M6.3-review` | `M6.2`, `M5.10-review` | — | Not started | None. | [#286](https://github.com/jmhill/yoink/issues/286) |
+| `M6.3-history` | `M6.2`, `M5.10-history` | `M6.3-project-page`, `M6.3-tasks-lists` | Not started | None. | [#287](https://github.com/jmhill/yoink/issues/287) |
+| `M6.3-settings` | `M6.2`, `M5.12` | — | Not started | None. | [#288](https://github.com/jmhill/yoink/issues/288) |
+| `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Not started | None. | [#289](https://github.com/jmhill/yoink/issues/289) |
+| `M6.4` | `M5.12` | — | Not started | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
+| `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | [#291](https://github.com/jmhill/yoink/issues/291) |
+| `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | [#292](https://github.com/jmhill/yoink/issues/292) |
+| `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |
+| `M7.1` | `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. | [#294](https://github.com/jmhill/yoink/issues/294) |
+| `M7.2` | `M7.1` | — | Not started | Sunset has passed, 30 days with no alias calls, and a person has contacted any remaining token owner. Do not send outreach. | [#295](https://github.com/jmhill/yoink/issues/295) |
+| `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
+| `M7.4` | `M5.10-review`, `M5.12` | — | Not started | Stop if replacing a fixture needs a new product command. | [#297](https://github.com/jmhill/yoink/issues/297) |
+| `M7.5` | `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
+| `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

@@ -1,9 +1,36 @@
-import { initClient } from '@ts-rest/core';
-import { initTsrReactQuery } from '@ts-rest/react-query/v5';
-import { authContract, captureContract, listContract, noteContract, organizationContract, projectContract, reviewContract, taskContract, tokenContract, workContract } from '@yoink/api-contracts';
-import { apiResultFromResponse } from '@/lib/api-result';
+import { createORPCClient, ResponseError } from '@orpc/client';
+import type { RouterContractClient } from '@orpc/contract';
+import { OpenAPILink } from '@orpc/openapi/fetch';
+import type { JsonifiedClient } from '@orpc/openapi';
+import {
+  authOrpcContract,
+  captureOrpcContract,
+  listOrpcContract,
+  noteOrpcContract,
+  organizationOrpcContract,
+  processCaptureToProjectOrpcContract,
+  projectOrpcContract,
+  reviewOrpcContract,
+  taskOrpcContract,
+  tokenOrpcContract,
+  workOrpcContract,
+} from '@yoink/api-contracts/orpc';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
 import { tokenStorage } from '@/lib/token';
+
+type CaptureClient = JsonifiedClient<RouterContractClient<typeof captureOrpcContract>>;
+type ProcessToProjectClient = JsonifiedClient<
+  RouterContractClient<typeof processCaptureToProjectOrpcContract>
+>;
+type TaskClient = JsonifiedClient<RouterContractClient<typeof taskOrpcContract>>;
+type ListClient = JsonifiedClient<RouterContractClient<typeof listOrpcContract>>;
+type TokenClient = JsonifiedClient<RouterContractClient<typeof tokenOrpcContract>>;
+type OrganizationClient = JsonifiedClient<RouterContractClient<typeof organizationOrpcContract>>;
+type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>;
+type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
+type WorkClient = JsonifiedClient<RouterContractClient<typeof workOrpcContract>>;
+type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
+type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
 
 /**
  * Redirect to login page with current path as return URL.
@@ -15,153 +42,125 @@ const redirectToLogin = () => {
   isRedirecting = true;
 
   const currentPath = window.location.pathname;
-  const returnTo = currentPath !== '/' && currentPath !== '/login' && currentPath !== '/signup'
-    ? `?returnTo=${encodeURIComponent(currentPath)}`
-    : '';
+  const returnTo =
+    currentPath !== '/' && currentPath !== '/login' && currentPath !== '/signup'
+      ? `?returnTo=${encodeURIComponent(currentPath)}`
+      : '';
   window.location.href = `/login${returnTo}`;
 };
 
 /**
- * Shared API fetcher that uses session cookies for authentication,
- * with fallback to Bearer token for backwards compatibility.
- * 
- * NOTE: Token fallback is for existing users who haven't migrated to passkeys yet.
- * Remove token handling once all users have registered passkeys.
- * See docs/PLAN.md Phase 7.7c for removal criteria.
+ * HTTP status from an OpenAPI link error. Yoink error bodies are not the oRPC
+ * envelope, so a non-2xx arrives as a ResponseError.
  */
-const createApi = () => async (args: { path: string; method: string; headers: HeadersInit; body?: BodyInit | null }) => {
-  const headers = withBearerAuthorization(
-    headersForApiRequest(args.headers, args.body),
-    tokenStorage.get()
-  );
-
-  const response = await fetch(args.path, {
-    method: args.method,
-    headers,
-    credentials: 'include', // Include session cookies
-    body: args.body,
-  });
-
-  // Handle 401 Unauthorized - redirect to login
-  if (response.status === 401) {
-    redirectToLogin();
+export const httpStatusOf = (error: unknown): number | undefined => {
+  if (error instanceof ResponseError) {
+    return error.response.status;
   }
+  return undefined;
+};
 
-  return apiResultFromResponse(response);
+/** Network failures have no HTTP status. A ResponseError is an HTTP response. */
+export const isNetworkFailure = (error: unknown): boolean =>
+  httpStatusOf(error) === undefined && error instanceof Error;
+
+const parsedJson = (body: string): unknown => {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed;
+  } catch {
+    return undefined;
+  }
+};
+
+export const httpFailureBody = (error: unknown): unknown => {
+  if (!(error instanceof ResponseError)) {
+    return undefined;
+  }
+  const body = error.response.body;
+  if (typeof body === 'string') {
+    return parsedJson(body);
+  }
+  return body;
+};
+
+export const httpFailureMessage = (error: unknown): string | undefined => {
+  const body = httpFailureBody(error);
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+  return undefined;
 };
 
 /**
- * ts-rest React Query client for capture endpoints.
- * Uses session cookies for authentication.
+ * Session cookies, with a Bearer token when one is still stored.
+ * Content-Type is omitted when there is no body so Fastify does not reject
+ * an empty JSON payload.
  */
-export const tsr = initTsrReactQuery(captureContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => {
+  const headers = withBearerAuthorization(
+    headersForApiRequest(init.headers ?? {}, init.body),
+    tokenStorage.get()
+  );
+  return globalThis
+    .fetch(url, {
+      ...init,
+      headers,
+      credentials: 'include',
+    })
+    .then((response) => {
+      if (response.status === 401) {
+        redirectToLogin();
+      }
+      return response;
+    });
+};
 
-/**
- * ts-rest React Query client for task endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrTasks = initTsrReactQuery(taskContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const captureClient: CaptureClient = createORPCClient(
+  new OpenAPILink(captureOrpcContract, { fetch: fetchWithSession })
+);
 
-/**
- * ts-rest React Query client for named list endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrLists = initTsrReactQuery(listContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const processToProjectClient: ProcessToProjectClient = createORPCClient(
+  new OpenAPILink(processCaptureToProjectOrpcContract, { fetch: fetchWithSession })
+);
 
-/**
- * ts-rest React Query client for token endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrTokens = initTsrReactQuery(tokenContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const taskClient: TaskClient = createORPCClient(
+  new OpenAPILink(taskOrpcContract, { fetch: fetchWithSession })
+);
 
-/**
- * ts-rest React Query client for organization endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrOrganizations = initTsrReactQuery(organizationContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const listClient: ListClient = createORPCClient(
+  new OpenAPILink(listOrpcContract, { fetch: fetchWithSession })
+);
 
-/**
- * ts-rest React Query client for auth/session endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrAuth = initTsrReactQuery(authContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const tokenClient: TokenClient = createORPCClient(
+  new OpenAPILink(tokenOrpcContract, { fetch: fetchWithSession })
+);
 
-/**
- * ts-rest React Query client for project endpoints.
- * Uses session cookies for authentication.
- */
-export const tsrProjects = initTsrReactQuery(projectContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const organizationClient: OrganizationClient = createORPCClient(
+  new OpenAPILink(organizationOrpcContract, { fetch: fetchWithSession })
+);
 
-export const tsrWork = initTsrReactQuery(workContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const authClient: AuthClient = createORPCClient(
+  new OpenAPILink(authOrpcContract, { fetch: fetchWithSession })
+);
 
-export const tsrReview = initTsrReactQuery(reviewContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const projectClient: ProjectClient = createORPCClient(
+  new OpenAPILink(projectOrpcContract, { fetch: fetchWithSession })
+);
 
-export const tsrNotes = initTsrReactQuery(noteContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const workClient: WorkClient = createORPCClient(
+  new OpenAPILink(workOrpcContract, { fetch: fetchWithSession })
+);
 
-export const notesClient = initClient(noteContract, {
-  baseUrl: '',
-  baseHeaders: {
-    'Content-Type': 'application/json',
-  },
-  api: createApi(),
-});
+export const reviewClient: ReviewClient = createORPCClient(
+  new OpenAPILink(reviewOrpcContract, { fetch: fetchWithSession })
+);
+
+export const noteClient: NoteClient = createORPCClient(
+  new OpenAPILink(noteOrpcContract, { fetch: fetchWithSession })
+);

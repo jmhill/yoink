@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Button } from '@yoink/ui-base/components/button';
 import { Separator } from '@yoink/ui-base/components/separator';
@@ -14,7 +15,7 @@ import {
   Plus,
   User,
 } from 'lucide-react';
-import { tsrLists, tsrProjects, tsrReview, tsrWork } from '@/api/client';
+import { listClient, projectClient, reviewClient, workClient } from '@/api/client';
 import { useProcessCounts } from '@/lib/use-process-counts';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { CreateNamedListDialog } from '@/components/create-named-list-dialog';
@@ -772,25 +773,25 @@ export function AppRailPanel({
   };
 
   const { inboxCount, proposalCount, proposals, proposalsQuery } = useProcessCounts();
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData } = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
   });
-  const { data: projectsData } = tsrProjects.list.useQuery({
+  const { data: projectsData } = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
   });
-  const { data: workListsData } = tsrWork.listLists.useQuery({
+  const { data: workListsData } = useQuery({
     queryKey: ['work', 'lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => workClient.listLists({ limit: PILE_SAFETY_CAP }),
   });
-  const { data: reviewData } = tsrReview.list.useQuery({
+  const { data: reviewData } = useQuery({
     queryKey: ['review'],
-    queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
+    queryFn: () => reviewClient.list({ limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() }),
   });
 
-  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
-  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const namedLists = listsData?.lists ?? [];
+  const projects = projectsData?.projects ?? [];
   const proposedForRail = proposals.flatMap((project) =>
     project.status === 'proposed'
       ? [
@@ -804,13 +805,10 @@ export function AppRailPanel({
       : []
   );
   const listOpenCounts = new Map(
-    workListsData?.status === 200
-      ? workListsData.body.lists.map((list) => [list.id, list.openTaskCount])
-      : []
+    workListsData?.lists.map((list) => [list.id, list.openTaskCount]) ?? []
   );
-  const unlistedOpenCount =
-    workListsData?.status === 200 ? workListsData.body.unlisted.openTaskCount : undefined;
-  const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
+  const unlistedOpenCount = workListsData?.unlisted.openTaskCount;
+  const reviewProjects = reviewData?.projects ?? [];
   const reviewBadge = reviewAttentionTotal(reviewProjects, proposals.length);
   const drawerItems = buildAppRailItems({
     inboxCount,
@@ -873,7 +871,7 @@ export function AppRailPanel({
       <nav
         data-app-rail=""
         data-app-rail-surface={surface}
-        data-rail-proposals-ready={proposalsQuery.data?.status === 200 ? '' : undefined}
+        data-rail-proposals-ready={proposalsQuery.data !== undefined ? '' : undefined}
         aria-label="App rail"
         className={className}
       >

@@ -1,3 +1,4 @@
+import { ResponseError } from '@orpc/client';
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ProjectSchema, type Project, type Task } from '@yoink/api-contracts';
@@ -13,39 +14,17 @@ export const LIVE_QUERY_COLLECTION_KEYS: QueryKey[] = [
   ['review'],
 ];
 
-type TaskListResult = {
-  status: number;
-  body: { tasks: Task[]; total?: number };
-};
+type TaskListResult = { tasks: Task[]; total?: number };
 
-type ProjectListResult = {
-  status: number;
-  body: { projects: Project[] };
-};
-
-type ProjectGetResult = {
-  status: number;
-  body: Project;
-};
+type ProjectListResult = { projects: Project[] };
 
 const TaskListResultSchema = z.object({
-  status: z.literal(200),
-  body: z.object({
-    tasks: z.array(z.unknown()),
-    total: z.number().optional(),
-  }),
+  tasks: z.array(z.unknown()),
+  total: z.number().optional(),
 });
 
 const ProjectListResultSchema = z.object({
-  status: z.literal(200),
-  body: z.object({
-    projects: z.array(ProjectSchema),
-  }),
-});
-
-const ProjectGetResultSchema = z.object({
-  status: z.literal(200),
-  body: ProjectSchema,
+  projects: z.array(ProjectSchema),
 });
 
 const isTaskListResult = (data: unknown): data is TaskListResult =>
@@ -102,8 +81,8 @@ export const restoreQuerySnapshots = (
 const isProjectListResult = (data: unknown): data is ProjectListResult =>
   ProjectListResultSchema.safeParse(data).success;
 
-const isProjectGetResult = (data: unknown): data is ProjectGetResult =>
-  ProjectGetResultSchema.safeParse(data).success;
+const isProjectGetResult = (data: unknown): data is Project =>
+  ProjectSchema.safeParse(data).success;
 
 export const snapshotLiveProjects = (
   queryClient: QueryClient
@@ -118,18 +97,12 @@ export const mapLiveProjects = (
     if (isProjectListResult(data)) {
       queryClient.setQueryData(queryKey, {
         ...data,
-        body: {
-          ...data.body,
-          projects: data.body.projects.map(mapProject),
-        },
+        projects: data.projects.map(mapProject),
       });
       continue;
     }
     if (isProjectGetResult(data)) {
-      queryClient.setQueryData(queryKey, {
-        ...data,
-        body: mapProject(data.body),
-      });
+      queryClient.setQueryData(queryKey, mapProject(data));
     }
   }
 };
@@ -140,26 +113,20 @@ export type NextActionProjectRef = {
 };
 
 type NowNextActionsResult = {
-  status: number;
-  body: { items: { task: Task; project: { id: string; name: string } }[]; total?: number };
+  items: { task: Task; project: { id: string; name: string } }[];
+  total?: number;
 };
 
-type NowDueResult = {
-  status: number;
-  body: { tasks: Task[]; total?: number };
-};
+type NowDueResult = { tasks: Task[]; total?: number };
 
 const NowNextActionsResultSchema = z.object({
-  status: z.literal(200),
-  body: z.object({
-    items: z.array(
-      z.object({
-        task: z.object({ id: z.string() }).passthrough(),
-        project: z.object({ id: z.string(), name: z.string() }),
-      })
-    ),
-    total: z.number().optional(),
-  }),
+  items: z.array(
+    z.object({
+      task: z.object({ id: z.string() }).passthrough(),
+      project: z.object({ id: z.string(), name: z.string() }),
+    })
+  ),
+  total: z.number().optional(),
 });
 
 const isNowNextActionsResult = (data: unknown): data is NowNextActionsResult =>
@@ -188,34 +155,28 @@ export const mapLiveNowSections = (
   });
   for (const [queryKey, data] of entries) {
     if (isNowNextActionsResult(data)) {
-      const items = data.body.items.filter((item) => item.task.id !== removeTaskId);
+      const items = data.items.filter((item) => item.task.id !== removeTaskId);
       const total =
-        typeof data.body.total === 'number'
-          ? Math.max(0, data.body.total + (items.length - data.body.items.length))
-          : data.body.total;
+        typeof data.total === 'number'
+          ? Math.max(0, data.total + (items.length - data.items.length))
+          : data.total;
       queryClient.setQueryData(queryKey, {
         ...data,
-        body: {
-          ...data.body,
-          items,
-          ...(typeof total === 'number' ? { total } : {}),
-        },
+        items,
+        ...(typeof total === 'number' ? { total } : {}),
       });
       continue;
     }
     if (isNowDueResult(data)) {
-      const tasks = data.body.tasks.filter((task) => task.id !== removeTaskId);
+      const tasks = data.tasks.filter((task) => task.id !== removeTaskId);
       const total =
-        typeof data.body.total === 'number'
-          ? Math.max(0, data.body.total + (tasks.length - data.body.tasks.length))
-          : data.body.total;
+        typeof data.total === 'number'
+          ? Math.max(0, data.total + (tasks.length - data.tasks.length))
+          : data.total;
       queryClient.setQueryData(queryKey, {
         ...data,
-        body: {
-          ...data.body,
-          tasks,
-          ...(typeof total === 'number' ? { total } : {}),
-        },
+        tasks,
+        ...(typeof total === 'number' ? { total } : {}),
       });
     }
   }
@@ -229,9 +190,9 @@ export const projectsWithNextAction = (
   const entries = queryClient.getQueriesData({ queryKey: ['projects'] });
   for (const [, data] of entries) {
     const projects = isProjectListResult(data)
-      ? data.body.projects
+      ? data.projects
       : isProjectGetResult(data)
-        ? [data.body]
+        ? [data]
         : [];
     for (const project of projects) {
       if (project.nextActionTaskId === taskId) {
@@ -244,7 +205,7 @@ export const projectsWithNextAction = (
     if (!isNowNextActionsResult(data)) {
       continue;
     }
-    for (const item of data.body.items) {
+    for (const item of data.items) {
       if (item.task.id === taskId) {
         found.set(item.project.id, { id: item.project.id, name: item.project.name });
       }
@@ -264,18 +225,15 @@ export const mapLiveOpenTaskLists = (
     if (!isTaskListResult(data)) {
       continue;
     }
-    const tasks = mapTasks(data.body.tasks, queryKey);
+    const tasks = mapTasks(data.tasks, queryKey);
     const total =
-      typeof data.body.total === 'number'
-        ? Math.max(0, data.body.total + (tasks.length - data.body.tasks.length))
-        : data.body.total;
+      typeof data.total === 'number'
+        ? Math.max(0, data.total + (tasks.length - data.tasks.length))
+        : data.total;
     queryClient.setQueryData(queryKey, {
       ...data,
-      body: {
-        ...data.body,
-        tasks,
-        ...(typeof total === 'number' ? { total } : {}),
-      },
+      tasks,
+      ...(typeof total === 'number' ? { total } : {}),
     });
   }
 };
@@ -376,11 +334,24 @@ const retryAfterHeaderValue = (headers: unknown): string | undefined => {
 };
 
 const httpStatusOf = (error: unknown): number | undefined => {
+  if (error instanceof ResponseError) {
+    return error.response.status;
+  }
   if (!isRecord(error)) {
     return undefined;
   }
   const status = error.status ?? error.statusCode;
   return typeof status === 'number' ? status : undefined;
+};
+
+const errorHeaders = (error: unknown): unknown => {
+  if (error instanceof ResponseError) {
+    return error.response.headers;
+  }
+  if (isRecord(error)) {
+    return error.headers;
+  }
+  return undefined;
 };
 
 const parseRetryAfterMs = (raw: string, nowMs: number): number | undefined => {
@@ -399,7 +370,7 @@ export const decideRetryAfterMs = (query: RetryAfterQuery): RetryAfterResult => 
   if (httpStatusOf(query.error) !== 429) {
     return { waitMs: null };
   }
-  const headers = isRecord(query.error) ? query.error.headers : undefined;
+  const headers = errorHeaders(query.error);
   const raw = retryAfterHeaderValue(headers);
   if (raw === undefined) {
     return { waitMs: LIVE_QUERY_REFETCH_INTERVAL_MS };

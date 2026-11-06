@@ -1,8 +1,7 @@
-import type { QueryClient, QueryKey } from '@tanstack/react-query';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import { useMutation, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Task } from '@yoink/api-contracts';
-import { tsrTasks } from '@/api/client';
+import { isNetworkFailure, taskClient } from '@/api/client';
 import {
   cancelLiveQueries,
   invalidateLiveQueries,
@@ -45,19 +44,20 @@ export const useOpenTaskMutations = (
     onUpdated?: () => void;
   }
 ) => {
-  const completeMutation = tsrTasks.complete.useMutation({
-    onMutate: async ({ params }) => {
+  const completeMutation = useMutation({
+    mutationFn: (input: { id: string }) => taskClient.complete(input),
+    onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
       const previousProjects = snapshotLiveProjects(queryClient);
       const previousNow = snapshotLiveNowSections(queryClient);
-      const nextActionProjects = projectsWithNextAction(queryClient, params.id);
+      const nextActionProjects = projectsWithNextAction(queryClient, id);
       mapLiveOpenTaskLists(queryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
+        tasks.filter((task) => task.id !== id)
       );
-      mapLiveNowSections(queryClient, params.id);
+      mapLiveNowSections(queryClient, id);
       mapLiveProjects(queryClient, (project) =>
-        project.nextActionTaskId === params.id
+        project.nextActionTaskId === id
           ? { ...project, nextActionTaskId: null }
           : project
       );
@@ -66,7 +66,7 @@ export const useOpenTaskMutations = (
         offerWhatsNext({
           projectId: nextActionProject.id,
           projectName: nextActionProject.name,
-          completedTaskId: params.id,
+          completedTaskId: id,
         });
       }
       return { previous, previousProjects, previousNow };
@@ -82,7 +82,7 @@ export const useOpenTaskMutations = (
         restoreQuerySnapshots(queryClient, context.previousNow);
       }
       dismissWhatsNext();
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to complete task');
@@ -96,8 +96,9 @@ export const useOpenTaskMutations = (
     },
   });
 
-  const deleteMutation = tsrTasks.delete.useMutation({
-    onMutate: async ({ params }) => {
+  const deleteMutation = useMutation({
+    mutationFn: (input: { id: string }) => taskClient.delete(input),
+    onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
       const previousProjects = snapshotLiveProjects(queryClient);
@@ -105,11 +106,11 @@ export const useOpenTaskMutations = (
       const completedKey = ['tasks', 'completed'] as const;
       const previousCompleted = queryClient.getQueryData(completedKey);
       mapLiveOpenTaskLists(queryClient, (tasks) =>
-        tasks.filter((task) => task.id !== params.id)
+        tasks.filter((task) => task.id !== id)
       );
-      mapLiveNowSections(queryClient, params.id);
+      mapLiveNowSections(queryClient, id);
       mapLiveProjects(queryClient, (project) =>
-        project.nextActionTaskId === params.id
+        project.nextActionTaskId === id
           ? { ...project, nextActionTaskId: null }
           : project
       );
@@ -117,7 +118,7 @@ export const useOpenTaskMutations = (
         queryClient.setQueryData(
           completedKey,
           mapTaskHistoryPageItems(previousCompleted, (items) =>
-            items.filter((task) => task.id !== params.id)
+            items.filter((task) => task.id !== id)
           )
         );
       }
@@ -136,7 +137,7 @@ export const useOpenTaskMutations = (
       if (context?.completedKey) {
         queryClient.setQueryData(context.completedKey, context.previousCompleted);
       }
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to delete task');
@@ -150,23 +151,25 @@ export const useOpenTaskMutations = (
     },
   });
 
-  const updateMutation = tsrTasks.update.useMutation({
-    onMutate: async ({ params, body }) => {
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: string; body?: UpdateTaskBody }) =>
+      taskClient.update({ id: input.id, ...(input.body ?? {}) }),
+    onMutate: async ({ id, body }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
       const previousProjects = snapshotLiveProjects(queryClient);
       mapLiveOpenTaskLists(queryClient, (tasks, queryKey) =>
-        options.mapUpdate(tasks, queryKey, { id: params.id, body })
+        options.mapUpdate(tasks, queryKey, { id, body })
       );
+      const projectId = body?.projectId;
       const leavingProject =
-        body?.projectId === null ||
-        (typeof body?.projectId === 'string' && body.projectId.length > 0);
+        projectId === null || (typeof projectId === 'string' && projectId.length > 0);
       if (leavingProject) {
         mapLiveProjects(queryClient, (project) => {
-          if (project.nextActionTaskId !== params.id) {
+          if (project.nextActionTaskId !== id) {
             return project;
           }
-          if (body.projectId === project.id) {
+          if (projectId === project.id) {
             return project;
           }
           return { ...project, nextActionTaskId: null };
@@ -181,7 +184,7 @@ export const useOpenTaskMutations = (
       if (context?.previousProjects) {
         restoreQuerySnapshots(queryClient, context.previousProjects);
       }
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to update task');

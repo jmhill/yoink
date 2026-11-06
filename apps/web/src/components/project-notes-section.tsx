@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
 import {
@@ -7,9 +8,8 @@ import {
   type Note,
   type NoteListItem,
 } from '@yoink/api-contracts';
-import { notesClient, tsrNotes } from '@/api/client';
+import { httpStatusOf, isNetworkFailure, noteClient } from '@/api/client';
 import { formatNoteListStamp } from '@/lib/format-note-list-line';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 import { NoteEditorSheet, type NoteEditorDraft } from './note-editor-sheet';
 
@@ -25,13 +25,13 @@ type ProjectNotesSectionProps = {
 };
 
 export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
-  const queryClient = tsrNotes.useQueryClient();
-  const listQuery = tsrNotes.list.useQuery({
+  const queryClient = useQueryClient();
+  const listQuery = useQuery({
     queryKey: ['notes', projectId],
-    queryData: { params: { projectId }, query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => noteClient.list({ projectId, limit: PILE_SAFETY_CAP }),
   });
-  const notes = listQuery.data?.status === 200 ? listQuery.data.body.notes : [];
-  const notesReady = `${listQuery.data?.status === 200 ? listQuery.data.body.total : 'loading'}:${notes
+  const notes = listQuery.data?.notes ?? [];
+  const notesReady = `${listQuery.data?.total ?? 'loading'}:${notes
     .map((note) => note.version)
     .join(',')}`;
 
@@ -47,17 +47,15 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
     await queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'history'] });
   };
 
-  const createMutation = tsrNotes.create.useMutation({
+  const createMutation = useMutation({
+    mutationFn: (input: Parameters<typeof noteClient.create>[0]) => noteClient.create(input),
     onSuccess: async (result) => {
-      if (result.status !== 201) {
-        return;
-      }
-      setNote(result.body);
+      setNote(result);
       setDraft({
-        title: result.body.title,
-        body: result.body.body,
-        version: result.body.version,
-        noteId: result.body.id,
+        title: result.title,
+        body: result.body,
+        version: result.version,
+        noteId: result.id,
       });
       setStale(false);
       setMode('read');
@@ -65,7 +63,7 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
       await invalidate();
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
@@ -73,17 +71,15 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
     },
   });
 
-  const updateMutation = tsrNotes.update.useMutation({
+  const updateMutation = useMutation({
+    mutationFn: (input: Parameters<typeof noteClient.update>[0]) => noteClient.update(input),
     onSuccess: async (result) => {
-      if (result.status !== 200) {
-        return;
-      }
-      setNote(result.body);
+      setNote(result);
       setDraft({
-        title: result.body.title,
-        body: result.body.body,
-        version: result.body.version,
-        noteId: result.body.id,
+        title: result.title,
+        body: result.body,
+        version: result.version,
+        noteId: result.id,
       });
       setStale(false);
       setMode('read');
@@ -91,11 +87,11 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
       await invalidate();
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && err.status === 409) {
+      if (httpStatusOf(err) === 409) {
         setStale(true);
         return;
       }
@@ -103,7 +99,8 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
     },
   });
 
-  const deleteMutation = tsrNotes.delete.useMutation({
+  const deleteMutation = useMutation({
+    mutationFn: (input: Parameters<typeof noteClient.delete>[0]) => noteClient.delete(input),
     onSuccess: async () => {
       setOpen(false);
       setNote(null);
@@ -117,20 +114,22 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
   });
 
   const openRead = async (item: NoteListItem) => {
-    const result = await notesClient.get({
-      params: { projectId, noteId: item.id },
-    });
-    if (result.status !== 200) {
+    try {
+      const result = await noteClient.get({
+        projectId,
+        noteId: item.id,
+      });
+      setNote(result);
+      setDraft({
+        title: result.title,
+        body: result.body,
+        version: result.version,
+        noteId: result.id,
+      });
+    } catch {
       toast.error('Failed to open note');
       return;
     }
-    setNote(result.body);
-    setDraft({
-      title: result.body.title,
-      body: result.body.body,
-      version: result.body.version,
-      noteId: result.body.id,
-    });
     setPreview(false);
     setStale(false);
     setMode('read');
@@ -153,14 +152,18 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
     }
     if (draft.noteId && draft.version) {
       updateMutation.mutate({
-        params: { projectId, noteId: draft.noteId },
-        body: { title, body: draft.body, expectedVersion: draft.version },
+        projectId,
+        noteId: draft.noteId,
+        title,
+        body: draft.body,
+        expectedVersion: draft.version,
       });
       return;
     }
     createMutation.mutate({
-      params: { projectId },
-      body: { title, body: draft.body },
+      projectId,
+      title,
+      body: draft.body,
     });
   };
 
@@ -168,30 +171,29 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
     if (!draft.noteId) {
       return;
     }
-    const result = await notesClient.get({
-      params: { projectId, noteId: draft.noteId },
-    });
-    if (result.status !== 200) {
+    try {
+      const result = await noteClient.get({
+        projectId,
+        noteId: draft.noteId,
+      });
+      setNote(result);
+      setDraft({
+        title: result.title,
+        body: result.body,
+        version: result.version,
+        noteId: result.id,
+      });
+      setStale(false);
+    } catch {
       toast.error('Failed to load the newer version');
-      return;
     }
-    setNote(result.body);
-    setDraft({
-      title: result.body.title,
-      body: result.body.body,
-      version: result.body.version,
-      noteId: result.body.id,
-    });
-    setStale(false);
   };
 
   const saveCopy = () => {
     createMutation.mutate({
-      params: { projectId },
-      body: {
-        title: copyNoteTitle(draft.title.trim() || 'Note'),
-        body: draft.body,
-      },
+      projectId,
+      title: copyNoteTitle(draft.title.trim() || 'Note'),
+      body: draft.body,
     });
   };
 
@@ -201,7 +203,7 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
   return (
     <section
       data-project-notes=""
-      data-notes-ready={listQuery.data?.status === 200 ? notesReady : undefined}
+      data-notes-ready={listQuery.data !== undefined ? notesReady : undefined}
       className="space-y-3"
     >
       <div className="flex items-center justify-between gap-3">
@@ -267,8 +269,8 @@ export function ProjectNotesSection({ projectId }: ProjectNotesSectionProps) {
         onDelete={() => {
           if (draft.noteId) {
             deleteMutation.mutate({
-              params: { projectId, noteId: draft.noteId },
-              body: {},
+              projectId,
+              noteId: draft.noteId,
             });
           }
         }}

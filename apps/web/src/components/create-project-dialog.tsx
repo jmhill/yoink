@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -10,9 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { tsrProjects } from '@/api/client';
-import { projectContract } from '@yoink/api-contracts';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import { httpFailureMessage, httpStatusOf, isNetworkFailure, projectClient } from '@/api/client';
 import { toast } from 'sonner';
 
 type CreateProjectDialogProps = {
@@ -26,15 +25,16 @@ export function CreateProjectDialog({
   onOpenChange,
   onCreated,
 }: CreateProjectDialogProps) {
-  const queryClient = tsrProjects.useQueryClient();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [objective, setObjective] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const trimmedName = name.trim();
 
-  const createMutation = tsrProjects.create.useMutation({
+  const createMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.create>[0]) =>
+      projectClient.create(input),
     onSuccess: async (result) => {
-      if (result.status !== 201) return;
       toast.success('Project created');
       setName('');
       setObjective('');
@@ -42,21 +42,19 @@ export function CreateProjectDialog({
       onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['review'] });
-      onCreated({ id: result.body.id, name: result.body.name });
+      onCreated({ id: result.id, name: result.name });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 403 || status === 409) {
-          const parsed = projectContract.create.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setFormError(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 403 || status === 409) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          setFormError(message);
+          return;
         }
       }
       toast.error('Failed to create project');
@@ -77,10 +75,8 @@ export function CreateProjectDialog({
     if (!trimmedName || createMutation.isPending) return;
     const trimmedObjective = objective.trim();
     createMutation.mutate({
-      body: {
-        name: trimmedName,
-        ...(trimmedObjective ? { objective: trimmedObjective } : {}),
-      },
+      name: trimmedName,
+      ...(trimmedObjective ? { objective: trimmedObjective } : {}),
     });
   };
 

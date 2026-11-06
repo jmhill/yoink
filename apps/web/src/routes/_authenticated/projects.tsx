@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
 import { Button } from '@yoink/ui-base/components/button';
@@ -19,11 +20,11 @@ import {
 import { PILE_SAFETY_CAP, type Project, type ReviewProject } from '@yoink/api-contracts';
 import { memberLabel } from '@/api/auth';
 import {
-  tsrAuth,
-  tsrLists,
-  tsrOrganizations,
-  tsrProjects,
-  tsrReview,
+  authClient,
+  listClient,
+  organizationClient,
+  projectClient,
+  reviewClient,
 } from '@/api/client';
 import { ConfirmProposalSheet } from '@/components/confirm-proposal-sheet';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
@@ -69,62 +70,60 @@ function ReviewPage() {
   const [nextActionFor, setNextActionFor] = useState<Project | null>(null);
   const [statusFor, setStatusFor] = useState<ReviewProject | null>(null);
   const [waitingFormOpen, setWaitingFormOpen] = useState(false);
-  const queryClient = tsrReview.useQueryClient();
+  const queryClient = useQueryClient();
   const actions = useReviewActions();
   const { proposals: proposedPage, proposalsQuery } = useProcessCounts();
 
-  const reviewQuery = tsrReview.list.useQuery({
+  const reviewQuery = useQuery({
     queryKey: ['review'],
-    queryData: { query: { limit: PILE_SAFETY_CAP, timeZone } },
+    queryFn: () => reviewClient.list({ limit: PILE_SAFETY_CAP, timeZone }),
   });
-  const doneQuery = tsrReview.done.useQuery({
+  const doneQuery = useQuery({
     queryKey: ['review', 'done', search.doneWeek ?? 'current'],
-    queryData: {
-      query: {
+    queryFn: () =>
+      reviewClient.done({
         limit: PILE_SAFETY_CAP,
         ...(search.doneWeek === undefined ? {} : { week: search.doneWeek }),
-      },
-    },
+      }),
   });
-  const projectsQuery = tsrProjects.list.useQuery({
+  const projectsQuery = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const listsQuery = tsrLists.list.useQuery({
+  const listsQuery = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const sessionQuery = tsrAuth.session.useQuery({
+  const sessionQuery = useQuery({
     queryKey: ['session'],
-    queryData: {},
+    queryFn: () => authClient.session(),
     refetchInterval: false,
   });
-  const organizationId =
-    sessionQuery.data?.status === 200 ? sessionQuery.data.body.organizationId : undefined;
-  const viewerId = sessionQuery.data?.status === 200 ? sessionQuery.data.body.user.id : undefined;
-  const viewerEmail =
-    sessionQuery.data?.status === 200 ? sessionQuery.data.body.user.email : undefined;
-  const membersQuery = tsrOrganizations.listMembers.useQuery({
+  const organizationId = sessionQuery.data?.organizationId;
+  const viewerId = sessionQuery.data?.user.id;
+  const viewerEmail = sessionQuery.data?.user.email;
+  const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
-    queryData: { params: { organizationId: organizationId ?? '' } },
+    queryFn: () =>
+      organizationClient.listMembers({ organizationId: organizationId ?? '' }),
     enabled: Boolean(organizationId),
     refetchInterval: false,
   });
 
   const sheetProjectId = nextActionFor?.id ?? statusFor?.project.id ?? '';
-  const openTasksQuery = tsrProjects.listOpenTasks.useQuery({
+  const openTasksQuery = useQuery({
     queryKey: ['tasks', 'project', sheetProjectId],
-    queryData: {
-      params: { id: sheetProjectId },
-      query: { limit: PILE_SAFETY_CAP },
-    },
+    queryFn: () =>
+      projectClient.listOpenTasks({
+        id: sheetProjectId,
+        limit: PILE_SAFETY_CAP,
+      }),
     enabled: sheetProjectId.length > 0,
   });
 
-  const memberRecords =
-    membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const memberRecords = membersQuery.data?.members ?? [];
   const viewerMember = memberRecords.find((member) => member.userId === viewerId);
   const restoredByName = proposerLabel(
     viewerMember ?? (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
@@ -151,20 +150,18 @@ function ReviewPage() {
     );
   }
 
-  const reviewProjects = reviewQuery.data?.status === 200 ? reviewQuery.data.body.projects : [];
-  const today = reviewQuery.data?.status === 200 ? reviewQuery.data.body.today : '';
-  const donePage = doneQuery.data?.status === 200 ? doneQuery.data.body : null;
-  const allProjects = projectsQuery.data?.status === 200 ? projectsQuery.data.body.projects : [];
-  const namedLists = listsQuery.data?.status === 200 ? listsQuery.data.body.lists : [];
+  const reviewProjects = reviewQuery.data?.projects ?? [];
+  const today = reviewQuery.data?.today ?? '';
+  const donePage = doneQuery.data ?? null;
+  const allProjects = projectsQuery.data?.projects ?? [];
+  const namedLists = listsQuery.data?.lists ?? [];
   const members =
-    membersQuery.data?.status === 200
-      ? membersQuery.data.body.members.map((member) => ({
-          userId: member.userId,
-          label: memberLabel(member),
-        }))
-      : [];
-  const openTasks = openTasksQuery.data?.status === 200 ? openTasksQuery.data.body.tasks : [];
-  const ready = reviewQuery.data?.status === 200;
+    membersQuery.data?.members.map((member) => ({
+      userId: member.userId,
+      label: memberLabel(member),
+    })) ?? [];
+  const openTasks = openTasksQuery.data?.tasks ?? [];
+  const ready = reviewQuery.data !== undefined;
   const sections = partitionReviewSections(reviewProjects);
   const waitingGroups = groupWaitingProjects(sections.waiting);
   const attentionCount = reviewAttentionTotal(reviewProjects, proposals.length);
@@ -194,7 +191,7 @@ function ReviewPage() {
   return (
     <div
       data-review-ready={ready ? '' : undefined}
-      data-review-proposals-ready={proposalsQuery.data?.status === 200 ? '' : undefined}
+      data-review-proposals-ready={proposalsQuery.data !== undefined ? '' : undefined}
       data-review-version={ready ? version : undefined}
       className="container mx-auto max-w-2xl p-4"
     >

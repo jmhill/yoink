@@ -103,23 +103,17 @@ describe('promoteTaskData', () => {
 describe('inboxQueryWithoutCapture', () => {
   it('drops the capture and decrements total without mutating the input', () => {
     const inbox = {
-      status: 200 as const,
-      body: {
-        captures: [{ id: 'keep' }, { id: 'gone' }],
-        total: 2,
-        extra: true,
-      },
+      captures: [{ id: 'keep' }, { id: 'gone' }],
+      total: 2,
+      extra: true,
     };
 
     expect(inboxQueryWithoutCapture(inbox, 'gone')).toEqual({
-      status: 200,
-      body: {
-        captures: [{ id: 'keep' }],
-        total: 1,
-        extra: true,
-      },
+      captures: [{ id: 'keep' }],
+      total: 1,
+      extra: true,
     });
-    expect(inbox.body.captures).toHaveLength(2);
-    expect(inbox.body.total).toBe(2);
+    expect(inbox.captures).toHaveLength(2);
+    expect(inbox.total).toBe(2);
   });
 });

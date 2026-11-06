@@ -1,12 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { User } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { PILE_SAFETY_CAP, type Task } from '@yoink/api-contracts';
 import { memberLabel } from '@/api/auth';
-import { tsr, tsrAuth, tsrLists, tsrOrganizations, tsrProjects, tsrWork } from '@/api/client';
+import {
+  authClient,
+  captureClient,
+  listClient,
+  organizationClient,
+  projectClient,
+  workClient,
+} from '@/api/client';
 import { Header } from '@/components/header';
 import { MobileTasksRailDrawer } from '@/components/mobile-tasks-rail-drawer';
 import { NowListsSheet } from '@/components/now-lists-sheet';
@@ -39,52 +47,53 @@ function WorkPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [listsOpen, setListsOpen] = useState(false);
 
-  const { data: sessionData } = tsrAuth.session.useQuery({
+  const { data: sessionData } = useQuery({
     queryKey: ['session'],
-    queryData: {},
+    queryFn: () => authClient.session(),
     refetchInterval: false,
   });
-  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
-  const currentUserId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
+  const organizationId = sessionData?.organizationId;
+  const currentUserId = sessionData?.user.id;
 
-  const membersQuery = tsrOrganizations.listMembers.useQuery({
+  const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
-    queryData: { params: { organizationId: organizationId ?? '' } },
+    queryFn: () =>
+      organizationClient.listMembers({ organizationId: organizationId ?? '' }),
     enabled: Boolean(organizationId),
     refetchInterval: false,
   });
-  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const members = membersQuery.data?.members ?? [];
 
-  const nextActionsQuery = tsrWork.listNextActions.useQuery({
+  const nextActionsQuery = useQuery({
     queryKey: ['work', 'next-actions', owner],
-    queryData: { query: { owner, limit: PILE_SAFETY_CAP } },
+    queryFn: () => workClient.listNextActions({ owner, limit: PILE_SAFETY_CAP }),
   });
-  const dueQuery = tsrWork.listDue.useQuery({
+  const dueQuery = useQuery({
     queryKey: ['work', 'due', owner],
-    queryData: { query: { owner, limit: PILE_SAFETY_CAP, timeZone } },
+    queryFn: () => workClient.listDue({ owner, limit: PILE_SAFETY_CAP, timeZone }),
   });
-  const listsQuery = tsrWork.listLists.useQuery({
+  const listsQuery = useQuery({
     queryKey: ['work', 'lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => workClient.listLists({ limit: PILE_SAFETY_CAP }),
   });
-  const namedListsQuery = tsrLists.list.useQuery({
+  const namedListsQuery = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
   });
-  const projectsQuery = tsrProjects.list.useQuery({
+  const projectsQuery = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
+  const { data: sourceCaptureData, isPending: isLoadingCapture } = useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
-    queryData: { params: { id: editingTask?.captureId ?? '' } },
+    queryFn: () => captureClient.get({ id: editingTask?.captureId ?? '' }),
     enabled: Boolean(editingTask?.captureId),
     refetchInterval: false,
   });
-  const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
+  const sourceCapture = sourceCaptureData ?? null;
 
-  const queryClient = tsrWork.useQueryClient();
+  const queryClient = useQueryClient();
   const { completeMutation, deleteMutation, updateMutation } = useOpenTaskMutations(queryClient, {
     mapUpdate: (tasks, _queryKey, input) =>
       tasks.map((task) =>
@@ -103,17 +112,14 @@ function WorkPage() {
       ),
   });
 
-  const nextActions =
-    nextActionsQuery.data?.status === 200 ? nextActionsQuery.data.body.items : [];
-  const dueTasks = dueQuery.data?.status === 200 ? dueQuery.data.body.tasks : [];
-  const nextActionCount =
-    nextActionsQuery.data?.status === 200 ? nextActionsQuery.data.body.total : nextActions.length;
-  const dueCount = dueQuery.data?.status === 200 ? dueQuery.data.body.total : dueTasks.length;
-  const namedLists = listsQuery.data?.status === 200 ? listsQuery.data.body.lists : [];
-  const unlistedCount =
-    listsQuery.data?.status === 200 ? listsQuery.data.body.unlisted.openTaskCount : 0;
-  const editLists = namedListsQuery.data?.status === 200 ? namedListsQuery.data.body.lists : [];
-  const editProjects = projectsQuery.data?.status === 200 ? projectsQuery.data.body.projects : [];
+  const nextActions = nextActionsQuery.data?.items ?? [];
+  const dueTasks = dueQuery.data?.tasks ?? [];
+  const nextActionCount = nextActionsQuery.data?.total ?? nextActions.length;
+  const dueCount = dueQuery.data?.total ?? dueTasks.length;
+  const namedLists = listsQuery.data?.lists ?? [];
+  const unlistedCount = listsQuery.data?.unlisted.openTaskCount ?? 0;
+  const editLists = namedListsQuery.data?.lists ?? [];
+  const editProjects = projectsQuery.data?.projects ?? [];
 
   const ready =
     nextActionsQuery.isSuccess &&
@@ -202,7 +208,7 @@ function WorkPage() {
                   projectLabel: row.projectLabel,
                   ownerLabel: ownerOf(row.task),
                 }))}
-                onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
+                onComplete={(id) => completeMutation.mutate({ id })}
                 onEdit={setEditingTask}
                 isLoading={completeMutation.isPending}
               />
@@ -238,11 +244,11 @@ function WorkPage() {
         task={editingTask}
         sourceCapture={sourceCapture}
         onSave={(taskId, updates) =>
-          updateMutation.mutate({ params: { id: taskId }, body: updates })
+          updateMutation.mutate({ id: taskId, body: updates })
         }
         onDelete={(id) => {
           setEditingTask(null);
-          deleteMutation.mutate({ params: { id } });
+          deleteMutation.mutate({ id });
         }}
         isLoading={updateMutation.isPending}
         isLoadingCapture={isLoadingCapture}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Button } from '@yoink/ui-base/components/button';
@@ -23,10 +24,9 @@ import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { toast } from 'sonner';
 import { listMembers, removeMember, mintAgent, memberDisplayName, memberLabel, type Member } from '@/api/auth';
-import { tsrOrganizations } from '@/api/client';
+import { httpFailureMessage, organizationClient } from '@/api/client';
 import {
   CHANGE_ROLE_STORAGE_MESSAGE,
-  ErrorSchema,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   HANDOVER_OWNERSHIP_PATH,
   MAKE_ADMIN_LABEL,
@@ -45,11 +45,6 @@ import {
   roleActionFor,
 } from '@/lib/member-row-actions';
 import { roleActionMenuCoords } from '@/lib/role-action-menu';
-
-const errorBodyMessage = (body: unknown): string | null => {
-  const parsed = ErrorSchema.safeParse(body);
-  return parsed.success ? parsed.data.message : null;
-};
 
 type MembersSectionProps = {
   organizationId: string;
@@ -116,37 +111,33 @@ export function MembersSection({
 
   const viewer = { userId: currentUserId, role: currentUserRole };
 
-  const reissueMutation = tsrOrganizations.reissueAgentToken.useMutation({
+  const reissueMutation = useMutation({
+    mutationFn: (input: Parameters<typeof organizationClient.reissueAgentToken>[0]) =>
+      organizationClient.reissueAgentToken(input),
     onSuccess: (result) => {
-      if (result.status === 201) {
-        setRawReissuedToken(result.body.rawToken);
-        return;
-      }
-      setReissueError(errorBodyMessage(result.body) ?? 'Failed to issue token');
+      setRawReissuedToken(result.rawToken);
     },
-    onError: () => {
-      setReissueError('Failed to issue token');
+    onError: (err) => {
+      setReissueError(httpFailureMessage(err) ?? 'Failed to issue token');
     },
   });
 
-  const changeRoleMutation = tsrOrganizations.changeMemberRole.useMutation({
+  const changeRoleMutation = useMutation({
+    mutationFn: (input: Parameters<typeof organizationClient.changeMemberRole>[0]) =>
+      organizationClient.changeMemberRole(input),
     onSuccess: (result, variables) => {
-      if (result.status === 200) {
-        const name = memberDisplayName(result.body.member);
-        if (variables.body.role === 'admin') {
-          toast.success(madeAdminToast(name));
-        } else {
-          toast.success(madeMemberToast(name));
-        }
-        setDemotingMember(null);
-        setRoleError(null);
-        loadMembers('refresh');
-        return;
+      const name = memberDisplayName(result.member);
+      if (variables.role === 'admin') {
+        toast.success(madeAdminToast(name));
+      } else {
+        toast.success(madeMemberToast(name));
       }
-      setRoleError(errorBodyMessage(result.body) ?? CHANGE_ROLE_STORAGE_MESSAGE);
+      setDemotingMember(null);
+      setRoleError(null);
+      loadMembers('refresh');
     },
-    onError: () => {
-      setRoleError(CHANGE_ROLE_STORAGE_MESSAGE);
+    onError: (err) => {
+      setRoleError(httpFailureMessage(err) ?? CHANGE_ROLE_STORAGE_MESSAGE);
     },
   });
 
@@ -195,8 +186,9 @@ export function MembersSection({
   const requestRole = (target: Member, role: 'admin' | 'member') => {
     setRoleError(null);
     changeRoleMutation.mutate({
-      params: { organizationId, userId: target.userId },
-      body: { role },
+      organizationId,
+      userId: target.userId,
+      role,
     });
   };
 
@@ -531,8 +523,8 @@ export function MembersSection({
                     if (!reissuingMember) return;
                     setReissueError(null);
                     reissueMutation.mutate({
-                      params: { organizationId, userId: reissuingMember.userId },
-                      body: {},
+                      organizationId,
+                      userId: reissuingMember.userId,
                     });
                   }}
                   disabled={reissueMutation.isPending}

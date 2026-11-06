@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
-import { tsrLists } from '@/api/client';
+import { httpFailureMessage, httpStatusOf, isNetworkFailure, listClient } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
 type NamedListRenameFieldProps = {
@@ -19,41 +19,33 @@ export function NamedListRenameField({
   onCancel,
   onRenamed,
 }: NamedListRenameFieldProps) {
-  const queryClient = tsrLists.useQueryClient();
+  const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(currentName);
   const [formError, setFormError] = useState<string | null>(null);
   const trimmedName = name.trim();
 
-  const renameMutation = tsrLists.rename.useMutation({
+  const renameMutation = useMutation({
+    mutationFn: (input: Parameters<typeof listClient.rename>[0]) => listClient.rename(input),
     onMutate: async () => {
       await cancelLiveQueries(queryClient);
     },
     onSuccess: async (result) => {
-      if (result.status !== 200) return;
       setFormError(null);
       await invalidateLiveQueries(queryClient);
-      onRenamed(result.body.name);
+      onRenamed(result.name);
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        (err.status === 409 || err.status === 400) &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
+      const status = httpStatusOf(err);
+      if (status === 409 || status === 400) {
         setFormError(
-          body?.message ??
-            (err.status === 409
-              ? 'A list with this name already exists'
-              : 'Name is required')
+          httpFailureMessage(err) ??
+            (status === 409 ? 'A list with this name already exists' : 'Name is required')
         );
         return;
       }
@@ -101,8 +93,8 @@ export function NamedListRenameField({
       return;
     }
     renameMutation.mutate({
-      params: { id: listId },
-      body: { name: trimmedName },
+      id: listId,
+      name: trimmedName,
     });
   };
 

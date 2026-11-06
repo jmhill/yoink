@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Input } from '@yoink/ui-base/components/input';
@@ -13,38 +14,24 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
 import type { TokenInfo } from '@yoink/api-contracts';
-import { tsrTokens } from '@/api/client';
+import { httpFailureMessage, tokenClient } from '@/api/client';
 
 const MAX_TOKENS = 2;
-
-const errorBodyMessage = (body: unknown): string | null => {
-  if (
-    typeof body === 'object' &&
-    body !== null &&
-    'message' in body &&
-    typeof body.message === 'string'
-  ) {
-    return body.message;
-  }
-  return null;
-};
 
 export function TokensSection() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<TokenInfo | null>(null);
 
-  const listQuery = tsrTokens.list.useQuery({
+  const listQuery = useQuery({
     queryKey: ['tokens'],
-    queryData: {},
+    queryFn: () => tokenClient.list(),
   });
 
-  const listBody = listQuery.data?.status === 200 ? listQuery.data.body : undefined;
+  const listBody = listQuery.data;
   const listError = listQuery.error
-    ? 'Failed to list tokens'
-    : listQuery.data && listQuery.data.status !== 200
-      ? errorBodyMessage(listQuery.data.body) ?? 'Failed to list tokens'
-      : null;
+    ? (httpFailureMessage(listQuery.error) ?? 'Failed to list tokens')
+    : null;
 
   const handleCreateSuccess = () => {
     setCreateDialogOpen(false);
@@ -191,16 +178,13 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
   const [rawToken, setRawToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const createMutation = tsrTokens.create.useMutation({
+  const createMutation = useMutation({
+    mutationFn: (input: Parameters<typeof tokenClient.create>[0]) => tokenClient.create(input),
     onSuccess: (result) => {
-      if (result.status === 201) {
-        setRawToken(result.body.rawToken);
-        return;
-      }
-      setError(errorBodyMessage(result.body) ?? 'Failed to create token');
+      setRawToken(result.rawToken);
     },
-    onError: () => {
-      setError('Failed to create token');
+    onError: (err) => {
+      setError(httpFailureMessage(err) ?? 'Failed to create token');
     },
   });
 
@@ -220,7 +204,7 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
     }
 
     setError(null);
-    createMutation.mutate({ body: { name: tokenName.trim() } });
+    createMutation.mutate({ name: tokenName.trim() });
   };
 
   const handleCopy = async () => {
@@ -353,16 +337,13 @@ function DeleteTokenDialog({
 }: DeleteTokenDialogProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const revokeMutation = tsrTokens.delete.useMutation({
-    onSuccess: (result) => {
-      if (result.status === 200) {
-        onSuccess();
-        return;
-      }
-      setError(errorBodyMessage(result.body) ?? 'Failed to revoke token');
+  const revokeMutation = useMutation({
+    mutationFn: (input: Parameters<typeof tokenClient.delete>[0]) => tokenClient.delete(input),
+    onSuccess: () => {
+      onSuccess();
     },
-    onError: () => {
-      setError('Failed to revoke token');
+    onError: (err) => {
+      setError(httpFailureMessage(err) ?? 'Failed to revoke token');
     },
   });
 
@@ -375,7 +356,7 @@ function DeleteTokenDialog({
   const handleDelete = () => {
     if (!token) return;
     setError(null);
-    revokeMutation.mutate({ params: { tokenId: token.id } });
+    revokeMutation.mutate({ tokenId: token.id });
   };
 
   return (

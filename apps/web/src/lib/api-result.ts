@@ -23,8 +23,7 @@ export const jsonBodyOf = (text: string): JsonBodyResult => {
 };
 
 /**
- * ts-rest throws this object on non-2xx. Headers must stay on the result
- * so live queries can read Retry-After from a 429.
+ * Headers stay on the result so callers can read Retry-After from a 429.
  */
 export const apiResultFromResponse = async (response: Response): Promise<ApiResult> => {
   const parsed = jsonBodyOf(await response.text());

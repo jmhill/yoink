@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, CircleCheck, Clock, History, Pencil } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
 import {
@@ -22,19 +23,18 @@ import { ProjectNotesSection } from '@/components/project-notes-section';
 import { ProposalBanner } from '@/components/proposal-banner';
 import { NextActionPicker, type NewNextActionTask } from '@/components/next-action-picker';
 import {
-  tsr,
-  tsrAuth,
-  tsrLists,
-  tsrOrganizations,
-  tsrProjects,
-  tsrTasks,
+  authClient,
+  captureClient,
+  httpFailureMessage,
+  httpStatusOf,
+  isNetworkFailure,
+  listClient,
+  organizationClient,
+  projectClient,
+  taskClient,
 } from '@/api/client';
 import { memberLabel } from '@/api/auth';
-import {
-  PILE_SAFETY_CAP,
-  projectContract,
-  type Task,
-} from '@yoink/api-contracts';
+import { PILE_SAFETY_CAP, type Task } from '@yoink/api-contracts';
 import { invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { localDateString, waitingLineParts } from '@/lib/format-waiting-line';
@@ -53,7 +53,6 @@ import {
   useProjectFinishedPages,
   useProjectHistoryPages,
 } from '@/lib/use-project-history-pages';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 import type { AssignableProjectStatus } from '@yoink/api-contracts';
 
@@ -64,10 +63,10 @@ export const Route = createFileRoute('/_authenticated/projects_/$projectId')({
 function ProjectPage() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = tsrProjects.useQueryClient();
-  const { data, error, isPending, refetch } = tsrProjects.get.useQuery({
+  const queryClient = useQueryClient();
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ['projects', projectId],
-    queryData: { params: { id: projectId } },
+    queryFn: () => projectClient.get({ id: projectId }),
   });
 
   const {
@@ -75,41 +74,41 @@ function ProjectPage() {
     error: openTasksError,
     isPending: openTasksPending,
     refetch: refetchOpenTasks,
-  } = tsrProjects.listOpenTasks.useQuery({
+  } = useQuery({
     queryKey: ['tasks', 'project', projectId],
-    queryData: { params: { id: projectId }, query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.listOpenTasks({ id: projectId, limit: PILE_SAFETY_CAP }),
   });
 
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData } = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
+  const namedLists = listsData?.lists ?? [];
 
-  const { data: projectsData } = tsrProjects.list.useQuery({
+  const { data: projectsData } = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const projects = projectsData?.projects ?? [];
 
-  const { data: sessionData } = tsrAuth.session.useQuery({
+  const { data: sessionData } = useQuery({
     queryKey: ['session'],
-    queryData: {},
+    queryFn: () => authClient.session(),
     refetchInterval: false,
   });
-  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
-  const viewerId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
+  const organizationId = sessionData?.organizationId;
+  const viewerId = sessionData?.user.id;
 
-  const membersQuery = tsrOrganizations.listMembers.useQuery({
+  const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
-    queryData: { params: { organizationId: organizationId ?? '' } },
+    queryFn: () => organizationClient.listMembers({ organizationId: organizationId ?? '' }),
     enabled: Boolean(organizationId),
     refetchInterval: false,
   });
-  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
-  const viewerEmail = sessionData?.status === 200 ? sessionData.body.user.email : undefined;
+  const members = membersQuery.data?.members ?? [];
+  const viewerEmail = sessionData?.user.email;
   const restoredByName = proposerLabel(
     members.find((member) => member.userId === viewerId) ??
       (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
@@ -120,8 +119,8 @@ function ProjectPage() {
     },
   });
 
-  const project = data?.status === 200 ? data.body : undefined;
-  const openTasks = openTasksData?.status === 200 ? openTasksData.body.tasks : [];
+  const project = data ?? undefined;
+  const openTasks = openTasksData?.tasks ?? [];
   const [formError, setFormError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [nextActionError, setNextActionError] = useState<string | null>(null);
@@ -135,13 +134,13 @@ function ProjectPage() {
   const history = useProjectHistoryPages(projectId, true);
   const finished = useProjectFinishedPages(projectId, true);
 
-  const { data: sourceCaptureData, isPending: isLoadingCapture } = tsr.get.useQuery({
+  const { data: sourceCaptureData, isPending: isLoadingCapture } = useQuery({
     queryKey: ['capture', editingTask?.captureId ?? ''],
-    queryData: { params: { id: editingTask?.captureId ?? '' } },
+    queryFn: () => captureClient.get({ id: editingTask?.captureId ?? '' }),
     enabled: !!editingTask?.captureId,
     refetchInterval: false,
   });
-  const sourceCapture = sourceCaptureData?.status === 200 ? sourceCaptureData.body : null;
+  const sourceCapture = sourceCaptureData ?? null;
 
   useEffect(() => {
     if (editingTask) {
@@ -149,9 +148,10 @@ function ProjectPage() {
     }
   }, [editingTask, membersQuery.refetch]);
 
-  const statusMutation = tsrProjects.changeStatus.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const statusMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.changeStatus>[0]) =>
+      projectClient.changeStatus(input),
+    onSuccess: async () => {
       setStatusError(null);
       toast.success('Project status saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -159,54 +159,51 @@ function ProjectPage() {
       await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 403 || status === 409) {
-          const parsed = projectContract.changeStatus.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setStatusError(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 400 || status === 403 || status === 409) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          setStatusError(message);
+          return;
         }
       }
       toast.error('Failed to change project status');
     },
   });
 
-  const updateMutation = tsrProjects.update.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const updateMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.update>[0]) => projectClient.update(input),
+    onSuccess: async () => {
       setFormError(null);
       setEditOpen(false);
       toast.success('Project saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 409) {
-          const parsed = projectContract.update.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setFormError(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 400 || status === 409) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          setFormError(message);
+          return;
         }
       }
       toast.error('Failed to save project');
     },
   });
 
-  const nextActionMutation = tsrProjects.setNextAction.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const nextActionMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.setNextAction>[0]) =>
+      projectClient.setNextAction(input),
+    onSuccess: async () => {
       setNextActionError(null);
       setPickerOpen(false);
       toast.success('Next action saved');
@@ -215,25 +212,25 @@ function ProjectPage() {
       await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 404) {
-          const parsed = projectContract.setNextAction.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setNextActionError(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 400 || status === 404) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          setNextActionError(message);
+          return;
         }
       }
       toast.error('Failed to set next action');
     },
   });
 
-  const uncompleteMutation = tsrTasks.uncomplete.useMutation({
+  const uncompleteMutation = useMutation({
+    mutationFn: (input: Parameters<typeof taskClient.uncomplete>[0]) =>
+      taskClient.uncomplete(input),
     onSettled: () => {
       void invalidateLiveQueries(queryClient);
     },
@@ -300,21 +297,21 @@ function ProjectPage() {
     }
   ) => {
     updateTaskMutation.mutate({
-      params: { id: taskId },
+      id: taskId,
       body: updates,
     });
   };
 
   const handleDelete = (id: string) => {
-    deleteMutation.mutate({ params: { id } });
+    deleteMutation.mutate({ id });
     setDeleteConfirmId(null);
   };
 
   const submitNextAction = (body: { taskId: string } | { newTask: NewNextActionTask }) => {
     setNextActionError(null);
     nextActionMutation.mutate({
-      params: { id: projectId },
-      body,
+      id: projectId,
+      ...body,
     });
   };
 
@@ -371,8 +368,8 @@ function ProjectPage() {
                 }) => {
                   setStatusError(null);
                   statusMutation.mutate({
-                    params: { id: projectId },
-                    body: input,
+                    id: projectId,
+                    ...input,
                   });
                 }}
               />
@@ -470,8 +467,8 @@ function ProjectPage() {
             <TaskCard
               task={nextActionTask}
               emphasis="next-action"
-              onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
-              onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+              onComplete={(id) => completeMutation.mutate({ id })}
+              onUncomplete={(id) => uncompleteMutation.mutate({ id })}
               onEdit={setEditingTask}
               isLoading={taskBusy}
               assigneeLabel={assigneeLabelFor(nextActionTask)}
@@ -563,8 +560,8 @@ function ProjectPage() {
                 <TaskCard
                   key={task.id}
                   task={task}
-                  onComplete={(id) => completeMutation.mutate({ params: { id }, body: {} })}
-                  onUncomplete={(id) => uncompleteMutation.mutate({ params: { id }, body: {} })}
+                  onComplete={(id) => completeMutation.mutate({ id })}
+                  onUncomplete={(id) => uncompleteMutation.mutate({ id })}
                   onEdit={setEditingTask}
                   isLoading={taskBusy}
                   assigneeLabel={assigneeLabelFor(task)}
@@ -610,7 +607,7 @@ function ProjectPage() {
                         aria-label={`Reopen ${task.title}`}
                         disabled={taskBusy}
                         onClick={() =>
-                          uncompleteMutation.mutate({ params: { id: task.id }, body: {} })
+                          uncompleteMutation.mutate({ id: task.id })
                         }
                       >
                         <CircleCheck className="size-4" aria-hidden="true" />
@@ -725,8 +722,8 @@ function ProjectPage() {
         onClearError={() => setFormError(null)}
         onSave={(input) => {
           updateMutation.mutate({
-            params: { id: projectId },
-            body: input,
+            id: projectId,
+            ...input,
           });
         }}
       />

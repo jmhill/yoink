@@ -15,11 +15,8 @@ export type PromoteTaskData = {
 };
 
 export type InboxQueryPage<TCapture extends { id: string } = { id: string }> = {
-  status: number;
-  body: {
-    captures: readonly TCapture[];
-    total: number;
-  };
+  captures: readonly TCapture[];
+  total: number;
 };
 
 const localAt = (now: Date, dayOffset: number, hours: number): Date =>
@@ -64,10 +61,7 @@ export function inboxQueryWithoutCapture<
 >(inbox: TInbox, id: string): TInbox {
   return {
     ...inbox,
-    body: {
-      ...inbox.body,
-      captures: inbox.body.captures.filter((capture) => capture.id !== id),
-      total: Math.max(0, inbox.body.total - 1),
-    },
+    captures: inbox.captures.filter((capture) => capture.id !== id),
+    total: Math.max(0, inbox.total - 1),
   };
 }

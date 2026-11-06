@@ -1,7 +1,7 @@
 /**
- * ts-rest clients set Content-Type: application/json on every request.
- * Fastify rejects an empty body with that header (FST_ERR_CTP_EMPTY_JSON_BODY).
- * Build the request headers without Content-Type when there is no body.
+ * The OpenAPI client sets Content-Type: application/json on requests that
+ * carry a JSON body. Fastify rejects an empty body with that header
+ * (FST_ERR_CTP_EMPTY_JSON_BODY). Drop Content-Type when there is no body.
  */
 export const headersForApiRequest = (
   headers: HeadersInit,

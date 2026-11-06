@@ -1,15 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { tsr, tsrLists, tsrProjects } from '@/api/client';
-import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
+import { captureClient, isNetworkFailure, listClient, projectClient } from '@/api/client';
+import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useInboxTriage } from '@/lib/use-inbox-triage';
 import { useNetworkStatus } from '@/lib/use-network-status';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { Inbox } from 'lucide-react';
 import { ErrorState } from '@/components/error-state';
 import { CaptureCard } from '@/components/capture-card';
@@ -22,11 +22,21 @@ export const Route = createFileRoute('/_authenticated/')({
   component: InboxPage,
 });
 
+const isCapturePage = (
+  value: unknown
+): value is { captures: Capture[]; total: number } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'captures' in value &&
+  Array.isArray(value.captures) &&
+  'total' in value &&
+  typeof value.total === 'number';
+
 function InboxPage() {
   const isOnline = useNetworkStatus();
   const [newContent, setNewContent] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const tsrQueryClient = tsr.useQueryClient();
+  const queryClient = useQueryClient();
   const {
     exitDirections,
     taskModalOpen,
@@ -49,33 +59,32 @@ function InboxPage() {
     inputRef.current?.select();
   }, []);
 
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData } = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
   });
-  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
-  const { data: projectsData } = tsrProjects.list.useQuery({
+  const namedLists = listsData?.lists ?? [];
+  const { data: projectsData } = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const projects = projectsData?.projects ?? [];
 
-  const { data, isPending, error, refetch } = tsr.list.useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ['captures', 'inbox'],
-    queryData: { query: { status: 'inbox' as const, snoozed: false, limit: PILE_SAFETY_CAP } },
+    queryFn: () =>
+      captureClient.list({ status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP }),
   });
 
-  const createMutation = tsr.create.useMutation({
-    onMutate: async ({ body }) => {
+  const createMutation = useMutation({
+    mutationFn: (input: Parameters<typeof captureClient.create>[0]) => captureClient.create(input),
+    onMutate: async (body) => {
       // Cancel in-flight queries to prevent overwrites
-      await cancelLiveQueries(tsrQueryClient);
+      await cancelLiveQueries(queryClient);
 
       // Snapshot current state for rollback
-      const previousInbox = tsrQueryClient.list.getQueryData([
-        'captures',
-        'inbox',
-      ]);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
 
       // Create optimistic capture with temp ID
       const optimisticCapture = {
@@ -86,18 +95,15 @@ function InboxPage() {
         title: body.title,
         sourceUrl: body.sourceUrl,
         sourceApp: body.sourceApp ?? 'web',
-        status: 'inbox' as const,
+        status: 'inbox',
         capturedAt: new Date().toISOString(),
       };
 
-      if (previousInbox?.status === 200) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], {
+      if (isCapturePage(previousInbox)) {
+        queryClient.setQueryData(['captures', 'inbox'], {
           ...previousInbox,
-          body: {
-            ...previousInbox.body,
-            captures: [optimisticCapture, ...previousInbox.body.captures],
-            total: previousInbox.body.total + 1,
-          },
+          captures: [optimisticCapture, ...previousInbox.captures],
+          total: previousInbox.total + 1,
         });
       }
 
@@ -110,10 +116,7 @@ function InboxPage() {
     onError: (err, _variables, context) => {
       // Rollback on error
       if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(
-          ['captures', 'inbox'],
-          context.previousInbox
-        );
+        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
       }
       // Restore the input content so user doesn't lose their text
       if (context?.previousContent) {
@@ -121,7 +124,7 @@ function InboxPage() {
       }
 
       // Show error toast
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to add capture');
@@ -134,7 +137,7 @@ function InboxPage() {
 
     onSettled: () => {
       // Refetch to ensure consistency with server (replaces temp ID with real one)
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
       // Keep focus on input for rapid multi-capture
       // Use requestAnimationFrame to ensure focus happens after React's render cycle
       requestAnimationFrame(() => {
@@ -148,11 +151,12 @@ function InboxPage() {
     if (!newContent.trim()) return;
 
     createMutation.mutate({
-      body: { content: newContent.trim(), sourceApp: 'web' },
+      content: newContent.trim(),
+      sourceApp: 'web',
     });
   };
 
-  const captures = data?.status === 200 ? data.body.captures : [];
+  const captures = data?.captures ?? [];
 
   return (
     <InboxPaneShell active="inbox">

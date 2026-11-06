@@ -1,11 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { tsrProjects } from '@/api/client';
+import { projectClient } from '@/api/client';
 import { LIVE_QUERY_REFETCH_INTERVAL_MS } from '@/lib/live-query';
 
 export function PendingImportBanner() {
-  const { data } = tsrProjects.listImports.useQuery({
+  const { data } = useQuery({
     queryKey: ['project-imports'],
-    queryData: {},
+    queryFn: () => projectClient.listImports({}),
     refetchInterval: () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return false;
@@ -13,7 +14,7 @@ export function PendingImportBanner() {
       return LIVE_QUERY_REFETCH_INTERVAL_MS;
     },
   });
-  const pending = data?.status === 200 ? data.body.imports : [];
+  const pending = data?.imports ?? [];
   if (pending.length === 0) {
     return null;
   }

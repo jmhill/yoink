@@ -63,7 +63,7 @@ The [execution index](#execution-index) is the handoff list: task keys, logical 
 
 ### M0.2 Spike: unit-of-work batch guards (ADR §6.1, §12)
 
-**Execution:** `M0.2`. Pending publication; pending user Submit. No issue URL.
+**Execution:** `M0.2`. Pending publication; pending user Submit. No issue URL. Local libsql evidence is in ADR §6.1 (2026-11-06). The task is not done. The Turso half has not run.
 
 - **Depends on:** none
 - **Do:** in a throwaway branch or test file, using the real `Database` abstraction, against local libsql **and** a Turso dev database:
@@ -692,7 +692,7 @@ Stable task keys for the 78 tasks that follow M0.1. M0.1 stays complete and has 
 
 Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)). M0.4 is Done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)). That status is true when the pull request merges.
 
-M0.2 stays pending publication, pending user Submit. Its marketplace create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not create, edit, resubmit, or duplicate that form. Do not close an issue from this update. `approved-plan` is not applied.
+M0.2 stays pending publication, pending user Submit. Local libsql evidence is in ADR §6.1. M0.2 is not done; the Turso half has not run. Its marketplace create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not create, edit, resubmit, or duplicate that form. Do not close an issue from this update. `approved-plan` is not applied.
 
 The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
 
@@ -700,7 +700,7 @@ The logical dependencies plus the serialization edges were checked together. The
 
 | ID | Logical dependencies | Serialize after | Status | Gate | GitHub |
 |---|---|---|---|---|---|
-| `M0.2` | — | — | Not started | Close only after a real Turso run. Local half may start. The credential grant needs Justin. | pending publication; pending user Submit |
+| `M0.2` | — | — | Local recorded; not done | Close only after the same proof on a disposable Turso dev database. This run had no dev URL or token. Not `yoink-prod`, and not the CI read-only token. The credential grant needs Justin. | pending publication; pending user Submit |
 | `M0.3` | — | `M0.2` | Not started | None. | [#224](https://github.com/jmhill/yoink/issues/224) |
 | `M0.4` | — | — | Done ([#301](https://github.com/jmhill/yoink/pull/301)) | None. Every route is classified. No ambiguous rows. | [#223](https://github.com/jmhill/yoink/issues/223) |
 | `M0.5` | — | — | Done (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)) | None. | [#225](https://github.com/jmhill/yoink/issues/225) |

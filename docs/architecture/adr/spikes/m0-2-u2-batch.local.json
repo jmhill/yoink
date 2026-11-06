@@ -1,0 +1,341 @@
+{
+  "node": "v24.22.2",
+  "libsqlClient": "0.15.15",
+  "database": {
+    "type": "file",
+    "temporary": true
+  },
+  "assertionSql": "INSERT INTO platform_batch_guard (ok) VALUES (changes() > 0)",
+  "batchMode": "write",
+  "clientBegin": "BEGIN IMMEDIATE",
+  "foreignKeys": {
+    "foreign_keys": 1
+  },
+  "changesProbe": {
+    "afterMatchingUpdate": {
+      "ok": true,
+      "ms": 1.8,
+      "statementCount": 2,
+      "rowsAffected": {
+        "count": 2,
+        "sum": 1,
+        "zeros": 1,
+        "first": [
+          1,
+          0
+        ],
+        "last": [
+          1,
+          0
+        ]
+      },
+      "selectRows": [
+        [
+          {
+            "n": 1
+          }
+        ]
+      ],
+      "error": null
+    },
+    "afterMissingUpdate": {
+      "ok": true,
+      "ms": 0.2,
+      "statementCount": 2,
+      "rowsAffected": {
+        "count": 2,
+        "sum": 0,
+        "zeros": 2,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          0,
+          0
+        ]
+      },
+      "selectRows": [
+        [
+          {
+            "n": 0
+          }
+        ]
+      ],
+      "error": null
+    },
+    "after": {
+      "task_a_title": "probe-match",
+      "task_a_deleted": null,
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "commitWhenGuardsMatch": {
+    "batch": {
+      "ok": true,
+      "ms": 0.7,
+      "statementCount": 5,
+      "rowsAffected": {
+        "count": 5,
+        "sum": 5,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "task_a_title": "after",
+      "task_a_deleted": null,
+      "capture_status": "processed",
+      "history_count": 1,
+      "guard_count": 2,
+      "guard_ok_min": 1,
+      "guard_ok_max": 1
+    }
+  },
+  "staleGuardRollsBackHistoryAndEarlierParticipant": {
+    "batch": {
+      "ok": false,
+      "ms": 0.6,
+      "statementCount": 6,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "ctor": "LibsqlError",
+        "name": "LibsqlError",
+        "message": "SQLITE_CONSTRAINT_CHECK: CHECK constraint failed: ok = 1",
+        "code": "SQLITE_CONSTRAINT_CHECK",
+        "rawCode": 275,
+        "own": [
+          "stack",
+          "message",
+          "cause",
+          "code",
+          "rawCode",
+          "name"
+        ],
+        "proto": [
+          "LibsqlError",
+          "Error"
+        ],
+        "cause": {
+          "ctor": "SqliteError",
+          "message": "CHECK constraint failed: ok = 1",
+          "code": "SQLITE_CONSTRAINT_CHECK",
+          "own": [
+            "message",
+            "stack",
+            "code",
+            "rawCode"
+          ]
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": null,
+      "capture_status": "processed",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "staleTaskGuardRollsBackCaptureAndHistory": {
+    "note": "history INSERT ... WHERE EXISTS matches 0 rows because the task is already deleted, so that statement itself changes nothing. The failing statement is the task assertion.",
+    "batch": {
+      "ok": false,
+      "ms": 0.4,
+      "statementCount": 5,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "ctor": "LibsqlError",
+        "name": "LibsqlError",
+        "message": "SQLITE_CONSTRAINT_CHECK: CHECK constraint failed: ok = 1",
+        "code": "SQLITE_CONSTRAINT_CHECK",
+        "rawCode": 275,
+        "own": [
+          "stack",
+          "message",
+          "cause",
+          "code",
+          "rawCode",
+          "name"
+        ],
+        "proto": [
+          "LibsqlError",
+          "Error"
+        ],
+        "cause": {
+          "ctor": "SqliteError",
+          "message": "CHECK constraint failed: ok = 1",
+          "code": "SQLITE_CONSTRAINT_CHECK",
+          "own": [
+            "message",
+            "stack",
+            "code",
+            "rawCode"
+          ]
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": "2026-11-06T21:00:00.000Z",
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "storageFailureRollsBack": {
+    "batch": {
+      "ok": false,
+      "ms": 0.4,
+      "statementCount": 4,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "ctor": "LibsqlError",
+        "name": "LibsqlError",
+        "message": "SQLITE_CONSTRAINT_PRIMARYKEY: UNIQUE constraint failed: tasks.id",
+        "code": "SQLITE_CONSTRAINT_PRIMARYKEY",
+        "rawCode": 1555,
+        "own": [
+          "stack",
+          "message",
+          "cause",
+          "code",
+          "rawCode",
+          "name"
+        ],
+        "proto": [
+          "LibsqlError",
+          "Error"
+        ],
+        "cause": {
+          "ctor": "SqliteError",
+          "message": "UNIQUE constraint failed: tasks.id",
+          "code": "SQLITE_CONSTRAINT_PRIMARYKEY",
+          "own": [
+            "message",
+            "stack",
+            "code",
+            "rawCode"
+          ]
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": null,
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "largeBatch": {
+    "shape": "1000 task updates + 1000 change_log inserts, production column lists, seq = MAX(seq)+1",
+    "seed": {
+      "ok": true,
+      "ms": 18.4,
+      "error": null
+    },
+    "batch": {
+      "ok": true,
+      "ms": 73.8,
+      "statementCount": 2000,
+      "rowsAffected": {
+        "count": 2000,
+        "sum": 2000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "retitled": 1000,
+      "history_count": 1000,
+      "distinct_seq": 1000,
+      "min_seq": 1,
+      "max_seq": 1000
+    }
+  },
+  "largeGuardedBatch": {
+    "shape": "1000 task updates + 1000 assertions + 1000 change_log inserts",
+    "statementCount": 3000,
+    "batch": {
+      "ok": true,
+      "ms": 83.6,
+      "statementCount": 3000,
+      "rowsAffected": {
+        "count": 3000,
+        "sum": 3000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "retitled": 1000,
+      "history_count": 1000,
+      "guard_count": 1000,
+      "distinct_seq": 1000,
+      "min_seq": 1,
+      "max_seq": 1000
+    }
+  }
+}

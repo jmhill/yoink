@@ -1,6 +1,6 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList, NowNextActionItem, Project, Task } from '@yoink/api-contracts';
-import { pageOrdered } from '../../listing/domain/keyset-window.js';
+import { pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
 import {
   workDueDirection,
   workDueKeys,
@@ -8,7 +8,7 @@ import {
   workListKeys,
   workNextActionDirection,
   workNextActionKeys,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 import { compareNowDue, compareNowNextActions, compareWorkLists } from '../domain/now-order.js';
 import { storageError, type StorageError } from '../domain/work-errors.js';
 import type {
@@ -17,7 +17,7 @@ import type {
   PageWorkListsOptions,
   WorkStore,
 } from '../domain/work-store.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 
 export type FakeWorkStoreOptions = {
   tasks?: Task[];

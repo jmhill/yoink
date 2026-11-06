@@ -1,8 +1,37 @@
 # ESLint baseline
 
-Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured).
+Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured). The current tree is the [M2.1 re-measure](#m21-re-measure). The sections under Result are the M1.1 census that re-measure is compared to.
 
 The previous measurement is M0.5, on `11da9800fe063d0e7b168a320dd1a61d69da1dcc`, merged as `93584ce`. That run is not restated as if this config had been in place. Its totals were **4 errors** and **196 warnings** (`boundaries/element-types` 112, `boundaries/no-unknown` 19, `@typescript-eslint/no-explicit-any` 33, `react-hooks/set-state-in-effect` 25, `react-hooks/exhaustive-deps` 7).
+
+## M2.1 re-measure
+
+Measured **2026-11-06** on this branch after the pure shared and listing files moved into `src/kernel/`. `pnpm lint` still exits 1 on the same 4 `@yoink/acceptance-tests` unused locals (`staged`, `mineMilk`, `eggs`, `bread`). Those files were not edited.
+
+`pnpm lint --force --continue` exited 1. Every package finished.
+
+```text
+Tasks:    9 successful, 10 total
+Cached:    0 cached, 10 total
+  Time:    13.316s
+Failed:    @yoink/acceptance-tests#lint
+```
+
+| Package | Errors | Warnings | eslint summary |
+|---|---:|---:|---|
+| `@yoink/acceptance-tests` | 4 | 0 | `✖ 4 problems (4 errors, 0 warnings)` |
+| `@yoink/api` | 0 | 179 | `✖ 179 problems (0 errors, 179 warnings)` |
+| `@yoink/web` | 0 | 32 | `✖ 32 problems (0 errors, 32 warnings)` |
+| other seven packages | 0 | 0 | no diagnostics |
+| **Total** | **4** | **211** | |
+
+API rule counts from that run: `boundaries/element-types` 146, `@typescript-eslint/no-explicit-any` 33, `boundaries/no-unknown` 0, `boundaries/entry-point` 0, `boundaries/external` 0. `no-restricted-imports` produced no diagnostic. Files under `src/kernel/` produced no diagnostic. Web stayed 32 warnings (`react-hooks/set-state-in-effect` 25, `react-hooks/exhaustive-deps` 7).
+
+Warnings went from the M1.1 total of 212 to 211. The one that left is `logging/history-read-logger.ts` importing `HistoryReadLogger` from `history/application/ports.ts`. That type now lives in `kernel/history-read-logger.ts`, and current layers may import `kernel`. No other element-types pair was removed. The table-ownership allowlist was not edited: none of the moved files were on it, and no entry was added.
+
+Kernel is in the target layout and was linted. `entry-point` and `external` stayed at 0 because those files import only kernel, `neverthrow`, and `zod`, not because the rules are off.
+
+`mise exec -- pnpm quality` on this tree exited 0: 33 successful / 33 total, 30 cached, 43.3s. `@yoink/api` test was a cache miss: 246 files, 1910 passed, 42.11s. No test timed out. `app.ts` and `composition-root.ts` were not edited, so `pnpm e2e:test` was not run.
 
 ## Result
 
@@ -43,7 +72,7 @@ Parsed from the continue run. Package totals match the eslint `✖` lines: 147 +
 
 `no-restricted-imports` stays `error` on `src/**/{domain,application}/**/*.ts`, tests excluded. It produced no diagnostic on this tree.
 
-`boundaries/entry-point` and `boundaries/external` are on at `warn`. They produced no diagnostic because nothing under `apps/api/src` lives in the target layout yet. That is not a suppressed warning. See [Target rules](#target-rules).
+`boundaries/entry-point` and `boundaries/external` are on at `warn`. On the M1.1 tree they produced no diagnostic because nothing under `apps/api/src` lived in the target layout yet. That is not a suppressed warning. See [Target rules](#target-rules). Kernel files now exist; the M2.1 re-measure checked them.
 
 ## Delta from the M0.5 measurement
 

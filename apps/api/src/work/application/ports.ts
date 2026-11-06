@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
-import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 import type {
   PageNowDueOptions,
   PageNowNextActionsOptions,

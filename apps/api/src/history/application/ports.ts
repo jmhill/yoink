@@ -1,7 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { HistoryReadLogger } from '../../kernel/history-read-logger.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type {
   ChangeLogStorageError,
   HistoryPageItem,
@@ -9,9 +10,7 @@ import type {
 import type { StorageError } from '../../projects/domain/project-errors.js';
 import type { TimelineLookups } from '../../shared/change-log/domain/to-timeline-entry.js';
 
-export type HistoryReadLogger = {
-  warn: (fields: { recordId: string; kind: string; reason: string }) => void;
-};
+export type { HistoryReadLogger };
 
 export type LoadProject = (id: string) => ResultAsync<Project | null, StorageError>;
 

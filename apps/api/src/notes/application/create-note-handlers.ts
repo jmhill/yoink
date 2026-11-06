@@ -9,7 +9,7 @@ import type { LoadActorName, LoadNotesMirrorBot, LoadOrgPerson, LoadProject, Not
 import {
   withCommandLog,
   type CommandLogger,
-} from '../../shared/change-log/application/command-log.js';
+} from '../../kernel/command-log.js';
 
 export type NoteHandlerDeps = {
   backend: NotesBackend;

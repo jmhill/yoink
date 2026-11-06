@@ -1,5 +1,5 @@
 import type { ProjectStatus, TaskFilter } from '@yoink/api-contracts';
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 
 /** Loaded project when command.projectId is set or changing. */
 export type LoadedProject = {

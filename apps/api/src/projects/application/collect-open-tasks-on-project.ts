@@ -1,7 +1,7 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import { projectTaskCursor } from '../../listing/domain/list-keys.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import { projectTaskCursor } from '../../kernel/listing/domain/list-keys.js';
 import {
   openTasksUnreadError,
   type OpenTasksUnreadError,

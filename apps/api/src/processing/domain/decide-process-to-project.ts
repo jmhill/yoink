@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
-import { requirePerson } from '../../shared/auth-context.js';
+import { requirePerson } from '../../kernel/auth-context.js';
 import type { ProcessCaptureToProjectCommand } from '../../captures/domain/capture-commands.js';
 import {
   captureNotFoundError,

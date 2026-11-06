@@ -1,14 +1,14 @@
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
 import type { Database } from '../../database/types.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
-import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 import {
   UNDATED_DUE_SENTINEL,
   workDueDirection,
   workListDirection,
   workNextActionDirection,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import { parseTaskRow } from '../../tasks/infrastructure/parse-task-row.js';
 import { storageError, type StorageError } from '../domain/work-errors.js';

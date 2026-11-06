@@ -1,8 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, NowOwner, Task } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
-import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 import type { StorageError } from './work-errors.js';
 
 export type PageNowNextActionsOptions = {

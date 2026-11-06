@@ -1,27 +1,86 @@
-import type {
-  Capture,
-  NamedList,
-  NoteListItem,
-  NowNextActionItem,
-  Project,
-  Task,
-} from '@yoink/api-contracts';
 import type { ListedCursor } from './keyset-cursor.js';
 import type { KeysetDirection } from './keyset-window.js';
 
-export type FinishedTask = Task & { readonly completedAt: string };
+type HasCompletedAt = {
+  readonly completedAt?: string | null;
+};
 
-export const asFinishedTask = (task: Task): FinishedTask | null => {
+/** `T` with `completedAt` present. Callers pass the contract document as `T`. */
+export type FinishedTask<T extends HasCompletedAt> = T & { readonly completedAt: string };
+
+export const asFinishedTask = <T extends HasCompletedAt>(task: T): FinishedTask<T> | null => {
   if (typeof task.completedAt !== 'string' || task.completedAt.length === 0) {
     return null;
   }
   return { ...task, completedAt: task.completedAt };
 };
 
+// Row shapes are the fields each cursor reads. The index signature keeps a
+// fuller contract document assignable, including object literals, without
+// importing `@yoink/api-contracts`.
+type CursorRow = { readonly [field: string]: unknown };
+
+type TaskBoardRow = CursorRow & {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly pinnedAt?: string | null;
+};
+
+type OpenPileRow = TaskBoardRow & {
+  readonly openOrder?: number | null;
+};
+
+type ProjectTaskRow = CursorRow & {
+  readonly id: string;
+  readonly createdAt: string;
+};
+
+type CompletedCursorRow = CursorRow & {
+  readonly id: string;
+  readonly completedAt: string;
+};
+
+type DueCursorRow = CursorRow & {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly dueDate?: string | null;
+};
+
+type NamedCursorRow = CursorRow & {
+  readonly id: string;
+  readonly name: string;
+  readonly createdAt: string;
+};
+
+type CaptureFeedRow = CursorRow & {
+  readonly id: string;
+  readonly capturedAt: string;
+};
+
+type SnoozedCaptureRow = CursorRow & {
+  readonly id: string;
+  readonly snoozedUntil?: string | null;
+};
+
+type NextActionCursorRow = {
+  readonly task: CursorRow & {
+    readonly id: string;
+    readonly dueDate?: string | null;
+  };
+  readonly project: CursorRow & {
+    readonly name: string;
+  };
+};
+
+type NoteCursorRow = CursorRow & {
+  readonly id: string;
+  readonly updatedAt: string;
+};
+
 const UNPINNED_SENTINEL = '';
 const MISSING_OPEN_ORDER = 2_147_483_647;
 
-export const taskBoardCursor: ListedCursor<Task, 'tasks.board'> = {
+export const taskBoardCursor: ListedCursor<TaskBoardRow, 'tasks.board'> = {
   view: 'tasks.board',
   of: (task) => ({
     view: 'tasks.board',
@@ -29,7 +88,7 @@ export const taskBoardCursor: ListedCursor<Task, 'tasks.board'> = {
   }),
 };
 
-export const completedTaskCursor: ListedCursor<FinishedTask, 'tasks.completed'> = {
+export const completedTaskCursor: ListedCursor<CompletedCursorRow, 'tasks.completed'> = {
   view: 'tasks.completed',
   of: (task) => ({
     view: 'tasks.completed',
@@ -37,7 +96,7 @@ export const completedTaskCursor: ListedCursor<FinishedTask, 'tasks.completed'> 
   }),
 };
 
-export const openPileTaskCursor: ListedCursor<Task, 'tasks.pile'> = {
+export const openPileTaskCursor: ListedCursor<OpenPileRow, 'tasks.pile'> = {
   view: 'tasks.pile',
   of: (task) => ({
     view: 'tasks.pile',
@@ -45,7 +104,7 @@ export const openPileTaskCursor: ListedCursor<Task, 'tasks.pile'> = {
   }),
 };
 
-export const projectTaskCursor: ListedCursor<Task, 'tasks.project'> = {
+export const projectTaskCursor: ListedCursor<ProjectTaskRow, 'tasks.project'> = {
   view: 'tasks.project',
   of: (task) => ({
     view: 'tasks.project',
@@ -53,7 +112,7 @@ export const projectTaskCursor: ListedCursor<Task, 'tasks.project'> = {
   }),
 };
 
-export const finishedProjectTaskCursor: ListedCursor<FinishedTask, 'tasks.project.finished'> = {
+export const finishedProjectTaskCursor: ListedCursor<CompletedCursorRow, 'tasks.project.finished'> = {
   view: 'tasks.project.finished',
   of: (task) => ({
     view: 'tasks.project.finished',
@@ -82,7 +141,7 @@ export const taskHistoryCursor: ListedCursor<HistoryCursorRow, 'history.task'> =
   }),
 };
 
-export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
+export const namedListCursor: ListedCursor<NamedCursorRow, 'lists'> = {
   view: 'lists',
   of: (list) => ({
     view: 'lists',
@@ -90,7 +149,7 @@ export const namedListCursor: ListedCursor<NamedList, 'lists'> = {
   }),
 };
 
-export const projectCursor: ListedCursor<Project, 'projects'> = {
+export const projectCursor: ListedCursor<NamedCursorRow, 'projects'> = {
   view: 'projects',
   of: (project) => ({
     view: 'projects',
@@ -98,7 +157,7 @@ export const projectCursor: ListedCursor<Project, 'projects'> = {
   }),
 };
 
-export const captureFeedCursor: ListedCursor<Capture, 'captures.feed'> = {
+export const captureFeedCursor: ListedCursor<CaptureFeedRow, 'captures.feed'> = {
   view: 'captures.feed',
   of: (capture) => ({
     view: 'captures.feed',
@@ -106,7 +165,7 @@ export const captureFeedCursor: ListedCursor<Capture, 'captures.feed'> = {
   }),
 };
 
-export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
+export const snoozedCaptureCursor: ListedCursor<SnoozedCaptureRow, 'captures.snoozed'> = {
   view: 'captures.snoozed',
   of: (capture) => ({
     view: 'captures.snoozed',
@@ -116,7 +175,7 @@ export const snoozedCaptureCursor: ListedCursor<Capture, 'captures.snoozed'> = {
 
 export const UNDATED_DUE_SENTINEL = '9999-12-31';
 
-export const workNextActionCursor: ListedCursor<NowNextActionItem, 'work.next-actions'> = {
+export const workNextActionCursor: ListedCursor<NextActionCursorRow, 'work.next-actions'> = {
   view: 'work.next-actions',
   of: (item) => ({
     view: 'work.next-actions',
@@ -128,7 +187,7 @@ export const workNextActionCursor: ListedCursor<NowNextActionItem, 'work.next-ac
   }),
 };
 
-export const workDueCursor: ListedCursor<Task, 'work.due'> = {
+export const workDueCursor: ListedCursor<DueCursorRow, 'work.due'> = {
   view: 'work.due',
   of: (task) => ({
     view: 'work.due',
@@ -174,7 +233,7 @@ export const reviewCursor: ListedCursor<ReviewCursorRow, 'review'> = {
   }),
 };
 
-export const doneListCursor: ListedCursor<FinishedTask, 'review.done'> = {
+export const doneListCursor: ListedCursor<CompletedCursorRow, 'review.done'> = {
   view: 'review.done',
   of: (task) => ({
     view: 'review.done',
@@ -182,7 +241,7 @@ export const doneListCursor: ListedCursor<FinishedTask, 'review.done'> = {
   }),
 };
 
-export const projectNotesCursor: ListedCursor<NoteListItem, 'notes.project'> = {
+export const projectNotesCursor: ListedCursor<NoteCursorRow, 'notes.project'> = {
   view: 'notes.project',
   of: (note) => ({
     view: 'notes.project',
@@ -203,24 +262,26 @@ export const notesChangedCursor: ListedCursor<NotesChangedCursorRow, 'notes.chan
   }),
 };
 
-export const taskBoardKeys = (task: Task) => taskBoardCursor.of(task).keys;
-export const completedTaskKeys = (task: FinishedTask) => completedTaskCursor.of(task).keys;
-export const openPileTaskKeys = (task: Task) => openPileTaskCursor.of(task).keys;
-export const projectTaskKeys = (task: Task) => projectTaskCursor.of(task).keys;
-export const finishedProjectTaskKeys = (task: FinishedTask) =>
+export const taskBoardKeys = (task: TaskBoardRow) => taskBoardCursor.of(task).keys;
+export const completedTaskKeys = (task: CompletedCursorRow) => completedTaskCursor.of(task).keys;
+export const openPileTaskKeys = (task: OpenPileRow) => openPileTaskCursor.of(task).keys;
+export const projectTaskKeys = (task: ProjectTaskRow) => projectTaskCursor.of(task).keys;
+export const finishedProjectTaskKeys = (task: CompletedCursorRow) =>
   finishedProjectTaskCursor.of(task).keys;
 export const projectHistoryKeys = (row: HistoryCursorRow) => projectHistoryCursor.of(row).keys;
 export const taskHistoryKeys = (row: HistoryCursorRow) => taskHistoryCursor.of(row).keys;
-export const namedListKeys = (list: NamedList) => namedListCursor.of(list).keys;
-export const projectKeys = (project: Project) => projectCursor.of(project).keys;
-export const captureFeedKeys = (capture: Capture) => captureFeedCursor.of(capture).keys;
-export const snoozedCaptureKeys = (capture: Capture) => snoozedCaptureCursor.of(capture).keys;
-export const workNextActionKeys = (item: NowNextActionItem) => workNextActionCursor.of(item).keys;
-export const workDueKeys = (task: Task) => workDueCursor.of(task).keys;
+export const namedListKeys = (list: NamedCursorRow) => namedListCursor.of(list).keys;
+export const projectKeys = (project: NamedCursorRow) => projectCursor.of(project).keys;
+export const captureFeedKeys = (capture: CaptureFeedRow) => captureFeedCursor.of(capture).keys;
+export const snoozedCaptureKeys = (capture: SnoozedCaptureRow) =>
+  snoozedCaptureCursor.of(capture).keys;
+export const workNextActionKeys = (item: NextActionCursorRow) =>
+  workNextActionCursor.of(item).keys;
+export const workDueKeys = (task: DueCursorRow) => workDueCursor.of(task).keys;
 export const workListKeys = (list: WorkListCursorRow) => workListCursor.of(list).keys;
 export const reviewKeys = (item: ReviewCursorRow) => reviewCursor.of(item).keys;
-export const doneListKeys = (task: FinishedTask) => doneListCursor.of(task).keys;
-export const projectNotesKeys = (note: NoteListItem) => projectNotesCursor.of(note).keys;
+export const doneListKeys = (task: CompletedCursorRow) => doneListCursor.of(task).keys;
+export const projectNotesKeys = (note: NoteCursorRow) => projectNotesCursor.of(note).keys;
 export const notesChangedKeys = (row: NotesChangedCursorRow) => notesChangedCursor.of(row).keys;
 
 export const taskBoardDirection: KeysetDirection = 'desc';

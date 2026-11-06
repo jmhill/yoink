@@ -4,7 +4,7 @@ import {
   entityNameIsTaken,
   normalizeEntityName,
   parseEntityName,
-} from '../../shared/name.js';
+} from '../../kernel/name.js';
 import {
   invalidProjectNameError,
   projectNameBlankError,

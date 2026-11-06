@@ -3,10 +3,10 @@ import type { Task } from '@yoink/api-contracts';
 import type { ListOpenTasksOnListQuery } from '../domain/list-queries.js';
 import type { ListOpenTasksOnListError } from '../domain/list-errors.js';
 import { listNotFoundError } from '../domain/list-errors.js';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { openPileTaskCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { openPileTaskCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type { LoadNamedList, PageOpenTasksOnList } from './ports.js';
 
 export type HandleListOpenTasksDeps = {

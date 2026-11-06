@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import { collectAllOpenTasksOnProject } from './collect-open-tasks-on-project.js';
-import { projectTaskCursor } from '../../listing/domain/list-keys.js';
+import { projectTaskCursor } from '../../kernel/listing/domain/list-keys.js';
 
 const task = (id: string, createdAt: string): Task => ({
   id,

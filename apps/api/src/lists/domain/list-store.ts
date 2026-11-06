@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { StorageError } from './list-errors.js';
 
 export type ListStore = {

@@ -2,16 +2,16 @@ import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import type { ListTasksQuery } from '../domain/task-commands.js';
 import { storageError, type ListTasksError } from '../domain/task-errors.js';
-import { listKindForTaskFilter, resolveListLimit } from '../../listing/domain/list-kind.js';
+import { listKindForTaskFilter, resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
 import {
   asFinishedTask,
   completedTaskCursor,
   taskBoardCursor,
   type FinishedTask,
-} from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
-import { resolveViewerToday } from '../../shared/domain/viewer-today.js';
+} from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
+import { resolveViewerToday } from '../../kernel/viewer-today.js';
 import type { ListTasks } from './ports.js';
 
 export type HandleListTasksDeps = {
@@ -45,7 +45,7 @@ export const handleListTasks = (
             assigneeId: query.callerId,
           })
           .andThen((page) => {
-            const rows: FinishedTask[] = [];
+            const rows: FinishedTask<Task>[] = [];
             for (const task of page.rows) {
               const finished = asFinishedTask(task);
               if (!finished) {

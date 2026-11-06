@@ -1,10 +1,10 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { workDueCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
-import { resolveViewerToday } from '../../shared/domain/viewer-today.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { workDueCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
+import { resolveViewerToday } from '../../kernel/viewer-today.js';
 import type { ListNowDueQuery } from '../domain/now-queries.js';
 import type { ListNowError } from '../domain/work-errors.js';
 import type { PageNowDue } from './ports.js';

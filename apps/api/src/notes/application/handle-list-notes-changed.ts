@@ -3,9 +3,9 @@ import type { ResultAsync } from 'neverthrow';
 import type { ListNotesChangedQuery } from '../domain/note-queries.js';
 import type { ListNotesChangedError } from '../domain/note-errors.js';
 import type { NoteChangeRow } from '../domain/note-change-row.js';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { notesChangedCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { notesChangedCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
 import type { NotesBackend } from './ports.js';
 
 export type HandleListNotesChangedDeps = {

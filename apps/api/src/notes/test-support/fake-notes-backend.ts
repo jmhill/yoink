@@ -1,7 +1,7 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Note, NoteListItem } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { NoteChangeRow } from '../domain/note-change-row.js';
 import {
   staleNoteError,

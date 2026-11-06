@@ -3,8 +3,8 @@ import { okAsync, errAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { storageError } from '../domain/list-errors.js';
-import { namedListCursor } from '../../listing/domain/list-keys.js';
-import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
+import { namedListCursor } from '../../kernel/listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
 
 const groceries: NamedList = {
   id: '550e8400-e29b-41d4-a716-446655440010',

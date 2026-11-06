@@ -1,5 +1,5 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 import type { ImportProject, StagedImport } from '@yoink/api-contracts';
 import { decideImport } from '../domain/decide-import.js';
 import type { StageImportError } from '../domain/project-errors.js';

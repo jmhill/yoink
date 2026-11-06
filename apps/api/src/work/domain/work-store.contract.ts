@@ -4,7 +4,7 @@ import {
   workDueCursor,
   workListCursor,
   workNextActionCursor,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 import type { WorkStore } from './work-store.js';
 
 export const WORK_TODAY = '2025-01-15';

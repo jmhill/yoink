@@ -1,8 +1,8 @@
 import { ResultAsync } from 'neverthrow';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { workListCursor, type WorkListCursorRow } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { workListCursor, type WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type { ListWorkListsQuery } from '../domain/now-queries.js';
 import type { ListWorkListsError } from '../domain/work-errors.js';
 import type { CountUnlistedOpen, PageWorkLists } from './ports.js';

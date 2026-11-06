@@ -1,11 +1,11 @@
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
-import { compareKeyset } from '../../listing/domain/keyset-window.js';
+import { compareKeyset } from '../../kernel/listing/domain/keyset-window.js';
 import {
   workDueKeys,
   workListKeys,
   workNextActionKeys,
   type WorkListCursorRow,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 
 export const compareNowNextActions = (
   left: NowNextActionItem,

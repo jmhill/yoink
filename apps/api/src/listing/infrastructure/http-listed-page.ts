@@ -6,9 +6,9 @@ import type {
   Project,
   Task,
 } from '@yoink/api-contracts';
-import type { InvalidCursorError } from '../domain/invalid-cursor.js';
-import type { ListedPage } from '../domain/listed-page.js';
-import type { WorkListCursorRow } from '../domain/list-keys.js';
+import type { InvalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
+import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 
 export const toTaskListBody = (page: ListedPage<Task>) => ({
   tasks: page.items,

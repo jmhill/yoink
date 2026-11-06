@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import { createProjectHandlers } from './create-project-handlers.js';
-import type { CommandLogFields } from '../../shared/change-log/application/command-log.js';
+import type { CommandLogFields } from '../../kernel/command-log.js';
 import type { PersistProjectChange } from './ports.js';
 
 const garden: Project = {

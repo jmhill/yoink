@@ -2,7 +2,7 @@ import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Note, NoteListItem } from '@yoink/api-contracts';
 import type { Database } from '../../database/types.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
-import { projectNotesDirection } from '../../listing/domain/list-keys.js';
+import { projectNotesDirection } from '../../kernel/listing/domain/list-keys.js';
 import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,
@@ -20,7 +20,7 @@ import {
   NOTE_SELECT_COLUMNS,
   updateNoteQuery,
 } from './note-row-statements.js';
-import { notesChangedDirection } from '../../listing/domain/list-keys.js';
+import { notesChangedDirection } from '../../kernel/listing/domain/list-keys.js';
 import type { NoteChangeRow } from '../domain/note-change-row.js';
 
 const parseNotes = (rows: Record<string, unknown>[]): Result<NoteListItem[], StorageError> =>

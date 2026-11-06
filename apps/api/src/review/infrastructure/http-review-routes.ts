@@ -4,7 +4,7 @@ import type { ReviewCounts, ReviewProject } from '@yoink/api-contracts';
 import { reviewOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import { listedRequestValidationError } from '../../shared/request-validation.js';
 import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
 import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';

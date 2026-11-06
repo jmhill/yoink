@@ -3,10 +3,10 @@ import { errAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ListProjectsQuery } from '../domain/project-queries.js';
 import type { ListProjectsError } from '../domain/project-errors.js';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { projectCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { projectCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type { PageProjects } from './ports.js';
 import {
   listIncludesProposalStatuses,

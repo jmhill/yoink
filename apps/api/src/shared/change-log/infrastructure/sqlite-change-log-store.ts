@@ -9,13 +9,13 @@ import type {
   HistoryPageItem,
 } from '../domain/history-page-item.js';
 import { PROJECT_TIMELINE_SQL, VISIBLE_TIMELINE_SQL } from './sql.js';
-import type { KeysetCursor } from '../../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../../listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
 import { pageSqlite } from '../../../listing/infrastructure/page-sqlite.js';
 import {
   projectHistoryDirection,
   taskHistoryDirection,
-} from '../../../listing/domain/list-keys.js';
+} from '../../../kernel/listing/domain/list-keys.js';
 
 export type { ChangeLogStorageError, HistoryPageItem, UnparsedHistoryRow } from '../domain/history-page-item.js';
 

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { DoneListPage, Project, ReviewPage, Task } from '@yoink/api-contracts';
-import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
-import { doneListCursor, workDueCursor } from '../../listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
+import { doneListCursor, workDueCursor } from '../../kernel/listing/domain/list-keys.js';
 import {
   createTestApp,
   createTestAppAndDatabase,

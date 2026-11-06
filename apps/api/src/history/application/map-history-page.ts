@@ -1,5 +1,5 @@
 import { HISTORY_STARTS_AT, type HistoryPage, type TimelineEntry } from '@yoink/api-contracts';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import { combineNoteTimelineEntries } from '../../shared/change-log/domain/combine-note-timeline.js';
 import {
   isUnparsedHistoryRow,

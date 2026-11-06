@@ -7,14 +7,14 @@ import type {
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
-import { compareKeyset, pageOrdered } from '../../listing/domain/keyset-window.js';
+import { compareKeyset, pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
 import {
   captureFeedDirection,
   captureFeedKeys,
   snoozedCaptureDirection,
   snoozedCaptureKeys,
-} from '../../listing/domain/list-keys.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+} from '../../kernel/listing/domain/list-keys.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 
 export type FakeCaptureStoreOptions = {
   shouldFailOnSave?: boolean;

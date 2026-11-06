@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { WorkListCursorRow } from '../../listing/domain/list-keys.js';
+import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 import { storageError, type StorageError } from '../domain/work-errors.js';
 
 const WorkListRowSchema = z.object({

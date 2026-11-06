@@ -3,8 +3,8 @@ import { okAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../infrastructure/fake-task-store.js';
-import { asFinishedTask, completedTaskCursor } from '../../listing/domain/list-keys.js';
-import { encodeKeysetCursor } from '../../listing/application/keyset-codec.js';
+import { asFinishedTask, completedTaskCursor } from '../../kernel/listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
 
 const viewerNow = () => new Date('2025-01-15T10:00:00.000Z');
 

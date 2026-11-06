@@ -4,7 +4,7 @@ import {
   entityNameIsTaken,
   normalizeEntityName,
   parseEntityName,
-} from '../../shared/name.js';
+} from '../../kernel/name.js';
 import { invalidListNameError, type InvalidListNameError } from './list-errors.js';
 
 export const NAMED_LIST_NAME_MAX_LENGTH = ENTITY_NAME_MAX_LENGTH;

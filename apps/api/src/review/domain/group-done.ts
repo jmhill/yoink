@@ -1,5 +1,5 @@
 import type { Project, Task } from '@yoink/api-contracts';
-import type { FinishedTask } from '../../listing/domain/list-keys.js';
+import type { FinishedTask } from '../../kernel/listing/domain/list-keys.js';
 
 export type DoneListNextAction = {
   readonly id: string;
@@ -7,7 +7,7 @@ export type DoneListNextAction = {
 };
 
 export type DoneListRow = {
-  readonly task: FinishedTask;
+  readonly task: FinishedTask<Task>;
   readonly project: Project;
   readonly nextAction: DoneListNextAction | null;
 };
@@ -15,10 +15,10 @@ export type DoneListRow = {
 export type DoneListGroup = {
   readonly project: Project;
   readonly nextAction: DoneListNextAction | null;
-  readonly tasks: readonly FinishedTask[];
+  readonly tasks: readonly FinishedTask<Task>[];
 };
 
-export const asFinishedTaskOrNull = (task: Task): FinishedTask | null => {
+export const asFinishedTaskOrNull = (task: Task): FinishedTask<Task> | null => {
   if (typeof task.completedAt !== 'string' || task.completedAt.length === 0) {
     return null;
   }

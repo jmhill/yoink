@@ -15,12 +15,12 @@ import type {
   MarkAsProcessedError,
 } from '../domain/capture-store.js';
 import { storageError, captureNotInInboxError, type StorageError } from '../domain/capture-errors.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
 import {
   captureFeedDirection,
   snoozedCaptureDirection,
-} from '../../listing/domain/list-keys.js';
+} from '../../kernel/listing/domain/list-keys.js';
 
 const CaptureRowSchema = z.object({
   id: z.string(),

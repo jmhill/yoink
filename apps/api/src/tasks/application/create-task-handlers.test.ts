@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
 import { createTaskHandlers } from './create-task-handlers.js';
-import type { CommandLogFields } from '../../shared/change-log/application/command-log.js';
+import type { CommandLogFields } from '../../kernel/command-log.js';
 import type { PersistTaskChange } from './ports.js';
 
 const lastChanged = {

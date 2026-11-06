@@ -1,4 +1,4 @@
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 import { hiddenFor } from '../../shared/change-log/domain/kinds.js';
 import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
 import type {

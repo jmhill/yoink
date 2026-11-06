@@ -3,8 +3,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { errAsync, okAsync } from 'neverthrow';
 import type { Capture, CaptureListPage } from '@yoink/api-contracts';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import { invalidCursorError } from '../../listing/domain/invalid-cursor.js';
-import type { AuthContext } from '../../shared/auth-context.js';
+import { invalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
+import type { AuthContext } from '../../kernel/auth-context.js';
 import {
   createTestApp,
   createTestAppWithWebAuthn,

@@ -1,9 +1,9 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NowNextActionItem } from '@yoink/api-contracts';
-import { resolveListLimit } from '../../listing/domain/list-kind.js';
-import { workNextActionCursor } from '../../listing/domain/list-keys.js';
-import { runListedQuery } from '../../listing/application/run-listed-query.js';
-import type { ListedPage } from '../../listing/domain/listed-page.js';
+import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
+import { workNextActionCursor } from '../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type { ListNowNextActionsQuery } from '../domain/now-queries.js';
 import type { ListNowError } from '../domain/work-errors.js';
 import type { PageNowNextActions } from './ports.js';

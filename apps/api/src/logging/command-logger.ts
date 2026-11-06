@@ -1,4 +1,4 @@
-import type { CommandLogger } from '../shared/change-log/application/command-log.js';
+import type { CommandLogger } from '../kernel/command-log.js';
 
 type PinoInfoLogger = {
   info: (obj: Record<string, unknown>) => void;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
 import type { NamedList, Task } from '@yoink/api-contracts';
 import { createListHandlers } from './create-list-handlers.js';
-import type { CommandLogFields } from '../../shared/change-log/application/command-log.js';
+import type { CommandLogFields } from '../../kernel/command-log.js';
 import type { PersistNamedListChange } from './ports.js';
 
 const groceries: NamedList = {

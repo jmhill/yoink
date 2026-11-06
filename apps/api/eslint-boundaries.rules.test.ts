@@ -172,4 +172,47 @@ describe('boundaries target rules', () => {
     expect(messagesFor('src/modules/access/infrastructure/fakes/store.ts')).toEqual([]);
     expect(messagesFor('src/modules/access/infrastructure/sqlite.ts')).toEqual([]);
   });
+
+  it('lets current code import kernel and keeps kernel on neverthrow and zod', async () => {
+    const root = await writeTree({
+      'src/kernel/ok.ts': `export const ok = 1;\n`,
+      'src/kernel/listing/cursor.ts': `
+        import { ok } from 'neverthrow';
+        import { z } from 'zod';
+        import { ok as kernelOk } from '../ok.js';
+        export const cursor = { ok, z, kernelOk };
+      `,
+      'src/kernel/leak.ts': `
+        export type { Task } from '@yoink/api-contracts';
+        export { model } from '../captures/domain/model.js';
+        import { readFileSync } from 'node:fs';
+        export const bytes = readFileSync;
+      `,
+      'src/captures/domain/model.ts': `
+        import { ok } from '../../kernel/ok.js';
+        export const model = { ok };
+      `,
+    });
+
+    const diagnostics = await lintBoundaries(root);
+    const messagesFor = (relativePath: string) => diagnostics.get(relativePath) ?? [];
+
+    expect(messagesFor('src/kernel/ok.ts')).toEqual([]);
+    expect(messagesFor('src/kernel/listing/cursor.ts')).toEqual([]);
+    expect(messagesFor('src/captures/domain/model.ts')).toEqual([]);
+    expect(messagesFor('src/kernel/leak.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'boundaries/external',
+        message: expect.stringContaining("'@yoink/api-contracts'"),
+      }),
+      expect.objectContaining({
+        ruleId: 'boundaries/element-types',
+        message: expect.stringContaining("type 'captures'"),
+      }),
+      expect.objectContaining({
+        ruleId: 'boundaries/external',
+        message: expect.stringContaining('node:fs'),
+      }),
+    ]);
+  });
 });

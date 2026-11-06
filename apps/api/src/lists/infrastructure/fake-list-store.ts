@@ -2,10 +2,10 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
 import type { ListStore } from '../domain/list-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
-import { compareKeyset, pageOrdered } from '../../listing/domain/keyset-window.js';
-import { namedListDirection, namedListKeys } from '../../listing/domain/list-keys.js';
-import type { KeysetCursor } from '../../listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../listing/domain/listed-page.js';
+import { compareKeyset, pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
+import { namedListDirection, namedListKeys } from '../../kernel/listing/domain/list-keys.js';
+import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 
 export type FakeListStoreOptions = {
   shouldFailOnFind?: boolean;

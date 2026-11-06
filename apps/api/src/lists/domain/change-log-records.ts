@@ -1,4 +1,4 @@
-import type { Actor } from '../../shared/auth-context.js';
+import type { Actor } from '../../kernel/auth-context.js';
 import {
   UNLISTED_PILE_SUBJECT_ID,
   hiddenFor,

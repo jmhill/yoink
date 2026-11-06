@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqliteInvitationStore } from './sqlite-invitation-store.js';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { Invitation } from '../domain/invitation.js';
 import type { InvitationStore } from '../domain/invitation-store.js';
 

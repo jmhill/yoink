@@ -1,4 +1,4 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { ResultAsync } from 'neverthrow';
 import type { CompleteSignupRecord, SignupStore } from '../domain/signup-store.js';
 import { signupStorageError, type SignupStorageError } from '../domain/signup-store.js';

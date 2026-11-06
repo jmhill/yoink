@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe } from 'vitest';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import { insertProjectQuery } from '../../projects/infrastructure/project-row-statements.js';
 import { insertTaskQuery, softDeleteTaskQuery } from '../../tasks/infrastructure/task-row-statements.js';
 import {

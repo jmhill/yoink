@@ -1,4 +1,4 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import type { Organization } from '../domain/organization.js';

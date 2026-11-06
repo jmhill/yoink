@@ -14,10 +14,10 @@
  * typically in CI/CD pipelines or as a pre-script for local development.
  */
 
-import { createDatabase } from './database/database.js';
-import { runMigrations } from './database/migrator.js';
-import { migrations } from './database/migrations.js';
-import { getDatabasePath, loadDatabaseConfig } from './config/config.js';
+import { createDatabase } from './platform/database/database.js';
+import { runMigrations } from './platform/database/migrator.js';
+import { migrations } from './platform/database/migrations.js';
+import { getDatabasePath, loadDatabaseConfig } from './platform/config/config.js';
 
 const main = async () => {
   const config = loadDatabaseConfig();

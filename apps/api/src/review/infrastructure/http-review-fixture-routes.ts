@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 
 const BackdateBodySchema = z.object({
   projectId: z.string().uuid(),

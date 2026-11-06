@@ -1,9 +1,9 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { Database } from './database/types.js';
+import type { Database } from './platform/database/types.js';
 import { createApp, createFastifyInstance, type AdminConfig, type SignupConfig } from './app.js';
-import type { AppConfig } from './config/schema.js';
-import { createDatabase } from './database/database.js';
+import type { AppConfig } from './platform/config/schema.js';
+import { createDatabase } from './platform/database/database.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
@@ -35,7 +35,7 @@ import {
   clearCompletedListIdQuery,
   setOpenOrderQueries,
 } from './tasks/infrastructure/task-row-statements.js';
-import { createPinoCommandLogger, createPinoHistoryReadLogger } from './logging/index.js';
+import { createPinoCommandLogger, createPinoHistoryReadLogger } from './platform/logging/index.js';
 import { createHistoryHandlers } from './history/application/create-history-handlers.js';
 import { createSqliteChangeLogStore } from './shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-history-lookups.js';
@@ -49,7 +49,7 @@ import {
   createSqliteProcessToProjectPersist,
   createSqliteProcessToTaskPersist,
 } from './processing/infrastructure/persist-process.js';
-import { createSqliteHealthChecker } from './health/infrastructure/sqlite-health-checker.js';
+import { createSqliteHealthChecker } from './platform/health/sqlite-health-checker.js';
 import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
@@ -470,7 +470,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     : createAuthMiddleware({ tokenService });
 
   // Create health checker
-  const healthChecker = createSqliteHealthChecker({ tokenStore });
+  const healthChecker = createSqliteHealthChecker(database);
 
   // Create capture store and service (async initialization)
   const captureStore = await createSqliteCaptureStore(database, clock);

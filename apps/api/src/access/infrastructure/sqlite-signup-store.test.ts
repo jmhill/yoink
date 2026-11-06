@@ -7,7 +7,7 @@ import { createFakeUserStore } from './fake-user-store.js';
 import { createFakeOrganizationStore } from './fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from './fake-organization-membership-store.js';
 import { createFakeInvitationStore } from './fake-invitation-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { CompleteSignupRecord } from '../domain/signup-store.js';
 
 const invitedOrg = {

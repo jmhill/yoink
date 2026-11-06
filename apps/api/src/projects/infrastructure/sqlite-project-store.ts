@@ -1,11 +1,11 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
 import type { ProjectStore } from '../domain/project-store.js';
 import { projectNotFoundError, storageError, type StorageError } from '../domain/project-errors.js';
 import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
-import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import { pageSqlite } from '../../platform/sql/page-sqlite.js';
 import { projectDirection } from '../../kernel/listing/domain/list-keys.js';
 import { parseProjectRow } from './parse-project-row.js';
 

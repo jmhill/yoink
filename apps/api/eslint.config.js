@@ -305,9 +305,22 @@ export default [
             // today's allows and leaves target layers on the rules below.
             // `kernel` is ADR §3.4: any current layer may import kernel.
             // Kernel itself stays on the kernel-only rule further down.
+            // M2.2 moved config, database, logging, and the SQL helpers into
+            // platform. These are the same imports under the new paths.
+            // Target layers are not in currentTypes, so they do not gain this.
             {
               from: currentTypes,
-              allow: ['shared', 'listing', 'config', 'database', 'logging', 'kernel'],
+              allow: [
+                'shared',
+                'listing',
+                'config',
+                'database',
+                'logging',
+                'kernel',
+                'platform',
+                'platform-database',
+                'platform-sql',
+              ],
             },
             { from: 'app', allow: ['*'] },
             { from: 'composition', allow: ['*'] },

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { okAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
-import { createTestDatabase } from '../../database/test-utils.js';
-import type { Database } from '../../database/types.js';
+import { createTestDatabase } from '../../platform/database/test-utils.js';
+import type { Database } from '../../platform/database/types.js';
 import { createNoteHandlers } from '../application/create-note-handlers.js';
 import { createSqliteNotesBackend } from './sqlite-notes-backend.js';
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { errAsync } from 'neverthrow';
 import type { ImportProject, Task } from '@yoink/api-contracts';
-import { createTestDatabase } from '../../database/test-utils.js';
-import type { Database } from '../../database/types.js';
+import { createTestDatabase } from '../../platform/database/test-utils.js';
+import type { Database } from '../../platform/database/types.js';
 import { createSqliteTaskPersist } from '../../tasks/infrastructure/store-backed-persist.js';
 import { createSqliteTaskStore } from '../../tasks/infrastructure/sqlite-task-store.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';

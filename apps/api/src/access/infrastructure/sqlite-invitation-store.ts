@@ -1,4 +1,4 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Invitation } from '../domain/invitation.js';
 import type { InvitationStore } from '../domain/invitation-store.js';

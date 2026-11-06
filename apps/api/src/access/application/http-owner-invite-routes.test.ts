@@ -23,8 +23,8 @@ import {
   bootstrapApp,
   createInfrastructure,
 } from '../../composition-root.js';
-import { runMigrations } from '../../database/migrator.js';
-import { migrations } from '../../database/migrations.js';
+import { runMigrations } from '../../platform/database/migrator.js';
+import { migrations } from '../../platform/database/migrations.js';
 import {
   createTestAppFull,
   TEST_ADMIN_PASSWORD,

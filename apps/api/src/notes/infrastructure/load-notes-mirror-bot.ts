@@ -1,5 +1,5 @@
 import { okAsync, ResultAsync } from 'neverthrow';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { NOTES_MIRROR_BOT_NAME } from '../domain/mirror-bot.js';
 import { storageError } from '../domain/note-errors.js';
 import type { DesignateNotesMirrorBot, LoadNotesMirrorBot } from '../application/ports.js';

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createInfrastructure, bootstrapApp } from './composition-root.js';
-import { runMigrations } from './database/migrator.js';
-import { migrations } from './database/migrations.js';
-import type { AppConfig } from './config/schema.js';
+import { runMigrations } from './platform/database/migrator.js';
+import { migrations } from './platform/database/migrations.js';
+import type { AppConfig } from './platform/config/schema.js';
 
 const createTestConfig = (overrides?: Partial<AppConfig>): AppConfig => ({
   server: { port: 3000, host: '0.0.0.0' },

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { createSqlitePasskeyCredentialStore } from './sqlite-passkey-credential-store.js';
 import { createSqliteOrganizationStore } from './sqlite-organization-store.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { PasskeyCredential } from '../domain/passkey-credential.js';
 import type { PasskeyCredentialStore } from '../domain/passkey-credential-store.js';
 

@@ -1,5 +1,5 @@
 import { errAsync, ok, ResultAsync } from 'neverthrow';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../database/types.js';
 import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { KeysetDirection } from '../../kernel/listing/domain/keyset-window.js';

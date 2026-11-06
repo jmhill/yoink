@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { errAsync, okAsync } from 'neverthrow';
-import { healthCheckError } from '../domain/health-errors.js';
-import type { HealthChecker, HealthStatus } from '../domain/health-checker.js';
+import { healthCheckError } from '../../platform/health/health-errors.js';
+import type { HealthChecker, HealthStatus } from '../../platform/health/health-checker.js';
 import { registerOrpcHealthRoutes } from './orpc-health-routes.js';
 import { createTestApp } from '../../tests/helpers/test-app.js';
 

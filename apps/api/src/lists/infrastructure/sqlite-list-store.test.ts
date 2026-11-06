@@ -1,6 +1,6 @@
 import { describe, beforeAll, afterAll } from 'vitest';
 import { createSqliteListStore } from './sqlite-list-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import { runListStoreContractTests } from '../domain/list-store.contract.js';
 
 describe('SqliteListStore', () => {

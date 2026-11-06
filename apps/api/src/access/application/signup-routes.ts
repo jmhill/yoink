@@ -7,7 +7,7 @@ import type { SignupService } from '../domain/signup-service.js';
 import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
-import type { RateLimitConfig } from '../../config/schema.js';
+import type { RateLimitConfig } from '../../platform/config/schema.js';
 import type { ClientIpOf } from '../../shared/request-client-ip.js';
 import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';

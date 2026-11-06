@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createInfrastructure, bootstrapApp } from './composition-root.js';
-import { runMigrations } from './database/migrator.js';
-import { migrations } from './database/migrations.js';
-import type { AppConfig, RateLimitConfig } from './config/schema.js';
+import { runMigrations } from './platform/database/migrator.js';
+import { migrations } from './platform/database/migrations.js';
+import type { AppConfig, RateLimitConfig } from './platform/config/schema.js';
 import type { FastifyInstance } from 'fastify';
 import type { TokenService } from './access/domain/index.js';
 import {

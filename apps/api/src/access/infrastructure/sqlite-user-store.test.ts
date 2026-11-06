@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import { normalizeEmail } from '@yoink/api-contracts';
 import { createSqliteUserStore } from './sqlite-user-store.js';
-import { createTestDatabase, type Database } from '../../database/test-utils.js';
+import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { User } from '../domain/user.js';
 import type { UserStore } from '../domain/user-store.js';
 

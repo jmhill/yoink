@@ -1,5 +1,5 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,

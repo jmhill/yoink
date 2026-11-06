@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDatabase } from '../../../database/test-utils.js';
-import type { Database } from '../../../database/types.js';
+import { createTestDatabase } from '../../../platform/database/test-utils.js';
+import type { Database } from '../../../platform/database/types.js';
 import type { ChangeLogRecord } from '../domain/record.js';
 import { insertChangeLogIfChangedQuery, insertChangeLogQuery } from './sql.js';
 import { createSqliteChangeLogStore } from './sqlite-change-log-store.js';

@@ -1,6 +1,6 @@
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { NowNextActionItem, Task } from '@yoink/api-contracts';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
 import type { WorkListCursorRow } from '../../kernel/listing/domain/list-keys.js';
 import {
@@ -9,7 +9,7 @@ import {
   workListDirection,
   workNextActionDirection,
 } from '../../kernel/listing/domain/list-keys.js';
-import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import { pageSqlite } from '../../platform/sql/page-sqlite.js';
 import { parseTaskRow } from '../../tasks/infrastructure/parse-task-row.js';
 import { storageError, type StorageError } from '../domain/work-errors.js';
 import type {

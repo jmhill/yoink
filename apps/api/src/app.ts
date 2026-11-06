@@ -45,7 +45,7 @@ import type { TaskHandlers } from './tasks/application/index.js';
 import type { WorkHandlers } from './work/application/create-work-handlers.js';
 import type { ReviewHandlers } from './review/application/create-review-handlers.js';
 import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
-import type { HealthChecker } from './health/domain/health-checker.js';
+import type { HealthChecker } from './platform/health/health-checker.js';
 import type {
   AdminService,
   AdminSessionService,
@@ -70,10 +70,10 @@ import {
   type RateLimitConfig,
   type LogConfig,
   type CookieConfig,
-} from './config/schema.js';
-import type { Database } from './database/types.js';
-import { createLoggerOptions } from './logging/index.js';
-import { shouldHandleError } from './logging/should-handle-error.js';
+} from './platform/config/schema.js';
+import type { Database } from './platform/database/types.js';
+import { createLoggerOptions } from './platform/logging/index.js';
+import { shouldHandleError } from './platform/logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
 import {
   decideRateLimitExempt,

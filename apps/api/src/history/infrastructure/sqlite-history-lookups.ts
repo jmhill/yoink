@@ -1,6 +1,6 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { storageError } from '../../projects/domain/project-errors.js';
 import {
   UNKNOWN_ACTOR_NAME,

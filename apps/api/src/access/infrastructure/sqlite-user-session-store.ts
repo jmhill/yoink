@@ -1,4 +1,4 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { ResultAsync } from 'neverthrow';
 import type { UserSession } from '../domain/user-session.js';
 import type { UserSessionStore } from '../domain/user-session-store.js';

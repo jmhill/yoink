@@ -1,4 +1,4 @@
-import type { Database } from '../../database/types.js';
+import type { Database } from '../../platform/database/types.js';
 import { ResultAsync } from 'neverthrow';
 import type { PasskeyCredential, PasskeyTransport } from '../domain/passkey-credential.js';
 import type { PasskeyCredentialStore } from '../domain/passkey-credential-store.js';

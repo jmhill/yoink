@@ -82,7 +82,7 @@ import {
   LEGACY_MIGRATION_VERSION,
   MIGRATION_OWNERS,
   type MigrationOwner,
-} from '../database/types.js';
+} from './database/types.js';
 import type { ModuleName } from '../kernel/module-name.js';
 
 export { LEGACY_MIGRATION_VERSION };
@@ -203,6 +203,8 @@ const CURRENT_MODULE_ROOT: Record<string, ModuleName> = {
   history: 'history',
 };
 
+// Leftover roots. M2.2 moved these trees under platform/; a file still here
+// stays platform rather than becoming unmapped.
 const CURRENT_PLATFORM_ROOTS = new Set(['database', 'config', 'logging', 'health']);
 
 const TABLE_NAME_BY_LOWER = new Map<string, TableName>(
@@ -258,7 +260,8 @@ export const classifyApiPath = (relativePath: string): FileRole => {
   if (FIXTURE_ROUTE_PATH_SET.has(path)) {
     return { kind: 'no-sql', area: 'fixture-route' };
   }
-  const migrationFile = /^database\/migrations\/(\d+)-[^/]+\.ts$/.exec(path);
+  // M2.2 moved the tree under platform/database. 001–043 stay exempt.
+  const migrationFile = /^platform\/database\/migrations\/(\d+)-[^/]+\.ts$/.exec(path);
   if (migrationFile?.[1] !== undefined) {
     const version = Number(migrationFile[1]);
     return {

@@ -1,7 +1,7 @@
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Note, NoteListItem } from '@yoink/api-contracts';
-import type { Database } from '../../database/types.js';
-import { pageSqlite } from '../../listing/infrastructure/page-sqlite.js';
+import type { Database } from '../../platform/database/types.js';
+import { pageSqlite } from '../../platform/sql/page-sqlite.js';
 import { projectNotesDirection } from '../../kernel/listing/domain/list-keys.js';
 import {
   insertChangeLogIfChangedQuery,

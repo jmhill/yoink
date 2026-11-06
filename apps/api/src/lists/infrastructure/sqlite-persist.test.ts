@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDatabase } from '../../database/test-utils.js';
-import type { Database } from '../../database/types.js';
+import { createTestDatabase } from '../../platform/database/test-utils.js';
+import type { Database } from '../../platform/database/types.js';
 import { createSqliteListPersist } from './store-backed-persist.js';
 import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
 import { planListChange, type ListChangePlanInput } from '../domain/plan-list-change.js';

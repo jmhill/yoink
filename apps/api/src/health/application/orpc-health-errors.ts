@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server';
-import type { HealthCheckError } from '../domain/health-errors.js';
+import type { HealthCheckError } from '../../platform/health/health-errors.js';
 
 /** Adapter-only. The checker stays a Result; this builds the HTTP error. */
 export const mapHealthCheckError = (error: HealthCheckError) => {

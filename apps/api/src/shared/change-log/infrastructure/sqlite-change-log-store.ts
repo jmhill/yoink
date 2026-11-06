@@ -1,6 +1,6 @@
 import { err, errAsync, ok, okAsync, ResultAsync, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { Database } from '../../../database/types.js';
+import type { Database } from '../../../platform/database/types.js';
 import { parseChangeLogRecord } from '../domain/parse-record.js';
 import type { ChangeLogParseError, ChangeLogRecord } from '../domain/record.js';
 import type { ChangeLogSubjectType } from '../domain/kinds.js';
@@ -11,7 +11,7 @@ import type {
 import { PROJECT_TIMELINE_SQL, VISIBLE_TIMELINE_SQL } from './sql.js';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
-import { pageSqlite } from '../../../listing/infrastructure/page-sqlite.js';
+import { pageSqlite } from '../../../platform/sql/page-sqlite.js';
 import {
   projectHistoryDirection,
   taskHistoryDirection,

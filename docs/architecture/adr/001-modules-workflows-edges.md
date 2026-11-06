@@ -370,12 +370,50 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
   It then runs everything in **one `db.batch(..., 'write')`**.
 - Guards are the module's own conditional writes (e.g. `UPDATE captures … WHERE status = 'inbox'`). Each is immediately followed by a platform-provided assertion that makes the batch fail when the guarded write changed no rows. For example, a statement that inserts `changes() > 0` into a guard table owned by platform, with `CHECK (ok = 1)`.
 - **Statement order doesn't matter for atomicity.** Any failed guard aborts the whole batch. The only ordering rule is that each assertion comes straight after its own guarded write, and participants handle that themselves.
-- If the batch fails, the unit of work maps the failing statement's index back to the step that owned it, yielding a typed `Conflict` or `Storage` failure.
+- If the batch fails, the unit of work classifies a typed `Conflict` or `Storage` failure from the client error. The local spike below found no statement index on that error, so `StepFailure.owner` cannot be filled from it.
 - All reads and decisions happen **before** the batch runs, including reads by policies. A batch contains only guarded writes.
 - **No module's SQL references another module's table.** The current `EXISTS (SELECT … FROM <other table>)` guards, including history's `existsClause`, are removed. Inside one batch, the owning module's step guarantees the subject exists.
 
+**Local spike, 2026-11-06. U2 is not confirmed.** The Turso half has not run. U1 stays the fallback until that half agrees. Production `createDatabase` was not changed. The runner is `docs/architecture/adr/spikes/m0-2-u2-batch.ts`. The captured local output is `docs/architecture/adr/spikes/m0-2-u2-batch.local.json`.
+
+The run used `createDatabase({ type: 'file' })` on a temporary file, Node v24.22.2, and the pinned `@libsql/client` 0.15.15. `PRAGMA foreign_keys` read back `1`. The client maps `db.batch(..., 'write')` to `BEGIN IMMEDIATE` (`@libsql/core` `transactionModeToBegin`). The temporary file was deleted after the run.
+
+Guard table, owned by the spike the way platform will own it:
+
+```sql
+CREATE TABLE platform_batch_guard (
+  ok INTEGER NOT NULL CHECK (ok = 1)
+);
+```
+
+Assertion, placed immediately after each guarded write:
+
+```sql
+INSERT INTO platform_batch_guard (ok) VALUES (changes() > 0);
+```
+
+The guarded writes used the current statement shapes. The task write is `updateTaskQuery` (`tasks/infrastructure/task-row-statements.ts`): `UPDATE tasks SET` title, due date, completed at, pinned at, assignee, list, project, open order, and the three last-changed columns `WHERE id = ? AND organization_id = ? AND deleted_at IS NULL`. The capture write is `markCaptureProcessedIfInboxQuery` (`processing/infrastructure/process-row-statements.ts`): `UPDATE captures SET status = 'processed', processed_at = ?, processed_to_type = ?, processed_to_id = ? WHERE id = ? AND organization_id = ? AND status = 'inbox' AND deleted_at IS NULL`. The history write is `insertChangeLogQuery` for a task (`shared/change-log/infrastructure/sql.ts`): `INSERT INTO change_log (...) SELECT ... COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1 WHERE EXISTS (SELECT 1 FROM tasks WHERE id = ? AND organization_id = ? AND deleted_at IS NULL)`. The throwaway tables had those columns and the current `change_log` checks, including `UNIQUE` on `seq`. They were not the production schema.
+
+`changes()` inside the same batch saw the previous write. After a matching `UPDATE`, `SELECT changes()` returned `1` (`rowsAffected` `[1, 0]`). After an `UPDATE` whose id was missing, it returned `0` (`rowsAffected` `[0, 0]`). A later 0-row `UPDATE` still made the assertion fail when an earlier statement in that batch had changed a row. `changes()` did not stay stuck at the earlier write.
+
+Commit when both guards match. One batch: capture update, assertion, task update, assertion, history insert. 5 statements, 0.7 ms, every `rowsAffected` was 1. Afterwards the capture was `processed`, the task title was `after`, `change_log` had 1 row, and `platform_batch_guard` had 2 rows whose `ok` values were 1.
+
+Stale capture guard rolls the whole batch back, including history and the earlier task write. Before the batch the capture was already `processed`. The batch was: matching task update, assertion, history insert, `markCaptureProcessedIfInboxQuery` (0 rows), assertion, another history insert. It threw. Afterwards the task title was still `before`, `change_log` was empty, and the guard table was empty. The capture stayed `processed`, which is the pre-batch row, not a write from the batch.
+
+Stale task guard rolls back the other participant. Before the batch the task's `deleted_at` was set, so `updateTaskQuery` matches 0 rows and the history `EXISTS` also matches 0 rows. The batch was: matching capture update, assertion, history insert, task update, assertion. It threw. Afterwards the capture was still `inbox`, so the capture update did not commit. `deleted_at` was unchanged. History and the guard table were empty.
+
+Both failures threw `LibsqlError`. The guard failure was `code: "SQLITE_CONSTRAINT_CHECK"`, `rawCode: 275`, `message: "SQLITE_CONSTRAINT_CHECK: CHECK constraint failed: ok = 1"`. The cause was `SqliteError` with `message: "CHECK constraint failed: ok = 1"`. A duplicate task primary key in the same batch, after a matching task update, assertion, and history insert, threw `code: "SQLITE_CONSTRAINT_PRIMARYKEY"`, `rawCode: 1555`, `message: "SQLITE_CONSTRAINT_PRIMARYKEY: UNIQUE constraint failed: tasks.id"`, and the task title and history were unchanged. Own properties on both errors were `stack`, `message`, `cause`, `code`, `rawCode`, and `name`. There is no statement index. `StepFailure.owner` cannot be recovered from this client.
+
+Error mapping from that output:
+
+- `code === "SQLITE_CONSTRAINT_CHECK"` and the message contains `CHECK constraint failed: ok = 1` → `kind: "Conflict"`, `reason` is the message.
+- Any other `LibsqlError` from the batch → `kind: "Storage"`, `reason` is the message.
+- `owner` stays unknown until a client reports the failing statement index.
+
+Large batch, same task update and history insert, `seq` computed as `MAX(seq) + 1`. 1,000 updates plus 1,000 history inserts (2,000 statements) committed in 73.8 ms. 1,000 tasks were retitled, 1,000 history rows were inserted, and `seq` was 1 through 1,000 with 1,000 distinct values. The U2-shaped batch, 1,000 updates plus 1,000 assertions plus 1,000 history inserts (3,000 statements), committed in 83.6 ms. 1,000 tasks were retitled, the guard table had 1,000 rows, and history `seq` was again 1 through 1,000. No batch limit was hit.
+
 **Fallback (U1): interactive transaction** (`client.transaction('write')`).
-- Use only if the spike (§12) shows U2 isn't viable.
+- Use only if the Turso half, or a later local run, shows U2 isn't viable. This local run did not.
 - Rules: no reads inside the transaction, steps kept short, and the 5-second lock timeout noted in the docs.
 - Note: the `withTransaction` helper removed in `4e7afab` and `d1e3625` issued `BEGIN` through `db.execute()`, which can't work over HTTP. U1 would use the client's transaction API instead, a different mechanism.
 
@@ -638,7 +676,7 @@ The first enforcement task refreshes `ESLINT_BASELINE.md`, which still says 15 w
 
 | Risk | Mitigation |
 |---|---|
-| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules |
+| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules. Local libsql on 2026-11-06 accepted the assertion, rolled back on a stale guard, and accepted a 3,000-statement batch (§6.1). The local error has no statement index. Turso has not been run |
 | Spreading oRPC routers or contracts for version sharing doesn't type-check | **Spike first** in the versioning phase. Fall back to explicitly listing every procedure in each version's router |
 | Integration events lack fields consumers need | Consumer-driven: history's timeline mapping is the first consumer, and its tests define the required fields |
 | Edges grow business rules | Lint (no SQL, entry points only), the one-command rule, and code review guidance in `apps/api/AGENTS.md` |

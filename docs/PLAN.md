@@ -652,6 +652,8 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Plan:** [001-migration-plan.md](./architecture/adr/001-migration-plan.md) has every task, its dependencies, acceptance criteria and the shared definition of done. Each task can be handed to an agent on its own. **Deferred:** [ADR-002 (module kit)](./architecture/adr/002-module-kit.md). Every task adds to its lessons log.
 
+The execution index in that plan is the handoff list (task keys, dependencies, serialization, status, gates). GitHub links are pending publication. This file does not duplicate that list.
+
 ### M0: Adopt, prove, inventory - In Progress
 - [x] M0.1 Adopt the ADRs into the repo
 - [ ] M0.2 Spike: unit-of-work batch guards
@@ -2106,7 +2108,7 @@ When resuming work on this project:
 
 ### Current Focus: ADR-001 migration
 
-**ADR-001 is accepted, pending spikes.** Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then pick the next task from the [migration plan](./architecture/adr/001-migration-plan.md). M0.1 is done. Next: **M0.2** (unit-of-work batch-guard spike) and **M0.3** (oRPC router-spreading spike), which can run in parallel, plus **M0.4** (route inventory) and **M0.5** (ESLint baseline). Phase 8.5's open items are superseded by this migration.
+**ADR-001 is accepted, pending spikes.** Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then pick the next task from the [migration plan](./architecture/adr/001-migration-plan.md) execution index. M0.1 is done. GitHub issue links are pending publication; use the task keys there. **M0.2** and **M0.3** both write ADR-001, so the index serializes M0.3 after M0.2. **M0.4** and **M0.5** have no shared-file edge with them. M0.2 cannot close without a real Turso run. Phase 8.5's open items are superseded by this migration.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

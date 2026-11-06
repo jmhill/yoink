@@ -13,6 +13,8 @@ Each task can be handed to an agent on its own. Before starting a task, the agen
 
 Tasks list their dependencies. Tasks without a dependency between them may run in parallel, but **never** in parallel when both touch `composition-root.ts` or `app.ts`.
 
+The [execution index](#execution-index) is the handoff list: task keys, logical dependencies, serialization, status, and release or human gates. GitHub links are pending publication. A serialization edge is an execution rule for a shared file. It does not change the logical dependency written on the task.
+
 ## Definition of done (applies to every task)
 
 1. **Releasable.** `pnpm quality` passes. If the task touches HTTP, auth, persistence or the composition root, `pnpm e2e:test` also passes.
@@ -44,6 +46,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 ## M0: Adopt, prove, inventory
 
 ### M0.1 Adopt the ADRs into the repo
+
+**Execution:** complete in `11da980`. No GitHub issue. Not reopened.
+
 - **Depends on:** none
 - **Do:**
   - Move `adr-001-modules-workflows-edges.md` → `docs/architecture/adr/001-modules-workflows-edges.md`, `adr-002-module-kit.md` → `docs/architecture/adr/002-module-kit.md`, and this plan → `docs/architecture/adr/001-migration-plan.md`.
@@ -57,6 +62,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 - **Accept:** docs only, with links working. No code changes.
 
 ### M0.2 Spike: unit-of-work batch guards (ADR §6.1, §12)
+
+**Execution:** `M0.2`. GitHub link pending publication.
+
 - **Depends on:** none
 - **Do:** in a throwaway branch or test file, using the real `Database` abstraction, against local libsql **and** a Turso dev database:
   1. Create a guard table: `CHECK (ok = 1)`, owned by platform.
@@ -69,6 +77,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 - **Accept:** findings committed to the ADR. Production code unchanged.
 
 ### M0.3 Spike: oRPC contract and router spreading (ADR §9, §12)
+
+**Execution:** `M0.3`. GitHub link pending publication.
+
 - **Depends on:** none
 - **Do:** with the pinned oRPC version (`2.0.0-beta.48`):
   - build a two-procedure contract `v1`, and `v2 = { ...v1, one: changed }`
@@ -80,6 +91,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 - **Accept:** findings committed. Production code unchanged.
 
 ### M0.4 Route inventory (ADR §9)
+
+**Execution:** `M0.4`. GitHub link pending publication.
+
 - **Depends on:** none
 - **Do:** produce `docs/architecture/adr/001-route-inventory.md`. It's a table of **every** HTTP route registered by `app.ts`, with these columns:
   - method and path
@@ -90,6 +104,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 - **Accept:** every registered route is classified. Anything ambiguous is listed for a human decision.
 
 ### M0.5 Refresh the ESLint baseline
+
+**Execution:** `M0.5`. GitHub link pending publication.
+
 - **Depends on:** none
 - **Do:** run `pnpm lint` and rewrite `docs/architecture/ESLINT_BASELINE.md` with the current counts per rule (about 112 `element-types`, 19 `no-unknown` and 33 `no-explicit-any` at last count), plus a short explanation of each group. Note that the module list is missing notes, review and work.
 - **Accept:** the baseline matches `pnpm lint` output.
@@ -99,6 +116,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 ## M1: Enforcement at `warn`
 
 ### M1.1 Boundaries elements and rules for the target layout (ADR §10)
+
+**Execution:** `M1.1`. GitHub link pending publication.
+
 - **Depends on:** M0.5
 - **Do:** in `apps/api/eslint.config.js`:
   - Register boundaries elements for **both** the current layout (so nothing is unknown) **and** the target layout (`edges/*`, `workflows/*`, `modules/*/{domain,application,infrastructure}`, `modules/*/index.ts`, `modules/*/testing.ts`, `kernel`, `platform`).
@@ -118,6 +138,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
   - `pnpm quality` passes
 
 ### M1.2 Table-ownership architecture test (ADR §5.1, §10)
+
+**Execution:** `M1.2`. GitHub link pending publication.
+
 - **Depends on:** none
 - **Do:**
   - Add `apps/api/src/platform/table-ownership.ts` (create `platform/` if needed) mapping each table to its owner, with **target** owners (task-management, history, …).
@@ -127,6 +150,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 - **Accept:** the test passes on the current code with the allowlist, and fails on a deliberately added violation (shown in the test's own tests).
 
 ### M1.3 Migration ownership (ADR §5.4)
+
+**Execution:** `M1.3`. GitHub link pending publication.
+
 - **Depends on:** M1.2
 - **Do:**
   - Add `owner: ModuleName | 'platform'` to the `Migration` type. It's required for migrations numbered above `043`; `001`–`043` are exempt (make the field optional only for those, e.g. through a separate legacy type or an exemption list).
@@ -141,6 +167,9 @@ Tasks list their dependencies. Tasks without a dependency between them may run i
 All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a codemod (for example ts-morph, or `git mv` plus a scripted rewrite of relative specifiers) rather than hand edits. Each task also updates the M1.1 element patterns and the M1.2 path map.
 
 ### M2.1 Create `kernel/`
+
+**Execution:** `M2.1`. GitHub link pending publication.
+
 - **Depends on:** M1.1
 - **Move** (ADR §3.4, §3.5):
   - `shared/auth-context.ts`, `shared/name.ts` and `shared/domain/*` → `kernel/`
@@ -152,6 +181,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** kernel imports only kernel, `neverthrow` and `zod`, with no new lint warnings. `pnpm quality` passes.
 
 ### M2.2 Create `platform/` (closes the 8.5.4 health item)
+
+**Execution:** `M2.2`. GitHub link pending publication.
+
 - **Depends on:** M1.1
 - **Move:**
   - `config/` → `platform/config/`
@@ -163,6 +195,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** `/api/health` acceptance and E2E checks pass. Fly's health path is unchanged.
 
 ### M2.3 Split `@yoink/infrastructure` (ADR §3.4)
+
+**Execution:** `M2.3`. GitHub link pending publication.
+
 - **Depends on:** M2.1, M2.2
 - **Do:**
   - `Clock`, `IdGenerator` and `PasswordHasher` *types* are reachable from `kernel/`, either re-exported from a types-only entry of the package or moved into `kernel/`.
@@ -171,6 +206,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** no domain or application file imports a runtime value from `@yoink/infrastructure`. Lint shows this.
 
 ### M2.4 Create `edges/_shared/`
+
+**Execution:** `M2.4`. GitHub link pending publication.
+
 - **Depends on:** M2.1
 - **Move:**
   - `shared/orpc/*` → `edges/_shared/orpc/`
@@ -186,11 +224,17 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 ## M3: HTTP out of modules, public API v1 live
 
 ### M3.1 Public API v1 contracts (frozen copy)
+
+**Execution:** `M3.1`. GitHub link pending publication.
+
 - **Depends on:** M0.3, M0.4
 - **Do:** create `packages/api-contracts/src/public-api/v1/` containing the contracts of every **integration** route from the inventory, **copied unchanged** in path suffix, shapes and errors, but rooted at `/api/v1`. Today's `orpc/` contracts stay as they are (legacy).
 - **Accept:** a contract test shows that each v1 procedure matches its legacy counterpart's input and output schemas.
 
 ### M3.2 `edges/public-api/v1/` mounted at `/api/v1` and the `/api` alias
+
+**Execution:** `M3.2`. GitHub link pending publication.
+
 - **Depends on:** M3.1, M2.4
 - **Do:**
   - Implement the v1 router by **moving** today's integration route handlers (`*-routes.ts` for captures, tasks, lists, projects, notes, work, review and history, as classified in the inventory) into `edges/public-api/v1/`. Temporarily they still call module handlers and services by deep import; that's allowed with a lint warning and an allowlist comment pointing to the M5 task that fixes it.
@@ -204,11 +248,17 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
   - the alias responds with deprecation headers
 
 ### M3.3 `edges/legacy/` for client-only routes
+
+**Execution:** `M3.3`. GitHub link pending publication.
+
 - **Depends on:** M0.4, M2.4
 - **Do:** move every **client-only** route (admin, auth, passkey, signup, invitation, organization settings, …) out of `access/application/` and the other modules into `edges/legacy/<area>/`, keeping **identical paths and auth**. These later move to their client's edge (M6) and are removed (M7).
 - **Accept:** no route file remains under any module's `application/` or `infrastructure/`. `pnpm e2e:test` passes.
 
 ### M3.4 `edges/ops/` and `edges/test-fixtures/`
+
+**Execution:** `M3.4`. GitHub link pending publication.
+
 - **Depends on:** M2.2, M3.3
 - **Do:**
   - Move the health route to `edges/ops/`. The path stays `/api/health`.
@@ -219,11 +269,17 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** `pnpm e2e:test` passes. Nothing is served at `/api/test/` any more.
 
 ### M3.5 Auth middlewares to `edges/_shared/`
+
+**Execution:** `M3.5`. GitHub link pending publication.
+
 - **Depends on:** M3.2, M3.3
 - **Do:** move `auth-middleware`, `user-session-middleware`, `admin-session-middleware`, `combined-auth-middleware` and `with-authenticated-rate-limit` from `access/application/` to `edges/_shared/auth/`. They depend on access through its current services; that's allowed by allowlist until M5.13 provides an access interface. Rate-limit configuration becomes per edge (ADR §8.1).
 - **Accept:** access contains no Fastify or oRPC imports. Lint shows this.
 
 ### M3.6 Retire HTTP tests from module folders
+
+**Execution:** `M3.6`. GitHub link pending publication.
+
 - **Depends on:** M3.2–M3.5
 - **Do:** move the `http-*.test.ts` and `orpc-*.test.ts` files that remained in module folders next to the routes they test, under `edges/`.
 - **Accept:** no module directory contains HTTP tests.
@@ -233,6 +289,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 ## M4: Unit of work, integration events, history as sink
 
 ### M4.1 Kernel unit-of-work types, plus SQLite and in-memory implementations
+
+**Execution:** `M4.1`. GitHub link pending publication.
+
 - **Depends on:** M0.2, M2.1, M2.2
 - **Do:**
   - Add the kernel types from ADR §6.1 and §6.3 (`Step`, `StepFailure`, `Work`, `UnitOfWork`, `SqlParticipant`, `FakeParticipant`, `GuardedStatement`, `Policy`) and the `IntegrationEvent` envelope (§7.1).
@@ -244,6 +303,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** unit tests for both implementations cover commit, guard failure (with typed `Conflict` and the right `owner`), a storage failure, rollback of every participant, and policies (one level only, refusal aborts the commit). Nothing uses it yet.
 
 ### M4.2 Create `modules/history/` and move the change log
+
+**Execution:** `M4.2`. GitHub link pending publication.
+
 - **Depends on:** M4.1, M2.4
 - **Do:**
   - Move `shared/change-log/domain/*` and `infrastructure/*` into `modules/history/`, along with the current `history/` module.
@@ -253,6 +315,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** `shared/` is gone. `pnpm quality` and `pnpm e2e:test` pass.
 
 ### M4.3 History as the event sink
+
+**Execution:** `M4.3`. GitHub link pending publication.
+
 - **Depends on:** M4.2
 - **Do:**
   - Implement history's event-sink participant: **prepare** maps integration events to timeline records and assigns ids with `IdGenerator`; **compile** turns records into `change_log` inserts. Provide a fake participant too.
@@ -261,6 +326,9 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 - **Accept:** a test publishes a sample integration event through the unit of work and finds the expected `change_log` row (SQLite) or fake record.
 
 ### M4.4 Remove guards that read across modules (finishing step)
+
+**Execution:** `M4.4`. GitHub link pending publication.
+
 - **Depends on:** all M5 module tasks that remove their callers of `existsClause` and `insertChangeLogIfChangedQuery`
 - **Do:** delete `existsClause` and any `EXISTS (SELECT … FROM <another module's table>)` guard left in history's SQL.
 - **Accept:** there are no history allowlist entries in the table-ownership test.
@@ -284,11 +352,17 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 Own types (dropping `@yoink/api-contracts` from domain and application) are a **separate task per module** (M5.11), so the module moves stay reviewable.
 
 ### M5.1 Captures (pilot)
+
+**Execution:** `M5.1-check` (history `subject_type` CHECK, same release, before the first capture event) and `M5.1`. GitHub links pending publication.
+
 - **Depends on:** M3.6, M4.3
 - **Do:** the standard checklist. Publish `prepare.markProcessed` (with the inbox-claim guard) and `prepare.deleteProcessedCapture` for the processing workflow and policy. `queries.findInboxCapture` is needed by processing.
 - **Accept:** the standard checklist is complete. This pilot's lessons go into ADR-002 §5 **in detail**, and the plan template above is refined if the pilot shows a better shape.
 
 ### M5.2 Task Management: structural merge (no behaviour change)
+
+**Execution:** `M5.2`, after `CL-WORK`. That decision stays open with a recommendation. It is not pre-marked blocked on Justin. GitHub links pending publication.
+
 - **Depends on:** M5.1
 - **Do:**
   - Move `tasks/`, `projects/` and `lists/` into `modules/task-management/` with buckets.
@@ -299,6 +373,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** every task, project, list and work acceptance test passes unchanged.
 
 ### M5.3 Task Management: interface, unit of work, events
+
+**Execution:** `M5.3`. GitHub link pending publication.
+
 - **Depends on:** M5.2
 - **Do:** checklist steps 3–6:
   - Persistence for tasks, projects, lists and project imports goes through participants. That includes the "project done completes open tasks" path (up to `OPEN_TASKS_FETCH_LIMIT`) and imports, both as one commit.
@@ -308,6 +385,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** standard checklist complete. Large-batch behaviour is covered by a test using the SQLite unit of work.
 
 ### M5.4 Task Management: legacy services and the domain importing HTTP code
+
+**Execution:** `M5.4`. GitHub link pending publication.
+
 - **Depends on:** M5.3
 - **Do:**
   - Migrate `tasks/domain/task-service.ts` (whatever remains, e.g. pin and delete paths) to decide → plan → participant.
@@ -316,6 +396,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** no `domain/services/` or `domain/ports/` in task-management. No lint warnings for task-management except the `@yoink/api-contracts` ones, which M5.11 handles.
 
 ### M5.5 Processing workflow and delete-source-capture policy
+
+**Execution:** `M5.5`. GitHub link pending publication.
+
 - **Depends on:** M5.1, M5.3
 - **Do:**
   - Move `processing/` to `workflows/processing/` with `domain/`, `application/`, `policies/` and `index.ts`, and **no `infrastructure/`**.
@@ -329,11 +412,17 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
   - the table-ownership test shows no captures, tasks or projects SQL outside their owners
 
 ### M5.6 Remove `tasks.capture_id → captures` foreign key
+
+**Execution:** `M5.6`. GitHub link pending publication.
+
 - **Depends on:** M5.5
 - **Do:** a task-management-owned migration that rebuilds `tasks` without the foreign-key constraint (using `table-rebuild`), keeping the `capture_id` column as an opaque id. Migration tests cover it.
 - **Accept:** migration test passes. Behaviour unchanged.
 
 ### M5.7 Notes
+
+**Execution:** `M5.7`. GitHub link pending publication.
+
 - **Depends on:** M5.3
 - **Do:**
   - The standard checklist.
@@ -342,6 +431,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** standard checklist complete.
 
 ### M5.8 Notes settings table and the mirror-bot column
+
+**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. GitHub links pending publication.
+
 - **Depends on:** M5.7
 - **Do:** expand/migrate/contract, one step per commit:
   1. A notes-owned migration creates `notes_settings`.
@@ -351,11 +443,17 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** notes import and mirror-bot acceptance tests pass at every step.
 
 ### M5.9 Remove `project_notes.project_id → projects` foreign key
+
+**Execution:** `M5.9`. GitHub link pending publication.
+
 - **Depends on:** M5.7
 - **Do:** a notes-owned migration rebuilding `project_notes` without the constraint. Deleting a project (if possible) or changing its status no longer depends on notes rows.
 - **Accept:** migration test passes. Behaviour unchanged.
 
 ### M5.10 Review and history (queries)
+
+**Execution:** `M5.10-review` (after `CL-REVIEW`) and `M5.10-history`. `CL-REVIEW` stays open with a recommendation. It is not pre-marked blocked on Justin. GitHub links pending publication.
+
 - **Depends on:** M5.3, M4.3
 - **Do:**
   - **Review** gets the standard checklist. Its current read models become Task Management queries consumed through consumer-owned ports, or move to edge composition in M6.3, whichever keeps Task Management's queries meaningful in its own terms. The organization time zone comes through an access port. The review fixture routes stay in `edges/test-fixtures/` (see M7.4).
@@ -363,6 +461,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** no review or history SQL touches another module's tables. Standard checklist complete.
 
 ### M5.11 Own types per module (repeat for each module)
+
+**Execution:** one issue per module: `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`. GitHub links pending publication.
+
 - **Depends on:** that module's M5 task
 - **Do:** for one module per commit series (captures, task-management, notes, review, history, access):
   - define the module's own document types
@@ -371,6 +472,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** zero `@yoink/api-contracts` lint warnings for that module. When the last module is done, the transitional rule moves to `error`.
 
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
+
+**Execution:** `M5.12`. GitHub link pending publication.
+
 - **Depends on:** M4.3, M3.5
 - **Do:**
   - The standard checklist for access.
@@ -381,6 +485,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** standard checklist complete. Signup has an atomicity test (a failure in the last step leaves no rows behind). `edges/_shared/auth` uses access's interface.
 
 ### M5.13 Access: migrate legacy services (closes 8.5.4)
+
+**Execution:** one issue per service, serialized: `M5.13-admin`, `M5.13-admin-session`, `M5.13-agent`, `M5.13-invitation`, `M5.13-membership`, `M5.13-organization`, `M5.13-passkey`, `M5.13-session`, `M5.13-signup`, `M5.13-token`, `M5.13-user`. GitHub links pending publication.
+
 - **Depends on:** M5.12
 - **Do:**
   - Migrate every remaining `*-service.ts` in access (admin, admin-session, agent, invitation, membership, organization, passkey, session, signup, token, user) to decide → plan → participant, one service per commit series.
@@ -394,6 +501,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 ## M6: Client edges
 
 ### M6.1 Extension edge (`/extension-api/v1/`)
+
+**Execution:** `M6.1`. GitHub link pending publication.
+
 - **Depends on:** M5.1, M3.2
 - **Do:**
   - `packages/api-contracts/src/extension/v1/`, containing what the extension uses (capture creation, plus anything else the inventory shows).
@@ -404,6 +514,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** extension tests and capture acceptance tests pass. Old and new extension builds both work.
 
 ### M6.2 Web edge foundation (`/web-api/`)
+
+**Execution:** `M6.2`. GitHub link pending publication.
+
 - **Depends on:** M3.5
 - **Do:**
   - Add `packages/api-contracts/src/web/` and `edges/web/`, mounted at `/web-api/`, with `combined-auth-middleware` (session plus legacy token until PLAN 7.7c).
@@ -413,6 +526,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** the web app works with one screen on `/web-api/` and the rest on the alias.
 
 ### M6.3 Web edge screens
+
+**Execution:** one issue per screen series: `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`. GitHub links pending publication.
+
 - **Depends on:** M6.2, plus the module tasks each screen needs (M5.3 for Work, Tasks and Projects; M5.7 for notes; M5.10 for Review and history)
 - **Do:** move the web app's screens one at a time, one commit series each, with screen-shaped reads and writes:
   - Inbox and process
@@ -429,6 +545,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept per screen:** that screen's Playwright and HTTP acceptance tests pass, and the web app no longer calls the alias or legacy routes for that screen.
 
 ### M6.4 Admin edge (`/admin-api/`)
+
+**Execution:** `M6.4`. GitHub link pending publication.
+
 - **Depends on:** M5.12
 - **Do:**
   - Add `packages/api-contracts/src/admin/` and `edges/admin/` with admin-session auth, mounted at `/admin-api/`.
@@ -438,11 +557,17 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** admin acceptance tests pass, and the admin app makes no `/api/admin/...` calls.
 
 ### M6.5 Remove client-only legacy routes
+
+**Execution:** `M6.5-web` and `M6.5-admin`. Unknown window lengths stay gates. GitHub links pending publication.
+
 - **Depends on:** M6.3 (web) and M6.4 (admin), each removing its own group
 - **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the web edge's expand/contract window has passed (ADR §8.2: no requests from builds that use them for a set number of days, based on `X-Yoink-Build` logs).
 - **Accept:** `edges/legacy/` is gone.
 
 ### M6.6 Remove `/api/admin/...` from the dev proxy and docs
+
+**Execution:** `M6.6`. GitHub link pending publication.
+
 - **Depends on:** M6.4, M6.5
 - **Do:** clean up leftover references in Vite configs, docs and the acceptance drivers.
 - **Accept:** nothing in the repo references `/api/admin`.
@@ -452,21 +577,33 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 ## M7: Contract, enforce, review
 
 ### M7.1 Announce the `/api` alias sunset
+
+**Execution:** `M7.1`. GitHub link pending publication.
+
 - **Depends on:** M6.1, M6.3, M6.4
 - **Do:** set the `Sunset` date (≥ 90 days out, ADR §9) on alias responses. Record the date in the ADR and in `docs/operations/`. Check alias usage per token from the logs.
 - **Accept:** the headers carry the real date.
 
 ### M7.2 Remove the `/api` alias
+
+**Execution:** `M7.2`. GitHub link pending publication.
+
 - **Depends on:** M7.1 plus the conditions in ADR §9: the sunset date has passed, the alias has seen no calls for 30 days, and any remaining token owners have been contacted
 - **Do:** unmount the alias. Keep `/api/health` and `/api/v1`.
 - **Accept:** acceptance tests use `/api/v1`, and the HTTP driver is updated.
 
 ### M7.3 Retire `combined-auth-middleware`
+
+**Execution:** `M7.3`. GitHub link pending publication.
+
 - **Depends on:** PLAN 7.7c (removing the web app's legacy token fallback), M7.2
 - **Do:** the web edge uses session-only auth. Delete `combined-auth-middleware`.
 - **Accept:** auth acceptance tests pass.
 
 ### M7.4 Review and remove test fixture routes (ADR §11)
+
+**Execution:** `M7.4`. GitHub link pending publication.
+
 - **Depends on:** M5.10, M5.12
 - **Do:**
   - For each fixture route in `edges/test-fixtures/`, document **why it exists**, for example backdating `occurredAt`, finishing a task at a given time, or creating an ownerless workspace.
@@ -475,6 +612,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
 
 ### M7.5 All enforcement at `error` (absorbs 8.5.5)
+
+**Execution:** `M7.5`. GitHub link pending publication.
+
 - **Depends on:** all of M5, M6.5
 - **Do:**
   - Every ADR §10 rule goes to `error`.
@@ -484,6 +624,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** `pnpm quality` passes with no boundaries warnings.
 
 ### M7.6 Remove legacy contracts and leftovers
+
+**Execution:** `M7.6`. GitHub link pending publication.
+
 - **Depends on:** M7.2, M6.5
 - **Do:**
   - Delete `packages/api-contracts/src/orpc/` and any schema no longer used.
@@ -492,6 +635,9 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 - **Accept:** `apps/api/src` matches ADR §3 exactly.
 
 ### M7.7 Review ADR-002's lessons log
+
+**Execution:** `M7.7`. GitHub link pending publication.
+
 - **Depends on:** M7.5
 - **Do:** group ADR-002 §5's entries by theme. Check them against ADR-002 §6's conditions for starting. Either draft ADR-002 in full, or close it as **Rejected (not needed)** with the reasoning.
 - **Accept:** ADR-002's status is updated.
@@ -525,3 +671,108 @@ M0.1  M0.2  M0.3  M0.4  M0.5
 ```
 
 M4.4 runs after every M5 task that removes callers of history's cross-module guards.
+
+## Execution mandate
+
+Tycho owns engineering decisions, tests, architecture review, and merge gates. There is no routine per-issue check-in. Escalate only a genuinely major architecture, product, security, data-safety, or scope decision, or a blocker that needs Justin. Everyday implementation choices stay with Tycho.
+
+One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, this plan, and ADR-001. No new module kit and no DI container. Domain stays a pure `Result` with closed error unions. Effects stay in adapters. Only the owning module's infrastructure names a table in SQL. Baselines and the table-ownership allowlist only shrink. Public v1 and the `/api` alias keep today's HTTP status and error bodies. Migrations are forward-only. Compatibility windows and sunset dates are gates, not guesses. Do not apply the `approved-plan` label. This authorization was not approval in the Yoink Dev Team room.
+
+`CL-WORK` and `CL-REVIEW` stay open. Each carries a recommendation and the evidence. This setup does not decide them, and it does not mark them blocked on Justin only because they are technical. Tycho decides whether either one is major enough to escalate.
+
+Notes mirror-bot resolution keeps today's order: stored designation, then `NOTES_MIRROR_BOT_USER_ID`, then the first agent named `NOTES_MIRROR_BOT_NAME`. Do not drop the environment fallback.
+
+Unknown retirement lengths stay recorded gates. ADR §8.2's "a set number of days", and admin's shorter window, are unset. Do not invent a number or remove routes early.
+
+Docs-only tasks and unmerged spikes follow the issue's Tests section. When that section says `pnpm quality` is not required, it is not a gate and must not be claimed. That covers `M0.2`, `M0.3`, `M0.4`, `M0.5`, `CL-WORK`, `CL-REVIEW`, and `M7.7`. PR CI ignores `docs/**` and `*.md`. Code tasks still follow the Definition of done above.
+
+## Execution index
+
+Stable task keys for the 78 issues that follow M0.1. M0.1 stays complete and has no issue. Logical dependencies are the plan's dependencies. "Serialize after" is an execution edge for a shared file (`composition-root.ts`, `app.ts`, ADR-001, or one access-service series). It does not add a logical dependency and it does not rewrite the task prose above.
+
+As of this setup commit, zero GitHub issues have been published. The M0.2 create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is pending user review. That form is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not resubmit or duplicate that form from this commit. Fill the GitHub column when publication succeeds. Do not close an issue from this commit. `approved-plan` is not applied.
+
+The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
+
+`M2.3` has no downstream issue. Schedule it before later modules assume the kernel types it moves. That note is not a new dependency. `M6.6`, `M7.3`, `M7.4`, `M7.6`, and `M7.7` are also leaves.
+
+| ID | Logical dependencies | Serialize after | Status | Gate | GitHub |
+|---|---|---|---|---|---|
+| `M0.2` | — | — | Not started | Close only after a real Turso run. Local half may start. The credential grant needs Justin. | pending publication |
+| `M0.3` | — | `M0.2` | Not started | None. | pending publication |
+| `M0.4` | — | — | Not started | The inventory itself is not blocked. Justin decides any ambiguous row before M3.1. | pending publication |
+| `M0.5` | — | — | Not started | None. | pending publication |
+| `M1.1` | `M0.5` | — | Not started | None. | pending publication |
+| `M1.2` | — | — | Not started | None. | pending publication |
+| `M1.3` | `M1.2` | — | Not started | None. | pending publication |
+| `M2.1` | `M1.1` | — | Not started | None. | pending publication |
+| `M2.2` | `M1.1` | `M2.1` | Not started | None. | pending publication |
+| `M2.3` | `M2.1`, `M2.2` | — | Not started | None. | pending publication |
+| `M2.4` | `M2.1` | `M2.2` | Not started | None. | pending publication |
+| `M3.1` | `M0.3`, `M0.4` | — | Not started | None. | pending publication |
+| `M3.2` | `M3.1`, `M2.4` | — | Not started | None. | pending publication |
+| `M3.3` | `M0.4`, `M2.4` | `M3.2` | Not started | None. | pending publication |
+| `M3.4` | `M2.2`, `M3.3` | — | Not started | None. | pending publication |
+| `M3.5` | `M3.2`, `M3.3` | — | Not started | None. | pending publication |
+| `M3.6` | `M3.2`, `M3.3`, `M3.4`, `M3.5` | — | Not started | None. | pending publication |
+| `M4.1` | `M0.2`, `M2.1`, `M2.2` | — | Not started | None. | pending publication |
+| `M4.2` | `M4.1`, `M2.4` | — | Not started | None. | pending publication |
+| `M4.3` | `M4.2` | — | Not started | None. | pending publication |
+| `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | Not started | None. | pending publication |
+| `CL-WORK` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | pending publication |
+| `CL-REVIEW` | — | — | Not started | Open decision with a recommendation. Tycho decides whether it is major. Not pre-marked user-blocked. | pending publication |
+| `M5.1-check` | `M1.3`, `M4.2` | — | Not started | None. | pending publication |
+| `M5.1` | `M3.6`, `M4.3`, `M5.1-check` | — | Not started | None. | pending publication |
+| `M5.2` | `M5.1`, `CL-WORK` | — | Not started | None. | pending publication |
+| `M5.3` | `M5.2` | — | Not started | None. | pending publication |
+| `M5.4` | `M5.3` | — | Not started | None. | pending publication |
+| `M5.5` | `M5.1`, `M5.3` | — | Not started | None. | pending publication |
+| `M5.6` | `M5.5` | — | Not started | None. | pending publication |
+| `M5.7` | `M5.3` | — | Not started | None. | pending publication |
+| `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | pending publication |
+| `M5.8b` | `M5.8a` | — | Not started | None. | pending publication |
+| `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | pending publication |
+| `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | pending publication |
+| `M5.9` | `M5.7` | — | Not started | None. | pending publication |
+| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | None. | pending publication |
+| `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | pending publication |
+| `M5.11-captures` | `M5.1` | — | Not started | None. | pending publication |
+| `M5.11-task-management` | `M5.4` | — | Not started | None. | pending publication |
+| `M5.11-notes` | `M5.7` | — | Not started | None. | pending publication |
+| `M5.11-review` | `M5.10-review` | — | Not started | None. | pending publication |
+| `M5.11-history` | `M5.10-history` | — | Not started | None. | pending publication |
+| `M5.11-access` | `M5.13-user` | — | Not started | None. | pending publication |
+| `M5.12` | `M4.3`, `M3.5` | — | Not started | None. | pending publication |
+| `M5.13-admin` | `M5.12` | — | Not started | None. | pending publication |
+| `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | pending publication |
+| `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | pending publication |
+| `M5.13-invitation` | `M5.12` | `M5.13-agent` | Not started | None. | pending publication |
+| `M5.13-membership` | `M5.12` | `M5.13-invitation` | Not started | None. | pending publication |
+| `M5.13-organization` | `M5.12` | `M5.13-membership` | Not started | None. | pending publication |
+| `M5.13-passkey` | `M5.12` | `M5.13-organization` | Not started | None. | pending publication |
+| `M5.13-session` | `M5.12` | `M5.13-passkey` | Not started | None. | pending publication |
+| `M5.13-signup` | `M5.12` | `M5.13-session` | Not started | None. | pending publication |
+| `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | pending publication |
+| `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | pending publication |
+| `M6.1` | `M5.1`, `M3.2` | — | Not started | None. | pending publication |
+| `M6.2` | `M3.5`, `M5.1` | — | Not started | None. | pending publication |
+| `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | pending publication |
+| `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | pending publication |
+| `M6.3-work` | `M6.2`, `M5.3`, `CL-WORK` | — | Not started | None. | pending publication |
+| `M6.3-project-page` | `M6.2`, `M5.3` | — | Not started | None. | pending publication |
+| `M6.3-notes` | `M6.2`, `M5.7` | `M6.3-project-page` | Not started | None. | pending publication |
+| `M6.3-review` | `M6.2`, `M5.10-review` | — | Not started | None. | pending publication |
+| `M6.3-history` | `M6.2`, `M5.10-history` | `M6.3-project-page`, `M6.3-tasks-lists` | Not started | None. | pending publication |
+| `M6.3-settings` | `M6.2`, `M5.12` | — | Not started | None. | pending publication |
+| `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Not started | None. | pending publication |
+| `M6.4` | `M5.12` | — | Not started | None. | pending publication |
+| `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | pending publication |
+| `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | pending publication |
+| `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | pending publication |
+| `M7.1` | `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. | pending publication |
+| `M7.2` | `M7.1` | — | Not started | Sunset has passed, 30 days with no alias calls, and a person has contacted any remaining token owner. Do not send outreach. | pending publication |
+| `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | pending publication |
+| `M7.4` | `M5.10-review`, `M5.12` | — | Not started | Stop if replacing a fixture needs a new product command. | pending publication |
+| `M7.5` | `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | pending publication |
+| `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | pending publication |
+| `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | pending publication |

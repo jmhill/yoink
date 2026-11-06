@@ -663,7 +663,7 @@ The execution index in that plan is the handoff list (task keys, dependencies, s
 
 ### M1: Enforcement at `warn` - Not Started
 - [ ] M1.1 Boundaries elements and rules for the target layout
-- [ ] M1.2 Table-ownership architecture test
+- [x] M1.2 Table-ownership architecture test (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227))
 - [ ] M1.3 Migration ownership
 
 ### M2: Kernel, platform, `edges/_shared` - Not Started

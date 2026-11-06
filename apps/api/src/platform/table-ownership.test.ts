@@ -3,16 +3,21 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { legacyMigrationCutoffIs43, type Migration } from '../database/types.js';
+import { migrations } from '../database/migrations/index.js';
 import { TABLE_OWNERSHIP_ALLOWLIST } from './table-ownership.allowlist.js';
 import {
   FIXTURE_ROUTE_PATHS,
   LEGACY_MIGRATION_VERSION,
   PLANNED_TABLES,
   TABLE_OWNERS,
+  checkMigrationOwnership,
   checkTableOwnership,
   classifyApiPath,
   collectOwnershipFailures,
   isWorkflowInfrastructurePath,
+  moduleOwnersMatchMigrationOwners,
+  readMigrationFields,
   stringLiteralsInTypescript,
   tableReferencesInLiteral,
   type ScannedSourceFile,
@@ -252,7 +257,11 @@ describe('path ownership', () => {
       kind: 'exempt',
       reason: 'legacy-migration',
     });
-    expect(classifyApiPath('database/migrations/044-next.ts')).toEqual({ kind: 'platform' });
+    const laterMigration = `database/migrations/${String(LEGACY_MIGRATION_VERSION + 1).padStart(3, '0')}-next.ts`;
+    expect(classifyApiPath(laterMigration)).toEqual({
+      kind: 'exempt',
+      reason: 'later-migration',
+    });
     expect(classifyApiPath('tasks/infrastructure/task-row-statements.test.ts')).toEqual({
       kind: 'exempt',
       reason: 'test-file',
@@ -364,6 +373,7 @@ describe('planted ownership failures', () => {
         'database/migrations/043-legacy.ts',
         'export const sql = "REFERENCES captures(id)";'
       ),
+      // Later migration files are not platform code. checkMigrationOwnership owns them.
       scanned(
         'database/migrations/044-new.ts',
         'export const sql = "CREATE TABLE tasks (id TEXT)";'
@@ -375,12 +385,6 @@ describe('planted ownership failures', () => {
     ];
     const report = checkTableOwnership(files, []);
     expect(report.violations).toEqual([
-      {
-        path: 'database/migrations/044-new.ts',
-        keyword: 'TABLE',
-        table: 'tasks',
-        count: 1,
-      },
       {
         path: 'edges/web/inbox.ts',
         keyword: 'FROM',
@@ -579,5 +583,288 @@ describe('current tree', () => {
     expect(
       refsIn('access/infrastructure/http-ownerless-workspace-fixture-routes.ts')
     ).toEqual([]);
+  });
+});
+
+describe('migration ownership', () => {
+  const nextVersion = LEGACY_MIGRATION_VERSION + 1;
+  const up = async (): Promise<void> => {};
+
+  const declared = (
+    version: number,
+    source: string,
+    fields: { owner?: string; reason?: string } = {}
+  ) =>
+    checkMigrationOwnership({
+      version,
+      ...readMigrationFields(source),
+      ...fields,
+      literals: stringLiteralsInTypescript(source),
+    });
+
+  it('keeps the migration owner union aligned with the table modules', () => {
+    expect(moduleOwnersMatchMigrationOwners).toBe(true);
+    expect(legacyMigrationCutoffIs43).toBe(true);
+  });
+
+  it('types a legacy migration without an owner and requires one after it', () => {
+    const legacy: Migration = {
+      version: LEGACY_MIGRATION_VERSION,
+      name: 'legacy',
+      up,
+    };
+    const owned: Migration = {
+      version: nextVersion,
+      name: 'owned',
+      owner: 'notes',
+      up,
+    };
+    const platform: Migration = {
+      version: nextVersion,
+      name: 'platform',
+      owner: 'platform',
+      reason: 'backfill spans modules',
+      up,
+    };
+    expect(legacy.owner).toBeUndefined();
+    expect(owned.owner).toBe('notes');
+    expect(platform.reason).toBe('backfill spans modules');
+
+    // @ts-expect-error a migration after 043 declares an owner
+    const missingOwner: Migration = { version: nextVersion, name: 'missing', up };
+    // @ts-expect-error a platform migration declares a written reason
+    const platformWithoutReason: Migration = {
+      version: nextVersion,
+      name: 'platform',
+      owner: 'platform',
+      up,
+    };
+    expect(missingOwner.name).toBe('missing');
+    expect(platformWithoutReason.owner).toBe('platform');
+  });
+
+  it('allows an owned migration to create, alter, rebuild, and backfill its own tables', () => {
+    const failures = declared(
+      nextVersion,
+      `
+        export const migration = {
+          owner: 'task-management',
+          up: async (db) => {
+            await db.batch([
+              { sql: 'CREATE TABLE IF NOT EXISTS tasks (id TEXT, project_id TEXT REFERENCES projects(id))' },
+              { sql: 'ALTER TABLE lists ADD COLUMN position INTEGER' },
+              { sql: 'INSERT INTO tasks (id) SELECT id FROM projects' },
+              { sql: 'UPDATE tasks SET project_id = NULL' },
+            ]);
+          },
+        };
+      `
+    );
+    expect(failures).toEqual([]);
+  });
+
+  it('rejects a migration that touches another module table', () => {
+    expect(
+      declared(nextVersion, 'export const sql = "ALTER TABLE tasks ADD COLUMN x TEXT";', {
+        owner: 'notes',
+      })
+    ).toEqual([
+      {
+        kind: 'cross-owner-table',
+        version: nextVersion,
+        keyword: 'TABLE',
+        table: 'tasks',
+      },
+    ]);
+  });
+
+  it('rejects a new foreign key to another module and allows an identity anchor', () => {
+    expect(
+      declared(nextVersion, 'export const sql = "REFERENCES projects(id)";', { owner: 'notes' })
+    ).toEqual([
+      { kind: 'cross-module-foreign-key', version: nextVersion, table: 'projects' },
+    ]);
+    expect(
+      declared(nextVersion, 'export const sql = "REFERENCES organizations(name)";', {
+        owner: 'notes',
+      })
+    ).toEqual([
+      { kind: 'cross-module-foreign-key', version: nextVersion, table: 'organizations' },
+    ]);
+    expect(
+      declared(
+        nextVersion,
+        'export const sql = "REFERENCES organizations(id), REFERENCES users(id)";',
+        { owner: 'notes' }
+      )
+    ).toEqual([]);
+    expect(
+      declared(
+        nextVersion,
+        'export const sql = "REFERENCES organizations ( id ), REFERENCES \\"users\\" ( id )";',
+        { owner: 'captures' }
+      )
+    ).toEqual([]);
+  });
+
+  it('allows a platform migration with a reason to touch other tables, not to add their foreign keys', () => {
+    expect(
+      declared(
+        nextVersion,
+        `
+          export const sql = "UPDATE tasks SET deleted_at = ?";
+          export const more = "INSERT INTO captures (id) VALUES (?)";
+        `,
+        { owner: 'platform', reason: 'one backfill before the split' }
+      )
+    ).toEqual([]);
+    expect(
+      declared(nextVersion, 'export const sql = "REFERENCES captures(id)";', {
+        owner: 'platform',
+        reason: 'one backfill before the split',
+      })
+    ).toEqual([
+      { kind: 'cross-module-foreign-key', version: nextVersion, table: 'captures' },
+    ]);
+    expect(
+      declared(nextVersion, 'export const sql = "REFERENCES users(id)";', {
+        owner: 'platform',
+        reason: 'anchor stays',
+      })
+    ).toEqual([]);
+  });
+
+  it('rejects a platform migration whose reason is missing or blank when it crosses modules', () => {
+    expect(
+      declared(nextVersion, 'export const sql = "UPDATE tasks SET deleted_at = ?";', {
+        owner: 'platform',
+        reason: '   ',
+      })
+    ).toEqual([
+      { kind: 'platform-reason', version: nextVersion },
+      {
+        kind: 'cross-owner-table',
+        version: nextVersion,
+        keyword: 'UPDATE',
+        table: 'tasks',
+      },
+    ]);
+    expect(
+      declared(nextVersion, 'export const sql = "CREATE TABLE _migrations (version INTEGER)";', {
+        owner: 'platform',
+      })
+    ).toEqual([{ kind: 'platform-reason', version: nextVersion }]);
+  });
+
+  it('rejects a missing or unknown owner without dropping the table hit', () => {
+    expect(declared(nextVersion, 'export const sql = "CREATE TABLE tasks (id TEXT)";')).toEqual([
+      { kind: 'missing-owner', version: nextVersion },
+      {
+        kind: 'cross-owner-table',
+        version: nextVersion,
+        keyword: 'TABLE',
+        table: 'tasks',
+      },
+    ]);
+    expect(
+      declared(nextVersion, 'export const sql = "FROM tasks";', { owner: 'processing' })
+    ).toEqual([
+      { kind: 'invalid-owner', version: nextVersion, owner: 'processing' },
+      {
+        kind: 'cross-owner-table',
+        version: nextVersion,
+        keyword: 'FROM',
+        table: 'tasks',
+      },
+    ]);
+  });
+
+  it('does not flag legacy migrations, including their cross-module foreign keys', () => {
+    expect(
+      declared(
+        LEGACY_MIGRATION_VERSION,
+        'export const sql = "REFERENCES captures(id)"; export const more = "UPDATE tasks SET x = 1";'
+      )
+    ).toEqual([]);
+  });
+
+  it('reads owner and reason from a fixture source and ignores comments and string contents', () => {
+    const source = `
+      // owner: 'access'
+      const label = "owner: 'captures'";
+      export const migration = {
+        version: ${nextVersion},
+        name: 'fixture',
+        owner: "task-management",
+        reason: 'not used for a module owner',
+        up: async () => {},
+      };
+    `;
+    expect(readMigrationFields(source)).toEqual({
+      owner: 'task-management',
+      reason: 'not used for a module owner',
+    });
+    expect(readMigrationFields("export const owner = 'notes';")).toEqual({});
+    expect(readMigrationFields('export const migration = { owner: `notes` };')).toEqual({});
+    const fields = readMigrationFields(`
+      export const migration = {
+        owner: 'platform',
+        reason: 'it\\'s a span',
+      };
+    `);
+    expect(fields.owner).toBe('platform');
+    expect(fields.reason).toBe("it's a span");
+    expect(
+      checkMigrationOwnership({
+        version: nextVersion,
+        ...readMigrationFields(`
+          export const migration = {
+            owner: 'notes',
+            up: async (db) => {
+              await db.execute({ sql: 'CREATE TABLE notes_settings (id TEXT)' });
+            },
+          };
+        `),
+        literals: stringLiteralsInTypescript(`
+          export const migration = {
+            owner: 'notes',
+            up: async (db) => {
+              await db.execute({ sql: 'CREATE TABLE notes_settings (id TEXT)' });
+            },
+          };
+        `),
+      })
+    ).toEqual([]);
+  });
+
+  it('matches the checked-in sequence and leaves 001 through the legacy cutoff exempt', () => {
+    const indexed = migrations.map((migration) => migration.version).sort((left, right) => left - right);
+    expect(indexed).toEqual(
+      Array.from({ length: LEGACY_MIGRATION_VERSION }, (_, index) => index + 1)
+    );
+    expect(Math.max(...indexed) + 1).toBe(nextVersion);
+
+    const files = scanSourceFiles(apiSrc);
+    const onDisk = files
+      .map((file) => /^database\/migrations\/(\d+)-[^/]+\.ts$/.exec(file.path))
+      .flatMap((match) => (match?.[1] === undefined ? [] : [Number(match[1])]))
+      .sort((left, right) => left - right);
+    expect(onDisk).toEqual(indexed);
+
+    for (const version of indexed) {
+      const padded = String(version).padStart(3, '0');
+      const file = files.find((candidate) =>
+        candidate.path.startsWith(`database/migrations/${padded}-`)
+      );
+      expect(file, padded).toBeDefined();
+      const source = readFileSync(join(apiSrc, file?.path ?? ''), 'utf8');
+      expect(
+        checkMigrationOwnership({
+          version,
+          ...readMigrationFields(source),
+          literals: stringLiteralsInTypescript(source),
+        })
+      ).toEqual([]);
+    }
   });
 });

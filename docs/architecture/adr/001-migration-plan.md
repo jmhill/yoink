@@ -690,7 +690,7 @@ Docs-only tasks and unmerged spikes follow the issue's Tests section. When that 
 
 Stable task keys for the 78 tasks that follow M0.1. M0.1 stays complete and has no issue. Logical dependencies are the plan's dependencies. "Serialize after" is an execution edge for a shared file (`composition-root.ts`, `app.ts`, ADR-001, or one access-service series). It does not add a logical dependency and it does not rewrite the task prose above.
 
-Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)). M0.4 is Done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)). That status is true when the pull request merges.
+Seventy-seven GitHub issues are published: [#223](https://github.com/jmhill/yoink/issues/223) through [#244](https://github.com/jmhill/yoink/issues/244) and [#246](https://github.com/jmhill/yoink/issues/246) through [#300](https://github.com/jmhill/yoink/issues/300). Each published key is linked in the GitHub column. M0.5 is Done. The baseline is on main in `93584ce` ([#225](https://github.com/jmhill/yoink/issues/225)). M0.4 is Done in [#301](https://github.com/jmhill/yoink/pull/301) ([#223](https://github.com/jmhill/yoink/issues/223)). That status is true when the pull request merges. M1.2 is Done on main in `f2a94e7` ([#227](https://github.com/jmhill/yoink/issues/227)). M1.1 and M1.3 are not done.
 
 M0.2 stays pending publication, pending user Submit. Local libsql evidence is in ADR §6.1. M0.2 is not done; the Turso half has not run. Its marketplace create form (`[ADR-001] M0.2 Spike unit-of-work batch guards` on `jmhill/yoink`, type Task) is not an issue number or URL. The form still has the earlier body, whose shared definition of done required `pnpm quality` while the spike's tests said it was not required. The corrected draft does not. Do not create, edit, resubmit, or duplicate that form. Do not close an issue from this update. `approved-plan` is not applied.
 
@@ -705,7 +705,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M0.4` | — | — | Done ([#301](https://github.com/jmhill/yoink/pull/301)) | None. Every route is classified. No ambiguous rows. | [#223](https://github.com/jmhill/yoink/issues/223) |
 | `M0.5` | — | — | Done (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)) | None. | [#225](https://github.com/jmhill/yoink/issues/225) |
 | `M1.1` | `M0.5` | — | Not started | None. | [#226](https://github.com/jmhill/yoink/issues/226) |
-| `M1.2` | — | — | Not started | None. | [#227](https://github.com/jmhill/yoink/issues/227) |
+| `M1.2` | — | — | Done (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227)) | None. | [#227](https://github.com/jmhill/yoink/issues/227) |
 | `M1.3` | `M1.2` | — | Not started | None. | [#228](https://github.com/jmhill/yoink/issues/228) |
 | `M2.1` | `M1.1` | — | Not started | None. | [#229](https://github.com/jmhill/yoink/issues/229) |
 | `M2.2` | `M1.1` | `M2.1` | Not started | None. | [#230](https://github.com/jmhill/yoink/issues/230) |

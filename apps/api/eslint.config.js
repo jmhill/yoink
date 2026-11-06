@@ -54,6 +54,7 @@ const layerAndCurrentTypes = [
   'module-domain',
   'module-application',
   'module-infrastructure',
+  'module-fakes',
   'module-test',
   'workflow-domain',
   'workflow-application',
@@ -132,6 +133,15 @@ const elements = [
   {
     type: 'module-application',
     pattern: 'src/modules/([^/]+)/application/**',
+    mode: 'full',
+    capture: ['module'],
+  },
+  // Fakes are a narrower element than the rest of infrastructure so testing.ts
+  // can re-export them (ADR §4.1) without being allowed to reach persistence.
+  // Listed before the infrastructure pattern; first match wins.
+  {
+    type: 'module-fakes',
+    pattern: 'src/modules/([^/]+)/infrastructure/fakes/**',
     mode: 'full',
     capture: ['module'],
   },
@@ -262,6 +272,10 @@ export default [
       'boundaries/root-path': rootPath,
       'boundaries/include': ['src/**/*.{ts,tsx}'],
       'boundaries/elements': elements,
+      // The plugin default is import declarations only. `export type` from
+      // `@yoink/api-contracts` and `export { adapter } from './infrastructure'`
+      // would not be visited. Export declarations are the same dependency.
+      'boundaries/dependency-nodes': ['import', 'export'],
       // Workspace packages resolve to files outside this package, so the plugin
       // would treat them as local and the external rule would never see them.
       // Flagging the import source lets rule 6 apply. Current-layout files still
@@ -328,6 +342,20 @@ export default [
                 sameModule('module-domain'),
                 sameModule('module-application'),
                 sameModule('module-infrastructure'),
+                sameModule('module-fakes'),
+                'kernel',
+                'platform',
+                'platform-database',
+                'platform-sql',
+              ],
+            },
+            {
+              from: 'module-fakes',
+              allow: [
+                sameModule('module-domain'),
+                sameModule('module-application'),
+                sameModule('module-infrastructure'),
+                sameModule('module-fakes'),
                 'kernel',
                 'platform',
                 'platform-database',
@@ -343,10 +371,13 @@ export default [
               ],
             },
             {
+              // ADR §4.1: testing.ts re-exports the same module's
+              // infrastructure/fakes. Not persistence, and not another module.
               from: 'module-testing',
               allow: [
                 sameModule('module-domain'),
                 sameModule('module-application'),
+                sameModule('module-fakes'),
                 'kernel',
               ],
             },
@@ -356,6 +387,7 @@ export default [
                 sameModule('module-domain'),
                 sameModule('module-application'),
                 sameModule('module-infrastructure'),
+                sameModule('module-fakes'),
                 sameModule('module-entry'),
                 sameModule('module-testing'),
                 'kernel',
@@ -405,10 +437,13 @@ export default [
               ],
             },
             // Rule 5. Platform except database and sql. test-fixtures is the
-            // ADR exception that may touch SQL.
+            // ADR exception that may touch SQL. Full mode makes each edge file
+            // its own element, so files in one edge must be allowed by capture.
+            // A different captured edge is not this allow.
             {
               from: 'edge',
               allow: [
+                sameEdge('edge'),
                 'module-entry',
                 'workflow-entry',
                 'kernel',
@@ -500,7 +535,10 @@ export default [
               ],
               allow: domainPackages,
             },
-            { from: 'module-infrastructure', allow: adapterPackages },
+            {
+              from: ['module-infrastructure', 'module-fakes'],
+              allow: adapterPackages,
+            },
             {
               from: ['platform', 'platform-database', 'platform-sql'],
               allow: platformPackages,

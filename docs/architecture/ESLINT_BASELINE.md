@@ -24,7 +24,7 @@ The previous measurement is M0.5, on `11da9800fe063d0e7b168a320dd1a61d69da1dcc`,
 
 Plain `pnpm lint` does not print an API summary. Turbo cancelled that in-flight task after acceptance-tests failed. Web did finish and printed 32 warnings. The table is from `pnpm lint --force --continue`, which let every package finish and still exited 1.
 
-`pnpm quality` is `turbo run lint build typecheck test --filter=!@yoink/acceptance-tests`. It does not lint the package that owns the 4 errors. On this tree, `mise exec -- pnpm quality` exited 0: 33 successful / 33 total, 30 cached, 39.484s. `@yoink/api` test was a cache miss: 244 files, 1893 passed, 38.54s. No test timed out.
+`pnpm quality` is `turbo run lint build typecheck test --filter=!@yoink/acceptance-tests`. It does not lint the package that owns the 4 errors. On the first M1.1 tree, `mise exec -- pnpm quality` exited 0: 33 successful / 33 total, 30 cached, 39.484s. `@yoink/api` test was a cache miss: 244 files, 1893 passed, 38.54s. No test timed out. The review follow-up re-ran quality; see [Review re-measure](#review-re-measure).
 
 ## Counts per rule
 
@@ -239,7 +239,11 @@ ADR §10 rules 1–7 are registered at `warn`. Nothing promotes them to `error`.
 
 v5 `entry-point` has no `from`. It only looks at the target element's `internalPath`, and it skips imports inside one element. Layer files are separate element types so element-types can tell domain from application from infrastructure. Entry-point's default is `disallow`. Current-layout types and target layer types allow `**` (a single `*` does not match `domain/foo.ts`). `module-entry` and `workflow-entry` allow `index.ts`. `module-testing` allows `testing.ts`. Who may import `testing.ts` is element-types: test types only. A later `from: '*'` disallow of `module-testing` overrides `allow: '*'` on `app`, `composition`, and `entrypoint`, and the test types opt back in.
 
-`external` default is `disallow`. Domain, application, module entry, module testing, kernel, and workflow layers allow `neverthrow` and `zod`. Module infrastructure allows Fastify, `@fastify/*`, `@orpc/*`, `@libsql/client`, `@sentry/node`, `@simplewebauthn/server`, and `node:*` (baseSource of `node:fs/promises` is `node:fs`). Platform adds `@yoink/infrastructure`. Edges add `@yoink/api-contracts`. `@yoink/api-contracts` is not on the module lists, so a module import warns, including `import type` (the plugin's default import nodes include type imports). Current-layout types allow `*` and `**`, because `*` does not match a scoped baseSource such as `@yoink/api-contracts`. That keeps today's files with no new external warning.
+`boundaries/dependency-nodes` is `import` and `export`. The plugin default is import only, so `export type` from `@yoink/api-contracts` and `export { adapter } from './infrastructure/...'` were not visited. Export declarations are checked the same way as imports.
+
+`external` default is `disallow`. Domain, application, module entry, module testing, kernel, and workflow layers allow `neverthrow` and `zod`. Module infrastructure and `module-fakes` allow Fastify, `@fastify/*`, `@orpc/*`, `@libsql/client`, `@sentry/node`, `@simplewebauthn/server`, and `node:*` (baseSource of `node:fs/promises` is `node:fs`). Platform adds `@yoink/infrastructure`. Edges add `@yoink/api-contracts`. `@yoink/api-contracts` is not on the module lists, so a module import or re-export warns, including `import type` and `export type`. Current-layout types allow `*` and `**`, because `*` does not match a scoped baseSource such as `@yoink/api-contracts`. That keeps today's files with no new external warning.
+
+Full mode makes each edge file its own element. An edge may import and re-export another file with the same captured edge name. A different edge is not allowed. `module-fakes` is `modules/*/infrastructure/fakes/**`, listed before the rest of infrastructure. ADR §4.1 has `testing.ts` re-export that module's fakes. It may not import that module's persistence, or another module's fakes. `index.ts` still may not re-export infrastructure.
 
 Workspace packages resolve outside `apps/api`, so the plugin would treat them as local and `external` would not see them. `boundaries/flag-as-external` names `@yoink/api-contracts` and `@yoink/infrastructure`. Current types still allow every external source.
 
@@ -256,6 +260,23 @@ These rules were checked with temporary files under `src/modules`, `src/workflow
 - `platform/database` may not import a module index, and may import `@libsql/client`
 - kernel may import `neverthrow` and may not import `fastify`
 - `import type` from `@yoink/api-contracts` warns in module domain and infrastructure, and `@yoink/infrastructure` warns in domain and does not warn in platform
+
+The review cases are committed in `apps/api/eslint-boundaries.rules.test.ts` (outside `src/`, so they are not in the 729 files or the counts). That test lints a temp tree with this config. Clean: `edges/web/routes.ts` importing and re-exporting `./map.ts`; `testing.ts` re-exporting `./infrastructure/fakes/store.ts`; `modules/access/index.ts` re-exporting `./application/use.ts`; `workflows/processing/index.ts` re-exporting `./application/run.ts`. Warned: `routes.ts` re-exporting `../admin/map.ts` (`element-types`, edge `admin`); `testing.ts` re-exporting `./infrastructure/sqlite.ts` (`module-infrastructure`) and `../captures/infrastructure/fakes/store.ts` (module `captures`); `index.ts` re-exporting `./infrastructure/sqlite.ts`; `domain/model.ts` `export type` from `@yoink/api-contracts` (`external`); `captures/domain` re-exporting `access/index.ts` (`module-entry`). `application/leak.ts` re-exporting infrastructure is `no-restricted-imports` at error and `element-types` at warn.
+
+## Review re-measure
+
+The census above was taken again after those three config changes (`dependency-nodes` includes `export`, same-edge allow, `module-fakes`). `pnpm lint --force --continue` exited 1. API `✖ 180 problems (0 errors, 180 warnings)`. Web `✖ 32 problems (0 errors, 32 warnings)`. Acceptance-tests `✖ 4 problems (4 errors, 0 warnings)`.
+
+```text
+Tasks:    9 successful, 10 total
+Cached:    0 cached, 10 total
+  Time:    13.365s
+Failed:    @yoink/acceptance-tests#lint
+```
+
+Parsed counts match the table: `element-types` 147, and the original 112 pairs are still the same counts. `no-unknown`, `entry-point`, and `external` are 0. Export nodes added no production diagnostic. No file under `apps/api/src` is a target-layout element, so the same-edge and fakes allows do not move this census. Totals stay **4 errors** and **212 warnings**.
+
+`mise exec -- pnpm quality` on this follow-up exited 0: 33 successful / 33 total, 29 cached, 49.2s. `@yoink/api` lint, build, typecheck, and test were cache misses. API tests: 245 files, 1894 passed, 48.08s. The extra file is `eslint-boundaries.rules.test.ts`. No test timed out.
 
 ## `@typescript-eslint/no-explicit-any` (33 warnings)
 

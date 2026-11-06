@@ -1,12 +1,8 @@
 import { useRef, useState } from 'react';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  projectContract,
-  type AssignableProjectStatus,
-  type Project,
-} from '@yoink/api-contracts';
-import { tsrProjects, tsrTasks } from '@/api/client';
+import type { AssignableProjectStatus, Project, SetProjectNextAction } from '@yoink/api-contracts';
+import { httpFailureMessage, httpStatusOf, isNetworkFailure, projectClient, taskClient } from '@/api/client';
 import { invalidateLiveQueries } from '@/lib/live-query';
 import type { NewNextActionTask } from '@/components/next-action-picker';
 import {
@@ -22,8 +18,21 @@ const REVIEW_TOAST_PREFIX = 'review-inline-action';
 const assignableStatus = (status: Project['status']): AssignableProjectStatus =>
   status === 'proposed' || status === 'declined' ? 'active' : status;
 
+const messageForStatus = (err: unknown, statuses: readonly number[]): string | undefined => {
+  const status = httpStatusOf(err);
+  if (status === undefined || !statuses.includes(status)) {
+    return undefined;
+  }
+  return httpFailureMessage(err);
+};
+
+const nextActionBody = (
+  input: { id: string } & SetProjectNextAction
+): SetProjectNextAction =>
+  'newTask' in input ? { newTask: input.newTask } : { taskId: input.taskId };
+
 export const useReviewActions = () => {
-  const queryClient = tsrProjects.useQueryClient();
+  const queryClient = useQueryClient();
   const [nextActionError, setNextActionError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const undoStatusRef = useRef(false);
@@ -40,7 +49,7 @@ export const useReviewActions = () => {
   ) => {
     const shown = nextActionUndoToast({
       outcome,
-      networkError: outcome.kind !== 'restored' && isFetchError(outcome.error),
+      networkError: outcome.kind !== 'restored' && isNetworkFailure(outcome.error),
     });
     if (shown.type === 'success') {
       toast.success(shown.message, { id: reviewToastId() });
@@ -63,28 +72,31 @@ export const useReviewActions = () => {
     priorStatusById.current = new Map([...priorStatusById.current, [project.id, project]]);
   };
 
-  const deleteCreatedTask = tsrTasks.delete.useMutation({
+  const deleteCreatedTask = useMutation({
+    mutationFn: (input: { id: string }) => taskClient.delete(input),
     onSuccess: async () => {
       await refresh();
     },
   });
 
-  const restoreNextActionMutation = tsrProjects.setNextAction.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const restoreNextActionMutation = useMutation({
+    mutationFn: (input: { id: string } & SetProjectNextAction) =>
+      projectClient.setNextAction(input),
+    onSuccess: async () => {
       await refresh();
     },
   });
 
-  const nextActionMutation = tsrProjects.setNextAction.useMutation({
+  const nextActionMutation = useMutation({
+    mutationFn: (input: { id: string } & SetProjectNextAction) =>
+      projectClient.setNextAction(input),
     onSuccess: async (result, variables) => {
-      if (result.status !== 200) return;
       setNextActionError(null);
       const createdId = createdTaskIdFromNextAction({
-        body: variables.body,
-        result: result.body,
+        body: nextActionBody(variables),
+        result,
       });
-      const previousTaskId = priorNextById.current.get(variables.params.id) ?? null;
+      const previousTaskId = priorNextById.current.get(variables.id) ?? null;
       const restore = nextActionUndoRestore({
         previousTaskId,
         createdTaskId: createdId,
@@ -101,12 +113,12 @@ export const useReviewActions = () => {
               restore,
               restoreNextAction: () =>
                 restoreNextActionMutation.mutateAsync({
-                  params: { id: variables.params.id },
-                  body: restore.body,
+                  id: variables.id,
+                  ...restore.body,
                 }),
               deleteCreatedTask: (taskId) =>
                 deleteCreatedTask.mutateAsync({
-                  params: { id: taskId },
+                  id: taskId,
                 }),
             }).then(showNextActionUndoToast);
           },
@@ -114,27 +126,28 @@ export const useReviewActions = () => {
       });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 404) {
-          const parsed = projectContract.setNextAction.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setNextActionError(parsed.data.message);
-            return;
-          }
-        }
+      const message = messageForStatus(err, [400, 404]);
+      if (message !== undefined) {
+        setNextActionError(message);
+        return;
       }
       toast.error('Failed to set next action');
     },
   });
 
-  const statusMutation = tsrProjects.changeStatus.useMutation({
-    onSuccess: async (result, variables) => {
-      if (result.status !== 200) return;
+  const statusMutation = useMutation({
+    mutationFn: (input: {
+      id: string;
+      status: AssignableProjectStatus;
+      waitingOn?: string | null;
+      waitingSince?: string | null;
+      openTasks?: 'complete' | 'remove';
+    }) => projectClient.changeStatus(input),
+    onSuccess: async (_result, variables) => {
       setStatusError(null);
       await refresh();
       if (undoStatusRef.current) {
@@ -142,7 +155,7 @@ export const useReviewActions = () => {
         toast.success('Project status restored', { id: reviewToastId() });
         return;
       }
-      if (!reviewStatusUndoEnabled(variables.body.status)) {
+      if (!reviewStatusUndoEnabled(variables.status)) {
         toast.success('Project status saved', { id: reviewToastId() });
         return;
       }
@@ -151,19 +164,17 @@ export const useReviewActions = () => {
         action: {
           label: 'Undo',
           onClick: () => {
-            const prior = priorStatusById.current.get(variables.params.id);
+            const prior = priorStatusById.current.get(variables.id);
             if (prior === undefined) {
               return;
             }
             beginNextReviewToast();
             undoStatusRef.current = true;
             statusMutation.mutate({
-              params: { id: variables.params.id },
-              body: {
-                status: assignableStatus(prior.status),
-                waitingOn: prior.waitingOn,
-                waitingSince: prior.waitingSince,
-              },
+              id: variables.id,
+              status: assignableStatus(prior.status),
+              waitingOn: prior.waitingOn,
+              waitingSince: prior.waitingSince,
             });
           },
         },
@@ -171,19 +182,14 @@ export const useReviewActions = () => {
     },
     onError: (err) => {
       undoStatusRef.current = false;
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 403 || status === 409) {
-          const parsed = projectContract.changeStatus.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setStatusError(parsed.data.message);
-            return;
-          }
-        }
+      const message = messageForStatus(err, [400, 403, 409]);
+      if (message !== undefined) {
+        setStatusError(message);
+        return;
       }
       toast.error('Failed to change project status');
     },
@@ -206,8 +212,8 @@ export const useReviewActions = () => {
     }) => {
       rememberNext(input.project.id, input.project.nextActionTaskId);
       nextActionMutation.mutate({
-        params: { id: input.project.id },
-        body: input.body,
+        id: input.project.id,
+        ...input.body,
       });
     },
     changeStatus: (input: {
@@ -221,8 +227,8 @@ export const useReviewActions = () => {
     }) => {
       rememberStatus(input.project);
       statusMutation.mutate({
-        params: { id: input.project.id },
-        body: input.body,
+        id: input.project.id,
+        ...input.body,
       });
     },
   };

@@ -168,8 +168,8 @@ describe('live query interval', () => {
       lastChangedBy: null,
       completedBy: null,
     };
-    const stale = { status: 200, body: { tasks: [eggs] } };
-    const mutated = { status: 200, body: { tasks: [] } };
+    const stale = { tasks: [eggs] };
+    const mutated = { tasks: [] };
     client.setQueryData(key, stale);
 
     let resolveFetch: (value: typeof stale) => void = () => undefined;

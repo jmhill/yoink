@@ -1,7 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { cn } from '@yoink/ui-base/lib/utils';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
-import { tsrReview } from '@/api/client';
+import { reviewClient } from '@/api/client';
 import { AppRailPanel } from '@/components/app-rail-panel';
 import {
   MOBILE_TABS,
@@ -16,11 +17,12 @@ export function AppNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const active = activeMobileTab(pathname);
   const { badge: processBadge, proposals } = useProcessCounts();
-  const { data: reviewData } = tsrReview.list.useQuery({
+  const { data: reviewData } = useQuery({
     queryKey: ['review'],
-    queryData: { query: { limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() } },
+    queryFn: () =>
+      reviewClient.list({ limit: PILE_SAFETY_CAP, timeZone: viewerTimeZone() }),
   });
-  const reviewProjects = reviewData?.status === 200 ? reviewData.body.projects : [];
+  const reviewProjects = reviewData?.projects ?? [];
   const reviewBadge = reviewBadgeCount(reviewAttentionTotal(reviewProjects, proposals.length));
 
   return (

@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, useRouterState } from '@tanstack/react-router';
 import { Inbox } from 'lucide-react';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
-import { tsr, tsrAuth, tsrLists, tsrOrganizations, tsrProjects } from '@/api/client';
+import {
+  authClient,
+  captureClient,
+  listClient,
+  organizationClient,
+  projectClient,
+} from '@/api/client';
 import { ConfirmProposalSheet } from '@/components/confirm-proposal-sheet';
 import { ErrorState } from '@/components/error-state';
 import { Header } from '@/components/header';
@@ -61,34 +68,35 @@ function ProcessPage() {
   const [keyLockNonce, setKeyLockNonce] = useState(0);
   const [keyLocked, setKeyLocked] = useState(false);
 
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData } = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
   });
-  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
-  const { data: projectsData } = tsrProjects.list.useQuery({
+  const namedLists = listsData?.lists ?? [];
+  const { data: projectsData } = useQuery({
     queryKey: ['projects'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => projectClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
   });
-  const projects = projectsData?.status === 200 ? projectsData.body.projects : [];
+  const projects = projectsData?.projects ?? [];
 
-  const { data: sessionData } = tsrAuth.session.useQuery({
+  const { data: sessionData } = useQuery({
     queryKey: ['session'],
-    queryData: {},
+    queryFn: () => authClient.session(),
     refetchInterval: false,
   });
-  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
-  const viewerId = sessionData?.status === 200 ? sessionData.body.user.id : undefined;
-  const viewerEmail = sessionData?.status === 200 ? sessionData.body.user.email : undefined;
+  const organizationId = sessionData?.organizationId;
+  const viewerId = sessionData?.user.id;
+  const viewerEmail = sessionData?.user.email;
 
-  const membersQuery = tsrOrganizations.listMembers.useQuery({
+  const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
-    queryData: { params: { organizationId: organizationId ?? '' } },
+    queryFn: () =>
+      organizationClient.listMembers({ organizationId: organizationId ?? '' }),
     enabled: Boolean(organizationId),
     refetchInterval: false,
   });
-  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const members = membersQuery.data?.members ?? [];
   const viewerMember = members.find((member) => member.userId === viewerId);
   const restoredByName = proposerLabel(
     viewerMember ?? (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
@@ -102,20 +110,21 @@ function ProcessPage() {
   } = useProcessCounts();
   const proposalActions = useProposalActions(restoredByName);
 
-  const { data: snoozedData } = tsr.list.useQuery({
+  const { data: snoozedData } = useQuery({
     queryKey: ['captures', 'snoozed'],
-    queryData: { query: { status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP } },
+    queryFn: () =>
+      captureClient.list({ status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP }),
   });
 
-  const captures = inboxQuery.data?.status === 200 ? inboxQuery.data.body.captures : [];
+  const captures = inboxQuery.data?.captures ?? [];
   const queue = processQueue(captures, proposals);
   const currentItem = queue.current;
   const currentCapture = currentItem?.kind === 'capture' ? currentItem.capture : null;
   const currentProposal = currentItem?.kind === 'proposal' ? currentItem.project : null;
   const currentId = currentCapture?.id ?? currentProposal?.id ?? null;
   const left = total;
-  const snoozedCount = snoozedData?.status === 200 ? snoozedData.body.total : 0;
-  const ready = inboxQuery.data?.status === 200 && proposalsQuery.data?.status === 200;
+  const snoozedCount = snoozedData?.total ?? 0;
+  const ready = inboxQuery.data !== undefined && proposalsQuery.data !== undefined;
   const snoozedCopy = processEmptySnoozedCopy(snoozedCount);
   const sheetOpen =
     taskModalOpen ||

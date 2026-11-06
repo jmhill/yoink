@@ -1,19 +1,20 @@
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ChevronDown } from 'lucide-react';
 import { Header } from '@/components/header';
 import { ErrorState } from '@/components/error-state';
-import { tsrProjects } from '@/api/client';
+import {
+  httpFailureMessage,
+  httpStatusOf,
+  isNetworkFailure,
+  projectClient,
+} from '@/api/client';
 import { Button } from '@yoink/ui-base/components/button';
 import { cn } from '@yoink/ui-base/lib/utils';
 import { isBlockingQueryFailure, invalidateLiveQueries } from '@/lib/live-query';
 import { toast } from 'sonner';
-import { isFetchError } from '@ts-rest/react-query/v5';
-import {
-  projectContract,
-  type ImportEntryError,
-  type ImportPreviewProject,
-} from '@yoink/api-contracts';
+import type { ImportEntryError, ImportPreviewProject } from '@yoink/api-contracts';
 import { formatImportPreviewSummary } from '@/lib/import-preview-summary';
 import { formatImportPreviewError } from '@/lib/format-import-preview-error';
 import { formatImportPreviewTaskLine } from '@/lib/format-import-preview-task';
@@ -143,63 +144,61 @@ function ImportPreviewProjectCard(props: {
 function ImportPreviewPage() {
   const { importId } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = tsrProjects.useQueryClient();
-  const { data, error, isPending, refetch } = tsrProjects.getImport.useQuery({
+  const queryClient = useQueryClient();
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ['project-imports', importId],
-    queryData: { params: { id: importId } },
+    queryFn: () => projectClient.getImport({ id: importId }),
   });
   const [toggled, setToggled] = useState<Record<number, boolean>>({});
 
-  const applyMutation = tsrProjects.applyImport.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const applyMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.applyImport>[0]) =>
+      projectClient.applyImport(input),
+    onSuccess: async () => {
       toast.success('Projects imported');
       await queryClient.invalidateQueries({ queryKey: ['project-imports'] });
       await invalidateLiveQueries(queryClient);
       await navigate({ to: '/projects' });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 403 || status === 404 || status === 409) {
-          const parsed = projectContract.applyImport.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            toast.error(parsed.data.message);
-            if (status === 400) {
-              void queryClient.invalidateQueries({ queryKey: ['project-imports'] });
-            }
-            return;
+      const status = httpStatusOf(err);
+      if (status === 400 || status === 403 || status === 404 || status === 409) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          toast.error(message);
+          if (status === 400) {
+            void queryClient.invalidateQueries({ queryKey: ['project-imports'] });
           }
+          return;
         }
       }
       toast.error('Failed to import projects');
     },
   });
 
-  const discardMutation = tsrProjects.discardImport.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const discardMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.discardImport>[0]) =>
+      projectClient.discardImport(input),
+    onSuccess: async () => {
       toast.success('Import discarded');
       await queryClient.invalidateQueries({ queryKey: ['project-imports'] });
       await navigate({ to: '/projects' });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 403 || status === 404 || status === 409) {
-          const parsed = projectContract.discardImport.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            toast.error(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 403 || status === 404 || status === 409) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          toast.error(message);
+          return;
         }
       }
       toast.error('Failed to discard import');
@@ -210,7 +209,7 @@ function ImportPreviewPage() {
     return <ErrorState error={error} onRetry={() => refetch()} />;
   }
 
-  const staged = data?.status === 200 ? data.body : undefined;
+  const staged = data;
   const preview = staged?.preview;
   const errors = staged?.errors ?? [];
   const count = preview?.totals.projectCount ?? 0;
@@ -291,10 +290,7 @@ function ImportPreviewPage() {
                 data-import-submit=""
                 disabled={busy || !preview}
                 onClick={() =>
-                  applyMutation.mutate({
-                    params: { id: importId },
-                    body: {},
-                  })
+                  applyMutation.mutate({ id: importId })
                 }
               >
                 {applyMutation.isPending
@@ -308,10 +304,7 @@ function ImportPreviewPage() {
               data-import-discard=""
               disabled={busy}
               onClick={() =>
-                discardMutation.mutate({
-                  params: { id: importId },
-                  body: {},
-                })
+                discardMutation.mutate({ id: importId })
               }
             >
               {discardMutation.isPending ? 'Discarding…' : 'Discard'}

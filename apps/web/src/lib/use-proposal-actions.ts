@@ -1,23 +1,22 @@
 import { useRef, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
-import { tsr, tsrProjects } from '@/api/client';
 import type { ConfirmProposedProject, Project, UpdateProject } from '@yoink/api-contracts';
+import { httpFailureMessage, isNetworkFailure, projectClient } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
 import { proposalRestoredToast } from '@/lib/proposal-copy';
 import { offerWhatsNext } from '@/lib/whats-next';
 
-const messageFromUnknown = (err: unknown): string | null => {
-  if (typeof err !== 'object' || err === null || !('body' in err)) {
-    return null;
-  }
-  const { body } = err;
-  if (typeof body !== 'object' || body === null || !('message' in body)) {
-    return null;
-  }
-  return typeof body.message === 'string' ? body.message : null;
-};
+const isProjectListPage = (
+  value: unknown
+): value is { projects: Project[]; total: number } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'projects' in value &&
+  Array.isArray(value.projects) &&
+  'total' in value &&
+  typeof value.total === 'number';
 
 const PROPOSAL_TOAST_PREFIX = 'proposal-actions';
 
@@ -26,8 +25,7 @@ export function useProposalActions(
   options: { onDeclined?: () => void } = {}
 ) {
   const navigate = useNavigate();
-  const tsrQueryClient = tsr.useQueryClient();
-  const projectsClient = tsrProjects.useQueryClient();
+  const queryClient = useQueryClient();
   const actedIds = useRef(new Set<string>());
   const toastGeneration = useRef(0);
   const toastId = () => `${PROPOSAL_TOAST_PREFIX}-${toastGeneration.current}`;
@@ -46,51 +44,47 @@ export function useProposalActions(
     actedIds.current.add(id);
   };
 
-  const restoreMutation = tsrProjects.restoreProposal.useMutation({
-    onSuccess: (result) => {
-      if (result.status !== 200) {
-        return;
-      }
+  const restoreMutation = useMutation({
+    mutationFn: (input: { id: string }) => projectClient.restoreProposal(input),
+    onSuccess: () => {
       toast.success(proposalRestoredToast(restoredByName), { id: toastId() });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      toast.error(messageFromUnknown(err) ?? 'Failed to undo');
+      toast.error(httpFailureMessage(err) ?? 'Failed to undo');
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const declineMutation = tsrProjects.declineProposal.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = projectsClient.list.getQueryData(['projects', 'proposed']);
-      if (previous?.status === 200) {
-        projectsClient.list.setQueryData(['projects', 'proposed'], {
+  const declineMutation = useMutation({
+    mutationFn: (input: { id: string }) => projectClient.declineProposal(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
+      const previous = queryClient.getQueryData(['projects', 'proposed']);
+      if (isProjectListPage(previous)) {
+        queryClient.setQueryData(['projects', 'proposed'], {
           ...previous,
-          body: {
-            ...previous.body,
-            projects: previous.body.projects.filter((project) => project.id !== params.id),
-            total: Math.max(0, previous.body.total - 1),
-          },
+          projects: previous.projects.filter((project) => project.id !== id),
+          total: Math.max(0, previous.total - 1),
         });
       }
       return { previous };
     },
     onError: (err, _variables, context) => {
       if (context?.previous) {
-        projectsClient.list.setQueryData(['projects', 'proposed'], context.previous);
+        queryClient.setQueryData(['projects', 'proposed'], context.previous);
       }
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      toast.error(messageFromUnknown(err) ?? 'Failed to turn down');
+      toast.error(httpFailureMessage(err) ?? 'Failed to turn down');
     },
     onSuccess: (_result, variables) => {
       toast.success('Turned down', {
@@ -99,55 +93,51 @@ export function useProposalActions(
           label: 'Undo',
           onClick: () => {
             dismissToast();
-            restoreMutation.mutate({ params: { id: variables.params.id }, body: {} });
+            restoreMutation.mutate({ id: variables.id });
           },
         },
       });
       options.onDeclined?.();
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const confirmMutation = tsrProjects.confirmProposal.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
-      const previous = projectsClient.list.getQueryData(['projects', 'proposed']);
-      if (previous?.status === 200) {
-        projectsClient.list.setQueryData(['projects', 'proposed'], {
+  const confirmMutation = useMutation({
+    mutationFn: (input: { id: string } & ConfirmProposedProject) =>
+      projectClient.confirmProposal(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
+      const previous = queryClient.getQueryData(['projects', 'proposed']);
+      if (isProjectListPage(previous)) {
+        queryClient.setQueryData(['projects', 'proposed'], {
           ...previous,
-          body: {
-            ...previous.body,
-            projects: previous.body.projects.filter((project) => project.id !== params.id),
-            total: Math.max(0, previous.body.total - 1),
-          },
+          projects: previous.projects.filter((project) => project.id !== id),
+          total: Math.max(0, previous.total - 1),
         });
       }
       return { previous };
     },
     onError: (err, _variables, context) => {
       if (context?.previous) {
-        projectsClient.list.setQueryData(['projects', 'proposed'], context.previous);
+        queryClient.setQueryData(['projects', 'proposed'], context.previous);
       }
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      setConfirmError(messageFromUnknown(err) ?? 'Failed to confirm');
+      setConfirmError(httpFailureMessage(err) ?? 'Failed to confirm');
     },
     onSuccess: (result) => {
-      if (result.status !== 200) {
-        return;
-      }
       setConfirmOpen(false);
       setActiveProject(null);
       setConfirmError(null);
-      if (result.body.project.status === 'active' && !result.body.task) {
+      if (result.project.status === 'active' && !result.task) {
         offerWhatsNext({
-          projectId: result.body.project.id,
-          projectName: result.body.project.name,
+          projectId: result.project.id,
+          projectName: result.project.name,
         });
         return;
       }
@@ -157,35 +147,33 @@ export function useProposalActions(
           onClick: () =>
             navigate({
               to: '/projects/$projectId',
-              params: { projectId: result.body.project.id },
+              params: { projectId: result.project.id },
             }),
         },
       });
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const updateMutation = tsrProjects.update.useMutation({
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: string } & UpdateProject) => projectClient.update(input),
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      setEditError(messageFromUnknown(err) ?? 'Failed to save');
+      setEditError(httpFailureMessage(err) ?? 'Failed to save');
     },
-    onSuccess: (result) => {
-      if (result.status !== 200) {
-        return;
-      }
+    onSuccess: () => {
       setEditOpen(false);
       setActiveProject(null);
       setEditError(null);
       toast.success('Proposal saved');
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
@@ -215,14 +203,14 @@ export function useProposalActions(
     },
     handleConfirm: (projectId: string, input: ConfirmProposedProject) => {
       setConfirmError(null);
-      confirmMutation.mutate({ params: { id: projectId }, body: input });
+      confirmMutation.mutate({ id: projectId, ...input });
     },
     handleEdit: (projectId: string, input: UpdateProject) => {
       setEditError(null);
-      updateMutation.mutate({ params: { id: projectId }, body: input });
+      updateMutation.mutate({ id: projectId, ...input });
     },
     handleTurnDown: (project: Project) => {
-      declineMutation.mutate({ params: { id: project.id }, body: {} });
+      declineMutation.mutate({ id: project.id });
     },
   };
 }

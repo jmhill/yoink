@@ -19,8 +19,6 @@ describe('history paging', () => {
     const start: TaskHistoryData = {
       pages: [
         {
-          status: 200,
-          body: {
             tasks: [
               {
                 id: 'a',
@@ -46,7 +44,6 @@ describe('history paging', () => {
             hasMore: false,
             nextCursor: null,
             total: 2,
-          },
         },
       ],
       pageParams: [undefined],
@@ -57,8 +54,8 @@ describe('history paging', () => {
       items.filter((item) => item.id !== 'a')
     );
 
-    expect(next.pages[0]?.body.tasks.map((task) => task.id)).toEqual(['b']);
-    expect(next.pages[0]?.body.total).toBe(1);
+    expect(next.pages[0]?.tasks.map((task) => task.id)).toEqual(['b']);
+    expect(next.pages[0]?.total).toBe(1);
   });
 
   it('prepends onto the first history page', () => {
@@ -72,8 +69,8 @@ describe('history paging', () => {
       status: 'trashed',
       capturedAt: '2025-01-15T10:00:00.000Z',
     });
-    expect(next.pages[0]?.body.captures.map((capture) => capture.id)).toEqual(['new']);
-    expect(next.pages[0]?.body.total).toBe(1);
+    expect(next.pages[0]?.captures.map((capture) => capture.id)).toEqual(['new']);
+    expect(next.pages[0]?.total).toBe(1);
   });
 
   it('maps capture page items without casts', () => {
@@ -89,7 +86,7 @@ describe('history paging', () => {
     const next = mapCaptureHistoryPageItems(withItem, (items) =>
       items.filter((item) => item.id !== 'keep')
     );
-    expect(next.pages[0]?.body.captures).toEqual([]);
-    expect(next.pages[0]?.body.total).toBe(0);
+    expect(next.pages[0]?.captures).toEqual([]);
+    expect(next.pages[0]?.total).toBe(0);
   });
 });

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -10,9 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { tsrLists } from '@/api/client';
+import { httpFailureMessage, httpStatusOf, isNetworkFailure, listClient } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
 type CreateNamedListDialogProps = {
@@ -26,38 +26,31 @@ export function CreateNamedListDialog({
   onOpenChange,
   onCreated,
 }: CreateNamedListDialogProps) {
-  const queryClient = tsrLists.useQueryClient();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const trimmedName = name.trim();
 
-  const createMutation = tsrLists.create.useMutation({
+  const createMutation = useMutation({
+    mutationFn: (input: Parameters<typeof listClient.create>[0]) => listClient.create(input),
     onMutate: async () => {
       await cancelLiveQueries(queryClient);
     },
     onSuccess: async (result) => {
-      if (result.status !== 201) return;
       toast.success('List created');
       setName('');
       setFormError(null);
       onOpenChange(false);
       await invalidateLiveQueries(queryClient);
-      onCreated({ id: result.body.id, name: result.body.name });
+      onCreated({ id: result.id, name: result.name });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        err.status === 409 &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
-        setFormError(body?.message ?? 'A list with this name already exists');
+      if (httpStatusOf(err) === 409) {
+        setFormError(httpFailureMessage(err) ?? 'A list with this name already exists');
         return;
       }
       toast.error('Failed to create list');
@@ -75,7 +68,7 @@ export function CreateNamedListDialog({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!trimmedName || createMutation.isPending) return;
-    createMutation.mutate({ body: { name: trimmedName } });
+    createMutation.mutate({ name: trimmedName });
   };
 
   return (

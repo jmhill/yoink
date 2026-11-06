@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
 import { Button } from '@yoink/ui-base/components/button';
 import {
@@ -19,13 +20,9 @@ import {
 } from '@yoink/ui-base/components/sheet';
 import { AlertCircle, Crown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  ErrorSchema,
-  TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
-  TransferOwnershipResponseSchema,
-} from '@yoink/api-contracts';
+import { TRANSFER_OWNERSHIP_STORAGE_MESSAGE } from '@yoink/api-contracts';
 import { memberDisplayName, type Member } from '@/api/auth';
-import { tsrOrganizations } from '@/api/client';
+import { httpFailureMessage, organizationClient } from '@/api/client';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
 
 type OwnershipCardProps = {
@@ -84,24 +81,18 @@ function OwnershipCardOpen({
   const [selected, setSelected] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const mutation = tsrOrganizations.transferOwner.useMutation({
+  const mutation = useMutation({
+    mutationFn: (input: Parameters<typeof organizationClient.transferOwner>[0]) =>
+      organizationClient.transferOwner(input),
     onSuccess: (result) => {
-      if (result.status === 200) {
-        const parsed = TransferOwnershipResponseSchema.safeParse(result.body);
-        if (parsed.success) {
-          toast.success(`${memberDisplayName(parsed.data.owner)} is now the owner.`);
-          setOpen(false);
-          setSelected(null);
-          setError(null);
-          onTransferred();
-          return;
-        }
-      }
-      const parsed = ErrorSchema.safeParse(result.body);
-      setError(parsed.success ? parsed.data.message : TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
+      toast.success(`${memberDisplayName(result.owner)} is now the owner.`);
+      setOpen(false);
+      setSelected(null);
+      setError(null);
+      onTransferred();
     },
-    onError: () => {
-      setError(TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
+    onError: (err) => {
+      setError(httpFailureMessage(err) ?? TRANSFER_OWNERSHIP_STORAGE_MESSAGE);
     },
   });
 
@@ -125,8 +116,8 @@ function OwnershipCardOpen({
       onConfirm={() => {
         setError(null);
         mutation.mutate({
-          params: { organizationId },
-          body: { userId: selected.userId },
+          organizationId,
+          userId: selected.userId,
         });
       }}
     />

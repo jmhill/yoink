@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   Dialog,
@@ -8,9 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { tsrLists } from '@/api/client';
+import { httpFailureMessage, httpStatusOf, isNetworkFailure, listClient } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
 
 type NamedListRef = {
@@ -29,15 +29,15 @@ export function DeleteNamedListDialog({
   onOpenChange,
   onDeleted,
 }: DeleteNamedListDialogProps) {
-  const queryClient = tsrLists.useQueryClient();
+  const queryClient = useQueryClient();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const deleteMutation = tsrLists.delete.useMutation({
+  const deleteMutation = useMutation({
+    mutationFn: (input: Parameters<typeof listClient.delete>[0]) => listClient.delete(input),
     onMutate: async () => {
       await cancelLiveQueries(queryClient);
     },
-    onSuccess: async (result) => {
-      if (result.status !== 204) return;
+    onSuccess: async () => {
       toast.success('List deleted');
       setDeleteError(null);
       onDeleted?.();
@@ -45,19 +45,12 @@ export function DeleteNamedListDialog({
       await invalidateLiveQueries(queryClient);
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'status' in err &&
-        err.status === 409 &&
-        'body' in err
-      ) {
-        const body = err.body as { message?: string };
-        setDeleteError(body?.message ?? 'This list still has open tasks');
+      if (httpStatusOf(err) === 409) {
+        setDeleteError(httpFailureMessage(err) ?? 'This list still has open tasks');
         return;
       }
       toast.error('Failed to delete list');
@@ -103,7 +96,7 @@ export function DeleteNamedListDialog({
             onClick={() => {
               if (!list || deleteMutation.isPending) return;
               setDeleteError(null);
-              deleteMutation.mutate({ params: { id: list.id } });
+              deleteMutation.mutate({ id: list.id });
             }}
           >
             {deleteMutation.isPending ? 'Deleting...' : 'Delete'}

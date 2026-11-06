@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
-import { tsr } from './api/client';
 import { initSentry } from './instrument';
 import { createAppQueryClient, installLiveQueryTestHook } from './lib/live-query';
 import { installSafePointerCapture } from './lib/safe-pointer-capture';
@@ -31,9 +30,7 @@ declare module '@tanstack/react-router' {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <tsr.ReactQueryProvider>
-        <RouterProvider router={router} />
-      </tsr.ReactQueryProvider>
+      <RouterProvider router={router} />
     </QueryClientProvider>
   </StrictMode>
 );

@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router';
 import { Button, buttonVariants } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { WifiOff, AlertCircle, RefreshCw, Settings } from 'lucide-react';
+import { httpFailureBody, httpStatusOf, isNetworkFailure } from '@/api/client';
 
 type ErrorStateProps = {
-  error: { status: number; body?: unknown } | Error;
+  error: unknown;
   onRetry: () => void;
 };
 
@@ -26,7 +26,7 @@ const getErrorMessage = (body: unknown): string | undefined => {
  */
 export function ErrorState({ error, onRetry }: ErrorStateProps) {
   // Network/fetch error (timeout, DNS, CORS, etc.)
-  if (isFetchError(error)) {
+  if (isNetworkFailure(error)) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
@@ -44,11 +44,10 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
     );
   }
 
-  // API error with status code
-  const apiError = error as { status: number; body?: unknown };
+  const status = httpStatusOf(error);
 
   // 401 Unauthorized - token is invalid or expired
-  if (apiError.status === 401) {
+  if (status === 401) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
@@ -67,13 +66,15 @@ export function ErrorState({ error, onRetry }: ErrorStateProps) {
   }
 
   // Other API errors (500, etc.)
+  const message = getErrorMessage(httpFailureBody(error));
+
   return (
     <Card>
       <CardContent className="py-8 text-center">
         <AlertCircle className="mx-auto mb-3 h-8 w-8 text-destructive" />
         <p className="text-muted-foreground mb-1">Something went wrong</p>
         <p className="text-sm text-muted-foreground mb-4">
-          {getErrorMessage(apiError.body) || `Error ${apiError.status}`}
+          {message || `Error ${status}`}
         </p>
         <Button variant="outline" onClick={onRetry}>
           <RefreshCw className="h-4 w-4" />

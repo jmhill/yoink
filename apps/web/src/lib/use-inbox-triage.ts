@@ -1,8 +1,15 @@
 import { useRef, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { isFetchError } from '@ts-rest/react-query/v5';
 import { toast } from 'sonner';
-import { tsr, tsrProjects } from '@/api/client';
+import type { Capture, Project } from '@yoink/api-contracts';
+import {
+  captureClient,
+  httpFailureBody,
+  httpFailureMessage,
+  isNetworkFailure,
+  processToProjectClient,
+} from '@/api/client';
 import type { ExitDirection, SnoozeOption } from '@/components/capture-card';
 import type { PromoteConfirmInput } from '@/components/promote-sheet';
 import type { ProcessProjectConfirmInput } from '@/components/process-project-sheet';
@@ -15,27 +22,38 @@ import { cancelLiveQueries, invalidateLiveQueries } from '@/lib/live-query';
 import { isCaptureHistoryData, prependCaptureHistoryPageItem } from '@/lib/use-history-pages';
 import { offerWhatsNext } from '@/lib/whats-next';
 
-const messageFromUnknown = (err: unknown): string | null => {
-  if (typeof err !== 'object' || err === null || !('body' in err)) {
-    return null;
+const errorCode = (err: unknown): string | undefined => {
+  const body = httpFailureBody(err);
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'code' in body &&
+    typeof body.code === 'string'
+  ) {
+    return body.code;
   }
-  const { body } = err;
-  if (typeof body !== 'object' || body === null || !('message' in body)) {
-    return null;
-  }
-  return typeof body.message === 'string' ? body.message : null;
+  return undefined;
 };
 
-const errorCode = (err: unknown): string | null => {
-  if (typeof err !== 'object' || err === null || !('body' in err)) {
-    return null;
-  }
-  const { body } = err;
-  if (typeof body !== 'object' || body === null || !('code' in body)) {
-    return null;
-  }
-  return typeof body.code === 'string' ? body.code : null;
-};
+const isCapturePage = (
+  value: unknown
+): value is { captures: Capture[]; total: number } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'captures' in value &&
+  Array.isArray(value.captures) &&
+  'total' in value &&
+  typeof value.total === 'number';
+
+const isProjectListPage = (
+  value: unknown
+): value is { projects: Project[]; total: number } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'projects' in value &&
+  Array.isArray(value.projects) &&
+  'total' in value &&
+  typeof value.total === 'number';
 
 type ProcessCapture = {
   id: string;
@@ -51,8 +69,7 @@ const INBOX_TRIAGE_TOAST_PREFIX = 'inbox-triage';
  */
 export function useInboxTriage() {
   const navigate = useNavigate();
-  const tsrQueryClient = tsr.useQueryClient();
-  const projectsClient = tsrProjects.useQueryClient();
+  const queryClient = useQueryClient();
   const actedIds = useRef(new Set<string>());
   const triageToastGeneration = useRef(0);
   const triageToastId = () => `${INBOX_TRIAGE_TOAST_PREFIX}-${triageToastGeneration.current}`;
@@ -75,56 +92,59 @@ export function useInboxTriage() {
     actedIds.current.add(id);
   };
 
-  const restoreMutation = tsr.restore.useMutation({
+  const restoreMutation = useMutation({
+    mutationFn: (input: { id: string }) => captureClient.restore(input),
     onSuccess: () => {
       toast.success('Restored to inbox', { id: triageToastId() });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to undo');
       }
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const unsnoozeMutation = tsr.unsnooze.useMutation({
+  const unsnoozeMutation = useMutation({
+    mutationFn: (input: { id: string }) => captureClient.unsnooze(input),
     onSuccess: () => {
       toast.success('Moved to inbox', { id: triageToastId() });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to undo');
       }
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const trashMutation = tsr.trash.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
+  const trashMutation = useMutation({
+    mutationFn: (input: { id: string }) => captureClient.trash(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
 
-      const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
-      const previousTrashed = tsrQueryClient.getQueryData(['captures', 'trashed']);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousTrashed = queryClient.getQueryData(['captures', 'trashed']);
 
-      if (previousInbox?.status === 200) {
-        const captureToTrash = previousInbox.body.captures.find((c) => c.id === params.id);
+      if (isCapturePage(previousInbox)) {
+        const captureToTrash = previousInbox.captures.find((capture) => capture.id === id);
 
-        tsrQueryClient.list.setQueryData(
+        queryClient.setQueryData(
           ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, params.id)
+          inboxQueryWithoutCapture(previousInbox, id)
         );
 
         if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
-          tsrQueryClient.setQueryData(
+          queryClient.setQueryData(
             ['captures', 'trashed'],
             prependCaptureHistoryPageItem(previousTrashed, {
               ...captureToTrash,
@@ -139,13 +159,13 @@ export function useInboxTriage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], context.previousInbox);
+        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
       }
       if (context?.previousTrashed) {
-        tsrQueryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
+        queryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
       }
 
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to trash');
@@ -159,41 +179,39 @@ export function useInboxTriage() {
           label: 'Undo',
           onClick: () => {
             dismissTriageToast();
-            restoreMutation.mutate({ params: { id: variables.params.id }, body: {} });
+            restoreMutation.mutate({ id: variables.id });
           },
         },
       });
     },
 
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const snoozeMutation = tsr.snooze.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
+  const snoozeMutation = useMutation({
+    mutationFn: (input: { id: string; until: string }) => captureClient.snooze(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
 
-      const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
-      const previousSnoozed = tsrQueryClient.list.getQueryData(['captures', 'snoozed']);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousSnoozed = queryClient.getQueryData(['captures', 'snoozed']);
 
-      if (previousInbox?.status === 200) {
-        const captureToSnooze = previousInbox.body.captures.find((c) => c.id === params.id);
+      if (isCapturePage(previousInbox)) {
+        const captureToSnooze = previousInbox.captures.find((capture) => capture.id === id);
 
-        tsrQueryClient.list.setQueryData(
+        queryClient.setQueryData(
           ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, params.id)
+          inboxQueryWithoutCapture(previousInbox, id)
         );
 
-        if (captureToSnooze && previousSnoozed?.status === 200) {
-          tsrQueryClient.list.setQueryData(['captures', 'snoozed'], {
+        if (captureToSnooze && isCapturePage(previousSnoozed)) {
+          queryClient.setQueryData(['captures', 'snoozed'], {
             ...previousSnoozed,
-            body: {
-              ...previousSnoozed.body,
-              captures: [captureToSnooze, ...previousSnoozed.body.captures],
-              total: previousSnoozed.body.total + 1,
-            },
+            captures: [captureToSnooze, ...previousSnoozed.captures],
+            total: previousSnoozed.total + 1,
           });
         }
       }
@@ -203,13 +221,13 @@ export function useInboxTriage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], context.previousInbox);
+        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
       }
       if (context?.previousSnoozed) {
-        tsrQueryClient.list.setQueryData(['captures', 'snoozed'], context.previousSnoozed);
+        queryClient.setQueryData(['captures', 'snoozed'], context.previousSnoozed);
       }
 
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to snooze');
@@ -223,28 +241,33 @@ export function useInboxTriage() {
           label: 'Undo',
           onClick: () => {
             dismissTriageToast();
-            unsnoozeMutation.mutate({ params: { id: variables.params.id }, body: {} });
+            unsnoozeMutation.mutate({ id: variables.id });
           },
         },
       });
     },
 
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const processMutation = tsr.process.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
+  const processMutation = useMutation({
+    mutationFn: (input: {
+      id: string;
+      type: 'task';
+      data: ReturnType<typeof promoteTaskData>;
+    }) => captureClient.process(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
 
-      const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
 
-      if (previousInbox?.status === 200) {
-        tsrQueryClient.list.setQueryData(
+      if (isCapturePage(previousInbox)) {
+        queryClient.setQueryData(
           ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, params.id)
+          inboxQueryWithoutCapture(previousInbox, id)
         );
       }
 
@@ -253,13 +276,13 @@ export function useInboxTriage() {
 
     onError: (err, _variables, context) => {
       if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], context.previousInbox);
+        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
       }
 
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
       } else {
-        toast.error(messageFromUnknown(err) ?? 'Failed to create task');
+        toast.error(httpFailureMessage(err) ?? 'Failed to create task');
       }
     },
 
@@ -275,38 +298,40 @@ export function useInboxTriage() {
     },
 
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
-  const processToProjectMutation = tsr.processToProject.useMutation({
-    onMutate: async ({ params }) => {
-      markActed(params.id);
-      await cancelLiveQueries(tsrQueryClient);
-      const previousInbox = tsrQueryClient.list.getQueryData(['captures', 'inbox']);
-      const previousProjects = projectsClient.list.getQueryData(['projects']);
-      if (previousInbox?.status === 200) {
-        tsrQueryClient.list.setQueryData(
+  const processToProjectMutation = useMutation({
+    mutationFn: (input: { id: string } & ProcessProjectConfirmInput) =>
+      processToProjectClient.processToProject(input),
+    onMutate: async ({ id }) => {
+      markActed(id);
+      await cancelLiveQueries(queryClient);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousProjects = queryClient.getQueryData(['projects']);
+      if (isCapturePage(previousInbox)) {
+        queryClient.setQueryData(
           ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, params.id)
+          inboxQueryWithoutCapture(previousInbox, id)
         );
       }
       return { previousInbox, previousProjects };
     },
     onError: (err, _variables, context) => {
       if (context?.previousInbox) {
-        tsrQueryClient.list.setQueryData(['captures', 'inbox'], context.previousInbox);
+        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
       }
       if (context?.previousProjects) {
-        projectsClient.list.setQueryData(['projects'], context.previousProjects);
+        queryClient.setQueryData(['projects'], context.previousProjects);
       }
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
       const code = errorCode(err);
       if (code === 'DUPLICATE_PROJECT_NAME') {
-        setProjectSheetError(messageFromUnknown(err) ?? 'A project with this name already exists');
+        setProjectSheetError(httpFailureMessage(err) ?? 'A project with this name already exists');
         return;
       }
       if (code === 'CAPTURE_NOT_IN_INBOX') {
@@ -315,30 +340,24 @@ export function useInboxTriage() {
         toast('That capture was already processed');
         return;
       }
-      toast.error(messageFromUnknown(err) ?? 'Failed to create project');
+      toast.error(httpFailureMessage(err) ?? 'Failed to create project');
     },
     onSuccess: (result) => {
-      if (result.status !== 201) {
-        return;
-      }
-      const previousProjects = projectsClient.list.getQueryData(['projects']);
-      if (previousProjects?.status === 200) {
-        projectsClient.list.setQueryData(['projects'], {
+      const previousProjects = queryClient.getQueryData(['projects']);
+      if (isProjectListPage(previousProjects)) {
+        queryClient.setQueryData(['projects'], {
           ...previousProjects,
-          body: {
-            ...previousProjects.body,
-            projects: [result.body.project, ...previousProjects.body.projects],
-            total: previousProjects.body.total + 1,
-          },
+          projects: [result.project, ...previousProjects.projects],
+          total: previousProjects.total + 1,
         });
       }
       setProjectSheetOpen(false);
       setProjectSheetCapture(null);
       setProjectSheetError(null);
-      if (result.body.project.status === 'active') {
+      if (result.project.status === 'active') {
         offerWhatsNext({
-          projectId: result.body.project.id,
-          projectName: result.body.project.name,
+          projectId: result.project.id,
+          projectName: result.project.name,
         });
         return;
       }
@@ -348,29 +367,26 @@ export function useInboxTriage() {
           onClick: () =>
             navigate({
               to: '/projects/$projectId',
-              params: { projectId: result.body.project.id },
+              params: { projectId: result.project.id },
             }),
         },
       });
     },
     onSettled: () => {
-      void invalidateLiveQueries(tsrQueryClient);
+      void invalidateLiveQueries(queryClient);
     },
   });
 
   const handleTrash = (id: string, direction: ExitDirection) => {
     setExitDirections((prev) => ({ ...prev, [id]: direction }));
-    trashMutation.mutate({
-      params: { id },
-      body: {},
-    });
+    trashMutation.mutate({ id });
   };
 
   const handleSnooze = (id: string, option: SnoozeOption, direction: ExitDirection) => {
     setExitDirections((prev) => ({ ...prev, [id]: direction }));
     snoozeMutation.mutate({
-      params: { id },
-      body: { until: snoozeUntil(option, new Date()) },
+      id,
+      until: snoozeUntil(option, new Date()),
     });
   };
 
@@ -382,8 +398,9 @@ export function useInboxTriage() {
   const handleConfirmPromote = (captureId: string, input: PromoteConfirmInput) => {
     setExitDirections((prev) => ({ ...prev, [captureId]: 'right' }));
     processMutation.mutate({
-      params: { id: captureId },
-      body: { type: 'task', data: promoteTaskData(input) },
+      id: captureId,
+      type: 'task',
+      data: promoteTaskData(input),
     });
   };
 
@@ -397,8 +414,8 @@ export function useInboxTriage() {
   const handleConfirmProject = (captureId: string, input: ProcessProjectConfirmInput) => {
     setProjectSheetError(null);
     processToProjectMutation.mutate({
-      params: { id: captureId },
-      body: input,
+      id: captureId,
+      ...input,
     });
   };
 

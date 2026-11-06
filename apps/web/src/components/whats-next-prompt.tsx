@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
-import { PILE_SAFETY_CAP, projectContract } from '@yoink/api-contracts';
-import { isFetchError } from '@ts-rest/react-query/v5';
+import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import { toast } from 'sonner';
-import { tsrLists, tsrOrganizations, tsrAuth, tsrProjects } from '@/api/client';
+import {
+  authClient,
+  httpFailureMessage,
+  httpStatusOf,
+  isNetworkFailure,
+  listClient,
+  organizationClient,
+  projectClient,
+} from '@/api/client';
 import { memberLabel } from '@/api/auth';
 import { NextActionPicker, type NewNextActionTask } from '@/components/next-action-picker';
 import {
@@ -15,44 +23,47 @@ import {
 export function WhatsNextHost() {
   const [prompt, setPrompt] = useState<WhatsNextPrompt | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const queryClient = tsrProjects.useQueryClient();
+  const queryClient = useQueryClient();
 
   useEffect(() => subscribeWhatsNext(setPrompt), []);
 
-  const { data: openTasksData } = tsrProjects.listOpenTasks.useQuery({
+  const { data: openTasksData } = useQuery({
     queryKey: ['tasks', 'project', prompt?.projectId ?? ''],
-    queryData: {
-      params: { id: prompt?.projectId ?? '' },
-      query: { limit: PILE_SAFETY_CAP },
-    },
+    queryFn: () =>
+      projectClient.listOpenTasks({
+        id: prompt?.projectId ?? '',
+        limit: PILE_SAFETY_CAP,
+      }),
     enabled: Boolean(prompt?.projectId),
   });
 
-  const { data: listsData } = tsrLists.list.useQuery({
+  const { data: listsData } = useQuery({
     queryKey: ['lists'],
-    queryData: { query: { limit: PILE_SAFETY_CAP } },
+    queryFn: () => listClient.list({ limit: PILE_SAFETY_CAP }),
     refetchInterval: false,
     enabled: Boolean(prompt),
   });
 
-  const { data: sessionData } = tsrAuth.session.useQuery({
+  const { data: sessionData } = useQuery({
     queryKey: ['session'],
-    queryData: {},
+    queryFn: () => authClient.session(),
     refetchInterval: false,
     enabled: Boolean(prompt),
   });
-  const organizationId = sessionData?.status === 200 ? sessionData.body.organizationId : undefined;
+  const organizationId = sessionData?.organizationId;
 
-  const membersQuery = tsrOrganizations.listMembers.useQuery({
+  const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
-    queryData: { params: { organizationId: organizationId ?? '' } },
+    queryFn: () =>
+      organizationClient.listMembers({ organizationId: organizationId ?? '' }),
     enabled: Boolean(prompt && organizationId),
     refetchInterval: false,
   });
 
-  const setMutation = tsrProjects.setNextAction.useMutation({
-    onSuccess: async (result) => {
-      if (result.status !== 200) return;
+  const setMutation = useMutation({
+    mutationFn: (input: Parameters<typeof projectClient.setNextAction>[0]) =>
+      projectClient.setNextAction(input),
+    onSuccess: async () => {
       setFormError(null);
       toast.success('Next action set');
       dismissWhatsNext();
@@ -62,18 +73,16 @@ export function WhatsNextHost() {
       await queryClient.invalidateQueries({ queryKey: ['review'] });
     },
     onError: (err) => {
-      if (isFetchError(err)) {
+      if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
         return;
       }
-      if (typeof err === 'object' && err !== null && 'status' in err && 'body' in err) {
-        const status = err.status;
-        if (status === 400 || status === 404) {
-          const parsed = projectContract.setNextAction.responses[status].safeParse(err.body);
-          if (parsed.success) {
-            setFormError(parsed.data.message);
-            return;
-          }
+      const status = httpStatusOf(err);
+      if (status === 400 || status === 404) {
+        const message = httpFailureMessage(err);
+        if (message !== undefined) {
+          setFormError(message);
+          return;
         }
       }
       toast.error('Failed to set next action');
@@ -84,15 +93,15 @@ export function WhatsNextHost() {
     return null;
   }
 
-  const openTasks = openTasksData?.status === 200 ? openTasksData.body.tasks : [];
-  const namedLists = listsData?.status === 200 ? listsData.body.lists : [];
-  const members = membersQuery.data?.status === 200 ? membersQuery.data.body.members : [];
+  const openTasks = openTasksData?.tasks ?? [];
+  const namedLists = listsData?.lists ?? [];
+  const members = membersQuery.data?.members ?? [];
 
   const submit = (body: { taskId: string } | { newTask: NewNextActionTask }) => {
     setFormError(null);
     setMutation.mutate({
-      params: { id: prompt.projectId },
-      body,
+      id: prompt.projectId,
+      ...body,
     });
   };
 

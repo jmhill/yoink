@@ -1,4 +1,4 @@
-import type { InfiniteData } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import {
   HISTORY_PAGE_DEFAULT,
@@ -7,19 +7,13 @@ import {
   type Task,
   type TaskListPage,
 } from '@yoink/api-contracts';
-import { tsr, tsrTasks } from '@/api/client';
+import { captureClient, taskClient } from '@/api/client';
 
 export const LOAD_MORE_TEST_ID = 'load-more';
 
-export type TaskHistoryPage = {
-  status: 200;
-  body: TaskListPage;
-};
+export type TaskHistoryPage = TaskListPage;
 
-export type CaptureHistoryPage = {
-  status: 200;
-  body: CaptureListPage;
-};
+export type CaptureHistoryPage = CaptureListPage;
 
 export type TaskHistoryData = InfiniteData<TaskHistoryPage, string | undefined>;
 export type CaptureHistoryData = InfiniteData<CaptureHistoryPage, string | undefined>;
@@ -53,30 +47,23 @@ export const isTaskHistoryData = (data: unknown): data is TaskHistoryData => {
   if (!isRecord(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams)) {
     return false;
   }
-  return data.pages.every(
-    (page) => isRecord(page) && page.status === 200 && isTaskListPage(page.body)
-  );
+  return data.pages.every((page) => isTaskListPage(page));
 };
 
 export const isCaptureHistoryData = (data: unknown): data is CaptureHistoryData => {
   if (!isRecord(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams)) {
     return false;
   }
-  return data.pages.every(
-    (page) => isRecord(page) && page.status === 200 && isCaptureListPage(page.body)
-  );
+  return data.pages.every((page) => isCaptureListPage(page));
 };
 
 export const emptyCaptureHistoryPages = (): CaptureHistoryData => ({
   pages: [
     {
-      status: 200,
-      body: {
-        captures: [],
-        hasMore: false,
-        nextCursor: null,
-        total: 0,
-      },
+      captures: [],
+      hasMore: false,
+      nextCursor: null,
+      total: 0,
     },
   ],
   pageParams: [undefined],
@@ -88,24 +75,18 @@ export const mapTaskHistoryPageItems = (
 ): TaskHistoryData => {
   let delta = 0;
   const pages = data.pages.map((page) => {
-    const nextItems = mapItems(page.body.tasks);
-    delta += nextItems.length - page.body.tasks.length;
+    const nextItems = mapItems(page.tasks);
+    delta += nextItems.length - page.tasks.length;
     return {
       ...page,
-      body: {
-        ...page.body,
-        tasks: nextItems,
-      },
+      tasks: nextItems,
     };
   });
   const first = pages[0];
   if (delta !== 0 && first) {
     pages[0] = {
       ...first,
-      body: {
-        ...first.body,
-        total: Math.max(0, first.body.total + delta),
-      },
+      total: Math.max(0, first.total + delta),
     };
   }
   return { ...data, pages };
@@ -117,24 +98,18 @@ export const mapCaptureHistoryPageItems = (
 ): CaptureHistoryData => {
   let delta = 0;
   const pages = data.pages.map((page) => {
-    const nextItems = mapItems(page.body.captures);
-    delta += nextItems.length - page.body.captures.length;
+    const nextItems = mapItems(page.captures);
+    delta += nextItems.length - page.captures.length;
     return {
       ...page,
-      body: {
-        ...page.body,
-        captures: nextItems,
-      },
+      captures: nextItems,
     };
   });
   const first = pages[0];
   if (delta !== 0 && first) {
     pages[0] = {
       ...first,
-      body: {
-        ...first.body,
-        total: Math.max(0, first.body.total + delta),
-      },
+      total: Math.max(0, first.total + delta),
     };
   }
   return { ...data, pages };
@@ -151,20 +126,17 @@ export const prependCaptureHistoryPageItem = (
     }
     return {
       ...page,
-      body: {
-        ...page.body,
-        captures: [item, ...page.body.captures],
-        total: page.body.total + 1,
-      },
+      captures: [item, ...page.captures],
+      total: page.total + 1,
     };
   }),
 });
 
-const nextHistoryCursor = (lastPage: { status: number; body: { hasMore: boolean; nextCursor: string | null } }) => {
-  if (lastPage.status !== 200 || lastPage.body.hasMore !== true) {
+const nextHistoryCursor = (lastPage: { hasMore: boolean; nextCursor: string | null }) => {
+  if (lastPage.hasMore !== true) {
     return undefined;
   }
-  return lastPage.body.nextCursor ?? undefined;
+  return lastPage.nextCursor ?? undefined;
 };
 
 const historyCursor = (pageParam: unknown): string | undefined =>
@@ -176,26 +148,24 @@ const historyCursor = (pageParam: unknown): string | undefined =>
  * live-update collection prefixes so #125 cancel/invalidate still match.
  */
 export const useCompletedTaskPages = (enabled: boolean) => {
-  const query = tsrTasks.list.useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: ['tasks', 'completed'],
     enabled,
-    initialPageParam: undefined,
-    queryData: ({ pageParam }) => ({
-      query: {
-        filter: 'completed' as const,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const cursor = historyCursor(pageParam);
+      return taskClient.list({
+        filter: 'completed',
         limit: HISTORY_PAGE_DEFAULT,
-        cursor: historyCursor(pageParam),
-      },
-    }),
+        ...(cursor === undefined ? {} : { cursor }),
+      });
+    },
     getNextPageParam: nextHistoryCursor,
   });
 
-  const items =
-    query.data?.pages.flatMap((page) =>
-      page.status === 200 ? page.body.tasks : []
-    ) ?? [];
+  const items = query.data?.pages.flatMap((page) => page.tasks) ?? [];
   const first = query.data?.pages[0];
-  const total = first?.status === 200 ? first.body.total : items.length;
+  const total = first?.total ?? items.length;
 
   return {
     ...query,
@@ -209,26 +179,24 @@ export const useCompletedTaskPages = (enabled: boolean) => {
  * prefixes so #125 cancel/invalidate still match.
  */
 export const useTrashedCapturePages = (enabled: boolean) => {
-  const query = tsr.list.useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: ['captures', 'trashed'],
     enabled,
-    initialPageParam: undefined,
-    queryData: ({ pageParam }) => ({
-      query: {
-        status: 'trashed' as const,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const cursor = historyCursor(pageParam);
+      return captureClient.list({
+        status: 'trashed',
         limit: HISTORY_PAGE_DEFAULT,
-        cursor: historyCursor(pageParam),
-      },
-    }),
+        ...(cursor === undefined ? {} : { cursor }),
+      });
+    },
     getNextPageParam: nextHistoryCursor,
   });
 
-  const items =
-    query.data?.pages.flatMap((page) =>
-      page.status === 200 ? page.body.captures : []
-    ) ?? [];
+  const items = query.data?.pages.flatMap((page) => page.captures) ?? [];
   const first = query.data?.pages[0];
-  const total = first?.status === 200 ? first.body.total : items.length;
+  const total = first?.total ?? items.length;
 
   return {
     ...query,

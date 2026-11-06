@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
-import { tsr } from '@/api/client';
+import { captureClient } from '@/api/client';
 import { getSession } from '@/api/auth';
 import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
@@ -90,25 +90,17 @@ function SharePage() {
     setIsSaving(true);
     try {
       // Use direct mutation (fire-and-forget, no Query caching needed)
-      const response = await tsr.create.mutate({
-        body: {
-          content: content.trim() || sourceUrl || '',
-          sourceUrl,
-          sourceApp: 'share',
-        },
+      await captureClient.create({
+        content: content.trim() || sourceUrl || '',
+        sourceUrl,
+        sourceApp: 'share',
       });
-
-      if (response.status === 201) {
-        toast.success('Captured!');
-        setIsClosing(true);
-        // Brief delay to show the success toast, then close
-        setTimeout(() => {
-          handleClose();
-        }, 1000);
-      } else {
-        toast.error('Failed to save capture');
-        setIsSaving(false);
-      }
+      toast.success('Captured!');
+      setIsClosing(true);
+      // Brief delay to show the success toast, then close
+      setTimeout(() => {
+        handleClose();
+      }, 1000);
     } catch {
       toast.error('Failed to save capture');
       setIsSaving(false);

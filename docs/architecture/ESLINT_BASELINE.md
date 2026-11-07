@@ -1,8 +1,33 @@
 # ESLint baseline
 
-Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured). The current tree is the [M2.2 re-measure](#m22-re-measure). The sections under Result are the M1.1 census that re-measure is compared to.
+Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured). The current tree is the [M2.3 re-measure](#m23-re-measure). The sections under Result are the M1.1 census that re-measure is compared to.
 
 The previous measurement is M0.5, on `11da9800fe063d0e7b168a320dd1a61d69da1dcc`, merged as `93584ce`. That run is not restated as if this config had been in place. Its totals were **4 errors** and **196 warnings** (`boundaries/element-types` 112, `boundaries/no-unknown` 19, `@typescript-eslint/no-explicit-any` 33, `react-hooks/set-state-in-effect` 25, `react-hooks/exhaustive-deps` 7).
+
+## M2.3 re-measure
+
+Measured **2026-11-06** on this branch after `Clock`, `IdGenerator`, and `PasswordHasher` types were added under `src/kernel/`. Domain and application production files import those types from kernel. `pnpm lint` exits 1. `pnpm lint --force --continue` exited 1. Every package finished.
+
+```text
+Tasks:    9 successful, 10 total
+Cached:    0 cached, 10 total
+  Time:    12.451s
+Failed:    @yoink/acceptance-tests#lint
+```
+
+| Package | Errors | Warnings | eslint summary |
+|---|---:|---:|---|
+| `@yoink/acceptance-tests` | 4 | 0 | `✖ 4 problems (4 errors, 0 warnings)` |
+| `@yoink/api` | 0 | 177 | `✖ 177 problems (0 errors, 177 warnings)` |
+| `@yoink/web` | 0 | 32 | `✖ 32 problems (0 errors, 32 warnings)` |
+| other seven packages | 0 | 0 | no diagnostics |
+| **Total** | **4** | **209** | |
+
+The 4 errors are the same unused locals in `@yoink/acceptance-tests` (`staged`, `mineMilk`, `eggs`, `bread`). Those files were not edited.
+
+API rule counts from `eslint -f json` on `src/**/*.{ts,tsx}`: `boundaries/element-types` 144, `@typescript-eslint/no-explicit-any` 33, `boundaries/no-unknown` 0, `boundaries/entry-point` 0, `boundaries/external` 0. `no-restricted-imports` produced no diagnostic. The new kernel port files and `platform/infrastructure-ports.test.ts` produced no diagnostic. Web stayed 32 warnings. Totals match the M2.2 census. The new domain/application ban on `@yoink/infrastructure` is an error rule and is clean because those files now import the kernel types.
+
+`mise exec -- pnpm quality` on this tree exited 0: 33 successful / 33 total, 25 cached, 49.936s. `@yoink/api` test was a cache miss: 247 files, 1924 passed, 46.82s. No test timed out. `app.ts` and `composition-root.ts` were not edited.
 
 ## M2.2 re-measure
 

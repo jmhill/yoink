@@ -59,6 +59,7 @@ Each migration task under ADR-001 adds entries here when it hits repeated boiler
 | 2026-11-06 | M1.2 | none | — | — | — |
 | 2026-11-06 | M1.3 | none | — | — | — |
 | 2026-11-06 | M2.1 | none | — | — | — |
+| 2026-11-06 | M2.2 | none | — | — | — |
 
 ## 6. When to start the full ADR
 

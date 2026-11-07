@@ -1,5 +1,6 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Clock, IdGenerator } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
+import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { Actor } from '../../kernel/auth-context.js';
 import type { User } from './user.js';
 import { agentEmailFor } from './user.js';

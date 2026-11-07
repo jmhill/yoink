@@ -1,5 +1,6 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
-import type { Clock, PasswordHasher } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
+import type { PasswordHasher } from '../../kernel/password-hasher.js';
 import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
 import { organizationNotFoundError } from './organization-errors.js';

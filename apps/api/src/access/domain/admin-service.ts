@@ -1,5 +1,7 @@
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
-import type { Clock, IdGenerator, PasswordHasher } from '@yoink/infrastructure';
+import type { Clock } from '../../kernel/clock.js';
+import type { IdGenerator } from '../../kernel/id-generator.js';
+import type { PasswordHasher } from '../../kernel/password-hasher.js';
 import type { Organization } from './organization.js';
 import type { OrganizationStore } from './organization-store.js';
 import type { MembershipRole, OrganizationMembership } from './organization-membership.js';

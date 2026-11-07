@@ -338,7 +338,9 @@ export default [
             // disallowed, including public-api.
             { from: 'access', allow: ['access', ['edge', { edge: 'legacy' }]] },
             { from: 'captures', allow: ['captures'] },
-            { from: 'health', allow: ['health'] },
+            // M3.4. The health route test stays here until M3.6. It may
+            // import the ops edge. Other edges stay disallowed.
+            { from: 'health', allow: ['health', ['edge', { edge: 'ops' }]] },
             { from: 'history', allow: ['history', 'projects', 'tasks'] },
             // M4.2: lists, notes, and processing still import the change log.
             { from: 'lists', allow: ['lists', 'history'] },
@@ -477,9 +479,18 @@ export default [
                 'platform',
               ],
             },
+            // M3.4. Only the test-fixtures edge. These routes still call
+            // today's access stores and the admin session middleware. M7.4
+            // retires them. Other modules stay disallowed.
             {
               from: [['edge', { edge: 'test-fixtures' }]],
-              allow: ['platform-database', 'platform-sql'],
+              allow: ['platform-database', 'platform-sql', 'access'],
+            },
+            // M3.4. The health HTTP error map stays in health/application.
+            // Only the ops edge imports it.
+            {
+              from: [['edge', { edge: 'ops' }]],
+              allow: ['health'],
             },
             // M3.2. Only the public-api edge, not every edge. These are the
             // module handlers this edge still calls:

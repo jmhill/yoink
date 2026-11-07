@@ -45,6 +45,21 @@ describe('isPwaNavigateFallbackDenied', () => {
     }
   );
 
+  it.each([
+    '/test-api',
+    '/test-api/',
+    '/test-api/ownerless-workspace',
+    '/test-api/review-fixture/backdate?x=1',
+    '/admin-api',
+    '/admin-api/session',
+    '/web-api',
+    '/web-api/inbox',
+    '/extension-api',
+    '/extension-api/v1/captures',
+  ])('denies reserved prefix %s', (pathnameAndSearch) => {
+    expect(isPwaNavigateFallbackDenied(pathnameAndSearch)).toBe(true);
+  });
+
   it.each(['/', '/inbox', '/tasks', '/share', '/login', '/settings'])(
     'still SPA-fallbacks web app navigation %s',
     (pathnameAndSearch) => {

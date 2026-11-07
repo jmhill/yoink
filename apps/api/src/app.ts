@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/node';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { registerOrpcHealthRoutes } from './health/application/index.js';
+import { registerOrpcHealthRoutes } from './edges/ops/orpc-health-routes.js';
 import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
 import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/legacy/admin/admin-routes.js';
 import { registerAuthRoutes } from './edges/legacy/auth/auth-routes.js';
@@ -16,8 +16,8 @@ import { registerOrganizationRoutes } from './edges/legacy/organization/organiza
 import { registerPasskeyRoutes } from './edges/legacy/passkey/passkey-routes.js';
 import { registerSignupRoutes } from './edges/legacy/signup/signup-routes.js';
 import { registerTokenMutationRoutes } from './edges/legacy/tokens/token-routes.js';
-import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
-import { registerOwnerlessWorkspaceFixtureRoutes } from './access/infrastructure/http-ownerless-workspace-fixture-routes.js';
+import { registerReviewFixtureRoutes } from './edges/test-fixtures/http-review-fixture-routes.js';
+import { registerOwnerlessWorkspaceFixtureRoutes } from './edges/test-fixtures/http-ownerless-workspace-fixture-routes.js';
 import {
   createAuthMiddleware,
   type AuthMiddleware,
@@ -68,6 +68,7 @@ import type { Database } from './platform/database/types.js';
 import { createLoggerOptions } from './platform/logging/index.js';
 import { shouldHandleError } from './platform/logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './edges/_shared/server/static-cache-control.js';
+import { decideSpaFallback } from './edges/_shared/server/spa-fallback.js';
 import {
   decideRateLimitExempt,
   decideRateLimitKey,
@@ -369,19 +370,16 @@ export const createApp = async (deps: AppDependencies) => {
   // Register Sentry error handler (must be after routes but before other error handlers)
   Sentry.setupFastifyErrorHandler(app, { shouldHandleError });
 
-  // SPA fallback - serve index.html for unmatched routes
+  // SPA fallback. `/admin` is the admin app. `/admin-api` is not.
+  // `/api`, `/test-api`, `/web-api`, and `/extension-api` are not the web app.
+  // `/web-api`, `/admin-api`, and `/extension-api` are not mounted yet.
   app.setNotFoundHandler((request, reply) => {
-    // Set no-cache for HTML fallback responses
     reply.header('Cache-Control', NEVER_CACHE_CONTROL);
-    
-    // Admin SPA routes
-    if (request.url.startsWith('/admin')) {
-      if (existsSync(adminDistPath)) {
-        return reply.sendFile('index.html', adminDistPath);
-      }
+    const decision = decideSpaFallback(request.url);
+    if (decision === 'admin-spa' && existsSync(adminDistPath)) {
+      return reply.sendFile('index.html', adminDistPath);
     }
-    // Web app SPA routes (not API routes)
-    if (!request.url.startsWith('/api') && existsSync(join(webDistPath, 'index.html'))) {
+    if (decision !== 'json-not-found' && existsSync(join(webDistPath, 'index.html'))) {
       return reply.sendFile('index.html', webDistPath);
     }
     return reply.status(404).send({ message: 'Not found' });

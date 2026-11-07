@@ -7,7 +7,7 @@ import { createFakeProcessToTaskPersist } from '../infrastructure/persist-proces
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
-import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import type { FakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
 import type { ListStore } from '../../lists/domain/list-store.js';

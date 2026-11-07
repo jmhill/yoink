@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDatabase } from '../../platform/database/test-utils.js';
 import type { Database } from '../../platform/database/types.js';
 import { createSqliteTaskPersist } from './store-backed-persist.js';
-import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import { createSqliteChangeLogStore } from '../../modules/history/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTaskStore } from './sqlite-task-store.js';
 import { planTaskChange } from '../domain/plan-task-change.js';
 import {
@@ -10,7 +10,7 @@ import {
   type TaskChangeLogIds,
   type TaskUncompletedChangeLogIds,
 } from '../domain/change-log-records.js';
-import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
+import { UNLISTED_PILE_SUBJECT_ID } from '../../modules/history/domain/kinds.js';
 import type { Task } from '@yoink/api-contracts';
 import type { TaskCreated, TaskEvent, TaskUncompleted } from '../domain/events.js';
 

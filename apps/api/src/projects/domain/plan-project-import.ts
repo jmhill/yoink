@@ -1,7 +1,7 @@
 import type { Project } from '@yoink/api-contracts';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
-import { hiddenFor } from '../../shared/change-log/domain/kinds.js';
-import type { ProjectImportedPayloadV1 } from '../../shared/change-log/domain/payloads.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
+import { hiddenFor } from '../../modules/history/domain/kinds.js';
+import type { ProjectImportedPayloadV1 } from '../../modules/history/domain/payloads.js';
 import { changeLogIdsForTaskUpdated, type TaskUpdatedChangeLogIds } from '../../tasks/domain/change-log-records.js';
 import { planTaskChange, type TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
 import type { ImportPlan, PlannedImportedProject } from './decide-import.js';

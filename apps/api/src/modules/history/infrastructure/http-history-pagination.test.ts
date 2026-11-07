@@ -7,7 +7,7 @@ import {
   type TaskListPage,
 } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
+import { encodeKeysetCursor } from '../../../kernel/listing/application/keyset-codec.js';
 import {
   createTestApp,
   createTestAppAndDatabase,
@@ -15,7 +15,7 @@ import {
   TEST_ORG_ID,
   TEST_TOKEN,
   TEST_USER_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 

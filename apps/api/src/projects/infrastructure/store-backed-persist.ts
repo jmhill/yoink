@@ -4,9 +4,9 @@ import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,
   type SqlQuery,
-} from '../../shared/change-log/infrastructure/sql.js';
-import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+} from '../../modules/history/infrastructure/sql.js';
+import type { FakeChangeLogStore } from '../../modules/history/infrastructure/fake-change-log-store.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
 import {
   duplicateProjectNameError,
   importNotPendingError,

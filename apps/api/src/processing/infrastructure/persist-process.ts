@@ -1,8 +1,8 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Database } from '../../platform/database/types.js';
-import { insertChangeLogQuery } from '../../shared/change-log/infrastructure/sql.js';
-import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+import { insertChangeLogQuery } from '../../modules/history/infrastructure/sql.js';
+import type { FakeChangeLogStore } from '../../modules/history/infrastructure/fake-change-log-store.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
 import {
   captureNotInInboxError,
   storageError as captureStorageError,

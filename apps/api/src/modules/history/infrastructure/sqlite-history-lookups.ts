@@ -1,11 +1,11 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
-import type { Database } from '../../platform/database/types.js';
-import { storageError } from '../../projects/domain/project-errors.js';
+import type { Database } from '../../../platform/database/types.js';
+import { storageError } from '../../../projects/domain/project-errors.js';
 import {
   UNKNOWN_ACTOR_NAME,
   type TimelineLookups,
-} from '../../shared/change-log/domain/to-timeline-entry.js';
+} from '../domain/to-timeline-entry.js';
 import type { LoadTimelineLookups } from '../application/ports.js';
 
 const taskLookupRowSchema = z.object({

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Task } from '@yoink/api-contracts';
 import { createFakeListStore } from './fake-list-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import { createStoreBackedPersist } from './store-backed-persist.js';
 import { planListChange } from '../domain/plan-list-change.js';
 

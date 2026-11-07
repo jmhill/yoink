@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createTestDatabase } from '../../platform/database/test-utils.js';
-import type { Database } from '../../platform/database/types.js';
-import { UNKNOWN_ACTOR_NAME } from '../../shared/change-log/domain/to-timeline-entry.js';
+import { createTestDatabase } from '../../../platform/database/test-utils.js';
+import type { Database } from '../../../platform/database/types.js';
+import { UNKNOWN_ACTOR_NAME } from '../domain/to-timeline-entry.js';
 import { createSqliteTimelineLookups } from './sqlite-history-lookups.js';
 
 const now = '2026-10-11T15:00:00.000Z';

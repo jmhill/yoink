@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseChangeLogRecord } from '../../shared/change-log/domain/parse-record.js';
-import { UNLISTED_PILE_SUBJECT_ID } from '../../shared/change-log/domain/kinds.js';
+import { parseChangeLogRecord } from '../../modules/history/domain/parse-record.js';
+import { UNLISTED_PILE_SUBJECT_ID } from '../../modules/history/domain/kinds.js';
 import {
   changeLogIdsForTaskUpdated,
   changeLogRecordsFromTaskEvent,

@@ -1,6 +1,6 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
+import type { ChangeLogKind } from '../../modules/history/domain/kinds.js';
 import { decideCreateTask } from '../../tasks/domain/decide-create.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
 import type { OrgPrincipalLookup } from '../../tasks/domain/org-principal-lookup.js';

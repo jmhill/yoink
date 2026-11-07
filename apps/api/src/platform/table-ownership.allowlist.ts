@@ -11,10 +11,15 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * routes below do.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
+  // tasks, projects, lists, processing, and notes still import
+  // insertChangeLogQuery from modules/history/infrastructure/sql.ts.
+  // That SQL stays in that file, so the imports are not new rows.
+  // The tasks that stop the calls: tasks, projects, and lists are M5.3;
+  // processing is M5.5; notes is M5.7.
   // M4.4 deletes existsClause and the other cross-module guards in history SQL.
   // M4.4
   {
-    path: 'shared/change-log/infrastructure/sql.ts',
+    path: 'modules/history/infrastructure/sql.ts',
     keyword: 'FROM',
     table: 'lists',
     count: 1,
@@ -22,7 +27,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M4.4
   {
-    path: 'shared/change-log/infrastructure/sql.ts',
+    path: 'modules/history/infrastructure/sql.ts',
     keyword: 'FROM',
     table: 'organizations',
     count: 1,
@@ -30,7 +35,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M4.4
   {
-    path: 'shared/change-log/infrastructure/sql.ts',
+    path: 'modules/history/infrastructure/sql.ts',
     keyword: 'FROM',
     table: 'project_notes',
     count: 1,
@@ -38,7 +43,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M4.4
   {
-    path: 'shared/change-log/infrastructure/sql.ts',
+    path: 'modules/history/infrastructure/sql.ts',
     keyword: 'FROM',
     table: 'projects',
     count: 1,
@@ -46,7 +51,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M4.4 — existsClause for tasks, plus insertChangeLogQuery's requireTask guard.
   {
-    path: 'shared/change-log/infrastructure/sql.ts',
+    path: 'modules/history/infrastructure/sql.ts',
     keyword: 'FROM',
     table: 'tasks',
     count: 2,
@@ -210,7 +215,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   // M5.10-history reads task, project, note, and user names through ports.
   // M5.10-history
   {
-    path: 'history/infrastructure/sqlite-history-lookups.ts',
+    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
     keyword: 'FROM',
     table: 'project_notes',
     count: 1,
@@ -218,7 +223,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M5.10-history
   {
-    path: 'history/infrastructure/sqlite-history-lookups.ts',
+    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
     keyword: 'FROM',
     table: 'projects',
     count: 1,
@@ -226,7 +231,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M5.10-history
   {
-    path: 'history/infrastructure/sqlite-history-lookups.ts',
+    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
     keyword: 'FROM',
     table: 'tasks',
     count: 1,
@@ -234,7 +239,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M5.10-history
   {
-    path: 'history/infrastructure/sqlite-history-lookups.ts',
+    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
     keyword: 'FROM',
     table: 'users',
     count: 1,

@@ -104,6 +104,10 @@ const platformPackages = [...adapterPackages, '@yoink/infrastructure'];
 const edgePackages = [...adapterPackages, '@yoink/api-contracts'];
 
 const elements = [
+  // M4.2 moved history to src/modules/history without the target layer rules.
+  // Those rules would warn on imports this code already has. This descriptor
+  // is first, so the current history element wins. M5.10-history removes it.
+  { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {
@@ -235,7 +239,6 @@ const elements = [
   { type: 'config', pattern: 'src/config/**' },
   { type: 'database', pattern: 'src/database/**' },
   { type: 'health', pattern: 'src/health/**' },
-  { type: 'history', pattern: 'src/history/**' },
   { type: 'listing', pattern: 'src/listing/**' },
   { type: 'lists', pattern: 'src/lists/**' },
   { type: 'logging', pattern: 'src/logging/**' },
@@ -334,11 +337,12 @@ export default [
             { from: 'captures', allow: ['captures'] },
             { from: 'health', allow: ['health'] },
             { from: 'history', allow: ['history', 'projects', 'tasks'] },
-            { from: 'lists', allow: ['lists'] },
+            // M4.2: lists, notes, and processing still import the change log.
+            { from: 'lists', allow: ['lists', 'history'] },
             { from: 'projects', allow: ['projects', 'history'] },
             { from: 'tasks', allow: ['tasks', 'history'] },
-            { from: 'processing', allow: ['processing'] },
-            { from: 'notes', allow: ['notes'] },
+            { from: 'processing', allow: ['processing', 'history'] },
+            { from: 'notes', allow: ['notes', 'history'] },
             { from: 'review', allow: ['review'] },
             { from: 'work', allow: ['work'] },
             { from: 'server', allow: ['server'] },

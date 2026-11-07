@@ -1,15 +1,15 @@
 import { HISTORY_STARTS_AT, type HistoryPage, type TimelineEntry } from '@yoink/api-contracts';
-import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
-import { combineNoteTimelineEntries } from '../../shared/change-log/domain/combine-note-timeline.js';
+import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
+import { combineNoteTimelineEntries } from '../domain/combine-note-timeline.js';
 import {
   isUnparsedHistoryRow,
   type HistoryPageItem,
-} from '../../shared/change-log/domain/history-page-item.js';
+} from '../domain/history-page-item.js';
 import {
   toTimelineEntry,
   unknownTimelineEntry,
   type TimelineLookups,
-} from '../../shared/change-log/domain/to-timeline-entry.js';
+} from '../domain/to-timeline-entry.js';
 import type { HistoryReadLogger } from './ports.js';
 
 export const collectLookupIds = (items: readonly HistoryPageItem[]) => {

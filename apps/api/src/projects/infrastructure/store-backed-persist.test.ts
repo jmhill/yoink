@@ -3,7 +3,7 @@ import { errAsync } from 'neverthrow';
 import { createFakeProjectStore } from './fake-project-store.js';
 import { createStoreBackedProjectStatusPersist } from './store-backed-persist.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import { planProjectChange } from '../domain/plan-project-change.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
 import type { Project, Task } from '@yoink/api-contracts';

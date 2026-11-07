@@ -1,7 +1,7 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Database } from '../../platform/database/types.js';
-import { insertChangeLogQuery, type SqlQuery } from '../../shared/change-log/infrastructure/sql.js';
-import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { insertChangeLogQuery, type SqlQuery } from '../../modules/history/infrastructure/sql.js';
+import type { FakeChangeLogStore } from '../../modules/history/infrastructure/fake-change-log-store.js';
 import { storageError, type StorageError } from '../domain/list-errors.js';
 import type { PersistNamedListChange } from '../application/ports.js';
 import type { ListChangePlan } from '../domain/plan-list-change.js';

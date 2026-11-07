@@ -1,14 +1,14 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import type { HistoryReadLogger } from '../../kernel/history-read-logger.js';
-import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { HistoryReadLogger } from '../../../kernel/history-read-logger.js';
+import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
 import type {
   ChangeLogStorageError,
   HistoryPageItem,
-} from '../../shared/change-log/domain/history-page-item.js';
-import type { StorageError } from '../../projects/domain/project-errors.js';
-import type { TimelineLookups } from '../../shared/change-log/domain/to-timeline-entry.js';
+} from '../domain/history-page-item.js';
+import type { StorageError } from '../../../projects/domain/project-errors.js';
+import type { TimelineLookups } from '../domain/to-timeline-entry.js';
 
 export type { HistoryReadLogger };
 

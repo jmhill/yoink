@@ -5,7 +5,7 @@ import {
   TEST_ORG_ID,
   TEST_SESSION_ID,
   TEST_SESSION_COOKIE,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { Note, NoteChangePage, NoteListPage, Project } from '@yoink/api-contracts';
 

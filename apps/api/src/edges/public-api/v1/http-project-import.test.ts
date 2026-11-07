@@ -6,7 +6,7 @@ import {
   TEST_USER_ID,
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type {
   AppliedImport,
@@ -17,7 +17,7 @@ import type {
   StagedImportList,
   Task,
 } from '@yoink/api-contracts';
-import { buildObsidianUrl } from '../domain/notebook-pages.js';
+import { buildObsidianUrl } from '../../../projects/domain/notebook-pages.js';
 
 describe('project import HTTP', () => {
   let app: FastifyInstance;

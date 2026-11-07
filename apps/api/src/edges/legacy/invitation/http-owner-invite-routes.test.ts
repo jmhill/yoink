@@ -22,9 +22,9 @@ import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import {
   bootstrapApp,
   createInfrastructure,
-} from '../../composition-root.js';
-import { runMigrations } from '../../platform/database/migrator.js';
-import { migrations } from '../../platform/database/migrations.js';
+} from '../../../composition-root.js';
+import { runMigrations } from '../../../platform/database/migrator.js';
+import { migrations } from '../../../platform/database/migrations.js';
 import {
   createTestAppFull,
   TEST_ADMIN_PASSWORD,
@@ -33,32 +33,32 @@ import {
   TEST_SESSION_ID,
   TEST_USER_ID,
   testConfigFull,
-} from '../../tests/helpers/test-app.js';
-import { ADMIN_SESSION_COOKIE } from '../../edges/_shared/auth/admin-session-middleware.js';
-import { registerAdminRoutes } from '../../edges/legacy/admin/admin-routes.js';
-import { registerInvitationRoutes } from '../../edges/legacy/invitation/invitation-routes.js';
-import { createAdminSessionService } from '../domain/admin-session-service.js';
-import { createAdminService } from '../domain/admin-service.js';
-import { createInvitationService } from '../domain/invitation-service.js';
-import { createUserService } from '../domain/user-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
-import { createOrganizationService } from '../domain/organization-service.js';
-import { createCombinedAuthMiddleware } from '../../edges/_shared/auth/combined-auth-middleware.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
-import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
-import { createSessionService } from '../domain/session-service.js';
-import { createTokenService } from '../domain/token-service.js';
+} from '../../../tests/helpers/test-app.js';
+import { ADMIN_SESSION_COOKIE } from '../../_shared/auth/admin-session-middleware.js';
+import { registerAdminRoutes } from '../admin/admin-routes.js';
+import { registerInvitationRoutes } from './invitation-routes.js';
+import { createAdminSessionService } from '../../../access/domain/admin-session-service.js';
+import { createAdminService } from '../../../access/domain/admin-service.js';
+import { createInvitationService } from '../../../access/domain/invitation-service.js';
+import { createUserService } from '../../../access/domain/user-service.js';
+import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createOrganizationService } from '../../../access/domain/organization-service.js';
+import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import { createFakeInvitationStore } from '../../../access/infrastructure/fake-invitation-store.js';
+import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
+import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import { createFakeProjectStore } from '../../../projects/infrastructure/fake-project-store.js';
+import { createSessionService } from '../../../access/domain/session-service.js';
+import { createTokenService } from '../../../access/domain/token-service.js';
 import {
   acceptInvitationFailedError,
   createWorkspaceFailedError,
   issueOwnerInvitationFailedError,
   listWorkspacesFailedError,
-} from '../domain/invitation-errors.js';
+} from '../../../access/domain/invitation-errors.js';
 import { createFakePasswordHasher } from '@yoink/infrastructure';
 import type { FastifyInstance } from 'fastify';
 

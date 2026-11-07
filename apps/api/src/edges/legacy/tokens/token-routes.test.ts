@@ -3,28 +3,28 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { ResultAsync } from 'neverthrow';
-import { registerTokenMutationRoutes } from '../../edges/legacy/tokens/token-routes.js';
-import { createTokenHandlers } from './create-token-handlers.js';
+import { registerTokenMutationRoutes } from './token-routes.js';
+import { createTokenHandlers } from '../../../access/application/create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,
   createStoreBackedTokenRevoked,
-} from '../infrastructure/store-backed-token-persist.js';
-import { createSessionService } from '../domain/session-service.js';
-import { createTokenService } from '../domain/token-service.js';
-import { createUserService } from '../domain/user-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import type { User } from '../domain/user.js';
-import type { Organization } from '../domain/organization.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
-import type { UserSession } from '../domain/user-session.js';
-import type { TokenStore } from '../domain/token-store.js';
-import { tokenStorageError } from '../domain/auth-errors.js';
-import { principalKindOf } from '../domain/user.js';
+} from '../../../access/infrastructure/store-backed-token-persist.js';
+import { createSessionService } from '../../../access/domain/session-service.js';
+import { createTokenService } from '../../../access/domain/token-service.js';
+import { createUserService } from '../../../access/domain/user-service.js';
+import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
+import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
+import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import type { User } from '../../../access/domain/user.js';
+import type { Organization } from '../../../access/domain/organization.js';
+import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
+import type { UserSession } from '../../../access/domain/user-session.js';
+import type { TokenStore } from '../../../access/domain/token-store.js';
+import { tokenStorageError } from '../../../access/domain/auth-errors.js';
+import { principalKindOf } from '../../../access/domain/user.js';
 import {
   createFakeClock,
   createFakeIdGenerator,

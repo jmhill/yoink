@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PILE_SAFETY_CAP, type Task, type TaskListPage } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../tests/helpers/test-app.js';
+import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 

@@ -8,7 +8,7 @@ import {
   TEST_SESSION_ID,
   TEST_TOKEN,
   TEST_USER_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 
 const bearer = { authorization: `Bearer ${TEST_TOKEN}` };
 

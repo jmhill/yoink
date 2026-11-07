@@ -5,11 +5,11 @@ import {
   TEST_ORG_ID,
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { Project, SetProjectNextActionResponse, Task } from '@yoink/api-contracts';
-import type { Database } from '../../platform/database/types.js';
-import { createSqliteChangeLogStore } from '../../modules/history/infrastructure/sqlite-change-log-store.js';
+import type { Database } from '../../../platform/database/types.js';
+import { createSqliteChangeLogStore } from '../../../modules/history/infrastructure/sqlite-change-log-store.js';
 
 describe('project next-action HTTP', () => {
   let app: FastifyInstance;

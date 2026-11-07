@@ -7,7 +7,7 @@ import {
   TEST_USER_ID,
   TEST_SESSION_ID,
   TEST_SESSION_COOKIE,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { NamedList, Task } from '@yoink/api-contracts';
 

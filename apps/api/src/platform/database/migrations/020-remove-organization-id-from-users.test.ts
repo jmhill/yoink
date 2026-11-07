@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createBareTestDatabase } from '../test-utils.js';
 import { runMigrations } from '../migrator.js';
-import { seedMigrationTestData } from '../migration-seeder.js';
+import { seedMigrationTestData } from '../../../tests/helpers/migration-seed.test.js';
 import { migrations } from './index.js';
 import type { Database } from '../types.js';
 

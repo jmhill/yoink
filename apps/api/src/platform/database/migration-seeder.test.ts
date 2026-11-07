@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDatabase } from './test-utils.js';
 import type { Database } from './types.js';
-import { seedMigrationTestData, type SeedResult } from './migration-seeder.js';
+import {
+  seedMigrationTestData,
+  type SeedResult,
+} from '../../tests/helpers/migration-seed.test.js';
 
 describe('Migration seeder', () => {
   let db: Database;

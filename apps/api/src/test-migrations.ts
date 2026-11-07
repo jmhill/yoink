@@ -18,6 +18,7 @@
 import { createDatabase } from './platform/database/database.js';
 import { testPendingMigrations } from './platform/database/migration-test-runner.js';
 import { migrations } from './platform/database/migrations/index.js';
+import { seedMigrationTestData } from './tests/helpers/migration-seed.test.js';
 
 const main = async (): Promise<void> => {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
@@ -49,6 +50,7 @@ const main = async (): Promise<void> => {
       productionDb,
       localDbPath,
       allMigrations: migrations,
+      seed: seedMigrationTestData,
     });
 
     console.log(`Deployed version: ${result.deployedVersion}`);

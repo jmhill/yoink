@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CHANGE_LOG_SUBJECT_TYPES } from './kinds.js';
 import {
   namedListCreatedPayloadV1Schema,
   namedListDeletedPayloadV1Schema,
@@ -31,7 +32,7 @@ const envelope = {
   organizationId: z.string().min(1),
   /** The subject's project at the time of the change; a project's own records use its id. */
   projectId: z.string().nullable(),
-  subjectType: z.enum(['task', 'list', 'project', 'note']),
+  subjectType: z.enum(CHANGE_LOG_SUBJECT_TYPES),
   subjectId: z.string().min(1),
   actorUserId: z.string().nullable(),
   actorKind: z.enum(['user', 'bot']).nullable(),

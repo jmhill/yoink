@@ -1,8 +1,10 @@
 import { err, ok, type Result, ResultAsync } from 'neverthrow';
 import type { ModuleName } from '../../kernel/module-name.js';
 import {
+  appendEventSink,
   prepareCommit,
   type CommitFailure,
+  type EventSink,
   type FakeParticipant,
   type Policy,
   type UnitOfWork,
@@ -17,6 +19,7 @@ import { indexParticipants } from './participants.js';
 export const createInMemoryUnitOfWork = (deps: {
   readonly participants: readonly FakeParticipant<unknown>[];
   readonly policies?: readonly Policy[];
+  readonly sink?: EventSink;
 }): UnitOfWork => {
   const byOwner = indexParticipants(deps.participants);
   const owners = new Set(byOwner.keys());
@@ -24,7 +27,9 @@ export const createInMemoryUnitOfWork = (deps: {
 
   return {
     commit: (works) =>
-      new ResultAsync(commitInMemory({ byOwner, owners, policies, works })),
+      new ResultAsync(
+        commitInMemory({ byOwner, owners, policies, sink: deps.sink, works })
+      ),
   };
 };
 
@@ -32,6 +37,7 @@ const commitInMemory = async (input: {
   readonly byOwner: ReadonlyMap<ModuleName, FakeParticipant<unknown>>;
   readonly owners: ReadonlySet<ModuleName>;
   readonly policies: readonly Policy[];
+  readonly sink?: EventSink;
   readonly works: readonly Work<unknown>[];
 }): Promise<Result<void, CommitFailure>> => {
   const restores = [...input.byOwner.values()].map((participant) => participant.snapshot());
@@ -50,8 +56,9 @@ const commitInMemory = async (input: {
     restoreAll();
     return err(prepared.error);
   }
+  const steps = appendEventSink(prepared.value, input.sink);
 
-  for (const work of prepared.value.steps) {
+  for (const work of steps.steps) {
     const participant = input.byOwner.get(work.step.owner);
     if (!participant) {
       restoreAll();

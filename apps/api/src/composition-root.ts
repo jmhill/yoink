@@ -1,9 +1,20 @@
 import { okAsync, ResultAsync } from 'neverthrow';
+import type { UnitOfWork } from './kernel/unit-of-work.js';
 import type { Task } from '@yoink/api-contracts';
 import type { Database } from './platform/database/types.js';
 import { createApp, createFastifyInstance, type AdminConfig, type SignupConfig } from './app.js';
 import type { AppConfig } from './platform/config/schema.js';
-import { createDatabase } from './platform/database/database.js';
+import { openDatabase } from './platform/database/database.js';
+import { createInMemoryUnitOfWork } from './platform/unit-of-work/in-memory-unit-of-work.js';
+import {
+  createSqliteUnitOfWork,
+  libsqlWriteClient,
+  type WriteClient,
+} from './platform/unit-of-work/sqlite-unit-of-work.js';
+import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
+import { EMPTY_EVENT_SINK_MAP } from './modules/history/domain/event-sink.js';
+import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
+import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
@@ -115,6 +126,8 @@ import {
 
 export type Infrastructure = {
   database: Database;
+  /** Same libsql client as `database`. The unit of work starts transactions on it. */
+  writeClient: WriteClient;
   clock: Clock;
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;
@@ -154,7 +167,7 @@ const createPasswordHasher = (
 };
 
 export const createInfrastructure = (config: AppConfig): Infrastructure => {
-  const database = createDatabase(config.database);
+  const { database, client } = openDatabase(config.database);
 
   const clock = createClock(config.infrastructure.clock);
   const idGenerator = createIdGenerator(config.infrastructure.idGenerator);
@@ -164,6 +177,7 @@ export const createInfrastructure = (config: AppConfig): Infrastructure => {
 
   return {
     database,
+    writeClient: libsqlWriteClient(client),
     clock,
     idGenerator,
     passwordHasher,
@@ -180,7 +194,12 @@ export type BootstrapOptions = {
   wrapTokenService?: (tokenService: TokenService) => TokenService;
 };
 
-export const bootstrapApp = async (options: BootstrapOptions) => {
+export type BootstrappedApp = Awaited<ReturnType<typeof createApp>> & {
+  readonly unitOfWork: UnitOfWork;
+  readonly inMemoryUnitOfWork: UnitOfWork;
+};
+
+export const bootstrapApp = async (options: BootstrapOptions): Promise<BootstrappedApp> => {
   const { config, infrastructure, silent } = options;
   const viaFly =
     options.viaFly ??
@@ -188,7 +207,7 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
       flyAllocId: process.env.FLY_ALLOC_ID,
       flyAppName: process.env.FLY_APP_NAME,
     }).viaFly;
-  const { database, clock, idGenerator, passwordHasher } =
+  const { database, writeClient, clock, idGenerator, passwordHasher } =
     infrastructure ?? createInfrastructure(config);
 
   // Create auth stores (async initialization for schema validation)
@@ -700,7 +719,21 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     };
   }
 
-  return createApp({
+  const historySink = createHistoryEventSink({
+    ids: idGenerator,
+    builders: EMPTY_EVENT_SINK_MAP,
+  });
+  const unitOfWork = createSqliteUnitOfWork({
+    client: writeClient,
+    participants: [historySqlParticipant],
+    sink: historySink,
+  });
+  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
+    participants: [createFakeHistoryParticipant()],
+    sink: historySink,
+  });
+
+  const server = await createApp({
     app,
     captureHandlers,
     listHandlers,
@@ -732,4 +765,5 @@ export const bootstrapApp = async (options: BootstrapOptions) => {
     cookie: config.cookie,
     viaFly,
   });
+  return Object.assign(server, { unitOfWork, inMemoryUnitOfWork });
 };

@@ -12,57 +12,60 @@ import type { Database, QueryResult } from './types.js';
  * - `file`: Local file-based SQLite via LibSQL
  * - `memory`: In-memory SQLite for tests
  */
-export const createDatabase = (config: DatabaseConfig): Database => {
-  let client: Client;
-
+const createClientFor = (config: DatabaseConfig): Client => {
   switch (config.type) {
     case 'turso':
-      client = createClient({
+      return createClient({
         url: config.url,
         authToken: config.authToken,
       });
-      break;
     case 'memory':
-      client = createClient({ url: ':memory:' });
-      break;
+      return createClient({ url: ':memory:' });
     case 'file':
       mkdirSync(dirname(config.path), { recursive: true });
-      client = createClient({ url: `file:${config.path}` });
-      break;
+      return createClient({ url: `file:${config.path}` });
   }
-
-  return {
-    execute: async (query): Promise<QueryResult> => {
-      const result = await client.execute({
-        sql: query.sql,
-        args: (query.args ?? []) as InValue[],
-      });
-      return {
-        rows: result.rows as Record<string, unknown>[],
-        rowsAffected: result.rowsAffected,
-        lastInsertRowid: result.lastInsertRowid ?? undefined,
-      };
-    },
-
-    batch: async (queries, mode = 'write'): Promise<QueryResult[]> => {
-      const results = await client.batch(
-        queries.map((q) => ({
-          sql: q.sql,
-          args: (q.args ?? []) as InValue[],
-        })),
-        mode
-      );
-      return results.map((result) => ({
-        rows: result.rows as Record<string, unknown>[],
-        rowsAffected: result.rowsAffected,
-        lastInsertRowid: result.lastInsertRowid ?? undefined,
-      }));
-    },
-
-    close: async () => {
-      client.close();
-    },
-  };
 };
+
+const databaseFrom = (client: Client): Database => ({
+  execute: async (query): Promise<QueryResult> => {
+    const result = await client.execute({
+      sql: query.sql,
+      args: (query.args ?? []) as InValue[],
+    });
+    return {
+      rows: result.rows as Record<string, unknown>[],
+      rowsAffected: result.rowsAffected,
+      lastInsertRowid: result.lastInsertRowid ?? undefined,
+    };
+  },
+
+  batch: async (queries, mode = 'write'): Promise<QueryResult[]> => {
+    const results = await client.batch(
+      queries.map((q) => ({
+        sql: q.sql,
+        args: (q.args ?? []) as InValue[],
+      })),
+      mode
+    );
+    return results.map((result) => ({
+      rows: result.rows as Record<string, unknown>[],
+      rowsAffected: result.rowsAffected,
+      lastInsertRowid: result.lastInsertRowid ?? undefined,
+    }));
+  },
+
+  close: async () => {
+    client.close();
+  },
+});
+
+/** One client for queries and for the unit of work. A second `:memory:` client is a different database. */
+export const openDatabase = (config: DatabaseConfig): { readonly database: Database; readonly client: Client } => {
+  const client = createClientFor(config);
+  return { database: databaseFrom(client), client };
+};
+
+export const createDatabase = (config: DatabaseConfig): Database => openDatabase(config).database;
 
 export type { Database } from './types.js';

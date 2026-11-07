@@ -2,8 +2,10 @@ import { type Client, type InValue } from '@libsql/client';
 import { err, ok, type Result, ResultAsync } from 'neverthrow';
 import type { ModuleName } from '../../kernel/module-name.js';
 import {
+  appendEventSink,
   prepareCommit,
   type CommitFailure,
+  type EventSink,
   type GuardedStatement,
   type Policy,
   type SqlParticipant,
@@ -47,6 +49,7 @@ export const createSqliteUnitOfWork = (deps: {
   readonly client: WriteClient;
   readonly participants: readonly SqlParticipant<unknown>[];
   readonly policies?: readonly Policy[];
+  readonly sink?: EventSink;
 }): UnitOfWork => {
   const byOwner = indexParticipants(deps.participants);
   const owners = new Set(byOwner.keys());
@@ -54,7 +57,16 @@ export const createSqliteUnitOfWork = (deps: {
 
   return {
     commit: (works) =>
-      new ResultAsync(commitSqlite({ client: deps.client, byOwner, owners, policies, works })),
+      new ResultAsync(
+        commitSqlite({
+          client: deps.client,
+          byOwner,
+          owners,
+          policies,
+          sink: deps.sink,
+          works,
+        })
+      ),
   };
 };
 
@@ -84,6 +96,7 @@ const commitSqlite = async (input: {
   readonly byOwner: ReadonlyMap<ModuleName, SqlParticipant<unknown>>;
   readonly owners: ReadonlySet<ModuleName>;
   readonly policies: readonly Policy[];
+  readonly sink?: EventSink;
   readonly works: readonly Work<unknown>[];
 }): Promise<Result<void, CommitFailure>> => {
   const prepared = await prepareCommit({
@@ -94,9 +107,10 @@ const commitSqlite = async (input: {
   if (prepared.isErr()) {
     return err(prepared.error);
   }
+  const steps = appendEventSink(prepared.value, input.sink);
 
   const planned: Planned[] = [];
-  for (const work of prepared.value.steps) {
+  for (const work of steps.steps) {
     const participant = input.byOwner.get(work.step.owner);
     if (!participant) {
       return err({

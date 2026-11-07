@@ -3,3 +3,7 @@ export {
   type FakeChangeLogStore,
   type FakeChangeLogStoreOptions,
 } from './infrastructure/fake-change-log-store.js';
+export {
+  createFakeHistoryParticipant,
+  type FakeHistoryParticipant,
+} from './infrastructure/fake-event-sink.js';

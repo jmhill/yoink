@@ -73,6 +73,17 @@ export type PreparedCommit = {
   readonly steps: readonly Work<unknown>[];
 };
 
+/**
+ * History's event sink. `prepare` sees the events already on the commit,
+ * including one level of policy work, and returns an opaque plan.
+ * `null` means there is nothing to write. The plan is not an integration
+ * event, so policies do not run on it.
+ */
+export type EventSink = {
+  readonly owner: ModuleName;
+  readonly prepare: (events: readonly IntegrationEvent[]) => unknown | null;
+};
+
 const NO_PARTICIPANT = 'no-participant';
 
 /**
@@ -101,6 +112,27 @@ export const prepareCommit = async (input: {
   }
 
   return ok({ steps: [...input.works, ...policyWork.value] });
+};
+
+/** Appends the sink step after policies. Does not call policies again. */
+export const appendEventSink = (
+  prepared: PreparedCommit,
+  sink: EventSink | undefined
+): PreparedCommit => {
+  if (sink === undefined) {
+    return prepared;
+  }
+  const events = prepared.steps.flatMap((step) => step.events);
+  const plan = sink.prepare(events);
+  if (plan === null) {
+    return prepared;
+  }
+  const sinkWork: Work<null> = {
+    result: null,
+    events: [],
+    step: { owner: sink.owner, plan },
+  };
+  return { steps: [...prepared.steps, sinkWork] };
 };
 
 const collectPolicyWork = async (

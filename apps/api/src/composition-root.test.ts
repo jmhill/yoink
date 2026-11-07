@@ -53,4 +53,22 @@ describe('bootstrapApp', () => {
     // Should get past auth (201 created, not 401 unauthorized)
     expect(response.statusCode).toBe(201);
   });
+
+  it('registers the empty history sink on both unit-of-work implementations', async () => {
+    const config = createTestConfig();
+    const infrastructure = createInfrastructure(config);
+    await runMigrations(infrastructure.database, migrations);
+
+    const app = await bootstrapApp({ config, infrastructure, silent: true });
+    const sqlite = await app.unitOfWork.commit([]);
+    const memory = await app.inMemoryUnitOfWork.commit([]);
+    const rows = await infrastructure.database.execute({
+      sql: 'SELECT COUNT(*) AS n FROM change_log',
+    });
+
+    expect(sqlite.isOk()).toBe(true);
+    expect(memory.isOk()).toBe(true);
+    expect(Number(rows.rows[0]?.n)).toBe(0);
+    await app.close();
+  });
 });

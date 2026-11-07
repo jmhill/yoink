@@ -21,9 +21,10 @@ const cloneCheck = (check: unknown): unknown => {
 
 /**
  * A new Zod schema tree. Nested schemas, check lists, and discriminated-union
- * maps are copies, so a later edit of the source schema object does not show
- * up here. Refinement functions stay the same function values. Their behavior
- * is pinned by safeParse cases, because the wrapper source is not stable.
+ * maps, and array length bounds are copies, so a later edit of the source
+ * schema object does not show up here. Refinement functions stay the same
+ * function values. Their behavior is pinned by safeParse cases, because the
+ * wrapper source is not stable.
  */
 export const detachSchema = <T extends ZodTypeAny>(schema: T, seen = new Map<ZodTypeAny, ZodTypeAny>()): T => {
   const already = seen.get(schema);
@@ -52,6 +53,10 @@ export const detachSchema = <T extends ZodTypeAny>(schema: T, seen = new Map<Zod
   }
   if (typeof def.effect === 'object' && def.effect !== null) cloned.effect = { ...(def.effect as Record<string, unknown>) };
   if (Array.isArray(def.values)) cloned.values = [...def.values];
+  for (const key of ['minLength', 'maxLength', 'exactLength'] as const) {
+    const bound = def[key];
+    if (typeof bound === 'object' && bound !== null) cloned[key] = { ...(bound as Record<string, unknown>) };
+  }
   const copy = new (schema.constructor as new (definition: ZodDef) => T)(cloned);
   seen.set(schema, copy);
   return copy;
@@ -72,6 +77,32 @@ const checkShape = (check: unknown): unknown => {
 
 const functionSource = (value: unknown): string | undefined => (typeof value === 'function' ? value.toString() : undefined);
 
+const fallbackError = 'default';
+
+/**
+ * Messages a schema error map returns instead of Zod's default. Zod's
+ * `optional()`, `nullable()`, and the other wrappers that pass a definition
+ * through `processCreateParams` install one library function. Its source text
+ * is the same on every wrapper and is sensitive to how the library is loaded.
+ * On today's contracts that function returns the default message, so it is
+ * not part of the pin. A map that returns its own message is recorded here.
+ */
+const contractErrorMessages = (errorMap: unknown): Record<string, string> | undefined => {
+  if (typeof errorMap !== 'function') return undefined;
+  const read = errorMap as (issue: { code: string }, ctx: { defaultError: string; data: unknown }) => { message?: unknown };
+  const cases = [
+    ['missing', 'invalid_type', undefined],
+    ['invalidType', 'invalid_type', null],
+    ['invalidEnum', 'invalid_enum_value', null],
+  ] as const;
+  const messages: Record<string, string> = {};
+  for (const [name, code, data] of cases) {
+    const message = read({ code }, { defaultError: fallbackError, data }).message;
+    if (typeof message === 'string' && message !== fallbackError) messages[name] = message;
+  }
+  return Object.keys(messages).length === 0 ? undefined : messages;
+};
+
 /**
  * JSON shape of a Zod schema: kinds, checks, keys, and defaults. Effect
  * predicates are recorded only as their effect type. This is the pin. It
@@ -88,8 +119,8 @@ export const schemaShape = (schema: ZodTypeAny, seen = new Map<ZodTypeAny, numbe
   if (typeof def.description === 'string') shape.description = def.description;
   if (def.coerce === true) shape.coerce = true;
   if (Array.isArray(def.checks)) shape.checks = def.checks.map((check) => checkShape(check));
-  const errorMap = functionSource(def.errorMap);
-  if (errorMap !== undefined) shape.errorMap = errorMap;
+  const errorMessages = contractErrorMessages(def.errorMap);
+  if (errorMessages !== undefined) shape.errorMessages = errorMessages;
 
   switch (typeName) {
     case 'ZodString':

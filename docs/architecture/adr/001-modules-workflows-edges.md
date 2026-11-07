@@ -1,6 +1,6 @@
 # ADR-001: Modules, workflows, and edges
 
-- **Status:** Accepted, pending spikes (§12: unit-of-work batch guards; oRPC router spreading)
+- **Status:** Accepted. The unit-of-work spike is done on main (U1, `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). The oRPC spread pattern is recorded in §9 by M0.3 and is pending review.
 - **Date:** 2026-11-06
 - **Deciders:** Justin
 - **Migration plan:** [001-migration-plan.md](./001-migration-plan.md)
@@ -372,7 +372,7 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
 - An ordinary `execute` that throws is `kind: 'Storage'` and `reason: 'execute-failed'`, with the owner of that step.
 - Neither path parses a SQL message or fills in a missing `rawCode` or `index`.
 - The guard `CHECK` remains a probe. Its thrown error is recorded next to a primary-key error. It corroborates that the assertion statement failed. It is not the classification input. On Turso the check and the primary key reported the same allowlisted fields, and the mapping did not use them.
-- The runner is `docs/architecture/adr/spikes/remote-runner-u1/`. It was executed once. `u1_tasks` now exists, so it must not be run again. Production code is unchanged. M0.3 and M4.1 stay unstarted until this record is reviewed and merged.
+- The runner is `docs/architecture/adr/spikes/remote-runner-u1/`. It was executed once. `u1_tasks` now exists, so it must not be run again. Production code is unchanged. This record is on main as `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29` ([#312](https://github.com/jmhill/yoink/pull/312)).
 
 **Recorded alternative (U2), not chosen.** One batch with guards owned by each module.
 - The SQLite unit of work collects statements in three steps:
@@ -474,7 +474,7 @@ Duplicate primary key, 458.1 ms. Task update and history insert affected 1 row e
 | Foreign keys | Inconclusive. Stored `foreignKeys` is null because the reader asked for column `value`. |
 | Statement index | Null, as on the U2 run. U1 does not need it. The owner is the awaited step. |
 
-M0.2's tested resolution is complete pending merge. The findings are this section. Production code is unchanged. M0.3 and M4.1 stay unstarted. No production unit of work is added by this record.
+M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). The findings are this section. Production code is unchanged. No production unit of work is added by this record.
 
 **In-memory unit of work** (tests). On commit, it snapshots every registered `FakeParticipant` and applies each step's plan, plus the event sink and the policies' work. On any failure it restores every participant. This replaces the hand-written snapshot and restore code in today's fake persist adapters.
 
@@ -669,6 +669,51 @@ These principles apply in full from **v2** onward, and to anything newly **added
   - Server: `v2Router = { ...v1Routes, tasks: { ...v1Routes.tasks, create: createTaskV2Route } }`.
   - Both are mounted side by side.
   - Nothing falls back from one version to another at runtime. Each version is complete, and unchanged procedures share the same route code.
+  - A spread copies each procedure, including its OpenAPI path. It does not rewrite that path. The paths inside the shared contract are the resource path after the mount prefix (`/tasks`, not `/api/v1/tasks`). The version is the prefix passed to `handle`, below.
+
+**Measured on `@orpc/*` 2.0.0-beta.48 (M0.3).** The spike is `apps/api/spikes/m0-3/`. It is not imported by `app.ts`. Production contracts and routes are unchanged. Zod stays on 3. The explicit-list fallback was not needed: both spreads typecheck.
+
+The contract under test has two procedures, `one` (POST) and `two` (GET). `v2` is `{ ...v1Contract, one: changed }`. The implemented v2 router is `{ ...v1Procedures, one: changedHandler }`. Contract paths are `/m03/one` and `/m03/two`. One Fastify instance registers six routes with `app.route({ method, url })`, the same shape as `orpc-capture-routes.ts`. Each handler calls `handler.handle(request, reply, { prefix, context })`. The prefix is `/api/v1`, `/api`, or `/api/v2`. oRPC strips that prefix and then matches the contract path. All six requests returned 200. The alias routes set `Deprecation`, `Sunset`, and `Link` in their own `onRequest`. `Link` targets the v1 URL of the same procedure, because the alias is v1. The v1 and v2 responses did not carry those headers. The dates in the spike are fixtures so the hook can be asserted. They are not a product sunset. The 90-day rule above is unchanged.
+
+```ts
+const v2Contract = oc.router({
+  ...v1Contract,
+  one: oc.meta(openapi({ method: 'POST', path: '/m03/one' })).input(oneInput).output(oneV2Output),
+});
+const v2Router = implement(v2Contract).router({
+  ...v1Procedures,
+  one: implement(v2Contract).one.handler(async ({ input }) => ({ version: 'v2', name: input.name, extra: 'changed' })),
+});
+```
+
+Two mounts that look plausible do not serve this contract:
+
+- A contract path that already contains `/api/v1` matches only that URL. Spreading it and replacing `one` with a `/api/v2` path leaves `two` at `/api/v1/m03/two`. The generated v2 document then contains `/api/v1/m03/two` and `/api/v2/m03/one`, and no `/api/v2/m03/two`. The alias URL `/api/m03/one` returns 404 when `handle` is called without a prefix.
+- `app.register(plugin, { prefix: '/api/v1' })` without passing that prefix to `handle` also returns 404. Fastify's prefix is not the prefix oRPC strips.
+
+`OpenAPIGenerator` emits the contract paths and operation ids. For this spike those paths are `/m03/one` and `/m03/two` on both the v1 and v2 documents. The HTTP prefix is not written into the spec. Requesting OpenAPI `3.1.0` emitted `3.1.0`. Response `content` is `{}`. The default converter does not convert Zod, and this repo does not depend on `@orpc/zod`. Request validation still uses the Zod contract. Publishing a spec whose schemas describe those contracts needs a converter this spike does not add. That choice is open. It does not change the mount.
+
+**Contract inventory today.** `packages/api-contracts/src/orpc/index.ts` exports separate routers. There is no versioned router and no spread. Every procedure path is absolute and starts with `/api/`:
+
+| Router | Paths |
+|---|---|
+| admin public, admin protected | `/api/admin/...` |
+| auth | `/api/auth/login/options`, `/api/auth/login/verify`, `/api/auth/logout`, `/api/auth/session` |
+| signup | `/api/auth/signup/options`, `/api/auth/signup/verify` |
+| passkey | `/api/auth/passkey/...` |
+| token | `/api/auth/tokens`, `/api/auth/tokens/{tokenId}` |
+| capture, process-capture-to-project | `/api/captures/...` |
+| health | `/api/health` |
+| invitation | `/api/invitations/...`, `/api/organizations/{organizationId}/invitations` |
+| list | `/api/lists/...`, `/api/unlisted/tasks`, `/api/unlisted/tasks/order` |
+| note | `/api/projects/{projectId}/notes/...`, `/api/notes/changed`, `/api/notes/import` |
+| organization | `/api/organizations/...` |
+| project | `/api/projects/...` |
+| review | `/api/review`, `/api/review/done` |
+| task | `/api/tasks/...` |
+| work | `/api/work/next-actions`, `/api/work/due`, `/api/work/lists` |
+
+Captures are mounted with `new OpenAPIHandler` and `app.route({ method, url })`, then `handle` without a prefix (`apps/api/src/captures/infrastructure/orpc-capture-routes.ts`, `apps/api/src/edges/_shared/orpc/dispatch.ts`). The request URL matches the contract path. M3.2 uses the measured prefix pattern for the public edge. It does not invent a different prefix. A frozen v1 copy that keeps `/api/captures` will not also match `/api/v1/captures` or `/api/v2/captures`. The copied contract path for that procedure is `/captures`, and the three mounts pass `/api/v1`, `/api`, and `/api/v2`. Client-only routes stay out of that copy, as the alias rule below already says. This spike does not move a production route.
 - **The extension edge** (`/extension-api/v1/`) uses the same scheme and deprecation mechanics. Usage is logged per extension version, which the extension sends in a request header.
 - **Modules are unversioned.** Version differences exist only in an edge's mapping. A module changes only when a capability changes, and an older version's route maps onto the new command (with defaults where needed).
 - **Deprecation:**
@@ -735,8 +780,8 @@ The first enforcement task refreshes `ESLINT_BASELINE.md`, which still says 15 w
 
 | Risk | Mitigation |
 |---|---|
-| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules. Local libsql on 2026-11-06 accepted the assertion, rolled back on a stale guard, and accepted a 3,000-statement batch (§6.1). The local error has no statement index. Turso on 2026-11-06 8:28 CT committed the same batches, including 2,000 and 3,000 statements, and rolled them back on a stale guard. Its error `code` was `SQLITE_CONSTRAINT` for both the guard and a duplicate primary key, with `rawCode` null and `index` null. U2 is not confirmed. U1 is the chosen implementation (§6.1), accepted 2026-11-06 8:37 CT as this fallback, not as a new failure model. Turso ran U1 once at 8:48 CT: commit, stale-guard rollback, and primary-key rollback held, and both thrown errors were `SQLITE_CONSTRAINT` with null `rawCode` and null `index`. Classification used the awaited step and `rowsAffected`, not those fields. `foreignKeys: null` in that report is a column-name bug and is inconclusive. M0.2 is complete pending merge |
-| Spreading oRPC routers or contracts for version sharing doesn't type-check | **Spike first** in the versioning phase. Fall back to explicitly listing every procedure in each version's router |
+| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules. Local libsql on 2026-11-06 accepted the assertion, rolled back on a stale guard, and accepted a 3,000-statement batch (§6.1). The local error has no statement index. Turso on 2026-11-06 8:28 CT committed the same batches, including 2,000 and 3,000 statements, and rolled them back on a stale guard. Its error `code` was `SQLITE_CONSTRAINT` for both the guard and a duplicate primary key, with `rawCode` null and `index` null. U2 is not confirmed. U1 is the chosen implementation (§6.1), accepted 2026-11-06 8:37 CT as this fallback, not as a new failure model. Turso ran U1 once at 8:48 CT: commit, stale-guard rollback, and primary-key rollback held, and both thrown errors were `SQLITE_CONSTRAINT` with null `rawCode` and null `index`. Classification used the awaited step and `rowsAffected`, not those fields. `foreignKeys: null` in that report is a column-name bug and is inconclusive. M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)) |
+| Spreading oRPC routers or contracts for version sharing doesn't type-check | Measured on `2.0.0-beta.48` in `apps/api/spikes/m0-3/`. `{ ...v1, one: changed }` typechecks for the contract and for the implemented procedures. The explicit-list fallback was not used. A spread copies paths, so the version lives in the `handle` prefix (§9). M0.3 records that pattern and is pending review. Repeat this spike after an oRPC upgrade |
 | Integration events lack fields consumers need | Consumer-driven: history's timeline mapping is the first consumer, and its tests define the required fields |
 | Edges grow business rules | Lint (no SQL, entry points only), the one-command rule, and code review guidance in `apps/api/AGENTS.md` |
 | The Task Management merge collides with the Goals and Milestones redesign | Merge structurally first, with no behaviour change. The hierarchy redesign then happens inside one module |

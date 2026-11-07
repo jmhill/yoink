@@ -12,7 +12,7 @@ import {
   TEST_TOKEN,
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 
 describe('POST /api/captures/:id/process-to-project', () => {
   let app: FastifyInstance;

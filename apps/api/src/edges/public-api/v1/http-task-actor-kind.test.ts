@@ -7,8 +7,8 @@ import {
   TEST_ORG_ID,
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
-} from '../../tests/helpers/test-app.js';
-import { createSqliteChangeLogStore } from '../../modules/history/infrastructure/sqlite-change-log-store.js';
+} from '../../../tests/helpers/test-app.js';
+import { createSqliteChangeLogStore } from '../../../modules/history/infrastructure/sqlite-change-log-store.js';
 
 describe('POST /api/tasks actor kind', () => {
   it('records a person token as user and an agent token as bot', async () => {

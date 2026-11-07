@@ -3,24 +3,24 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { registerOrganizationRoutes } from '../../edges/legacy/organization/organization-routes.js';
-import { createSessionService } from '../domain/session-service.js';
-import { createUserService } from '../domain/user-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
-import { createAgentService } from '../domain/agent-service.js';
-import { createTokenHandlers } from './create-token-handlers.js';
+import { registerOrganizationRoutes } from './organization-routes.js';
+import { createSessionService } from '../../../access/domain/session-service.js';
+import { createUserService } from '../../../access/domain/user-service.js';
+import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createAgentService } from '../../../access/domain/agent-service.js';
+import { createTokenHandlers } from '../../../access/application/create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,
   createStoreBackedTokenRevoked,
   createStoreBackedTokenReissue,
-} from '../infrastructure/store-backed-token-persist.js';
-import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
-import { handleTransferOwnership } from './handle-transfer-ownership.js';
+} from '../../../access/infrastructure/store-backed-token-persist.js';
+import { handleReissueAgentToken } from '../../../access/application/handle-reissue-agent-token.js';
+import { handleTransferOwnership } from '../../../access/application/handle-transfer-ownership.js';
 import {
   handleChangeMemberRole,
   type ChangeMemberRoleHandler,
-} from './handle-change-member-role.js';
-import { handleRemoveMember } from './handle-remove-member.js';
+} from '../../../access/application/handle-change-member-role.js';
+import { handleRemoveMember } from '../../../access/application/handle-remove-member.js';
 import {
   ALREADY_OWNER_MESSAGE,
   BOT_CANNOT_BE_OWNER_MESSAGE,
@@ -45,22 +45,22 @@ import {
   THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
 } from '@yoink/api-contracts';
-import { tokenStorageError } from '../domain/auth-errors.js';
-import { principalKindOf } from '../domain/user.js';
+import { tokenStorageError } from '../../../access/domain/auth-errors.js';
+import { principalKindOf } from '../../../access/domain/user.js';
 import { errAsync, ResultAsync } from 'neverthrow';
-import { lastAdminError } from '../domain/organization-errors.js';
-import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createCombinedAuthMiddleware } from '../../edges/_shared/auth/combined-auth-middleware.js';
-import { createTokenService } from '../domain/token-service.js';
-import type { User } from '../domain/user.js';
-import type { Organization } from '../domain/organization.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
-import type { UserSession } from '../domain/user-session.js';
-import type { ApiToken } from '../domain/api-token.js';
+import { lastAdminError } from '../../../access/domain/organization-errors.js';
+import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
+import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
+import { createTokenService } from '../../../access/domain/token-service.js';
+import type { User } from '../../../access/domain/user.js';
+import type { Organization } from '../../../access/domain/organization.js';
+import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
+import type { UserSession } from '../../../access/domain/user-session.js';
+import type { ApiToken } from '../../../access/domain/api-token.js';
 import {
   createFakeClock,
   createFakeIdGenerator,

@@ -7,7 +7,7 @@ import {
   type TaskListPage,
 } from '@yoink/api-contracts';
 import type { FastifyInstance } from 'fastify';
-import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../tests/helpers/test-app.js';
+import { createTestApp, pagingTestConfig, TEST_TOKEN } from '../../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 

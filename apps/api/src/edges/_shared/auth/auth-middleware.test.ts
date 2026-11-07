@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { createAuthMiddleware } from '../../edges/_shared/auth/auth-middleware.js';
-import { createTokenService } from '../domain/token-service.js';
-import type { Organization } from '../domain/organization.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import type { User } from '../domain/user.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import type { ApiToken } from '../domain/api-token.js';
-import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
+import { createAuthMiddleware } from './auth-middleware.js';
+import { createTokenService } from '../../../access/domain/token-service.js';
+import type { Organization } from '../../../access/domain/organization.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import type { User } from '../../../access/domain/user.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import type { ApiToken } from '../../../access/domain/api-token.js';
+import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
 import { createFakePasswordHasher, createFakeClock } from '@yoink/infrastructure';
 
 describe('authMiddleware', () => {

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { DoneListPage, Project, ReviewPage, Task } from '@yoink/api-contracts';
-import { encodeKeysetCursor } from '../../kernel/listing/application/keyset-codec.js';
-import { doneListCursor, workDueCursor } from '../../kernel/listing/domain/list-keys.js';
+import { encodeKeysetCursor } from '../../../kernel/listing/application/keyset-codec.js';
+import { doneListCursor, workDueCursor } from '../../../kernel/listing/domain/list-keys.js';
 import {
   createTestApp,
   createTestAppAndDatabase,
@@ -11,7 +11,7 @@ import {
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
   TEST_TOKEN,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 
 const auth = { authorization: `Bearer ${TEST_TOKEN}` };
 const session = { cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID } };

@@ -2,21 +2,21 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from '../../edges/_shared/auth/combined-auth-middleware.js';
-import { createTokenService } from '../domain/token-service.js';
-import { createSessionService } from '../domain/session-service.js';
-import type { Organization } from '../domain/organization.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import type { User } from '../domain/user.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import type { ApiToken } from '../domain/api-token.js';
-import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createUserService } from '../domain/user-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
-import type { UserSession } from '../domain/user-session.js';
+import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
+import { createTokenService } from '../../../access/domain/token-service.js';
+import { createSessionService } from '../../../access/domain/session-service.js';
+import type { Organization } from '../../../access/domain/organization.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import type { User } from '../../../access/domain/user.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import type { ApiToken } from '../../../access/domain/api-token.js';
+import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
+import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
+import { createUserService } from '../../../access/domain/user-service.js';
+import { createMembershipService } from '../../../access/domain/membership-service.js';
+import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
+import type { UserSession } from '../../../access/domain/user-session.js';
 import {
   createFakePasswordHasher,
   createFakeClock,

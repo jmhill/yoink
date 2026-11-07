@@ -3,7 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { errAsync, okAsync } from 'neverthrow';
 import { healthCheckError } from '../../platform/health/health-errors.js';
 import type { HealthChecker, HealthStatus } from '../../platform/health/health-checker.js';
-import { registerOrpcHealthRoutes } from '../../edges/ops/orpc-health-routes.js';
+import { registerOrpcHealthRoutes } from './orpc-health-routes.js';
 import { createTestApp } from '../../tests/helpers/test-app.js';
 
 const healthy: HealthStatus = { status: 'healthy', database: 'connected' };

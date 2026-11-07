@@ -39,6 +39,7 @@ const testTypes = [
   'tests',
   'module-test',
   'workflow-test',
+  'edge-auth-test',
   'edge-test',
   'kernel-test',
   'platform-test',
@@ -62,6 +63,7 @@ const layerAndCurrentTypes = [
   'workflow-test',
   'edge',
   'edge-auth',
+  'edge-auth-test',
   'edge-shared',
   'edge-test',
   'kernel',
@@ -185,6 +187,14 @@ const elements = [
     pattern: 'src/workflows/([^/]+)/policies/**',
     mode: 'full',
     capture: ['workflow'],
+  },
+  {
+    // M3.6. Before the general edge-test pattern. Only the auth middleware
+    // tests. They keep calling access fakes until M5.13. Other files under
+    // edges/_shared stay edge-test and still cannot import access.
+    type: 'edge-auth-test',
+    pattern: 'src/edges/_shared/auth/**/*.test.ts',
+    mode: 'full',
   },
   {
     type: 'edge-test',
@@ -344,16 +354,12 @@ export default [
             // M3.3. Colocated route tests still live in access until M3.6.
             // They may import the legacy edge they exercise. Other edges stay
             // disallowed, including public-api.
-            // M3.5. Middleware tests stay in access until M3.6. They import
-            // edges/_shared/auth. Production access does not.
-            {
-              from: 'access',
-              allow: ['access', ['edge', { edge: 'legacy' }], 'edge-auth'],
-            },
+            // M3.6 moved the access HTTP tests onto the legacy edge and the
+            // auth middleware tests. Access no longer imports an edge.
+            { from: 'access', allow: ['access'] },
             { from: 'captures', allow: ['captures'] },
-            // M3.4. The health route test stays here until M3.6. It may
-            // import the ops edge. Other edges stay disallowed.
-            { from: 'health', allow: ['health', ['edge', { edge: 'ops' }]] },
+            // M3.6 moved the health HTTP tests onto the ops edge.
+            { from: 'health', allow: ['health'] },
             { from: 'history', allow: ['history', 'projects', 'tasks'] },
             // M4.2: lists, notes, and processing still import the change log.
             { from: 'lists', allow: ['lists', 'history'] },
@@ -541,10 +547,17 @@ export default [
                 'platform',
               ],
             },
+            // M3.6. Auth middleware tests only. Production files under
+            // edges/_shared/auth stay edge-auth and are not this type.
+            {
+              from: 'edge-auth-test',
+              allow: ['edge-auth', 'access', 'kernel', 'edge-shared', 'tests'],
+            },
             {
               from: 'edge-test',
               allow: [
                 sameEdge('edge'),
+                'edge-auth',
                 'edge-shared',
                 'module-entry',
                 'workflow-entry',
@@ -556,6 +569,37 @@ export default [
             {
               from: [['edge-test', { edge: 'test-fixtures' }]],
               allow: ['platform-database', 'platform-sql'],
+            },
+            // M3.6. Legacy HTTP tests use the access fakes and boot helpers
+            // they already used. Production legacy still cannot import
+            // projects, composition, or platform-database.
+            {
+              from: [['edge-test', { edge: 'legacy' }]],
+              allow: ['access', 'platform-database', 'composition', 'projects'],
+            },
+            // M3.6. The health error-map test imports the map that stays in
+            // health. Production ops already may import health.
+            {
+              from: [['edge-test', { edge: 'ops' }]],
+              allow: ['health'],
+            },
+            // M3.6. The modules this edge already calls, plus the test
+            // database and the projects helper the import HTTP test already
+            // used. Production public-api still does not allow projects,
+            // processing, access, or platform-database.
+            {
+              from: [['edge-test', { edge: 'public-api' }]],
+              allow: [
+                'captures',
+                'lists',
+                'notes',
+                'review',
+                'tasks',
+                'work',
+                'history',
+                'platform-database',
+                'projects',
+              ],
             },
             { from: 'kernel', allow: ['kernel'] },
             { from: 'kernel-test', allow: ['kernel', 'tests'] },
@@ -634,6 +678,16 @@ export default [
             {
               from: 'edge-test',
               allow: [...edgePackages, 'vitest', '@vitest/*'],
+            },
+            // M3.6. Test fakes only. Production edge-auth and legacy stay off
+            // @yoink/infrastructure.
+            {
+              from: 'edge-auth-test',
+              allow: [...edgePackages, 'vitest', '@vitest/*', '@yoink/infrastructure'],
+            },
+            {
+              from: [['edge-test', { edge: 'legacy' }]],
+              allow: [...edgePackages, 'vitest', '@vitest/*', '@yoink/infrastructure'],
             },
             // `*` does not match a scoped baseSource. `**` does. Together they
             // keep today's current-layout files with no external check.

@@ -3,7 +3,7 @@ import {
   createTestApp,
   TEST_TOKEN,
   TEST_USER_ID,
-} from '../../tests/helpers/test-app.js';
+} from '../../../tests/helpers/test-app.js';
 import type { FastifyInstance } from 'fastify';
 import type { NamedList, Task } from '@yoink/api-contracts';
 

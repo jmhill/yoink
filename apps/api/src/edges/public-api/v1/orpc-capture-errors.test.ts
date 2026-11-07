@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { invalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
-import { yoinkErrorBody } from '../../edges/_shared/orpc/yoink-error-body.js';
-import { storageError } from '../domain/capture-errors.js';
+import { invalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
+import { yoinkErrorBody } from '../../_shared/orpc/yoink-error-body.js';
+import { storageError } from '../../../captures/domain/capture-errors.js';
 import {
   mapAgentCaptureRefusal,
   mapCreateCaptureError,
   mapListCapturesError,
-} from './orpc-capture-errors.js';
+} from '../../../captures/infrastructure/orpc-capture-errors.js';
 
 describe('oRPC capture error mapping', () => {
   it('refuses an agent and lets a human through', () => {

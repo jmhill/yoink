@@ -4,16 +4,16 @@ import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import {
   createUserSessionMiddleware,
   USER_SESSION_COOKIE,
-} from '../../edges/_shared/auth/user-session-middleware.js';
-import { createSessionService, type SessionService } from '../domain/session-service.js';
-import { createMembershipService } from '../domain/membership-service.js';
-import { createUserService } from '../domain/user-service.js';
-import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
-import type { User } from '../domain/user.js';
-import type { OrganizationMembership } from '../domain/organization-membership.js';
+} from './user-session-middleware.js';
+import { createSessionService, type SessionService } from '../../../access/domain/session-service.js';
+import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createUserService } from '../../../access/domain/user-service.js';
+import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
+import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
+import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
+import type { User } from '../../../access/domain/user.js';
+import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
 
 describe('UserSessionMiddleware', () => {
   let sessionService: SessionService;

@@ -1,14 +1,6 @@
 // Public API of the Administration & Access context (application layer).
 // Cross-context consumers import from this index only.
-
-// Auth middleware
-export { createAuthMiddleware, type AuthMiddleware } from './auth-middleware.js';
-export { createCombinedAuthMiddleware } from './combined-auth-middleware.js';
-export { createUserSessionMiddleware } from './user-session-middleware.js';
-export {
-  withAuthenticatedRateLimit,
-  type AuthenticatedRateLimitConsume,
-} from './with-authenticated-rate-limit.js';
+// Auth middleware lives in edges/_shared/auth.
 
 export type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 export type { TransferOwnershipHandler } from './handle-transfer-ownership.js';

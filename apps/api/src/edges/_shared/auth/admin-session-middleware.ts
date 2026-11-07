@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { AdminSession, AdminSessionService } from '../domain/admin-session-service.js';
+import type { AdminSession, AdminSessionService } from '../../../access/domain/admin-session-service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

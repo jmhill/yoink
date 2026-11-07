@@ -15,7 +15,7 @@ import {
   TEST_TOKEN,
   TEST_USER_ID,
 } from '../../tests/helpers/test-app.js';
-import { ADMIN_SESSION_COOKIE } from './admin-session-middleware.js';
+import { ADMIN_SESSION_COOKIE } from '../../edges/_shared/auth/admin-session-middleware.js';
 
 const UNKNOWN_USER_ID = '550e8400-e29b-41d4-a716-446655440099';
 const UNKNOWN_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440098';

@@ -21,7 +21,7 @@ import type { SessionService } from '../../../access/domain/session-service.js';
 import type { MembershipService } from '../../../access/domain/membership-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
 import type { AgentService, AgentServiceError } from '../../../access/domain/agent-service.js';
-import type { AuthMiddleware } from '../../../access/application/auth-middleware.js';
+import type { AuthMiddleware } from '../../_shared/auth/auth-middleware.js';
 import type { ReissueAgentToken, ReissueAgentTokenError } from '../../../access/application/handle-reissue-agent-token.js';
 import type {
   HandleTransferOwnershipError,
@@ -42,7 +42,7 @@ import type { UserServiceError } from '../../../access/domain/user-errors.js';
 import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
-import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
+import { accessHttpError, accessStorageError } from '../../_shared/auth/access-http-errors.js';
 
 const leaveErrorResponse = (error: HandleRemoveMemberError) => {
   switch (error.type) {

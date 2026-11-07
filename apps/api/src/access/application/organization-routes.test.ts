@@ -54,7 +54,7 @@ import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
-import { createCombinedAuthMiddleware } from './combined-auth-middleware.js';
+import { createCombinedAuthMiddleware } from '../../edges/_shared/auth/combined-auth-middleware.js';
 import { createTokenService } from '../domain/token-service.js';
 import type { User } from '../domain/user.js';
 import type { Organization } from '../domain/organization.js';

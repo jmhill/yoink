@@ -3,7 +3,7 @@ import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
-import { accessStorageError } from '../../../access/application/access-http-errors.js';
+import { accessStorageError } from '../../_shared/auth/access-http-errors.js';
 import type { TokenHandlers } from '../../../access/application/create-token-handlers.js';
 import type { ListTokensError } from '../../../access/domain/token-errors.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';

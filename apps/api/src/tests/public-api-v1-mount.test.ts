@@ -20,13 +20,11 @@ import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
 import { createUserService } from '../access/domain/user-service.js';
 import { captureNotInInboxError } from '../captures/domain/capture-errors.js';
-import {
-  createAuthMiddleware,
-  createCombinedAuthMiddleware,
-} from '../access/application/index.js';
+import { createAuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
+import { createCombinedAuthMiddleware } from '../edges/_shared/auth/combined-auth-middleware.js';
 import { registerTokenMutationRoutes } from '../edges/legacy/tokens/token-routes.js';
 import type { TokenHandlers } from '../access/application/create-token-handlers.js';
-import { USER_SESSION_COOKIE } from '../access/application/combined-auth-middleware.js';
+import { USER_SESSION_COOKIE } from '../edges/_shared/auth/combined-auth-middleware.js';
 import { createFakeOrganizationMembershipStore } from '../access/infrastructure/fake-organization-membership-store.js';
 import { createFakeOrganizationStore } from '../access/infrastructure/fake-organization-store.js';
 import { createFakeTokenStore } from '../access/infrastructure/fake-token-store.js';

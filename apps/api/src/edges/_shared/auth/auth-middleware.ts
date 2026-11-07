@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthContext } from '../../kernel/auth-context.js';
-import type { TokenService } from '../domain/token-service.js';
-import { actorFromToken } from '../../kernel/auth-context.js';
-import { principalKindOf } from '../domain/user.js';
+import type { AuthContext } from '../../../kernel/auth-context.js';
+import type { TokenService } from '../../../access/domain/token-service.js';
+import { actorFromToken } from '../../../kernel/auth-context.js';
+import { principalKindOf } from '../../../access/domain/user.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

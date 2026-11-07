@@ -12,13 +12,13 @@ import {
 import {
   yoinkPublicServerError,
   yoinkServerError,
-} from '../../edges/_shared/orpc/yoink-http-error.js';
-import type { HandleCreateWorkspaceError } from './handle-create-workspace.js';
-import type { HandleIssueOwnerInvitationError } from './handle-issue-owner-invitation.js';
-import type { HandleAcceptInvitationError } from './handle-accept-invitation.js';
-import type { HandleValidateInvitationError } from './handle-validate-invitation.js';
-import type { InvitationServiceError } from '../domain/invitation-errors.js';
-import type { SignupServiceError } from '../domain/signup-service.js';
+} from '../orpc/yoink-http-error.js';
+import type { HandleCreateWorkspaceError } from '../../../access/application/handle-create-workspace.js';
+import type { HandleIssueOwnerInvitationError } from '../../../access/application/handle-issue-owner-invitation.js';
+import type { HandleAcceptInvitationError } from '../../../access/application/handle-accept-invitation.js';
+import type { HandleValidateInvitationError } from '../../../access/application/handle-validate-invitation.js';
+import type { InvitationServiceError } from '../../../access/domain/invitation-errors.js';
+import type { SignupServiceError } from '../../../access/domain/signup-service.js';
 
 type AccessClientCode =
   | 'BAD_REQUEST'

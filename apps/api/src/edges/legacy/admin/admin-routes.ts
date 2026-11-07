@@ -14,7 +14,7 @@ import type { AdminSessionService } from '../../../access/domain/admin-session-s
 import type { InvitationService } from '../../../access/domain/invitation-service.js';
 import type { Invitation } from '../../../access/domain/invitation.js';
 import type { User } from '../../../access/domain/user.js';
-import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from '../../../access/application/admin-session-middleware.js';
+import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from '../../_shared/auth/admin-session-middleware.js';
 import type { RateLimitConfig, CookieConfig } from '../../../platform/config/schema.js';
 import {
   namedRequestValidationError,
@@ -41,7 +41,7 @@ import {
   createWorkspaceErrorResponse,
   issueOwnerInvitationErrorResponse,
   loggedCause,
-} from '../../../access/application/access-http-errors.js';
+} from '../../_shared/auth/access-http-errors.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;

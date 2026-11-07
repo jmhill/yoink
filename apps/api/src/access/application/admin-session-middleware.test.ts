@@ -5,7 +5,7 @@ import cookie from '@fastify/cookie';
 import {
   createAdminSessionMiddleware,
   ADMIN_SESSION_COOKIE,
-} from './admin-session-middleware.js';
+} from '../../edges/_shared/auth/admin-session-middleware.js';
 import { createAdminSessionService } from '../domain/admin-session-service.js';
 import { createFakeClock } from '@yoink/infrastructure';
 

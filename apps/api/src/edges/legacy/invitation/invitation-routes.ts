@@ -6,7 +6,7 @@ import type { InvitationService } from '../../../access/domain/invitation-servic
 import type { MembershipService } from '../../../access/domain/membership-service.js';
 import type { OrganizationService } from '../../../access/domain/organization-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
-import type { AuthMiddleware } from '../../../access/application/auth-middleware.js';
+import type { AuthMiddleware } from '../../_shared/auth/auth-middleware.js';
 import { handleAcceptInvitation } from '../../../access/application/handle-accept-invitation.js';
 import { handleValidateInvitation } from '../../../access/application/handle-validate-invitation.js';
 import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
@@ -20,7 +20,7 @@ import {
   listPendingInvitationErrorResponse,
   revokeInvitationErrorResponse,
   validateInvitationErrorResponse,
-} from '../../../access/application/access-http-errors.js';
+} from '../../_shared/auth/access-http-errors.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;

@@ -41,7 +41,7 @@ captures/  and  lists/  and  tasks/ create + PATCH + complete + uncomplete
 
 ## Key Patterns
 
-**oRPC OpenAPI**: Type-safe HTTP contracts shared between client and server. Contracts live in `packages/api-contracts/src/orpc/` (`@orpc/openapi/fastify` on the API, `OpenAPILink` on clients). Zod schemas live in `packages/api-contracts/src/schemas/`. Domain code returns `Result`; only the HTTP adapter throws `ORPCError`.
+**oRPC OpenAPI**: Type-safe HTTP contracts shared between client and server. Legacy contracts live in `packages/api-contracts/src/orpc/` (`@orpc/openapi/fastify` on the API, `OpenAPILink` on clients). The frozen public v1 copy lives in `packages/api-contracts/src/public-api/v1/` and is not mounted yet. Zod schemas live in `packages/api-contracts/src/schemas/`. Domain code returns `Result`; only the HTTP adapter throws `ORPCError`.
 
 **Token Format**: `tokenId:secret` for O(1) database lookups. The middleware parses the token, looks up by tokenId, then verifies the secret against a bcrypt hash.
 

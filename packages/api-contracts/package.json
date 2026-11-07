@@ -11,6 +11,10 @@
     "./orpc": {
       "types": "./dist/orpc/index.d.ts",
       "import": "./dist/orpc/index.js"
+    },
+    "./public-api/v1": {
+      "types": "./dist/public-api/v1/index.d.ts",
+      "import": "./dist/public-api/v1/index.js"
     }
   },
   "scripts": {

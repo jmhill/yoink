@@ -478,6 +478,18 @@ export default [
               from: [['edge', { edge: 'test-fixtures' }]],
               allow: ['platform-database', 'platform-sql'],
             },
+            // M3.2. Only the public-api edge, not every edge. These are the
+            // module handlers this edge still calls:
+            // M5.1 captures, M5.2 work, M5.3 tasks and lists, M5.7 notes,
+            // M5.10 review, M5.10-history history.
+            // projects, processing, and access are not allowed. captures→projects
+            // and captures→processing stay visible. The projects-module imports
+            // on this edge stay visible until a narrower rule can name them
+            // without also allowing that captures debt.
+            {
+              from: [['edge', { edge: 'public-api' }]],
+              allow: ['captures', 'lists', 'notes', 'review', 'tasks', 'work', 'history'],
+            },
             {
               from: 'edge-shared',
               allow: [

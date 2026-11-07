@@ -1,3 +1,4 @@
+import { oc } from '@orpc/contract';
 import type { FastifyInstance } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
@@ -16,7 +17,7 @@ import {
 import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
-import type { CreateTokenError, ListTokensError, RevokeTokenError } from '../domain/token-errors.js';
+import type { CreateTokenError, RevokeTokenError } from '../domain/token-errors.js';
 import { accessHttpError, accessStorageError } from './access-http-errors.js';
 
 export type TokenRoutesDependencies = {
@@ -25,13 +26,6 @@ export type TokenRoutesDependencies = {
   tokenService: TokenService;
   sessionCookieName: string;
   applyAuthenticatedRateLimit?: AuthenticatedRateLimitConsume;
-};
-
-const listTokensFailure = (error: ListTokensError) => {
-  switch (error.type) {
-    case 'TOKEN_STORAGE_ERROR':
-      return accessStorageError(error, 'Failed to list tokens');
-  }
 };
 
 const createTokenFailure = (error: CreateTokenError) => {
@@ -73,36 +67,14 @@ const deleteTokenFailure = (error: RevokeTokenError) => {
   }
 };
 
-export const registerTokenRoutes = async (
-  app: FastifyInstance,
-  deps: TokenRoutesDependencies
-) => {
-  const { tokenHandlers, sessionService, tokenService, sessionCookieName } = deps;
-
-  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
-    tokenService,
-    sessionService,
-    sessionCookieName,
-  };
-
-  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
-  const authMiddleware =
-    deps.applyAuthenticatedRateLimit === undefined
-      ? resolvedAuth
-      : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
-
-  const tokens = implement(tokenOrpcContract).$context<OrpcHttpContext>();
+const tokenMutationHandler = (deps: TokenRoutesDependencies) => {
+  const { tokenHandlers } = deps;
+  const mutations = oc.router({
+    create: tokenOrpcContract.create,
+    delete: tokenOrpcContract.delete,
+  });
+  const tokens = implement(mutations).$context<OrpcHttpContext>();
   const tokenRouter = tokens.router({
-    list: tokens.list.handler(async ({ context }) => {
-      const { userId, organizationId, actor } = context.request.authContext;
-      const result = await tokenHandlers.list({ actor, userId, organizationId });
-      return result.match(
-        (page) => page,
-        (error) => {
-          throw listTokensFailure(error);
-        }
-      );
-    }),
     create: tokens.create.handler(async ({ input, context }) => {
       const { userId, organizationId, actor } = context.request.authContext;
       const result = await tokenHandlers.create({
@@ -135,13 +107,35 @@ export const registerTokenRoutes = async (
     }),
   });
 
-  const handler = new OpenAPIHandler(tokenRouter, yoinkOpenApiHandlerOptions);
+  return new OpenAPIHandler(tokenRouter, yoinkOpenApiHandlerOptions);
+};
 
+const protectedTokenAuth = (deps: TokenRoutesDependencies) => {
+  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
+    tokenService: deps.tokenService,
+    sessionService: deps.sessionService,
+    sessionCookieName: deps.sessionCookieName,
+  };
+  const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
+  return deps.applyAuthenticatedRateLimit === undefined
+    ? resolvedAuth
+    : withAuthenticatedRateLimit(resolvedAuth, deps.applyAuthenticatedRateLimit);
+};
+
+/**
+ * Client-only token writes. No versioned path and no alias headers.
+ * `GET /api/auth/tokens` is owned by the public API edge.
+ */
+export const registerTokenMutationRoutes = async (
+  app: FastifyInstance,
+  deps: TokenRoutesDependencies,
+) => {
+  const handler = tokenMutationHandler(deps);
+  const authMiddleware = protectedTokenAuth(deps);
   await app.register(async (protectedApp) => {
     protectedApp.addHook('preHandler', authMiddleware);
-
     protectedApp.route({
-      method: ['GET', 'POST'],
+      method: 'POST',
       url: '/api/auth/tokens',
       handler: async (request, reply) => dispatchOrpc(handler, request, reply),
     });

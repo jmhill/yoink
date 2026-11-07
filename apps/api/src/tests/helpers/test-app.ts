@@ -127,7 +127,7 @@ export const createTestAppWithAdmin = async () => {
  * Creates an in-process Fastify app with WebAuthn (session auth) enabled.
  * Uses in-memory SQLite and fake infrastructure (clock, ID generator, etc.)
  */
-const seedTestUserSession = async (database: {
+export const seedTestUserSession = async (database: {
   execute: (query: { sql: string; args?: unknown[] }) => Promise<unknown>;
 }) => {
   await database.execute({

@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { ResultAsync } from 'neverthrow';
-import { registerTokenRoutes } from './token-routes.js';
+import { registerTokenMutationRoutes } from './token-routes.js';
 import { createTokenHandlers } from './create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,
@@ -154,7 +154,7 @@ describe('token routes', () => {
     app = Fastify();
     await app.register(cookie);
 
-    await registerTokenRoutes(app, {
+    await registerTokenMutationRoutes(app, {
       tokenHandlers,
       sessionService,
       tokenService,
@@ -184,50 +184,14 @@ describe('token routes', () => {
     });
   };
 
-  describe('GET /api/auth/tokens', () => {
-    it('returns an empty complete page when the user has no tokens', async () => {
-      const response = await sessionRequest('GET', '/api/auth/tokens');
-
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({
-        tokens: [],
-      });
-    });
-
-    it('lists the caller tokens with created and last used', async () => {
-      await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
-
-      const response = await sessionRequest('GET', '/api/auth/tokens');
-      const body = response.json();
-
-      expect(response.statusCode).toBe(200);
-      expect(body.tokens[0]).toMatchObject({
-        name: 'Lane',
-        createdAt: '2024-06-15T12:00:00.000Z',
-      });
-      expect(body.tokens[0].lastUsedAt).toBeUndefined();
-    });
-
-    it('lets a personal token list', async () => {
-      const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
-      const rawToken = created.json().rawToken;
-
-      const response = await bearerRequest('GET', '/api/auth/tokens', rawToken);
-      expect(response.statusCode).toBe(200);
-      expect(response.json().tokens[0].name).toBe('Lane');
-    });
-
-    it('returns 401 when not authenticated', async () => {
-      const response = await app.inject({ method: 'GET', url: '/api/auth/tokens' });
-      expect(response.statusCode).toBe(401);
-    });
-  });
-
   describe('POST /api/auth/tokens', () => {
     it('creates a named token and returns the raw value once', async () => {
       const response = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
 
       expect(response.statusCode).toBe(201);
+      expect(response.headers.deprecation).toBeUndefined();
+      expect(response.headers.sunset).toBeUndefined();
+      expect(response.headers.link).toBeUndefined();
       const body = response.json();
       expect(body.token.name).toBe('Lane');
       expect(body.rawToken).toMatch(/^[^:]+:[^:]+$/);
@@ -311,13 +275,13 @@ describe('token routes', () => {
       const created = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
       const { token, rawToken } = created.json();
 
-      const before = await bearerRequest('GET', '/api/auth/tokens', rawToken);
-      expect(before.statusCode).toBe(200);
+      const before = await bearerRequest('POST', '/api/auth/tokens', rawToken, { name: 'Again' });
+      expect(before.statusCode).toBe(403);
 
       const revoked = await sessionRequest('DELETE', `/api/auth/tokens/${token.id}`);
       expect(revoked.statusCode).toBe(200);
 
-      const after = await bearerRequest('GET', '/api/auth/tokens', rawToken);
+      const after = await bearerRequest('POST', '/api/auth/tokens', rawToken, { name: 'Again' });
       expect(after.statusCode).toBe(401);
     });
 
@@ -385,23 +349,4 @@ describe('token routes', () => {
     });
   });
 
-  describe('existing tokens keep working', () => {
-    it('authenticates a hashed token that was not created through the product route', async () => {
-      const secret = 'legacy-secret';
-      const tokenId = '550e8400-e29b-41d4-a716-446655440077';
-      const tokenHash = await passwordHasher.hash(secret);
-      await tokenStore.save({
-        id: tokenId,
-        userId: testUser.id,
-        organizationId: testOrg.id,
-        tokenHash,
-        name: 'Lane',
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const response = await bearerRequest('GET', '/api/auth/tokens', `${tokenId}:${secret}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.json().tokens[0].name).toBe('Lane');
-    });
-  });
 });

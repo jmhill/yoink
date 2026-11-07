@@ -14,7 +14,7 @@ export {
 export { registerAuthRoutes } from './auth-routes.js';
 export { registerSignupRoutes } from './signup-routes.js';
 export { registerPasskeyRoutes } from './passkey-routes.js';
-export { registerTokenRoutes } from './token-routes.js';
+export { registerTokenMutationRoutes } from './token-routes.js';
 export { registerOrganizationRoutes } from './organization-routes.js';
 export type { ReissueAgentToken } from './handle-reissue-agent-token.js';
 export type { TransferOwnershipHandler } from './handle-transfer-ownership.js';

@@ -270,7 +270,7 @@ describe('owner invite HTTP routes', () => {
     const waitingId = waiting.json<{ organization: { id: string } }>().organization.id;
     const ownerless = await app.inject({
       method: 'POST',
-      url: '/api/test/ownerless-workspace',
+      url: '/test-api/ownerless-workspace',
       cookies,
       payload: { name: 'Garden Club empty' },
     });
@@ -287,7 +287,7 @@ describe('owner invite HTTP routes', () => {
     }>();
     const expire = await app.inject({
       method: 'POST',
-      url: '/api/test/expire-invitation',
+      url: '/test-api/expire-invitation',
       cookies,
       payload: { code: expiredInvite.ownerInvitation.code },
     });

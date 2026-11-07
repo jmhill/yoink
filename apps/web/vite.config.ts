@@ -61,8 +61,8 @@ export default defineConfig({
         // on a navigation. Keep skipWaiting unset so registerType: 'prompt'
         // still shows the update banner.
         clientsClaim: true,
-        // SW scope is `/`, so without a denylist Workbox SPA navigateFallback
-        // serves the web index.html for `/admin*` (and document hits to `/api`).
+        // SW scope is `/`. The denylist keeps `/admin`, `/api`, `/test-api`,
+        // and the reserved edge prefixes off the web index.html fallback.
         navigateFallbackDenylist: PWA_NAVIGATE_FALLBACK_DENYLIST,
       },
     }),
@@ -77,6 +77,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': 'http://localhost:3000',
+      '/test-api': 'http://localhost:3000',
     },
   },
 });

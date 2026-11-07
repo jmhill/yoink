@@ -3122,7 +3122,7 @@ export const createHttpActor = (
 
     async finishTaskAt(taskId: string, completedAt: string): Promise<void> {
       const response = await client.post(
-        '/api/test/review-fixture/finish-task',
+        '/test-api/review-fixture/finish-task',
         { taskId, completedAt },
         authHeaders()
       );
@@ -3142,7 +3142,7 @@ export const createHttpActor = (
 
     async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {
       const response = await client.post(
-        '/api/test/review-fixture/backdate',
+        '/test-api/review-fixture/backdate',
         { projectId, occurredAt },
         authHeaders()
       );

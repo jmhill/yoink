@@ -284,7 +284,7 @@ describe('path ownership', () => {
       reason: 'test-file',
     });
     for (const path of FIXTURE_ROUTE_PATHS) {
-      expect(classifyApiPath(path)).toEqual({ kind: 'no-sql', area: 'fixture-route' });
+      expect(classifyApiPath(path)).toEqual({ kind: 'exempt', reason: 'test-fixtures' });
     }
   });
 
@@ -602,7 +602,7 @@ describe('current tree', () => {
     expect(count('notes/infrastructure/note-row-statements.ts', 'FROM', 'project_notes')).toBe(2);
     expect(count('platform/sql/page-sqlite.ts', 'FROM', 'tasks')).toBe(0);
     expect(
-      refsIn('access/infrastructure/http-ownerless-workspace-fixture-routes.ts')
+      refsIn('edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts')
     ).toEqual([]);
   });
 });

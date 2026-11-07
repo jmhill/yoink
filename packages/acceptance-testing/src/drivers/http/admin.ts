@@ -126,7 +126,7 @@ export const createHttpAdmin = (
     name: string,
     options?: { personalUserId?: string }
   ): Promise<Organization> {
-    const response = await client.post('/api/test/ownerless-workspace', {
+    const response = await client.post('/test-api/ownerless-workspace', {
       name,
       ...(options?.personalUserId ? { personalUserId: options.personalUserId } : {}),
     });
@@ -140,7 +140,7 @@ export const createHttpAdmin = (
   },
 
   async expireInvitation(code: string): Promise<void> {
-    const response = await client.post('/api/test/expire-invitation', { code });
+    const response = await client.post('/test-api/expire-invitation', { code });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -153,7 +153,7 @@ export const createHttpAdmin = (
   },
 
   async assignOwnerKeepingInvite(organizationId: string, userId: string): Promise<void> {
-    const response = await client.post('/api/test/assign-owner-keeping-invite', {
+    const response = await client.post('/test-api/assign-owner-keeping-invite', {
       organizationId,
       userId,
     });

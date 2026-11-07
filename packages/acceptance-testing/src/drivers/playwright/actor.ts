@@ -5893,7 +5893,7 @@ export const createPlaywrightActor = (
     },
 
     async finishTaskAt(taskId: string, completedAt: string): Promise<void> {
-      const response = await page.request.post('/api/test/review-fixture/finish-task', {
+      const response = await page.request.post('/test-api/review-fixture/finish-task', {
         data: { taskId, completedAt },
       });
       if (response.status() === 401) {
@@ -5908,7 +5908,7 @@ export const createPlaywrightActor = (
     },
 
     async backdateReviewProject(projectId: string, occurredAt: string): Promise<void> {
-      const response = await page.request.post('/api/test/review-fixture/backdate', {
+      const response = await page.request.post('/test-api/review-fixture/backdate', {
         data: { projectId, occurredAt },
       });
       if (response.status() === 401) {

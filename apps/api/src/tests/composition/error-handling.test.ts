@@ -42,6 +42,21 @@ describe('Error Response Format', () => {
     expect(response.json()).toEqual({ message: 'Not found' });
   });
 
+  it('serves nothing at the old /api/test fixture paths', async () => {
+    for (const url of [
+      '/api/test/review-fixture/backdate',
+      '/api/test/review-fixture/finish-task',
+      '/api/test/ownerless-workspace',
+      '/api/test/expire-invitation',
+      '/api/test/assign-owner-keeping-invite',
+    ]) {
+      const response = await app.inject({ method: 'POST', url, payload: {} });
+      expect(response.statusCode, url).toBe(404);
+      expect(response.headers['content-type'], url).toContain('application/json');
+      expect(response.json(), url).toEqual({ message: 'Not found' });
+    }
+  });
+
   it('pins the Fastify message for malformed JSON', async () => {
     const response = await app.inject({
       method: 'POST',

@@ -20,6 +20,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api/admin': 'http://localhost:3000',
+      '/test-api': 'http://localhost:3000',
     },
   },
 });

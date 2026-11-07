@@ -6,7 +6,7 @@ A route is **integration** when a bearer token can complete it, or when the hand
 
 **Client-only** stays the group ADR §9 names (admin, session, passkey, signup, invitation) plus the organization-settings routes plan M3.3 names, plus the four mutations whose domain already refuses every non-session actor. Those four are not a new auth mode.
 
-M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body. The contract stores that suffix (`/captures`). M3.2 roots the served URL at `/api/v1` by the `handle` prefix. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check. M3.2 serves the integration rows from `apps/api/src/edges/public-api/v1/`. M3.3, in progress until review and merge, serves the client-only rows from `apps/api/src/edges/legacy/`. Token create and delete stay on `registerTokenMutationRoutes`. Health and fixtures stay until M3.4.
+M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body. The contract stores that suffix (`/captures`). M3.2 roots the served URL at `/api/v1` by the `handle` prefix. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check. M3.2 serves the integration rows from `apps/api/src/edges/public-api/v1/`. M3.3 serves the client-only rows from `apps/api/src/edges/legacy/`. Token create and delete stay on `registerTokenMutationRoutes`. M3.4, in progress until review and merge, serves `GET /api/health` from `apps/api/src/edges/ops/` and the fixture rows from `apps/api/src/edges/test-fixtures/` at `/test-api/`.
 
 Paths are the OpenAPI `path:` strings in `packages/api-contracts/src/orpc/`. Fastify mounts the same URL with `:param` instead of `{param}` (`/api/captures/{id}` and `/api/captures/:id` are one route). Fixture routes have no contract `path:`; their URL is the Fastify path.
 
@@ -26,11 +26,11 @@ Static files and the SPA not-found handler are [not API procedures](#static-file
 
 | Registrar | Mounted when |
 |---|---|
-| Health, public API v1, invitations (`edges/legacy/invitation/invitation-routes.ts`) | Always |
+| Health (`edges/ops/orpc-health-routes.ts`), public API v1, invitations (`edges/legacy/invitation/invitation-routes.ts`) | Always |
 | Admin (`edges/legacy/admin/admin-routes.ts`) | `deps.admin` is set |
 | Signup, passkey, auth, organization, token | `deps.signup` is set |
-| Review fixtures | `enableTestFixtures` and a database (`YOINK_TEST_FIXTURES=true`) |
-| Ownerless-workspace fixtures | `enableTestFixtures`, `deps.admin`, an invitation store, and a membership store |
+| Review fixtures (`edges/test-fixtures/http-review-fixture-routes.ts`) | `enableTestFixtures` and a database (`YOINK_TEST_FIXTURES=true`) |
+| Ownerless-workspace fixtures (`edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts`) | `enableTestFixtures`, `deps.admin`, an invitation store, and a membership store |
 
 ## Counts
 
@@ -39,7 +39,7 @@ Static files and the SPA not-found handler are [not API procedures](#static-file
 | integration | 59 | frozen v1 and the `/api` alias (M3.1, M3.2) |
 | client-only | 45 | legacy until that client's edge (M3.3) |
 | ops | 1 | stays `/api/health`, not v1 |
-| test fixture | 5 | later `/test-api/` |
+| test fixture | 5 | `/test-api/` |
 | ambiguous | 0 | none |
 | **Total** | **110** | |
 
@@ -47,7 +47,7 @@ Static files and the SPA not-found handler are [not API procedures](#static-file
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/health | health/application/orpc-health-routes.ts | health | none | tests | ops | Not v1. Acceptance driver: `packages/acceptance-testing/src/drivers/http/health.ts`. Fly health checks are outside the searched trees. |
+| GET /api/health | edges/ops/orpc-health-routes.ts | health | none | tests | ops | Not v1. Path unchanged. Acceptance driver: `packages/acceptance-testing/src/drivers/http/health.ts`. Fly health checks are outside the searched trees. |
 
 ## Test fixtures
 
@@ -55,11 +55,11 @@ No contract `path:`. Admin-session fixtures use `createAdminSessionMiddleware`. 
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/test/ownerless-workspace | access/infrastructure/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | `packages/acceptance-testing/src/drivers/http/admin.ts` |
-| POST /api/test/expire-invitation | access/infrastructure/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | Same driver |
-| POST /api/test/assign-owner-keeping-invite | access/infrastructure/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | Same driver |
-| POST /api/test/review-fixture/backdate | review/infrastructure/http-review-fixture-routes.ts | review | combined | tests | test fixture | HTTP and Playwright actors |
-| POST /api/test/review-fixture/finish-task | review/infrastructure/http-review-fixture-routes.ts | review | combined | tests | test fixture | HTTP and Playwright actors |
+| POST /test-api/ownerless-workspace | edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | `packages/acceptance-testing/src/drivers/http/admin.ts`. Nothing is served at `/api/test/ownerless-workspace`. |
+| POST /test-api/expire-invitation | edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | Same driver |
+| POST /test-api/assign-owner-keeping-invite | edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts | access | admin session | tests | test fixture | Same driver |
+| POST /test-api/review-fixture/backdate | edges/test-fixtures/http-review-fixture-routes.ts | review | combined | tests | test fixture | HTTP and Playwright actors |
+| POST /test-api/review-fixture/finish-task | edges/test-fixtures/http-review-fixture-routes.ts | review | combined | tests | test fixture | HTTP and Playwright actors |
 
 ## Client-only
 
@@ -278,13 +278,13 @@ These are not procedures and are not in the 110 rows.
 
 - `@fastify/static` at prefix `/` when `apps/api/public/index.html` exists (`app.ts`). Hashed `/assets/` may be cached; HTML and PWA entry files are not.
 - `@fastify/static` at prefix `/admin/` when `apps/api/public/admin` exists.
-- `app.setNotFoundHandler` serves the admin `index.html` for `/admin...`, the web `index.html` for any non-`/api` path when that file exists, and otherwise 404 `{ message: 'Not found' }`. It is not a registered route.
+- `app.setNotFoundHandler` serves the admin `index.html` for `/admin` and `/admin/...` when that build exists. `/admin-api` is not the admin app. `/api`, `/test-api`, `/web-api`, and `/extension-api` are not the web app. Other unmatched paths get the web `index.html` when that file exists, and otherwise 404 `{ message: 'Not found' }`. It is not a registered route. `/web-api`, `/admin-api`, and `/extension-api` are not mounted.
 
 ## Checklist against `app.ts` and contract `path:`
 
 | Source | Routes in this inventory |
 |---|---|
-| `health/application/orpc-health-routes.ts` and `orpc/health-contract.ts` | 1 |
+| `edges/ops/orpc-health-routes.ts` and `orpc/health-contract.ts` | 1 |
 | `captures/infrastructure/orpc-capture-routes.ts` and `orpc/capture-contract.ts` | 12 |
 | `lists/infrastructure/http-list-routes.ts` and `orpc/list-contract.ts` | 8 |
 | `projects/infrastructure/http-project-routes.ts` and `orpc/project-contract.ts` | 16 |
@@ -292,8 +292,8 @@ These are not procedures and are not in the 110 rows.
 | `tasks/infrastructure/http-task-routes.ts` and `orpc/task-contract.ts` | 10 |
 | `work/infrastructure/http-work-routes.ts` and `orpc/work-contract.ts` | 3 |
 | `review/infrastructure/http-review-routes.ts` and `orpc/review-contract.ts` | 2 |
-| `review/infrastructure/http-review-fixture-routes.ts` | 2 (no contract) |
-| `access/infrastructure/http-ownerless-workspace-fixture-routes.ts` | 3 (no contract) |
+| `edges/test-fixtures/http-review-fixture-routes.ts` | 2 (no contract) |
+| `edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts` | 3 (no contract) |
 | `edges/legacy/admin/admin-routes.ts` and `orpc/admin-contract.ts` | 20 |
 | `edges/legacy/auth/auth-routes.ts` and `orpc/auth-contract.ts` | 4 |
 | `edges/legacy/signup/signup-routes.ts` and `orpc/signup-contract.ts` | 2 |

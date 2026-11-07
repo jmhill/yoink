@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { OrganizationStore } from '../domain/organization-store.js';
-import type { InvitationStore } from '../domain/invitation-store.js';
-import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
-import type { AdminSessionService } from '../domain/admin-session-service.js';
-import { createAdminSessionMiddleware } from '../application/admin-session-middleware.js';
+import type { OrganizationStore } from '../../access/domain/organization-store.js';
+import type { InvitationStore } from '../../access/domain/invitation-store.js';
+import type { OrganizationMembershipStore } from '../../access/domain/organization-membership-store.js';
+import type { AdminSessionService } from '../../access/domain/admin-session-service.js';
+import { createAdminSessionMiddleware } from '../../access/application/admin-session-middleware.js';
 
 const OwnerlessBodySchema = z.object({
   name: z.string().min(1).max(200),
@@ -41,7 +41,7 @@ export const registerOwnerlessWorkspaceFixtureRoutes = async (
       createAdminSessionMiddleware({ adminSessionService: deps.adminSessionService })
     );
 
-    authedApp.post('/api/test/ownerless-workspace', async (request, reply) => {
+    authedApp.post('/test-api/ownerless-workspace', async (request, reply) => {
       const parsed = OwnerlessBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -79,7 +79,7 @@ export const registerOwnerlessWorkspaceFixtureRoutes = async (
       return reply.status(201).send({ organization });
     });
 
-    authedApp.post('/api/test/expire-invitation', async (request, reply) => {
+    authedApp.post('/test-api/expire-invitation', async (request, reply) => {
       const parsed = ExpireInvitationBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -106,7 +106,7 @@ export const registerOwnerlessWorkspaceFixtureRoutes = async (
       return reply.status(204).send();
     });
 
-    authedApp.post('/api/test/assign-owner-keeping-invite', async (request, reply) => {
+    authedApp.post('/test-api/assign-owner-keeping-invite', async (request, reply) => {
       const parsed = AssignOwnerKeepingInviteBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({

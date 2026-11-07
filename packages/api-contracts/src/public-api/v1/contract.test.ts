@@ -204,8 +204,8 @@ describe('public API v1 contracts', () => {
       'POST /api/auth/login/options',
       'POST /api/invitations',
       'POST /api/organizations/switch',
-      'POST /api/test/review-fixture/backdate',
-      'POST /api/test/ownerless-workspace',
+      'POST /test-api/review-fixture/backdate',
+      'POST /test-api/ownerless-workspace',
     ];
 
     expect(frozenKeys.has('GET /api/auth/tokens')).toBe(true);

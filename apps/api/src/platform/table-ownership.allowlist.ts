@@ -5,10 +5,9 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * count from the M1.2 scanner. A new hit is not covered. A hit that goes
  * away makes its entry stale. Do not add an entry to hide a scanner miss.
  *
- * `access/infrastructure/http-ownerless-workspace-fixture-routes.ts` is a
- * fixture route (M3.4 moves it, M7.4 retires it) and currently has no
- * keyword-led table reference, so it has no entry. The review fixture
- * routes below do.
+ * `edges/test-fixtures/` is exempt. The ownerless fixture has no
+ * keyword-led table reference. The review fixture's SQL is exempt with
+ * that directory. M7.4 retires both files.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
   // tasks, projects, lists, processing, and notes still import
@@ -294,32 +293,6 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     table: 'tasks',
     count: 2,
     removedBy: 'M5.10-review',
-  },
-
-  // M7.4 retires fixture routes. M3.4 moves this file to edges/test-fixtures/, which is exempt until then.
-  // M7.4
-  {
-    path: 'review/infrastructure/http-review-fixture-routes.ts',
-    keyword: 'UPDATE',
-    table: 'change_log',
-    count: 1,
-    removedBy: 'M7.4',
-  },
-  // M7.4
-  {
-    path: 'review/infrastructure/http-review-fixture-routes.ts',
-    keyword: 'UPDATE',
-    table: 'projects',
-    count: 1,
-    removedBy: 'M7.4',
-  },
-  // M7.4
-  {
-    path: 'review/infrastructure/http-review-fixture-routes.ts',
-    keyword: 'UPDATE',
-    table: 'tasks',
-    count: 1,
-    removedBy: 'M7.4',
   },
 
   // M7.5 requires an empty allowlist. No earlier task rewrites these test helpers.

@@ -30,7 +30,7 @@ export const registerReviewFixtureRoutes = async (
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', deps.authMiddleware);
 
-    authedApp.post('/api/test/review-fixture/backdate', async (request, reply) => {
+    authedApp.post('/test-api/review-fixture/backdate', async (request, reply) => {
       const parsed = BackdateBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -66,7 +66,7 @@ export const registerReviewFixtureRoutes = async (
       return reply.status(204).send();
     });
 
-    authedApp.post('/api/test/review-fixture/finish-task', async (request, reply) => {
+    authedApp.post('/test-api/review-fixture/finish-task', async (request, reply) => {
       const parsed = FinishTaskBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({

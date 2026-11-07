@@ -61,9 +61,8 @@
  * Only the owning module's `infrastructure/` may name its tables. Platform
  * may name platform tables from platform code (`database/` today,
  * `platform/` after M2.2). Workflows, edges, kernel, and every other area
- * may not name a table. `edges/test-fixtures/` is exempt once that path
- * exists. Until M3.4, today's fixture route files are `no-sql` and their
- * hits are allowlisted with a pointer to M7.4.
+ * may not name a table. `edges/test-fixtures/` is exempt. M7.4 retires
+ * those routes.
  *
  * `REFERENCES organizations(id)` and `REFERENCES users(id)` are the identity
  * anchors from ADR §5.1. They are not violations. Any other reference to
@@ -132,11 +131,9 @@ export type SqlKeyword = (typeof SQL_KEYWORDS)[number];
 const IDENTITY_ANCHOR_TABLES = new Set<TableName>(['organizations', 'users']);
 
 export const FIXTURE_ROUTE_PATHS = [
-  'access/infrastructure/http-ownerless-workspace-fixture-routes.ts',
-  'review/infrastructure/http-review-fixture-routes.ts',
+  'edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts',
+  'edges/test-fixtures/http-review-fixture-routes.ts',
 ] as const;
-
-const FIXTURE_ROUTE_PATH_SET = new Set<string>(FIXTURE_ROUTE_PATHS);
 
 export type FileRole =
   | {
@@ -257,9 +254,6 @@ export const classifyApiPath = (relativePath: string): FileRole => {
   }
   if (path === 'edges/test-fixtures' || path.startsWith('edges/test-fixtures/')) {
     return { kind: 'exempt', reason: 'test-fixtures' };
-  }
-  if (FIXTURE_ROUTE_PATH_SET.has(path)) {
-    return { kind: 'no-sql', area: 'fixture-route' };
   }
   // M2.2 moved the tree under platform/database. 001–043 stay exempt.
   const migrationFile = /^platform\/database\/migrations\/(\d+)-[^/]+\.ts$/.exec(path);

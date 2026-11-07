@@ -12,6 +12,7 @@ import {
   type Work,
 } from '../../kernel/unit-of-work.js';
 import { indexParticipants } from './participants.js';
+import { acceptedWrite } from './write-statement.js';
 
 /**
  * The slice of `@libsql/client` U1 uses. `transaction('write')` is the
@@ -29,19 +30,6 @@ export type WriteTransaction = {
 
 export type WriteClient = {
   transaction: (mode: 'write') => Promise<WriteTransaction>;
-};
-
-const READ_PREFIXES = ['select', 'pragma', 'explain'] as const;
-
-/** A read never starts a transaction. This does not classify a thrown execute. */
-export const statementIsRead = (sql: string): boolean => {
-  const leading = sql.trim().toLowerCase();
-  return READ_PREFIXES.some((prefix) => leading.startsWith(prefix) && boundaryAfter(leading, prefix));
-};
-
-const boundaryAfter = (leading: string, prefix: string): boolean => {
-  const next = leading.charAt(prefix.length);
-  return next === '' || !/[a-z0-9_]/i.test(next);
 };
 
 type Planned = {
@@ -123,7 +111,7 @@ const commitSqlite = async (input: {
   }
 
   for (const step of planned) {
-    if (statementIsRead(step.statement.sql)) {
+    if (!acceptedWrite(step.statement)) {
       return err({
         kind: 'Storage',
         owner: step.owner,

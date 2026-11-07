@@ -24,11 +24,18 @@ export type Work<T, E extends IntegrationEvent = IntegrationEvent> = {
   readonly step: Step;
 };
 
+/** The only statements a unit of work may run. A CTE is not one of these. */
+export const WRITE_VERBS = ['insert', 'update', 'delete'] as const;
+
+export type WriteVerb = (typeof WRITE_VERBS)[number];
+
 /**
- * A guarded write reports Conflict when rowsAffected is 0.
- * An ordinary write does not. A read is not a statement the transaction runs.
+ * One write. `verb` is the supported statement, and `sql` must be that single
+ * statement. A guarded write reports Conflict when rowsAffected is 0.
+ * An ordinary write does not. Reads are not statements the transaction runs.
  */
 export type GuardedStatement = {
+  readonly verb: WriteVerb;
   readonly sql: string;
   readonly args: readonly unknown[];
   readonly guard: boolean;

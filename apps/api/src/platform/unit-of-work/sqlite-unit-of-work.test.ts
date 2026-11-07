@@ -11,14 +11,15 @@ import type {
   Policy,
   SqlParticipant,
   Work,
+  WriteVerb,
 } from '../../kernel/unit-of-work.js';
 import {
   createSqliteUnitOfWork,
   libsqlWriteClient,
-  statementIsRead,
   type WriteClient,
   type WriteTransaction,
 } from './sqlite-unit-of-work.js';
+import { acceptedWrite } from './write-statement.js';
 
 const event = (type: string): IntegrationEvent => ({
   id: `${type}-id`,
@@ -31,11 +32,26 @@ const event = (type: string): IntegrationEvent => ({
   payload: {},
 });
 
+const OK = 'INSERT INTO kept (id) VALUES (?)';
+const MISS = 'UPDATE kept SET id = id WHERE 0 /*miss*/';
+const THROW = 'DELETE FROM kept WHERE 0 /*throw*/';
+const AFTER = 'INSERT INTO kept (id) VALUES (?) /*after*/';
+const POLICY = 'UPDATE kept SET id = id WHERE 1 /*policy*/';
+
+const verbFor = (sql: string): WriteVerb => {
+  const match = /^\s*(insert|update|delete)\b/i.exec(sql);
+  const verb = match?.[1]?.toLowerCase();
+  if (verb === 'update' || verb === 'delete') {
+    return verb;
+  }
+  return 'insert';
+};
+
 const statement = (
   sql: string,
   args: readonly unknown[] = [],
   guard = false
-): GuardedStatement => ({ sql, args, guard });
+): GuardedStatement => ({ verb: verbFor(sql), sql, args, guard });
 
 const work = (
   owner: ModuleName,
@@ -76,7 +92,7 @@ const scripted = (options?: {
       const tx: WriteTransaction = {
         execute: (step) => {
           calls.sql.push(step.sql);
-          if (step.sql === 'THROW') {
+          if (step.sql.includes('/*throw*/')) {
             return Promise.reject({
               code: 'SQLITE_CONSTRAINT',
               rawCode: null,
@@ -84,7 +100,7 @@ const scripted = (options?: {
               message: 'CHECK constraint failed: ok = 1',
             });
           }
-          if (step.sql === 'MISS') {
+          if (step.sql.includes('/*miss*/')) {
             return Promise.resolve({ rowsAffected: 0 });
           }
           return Promise.resolve({ rowsAffected: 1 });
@@ -118,13 +134,56 @@ const scripted = (options?: {
 
 const keysOf = (value: object): string[] => Object.keys(value).sort();
 
-describe('statementIsRead', () => {
-  it('rejects a leading read and leaves writes alone', () => {
-    expect(statementIsRead('  SELECT 1')).toBe(true);
-    expect(statementIsRead('PRAGMA foreign_keys')).toBe(true);
-    expect(statementIsRead('explain query plan select 1')).toBe(true);
-    expect(statementIsRead('INSERT INTO parents (id) VALUES (?)')).toBe(false);
-    expect(statementIsRead('selected_note')).toBe(false);
+describe('acceptedWrite', () => {
+  it('rejects reads hidden by comments, a CTE, or parentheses', () => {
+    const rejected = [
+      '/*c*/ SELECT 1',
+      '-- note\nSELECT 1',
+      'WITH c AS (SELECT 1) SELECT 1',
+      '(SELECT 1)',
+      'SELECT 1',
+      'PRAGMA foreign_keys',
+      'EXPLAIN SELECT 1',
+      'INSERT INTO kept (id) VALUES (1); SELECT 1',
+      'WITH c AS (SELECT 1) INSERT INTO kept (id) SELECT 1',
+      '/* unclosed SELECT',
+      'selected_note',
+    ];
+    for (const sql of rejected) {
+      expect(acceptedWrite(statement(sql))).toBe(false);
+    }
+  });
+
+  it('accepts one insert, update, or delete, including INSERT ... SELECT', () => {
+    const accepted = [
+      'INSERT INTO parents (id) VALUES (?)',
+      '  UPDATE parents SET status = ? WHERE id = ?',
+      'DELETE FROM tasks WHERE id = ?',
+      'INSERT OR IGNORE INTO organizations (id) VALUES (?)',
+      "INSERT INTO kept (name) VALUES ('a; SELECT 1')",
+      'INSERT INTO kept (id) VALUES (1);',
+      '/*c*/ INSERT INTO kept (id) VALUES (1)',
+      '-- note\nINSERT INTO kept (id) VALUES (?)',
+      `INSERT INTO change_log (id, seq)
+       SELECT ?, COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1
+       WHERE EXISTS (SELECT 1 FROM tasks WHERE id = ?)`,
+      'INSERT INTO kept (id) VALUES (1) -- ; SELECT 1',
+      'INSERT INTO kept (id) VALUES (1) /* ; SELECT 1 */',
+    ];
+    for (const sql of accepted) {
+      expect(acceptedWrite(statement(sql))).toBe(true);
+    }
+  });
+
+  it('rejects a write whose declared verb does not match the text', () => {
+    expect(
+      acceptedWrite({
+        verb: 'delete',
+        sql: 'INSERT INTO kept (id) VALUES (?)',
+        args: [],
+        guard: false,
+      })
+    ).toBe(false);
   });
 });
 
@@ -144,12 +203,12 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('commits on transaction write, then closes, and does not roll back', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
+      work('captures', statement(OK)),
     ]);
 
     expect(result.isOk()).toBe(true);
     expect(calls.modes).toEqual(['write']);
-    expect(calls.sql).toEqual(['INSERT']);
+    expect(calls.sql).toEqual([OK]);
     expect(calls.commit).toBe(1);
     expect(calls.rollback).toBe(0);
     expect(calls.close).toBe(1);
@@ -169,9 +228,9 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('maps a guarded write of zero rows to Conflict and stops', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
-      work('task-management', statement('MISS', [], true)),
-      work('captures', statement('AFTER')),
+      work('captures', statement(OK)),
+      work('task-management', statement(MISS, [], true)),
+      work('captures', statement(AFTER)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -183,7 +242,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       });
       expect(keysOf(result.error)).toEqual(['kind', 'owner', 'reason']);
     }
-    expect(calls.sql).toEqual(['INSERT', 'MISS']);
+    expect(calls.sql).toEqual([OK, MISS]);
     expect(calls.commit).toBe(0);
     expect(calls.rollback).toBe(1);
     expect(calls.close).toBe(1);
@@ -192,7 +251,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('commits an unguarded write that changed no rows', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('MISS', [], false)),
+      work('captures', statement(MISS, [], false)),
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -203,9 +262,9 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('maps a thrown execute to Storage without reading driver fields', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
-      work('task-management', statement('THROW')),
-      work('captures', statement('AFTER')),
+      work('captures', statement(OK)),
+      work('task-management', statement(THROW)),
+      work('captures', statement(AFTER)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -217,7 +276,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       });
       expect(keysOf(result.error)).toEqual(['kind', 'owner', 'reason']);
     }
-    expect(calls.sql).toEqual(['INSERT', 'THROW']);
+    expect(calls.sql).toEqual([OK, THROW]);
     expect(calls.commit).toBe(0);
     expect(calls.rollback).toBe(1);
     expect(calls.close).toBe(1);
@@ -226,7 +285,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('closes when rollback throws and still does not commit', async () => {
     const { client, calls } = scripted({ failRollback: true });
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('MISS', [], true)),
+      work('captures', statement(MISS, [], true)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -245,7 +304,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('keeps the step failure when close throws after rollback', async () => {
     const { client, calls } = scripted({ failClose: true });
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('THROW')),
+      work('captures', statement(THROW)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -261,7 +320,7 @@ describe('createSqliteUnitOfWork protocol', () => {
     const result = await createSqliteUnitOfWork({
       client,
       participants: [passthrough('captures')],
-    }).commit([work('captures', statement('INSERT'))]);
+    }).commit([work('captures', statement(OK))]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -279,7 +338,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('returns ok when close throws after a successful commit', async () => {
     const { client, calls } = scripted({ failClose: true });
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
+      work('captures', statement(OK)),
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -291,7 +350,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('does not commit when opening the transaction throws', async () => {
     const { client, calls } = scripted({ failOpen: true });
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
+      work('captures', statement(OK)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -309,7 +368,7 @@ describe('createSqliteUnitOfWork protocol', () => {
   it('rejects a later read without opening a transaction', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement('INSERT')),
+      work('captures', statement(OK)),
       work('task-management', statement('SELECT 1')),
     ]);
 
@@ -353,10 +412,39 @@ describe('createSqliteUnitOfWork protocol', () => {
     expect(calls.modes).toEqual([]);
   });
 
+  it('rejects comment, CTE, and parenthesized reads before opening a transaction', async () => {
+    const hidden = [
+      '/*c*/ SELECT 1',
+      '-- note\nSELECT 1',
+      'WITH c AS (SELECT 1) SELECT 1',
+      '(SELECT 1)',
+      'INSERT INTO kept (id) VALUES (1); SELECT 1',
+    ];
+    const { client, calls } = scripted();
+    const uow = createSqliteUnitOfWork({ client, participants });
+
+    for (const sql of hidden) {
+      const result = await uow.commit([
+        work('captures', statement(OK)),
+        work('task-management', statement(sql)),
+      ]);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error).toEqual({
+          kind: 'Storage',
+          owner: 'task-management',
+          reason: 'read-rejected',
+        });
+      }
+    }
+    expect(calls.modes).toEqual([]);
+    expect(calls.sql).toEqual([]);
+  });
+
   it('names a missing participant and does not open a transaction', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('notes', statement('INSERT')),
+      work('notes', statement(OK)),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -379,7 +467,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       },
     ];
     const result = await createSqliteUnitOfWork({ client, participants, policies }).commit([
-      work('captures', statement('INSERT'), ['TaskDeleted']),
+      work('captures', statement(OK), ['TaskDeleted']),
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -399,31 +487,69 @@ describe('createSqliteUnitOfWork protocol', () => {
         on: 'TaskDeleted',
         react: () => {
           seen.push('delete-capture');
-          return okAsync(work('task-management', statement('POLICY'), ['CaptureDeleted']));
+          return okAsync(work('task-management', statement(POLICY), ['CaptureDeleted']));
         },
       },
       {
         on: 'CaptureDeleted',
         react: () => {
           seen.push('again');
-          return okAsync(work('captures', statement('AGAIN')));
+          return okAsync(work('captures', statement('DELETE FROM kept WHERE 1 /*again*/')));
         },
       },
     ];
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants, policies }).commit([
-      work('captures', statement('INSERT'), ['TaskDeleted']),
+      work('captures', statement(OK), ['TaskDeleted']),
     ]);
 
     expect(result.isOk()).toBe(true);
     expect(seen).toEqual(['delete-capture']);
     expect(calls.modes).toEqual(['write']);
-    expect(calls.sql).toEqual(['INSERT', 'POLICY']);
+    expect(calls.sql).toEqual([OK, POLICY]);
     expect(calls.commit).toBe(1);
   });
 });
 
 describe('libsql write transaction', () => {
+  it('commits INSERT ... SELECT and leaves a hidden read unexecuted', async () => {
+    await withFile(async (raw) => {
+      await raw.execute('CREATE TABLE parents (id TEXT PRIMARY KEY, status TEXT NOT NULL)');
+      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[] };
+      const uow = createSqliteUnitOfWork({
+        client: record(libsqlWriteClient(raw), calls),
+        participants: [passthrough('captures'), passthrough('task-management')],
+      });
+
+      const wrote = await uow.commit([
+        work(
+          'captures',
+          statement(
+            `INSERT INTO parents (id, status)
+             SELECT ?, ?
+             WHERE NOT EXISTS (SELECT 1 FROM parents WHERE id = ?)`,
+            ['s', 'open', 's']
+          )
+        ),
+      ]);
+      expect(wrote.isOk()).toBe(true);
+      expect(await ids(raw, 'parents')).toEqual(['s']);
+
+      const hidden = await uow.commit([work('task-management', statement('/*c*/ SELECT 1'))]);
+      expect(hidden.isErr()).toBe(true);
+      if (hidden.isErr()) {
+        expect(hidden.error).toEqual({
+          kind: 'Storage',
+          owner: 'task-management',
+          reason: 'read-rejected',
+        });
+      }
+      expect(calls.modes).toEqual(['write']);
+      expect(calls.commit).toBe(1);
+      expect(calls.rollback).toBe(0);
+    });
+  });
+
   it('enforces foreign keys and rolls the transaction back', async () => {
     await withFile(async (raw) => {
       const pragma = await raw.execute('PRAGMA foreign_keys');

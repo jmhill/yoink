@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { registerOrganizationRoutes } from './organization-routes.js';
+import { registerOrganizationRoutes } from '../../edges/legacy/organization/organization-routes.js';
 import { createSessionService } from '../domain/session-service.js';
 import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';

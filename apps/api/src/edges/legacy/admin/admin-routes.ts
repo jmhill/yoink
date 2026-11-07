@@ -8,31 +8,31 @@ import {
   THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
 import { adminProtectedOrpcContract, adminPublicOrpcContract } from '@yoink/api-contracts/orpc';
-import type { AdminService } from '../domain/admin-service.js';
-import type { AdminServiceError } from '../domain/admin-errors.js';
-import type { AdminSessionService } from '../domain/admin-session-service.js';
-import type { InvitationService } from '../domain/invitation-service.js';
-import type { Invitation } from '../domain/invitation.js';
-import type { User } from '../domain/user.js';
-import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from './admin-session-middleware.js';
-import type { RateLimitConfig, CookieConfig } from '../../platform/config/schema.js';
+import type { AdminService } from '../../../access/domain/admin-service.js';
+import type { AdminServiceError } from '../../../access/domain/admin-errors.js';
+import type { AdminSessionService } from '../../../access/domain/admin-session-service.js';
+import type { InvitationService } from '../../../access/domain/invitation-service.js';
+import type { Invitation } from '../../../access/domain/invitation.js';
+import type { User } from '../../../access/domain/user.js';
+import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from '../../../access/application/admin-session-middleware.js';
+import type { RateLimitConfig, CookieConfig } from '../../../platform/config/schema.js';
 import {
   namedRequestValidationError,
   validationIssuePaths,
   type RequestValidationErr,
-} from '../../edges/_shared/request-validation.js';
-import type { ClientIpOf } from '../../edges/_shared/request-client-ip.js';
-import type { handleCreateWorkspace } from './handle-create-workspace.js';
-import type { handleIssueOwnerInvitation } from './handle-issue-owner-invitation.js';
-import type { handleGetOwnerInvitation } from './handle-get-owner-invitation.js';
-import type { handleListWorkspaces } from './handle-list-workspaces.js';
-import type { HandleListWorkspacesError } from './handle-list-workspaces.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+} from '../../_shared/request-validation.js';
+import type { ClientIpOf } from '../../_shared/request-client-ip.js';
+import type { handleCreateWorkspace } from '../../../access/application/handle-create-workspace.js';
+import type { handleIssueOwnerInvitation } from '../../../access/application/handle-issue-owner-invitation.js';
+import type { handleGetOwnerInvitation } from '../../../access/application/handle-get-owner-invitation.js';
+import type { handleListWorkspaces } from '../../../access/application/handle-list-workspaces.js';
+import type { HandleListWorkspacesError } from '../../../access/application/handle-list-workspaces.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
 import {
   openApiHandlerOptions,
   yoinkOpenApiHandlerOptions,
-} from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
+} from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import {
   accessHttpError,
   accessInternalError,
@@ -41,7 +41,7 @@ import {
   createWorkspaceErrorResponse,
   issueOwnerInvitationErrorResponse,
   loggedCause,
-} from './access-http-errors.js';
+} from '../../../access/application/access-http-errors.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;

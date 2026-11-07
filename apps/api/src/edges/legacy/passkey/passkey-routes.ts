@@ -2,23 +2,23 @@ import type { FastifyInstance } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { passkeyOrpcContract } from '@yoink/api-contracts/orpc';
-import type { PasskeyService } from '../domain/passkey-service.js';
-import type { SessionService } from '../domain/session-service.js';
+import type { PasskeyService } from '../../../access/domain/passkey-service.js';
+import type { SessionService } from '../../../access/domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
-} from './combined-auth-middleware.js';
-import type { TokenService } from '../domain/token-service.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
-import type { PasskeyServiceError } from '../domain/auth-errors.js';
+} from '../../../access/application/combined-auth-middleware.js';
+import type { TokenService } from '../../../access/domain/token-service.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
+import type { PasskeyServiceError } from '../../../access/domain/auth-errors.js';
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
-} from './with-authenticated-rate-limit.js';
-import { accessHttpError, accessStorageError } from './access-http-errors.js';
+} from '../../../access/application/with-authenticated-rate-limit.js';
+import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
 
 export type PasskeyRoutesDependencies = {
   passkeyService: PasskeyService;

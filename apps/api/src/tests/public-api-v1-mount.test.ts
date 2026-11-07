@@ -23,8 +23,8 @@ import { captureNotInInboxError } from '../captures/domain/capture-errors.js';
 import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
-  registerTokenMutationRoutes,
 } from '../access/application/index.js';
+import { registerTokenMutationRoutes } from '../edges/legacy/tokens/token-routes.js';
 import type { TokenHandlers } from '../access/application/create-token-handlers.js';
 import { USER_SESSION_COOKIE } from '../access/application/combined-auth-middleware.js';
 import { createFakeOrganizationMembershipStore } from '../access/infrastructure/fake-organization-membership-store.js';

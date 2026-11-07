@@ -3,22 +3,22 @@ import type { FastifyInstance } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
-import type { SessionService } from '../domain/session-service.js';
-import type { TokenService } from '../domain/token-service.js';
-import type { TokenHandlers } from './create-token-handlers.js';
+import type { SessionService } from '../../../access/domain/session-service.js';
+import type { TokenService } from '../../../access/domain/token-service.js';
+import type { TokenHandlers } from '../../../access/application/create-token-handlers.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
-} from './combined-auth-middleware.js';
+} from '../../../access/application/combined-auth-middleware.js';
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
-} from './with-authenticated-rate-limit.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
-import type { CreateTokenError, RevokeTokenError } from '../domain/token-errors.js';
-import { accessHttpError, accessStorageError } from './access-http-errors.js';
+} from '../../../access/application/with-authenticated-rate-limit.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
+import type { CreateTokenError, RevokeTokenError } from '../../../access/domain/token-errors.js';
+import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
 
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;

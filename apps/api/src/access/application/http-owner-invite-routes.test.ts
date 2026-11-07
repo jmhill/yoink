@@ -35,8 +35,8 @@ import {
   testConfigFull,
 } from '../../tests/helpers/test-app.js';
 import { ADMIN_SESSION_COOKIE } from './admin-session-middleware.js';
-import { registerAdminRoutes } from './admin-routes.js';
-import { registerInvitationRoutes } from './invitation-routes.js';
+import { registerAdminRoutes } from '../../edges/legacy/admin/admin-routes.js';
+import { registerInvitationRoutes } from '../../edges/legacy/invitation/invitation-routes.js';
 import { createAdminSessionService } from '../domain/admin-session-service.js';
 import { createAdminService } from '../domain/admin-service.js';
 import { createInvitationService } from '../domain/invitation-service.js';

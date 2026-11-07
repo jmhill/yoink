@@ -9,18 +9,16 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerOrpcHealthRoutes } from './health/application/index.js';
 import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
+import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/legacy/admin/admin-routes.js';
+import { registerAuthRoutes } from './edges/legacy/auth/auth-routes.js';
+import { registerInvitationRoutes, type InvitationRoutesDependencies } from './edges/legacy/invitation/invitation-routes.js';
+import { registerOrganizationRoutes } from './edges/legacy/organization/organization-routes.js';
+import { registerPasskeyRoutes } from './edges/legacy/passkey/passkey-routes.js';
+import { registerSignupRoutes } from './edges/legacy/signup/signup-routes.js';
+import { registerTokenMutationRoutes } from './edges/legacy/tokens/token-routes.js';
 import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
 import { registerOwnerlessWorkspaceFixtureRoutes } from './access/infrastructure/http-ownerless-workspace-fixture-routes.js';
 import {
-  registerAdminRoutes,
-  type AdminRoutesDependencies,
-  registerInvitationRoutes,
-  type InvitationRoutesDependencies,
-  registerSignupRoutes,
-  registerPasskeyRoutes,
-  registerAuthRoutes,
-  registerOrganizationRoutes,
-  registerTokenMutationRoutes,
   createAuthMiddleware,
   type AuthMiddleware,
   type ReissueAgentToken,

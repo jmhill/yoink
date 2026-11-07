@@ -17,32 +17,32 @@ import {
   removeMemberFailedMessage,
 } from '@yoink/api-contracts';
 import { organizationOrpcContract } from '@yoink/api-contracts/orpc';
-import type { SessionService } from '../domain/session-service.js';
-import type { MembershipService } from '../domain/membership-service.js';
-import type { UserService } from '../domain/user-service.js';
-import type { AgentService, AgentServiceError } from '../domain/agent-service.js';
-import type { AuthMiddleware } from './auth-middleware.js';
-import type { ReissueAgentToken, ReissueAgentTokenError } from './handle-reissue-agent-token.js';
+import type { SessionService } from '../../../access/domain/session-service.js';
+import type { MembershipService } from '../../../access/domain/membership-service.js';
+import type { UserService } from '../../../access/domain/user-service.js';
+import type { AgentService, AgentServiceError } from '../../../access/domain/agent-service.js';
+import type { AuthMiddleware } from '../../../access/application/auth-middleware.js';
+import type { ReissueAgentToken, ReissueAgentTokenError } from '../../../access/application/handle-reissue-agent-token.js';
 import type {
   HandleTransferOwnershipError,
   TransferOwnershipHandler,
-} from './handle-transfer-ownership.js';
+} from '../../../access/application/handle-transfer-ownership.js';
 import type {
   ChangeMemberRoleHandler,
   HandleChangeMemberRoleError,
-} from './handle-change-member-role.js';
+} from '../../../access/application/handle-change-member-role.js';
 import type {
   HandleRemoveMemberError,
   RemoveMemberHandler,
-} from './handle-remove-member.js';
-import { principalKindOf } from '../domain/user.js';
-import type { SessionServiceError } from '../domain/auth-errors.js';
-import type { MembershipServiceError } from '../domain/organization-errors.js';
-import type { UserServiceError } from '../domain/user-errors.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
-import { accessHttpError, accessStorageError } from './access-http-errors.js';
+} from '../../../access/application/handle-remove-member.js';
+import { principalKindOf } from '../../../access/domain/user.js';
+import type { SessionServiceError } from '../../../access/domain/auth-errors.js';
+import type { MembershipServiceError } from '../../../access/domain/organization-errors.js';
+import type { UserServiceError } from '../../../access/domain/user-errors.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
+import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
 
 const leaveErrorResponse = (error: HandleRemoveMemberError) => {
   switch (error.type) {

@@ -2,9 +2,9 @@ import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { healthOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { HealthChecker } from '../../platform/health/health-checker.js';
 import { mapHealthCheckError } from './orpc-health-errors.js';
 

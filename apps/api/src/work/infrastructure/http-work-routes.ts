@@ -7,11 +7,11 @@ import {
   toTaskListBody,
   toWorkListsBody,
   toWorkNextActionsBody,
-} from '../../listing/infrastructure/http-listed-page.js';
-import { listedRequestValidationError } from '../../shared/request-validation.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+} from '../../edges/_shared/http-listed-page.js';
+import { listedRequestValidationError } from '../../edges/_shared/request-validation.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { WorkHandlers } from '../application/create-work-handlers.js';
 import {
   mapListDueError,

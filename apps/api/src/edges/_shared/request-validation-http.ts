@@ -5,4 +5,4 @@ export {
   validationIssuePaths,
   type RequestValidationErr,
   type RequestValidationHttpError,
-} from '../request-validation.js';
+} from './request-validation.js';

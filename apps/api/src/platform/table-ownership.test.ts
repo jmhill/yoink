@@ -200,6 +200,10 @@ describe('table reference heuristic', () => {
 });
 
 describe('path ownership', () => {
+  it('leaves shared/ as the change log only', () => {
+    expect(readdirSync(join(apiSrc, 'shared')).sort()).toEqual(['change-log']);
+  });
+
   it('maps target paths and today\'s layout, and keeps SQL in infrastructure', () => {
     expect(classifyApiPath('modules/task-management/infrastructure/tasks.ts')).toEqual({
       kind: 'module-infrastructure',
@@ -250,9 +254,13 @@ describe('path ownership', () => {
       reason: 'test-fixtures',
     });
     expect(classifyApiPath('platform/sql/page-sqlite.ts')).toEqual({ kind: 'platform' });
-    expect(classifyApiPath('listing/infrastructure/http-listed-page.ts')).toEqual({
+    expect(classifyApiPath('edges/_shared/http-listed-page.ts')).toEqual({
       kind: 'no-sql',
-      area: 'listing',
+      area: 'edge',
+    });
+    expect(classifyApiPath('edges/_shared/server/json-body.ts')).toEqual({
+      kind: 'no-sql',
+      area: 'edge',
     });
     expect(classifyApiPath(`platform/database/migrations/0${LEGACY_MIGRATION_VERSION}-owner-invites.ts`)).toEqual({
       kind: 'exempt',

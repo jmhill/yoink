@@ -6,10 +6,10 @@ import type { AuthMiddleware } from '../../access/application/index.js';
 import {
   toNamedListListBody,
   toTaskListBody,
-} from '../../listing/infrastructure/http-listed-page.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+} from '../../edges/_shared/http-listed-page.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { ListHandlers } from '../application/create-list-handlers.js';
 import {
   mapCreateNamedListError,

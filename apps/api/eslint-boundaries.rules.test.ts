@@ -297,4 +297,55 @@ describe('boundaries target rules', () => {
       }),
     ]);
   });
+
+  it('keeps edge helpers shared by edges and out of domain and kernel', async () => {
+    const root = await writeTree({
+      'src/kernel/clock.ts': 'export type Clock = { now(): Date };\n',
+      'src/edges/_shared/http.ts': `
+        import type { Clock } from '../../kernel/clock.js';
+        export const read = (clock: Clock) => clock.now();
+      `,
+      'src/edges/_shared/leak-db.ts': `
+        import type { Database } from '../../platform/database/types.js';
+        export type Leak = Database;
+      `,
+      'src/platform/database/types.ts': 'export type Database = { execute(sql: string): Promise<void> };\n',
+      'src/tasks/infrastructure/routes.ts': `
+        import { read } from '../../edges/_shared/http.js';
+        export const routes = { read };
+      `,
+      'src/lists/domain/policy.ts': `
+        import { read } from '../../edges/_shared/http.js';
+        export const policy = { read };
+      `,
+      'src/kernel/pull.ts': `
+        import { read } from '../edges/_shared/http.js';
+        export const pulled = read;
+      `,
+    });
+
+    const diagnostics = await lintBoundaries(root);
+    const messagesFor = (relativePath: string) => diagnostics.get(relativePath) ?? [];
+
+    expect(messagesFor('src/edges/_shared/http.ts')).toEqual([]);
+    expect(messagesFor('src/tasks/infrastructure/routes.ts')).toEqual([]);
+    expect(messagesFor('src/edges/_shared/leak-db.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'boundaries/element-types',
+        message: expect.stringContaining("type 'platform-database'"),
+      }),
+    ]);
+    expect(messagesFor('src/lists/domain/policy.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'no-restricted-imports',
+        message: expect.stringContaining('edge HTTP helpers'),
+      }),
+    ]);
+    expect(messagesFor('src/kernel/pull.ts')).toEqual([
+      expect.objectContaining({
+        ruleId: 'boundaries/element-types',
+        message: expect.stringContaining("type 'edge-shared'"),
+      }),
+    ]);
+  });
 });

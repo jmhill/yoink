@@ -39,9 +39,9 @@ import { principalKindOf } from '../domain/user.js';
 import type { SessionServiceError } from '../domain/auth-errors.js';
 import type { MembershipServiceError } from '../domain/organization-errors.js';
 import type { UserServiceError } from '../domain/user-errors.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import { accessHttpError, accessStorageError } from './access-http-errors.js';
 
 const leaveErrorResponse = (error: HandleRemoveMemberError) => {

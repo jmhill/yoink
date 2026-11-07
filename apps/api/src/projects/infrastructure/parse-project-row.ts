@@ -1,7 +1,7 @@
 import { err, ok, Result } from 'neverthrow';
 import { z } from 'zod';
 import type { Project } from '@yoink/api-contracts';
-import { parseJson } from '../../shared/infrastructure/parse-json.js';
+import { parseJson } from '../../edges/_shared/parse-json.js';
 import { storageError, type StorageError } from '../domain/project-errors.js';
 import { notebookPagesFromPaths } from '../domain/notebook-pages.js';
 

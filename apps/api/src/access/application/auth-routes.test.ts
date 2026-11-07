@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerAuthRoutes } from './auth-routes.js';
-import { clientIpOfRequest } from '../../shared/request-client-ip.js';
+import { clientIpOfRequest } from '../../edges/_shared/request-client-ip.js';
 import { createPasskeyService } from '../domain/passkey-service.js';
 import { createSessionService } from '../domain/session-service.js';
 import { createUserService } from '../domain/user-service.js';

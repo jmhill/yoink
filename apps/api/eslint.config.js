@@ -306,8 +306,11 @@ export default [
             // `kernel` is ADR §3.4: any current layer may import kernel.
             // Kernel itself stays on the kernel-only rule further down.
             // M2.2 moved config, database, logging, and the SQL helpers into
-            // platform. These are the same imports under the new paths.
+            // platform. M2.4 moved the shared HTTP helpers into edges/_shared.
+            // These are the same imports under the new paths.
             // Target layers are not in currentTypes, so they do not gain this.
+            // Folder mode cannot split domain from infrastructure, so the
+            // domain ban on edges/_shared is the error rule below.
             {
               from: currentTypes,
               allow: [
@@ -320,6 +323,7 @@ export default [
                 'platform',
                 'platform-database',
                 'platform-sql',
+                'edge-shared',
               ],
             },
             { from: 'app', allow: ['*'] },
@@ -603,6 +607,36 @@ export default [
               group: ['@yoink/infrastructure', '@yoink/infrastructure/*'],
               message:
                 'domain and application import Clock, IdGenerator, and PasswordHasher from kernel. Runtime values stay in @yoink/infrastructure for platform, the composition root, and tests.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Application HTTP routes import edges/_shared. Domain does not.
+    // This block replaces the rule above for domain files, so it repeats it.
+    files: ['src/**/domain/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '**/infrastructure/*'],
+              message:
+                'domain and application must not import hexagonal infrastructure adapters',
+            },
+            {
+              group: ['@yoink/infrastructure', '@yoink/infrastructure/*'],
+              message:
+                'domain and application import Clock, IdGenerator, and PasswordHasher from kernel. Runtime values stay in @yoink/infrastructure for platform, the composition root, and tests.',
+            },
+            {
+              group: ['**/edges/_shared', '**/edges/_shared/**'],
+              message:
+                'domain does not import edge HTTP helpers',
             },
           ],
         },

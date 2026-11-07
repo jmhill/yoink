@@ -433,6 +433,67 @@ const checkBundle = () => {
   assert(process.env[TOKEN_ENV] === undefined, 'token is set in this environment');
 };
 
+const cell = (value: unknown): string | number | null => {
+  if (typeof value === 'bigint') return Number(value);
+  if (value === null || typeof value === 'string' || typeof value === 'number') return value;
+  return null;
+};
+
+const checkEvidence = () => {
+  const evidenceUrl = new URL('./m0-2-u1-transaction.remote.json', import.meta.url);
+  assert(
+    sha256(evidenceUrl) === '4944aa9a6c677e0ad1db7beca21b06470938a14e19845953bc554d9195de19b1',
+    'remote evidence bytes changed',
+  );
+  const report = JSON.parse(text(evidenceUrl)) as {
+    node: string;
+    libsqlClient: string;
+    ok: boolean;
+    foreignKeys: unknown;
+    manualBegin: boolean;
+    readsInsideTransaction: boolean;
+    durations: { processMs: number; maxTransactionMs: number };
+    timeout: { configuredMs: null; setByRunner: boolean };
+    driverFieldComparison: { usedForClassification: boolean; allowlistedFieldsEqual: boolean };
+    scenarios: Record<string, { ms: number; mapped: { kind?: string; owner?: string } | null; committed: boolean }>;
+    source: { sources: Record<string, string> };
+  };
+  assert(report.ok === true && report.node === 'v22.23.2' && report.libsqlClient === '0.15.15', 'remote header');
+  assert(report.foreignKeys === null, 'stored foreignKeys must stay null');
+  assert(report.manualBegin === false && report.readsInsideTransaction === false, 'remote rules');
+  assert(report.durations.processMs === 7366.9 && report.durations.maxTransactionMs === 481.5, 'remote durations');
+  assert(report.timeout.configuredMs === null && report.timeout.setByRunner === false, 'remote timeout');
+  assert(report.scenarios.commit?.ms === 406.2 && report.scenarios.commit.committed === true, 'remote commit');
+  assert(report.scenarios.staleGuard?.ms === 378.9 && report.scenarios.staleGuard.mapped?.owner === 'captures', 'remote stale');
+  assert(report.scenarios.checkProbe?.ms === 481.5 && report.scenarios.checkProbe.mapped === null, 'remote probe');
+  assert(
+    report.scenarios.duplicatePrimaryKey?.ms === 458.1 && report.scenarios.duplicatePrimaryKey.mapped?.kind === 'Storage',
+    'remote primary key',
+  );
+  assert(
+    report.driverFieldComparison.usedForClassification === false && report.driverFieldComparison.allowlistedFieldsEqual === true,
+    'remote driver comparison',
+  );
+  for (const [relative, expected] of Object.entries(report.source.sources)) {
+    assert(U1_IDENTITY.sources[relative as keyof typeof U1_IDENTITY.sources] === expected, `evidence source ${relative}`);
+  }
+  const proof = text(new URL('./m0-2-u1-transaction-proof.ts', import.meta.url));
+  assert(proof.includes('result.rows[0]?.value'), 'executed reader column');
+  assert(proof.includes("readOutside(db, 'PRAGMA foreign_keys')"), 'pragma read');
+  const pragmaRow = { foreign_keys: 1 };
+  assert(cell((pragmaRow as { value?: unknown }).value) === null, 'value column is absent');
+  assert(cell(pragmaRow.foreign_keys) === 1, 'pragma column is foreign_keys');
+  const manifest = JSON.parse(text(new URL('./manifest.json', runnerDir))) as {
+    executed: { bundleSha256: string; evidenceSha256: string; foreignKeys: null };
+  };
+  assert(manifest.executed.foreignKeys === null, 'manifest rewrote foreignKeys');
+  assert(
+    manifest.executed.bundleSha256 === 'f8c8aef03221fc2a5298157808badc08c2abe260ec6d9e9238eae542c74a47e4',
+    'executed bundle sha',
+  );
+  assert(manifest.executed.evidenceSha256 === sha256(evidenceUrl), 'manifest evidence sha');
+};
+
 const main = async () => {
   checkHashes();
   checkSource();
@@ -441,6 +502,7 @@ const main = async () => {
   await checkFileProof();
   await checkRemoteGuards();
   checkBundle();
+  checkEvidence();
   process.stdout.write('u1-remote-check ok\n');
 };
 

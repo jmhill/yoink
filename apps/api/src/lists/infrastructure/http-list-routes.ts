@@ -1,161 +1,18 @@
-import { OpenAPIHandler } from '@orpc/openapi/fastify';
-import { implement } from '@orpc/server';
-import { listOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import {
-  toNamedListListBody,
-  toTaskListBody,
-} from '../../edges/_shared/http-listed-page.js';
 import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
-import type { ListHandlers } from '../application/create-list-handlers.js';
-import {
-  mapCreateNamedListError,
-  mapDeleteNamedListError,
-  mapListNamedListsError,
-  mapListOpenTasksError,
-  mapListUnlistedOpenTasksError,
-  mapRenameNamedListError,
-  mapReorderOpenTasksError,
-  mapReorderUnlistedOpenTasksError,
-} from './orpc-list-errors.js';
+// The handlers live on the public API edge. M5.3 removes this import.
+// eslint-disable-next-line boundaries/element-types
+import { createListHandlers, type ListEdgeDependencies } from '../../edges/public-api/v1/lists.js';
 
-export type ListRoutesDependencies = {
-  listHandlers: ListHandlers;
+export type ListRoutesDependencies = ListEdgeDependencies & {
   authMiddleware: AuthMiddleware;
 };
 
 type ListHttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
-export const registerListRoutes = async (
-  app: FastifyInstance,
-  deps: ListRoutesDependencies
-) => {
-  const lists = implement(listOrpcContract).$context<OrpcHttpContext>();
-  const router = lists.router({
-    list: lists.list.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.list({
-        organizationId: context.request.authContext.organizationId,
-        limit: input.limit,
-        cursor: input.cursor,
-      });
-
-      return result.match(
-        (page) => toNamedListListBody(page),
-        (error) => {
-          throw mapListNamedListsError(error);
-        }
-      );
-    }),
-    create: lists.create.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.create({
-        name: input.name,
-        organizationId: context.request.authContext.organizationId,
-        createdById: context.request.authContext.userId,
-        actor: context.request.authContext.actor,
-      });
-
-      return result.match(
-        ({ view }) => view,
-        (error) => {
-          throw mapCreateNamedListError(error);
-        }
-      );
-    }),
-    rename: lists.rename.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.rename({
-        id: input.id,
-        name: input.name,
-        organizationId: context.request.authContext.organizationId,
-        actor: context.request.authContext.actor,
-      });
-
-      return result.match(
-        ({ view }) => view,
-        (error) => {
-          throw mapRenameNamedListError(error);
-        }
-      );
-    }),
-    listOpenTasks: lists.listOpenTasks.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.listOpenTasks({
-        listId: input.id,
-        organizationId: context.request.authContext.organizationId,
-        limit: input.limit,
-        cursor: input.cursor,
-      });
-
-      return result.match(
-        (page) => toTaskListBody(page),
-        (error) => {
-          throw mapListOpenTasksError(error);
-        }
-      );
-    }),
-    reorderOpenTasks: lists.reorderOpenTasks.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.reorderOpenTasks({
-        listId: input.id,
-        organizationId: context.request.authContext.organizationId,
-        taskIds: input.taskIds,
-        actor: context.request.authContext.actor,
-      });
-
-      return result.match(
-        ({ tasks }) => ({ tasks }),
-        (error) => {
-          throw mapReorderOpenTasksError(error);
-        }
-      );
-    }),
-    listUnlistedOpenTasks: lists.listUnlistedOpenTasks.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.listUnlistedOpenTasks({
-        organizationId: context.request.authContext.organizationId,
-        limit: input.limit,
-        cursor: input.cursor,
-      });
-
-      return result.match(
-        (page) => toTaskListBody(page),
-        (error) => {
-          throw mapListUnlistedOpenTasksError(error);
-        }
-      );
-    }),
-    reorderUnlistedOpenTasks: lists.reorderUnlistedOpenTasks.handler(
-      async ({ input, context }) => {
-        const result = await deps.listHandlers.reorderUnlistedOpenTasks({
-          organizationId: context.request.authContext.organizationId,
-          taskIds: input.taskIds,
-          actor: context.request.authContext.actor,
-        });
-
-        return result.match(
-          ({ tasks }) => ({ tasks }),
-          (error) => {
-            throw mapReorderUnlistedOpenTasksError(error);
-          }
-        );
-      }
-    ),
-    delete: lists.delete.handler(async ({ input, context }) => {
-      const result = await deps.listHandlers.delete({
-        id: input.id,
-        organizationId: context.request.authContext.organizationId,
-        actor: context.request.authContext.actor,
-      });
-
-      return result.match(
-        () => undefined,
-        (error) => {
-          throw mapDeleteNamedListError(error);
-        }
-      );
-    }),
-  });
-
-  const handler = new OpenAPIHandler(router, yoinkOpenApiHandlerOptions);
+export const registerListRoutes = async (app: FastifyInstance, deps: ListRoutesDependencies) => {
+  const { legacy } = createListHandlers(deps);
 
   await app.register(async (authedApp) => {
     authedApp.addHook('preHandler', deps.authMiddleware);
@@ -164,7 +21,7 @@ export const registerListRoutes = async (
       authedApp.route({
         method,
         url,
-        handler: async (request, reply) => dispatchOrpc(handler, request, reply),
+        handler: async (request, reply) => dispatchOrpc(legacy, request, reply),
       });
     };
 

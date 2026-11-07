@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server';
 import type { ListTaskHistoryError } from '../../history/application/handle-list-task-history.js';
-import { yoinkHttpError, yoinkServerError } from '../../shared/orpc/yoink-http-error.js';
+import { yoinkHttpError, yoinkServerError } from '../../edges/_shared/orpc/yoink-http-error.js';
 import type {
   CompleteTaskError,
   CreateTaskError,

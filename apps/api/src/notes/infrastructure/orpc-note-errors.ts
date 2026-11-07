@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server';
-import { yoinkHttpError, yoinkServerError } from '../../shared/orpc/yoink-http-error.js';
+import { yoinkHttpError, yoinkServerError } from '../../edges/_shared/orpc/yoink-http-error.js';
 import type {
   CreateNoteError,
   DeleteNoteError,

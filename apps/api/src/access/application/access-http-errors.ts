@@ -12,7 +12,7 @@ import {
 import {
   yoinkPublicServerError,
   yoinkServerError,
-} from '../../shared/orpc/yoink-http-error.js';
+} from '../../edges/_shared/orpc/yoink-http-error.js';
 import type { HandleCreateWorkspaceError } from './handle-create-workspace.js';
 import type { HandleIssueOwnerInvitationError } from './handle-issue-owner-invitation.js';
 import type { HandleAcceptInvitationError } from './handle-accept-invitation.js';

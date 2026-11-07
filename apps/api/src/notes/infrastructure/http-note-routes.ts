@@ -3,10 +3,10 @@ import { implement } from '@orpc/server';
 import { noteOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import { toNoteListBody } from '../../listing/infrastructure/http-listed-page.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { toNoteListBody } from '../../edges/_shared/http-listed-page.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { NoteHandlers } from '../application/create-note-handlers.js';
 import { noteRequestValidationError } from './note-http-errors.js';
 import {

@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthMiddleware } from './auth-middleware.js';
-import { decideRateLimitExceededMessage } from '../../shared/rate-limit-policy.js';
+import { decideRateLimitExceededMessage } from '../../edges/_shared/rate-limit-policy.js';
 
 export type AuthenticatedRateLimitConsume = (userId: string) => {
   limited: boolean;

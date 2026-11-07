@@ -54,7 +54,7 @@ import {
   createAuthMiddleware,
   createCombinedAuthMiddleware,
 } from './access/application/index.js';
-import { decideViaFly } from './shared/rate-limit-policy.js';
+import { decideViaFly } from './edges/_shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,

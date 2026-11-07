@@ -74,16 +74,16 @@ import {
 import type { Database } from './platform/database/types.js';
 import { createLoggerOptions } from './platform/logging/index.js';
 import { shouldHandleError } from './platform/logging/should-handle-error.js';
-import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './static-cache-control.js';
+import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './edges/_shared/server/static-cache-control.js';
 import {
   decideRateLimitExempt,
   decideRateLimitKey,
   decideTimeWindowMs,
-} from './shared/rate-limit-policy.js';
-import { createInMemoryRateLimitConsume } from './shared/in-memory-rate-limit-consume.js';
-import { clientIpOfRequest, type ClientIpOf } from './shared/request-client-ip.js';
-import { registerJsonBodyParser } from './json-body.js';
-import { trustImmediateProxy } from './trust-proxy.js';
+} from './edges/_shared/rate-limit-policy.js';
+import { createInMemoryRateLimitConsume } from './edges/_shared/in-memory-rate-limit-consume.js';
+import { clientIpOfRequest, type ClientIpOf } from './edges/_shared/request-client-ip.js';
+import { registerJsonBodyParser } from './edges/_shared/server/json-body.js';
+import { trustImmediateProxy } from './edges/_shared/server/trust-proxy.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AdminConfig = {

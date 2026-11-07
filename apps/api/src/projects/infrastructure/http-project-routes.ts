@@ -4,10 +4,10 @@ import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
 import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
-import { toProjectListBody, toTaskListBody } from '../../listing/infrastructure/http-listed-page.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { openApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { toProjectListBody, toTaskListBody } from '../../edges/_shared/http-listed-page.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { openApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { ProjectHandlers } from '../application/create-project-handlers.js';
 import type { SetProjectNextActionCommand } from '../domain/project-commands.js';
 import {

@@ -6,15 +6,15 @@ import {
 } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import { toCaptureListBody } from '../../listing/infrastructure/http-listed-page.js';
+import { toCaptureListBody } from '../../edges/_shared/http-listed-page.js';
 import { projectRequestValidationError } from '../../projects/infrastructure/project-http-errors.js';
 import type { CaptureProcessingService } from '../../processing/application/create-processing-handlers.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
 import {
   openApiHandlerOptions,
   yoinkOpenApiHandlerOptions,
-} from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+} from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { CaptureHandlers } from '../application/create-capture-handlers.js';
 import {
   mapAgentCaptureRefusal,

@@ -9,9 +9,9 @@ import type { UserService } from '../domain/user-service.js';
 import type { AuthMiddleware } from './auth-middleware.js';
 import { handleAcceptInvitation } from './handle-accept-invitation.js';
 import { handleValidateInvitation } from './handle-validate-invitation.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
   accessHttpError,

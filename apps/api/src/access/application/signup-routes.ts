@@ -8,10 +8,10 @@ import type { PasskeyService } from '../domain/passkey-service.js';
 import type { SessionService } from '../domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../platform/config/schema.js';
-import type { ClientIpOf } from '../../shared/request-client-ip.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import type { ClientIpOf } from '../../edges/_shared/request-client-ip.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
   accessHttpError,

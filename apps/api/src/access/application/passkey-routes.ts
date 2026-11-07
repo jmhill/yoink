@@ -10,9 +10,9 @@ import {
   type CombinedAuthMiddlewareDependencies,
 } from './combined-auth-middleware.js';
 import type { TokenService } from '../domain/token-service.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { PasskeyServiceError } from '../domain/auth-errors.js';
 import {
   withAuthenticatedRateLimit,

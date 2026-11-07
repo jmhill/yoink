@@ -2,7 +2,7 @@ import {
   namedValidationFailedMessage,
   validationIssuePaths,
   type RequestValidationErr,
-} from '../../shared/request-validation.js';
+} from '../../edges/_shared/request-validation.js';
 
 export type ProjectHttpError = {
   message: string;

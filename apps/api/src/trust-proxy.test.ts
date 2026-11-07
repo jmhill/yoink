@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createFastifyInstance } from './app.js';
-import { trustImmediateProxy, TRUST_PROXY_HOPS } from './trust-proxy.js';
+import { trustImmediateProxy, TRUST_PROXY_HOPS } from './edges/_shared/server/trust-proxy.js';
 
 describe('trustImmediateProxy', () => {
   it('trusts only the immediate hop, the same as Fastify 4 trustProxy 1', () => {

@@ -20,19 +20,19 @@ import {
   namedRequestValidationError,
   validationIssuePaths,
   type RequestValidationErr,
-} from '../../shared/request-validation.js';
-import type { ClientIpOf } from '../../shared/request-client-ip.js';
+} from '../../edges/_shared/request-validation.js';
+import type { ClientIpOf } from '../../edges/_shared/request-client-ip.js';
 import type { handleCreateWorkspace } from './handle-create-workspace.js';
 import type { handleIssueOwnerInvitation } from './handle-issue-owner-invitation.js';
 import type { handleGetOwnerInvitation } from './handle-get-owner-invitation.js';
 import type { handleListWorkspaces } from './handle-list-workspaces.js';
 import type { HandleListWorkspacesError } from './handle-list-workspaces.js';
-import { dispatchOrpc } from '../../shared/orpc/dispatch.js';
+import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
 import {
   openApiHandlerOptions,
   yoinkOpenApiHandlerOptions,
-} from '../../shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../shared/orpc/http-context.js';
+} from '../../edges/_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import {
   accessHttpError,
   accessInternalError,

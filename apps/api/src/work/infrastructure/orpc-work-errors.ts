@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server';
-import { yoinkServerError } from '../../shared/orpc/yoink-http-error.js';
+import { yoinkServerError } from '../../edges/_shared/orpc/yoink-http-error.js';
 import type { ListNowError, ListWorkListsError } from '../domain/work-errors.js';
 
 const mapCursorOrStorage = (

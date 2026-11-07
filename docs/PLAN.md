@@ -652,7 +652,7 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Plan:** [001-migration-plan.md](./architecture/adr/001-migration-plan.md) has every task, its dependencies, acceptance criteria and the shared definition of done. Each task can be handed to an agent on its own. **Deferred:** [ADR-002 (module kit)](./architecture/adr/002-module-kit.md). Every task adds to its lessons log.
 
-The execution index in that plan is the handoff list (task keys, dependencies, serialization, status, gates, GitHub links). Seventy-seven issues are published. M0.2 stays pending publication, pending user Submit. M1 is done at `warn`. The migration is not done. This file does not duplicate that list.
+The execution index in that plan is the handoff list (task keys, dependencies, serialization, status, gates, GitHub links). Seventy-seven issues are published. M0.2 stays pending publication, pending user Submit. M1 is done at `warn`. M2 is complete. The migration is not done. This file does not duplicate that list.
 
 ### M0: Adopt, prove, inventory - In Progress
 - [x] M0.1 Adopt the ADRs into the repo
@@ -666,11 +666,11 @@ The execution index in that plan is the handoff list (task keys, dependencies, s
 - [x] M1.2 Table-ownership architecture test (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227))
 - [x] M1.3 Migration ownership (`cedc109`, [#305](https://github.com/jmhill/yoink/pull/305), [#228](https://github.com/jmhill/yoink/issues/228))
 
-### M2: Kernel, platform, `edges/_shared` - In progress
+### M2: Kernel, platform, `edges/_shared` - Done
 - [x] M2.1 Create `kernel/` (`db23e4f`, [#306](https://github.com/jmhill/yoink/pull/306), [#229](https://github.com/jmhill/yoink/issues/229))
 - [x] M2.2 Create `platform/` (`882488f`, [#308](https://github.com/jmhill/yoink/pull/308), [#230](https://github.com/jmhill/yoink/issues/230))
 - [x] M2.3 Split `@yoink/infrastructure` (`c1358cc`, [#309](https://github.com/jmhill/yoink/pull/309), [#231](https://github.com/jmhill/yoink/issues/231))
-- [ ] M2.4 Create `edges/_shared/` (in progress; not merged)
+- [x] M2.4 Create `edges/_shared/` (`cecc6e4cc5371a1a54184eab61172a9d24eb911f`, [#310](https://github.com/jmhill/yoink/pull/310), [#232](https://github.com/jmhill/yoink/issues/232))
 
 ### M3: HTTP out of modules, public API v1 live - Not Started
 - [ ] M3.1 Public API v1 contracts (frozen copy)
@@ -2112,7 +2112,7 @@ When resuming work on this project:
 
 Done on main: M0.1 (`11da980`). M0.4 ([#301](https://github.com/jmhill/yoink/pull/301), [#223](https://github.com/jmhill/yoink/issues/223)). M0.5 (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)). M1.1 (`3b0441b`, [#302](https://github.com/jmhill/yoink/pull/302), [#226](https://github.com/jmhill/yoink/issues/226)): ADR §10 rules 1–7 stay at `warn`, and `boundaries/no-unknown` is 0 in `docs/architecture/ESLINT_BASELINE.md`. M1.2 (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227)). M1.3 (`cedc109`, [#305](https://github.com/jmhill/yoink/pull/305), [#228](https://github.com/jmhill/yoink/issues/228)). M1 is done.
 
-Still open: M0.2 and M0.3. M0.2 is local libsql evidence only ([#303](https://github.com/jmhill/yoink/pull/303), ADR §6.1). Turso has not been run. The issue stays pending user Submit and has no issue URL. The Connect Turso widget is unanswered. Do not close M0.2. M0.3 has not started. It is serialized after M0.2 because both write ADR-001. M2.1 is Done on main (`db23e4f`, [#306](https://github.com/jmhill/yoink/pull/306), [#229](https://github.com/jmhill/yoink/issues/229)). M2.2 is Done on main (`882488f`, [#308](https://github.com/jmhill/yoink/pull/308), [#230](https://github.com/jmhill/yoink/issues/230)). M2.3 is Done on main (`c1358cc`, [#309](https://github.com/jmhill/yoink/pull/309), [#231](https://github.com/jmhill/yoink/issues/231)). M2.4 ([#232](https://github.com/jmhill/yoink/issues/232)) is in progress and is not merged. M2 is not complete. The migration is not complete. M7.5 error enforcement is not done. Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md), then take the next index task that is not already in progress. Phase 8.5's open items are superseded by this migration.
+Still open: M0.2 and M0.3. M0.2 is local libsql evidence only ([#303](https://github.com/jmhill/yoink/pull/303), ADR §6.1). The issue stays pending user Submit and has no issue URL. Submit approval for that replacement stays skipped: do not create, edit, resubmit, or duplicate the form, and do not open a new issue. Turso OAuth is connected (2026-11-06 6:24 CT). Empty unbranched `yoink-m02-spike` was created at 6:27 CT in the default group. Existing `jhtc-yoink` was not queried or changed. A single-database token that expires in one day was requested from Justin and is awaiting input. The connector lists 18 tools and has no client token and no batch tool. The remote batch has not run. No production unit of work. U2 is not confirmed and the U1 fallback is unchanged. Do not close M0.2. M0.3 has not started. It is serialized after M0.2 because both write ADR-001. M0.3 and M4.1 stay unstarted until a parent go after the M0.2 remote proof and the U2/U1 decision. M2.1 is Done on main (`db23e4f`, [#306](https://github.com/jmhill/yoink/pull/306), [#229](https://github.com/jmhill/yoink/issues/229)). M2.2 is Done on main (`882488f`, [#308](https://github.com/jmhill/yoink/pull/308), [#230](https://github.com/jmhill/yoink/issues/230)). M2.3 is Done on main (`c1358cc`, [#309](https://github.com/jmhill/yoink/pull/309), [#231](https://github.com/jmhill/yoink/issues/231)). M2.4 is Done on main (`cecc6e4cc5371a1a54184eab61172a9d24eb911f`, [#310](https://github.com/jmhill/yoink/pull/310), [#232](https://github.com/jmhill/yoink/issues/232)). M2 is complete. The migration is not complete. M3 has not started. M7.5 error enforcement is not done. Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md). Phase 8.5's open items are superseded by this migration.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

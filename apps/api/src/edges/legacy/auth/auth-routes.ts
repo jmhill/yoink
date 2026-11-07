@@ -12,7 +12,7 @@ import type { OrganizationStore } from '../../../access/domain/organization-stor
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
-} from '../../../access/application/combined-auth-middleware.js';
+} from '../../_shared/auth/combined-auth-middleware.js';
 import type { TokenService } from '../../../access/domain/token-service.js';
 import type { RateLimitConfig } from '../../../platform/config/schema.js';
 import type { ClientIpOf } from '../../_shared/request-client-ip.js';
@@ -23,8 +23,8 @@ import type { PasskeyServiceError } from '../../../access/domain/auth-errors.js'
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
-} from '../../../access/application/with-authenticated-rate-limit.js';
-import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
+} from '../../_shared/auth/with-authenticated-rate-limit.js';
+import { accessHttpError, accessStorageError } from '../../_shared/auth/access-http-errors.js';
 
 export type AuthRoutesDependencies = {
   passkeyService: PasskeyService;

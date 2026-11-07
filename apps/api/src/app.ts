@@ -18,14 +18,13 @@ import { registerSignupRoutes } from './edges/legacy/signup/signup-routes.js';
 import { registerTokenMutationRoutes } from './edges/legacy/tokens/token-routes.js';
 import { registerReviewFixtureRoutes } from './edges/test-fixtures/http-review-fixture-routes.js';
 import { registerOwnerlessWorkspaceFixtureRoutes } from './edges/test-fixtures/http-ownerless-workspace-fixture-routes.js';
-import {
-  createAuthMiddleware,
-  type AuthMiddleware,
-  type ReissueAgentToken,
-  type TransferOwnershipHandler,
-  type ChangeMemberRoleHandler,
-  type RemoveMemberHandler,
-  withAuthenticatedRateLimit,
+import { createAuthMiddleware, type AuthMiddleware } from './edges/_shared/auth/auth-middleware.js';
+import { withAuthenticatedRateLimit } from './edges/_shared/auth/with-authenticated-rate-limit.js';
+import type {
+  ChangeMemberRoleHandler,
+  ReissueAgentToken,
+  RemoveMemberHandler,
+  TransferOwnershipHandler,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { CaptureHandlers } from './captures/application/index.js';
@@ -166,6 +165,9 @@ export const createApp = async (deps: AppDependencies) => {
   const rateLimitConfig = deps.rateLimit ?? defaultRateLimitConfig;
   const viaFly = deps.viaFly ?? false;
   const clientIpOf: ClientIpOf = (request) => clientIpOfRequest(request, viaFly);
+  // Public API and the legacy web routes share this one authenticated bucket.
+  // Admin login, auth login, and signup keep their own windows on those edges.
+  // Splitting this bucket would raise the effective limit.
   const applyAuthenticatedRateLimit = rateLimitConfig.enabled
     ? createInMemoryRateLimitConsume({
         max: rateLimitConfig.globalMax,

@@ -34,7 +34,7 @@ import {
   TEST_USER_ID,
   testConfigFull,
 } from '../../tests/helpers/test-app.js';
-import { ADMIN_SESSION_COOKIE } from './admin-session-middleware.js';
+import { ADMIN_SESSION_COOKIE } from '../../edges/_shared/auth/admin-session-middleware.js';
 import { registerAdminRoutes } from '../../edges/legacy/admin/admin-routes.js';
 import { registerInvitationRoutes } from '../../edges/legacy/invitation/invitation-routes.js';
 import { createAdminSessionService } from '../domain/admin-session-service.js';
@@ -43,7 +43,7 @@ import { createInvitationService } from '../domain/invitation-service.js';
 import { createUserService } from '../domain/user-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
 import { createOrganizationService } from '../domain/organization-service.js';
-import { createCombinedAuthMiddleware } from './combined-auth-middleware.js';
+import { createCombinedAuthMiddleware } from '../../edges/_shared/auth/combined-auth-middleware.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { errAsync, okAsync } from 'neverthrow';
-import type { AuthMiddleware } from '../access/application/index.js';
+import type { AuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
 import { invalidCursorError } from '../kernel/listing/domain/invalid-cursor.js';
 import type { AuthContext } from '../kernel/auth-context.js';
 import type { CaptureHandlers } from '../captures/application/create-capture-handlers.js';

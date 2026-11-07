@@ -8,7 +8,7 @@ import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
-} from '../../../access/application/combined-auth-middleware.js';
+} from '../../_shared/auth/combined-auth-middleware.js';
 import type { TokenService } from '../../../access/domain/token-service.js';
 import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
@@ -17,8 +17,8 @@ import type { PasskeyServiceError } from '../../../access/domain/auth-errors.js'
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
-} from '../../../access/application/with-authenticated-rate-limit.js';
-import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
+} from '../../_shared/auth/with-authenticated-rate-limit.js';
+import { accessHttpError, accessStorageError } from '../../_shared/auth/access-http-errors.js';
 
 export type PasskeyRoutesDependencies = {
   passkeyService: PasskeyService;

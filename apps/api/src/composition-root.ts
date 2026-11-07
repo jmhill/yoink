@@ -62,10 +62,8 @@ import {
   createSqliteProcessToTaskPersist,
 } from './processing/infrastructure/persist-process.js';
 import { createSqliteHealthChecker } from './platform/health/sqlite-health-checker.js';
-import {
-  createAuthMiddleware,
-  createCombinedAuthMiddleware,
-} from './access/application/index.js';
+import { createAuthMiddleware } from './edges/_shared/auth/auth-middleware.js';
+import { createCombinedAuthMiddleware } from './edges/_shared/auth/combined-auth-middleware.js';
 import { decideViaFly } from './edges/_shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
 import {

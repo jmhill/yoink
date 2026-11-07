@@ -1,8 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthContext } from '../../kernel/auth-context.js';
-import type { UserSession } from '../domain/user-session.js';
-import type { SessionService } from '../domain/session-service.js';
-import { actorFromSession } from '../../kernel/auth-context.js';
+import type { AuthContext } from '../../../kernel/auth-context.js';
+import type { UserSession } from '../../../access/domain/user-session.js';
+import type { SessionService } from '../../../access/domain/session-service.js';
+import { actorFromSession } from '../../../kernel/auth-context.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

@@ -9,16 +9,16 @@ import type { TokenHandlers } from '../../../access/application/create-token-han
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
-} from '../../../access/application/combined-auth-middleware.js';
+} from '../../_shared/auth/combined-auth-middleware.js';
 import {
   withAuthenticatedRateLimit,
   type AuthenticatedRateLimitConsume,
-} from '../../../access/application/with-authenticated-rate-limit.js';
+} from '../../_shared/auth/with-authenticated-rate-limit.js';
 import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import type { CreateTokenError, RevokeTokenError } from '../../../access/domain/token-errors.js';
-import { accessHttpError, accessStorageError } from '../../../access/application/access-http-errors.js';
+import { accessHttpError, accessStorageError } from '../../_shared/auth/access-http-errors.js';
 
 export type TokenRoutesDependencies = {
   tokenHandlers: TokenHandlers;

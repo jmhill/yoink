@@ -4,7 +4,7 @@ import type { OrganizationStore } from '../../access/domain/organization-store.j
 import type { InvitationStore } from '../../access/domain/invitation-store.js';
 import type { OrganizationMembershipStore } from '../../access/domain/organization-membership-store.js';
 import type { AdminSessionService } from '../../access/domain/admin-session-service.js';
-import { createAdminSessionMiddleware } from '../../access/application/admin-session-middleware.js';
+import { createAdminSessionMiddleware } from '../_shared/auth/admin-session-middleware.js';
 
 const OwnerlessBodySchema = z.object({
   name: z.string().min(1).max(200),

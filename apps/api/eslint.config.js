@@ -61,6 +61,7 @@ const layerAndCurrentTypes = [
   'workflow-policies',
   'workflow-test',
   'edge',
+  'edge-auth',
   'edge-shared',
   'edge-test',
   'kernel',
@@ -190,6 +191,13 @@ const elements = [
     pattern: 'src/edges/([^/]+)/**/*.test.ts',
     mode: 'full',
     capture: ['edge'],
+  },
+  {
+    // M3.5. Before edge-shared, so auth middleware is not the whole shared folder.
+    // These files still call access services. M5.13 replaces that with an interface.
+    type: 'edge-auth',
+    pattern: 'src/edges/_shared/auth/**',
+    mode: 'full',
   },
   {
     type: 'edge-shared',
@@ -336,7 +344,12 @@ export default [
             // M3.3. Colocated route tests still live in access until M3.6.
             // They may import the legacy edge they exercise. Other edges stay
             // disallowed, including public-api.
-            { from: 'access', allow: ['access', ['edge', { edge: 'legacy' }]] },
+            // M3.5. Middleware tests stay in access until M3.6. They import
+            // edges/_shared/auth. Production access does not.
+            {
+              from: 'access',
+              allow: ['access', ['edge', { edge: 'legacy' }], 'edge-auth'],
+            },
             { from: 'captures', allow: ['captures'] },
             // M3.4. The health route test stays here until M3.6. It may
             // import the ops edge. Other edges stay disallowed.
@@ -475,6 +488,7 @@ export default [
                 'module-entry',
                 'workflow-entry',
                 'kernel',
+                'edge-auth',
                 'edge-shared',
                 'platform',
               ],
@@ -510,6 +524,12 @@ export default [
             {
               from: [['edge', { edge: 'legacy' }]],
               allow: ['access'],
+            },
+            // M3.5. Auth adapters may call today's access services until M5.13.
+            // The rest of edges/_shared may not.
+            {
+              from: 'edge-auth',
+              allow: ['edge-auth', 'access', 'kernel', 'edge-shared'],
             },
             {
               from: 'edge-shared',
@@ -599,7 +619,7 @@ export default [
               from: ['platform', 'platform-database', 'platform-sql'],
               allow: platformPackages,
             },
-            { from: ['edge', 'edge-shared'], allow: edgePackages },
+            { from: ['edge', 'edge-auth', 'edge-shared'], allow: edgePackages },
             // Colocated tests are not production layers. vitest is the runner.
             // `@yoink/api-contracts` stays off this list, including type-only
             // imports (the plugin's default import nodes include `import type`).
@@ -674,6 +694,76 @@ export default [
               group: ['**/edges/_shared', '**/edges/_shared/**'],
               message:
                 'domain does not import edge HTTP helpers',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // M3.5. Access contains no Fastify or oRPC imports. HTTP tests stay in
+    // access until M3.6 and are ignored. This block replaces the rule for
+    // access files, so it repeats the infrastructure and domain bans.
+    files: ['src/access/**/{domain,application}/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/infrastructure/**', '**/infrastructure/*'],
+              message:
+                'domain and application must not import hexagonal infrastructure adapters',
+            },
+            {
+              group: ['@yoink/infrastructure', '@yoink/infrastructure/*'],
+              message:
+                'domain and application import Clock, IdGenerator, and PasswordHasher from kernel. Runtime values stay in @yoink/infrastructure for platform, the composition root, and tests.',
+            },
+            {
+              group: ['**/edges/_shared', '**/edges/_shared/**'],
+              message:
+                'domain does not import edge HTTP helpers',
+            },
+            {
+              group: [
+                'fastify',
+                'fastify/**',
+                '@fastify/*',
+                '@fastify/*/**',
+                '@orpc/*',
+                '@orpc/*/**',
+              ],
+              message:
+                'access contains no Fastify or oRPC imports. HTTP adapters live on an edge.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // M3.5. The same Fastify and oRPC ban for access infrastructure. This
+    // folder may import @yoink/infrastructure. HTTP adapters do not live here.
+    files: ['src/access/infrastructure/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                'fastify',
+                'fastify/**',
+                '@fastify/*',
+                '@fastify/*/**',
+                '@orpc/*',
+                '@orpc/*/**',
+              ],
+              message:
+                'access contains no Fastify or oRPC imports. HTTP adapters live on an edge.',
             },
           ],
         },

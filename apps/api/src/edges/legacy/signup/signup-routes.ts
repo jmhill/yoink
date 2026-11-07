@@ -16,7 +16,7 @@ import {
   acceptInvitationErrorResponse,
   accessHttpError,
   accessStorageError,
-} from '../../../access/application/access-http-errors.js';
+} from '../../_shared/auth/access-http-errors.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;

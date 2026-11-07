@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
+import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from '../../edges/_shared/auth/combined-auth-middleware.js';
 import { createTokenService } from '../domain/token-service.js';
 import { createSessionService } from '../domain/session-service.js';
 import type { Organization } from '../domain/organization.js';

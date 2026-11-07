@@ -4,7 +4,7 @@ import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import {
   createUserSessionMiddleware,
   USER_SESSION_COOKIE,
-} from './user-session-middleware.js';
+} from '../../edges/_shared/auth/user-session-middleware.js';
 import { createSessionService, type SessionService } from '../domain/session-service.js';
 import { createMembershipService } from '../domain/membership-service.js';
 import { createUserService } from '../domain/user-service.js';

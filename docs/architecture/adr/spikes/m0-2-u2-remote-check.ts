@@ -12,7 +12,7 @@ import { createDatabase } from '../../../../apps/api/src/platform/database/datab
 import { describeLocalError, runU2BatchProof } from './m0-2-u2-batch-proof.ts';
 import { PROOF_IDENTITY } from './m0-2-u2-remote-identity.ts';
 import {
-  AUTHORIZED_GROUP_ID,
+  AUTHORIZED_DATABASE_ID,
   LIBSQL_VERSION,
   REMOTE_HOSTNAME,
   REMOTE_TARGET,
@@ -94,7 +94,7 @@ const checkGuard = () => {
   assert(!('message' in sanitized), 'message field');
   const redacted = redactSecrets(`{"error":"${token}"}`, [token]);
   assert(redacted.redacted && !redacted.text.includes(token), 'redact');
-  assert(AUTHORIZED_GROUP_ID === '01a1b366-ad01-751d-bbab-7852a143f84b', 'group');
+  assert(AUTHORIZED_DATABASE_ID === '01a1b366-ad01-751d-bbab-7852a143f84b', 'database id');
   assert(REMOTE_HOSTNAME === 'yoink-m02-spike-jmhill.aws-us-east-1.turso.io', 'host');
   assert(LIBSQL_VERSION === '0.15.15', 'libsql pin');
   assert(TOKEN_ENV === 'TURSO_SPIKE_AUTH_TOKEN', 'token env name');
@@ -233,11 +233,81 @@ const checkBundle = () => {
   assert(!readFileSync(packageUrl, 'utf8').includes('TURSO_'), 'package.json has no token');
 };
 
+const EXECUTED_SOURCE_HASHES = {
+  'docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts':
+    '62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045',
+  'docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts':
+    '7303f68dc7f020e4ac1cd5a3aefeba60ed6ba22aabe5f137e7e65b33f872e282',
+  'docs/architecture/adr/spikes/m0-2-u2-remote-run.ts':
+    'a8730613e757cb5781f4aec311130e16f84ac792258275f73aeb14a91cdeba76',
+  'docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts':
+    '1f25c7127feec6b723acac89a4a6de8cc873c36ec36ee2fe80761490a4e7697e',
+  'docs/architecture/adr/spikes/m0-2-u2-batch.ts':
+    'bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a',
+} as const;
+
+const checkEvidence = () => {
+  const evidence = JSON.parse(readFileSync(new URL('m0-2-u2-batch.remote.json', spikeDir), 'utf8')) as {
+    node: string;
+    libsqlClient: string;
+    database: { targetUrl: string; groupId: string; databaseId?: string; temporary: boolean };
+    source: { baseMain: string; sources: Record<string, string> };
+    foreignKeys: { foreign_keys: number };
+    changesProbe: { afterMatchingUpdate: { selectRows: Array<Array<{ n: number }>> }; afterMissingUpdate: { selectRows: Array<Array<{ n: number }>> } };
+    commitWhenGuardsMatch: { batch: { ms: number; statementCount: number }; after: { task_a_title: string; capture_status: string; history_count: number; guard_count: number } };
+    staleGuardRollsBackHistoryAndEarlierParticipant: { batch: { ms: number; statementCount: number; error: { code: string; rawCode: null; index: null } }; after: { task_a_title: string; capture_status: string; history_count: number; guard_count: number } };
+    staleTaskGuardRollsBackCaptureAndHistory: { batch: { ms: number; statementCount: number; error: { code: string; rawCode: null; index: null } }; after: { capture_status: string; history_count: number } };
+    storageFailureRollsBack: { batch: { ms: number; statementCount: number; error: { code: string; rawCode: null; index: null; cause: { code: string; rawCode: null; index: null } } }; after: { task_a_title: string; history_count: number } };
+    largeBatch: { batch: { ms: number; statementCount: number }; after: { retitled: number; history_count: number; min_seq: number; max_seq: number } };
+    largeGuardedBatch: { batch: { ms: number; statementCount: number }; after: { retitled: number; history_count: number; guard_count: number } };
+  };
+  assert(evidence.node === 'v22.23.2', 'evidence node');
+  assert(evidence.libsqlClient === '0.15.15', 'evidence client');
+  assert(evidence.database.targetUrl === REMOTE_TARGET, 'evidence host');
+  assert(evidence.database.groupId === AUTHORIZED_DATABASE_ID, 'evidence keeps the mislabeled database id');
+  assert(evidence.database.databaseId === undefined, 'evidence was rewritten with databaseId');
+  assert(evidence.database.temporary === false, 'evidence temporary flag');
+  assert(evidence.source.baseMain === '9e6b2ad32155c7085b10ef43161cbde47dda9ec5', 'evidence base');
+  assert(JSON.stringify(evidence.source.sources) === JSON.stringify(EXECUTED_SOURCE_HASHES), 'evidence source hashes');
+  assert(evidence.foreignKeys.foreign_keys === 1, 'fk');
+  assert(evidence.changesProbe.afterMatchingUpdate.selectRows[0]?.[0]?.n === 1, 'changes match');
+  assert(evidence.changesProbe.afterMissingUpdate.selectRows[0]?.[0]?.n === 0, 'changes miss');
+  assert(evidence.commitWhenGuardsMatch.batch.statementCount === 5 && evidence.commitWhenGuardsMatch.batch.ms === 115.9, 'commit');
+  assert(evidence.commitWhenGuardsMatch.after.task_a_title === 'after', 'commit title');
+  assert(evidence.commitWhenGuardsMatch.after.capture_status === 'processed', 'commit capture');
+  assert(evidence.commitWhenGuardsMatch.after.history_count === 1 && evidence.commitWhenGuardsMatch.after.guard_count === 2, 'commit counts');
+  const stale = evidence.staleGuardRollsBackHistoryAndEarlierParticipant;
+  assert(stale.batch.statementCount === 6 && stale.batch.ms === 94.7, 'stale capture');
+  assert(stale.after.task_a_title === 'before' && stale.after.history_count === 0 && stale.after.guard_count === 0, 'stale rollback');
+  assert(stale.after.capture_status === 'processed', 'prebatch capture');
+  assert(evidence.staleTaskGuardRollsBackCaptureAndHistory.batch.statementCount === 5, 'stale task count');
+  assert(evidence.staleTaskGuardRollsBackCaptureAndHistory.batch.ms === 98.4, 'stale task ms');
+  assert(evidence.staleTaskGuardRollsBackCaptureAndHistory.after.capture_status === 'inbox', 'stale task capture');
+  assert(evidence.staleTaskGuardRollsBackCaptureAndHistory.after.history_count === 0, 'stale task history');
+  assert(evidence.storageFailureRollsBack.batch.statementCount === 4 && evidence.storageFailureRollsBack.batch.ms === 110.3, 'storage');
+  assert(evidence.storageFailureRollsBack.after.task_a_title === 'before' && evidence.storageFailureRollsBack.after.history_count === 0, 'storage rollback');
+  for (const error of [
+    stale.batch.error,
+    evidence.staleTaskGuardRollsBackCaptureAndHistory.batch.error,
+    evidence.storageFailureRollsBack.batch.error,
+  ]) {
+    assert(error.code === 'SQLITE_CONSTRAINT' && error.rawCode === null && error.index === null, 'collapsed error');
+  }
+  assert(evidence.storageFailureRollsBack.batch.error.cause.code === 'SQLITE_CONSTRAINT', 'cause code');
+  assert(evidence.storageFailureRollsBack.batch.error.cause.rawCode === null && evidence.storageFailureRollsBack.batch.error.cause.index === null, 'cause empty');
+  assert(evidence.largeBatch.batch.statementCount === 2000 && evidence.largeBatch.batch.ms === 494.3, 'large');
+  assert(evidence.largeBatch.after.retitled === 1000 && evidence.largeBatch.after.history_count === 1000, 'large counts');
+  assert(evidence.largeBatch.after.min_seq === 1 && evidence.largeBatch.after.max_seq === 1000, 'seq');
+  assert(evidence.largeGuardedBatch.batch.statementCount === 3000 && evidence.largeGuardedBatch.batch.ms === 728.9, 'guarded');
+  assert(evidence.largeGuardedBatch.after.guard_count === 1000 && evidence.largeGuardedBatch.after.retitled === 1000, 'guarded counts');
+};
+
 const main = async () => {
   checkHashes();
   checkGuard();
   await checkOrchestrator();
   await checkLocalEquivalence();
+  checkEvidence();
   checkBundle();
   process.stdout.write('m0-2 remote runner checks passed\n');
 };

@@ -1,4 +1,4 @@
-/* M0.2 U2 remote proof. Not a unit of work. @libsql/client 0.15.15. Reads TURSO_SPIKE_AUTH_TOKEN and never prints it. Host checked before createClient. Does not delete the database. */
+/* M0.2 U2 remote proof. Not a unit of work. @libsql/client 0.15.15. Reads TURSO_SPIKE_AUTH_TOKEN and never prints it. Host checked before createClient. Does not delete the database. The 2026-11-06 run left tables in yoink-m02-spike. Do not run this again there. */
 
 // docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts
 import { createClient } from "@libsql/client";
@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 // docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts
 var REMOTE_TARGET = "libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io";
 var REMOTE_HOSTNAME = "yoink-m02-spike-jmhill.aws-us-east-1.turso.io";
-var AUTHORIZED_GROUP_ID = "01a1b366-ad01-751d-bbab-7852a143f84b";
+var AUTHORIZED_DATABASE_ID = "01a1b366-ad01-751d-bbab-7852a143f84b";
 var LIBSQL_VERSION = "0.15.15";
 var TOKEN_ENV = "TURSO_SPIKE_AUTH_TOKEN";
 var INDEX_KEYS = ["index", "statementIndex", "stmtIndex", "statement_index"];
@@ -454,9 +454,9 @@ var PROOF_IDENTITY = {
   libsqlClient: "0.15.15",
   sources: {
     "docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts": "62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045",
-    "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "7303f68dc7f020e4ac1cd5a3aefeba60ed6ba22aabe5f137e7e65b33f872e282",
-    "docs/architecture/adr/spikes/m0-2-u2-remote-run.ts": "a8730613e757cb5781f4aec311130e16f84ac792258275f73aeb14a91cdeba76",
-    "docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts": "1f25c7127feec6b723acac89a4a6de8cc873c36ec36ee2fe80761490a4e7697e",
+    "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "ebfd542db5949cd94edd0c36cd3ae330cd222ef108b521d99ca025fecbcae92a",
+    "docs/architecture/adr/spikes/m0-2-u2-remote-run.ts": "1de8a01763770fdc6fd2060a27347e3e1f3f50685fbd878ac97953b25430e0ae",
+    "docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts": "da328baa45cd034fe8176eb3b972cbeb4f4fc44bca6453ba43adffb3378384e8",
     "docs/architecture/adr/spikes/m0-2-u2-batch.ts": "bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a"
   }
 };
@@ -536,7 +536,8 @@ var executeRemoteProof = async (options) => {
         type: "turso",
         targetUrl: REMOTE_TARGET,
         hostname: REMOTE_HOSTNAME,
-        groupId: AUTHORIZED_GROUP_ID,
+        databaseId: AUTHORIZED_DATABASE_ID,
+        // false means this is not a temporary file. It does not mean production.
         temporary: false
       },
       assertionSql: ASSERT_SQL,

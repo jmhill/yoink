@@ -6,11 +6,11 @@ export const PROOF_IDENTITY = {
     'docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts':
       '62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045',
     'docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts':
-      '7303f68dc7f020e4ac1cd5a3aefeba60ed6ba22aabe5f137e7e65b33f872e282',
+      'ebfd542db5949cd94edd0c36cd3ae330cd222ef108b521d99ca025fecbcae92a',
     'docs/architecture/adr/spikes/m0-2-u2-remote-run.ts':
-      'a8730613e757cb5781f4aec311130e16f84ac792258275f73aeb14a91cdeba76',
+      '1de8a01763770fdc6fd2060a27347e3e1f3f50685fbd878ac97953b25430e0ae',
     'docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts':
-      '1f25c7127feec6b723acac89a4a6de8cc873c36ec36ee2fe80761490a4e7697e',
+      'da328baa45cd034fe8176eb3b972cbeb4f4fc44bca6453ba43adffb3378384e8',
     'docs/architecture/adr/spikes/m0-2-u2-batch.ts':
       'bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a',
   },

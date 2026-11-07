@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { ASSERT_SQL, runU2BatchProof, type SpikeDb, type SpikeResult, type SpikeStatement } from './m0-2-u2-batch-proof.ts';
 import {
-  AUTHORIZED_GROUP_ID,
+  AUTHORIZED_DATABASE_ID,
   LIBSQL_VERSION,
   REMOTE_HOSTNAME,
   REMOTE_TARGET,
@@ -118,7 +118,8 @@ export const executeRemoteProof = async (options: {
         type: 'turso',
         targetUrl: REMOTE_TARGET,
         hostname: REMOTE_HOSTNAME,
-        groupId: AUTHORIZED_GROUP_ID,
+        databaseId: AUTHORIZED_DATABASE_ID,
+        // false means this is not a temporary file. It does not mean production.
         temporary: false,
       },
       assertionSql: ASSERT_SQL,

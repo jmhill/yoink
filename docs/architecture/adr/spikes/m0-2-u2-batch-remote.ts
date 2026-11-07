@@ -12,6 +12,9 @@
  * The process reads that one variable and never prints it. The only host is
  * libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io. The hostname is
  * checked before createClient.
+ *
+ * The 2026-11-06 run left its tables and rows in yoink-m02-spike. CREATE TABLE
+ * is not repeatable there. Do not run this again against that database.
  */
 import { createClient } from '@libsql/client';
 import { pathToFileURL } from 'node:url';

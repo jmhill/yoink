@@ -5,7 +5,8 @@
 
 export const REMOTE_TARGET = 'libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io';
 export const REMOTE_HOSTNAME = 'yoink-m02-spike-jmhill.aws-us-east-1.turso.io';
-export const AUTHORIZED_GROUP_ID = '01a1b366-ad01-751d-bbab-7852a143f84b';
+/** Turso database id of yoink-m02-spike. Not a group id. */
+export const AUTHORIZED_DATABASE_ID = '01a1b366-ad01-751d-bbab-7852a143f84b';
 export const LIBSQL_VERSION = '0.15.15';
 export const TOKEN_ENV = 'TURSO_SPIKE_AUTH_TOKEN';
 

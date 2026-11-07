@@ -1,0 +1,46 @@
+{
+  "baseMain": "9e6b2ad32155c7085b10ef43161cbde47dda9ec5",
+  "libsqlClient": "0.15.15",
+  "purpose": "Future builds of the M0.2 runner. The 2026-11-06 remote run already happened. Do not run this against yoink-m02-spike again. Not a unit of work.",
+  "targetUrl": "libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+  "hostname": "yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+  "databaseId": "01a1b366-ad01-751d-bbab-7852a143f84b",
+  "databaseIdNote": "This is the Turso database id. The executed report stored it as database.groupId. temporary false in that report means not a temporary file, not production.",
+  "tokenEnv": "TURSO_SPIKE_AUTH_TOKEN",
+  "executed": {
+    "at": "2026-11-06 8:28 CT",
+    "exitCode": 0,
+    "wallClock": "about 5.6s",
+    "node": "v22.23.2",
+    "libsqlClient": "0.15.15",
+    "stderr": "empty",
+    "sourceCommit": "1435cffa7996df62a42b201d6a2fd0e76a50e6f5",
+    "bundleSha256": "c3bdf00e2556343d1b5fd70b279d02179e237070109dc052be21b252db92f813",
+    "evidence": "docs/architecture/adr/spikes/m0-2-u2-batch.remote.json",
+    "sources": {
+      "docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts": "62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045",
+      "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "7303f68dc7f020e4ac1cd5a3aefeba60ed6ba22aabe5f137e7e65b33f872e282",
+      "docs/architecture/adr/spikes/m0-2-u2-remote-run.ts": "a8730613e757cb5781f4aec311130e16f84ac792258275f73aeb14a91cdeba76",
+      "docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts": "1f25c7127feec6b723acac89a4a6de8cc873c36ec36ee2fe80761490a4e7697e",
+      "docs/architecture/adr/spikes/m0-2-u2-batch.ts": "bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a"
+    }
+  },
+  "sources": {
+    "docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts": "62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045",
+    "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "ebfd542db5949cd94edd0c36cd3ae330cd222ef108b521d99ca025fecbcae92a",
+    "docs/architecture/adr/spikes/m0-2-u2-remote-run.ts": "1de8a01763770fdc6fd2060a27347e3e1f3f50685fbd878ac97953b25430e0ae",
+    "docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts": "da328baa45cd034fe8176eb3b972cbeb4f4fc44bca6453ba43adffb3378384e8",
+    "docs/architecture/adr/spikes/m0-2-u2-batch.ts": "bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a"
+  },
+  "artifact": {
+    "m0-2-u2-batch.remote.mjs": "44233bb4faa71e7e5c8fce3e5ba5b1d46652d098e176c2ec6eb8a9695db7b996",
+    "package.json": "29b80a1eb43699ea08cee47e364128324fb8a22ff2d0452fdeaf7ba332263284",
+    "package-lock.json": "063f5d74dfbc01fa1d99eda18e74c274afd7a34c86b33e721d197b3ded6647e0"
+  },
+  "build": "esbuild docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts --bundle --format=esm --platform=node --external:@libsql/client --outfile=docs/architecture/adr/spikes/remote-runner/m0-2-u2-batch.remote.mjs",
+  "commands": [
+    "npm install",
+    "node m0-2-u2-batch.remote.mjs"
+  ],
+  "commandNote": "Do not repeat the run against yoink-m02-spike. TURSO_SPIKE_AUTH_TOKEN must already be in the environment for any future empty database. Do not pass the token on the command line. This directory has no .env file."
+}

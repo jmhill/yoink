@@ -1,0 +1,262 @@
+{
+  "node": "v22.23.2",
+  "libsqlClient": "0.15.15",
+  "database": {
+    "type": "turso",
+    "targetUrl": "libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+    "hostname": "yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+    "databaseId": "01a1b366-ad01-751d-bbab-7852a143f84b",
+    "temporary": false
+  },
+  "timeout": {
+    "configuredMs": null,
+    "setByRunner": false,
+    "transactionCall": "client.transaction('write')",
+    "extraArguments": 0,
+    "createClientKeys": [
+      "url",
+      "authToken"
+    ],
+    "pinnedClient": "0.15.15",
+    "pinnedClientConfigHasTimeout": false,
+    "pinnedTransactionArgumentHasTimeout": false
+  },
+  "source": {
+    "baseMain": "9e6b2ad32155c7085b10ef43161cbde47dda9ec5",
+    "libsqlClient": "0.15.15",
+    "sources": {
+      "docs/architecture/adr/spikes/m0-2-u1-transaction-proof.ts": "2b1530d1c58ab612aacc819b0e19d918ced7a74f69fce9b30ed61243cadff583",
+      "docs/architecture/adr/spikes/m0-2-u1-remote-run.ts": "ed323f66aee0de91921c38e533ee3dcba2e484818cead8a70abaf127934525d3",
+      "docs/architecture/adr/spikes/m0-2-u1-remote.ts": "6e0aaed6419e418bb6d2e0bdc31bcf8c96e04066facd5a81b9c3a9b9339aaeb6",
+      "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "ebfd542db5949cd94edd0c36cd3ae330cd222ef108b521d99ca025fecbcae92a"
+    }
+  },
+  "remoteProof": "not-claimed-by-runner",
+  "ok": true,
+  "mechanism": "client.transaction('write')",
+  "prefix": "u1_",
+  "semantics": "once-only",
+  "readsInsideTransaction": false,
+  "manualBegin": false,
+  "foreignKeys": null,
+  "classificationModel": {
+    "newModel": false,
+    "stepFailure": "{ kind: 'Conflict' | 'Storage'; owner: ModuleName; reason: string }",
+    "conflict": "guarded write rowsAffected === 0; owner is the awaited step",
+    "storage": "thrown execute on an ordinary write; owner is the awaited step",
+    "checkProbe": "recorded driver error; not a classification input",
+    "messageParsing": false,
+    "inventedDriverFields": false
+  },
+  "scenarios": {
+    "commit": {
+      "ms": 406.2,
+      "closeCalled": true,
+      "committed": true,
+      "commitCalled": true,
+      "rollbackCalled": false,
+      "stopOnGuardMiss": true,
+      "mapped": null,
+      "driverError": null,
+      "steps": [
+        {
+          "role": "capture-update",
+          "owner": "captures",
+          "guarded": true,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "task-update",
+          "owner": "task-management",
+          "guarded": true,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "history-insert",
+          "owner": "history",
+          "guarded": false,
+          "rowsAffected": 1,
+          "threw": false
+        }
+      ],
+      "snapshot": {
+        "taskTitle": "after",
+        "captureStatus": "processed",
+        "historyCount": 1,
+        "guardCount": 0
+      }
+    },
+    "staleGuard": {
+      "ms": 378.9,
+      "closeCalled": true,
+      "committed": false,
+      "commitCalled": false,
+      "rollbackCalled": true,
+      "stopOnGuardMiss": true,
+      "mapped": {
+        "kind": "Conflict",
+        "owner": "captures",
+        "reason": "guard-miss",
+        "source": "rowsAffected"
+      },
+      "driverError": null,
+      "steps": [
+        {
+          "role": "task-update",
+          "owner": "task-management",
+          "guarded": true,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "history-insert",
+          "owner": "history",
+          "guarded": false,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "capture-update",
+          "owner": "captures",
+          "guarded": true,
+          "rowsAffected": 0,
+          "threw": false
+        }
+      ],
+      "snapshot": {
+        "taskTitle": "before",
+        "captureStatus": "processed",
+        "historyCount": 0,
+        "guardCount": 0
+      }
+    },
+    "checkProbe": {
+      "ms": 481.5,
+      "closeCalled": true,
+      "committed": false,
+      "commitCalled": false,
+      "rollbackCalled": true,
+      "stopOnGuardMiss": false,
+      "mapped": null,
+      "driverError": {
+        "code": "SQLITE_CONSTRAINT",
+        "rawCode": null,
+        "index": null,
+        "cause": {
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null
+        }
+      },
+      "steps": [
+        {
+          "role": "task-update",
+          "owner": "task-management",
+          "guarded": true,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "history-insert",
+          "owner": "history",
+          "guarded": false,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "capture-update",
+          "owner": "captures",
+          "guarded": true,
+          "rowsAffected": 0,
+          "threw": false
+        },
+        {
+          "role": "guard-check-probe",
+          "owner": "platform-guard",
+          "guarded": false,
+          "rowsAffected": null,
+          "threw": true
+        }
+      ],
+      "snapshot": {
+        "taskTitle": "before",
+        "captureStatus": "processed",
+        "historyCount": 0,
+        "guardCount": 0
+      }
+    },
+    "duplicatePrimaryKey": {
+      "ms": 458.1,
+      "closeCalled": true,
+      "committed": false,
+      "commitCalled": false,
+      "rollbackCalled": true,
+      "stopOnGuardMiss": true,
+      "mapped": {
+        "kind": "Storage",
+        "owner": "task-management",
+        "reason": "execute-failed",
+        "source": "thrown-execute"
+      },
+      "driverError": {
+        "code": "SQLITE_CONSTRAINT",
+        "rawCode": null,
+        "index": null,
+        "cause": {
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null
+        }
+      },
+      "steps": [
+        {
+          "role": "task-update",
+          "owner": "task-management",
+          "guarded": true,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "history-insert",
+          "owner": "history",
+          "guarded": false,
+          "rowsAffected": 1,
+          "threw": false
+        },
+        {
+          "role": "duplicate-primary-key",
+          "owner": "task-management",
+          "guarded": false,
+          "rowsAffected": null,
+          "threw": true
+        }
+      ],
+      "snapshot": {
+        "taskTitle": "before",
+        "captureStatus": "inbox",
+        "historyCount": 0,
+        "guardCount": 0
+      }
+    }
+  },
+  "driverFieldComparison": {
+    "usedForClassification": false,
+    "check": {
+      "code": "SQLITE_CONSTRAINT",
+      "rawCode": null,
+      "index": null
+    },
+    "primaryKey": {
+      "code": "SQLITE_CONSTRAINT",
+      "rawCode": null,
+      "index": null
+    },
+    "allowlistedFieldsEqual": true
+  },
+  "durations": {
+    "processMs": 7366.9,
+    "maxTransactionMs": 481.5
+  }
+}

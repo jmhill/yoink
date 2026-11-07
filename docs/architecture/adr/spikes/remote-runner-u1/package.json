@@ -1,0 +1,8 @@
+{
+  "name": "yoink-m0-2-u1-remote-proof",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@libsql/client": "0.15.15"
+  }
+}

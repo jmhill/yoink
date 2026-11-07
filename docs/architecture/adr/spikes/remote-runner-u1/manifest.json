@@ -1,0 +1,56 @@
+{
+  "baseMain": "9e6b2ad32155c7085b10ef43161cbde47dda9ec5",
+  "libsqlClient": "0.15.15",
+  "purpose": "M0.2 U1 remote proof. Executed once on 2026-11-06 8:48 CT. Do not run again. Not a unit of work. Does not replace the executed U2 artifact and does not rerun U2.",
+  "targetUrl": "libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+  "hostname": "yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+  "databaseId": "01a1b366-ad01-751d-bbab-7852a143f84b",
+  "tokenEnv": "TURSO_SPIKE_AUTH_TOKEN",
+  "prefix": "u1_",
+  "semantics": "once-only",
+  "semanticsNote": "If u1_tasks already exists, the process writes nothing and exits ALREADY_PRESENT. It does not drop tables, delete the database, or modify the U2 tables organizations, tasks, captures, change_log, or platform_batch_guard.",
+  "timeout": {
+    "configuredMs": null,
+    "setByRunner": false,
+    "transactionCall": "client.transaction('write')",
+    "extraArguments": 0,
+    "createClientKeys": ["url", "authToken"],
+    "pinnedClientConfigHasTimeout": false,
+    "pinnedTransactionArgumentHasTimeout": false,
+    "note": "ADR-001 section 6.1 mentions a 5-second lock timeout and does not define it anywhere else in this repo. @libsql/client 0.15.15 Config and transaction(mode) have no timeout argument, and @libsql/hrana-client 0.7.0 exposes none. This runner does not set one and does not hold a transaction open to probe one."
+  },
+  "sourceCommit": "9e782fb56a09949628d55f57f99b528de50eb7c9",
+  "executed": {
+    "at": "2026-11-06 8:48 CT",
+    "exitCode": 0,
+    "wallClock": "about 7.5s",
+    "processMs": 7366.9,
+    "maxTransactionMs": 481.5,
+    "node": "v22.23.2",
+    "libsqlClient": "0.15.15",
+    "stderr": "empty",
+    "sourceCommit": "9e782fb56a09949628d55f57f99b528de50eb7c9",
+    "bundleSha256": "f8c8aef03221fc2a5298157808badc08c2abe260ec6d9e9238eae542c74a47e4",
+    "evidence": "docs/architecture/adr/spikes/m0-2-u1-transaction.remote.json",
+    "evidenceSha256": "4944aa9a6c677e0ad1db7beca21b06470938a14e19845953bc554d9195de19b1",
+    "foreignKeys": null,
+    "foreignKeysNote": "null is a reporter bug. PRAGMA foreign_keys returns column foreign_keys, and the reader asked for value. Inconclusive. Not rewritten to 1."
+  },
+  "sources": {
+    "docs/architecture/adr/spikes/m0-2-u1-transaction-proof.ts": "2b1530d1c58ab612aacc819b0e19d918ced7a74f69fce9b30ed61243cadff583",
+    "docs/architecture/adr/spikes/m0-2-u1-remote-run.ts": "ed323f66aee0de91921c38e533ee3dcba2e484818cead8a70abaf127934525d3",
+    "docs/architecture/adr/spikes/m0-2-u1-remote.ts": "6e0aaed6419e418bb6d2e0bdc31bcf8c96e04066facd5a81b9c3a9b9339aaeb6",
+    "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "ebfd542db5949cd94edd0c36cd3ae330cd222ef108b521d99ca025fecbcae92a"
+  },
+  "artifact": {
+    "m0-2-u1-transaction.remote.mjs": "f8c8aef03221fc2a5298157808badc08c2abe260ec6d9e9238eae542c74a47e4",
+    "package.json": "14aaa2ac4157dd98f29f2ce47a9ce34fc1f84066813806cc6085af24fa3dedba",
+    "package-lock.json": "4443d57e0a468cb33fa26d87318379d1b1aee99a9bb77a3d5597ff5d222b5e37"
+  },
+  "build": "esbuild docs/architecture/adr/spikes/m0-2-u1-remote.ts --bundle --format=esm --platform=node --external:@libsql/client --outfile=docs/architecture/adr/spikes/remote-runner-u1/m0-2-u1-transaction.remote.mjs",
+  "commands": [
+    "npm ci --ignore-scripts",
+    "node m0-2-u1-transaction.remote.mjs"
+  ],
+  "commandNote": "Do not run again. u1_tasks exists from the 2026-11-06 8:48 CT run. A second run writes nothing. TURSO_SPIKE_AUTH_TOKEN must already be in the environment for any future empty database. Do not pass the token on the command line. npm ci does not need the token. This directory has no .env file."
+}

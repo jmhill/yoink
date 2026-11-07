@@ -1,0 +1,296 @@
+{
+  "node": "v22.23.2",
+  "libsqlClient": "0.15.15",
+  "database": {
+    "type": "turso",
+    "targetUrl": "libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+    "hostname": "yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+    "groupId": "01a1b366-ad01-751d-bbab-7852a143f84b",
+    "temporary": false
+  },
+  "assertionSql": "INSERT INTO platform_batch_guard (ok) VALUES (changes() > 0)",
+  "batchMode": "write",
+  "clientBegin": "BEGIN IMMEDIATE",
+  "source": {
+    "baseMain": "9e6b2ad32155c7085b10ef43161cbde47dda9ec5",
+    "libsqlClient": "0.15.15",
+    "sources": {
+      "docs/architecture/adr/spikes/m0-2-u2-batch-proof.ts": "62853d73f32f44e54c6367788fd93ce615e9fd0c638a1406bfe47c7e37e25045",
+      "docs/architecture/adr/spikes/m0-2-u2-remote-guard.ts": "7303f68dc7f020e4ac1cd5a3aefeba60ed6ba22aabe5f137e7e65b33f872e282",
+      "docs/architecture/adr/spikes/m0-2-u2-remote-run.ts": "a8730613e757cb5781f4aec311130e16f84ac792258275f73aeb14a91cdeba76",
+      "docs/architecture/adr/spikes/m0-2-u2-batch-remote.ts": "1f25c7127feec6b723acac89a4a6de8cc873c36ec36ee2fe80761490a4e7697e",
+      "docs/architecture/adr/spikes/m0-2-u2-batch.ts": "bba029c2254ada7e6f1046e4d1dfceedab66d4449c327413c984fb0df099047a"
+    }
+  },
+  "remoteProof": "not-claimed-by-runner",
+  "foreignKeys": {
+    "foreign_keys": 1
+  },
+  "changesProbe": {
+    "afterMatchingUpdate": {
+      "ok": true,
+      "ms": 118.8,
+      "statementCount": 2,
+      "rowsAffected": {
+        "count": 2,
+        "sum": 1,
+        "zeros": 1,
+        "first": [
+          1,
+          0
+        ],
+        "last": [
+          1,
+          0
+        ]
+      },
+      "selectRows": [
+        [
+          {
+            "n": 1
+          }
+        ]
+      ],
+      "error": null
+    },
+    "afterMissingUpdate": {
+      "ok": true,
+      "ms": 111.9,
+      "statementCount": 2,
+      "rowsAffected": {
+        "count": 2,
+        "sum": 0,
+        "zeros": 2,
+        "first": [
+          0,
+          0
+        ],
+        "last": [
+          0,
+          0
+        ]
+      },
+      "selectRows": [
+        [
+          {
+            "n": 0
+          }
+        ]
+      ],
+      "error": null
+    },
+    "after": {
+      "task_a_title": "probe-match",
+      "task_a_deleted": null,
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "commitWhenGuardsMatch": {
+    "batch": {
+      "ok": true,
+      "ms": 115.9,
+      "statementCount": 5,
+      "rowsAffected": {
+        "count": 5,
+        "sum": 5,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "task_a_title": "after",
+      "task_a_deleted": null,
+      "capture_status": "processed",
+      "history_count": 1,
+      "guard_count": 2,
+      "guard_ok_min": 1,
+      "guard_ok_max": 1
+    }
+  },
+  "staleGuardRollsBackHistoryAndEarlierParticipant": {
+    "batch": {
+      "ok": false,
+      "ms": 94.7,
+      "statementCount": 6,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "code": "SQLITE_CONSTRAINT",
+        "rawCode": null,
+        "index": null,
+        "cause": {
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": null,
+      "capture_status": "processed",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "staleTaskGuardRollsBackCaptureAndHistory": {
+    "note": "history INSERT ... WHERE EXISTS matches 0 rows because the task is already deleted, so that statement itself changes nothing. The failing statement is the task assertion.",
+    "batch": {
+      "ok": false,
+      "ms": 98.4,
+      "statementCount": 5,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "code": "SQLITE_CONSTRAINT",
+        "rawCode": null,
+        "index": null,
+        "cause": {
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": "2026-11-06T21:00:00.000Z",
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "storageFailureRollsBack": {
+    "batch": {
+      "ok": false,
+      "ms": 110.3,
+      "statementCount": 4,
+      "rowsAffected": null,
+      "selectRows": [],
+      "error": {
+        "code": "SQLITE_CONSTRAINT",
+        "rawCode": null,
+        "index": null,
+        "cause": {
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null
+        }
+      }
+    },
+    "after": {
+      "task_a_title": "before",
+      "task_a_deleted": null,
+      "capture_status": "inbox",
+      "history_count": 0,
+      "guard_count": 0,
+      "guard_ok_min": -1,
+      "guard_ok_max": -1
+    }
+  },
+  "largeBatch": {
+    "shape": "1000 task updates + 1000 change_log inserts, production column lists, seq = MAX(seq)+1",
+    "seed": {
+      "ok": true,
+      "ms": 268.1,
+      "error": null
+    },
+    "batch": {
+      "ok": true,
+      "ms": 494.3,
+      "statementCount": 2000,
+      "rowsAffected": {
+        "count": 2000,
+        "sum": 2000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "retitled": 1000,
+      "history_count": 1000,
+      "distinct_seq": 1000,
+      "min_seq": 1,
+      "max_seq": 1000
+    }
+  },
+  "largeGuardedBatch": {
+    "shape": "1000 task updates + 1000 assertions + 1000 change_log inserts",
+    "statementCount": 3000,
+    "batch": {
+      "ok": true,
+      "ms": 728.9,
+      "statementCount": 3000,
+      "rowsAffected": {
+        "count": 3000,
+        "sum": 3000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "selectRows": [],
+      "error": null
+    },
+    "after": {
+      "retitled": 1000,
+      "history_count": 1000,
+      "guard_count": 1000,
+      "distinct_seq": 1000,
+      "min_seq": 1,
+      "max_seq": 1000
+    }
+  }
+}

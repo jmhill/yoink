@@ -6,7 +6,7 @@ A route is **integration** when a bearer token can complete it, or when the hand
 
 **Client-only** stays the group ADR §9 names (admin, session, passkey, signup, invitation) plus the organization-settings routes plan M3.3 names, plus the four mutations whose domain already refuses every non-session actor. Those four are not a new auth mode.
 
-M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body, rooted at `/api/v1`. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check.
+M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body. The contract stores that suffix (`/captures`). M3.2 roots the served URL at `/api/v1` by the `handle` prefix. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check.
 
 Paths are the OpenAPI `path:` strings in `packages/api-contracts/src/orpc/`. Fastify mounts the same URL with `:param` instead of `{param}` (`/api/captures/{id}` and `/api/captures/:id` are one route). Fixture routes have no contract `path:`; their URL is the Fastify path.
 

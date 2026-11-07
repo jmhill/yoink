@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { ResultAsync } from 'neverthrow';
-import { registerTokenMutationRoutes } from './token-routes.js';
+import { registerTokenMutationRoutes } from '../../edges/legacy/tokens/token-routes.js';
 import { createTokenHandlers } from './create-token-handlers.js';
 import {
   createStoreBackedTokenCreated,

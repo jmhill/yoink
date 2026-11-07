@@ -3,20 +3,20 @@ import rateLimit from '@fastify/rate-limit';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { signupOrpcContract } from '@yoink/api-contracts/orpc';
-import type { SignupService } from '../domain/signup-service.js';
-import type { PasskeyService } from '../domain/passkey-service.js';
-import type { SessionService } from '../domain/session-service.js';
+import type { SignupService } from '../../../access/domain/signup-service.js';
+import type { PasskeyService } from '../../../access/domain/passkey-service.js';
+import type { SessionService } from '../../../access/domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
-import type { RateLimitConfig } from '../../platform/config/schema.js';
-import type { ClientIpOf } from '../../edges/_shared/request-client-ip.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
+import type { RateLimitConfig } from '../../../platform/config/schema.js';
+import type { ClientIpOf } from '../../_shared/request-client-ip.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
   accessHttpError,
   accessStorageError,
-} from './access-http-errors.js';
+} from '../../../access/application/access-http-errors.js';
 
 export type SignupRoutesDependencies = {
   signupService: SignupService;

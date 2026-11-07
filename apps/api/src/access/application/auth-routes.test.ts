@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { registerAuthRoutes } from './auth-routes.js';
+import { registerAuthRoutes } from '../../edges/legacy/auth/auth-routes.js';
 import { clientIpOfRequest } from '../../edges/_shared/request-client-ip.js';
 import { createPasskeyService } from '../domain/passkey-service.js';
 import { createSessionService } from '../domain/session-service.js';

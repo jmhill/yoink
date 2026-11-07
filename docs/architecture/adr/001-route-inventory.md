@@ -6,7 +6,7 @@ A route is **integration** when a bearer token can complete it, or when the hand
 
 **Client-only** stays the group ADR §9 names (admin, session, passkey, signup, invitation) plus the organization-settings routes plan M3.3 names, plus the four mutations whose domain already refuses every non-session actor. Those four are not a new auth mode.
 
-M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body. The contract stores that suffix (`/captures`). M3.2 roots the served URL at `/api/v1` by the `handle` prefix. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check. The file column is the M0.4 census. M3.2, in progress until review and merge, now serves the integration rows from `apps/api/src/edges/public-api/v1/`. Token create and delete stay on `registerTokenMutationRoutes`.
+M3.1 copies every integration row unchanged: path suffix, request and response shapes, and error status and body. The contract stores that suffix (`/captures`). M3.2 roots the served URL at `/api/v1` by the `handle` prefix. M3.2 moves those handlers, mounts `/api/v1` with token-only auth, and mounts the same router at `/api/` with today's combined auth because the web app still calls those paths. This inventory does not change a status, a body, or an auth check. M3.2 serves the integration rows from `apps/api/src/edges/public-api/v1/`. M3.3, in progress until review and merge, serves the client-only rows from `apps/api/src/edges/legacy/`. Token create and delete stay on `registerTokenMutationRoutes`. Health and fixtures stay until M3.4.
 
 Paths are the OpenAPI `path:` strings in `packages/api-contracts/src/orpc/`. Fastify mounts the same URL with `:param` instead of `{param}` (`/api/captures/{id}` and `/api/captures/:id` are one route). Fixture routes have no contract `path:`; their URL is the Fastify path.
 
@@ -26,8 +26,8 @@ Static files and the SPA not-found handler are [not API procedures](#static-file
 
 | Registrar | Mounted when |
 |---|---|
-| Health, captures, lists, projects, notes, tasks, work, review, invitations | Always |
-| Admin (`access/application/admin-routes.ts`) | `deps.admin` is set |
+| Health, public API v1, invitations (`edges/legacy/invitation/invitation-routes.ts`) | Always |
+| Admin (`edges/legacy/admin/admin-routes.ts`) | `deps.admin` is set |
 | Signup, passkey, auth, organization, token | `deps.signup` is set |
 | Review fixtures | `enableTestFixtures` and a database (`YOINK_TEST_FIXTURES=true`) |
 | Ownerless-workspace fixtures | `enableTestFixtures`, `deps.admin`, an invitation store, and a membership store |
@@ -71,26 +71,26 @@ Mounted only when `deps.admin` is set. Login and logout do not run the admin-ses
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/admin/login | access/application/admin-routes.ts | admin | none | admin, tests | client-only | |
-| POST /api/admin/logout | access/application/admin-routes.ts | admin | none | admin, tests | client-only | |
-| GET /api/admin/session | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{id}/owner-invitation | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{id}/owner-invitation | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{id} | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/organizations/{id} | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{organizationId}/users | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/users | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PUT /api/admin/organizations/{id}/owner | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/organizations/{id}/members/{userId} | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/users/{id} | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/users/{id} | access/application/admin-routes.ts | admin | admin session | tests | client-only | No call in `apps/admin`. Acceptance admin driver patches the display name. |
-| PATCH /api/admin/projects/{id} | access/application/admin-routes.ts | admin | admin session | tests | client-only | Contract summary: back-date `createdAt` for history-start fixtures. Path is `/api/admin/...`, so §9 keeps it client-only. No admin UI caller. |
-| GET /api/admin/organizations/{organizationId}/tokens | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/tokens | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| DELETE /api/admin/tokens/{id} | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/invitations | access/application/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/login | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
+| POST /api/admin/logout | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
+| GET /api/admin/session | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /api/admin/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /api/admin/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /api/admin/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /api/admin/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /api/admin/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PUT /api/admin/organizations/{id}/owner | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /api/admin/organizations/{id}/members/{userId} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /api/admin/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /api/admin/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | No call in `apps/admin`. Acceptance admin driver patches the display name. |
+| PATCH /api/admin/projects/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | Contract summary: back-date `createdAt` for history-start fixtures. Path is `/api/admin/...`, so §9 keeps it client-only. No admin UI caller. |
+| GET /api/admin/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| DELETE /api/admin/tokens/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /api/admin/organizations/{organizationId}/invitations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
 
 ### Session, passkey, and signup
 
@@ -98,16 +98,16 @@ Signup, passkey, and auth are mounted only when `deps.signup` is set. Login is p
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/auth/login/options | access/application/auth-routes.ts | auth | none | web | client-only | `apps/web/src/api/auth.ts`. Acceptance signup drives the page and does not name this path. |
-| POST /api/auth/login/verify | access/application/auth-routes.ts | auth | none | web | client-only | Same as login options |
-| POST /api/auth/logout | access/application/auth-routes.ts | auth | combined | web | client-only | `apps/web/src/api/auth.ts` |
-| GET /api/auth/session | access/application/auth-routes.ts | auth | combined | web, tests | client-only | Web `auth.ts` and `authClient.session`. HTTP and Playwright actors. |
-| POST /api/auth/signup/options | access/application/signup-routes.ts | signup | none | web | client-only | `apps/web/src/api/auth.ts` |
-| POST /api/auth/signup/verify | access/application/signup-routes.ts | signup | none | web | client-only | `apps/web/src/api/auth.ts` |
-| POST /api/auth/passkey/register/options | access/application/passkey-routes.ts | passkey | combined | web | client-only | `apps/web/src/api/passkey.ts` |
-| POST /api/auth/passkey/register/verify | access/application/passkey-routes.ts | passkey | combined | web | client-only | `apps/web/src/api/passkey.ts` |
-| GET /api/auth/passkey/credentials | access/application/passkey-routes.ts | passkey | combined | web, tests | client-only | |
-| DELETE /api/auth/passkey/credentials/{credentialId} | access/application/passkey-routes.ts | passkey | combined | web, tests | client-only | |
+| POST /api/auth/login/options | edges/legacy/auth/auth-routes.ts | auth | none | web | client-only | `apps/web/src/api/auth.ts`. Acceptance signup drives the page and does not name this path. |
+| POST /api/auth/login/verify | edges/legacy/auth/auth-routes.ts | auth | none | web | client-only | Same as login options |
+| POST /api/auth/logout | edges/legacy/auth/auth-routes.ts | auth | combined | web | client-only | `apps/web/src/api/auth.ts` |
+| GET /api/auth/session | edges/legacy/auth/auth-routes.ts | auth | combined | web, tests | client-only | Web `auth.ts` and `authClient.session`. HTTP and Playwright actors. |
+| POST /api/auth/signup/options | edges/legacy/signup/signup-routes.ts | signup | none | web | client-only | `apps/web/src/api/auth.ts` |
+| POST /api/auth/signup/verify | edges/legacy/signup/signup-routes.ts | signup | none | web | client-only | `apps/web/src/api/auth.ts` |
+| POST /api/auth/passkey/register/options | edges/legacy/passkey/passkey-routes.ts | passkey | combined | web | client-only | `apps/web/src/api/passkey.ts` |
+| POST /api/auth/passkey/register/verify | edges/legacy/passkey/passkey-routes.ts | passkey | combined | web | client-only | `apps/web/src/api/passkey.ts` |
+| GET /api/auth/passkey/credentials | edges/legacy/passkey/passkey-routes.ts | passkey | combined | web, tests | client-only | |
+| DELETE /api/auth/passkey/credentials/{credentialId} | edges/legacy/passkey/passkey-routes.ts | passkey | combined | web, tests | client-only | |
 
 ### Invitations
 
@@ -115,11 +115,11 @@ Always mounted. Only `POST /api/invitations/validate` skips auth (`isPublicRoute
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/invitations | access/application/invitation-routes.ts | invitations | combined | web, tests | client-only | |
-| POST /api/invitations/validate | access/application/invitation-routes.ts | invitations | none | web | client-only | Public. Acceptance signup does not name this path. |
-| POST /api/invitations/accept | access/application/invitation-routes.ts | invitations | combined | web | client-only | `apps/web/src/api/auth.ts`. Not named in `packages/acceptance-testing`. |
-| GET /api/organizations/{organizationId}/invitations | access/application/invitation-routes.ts | invitations | combined | web, tests | client-only | Pending list. Not the admin create route. |
-| DELETE /api/invitations/{invitationId} | access/application/invitation-routes.ts | invitations | combined | web, tests | client-only | |
+| POST /api/invitations | edges/legacy/invitation/invitation-routes.ts | invitations | combined | web, tests | client-only | |
+| POST /api/invitations/validate | edges/legacy/invitation/invitation-routes.ts | invitations | none | web | client-only | Public. Acceptance signup does not name this path. |
+| POST /api/invitations/accept | edges/legacy/invitation/invitation-routes.ts | invitations | combined | web | client-only | `apps/web/src/api/auth.ts`. Not named in `packages/acceptance-testing`. |
+| GET /api/organizations/{organizationId}/invitations | edges/legacy/invitation/invitation-routes.ts | invitations | combined | web, tests | client-only | Pending list. Not the admin create route. |
+| DELETE /api/invitations/{invitationId} | edges/legacy/invitation/invitation-routes.ts | invitations | combined | web, tests | client-only | |
 
 ### Organization settings
 
@@ -127,12 +127,12 @@ Mounted only when `deps.signup` is set. All use the app `authMiddleware`.
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/organizations/switch | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | Web `auth.ts`. Playwright actor and page object. |
-| POST /api/organizations/{organizationId}/leave | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
-| POST /api/organizations/{organizationId}/owner/transfer | access/application/organization-routes.ts | organizations | combined | web | client-only | `organizationClient.transferOwner` in `apps/web/src/components/ownership-card.tsx`. Not named in `packages/acceptance-testing`. |
-| GET /api/organizations/{organizationId}/members | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
-| PATCH /api/organizations/{organizationId}/members/{userId}/role | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
-| DELETE /api/organizations/{organizationId}/members/{userId} | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | |
+| POST /api/organizations/switch | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | Web `auth.ts`. Playwright actor and page object. |
+| POST /api/organizations/{organizationId}/leave | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | |
+| POST /api/organizations/{organizationId}/owner/transfer | edges/legacy/organization/organization-routes.ts | organizations | combined | web | client-only | `organizationClient.transferOwner` in `apps/web/src/components/ownership-card.tsx`. Not named in `packages/acceptance-testing`. |
+| GET /api/organizations/{organizationId}/members | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | |
+| PATCH /api/organizations/{organizationId}/members/{userId}/role | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | |
+| DELETE /api/organizations/{organizationId}/members/{userId} | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | |
 
 
 ### Session-only token mutations
@@ -141,10 +141,10 @@ Mounted only when `deps.signup` is set. The registrar still uses combined auth, 
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-create-token.ts` calls `requireWebSessionPerson`. Web settings: `apps/web/src/components/tokens-section.tsx`. |
-| DELETE /api/auth/tokens/{tokenId} | access/application/token-routes.ts | tokens | combined | web, tests | client-only | `decide-revoke-token.ts` calls `requireWebSessionPerson`. |
-| POST /api/organizations/{organizationId}/agents | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `agent-service.ts` documents a web-session person. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
-| POST /api/organizations/{organizationId}/members/{userId}/token | access/application/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. Reissue returns a new raw token. |
+| POST /api/auth/tokens | edges/legacy/tokens/token-routes.ts | tokens | combined | web, tests | client-only | `decide-create-token.ts` calls `requireWebSessionPerson`. Web settings: `apps/web/src/components/tokens-section.tsx`. |
+| DELETE /api/auth/tokens/{tokenId} | edges/legacy/tokens/token-routes.ts | tokens | combined | web, tests | client-only | `decide-revoke-token.ts` calls `requireWebSessionPerson`. |
+| POST /api/organizations/{organizationId}/agents | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | `agent-service.ts` documents a web-session person. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
+| POST /api/organizations/{organizationId}/members/{userId}/token | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. Reissue returns a new raw token. |
 
 
 ## Integration
@@ -269,7 +269,7 @@ Web Work and Review screens. The token acceptance driver calls them too. No exte
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| GET /api/auth/tokens | access/application/token-routes.ts | tokens | combined | web, tests | integration | `handleListTokens` has no session gate. Web settings also calls it (`tokens-section.tsx`). Copy the list body unchanged into v1. |
+| GET /api/auth/tokens | edges/public-api/v1/tokens.ts | tokens | combined on `/api`, token-only on `/api/v1` | web, tests | integration | `handleListTokens` has no session gate. Web settings also calls it (`tokens-section.tsx`). The list body is the frozen v1 copy. Create and delete stay in `edges/legacy/tokens/token-routes.ts`. |
 
 
 ## Static files and the SPA fallback
@@ -294,13 +294,13 @@ These are not procedures and are not in the 110 rows.
 | `review/infrastructure/http-review-routes.ts` and `orpc/review-contract.ts` | 2 |
 | `review/infrastructure/http-review-fixture-routes.ts` | 2 (no contract) |
 | `access/infrastructure/http-ownerless-workspace-fixture-routes.ts` | 3 (no contract) |
-| `access/application/admin-routes.ts` and `orpc/admin-contract.ts` | 20 |
-| `access/application/auth-routes.ts` and `orpc/auth-contract.ts` | 4 |
-| `access/application/signup-routes.ts` and `orpc/signup-contract.ts` | 2 |
-| `access/application/passkey-routes.ts` and `orpc/passkey-contract.ts` | 4 |
-| `access/application/token-routes.ts` and `orpc/token-contract.ts` | 3 |
-| `access/application/invitation-routes.ts` and `orpc/invitation-contract.ts` | 5 |
-| `access/application/organization-routes.ts` and `orpc/organization-contract.ts` | 8 |
+| `edges/legacy/admin/admin-routes.ts` and `orpc/admin-contract.ts` | 20 |
+| `edges/legacy/auth/auth-routes.ts` and `orpc/auth-contract.ts` | 4 |
+| `edges/legacy/signup/signup-routes.ts` and `orpc/signup-contract.ts` | 2 |
+| `edges/legacy/passkey/passkey-routes.ts` and `orpc/passkey-contract.ts` | 4 |
+| `edges/legacy/tokens/token-routes.ts` and `orpc/token-contract.ts` | 3 |
+| `edges/legacy/invitation/invitation-routes.ts` and `orpc/invitation-contract.ts` | 5 |
+| `edges/legacy/organization/organization-routes.ts` and `orpc/organization-contract.ts` | 8 |
 | **Total** | **110** |
 
 Contract files with no extra path: `packages/api-contracts/src/orpc/index.ts` only re-exports.

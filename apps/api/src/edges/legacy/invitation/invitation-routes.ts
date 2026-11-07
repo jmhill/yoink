@@ -2,16 +2,16 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { invitationOrpcContract } from '@yoink/api-contracts/orpc';
-import type { InvitationService } from '../domain/invitation-service.js';
-import type { MembershipService } from '../domain/membership-service.js';
-import type { OrganizationService } from '../domain/organization-service.js';
-import type { UserService } from '../domain/user-service.js';
-import type { AuthMiddleware } from './auth-middleware.js';
-import { handleAcceptInvitation } from './handle-accept-invitation.js';
-import { handleValidateInvitation } from './handle-validate-invitation.js';
-import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
-import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
+import type { InvitationService } from '../../../access/domain/invitation-service.js';
+import type { MembershipService } from '../../../access/domain/membership-service.js';
+import type { OrganizationService } from '../../../access/domain/organization-service.js';
+import type { UserService } from '../../../access/domain/user-service.js';
+import type { AuthMiddleware } from '../../../access/application/auth-middleware.js';
+import { handleAcceptInvitation } from '../../../access/application/handle-accept-invitation.js';
+import { handleValidateInvitation } from '../../../access/application/handle-validate-invitation.js';
+import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import {
   acceptInvitationErrorResponse,
   accessHttpError,
@@ -20,7 +20,7 @@ import {
   listPendingInvitationErrorResponse,
   revokeInvitationErrorResponse,
   validateInvitationErrorResponse,
-} from './access-http-errors.js';
+} from '../../../access/application/access-http-errors.js';
 
 export type InvitationRoutesDependencies = {
   invitationService: InvitationService;

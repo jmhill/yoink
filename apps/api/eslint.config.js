@@ -333,7 +333,10 @@ export default [
             { from: 'composition', allow: ['*'] },
             { from: 'entrypoint', allow: ['*'] },
             { from: 'tests', allow: ['*'] },
-            { from: 'access', allow: ['access'] },
+            // M3.3. Colocated route tests still live in access until M3.6.
+            // They may import the legacy edge they exercise. Other edges stay
+            // disallowed, including public-api.
+            { from: 'access', allow: ['access', ['edge', { edge: 'legacy' }]] },
             { from: 'captures', allow: ['captures'] },
             { from: 'health', allow: ['health'] },
             { from: 'history', allow: ['history', 'projects', 'tasks'] },
@@ -489,6 +492,13 @@ export default [
             {
               from: [['edge', { edge: 'public-api' }]],
               allow: ['captures', 'lists', 'notes', 'review', 'tasks', 'work', 'history'],
+            },
+            // M3.3. Only the legacy client edge. These routes still call today's
+            // access handlers. M6 moves each client to its own edge. M5.12 and
+            // M5.13 give access an interface. Other modules stay disallowed.
+            {
+              from: [['edge', { edge: 'legacy' }]],
+              allow: ['access'],
             },
             {
               from: 'edge-shared',

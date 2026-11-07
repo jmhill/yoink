@@ -7,7 +7,7 @@ import type { Database } from '../../platform/database/types.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
 import { createSqliteCaptureStore } from '../../captures/infrastructure/sqlite-capture-store.js';
 import { createSqliteProjectStore } from '../../projects/infrastructure/sqlite-project-store.js';

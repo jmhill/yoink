@@ -1,6 +1,6 @@
 import type { Actor } from '../../kernel/auth-context.js';
-import { hiddenFor } from '../../shared/change-log/domain/kinds.js';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+import { hiddenFor } from '../../modules/history/domain/kinds.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
 import type {
   ProjectCreatedPayloadV1,
   ProjectNextActionClearedPayloadV1,
@@ -8,7 +8,7 @@ import type {
   ProjectStatusChangedPayloadV1,
   ProjectUpdatedPayloadV1,
   ProjectWaitingChangedPayloadV1,
-} from '../../shared/change-log/domain/payloads.js';
+} from '../../modules/history/domain/payloads.js';
 import type { ProjectEvent } from './events.js';
 
 export type ProjectChangeLogIds = {

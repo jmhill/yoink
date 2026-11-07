@@ -7,7 +7,7 @@ import { planTaskChange } from '../domain/plan-task-change.js';
 import { loadOwnedTask } from './load-owned-task.js';
 import type { LoadProject, LoadTask, PersistTaskChange } from './ports.js';
 import { kindsFromRecords } from './write-result.js';
-import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
+import type { ChangeLogKind } from '../../modules/history/domain/kinds.js';
 import { planNextActionClear } from '../../projects/domain/plan-next-action-clear.js';
 
 export type HandleDeleteTaskDeps = {

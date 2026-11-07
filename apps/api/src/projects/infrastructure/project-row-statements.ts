@@ -1,5 +1,5 @@
 import type { Project } from '@yoink/api-contracts';
-import type { SqlQuery } from '../../shared/change-log/infrastructure/sql.js';
+import type { SqlQuery } from '../../modules/history/infrastructure/sql.js';
 
 export const insertProjectQuery = (project: Project): SqlQuery => ({
   sql: `

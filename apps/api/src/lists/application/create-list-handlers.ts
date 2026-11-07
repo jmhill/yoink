@@ -19,7 +19,7 @@ import {
   withCommandLog,
   type CommandLogger,
 } from '../../kernel/command-log.js';
-import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
+import type { ChangeLogKind } from '../../modules/history/domain/kinds.js';
 
 export type ListHandlerDeps = {
   persist: PersistNamedListChange;

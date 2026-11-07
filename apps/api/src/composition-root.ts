@@ -36,9 +36,9 @@ import {
   setOpenOrderQueries,
 } from './tasks/infrastructure/task-row-statements.js';
 import { createPinoCommandLogger, createPinoHistoryReadLogger } from './platform/logging/index.js';
-import { createHistoryHandlers } from './history/application/create-history-handlers.js';
-import { createSqliteChangeLogStore } from './shared/change-log/infrastructure/sqlite-change-log-store.js';
-import { createSqliteTimelineLookups } from './history/infrastructure/sqlite-history-lookups.js';
+import { createHistoryHandlers } from './modules/history/index.js';
+import { createSqliteChangeLogStore } from './modules/history/infrastructure/sqlite-change-log-store.js';
+import { createSqliteTimelineLookups } from './modules/history/infrastructure/sqlite-history-lookups.js';
 import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
 import { createWorkHandlers } from './work/application/create-work-handlers.js';
 import { createSqliteWorkStore } from './work/infrastructure/sqlite-work-store.js';

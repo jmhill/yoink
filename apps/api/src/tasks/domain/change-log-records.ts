@@ -3,8 +3,8 @@ import type { Actor } from '../../kernel/auth-context.js';
 import {
   UNLISTED_PILE_SUBJECT_ID,
   hiddenFor,
-} from '../../shared/change-log/domain/kinds.js';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+} from '../../modules/history/domain/kinds.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
 import type {
   NamedListCreatedPayloadV1,
   NamedListDeletedPayloadV1,
@@ -20,7 +20,7 @@ import type {
   TaskUncompletedPayloadV1,
   TaskUnpinnedPayloadV1,
   TaskUpdatedPayloadV1,
-} from '../../shared/change-log/domain/payloads.js';
+} from '../../modules/history/domain/payloads.js';
 import type { TaskEvent, TaskUpdated } from './events.js';
 
 export type TaskChangeLogIds = {

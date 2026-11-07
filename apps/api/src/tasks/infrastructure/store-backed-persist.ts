@@ -3,8 +3,8 @@ import type { Database, QueryResult } from '../../platform/database/types.js';
 import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,
-} from '../../shared/change-log/infrastructure/sql.js';
-import type { FakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+} from '../../modules/history/infrastructure/sql.js';
+import type { FakeChangeLogStore } from '../../modules/history/infrastructure/fake-change-log-store.js';
 import type { PersistTaskChange } from '../application/ports.js';
 import type { TaskChangePlan } from '../domain/plan-task-change.js';
 import { storageError, taskNotFoundError } from '../domain/task-errors.js';

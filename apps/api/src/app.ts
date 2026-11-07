@@ -39,7 +39,7 @@ import type { CaptureHandlers } from './captures/application/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { ProjectHandlers } from './projects/application/index.js';
 import type { NoteHandlers } from './notes/application/create-note-handlers.js';
-import type { HistoryHandlers } from './history/application/create-history-handlers.js';
+import type { HistoryHandlers } from './modules/history/index.js';
 import type { TaskService } from './tasks/domain/task-service.js';
 import type { TaskHandlers } from './tasks/application/index.js';
 import type { WorkHandlers } from './work/application/create-work-handlers.js';

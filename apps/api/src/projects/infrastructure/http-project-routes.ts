@@ -3,7 +3,7 @@ import { implement } from '@orpc/server';
 import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import type { FastifyInstance } from 'fastify';
 import type { AuthMiddleware } from '../../access/application/index.js';
-import type { HistoryHandlers } from '../../history/application/create-history-handlers.js';
+import type { HistoryHandlers } from '../../modules/history/index.js';
 import { toProjectListBody, toTaskListBody } from '../../edges/_shared/http-listed-page.js';
 import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
 import { openApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';

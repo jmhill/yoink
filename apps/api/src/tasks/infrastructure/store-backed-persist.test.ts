@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { errAsync } from 'neverthrow';
 import { createFakeTaskStore } from './fake-task-store.js';
 import { createStoreBackedPersist } from './store-backed-persist.js';
-import { createFakeChangeLogStore } from '../../shared/change-log/infrastructure/fake-change-log-store.js';
+import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
 import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import { planProjectChange } from '../../projects/domain/plan-project-change.js';

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDatabase } from '../../platform/database/test-utils.js';
 import type { Database } from '../../platform/database/types.js';
 import { createSqliteProjectPersist, createSqliteProjectStatusPersist } from './store-backed-persist.js';
-import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import { createSqliteChangeLogStore } from '../../modules/history/infrastructure/sqlite-change-log-store.js';
 import { planProjectChange } from '../domain/plan-project-change.js';
 import { createSqliteProjectStore } from './sqlite-project-store.js';
 import { handleUpdateProject } from '../application/handle-update-project.js';

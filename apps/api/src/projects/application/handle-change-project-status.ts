@@ -1,6 +1,6 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import type { ChangeLogKind } from '../../shared/change-log/domain/kinds.js';
+import type { ChangeLogKind } from '../../modules/history/domain/kinds.js';
 import type { ChangeProjectStatusCommand } from '../domain/project-commands.js';
 import {
   projectNotFoundError,

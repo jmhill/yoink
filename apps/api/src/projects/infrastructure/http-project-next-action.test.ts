@@ -9,7 +9,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import type { Project, SetProjectNextActionResponse, Task } from '@yoink/api-contracts';
 import type { Database } from '../../platform/database/types.js';
-import { createSqliteChangeLogStore } from '../../shared/change-log/infrastructure/sqlite-change-log-store.js';
+import { createSqliteChangeLogStore } from '../../modules/history/infrastructure/sqlite-change-log-store.js';
 
 describe('project next-action HTTP', () => {
   let app: FastifyInstance;

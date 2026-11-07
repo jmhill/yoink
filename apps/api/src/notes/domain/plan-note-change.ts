@@ -1,6 +1,6 @@
 import type { Note } from '@yoink/api-contracts';
 import type { Actor } from '../../kernel/auth-context.js';
-import type { ChangeLogRecord } from '../../shared/change-log/domain/record.js';
+import type { ChangeLogRecord } from '../../modules/history/domain/record.js';
 import { applyNoteCreated, applyNoteUpdated } from './apply-note-event.js';
 import {
   changeLogRecordsFromNoteEvent,

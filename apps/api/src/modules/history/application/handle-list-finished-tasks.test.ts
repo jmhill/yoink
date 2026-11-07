@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import { UNKNOWN_ACTOR_NAME } from '../../shared/change-log/domain/to-timeline-entry.js';
+import { UNKNOWN_ACTOR_NAME } from '../domain/to-timeline-entry.js';
 import { handleListFinishedTasksOnProject } from './handle-list-finished-tasks.js';
 
 const now = '2026-10-11T15:00:00.000Z';

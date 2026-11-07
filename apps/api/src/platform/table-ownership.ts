@@ -5,8 +5,9 @@
  * file and update {@link classifyApiPath} when files move. The current-layout
  * branch of that function is the compatibility map for today's directories.
  * M2.1 put pure shared and listing code under `kernel/`. That branch is
- * already no-sql. Listing infrastructure and `shared/change-log` stay on
- * their current branches.
+ * already no-sql. M4.2 moved the change log and the history tree to
+ * `modules/history/`, which the modules branch owns. The `shared/change-log`
+ * branch stays so a file put back there is still history.
  *
  * This module is not wired into the server. Nothing in `app.ts` or the
  * composition root should import it.

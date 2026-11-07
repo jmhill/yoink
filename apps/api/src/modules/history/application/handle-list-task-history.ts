@@ -1,12 +1,12 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { HistoryPage } from '@yoink/api-contracts';
-import type { InvalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
-import { resolveListLimit } from '../../kernel/listing/domain/list-kind.js';
-import { taskHistoryCursor } from '../../kernel/listing/domain/list-keys.js';
-import { runListedQuery } from '../../kernel/listing/application/run-listed-query.js';
-import { taskNotFoundError, type TaskNotFoundError } from '../../tasks/domain/task-errors.js';
-import type { StorageError } from '../../projects/domain/project-errors.js';
-import type { ChangeLogStorageError } from '../../shared/change-log/domain/history-page-item.js';
+import type { InvalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
+import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
+import { taskHistoryCursor } from '../../../kernel/listing/domain/list-keys.js';
+import { runListedQuery } from '../../../kernel/listing/application/run-listed-query.js';
+import { taskNotFoundError, type TaskNotFoundError } from '../../../tasks/domain/task-errors.js';
+import type { StorageError } from '../../../projects/domain/project-errors.js';
+import type { ChangeLogStorageError } from '../domain/history-page-item.js';
 import type { ListTaskHistoryQuery } from '../domain/queries.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';
 import type {

@@ -6,7 +6,7 @@ import { projectNotesDirection } from '../../kernel/listing/domain/list-keys.js'
 import {
   insertChangeLogIfChangedQuery,
   insertChangeLogQuery,
-} from '../../shared/change-log/infrastructure/sql.js';
+} from '../../modules/history/infrastructure/sql.js';
 import { staleNoteError, storageError, type StorageError } from '../domain/note-errors.js';
 import { nextBuiltInNoteVersion } from '../domain/parse-note-fields.js';
 import type { NotesBackend } from '../application/ports.js';

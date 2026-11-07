@@ -1,6 +1,8 @@
 import { ORPCError } from '@orpc/server';
-import type { ListFinishedTasksOnProjectError } from '../../history/application/handle-list-finished-tasks.js';
-import type { ListProjectHistoryError } from '../../history/application/handle-list-project-history.js';
+import type {
+  ListFinishedTasksOnProjectError,
+  ListProjectHistoryError,
+} from '../../modules/history/index.js';
 import { yoinkHttpError, yoinkServerError } from '../../edges/_shared/orpc/yoink-http-error.js';
 import type {
   ApplyImportError,

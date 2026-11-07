@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -200,8 +200,16 @@ describe('table reference heuristic', () => {
 });
 
 describe('path ownership', () => {
-  it('leaves shared/ as the change log only', () => {
-    expect(readdirSync(join(apiSrc, 'shared')).sort()).toEqual(['change-log']);
+  it('keeps history under modules/history and leaves no shared directory', () => {
+    expect(existsSync(join(apiSrc, 'shared'))).toBe(false);
+    expect(existsSync(join(apiSrc, 'history'))).toBe(false);
+    expect(readdirSync(join(apiSrc, 'modules', 'history')).sort()).toEqual([
+      'application',
+      'domain',
+      'index.ts',
+      'infrastructure',
+      'testing.ts',
+    ]);
   });
 
   it('maps target paths and today\'s layout, and keeps SQL in infrastructure', () => {
@@ -225,7 +233,7 @@ describe('path ownership', () => {
       kind: 'module-other',
       owner: 'task-management',
     });
-    expect(classifyApiPath('shared/change-log/infrastructure/sql.ts')).toEqual({
+    expect(classifyApiPath('modules/history/infrastructure/sql.ts')).toEqual({
       kind: 'module-infrastructure',
       owner: 'history',
     });
@@ -584,8 +592,8 @@ describe('current tree', () => {
     expect(count('processing/infrastructure/process-row-statements.ts', 'FROM', 'captures')).toBe(1);
     expect(count('processing/infrastructure/process-row-statements.ts', 'UPDATE', 'captures')).toBe(1);
     expect(count('tasks/infrastructure/task-row-statements.ts', 'UPDATE', 'captures')).toBe(1);
-    expect(count('shared/change-log/infrastructure/sql.ts', 'FROM', 'tasks')).toBe(2);
-    expect(count('shared/change-log/infrastructure/sql.ts', 'INTO', 'change_log')).toBe(1);
+    expect(count('modules/history/infrastructure/sql.ts', 'FROM', 'tasks')).toBe(2);
+    expect(count('modules/history/infrastructure/sql.ts', 'INTO', 'change_log')).toBe(1);
     expect(count('notes/infrastructure/note-row-statements.ts', 'JOIN', 'users')).toBe(4);
     expect(count('notes/infrastructure/note-row-statements.ts', 'FROM', 'project_notes')).toBe(2);
     expect(count('platform/sql/page-sqlite.ts', 'FROM', 'tasks')).toBe(0);

@@ -5,6 +5,7 @@ import { createDatabase } from './database.js';
 import { runMigrations } from './migrator.js';
 import type { Database, Migration } from './types.js';
 import { testPendingMigrations } from './migration-test-runner.js';
+import { seedMigrationTestData } from '../../tests/helpers/migration-seed.test.js';
 
 describe('Migration test runner', () => {
   const testDbPath = './tmp/migration-runner-test.db';
@@ -95,6 +96,7 @@ describe('Migration test runner', () => {
         productionDb,
         localDbPath: testDbPath,
         allMigrations: [migration1, migration2, migration3],
+        seed: seedMigrationTestData,
       });
 
       expect(result.success).toBe(true);

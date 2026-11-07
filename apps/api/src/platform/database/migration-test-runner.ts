@@ -3,7 +3,6 @@ import { dirname } from 'node:path';
 import { createDatabase } from './database.js';
 import { runMigrations } from './migrator.js';
 import { getLastDeployedVersion } from './turso-client.js';
-import { seedMigrationTestData } from './migration-seeder.js';
 import type { Database, Migration } from './types.js';
 
 /**
@@ -28,6 +27,13 @@ export type TestMigrationOptions = {
   allMigrations: Migration[];
   /** Whether to seed test data (default: true) */
   seedData?: boolean;
+  /**
+   * Rows to insert after the deployed migrations and before the pending ones.
+   * The platform runner does not import the test helper. Callers that want
+   * the synthetic rows pass `seedMigrationTestData`. Seed errors are ignored
+   * so an early schema can still exercise the pending migration.
+   */
+  seed?: (db: Database) => Promise<unknown>;
 };
 
 /**
@@ -52,6 +58,7 @@ export const testPendingMigrations = async (
     localDbPath,
     allMigrations,
     seedData = true,
+    seed,
   } = options;
 
   // 1. Query production for deployed version
@@ -93,9 +100,9 @@ export const testPendingMigrations = async (
     }
 
     // 5. Seed test data (only if we have deployed migrations to seed against)
-    if (seedData && deployedMigrations.length > 0) {
+    if (seedData && deployedMigrations.length > 0 && seed) {
       try {
-        await seedMigrationTestData(localDb);
+        await seed(localDb);
       } catch {
         // Seeding might fail if schema doesn't support it (e.g., missing tables)
         // This is okay - it means we're testing early migrations

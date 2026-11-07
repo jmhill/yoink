@@ -1,4 +1,10 @@
-import type { Database } from './types.js';
+/**
+ * Synthetic rows for the migration test CLI. The file is `*.test.ts` because
+ * that is the suffix the table-ownership walker already skips. The platform
+ * runner receives this function as an argument and does not import it.
+ * Vitest excludes this path: a suite here would also run inside every importer.
+ */
+import type { Database } from '../../platform/database/types.js';
 
 /**
  * Result of seeding test data, containing IDs of created entities.

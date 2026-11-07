@@ -55,6 +55,7 @@ import { migration as oneOwnerPerWorkspace } from './040-one-owner-per-workspace
 import { migration as membershipEvents } from './041-membership-events.js';
 import { migration as membershipEventsV2 } from './042-membership-events-v2.js';
 import { migration as ownerInvites } from './043-owner-invites.js';
+import { migration as allowCaptureChangeLogSubject } from './044-allow-capture-change-log-subject.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -100,6 +101,7 @@ export const migrations: Migration[] = [
   membershipEvents,
   membershipEventsV2,
   ownerInvites,
+  allowCaptureChangeLogSubject,
 ];
 
 export type { Migration };

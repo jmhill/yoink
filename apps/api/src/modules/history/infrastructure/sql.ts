@@ -64,6 +64,9 @@ const existsClause = (
       args: [record.subjectId, record.organizationId],
     };
   }
+  if (record.subjectType === 'capture') {
+    return { sql: 'SELECT 1 WHERE 0', args: [] };
+  }
   if (record.subjectId === UNLISTED_PILE_SUBJECT_ID) {
     return {
       sql: `SELECT 1 FROM organizations WHERE id = ?`,

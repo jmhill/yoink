@@ -1,4 +1,4 @@
-export const CHANGE_LOG_SUBJECT_TYPES = ['task', 'list', 'project', 'note'] as const;
+export const CHANGE_LOG_SUBJECT_TYPES = ['task', 'list', 'project', 'note', 'capture'] as const;
 export type ChangeLogSubjectType = (typeof CHANGE_LOG_SUBJECT_TYPES)[number];
 
 export const CHANGE_LOG_KINDS = [

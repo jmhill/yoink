@@ -488,7 +488,7 @@ describe('table inventory', () => {
     }
   };
 
-  it('matches the map to tables that survive migrations 001-043, plus _migrations', () => {
+  it('matches the map to tables that survive the checked-in migrations, plus _migrations', () => {
     const files = scanSourceFiles(apiSrc);
     const byPath = new Map(files.map((file) => [file.path, file.literals]));
     const live = new Set<string>();
@@ -501,11 +501,15 @@ describe('table inventory', () => {
     const migrationPaths = [...byPath.keys()]
       .filter((path) => {
         const version = migrationVersion(path);
-        return version !== undefined && version >= 1 && version <= LEGACY_MIGRATION_VERSION;
+        return version !== undefined && version >= 1;
       })
       .sort((left, right) => (migrationVersion(left) ?? 0) - (migrationVersion(right) ?? 0));
-    expect(migrationVersion(migrationPaths[0] ?? '')).toBe(1);
-    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION);
+    const legacyPaths = migrationPaths.filter(
+      (path) => (migrationVersion(path) ?? 0) <= LEGACY_MIGRATION_VERSION
+    );
+    expect(migrationVersion(legacyPaths[0] ?? '')).toBe(1);
+    expect(migrationVersion(legacyPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION);
+    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION + 1);
 
     for (const path of migrationPaths) {
       applySchemaLiterals(byPath.get(path) ?? [], live);
@@ -517,7 +521,7 @@ describe('table inventory', () => {
       if (file.path === 'platform/database/migrator.ts') {
         return false;
       }
-      if (version !== undefined && version >= 1 && version <= LEGACY_MIGRATION_VERSION) {
+      if (version !== undefined && version >= 1) {
         return false;
       }
       return file.literals.some((literal) => schemaProbe.test(literal));
@@ -857,9 +861,9 @@ describe('migration ownership', () => {
   it('matches the checked-in sequence and leaves 001 through the legacy cutoff exempt', () => {
     const indexed = migrations.map((migration) => migration.version).sort((left, right) => left - right);
     expect(indexed).toEqual(
-      Array.from({ length: LEGACY_MIGRATION_VERSION }, (_, index) => index + 1)
+      Array.from({ length: LEGACY_MIGRATION_VERSION + 1 }, (_, index) => index + 1)
     );
-    expect(Math.max(...indexed) + 1).toBe(nextVersion);
+    expect(Math.max(...indexed)).toBe(nextVersion);
 
     const files = scanSourceFiles(apiSrc);
     const onDisk = files

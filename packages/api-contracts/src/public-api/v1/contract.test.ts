@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ProcedureContract, type AnyProcedureContract } from '@orpc/contract';
 import { getOpenAPIMeta } from '@orpc/openapi';
+import type { ZodTypeAny } from 'zod';
 import { describe, expect, it } from 'vitest';
 import { adminProtectedOrpcContract, adminPublicOrpcContract } from '../../orpc/admin-contract.js';
 import { authOrpcContract } from '../../orpc/auth-contract.js';
@@ -23,6 +24,8 @@ import { taskOrpcContract } from '../../orpc/task-contract.js';
 import { tokenOrpcContract } from '../../orpc/token-contract.js';
 import { workOrpcContract } from '../../orpc/work-contract.js';
 import { publicApiV1Contract } from './contract.js';
+import { frozenContractShape } from './frozen-contract.js';
+import { collectSchemas } from './schema-freeze.js';
 
 const inventoryPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -97,9 +100,12 @@ const legacyRouters = [
   workOrpcContract,
 ];
 
-const withoutPath = (meta: Record<string, unknown>) => {
-  const { path: _path, ...rest } = meta;
-  return rest;
+const schemasOf = (procedure: AnyProcedureContract): ZodTypeAny[] => {
+  const definition = procedure['~orpc'];
+  return [
+    ...((definition.inputSchemas ?? []) as ZodTypeAny[]),
+    ...((definition.outputSchemas ?? []) as ZodTypeAny[]),
+  ];
 };
 
 describe('public API v1 contracts', () => {
@@ -132,26 +138,58 @@ describe('public API v1 contracts', () => {
     expect(legacy).toHaveLength(105);
   });
 
-  it('keeps schema identity, error map, and OpenAPI metadata other than the path', () => {
+  it('pins procedure shape to the checked-in freeze, not the live legacy schemas', () => {
+    const pin = JSON.parse(readFileSync(new URL('./frozen-shape.json', import.meta.url), 'utf8')) as unknown;
+    expect(frozenContractShape(publicApiV1Contract)).toEqual(pin);
+  });
+
+  it('does not share Zod schema objects with the legacy procedures', () => {
+    const frozenSchemas = new Set<ZodTypeAny>();
     for (const procedure of frozen) {
-      const legacyPath = `/api${procedure.path}`;
-      const source = legacyByKey.get(routeKey(procedure.method, legacyPath));
-      expect(source, routeKey(procedure.method, legacyPath)).toBeDefined();
-      if (source === undefined) continue;
-
-      expect(procedure.procedure).not.toBe(source.procedure);
-      expect(source.path).toBe(legacyPath);
-      expect(procedure.procedure['~orpc'].inputSchemas).toBe(source.procedure['~orpc'].inputSchemas);
-      expect(procedure.procedure['~orpc'].outputSchemas).toBe(source.procedure['~orpc'].outputSchemas);
-      expect(procedure.procedure['~orpc'].errorMap).toEqual(source.procedure['~orpc'].errorMap);
-      expect(procedure.procedure['~orpc'].errorMap).toEqual({});
-
-      const frozenMeta = getOpenAPIMeta(procedure.procedure);
-      const legacyMeta = getOpenAPIMeta(source.procedure);
-      expect(frozenMeta?.path).toBe(procedure.path);
-      expect(legacyMeta?.path).toBe(legacyPath);
-      expect(withoutPath({ ...frozenMeta })).toEqual(withoutPath({ ...legacyMeta }));
+      for (const schema of schemasOf(procedure.procedure)) collectSchemas(schema, frozenSchemas);
     }
+    const shared: string[] = [];
+    for (const procedure of frozen) {
+      const source = legacyByKey.get(routeKey(procedure.method, `/api${procedure.path}`));
+      expect(source, procedure.path).toBeDefined();
+      if (source === undefined) continue;
+      for (const schema of schemasOf(source.procedure)) {
+        for (const nested of collectSchemas(schema)) {
+          if (frozenSchemas.has(nested)) shared.push(routeKey(procedure.method, procedure.path));
+        }
+      }
+    }
+    expect(shared).toEqual([]);
+  });
+
+  it('keeps refinement and default behavior on the frozen inputs', () => {
+    const input = (method: string, path: string): ZodTypeAny => {
+      const procedure = frozen.find((item) => item.method === method && item.path === path);
+      const schema = procedure?.procedure['~orpc'].inputSchemas?.[0] as ZodTypeAny | undefined;
+      if (schema === undefined) throw new Error(`missing ${method} ${path}`);
+      return schema;
+    };
+    const id = '550e8400-e29b-41d4-a716-446655440000';
+    const noteUpdate = input('PATCH', '/projects/{projectId}/notes/{noteId}');
+    expect(noteUpdate.safeParse({ projectId: id, noteId: id, expectedVersion: '1' }).success).toBe(false);
+    expect(noteUpdate.safeParse({ projectId: id, noteId: id, expectedVersion: '1', title: 'A note' }).success).toBe(true);
+
+    const imported = input('POST', '/notes/import');
+    expect(imported.safeParse({ projectId: id, noteId: id, title: 'A note', body: 'body' }).success).toBe(false);
+    expect(imported.safeParse({ projectId: id, noteId: id, title: 'A note', body: 'body', baseVersion: '1' }).success).toBe(true);
+
+    const projectUpdate = input('PATCH', '/projects/{id}');
+    expect(projectUpdate.safeParse({ id }).success).toBe(false);
+    expect(projectUpdate.safeParse({ id, name: 'Name' }).success).toBe(true);
+
+    const due = input('GET', '/work/due');
+    expect(due.parse({})).toEqual({ owner: 'all' });
+    expect(due.safeParse({ timeZone: 'America/Chicago' }).success).toBe(true);
+    expect(due.safeParse({ timeZone: 'Mars/Base' }).success).toBe(false);
+
+    const review = input('GET', '/review');
+    expect(review.safeParse({ timeZone: 'UTC' }).success).toBe(true);
+    expect(review.safeParse({ timeZone: 'Mars/Base' }).success).toBe(false);
   });
 
   it('leaves token writes, agent token writes, client-only routes, health, and fixtures out', () => {

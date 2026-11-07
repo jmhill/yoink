@@ -661,7 +661,7 @@ These principles apply in full from **v2** onward, and to anything newly **added
 ## 9. Public API versioning
 
 - **Scheme:** a major version in the URL path (`/api/v1/...`). Within a major version, changes are additive only.
-- **v1 is today's integration surface, frozen.** The contracts of today's integration routes are copied unchanged as v1 and served at both `/api/v1/` and the `/api/` alias.
+- **v1 is today's integration surface, frozen.** The contracts of today's integration routes are copied unchanged as v1 and served at both `/api/v1/` and the `/api/` alias. The copy does not alias the live legacy Zod objects. `packages/api-contracts/src/public-api/v1/frozen-shape.json` pins the copied shape. Structural sharing below is how a later major version is built from v1. It is not permission for v1 to keep pointing at a schema that can still change.
   - Within v1, only additive changes are allowed: descriptions, new error codes, optional client-generated ids for idempotency, and new procedures.
   - The intent-shaped redesign (§8.4) is **v2**. It's built using structural sharing, after Task Management and the edges exist.
 - **A breaking change creates a new major version of the whole API through structural sharing.** It does not create per-endpoint versions.
@@ -713,7 +713,7 @@ Two mounts that look plausible do not serve this contract:
 | task | `/api/tasks/...` |
 | work | `/api/work/next-actions`, `/api/work/due`, `/api/work/lists` |
 
-Captures are mounted with `new OpenAPIHandler` and `app.route({ method, url })`, then `handle` without a prefix (`apps/api/src/captures/infrastructure/orpc-capture-routes.ts`, `apps/api/src/edges/_shared/orpc/dispatch.ts`). The request URL matches the contract path. M3.1's frozen copy is `packages/api-contracts/src/public-api/v1/`. Each procedure path is the legacy path with `/api` removed, so `/api/captures` is stored as `/captures`. M3.2 passes `/api/v1` and `/api` to `handle`. A copy that keeps `/api/captures` will not also match `/api/v1/captures`. Client-only routes stay out of that copy, as the alias rule below already says. M3.1 does not move a production route.
+Captures are mounted with `new OpenAPIHandler` and `app.route({ method, url })`, then `handle` without a prefix (`apps/api/src/captures/infrastructure/orpc-capture-routes.ts`, `apps/api/src/edges/_shared/orpc/dispatch.ts`). The request URL matches the contract path. M3.1's frozen copy is `packages/api-contracts/src/public-api/v1/`. Each procedure path is the legacy path with `/api` removed, so `/api/captures` is stored as `/captures`. Its input and output schemas are detached copies, and `frozen-shape.json` pins that shape. M3.2 passes `/api/v1` and `/api` to `handle`. A copy that keeps `/api/captures` will not also match `/api/v1/captures`. Client-only routes stay out of that copy, as the alias rule below already says. M3.1 does not move a production route.
 - **The extension edge** (`/extension-api/v1/`) uses the same scheme and deprecation mechanics. Usage is logged per extension version, which the extension sends in a request header.
 - **Modules are unversioned.** Version differences exist only in an edge's mapping. A module changes only when a capability changes, and an older version's route maps onto the new command (with defaults where needed).
 - **Deprecation:**

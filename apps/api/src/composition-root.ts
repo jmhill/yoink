@@ -1,3 +1,4 @@
+import type { FastifyInstance } from 'fastify';
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { UnitOfWork } from './kernel/unit-of-work.js';
 import type { Task } from '@yoink/api-contracts';
@@ -192,6 +193,8 @@ export type BootstrapOptions = {
   viaFly?: boolean;
   /** Test seam: count or wrap validateToken without a second production lookup. */
   wrapTokenService?: (tokenService: TokenService) => TokenService;
+  /** Test seam: supply the Fastify instance, including its logger. */
+  app?: FastifyInstance;
 };
 
 export type BootstrappedApp = Awaited<ReturnType<typeof createApp>> & {
@@ -734,7 +737,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   });
 
   const server = await createApp({
-    app,
+    app: options.app ?? app,
     captureHandlers,
     listHandlers,
     projectHandlers,

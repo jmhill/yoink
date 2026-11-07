@@ -18,7 +18,6 @@ import { dispatchOrpc } from '../../edges/_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../edges/_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../edges/_shared/orpc/http-context.js';
 import type { CreateTokenError, RevokeTokenError } from '../domain/token-errors.js';
-import { createTokenListHandlers } from '../../edges/public-api/v1/tokens.js';
 import { accessHttpError, accessStorageError } from './access-http-errors.js';
 
 export type TokenRoutesDependencies = {
@@ -125,7 +124,6 @@ const protectedTokenAuth = (deps: TokenRoutesDependencies) => {
 
 /**
  * Client-only token writes. No versioned path and no alias headers.
- * The root cutover calls this instead of `registerTokenRoutes` so
  * `GET /api/auth/tokens` is owned by the public API edge.
  */
 export const registerTokenMutationRoutes = async (
@@ -145,38 +143,6 @@ export const registerTokenMutationRoutes = async (
       method: 'DELETE',
       url: '/api/auth/tokens/:tokenId',
       handler: async (request, reply) => dispatchOrpc(handler, request, reply),
-    });
-  });
-};
-
-/**
- * Today's combined registration. GET is a separate route from POST so the
- * alias headers, once mounted, apply to the list only. This GET has no
- * deprecation headers. `app.ts` still calls this until the root cutover.
- */
-export const registerTokenRoutes = async (
-  app: FastifyInstance,
-  deps: TokenRoutesDependencies,
-) => {
-  const listHandler = createTokenListHandlers(deps).legacy;
-  const mutations = tokenMutationHandler(deps);
-  const authMiddleware = protectedTokenAuth(deps);
-  await app.register(async (protectedApp) => {
-    protectedApp.addHook('preHandler', authMiddleware);
-    protectedApp.route({
-      method: 'GET',
-      url: '/api/auth/tokens',
-      handler: async (request, reply) => dispatchOrpc(listHandler, request, reply),
-    });
-    protectedApp.route({
-      method: 'POST',
-      url: '/api/auth/tokens',
-      handler: async (request, reply) => dispatchOrpc(mutations, request, reply),
-    });
-    protectedApp.route({
-      method: 'DELETE',
-      url: '/api/auth/tokens/:tokenId',
-      handler: async (request, reply) => dispatchOrpc(mutations, request, reply),
     });
   });
 };

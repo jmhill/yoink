@@ -28,8 +28,9 @@ export type PublicApiV1Dependencies = CaptureEdgeDependencies &
   ProjectEdgeDependencies &
   ReviewEdgeDependencies &
   TaskEdgeDependencies &
-  TokenListEdgeDependencies &
   WorkEdgeDependencies & {
+    /** Present when signup is configured, which is when token routes exist today. */
+    tokenHandlers?: TokenListEdgeDependencies['tokenHandlers'];
     tokenAuth: PublicApiAuth;
     aliasAuth: PublicApiAuth;
     /**
@@ -40,14 +41,10 @@ export type PublicApiV1Dependencies = CaptureEdgeDependencies &
   };
 
 /**
- * Mounts all 59 frozen integration procedures, including `GET /auth/tokens`.
+ * Mounts the frozen integration procedures at token-only `/api/v1` and at the
+ * `/api` alias. `GET /auth/tokens` is included when `tokenHandlers` is set.
  * Token create, delete, mint, and reissue are not on this router.
- * Health is not on this router.
- *
- * Not called from `app.ts` yet. Calling it beside the current registrars
- * would register each integration path twice, including `GET /api/auth/tokens`.
- * The cutover stops the legacy integration registrars and calls
- * `registerTokenMutationRoutes` instead of `registerTokenRoutes`.
+ * Health is not on this router. `aliasRetirement` stays unset until M7.1.
  */
 export const registerPublicApiV1 = async (app: FastifyInstance, deps: PublicApiV1Dependencies): Promise<void> => {
   if (deps.aliasRetirement !== undefined) aliasRetirementHttpDates(deps.aliasRetirement);
@@ -63,7 +60,6 @@ export const registerPublicApiV1 = async (app: FastifyInstance, deps: PublicApiV
   const notes = createNoteHandlers(deps);
   const work = createWorkHandlers(deps);
   const review = createReviewHandlers(deps);
-  const tokens = createTokenListHandlers(deps);
 
   mountPublicApiRoutes(app, { ...auth, handler: captures.v1Captures, routes: captureRoutes });
   mountPublicApiRoutes(app, { ...auth, handler: captures.v1Project, routes: processToProjectRoutes });
@@ -73,5 +69,8 @@ export const registerPublicApiV1 = async (app: FastifyInstance, deps: PublicApiV
   mountPublicApiRoutes(app, { ...auth, handler: notes.v1, routes: noteRoutes });
   mountPublicApiRoutes(app, { ...auth, handler: work.v1, routes: workRoutes });
   mountPublicApiRoutes(app, { ...auth, handler: review.v1, routes: reviewRoutes });
-  mountPublicApiRoutes(app, { ...auth, handler: tokens.v1, routes: tokenListRoutes });
+  if (deps.tokenHandlers !== undefined) {
+    const tokens = createTokenListHandlers({ tokenHandlers: deps.tokenHandlers });
+    mountPublicApiRoutes(app, { ...auth, handler: tokens.v1, routes: tokenListRoutes });
+  }
 };

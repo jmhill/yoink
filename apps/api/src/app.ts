@@ -8,13 +8,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerOrpcHealthRoutes } from './health/application/index.js';
-import { registerOrpcCaptureRoutes } from './captures/infrastructure/orpc-capture-routes.js';
-import { registerListRoutes } from './lists/infrastructure/http-list-routes.js';
-import { registerProjectRoutes } from './projects/infrastructure/http-project-routes.js';
-import { registerNoteRoutes } from './notes/infrastructure/http-note-routes.js';
-import { registerTaskRoutes } from './tasks/infrastructure/http-task-routes.js';
-import { registerWorkRoutes } from './work/infrastructure/http-work-routes.js';
-import { registerReviewRoutes } from './review/infrastructure/http-review-routes.js';
+import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
 import { registerReviewFixtureRoutes } from './review/infrastructure/http-review-fixture-routes.js';
 import { registerOwnerlessWorkspaceFixtureRoutes } from './access/infrastructure/http-ownerless-workspace-fixture-routes.js';
 import {
@@ -26,7 +20,8 @@ import {
   registerPasskeyRoutes,
   registerAuthRoutes,
   registerOrganizationRoutes,
-  registerTokenRoutes,
+  registerTokenMutationRoutes,
+  createAuthMiddleware,
   type AuthMiddleware,
   type ReissueAgentToken,
   type TransferOwnershipHandler,
@@ -208,37 +203,30 @@ export const createApp = async (deps: AppDependencies) => {
   // oRPC OpenAPI serves the HTTP API. Fastify rejects a second registration
   // of the same method and path. Fixture routes stay raw Fastify.
   await registerOrpcHealthRoutes(app, { healthChecker: deps.healthChecker });
-  await registerOrpcCaptureRoutes(app, {
+  const tokenOnly =
+    deps.signup === undefined
+      ? deps.authMiddleware
+      : createAuthMiddleware({ tokenService: deps.signup.tokenService });
+  const tokenAuth =
+    deps.signup === undefined
+      ? authMiddleware
+      : applyAuthenticatedRateLimit === undefined
+        ? tokenOnly
+        : withAuthenticatedRateLimit(tokenOnly, applyAuthenticatedRateLimit);
+  await registerPublicApiV1(app, {
     captureHandlers: deps.captureHandlers,
     captureProcessingService: deps.captureProcessingService,
-    authMiddleware,
-  });
-  await registerListRoutes(app, {
     listHandlers: deps.listHandlers,
-    authMiddleware,
-  });
-  await registerProjectRoutes(app, {
     projectHandlers: deps.projectHandlers,
     historyHandlers: deps.historyHandlers,
-    authMiddleware,
-  });
-  await registerNoteRoutes(app, {
     noteHandlers: deps.noteHandlers,
-    authMiddleware,
-  });
-  await registerTaskRoutes(app, {
     taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
-    historyHandlers: deps.historyHandlers,
-    authMiddleware,
-  });
-  await registerWorkRoutes(app, {
     workHandlers: deps.workHandlers,
-    authMiddleware,
-  });
-  await registerReviewRoutes(app, {
     reviewHandlers: deps.reviewHandlers,
-    authMiddleware,
+    tokenHandlers: deps.signup?.tokenHandlers,
+    tokenAuth,
+    aliasAuth: authMiddleware,
   });
   if (deps.enableTestFixtures && deps.database) {
     await registerReviewFixtureRoutes(app, {
@@ -339,7 +327,7 @@ export const createApp = async (deps: AppDependencies) => {
     });
 
     // User token self-service routes
-    await registerTokenRoutes(app, {
+    await registerTokenMutationRoutes(app, {
       tokenHandlers: deps.signup.tokenHandlers,
       sessionService: deps.signup.sessionService,
       tokenService: deps.signup.tokenService,

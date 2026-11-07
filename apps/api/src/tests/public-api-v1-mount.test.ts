@@ -8,7 +8,7 @@ import {
   createFakePasswordHasher,
 } from '@yoink/infrastructure';
 import Fastify from 'fastify';
-import { okAsync } from 'neverthrow';
+import { errAsync, okAsync } from 'neverthrow';
 import { describe, expect, it } from 'vitest';
 import type { ApiToken } from '../access/domain/api-token.js';
 import type { OrganizationMembership } from '../access/domain/organization-membership.js';
@@ -19,7 +19,13 @@ import { createTokenService } from '../access/domain/token-service.js';
 import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
 import { createUserService } from '../access/domain/user-service.js';
-import { createAuthMiddleware, createCombinedAuthMiddleware } from '../access/application/index.js';
+import { captureNotInInboxError } from '../captures/domain/capture-errors.js';
+import {
+  createAuthMiddleware,
+  createCombinedAuthMiddleware,
+  registerTokenMutationRoutes,
+} from '../access/application/index.js';
+import type { TokenHandlers } from '../access/application/create-token-handlers.js';
 import { USER_SESSION_COOKIE } from '../access/application/combined-auth-middleware.js';
 import { createFakeOrganizationMembershipStore } from '../access/infrastructure/fake-organization-membership-store.js';
 import { createFakeOrganizationStore } from '../access/infrastructure/fake-organization-store.js';
@@ -28,7 +34,7 @@ import { createFakeUserSessionStore } from '../access/infrastructure/fake-user-s
 import { createFakeUserStore } from '../access/infrastructure/fake-user-store.js';
 import type { CaptureHandlers } from '../captures/application/create-capture-handlers.js';
 import {
-  PUBLIC_API_ALIAS_PLACEHOLDER_HTTP_DATE,
+  PUBLIC_API_ALIAS_MIN_WINDOW_MS,
   publicApiV1Routes,
   registerPublicApiV1,
   type PublicApiV1Dependencies,
@@ -61,17 +67,14 @@ const stub = <T extends object>(): T =>
   });
 
 describe('public API v1 mount', () => {
-  it('covers the frozen integration procedures except token list', () => {
+  it('covers every frozen integration procedure, including token list', () => {
     const procedures = contractProcedures(publicApiV1Contract);
     expect(procedures).toHaveLength(59);
-    const tokens = procedures.filter((procedure) => procedure.key.startsWith('tokens.'));
-    expect(tokens.map((procedure) => `${procedure.method} ${procedure.path}`)).toEqual(['GET /auth/tokens']);
-    const expected = procedures
-      .filter((procedure) => !procedure.key.startsWith('tokens.'))
-      .map((procedure) => `${procedure.method} ${procedure.path}`);
+    const expected = procedures.map((procedure) => `${procedure.method} ${procedure.path}`);
     expect(new Set(mountedKeys)).toEqual(new Set(expected));
-    expect(mountedKeys).toHaveLength(58);
-    expect(mountedKeys.some((key) => key.includes('/health') || key.includes('/auth/tokens'))).toBe(false);
+    expect(mountedKeys).toHaveLength(59);
+    expect(mountedKeys).toContain('GET /auth/tokens');
+    expect(mountedKeys.some((key) => key.includes('/health') || key === 'POST /auth/tokens' || key.startsWith('DELETE /auth/tokens'))).toBe(false);
   });
 
   it('serves a token on /api/v1, rejects a session there, and marks the alias', async () => {
@@ -173,6 +176,37 @@ describe('public API v1 mount', () => {
         },
         view: captureView,
       });
+    captureHandlers.list = () =>
+      okAsync({ items: [], hasMore: false, nextCursor: null, total: 0 });
+    const captureProcessingService = stub<PublicApiV1Dependencies['captureProcessingService']>();
+    captureProcessingService.processCaptureToTask = () =>
+      errAsync(captureNotInInboxError(captureView.id));
+    const tokenHandlers = stub<TokenHandlers>();
+    tokenHandlers.list = () =>
+      okAsync({
+        tokens: [{ id: token.id, name: token.name, createdAt: token.createdAt, lastUsedAt: undefined }],
+      });
+    tokenHandlers.create = () =>
+      okAsync({
+        event: {
+          type: 'TokenCreated',
+          id: token.id,
+          userId: user.id,
+          organizationId: org.id,
+          name: 'Created',
+          createdAt: token.createdAt,
+        },
+        token: { id: token.id, name: 'Created', createdAt: token.createdAt, lastUsedAt: undefined },
+        rawToken: `${token.id}:created-secret`,
+      });
+    tokenHandlers.revoke = () =>
+      okAsync({
+        type: 'TokenRevoked',
+        id: token.id,
+        userId: user.id,
+        organizationId: org.id,
+        revokedAt: token.createdAt,
+      });
     const lines: string[] = [];
     const app = Fastify({
       logger: { level: 'info', stream: { write: (message: string) => lines.push(message) } },
@@ -180,6 +214,9 @@ describe('public API v1 mount', () => {
     await app.register(cookie);
     const deps = stub<PublicApiV1Dependencies>();
     deps.captureHandlers = captureHandlers;
+    deps.captureProcessingService = captureProcessingService;
+    deps.tokenHandlers = tokenHandlers;
+    deps.aliasRetirement = undefined;
     deps.tokenAuth = createAuthMiddleware({ tokenService });
     deps.aliasAuth = createCombinedAuthMiddleware({
       tokenService,
@@ -187,6 +224,12 @@ describe('public API v1 mount', () => {
       sessionCookieName: USER_SESSION_COOKIE,
     });
     await registerPublicApiV1(app, deps);
+    await registerTokenMutationRoutes(app, {
+      tokenHandlers,
+      sessionService,
+      tokenService,
+      sessionCookieName: USER_SESSION_COOKIE,
+    });
 
     const sessionOnly = await app.inject({
       method: 'POST',
@@ -197,6 +240,8 @@ describe('public API v1 mount', () => {
     expect(sessionOnly.statusCode).toBe(401);
     expect(sessionOnly.json()).toEqual({ message: 'Missing authorization header' });
     expect(sessionOnly.headers.deprecation).toBeUndefined();
+    expect(sessionOnly.headers.sunset).toBeUndefined();
+    expect(sessionOnly.headers.link).toBeUndefined();
 
     const bearer = `${token.id}:valid-token`;
     const v1 = await app.inject({
@@ -218,14 +263,106 @@ describe('public API v1 mount', () => {
       cookies: { [USER_SESSION_COOKIE]: session.id },
     });
     expect(alias.statusCode).toBe(201);
-    expect(alias.headers.deprecation).toBe(PUBLIC_API_ALIAS_PLACEHOLDER_HTTP_DATE);
-    expect(alias.headers.sunset).toBe(PUBLIC_API_ALIAS_PLACEHOLDER_HTTP_DATE);
+    expect(alias.headers.deprecation).toBeUndefined();
+    expect(alias.headers.sunset).toBeUndefined();
     expect(alias.headers.link).toBe('</api/v1/captures?from=web>; rel="successor-version"');
 
+    const aliasList = await app.inject({
+      method: 'GET',
+      url: '/api/captures',
+      cookies: { [USER_SESSION_COOKIE]: session.id },
+    });
+    expect(aliasList.statusCode).toBe(200);
+    expect(aliasList.json()).toEqual({ captures: [], hasMore: false, nextCursor: null, total: 0 });
+    expect(aliasList.headers.deprecation).toBeUndefined();
+    expect(aliasList.headers.sunset).toBeUndefined();
+    expect(aliasList.headers.link).toBe('</api/v1/captures>; rel="successor-version"');
+
+    const sessionTokenList = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/tokens',
+      cookies: { [USER_SESSION_COOKIE]: session.id },
+    });
+    expect(sessionTokenList.statusCode).toBe(401);
+    expect(sessionTokenList.json()).toEqual({ message: 'Missing authorization header' });
+    expect(sessionTokenList.headers.deprecation).toBeUndefined();
+    expect(sessionTokenList.headers.sunset).toBeUndefined();
+    expect(sessionTokenList.headers.link).toBeUndefined();
+
+    const humanLogAt = lines.length;
+    const v1TokenList = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/tokens',
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(v1TokenList.statusCode).toBe(200);
+    expect(v1TokenList.json()).toEqual({
+      tokens: [{ id: token.id, name: token.name, createdAt: token.createdAt }],
+    });
+    expect(v1TokenList.headers.deprecation).toBeUndefined();
+    expect(v1TokenList.headers.sunset).toBeUndefined();
+    expect(v1TokenList.headers.link).toBeUndefined();
+    expect(lines.slice(humanLogAt).join('\n')).not.toContain('"tokenId"');
+
+    const aliasTokenList = await app.inject({
+      method: 'GET',
+      url: '/api/auth/tokens',
+      cookies: { [USER_SESSION_COOKIE]: session.id },
+    });
+    expect(aliasTokenList.statusCode).toBe(200);
+    expect(aliasTokenList.json().tokens[0].id).toBe(token.id);
+    expect(aliasTokenList.headers.deprecation).toBeUndefined();
+    expect(aliasTokenList.headers.sunset).toBeUndefined();
+    expect(aliasTokenList.headers.link).toBe('</api/v1/auth/tokens>; rel="successor-version"');
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/auth/tokens',
+      payload: { name: 'Created' },
+      cookies: { [USER_SESSION_COOKIE]: session.id },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.headers.deprecation).toBeUndefined();
+    expect(created.headers.sunset).toBeUndefined();
+    expect(created.headers.link).toBeUndefined();
+
+    const removed = await app.inject({
+      method: 'DELETE',
+      url: `/api/auth/tokens/${token.id}`,
+      cookies: { [USER_SESSION_COOKIE]: session.id },
+    });
+    expect(removed.headers.deprecation).toBeUndefined();
+    expect(removed.headers.sunset).toBeUndefined();
+    expect(removed.headers.link).toBeUndefined();
+
+    const versionedCreate = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/tokens',
+      payload: { name: 'Created' },
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    const versionedDelete = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/auth/tokens/${token.id}`,
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(versionedCreate.statusCode).toBe(404);
+    expect(versionedDelete.statusCode).toBe(404);
+
     const health = await app.inject({ method: 'GET', url: '/api/health' });
-    const tokenList = await app.inject({ method: 'GET', url: '/api/v1/auth/tokens' });
     expect(health.statusCode).toBe(404);
-    expect(tokenList.statusCode).toBe(404);
+    expect(health.headers.deprecation).toBeUndefined();
+    expect(health.headers.sunset).toBeUndefined();
+    expect(health.headers.link).toBeUndefined();
+
+    const processed = await app.inject({
+      method: 'POST',
+      url: `/api/captures/${captureView.id}/process`,
+      payload: { type: 'task', data: { title: 'Twice' } },
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(processed.statusCode).toBe(400);
+    expect(processed.json()).toEqual({ message: 'Capture must be in inbox to be processed' });
 
     const agentCall = await app.inject({
       method: 'POST',
@@ -241,6 +378,62 @@ describe('public API v1 mount', () => {
     expect(log).toContain(`"tokenId":"${agentToken.id}"`);
     expect(log).not.toContain('valid-token');
     expect(log).not.toContain('agent-token');
+    await app.close();
+  });
+
+  it('sets Deprecation and Sunset only for an explicit window of at least 90 days', async () => {
+    const deprecation = new Date('2026-01-01T00:00:00.000Z');
+    const sunset = new Date(deprecation.getTime() + PUBLIC_API_ALIAS_MIN_WINDOW_MS);
+    const short = new Date(deprecation.getTime() + PUBLIC_API_ALIAS_MIN_WINDOW_MS - 1);
+    const orgId = '550e8400-e29b-41d4-a716-446655440001';
+    const userId = '550e8400-e29b-41d4-a716-446655440002';
+    const token: ApiToken = {
+      id: '550e8400-e29b-41d4-a716-446655440003',
+      userId,
+      organizationId: orgId,
+      tokenHash: 'fake-hash:valid-token',
+      name: 'test-token',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const tokenService = createTokenService({
+      organizationStore: createFakeOrganizationStore({
+        initialOrganizations: [{ id: orgId, name: 'Test Org', createdAt: '2024-01-01T00:00:00.000Z' }],
+      }),
+      userStore: createFakeUserStore({
+        initialUsers: [{ id: userId, email: 'test@example.com', createdAt: '2024-01-01T00:00:00.000Z' }],
+      }),
+      tokenStore: createFakeTokenStore({ initialTokens: [token] }),
+      passwordHasher: createFakePasswordHasher(),
+      clock,
+    });
+    const deps = stub<PublicApiV1Dependencies>();
+    deps.tokenAuth = createAuthMiddleware({ tokenService });
+    deps.aliasAuth = deps.tokenAuth;
+    deps.tokenHandlers = stub<TokenHandlers>();
+    deps.tokenHandlers.list = () => okAsync({ tokens: [] });
+    await expect(
+      registerPublicApiV1(Fastify(), { ...deps, aliasRetirement: { deprecation, sunset: short } }),
+    ).rejects.toThrow(/90-day minimum/);
+
+    const app = Fastify();
+    await registerPublicApiV1(app, { ...deps, aliasRetirement: { deprecation, sunset } });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/tokens',
+      headers: { authorization: `Bearer ${token.id}:valid-token` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers.deprecation).toBe('Thu, 01 Jan 2026 00:00:00 GMT');
+    expect(response.headers.sunset).toBe('Wed, 01 Apr 2026 00:00:00 GMT');
+    expect(response.headers.link).toBe('</api/v1/auth/tokens>; rel="successor-version"');
+    const versioned = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/tokens',
+      headers: { authorization: `Bearer ${token.id}:valid-token` },
+    });
+    expect(versioned.headers.deprecation).toBeUndefined();
+    expect(versioned.headers.sunset).toBeUndefined();
     await app.close();
   });
 });

@@ -6,14 +6,10 @@ import { toProjectListBody, toTaskListBody } from '../../_shared/http-listed-pag
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
-// eslint-disable-next-line boundaries/element-types
 import type { HistoryHandlers } from '../../../modules/history/index.js';
 // M5.3 removes these deep imports once projects export their handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { ProjectHandlers } from '../../../projects/application/create-project-handlers.js';
-// eslint-disable-next-line boundaries/element-types
 import type { SetProjectNextActionCommand } from '../../../projects/domain/project-commands.js';
-/* eslint-disable boundaries/element-types -- M5.3 deep import until projects exports these mappers from index.ts */
 import {
   mapApplyImportError,
   mapChangeProjectStatusError,
@@ -32,8 +28,6 @@ import {
   mapStageImportError,
   mapUpdateProjectError,
 } from '../../../projects/infrastructure/orpc-project-errors.js';
-/* eslint-enable boundaries/element-types */
-// eslint-disable-next-line boundaries/element-types
 import { projectRequestValidationError } from '../../../projects/infrastructure/project-http-errors.js';
 
 export type ProjectEdgeDependencies = {

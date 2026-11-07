@@ -69,6 +69,11 @@ export const reviewRoutes = [
   { method: 'GET', path: '/review' },
 ] as const satisfies readonly PublicApiRoute[];
 
+/** Frozen `tokens.list` only. Create and delete stay client-only. */
+export const tokenListRoutes = [
+  { method: 'GET', path: '/auth/tokens' },
+] as const satisfies readonly PublicApiRoute[];
+
 export const publicApiV1Routes = [
   ...captureRoutes,
   ...processToProjectRoutes,
@@ -78,4 +83,5 @@ export const publicApiV1Routes = [
   ...noteRoutes,
   ...workRoutes,
   ...reviewRoutes,
+  ...tokenListRoutes,
 ] as const satisfies readonly PublicApiRoute[];

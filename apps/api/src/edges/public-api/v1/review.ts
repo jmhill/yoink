@@ -8,11 +8,8 @@ import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 // M5.10 removes these deep imports once review exports its handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { ReviewHandlers } from '../../../review/application/create-review-handlers.js';
-// eslint-disable-next-line boundaries/element-types
 import type { RankedReviewProject } from '../../../review/domain/review-order.js';
-// eslint-disable-next-line boundaries/element-types
 import { mapListDoneError, mapListReviewError } from '../../../review/infrastructure/orpc-review-errors.js';
 
 export type ReviewEdgeDependencies = { reviewHandlers: ReviewHandlers };

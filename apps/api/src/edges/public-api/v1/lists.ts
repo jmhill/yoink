@@ -6,9 +6,7 @@ import { toNamedListListBody, toTaskListBody } from '../../_shared/http-listed-p
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.3 removes this deep import once lists export their handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { ListHandlers } from '../../../lists/application/create-list-handlers.js';
-/* eslint-disable boundaries/element-types -- M5.3 deep import until lists exports these mappers from index.ts */
 import {
   mapCreateNamedListError,
   mapDeleteNamedListError,
@@ -19,7 +17,6 @@ import {
   mapReorderOpenTasksError,
   mapReorderUnlistedOpenTasksError,
 } from '../../../lists/infrastructure/orpc-list-errors.js';
-/* eslint-enable boundaries/element-types */
 
 export type ListEdgeDependencies = { listHandlers: ListHandlers };
 

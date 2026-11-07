@@ -13,12 +13,9 @@ import {
 } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.1 removes these deep imports once captures exports its handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { CaptureHandlers } from '../../../captures/application/create-capture-handlers.js';
 // M5.5 removes this deep import once processing exports its workflow from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { CaptureProcessingService } from '../../../processing/application/create-processing-handlers.js';
-/* eslint-disable boundaries/element-types -- M5.1 deep import until captures exports these mappers from index.ts */
 import {
   mapAgentCaptureRefusal,
   mapCreateCaptureError,
@@ -34,9 +31,7 @@ import {
   mapUnsnoozeCaptureError,
   mapUpdateCaptureError,
 } from '../../../captures/infrastructure/orpc-capture-errors.js';
-/* eslint-enable boundaries/element-types */
 // M5.3 removes this deep import. Process-to-project keeps today's project validation body.
-// eslint-disable-next-line boundaries/element-types
 import { projectRequestValidationError } from '../../../projects/infrastructure/project-http-errors.js';
 
 export type CaptureEdgeDependencies = {

@@ -7,14 +7,10 @@ import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
-// eslint-disable-next-line boundaries/element-types
 import type { HistoryHandlers } from '../../../modules/history/index.js';
 // M5.3 removes these deep imports once tasks export their handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { TaskHandlers } from '../../../tasks/application/create-task-handlers.js';
-// eslint-disable-next-line boundaries/element-types
 import type { TaskService } from '../../../tasks/domain/task-service.js';
-/* eslint-disable boundaries/element-types -- M5.3 deep import until tasks exports these mappers from index.ts */
 import {
   mapCompleteTaskError,
   mapCreateTaskError,
@@ -27,7 +23,6 @@ import {
   mapUnpinTaskError,
   mapUpdateTaskError,
 } from '../../../tasks/infrastructure/orpc-task-errors.js';
-/* eslint-enable boundaries/element-types */
 
 export type TaskEdgeDependencies = {
   taskService: TaskService;

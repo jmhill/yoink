@@ -192,6 +192,9 @@ describe('token routes', () => {
       expect(response.json()).toEqual({
         tokens: [],
       });
+      expect(response.headers.deprecation).toBeUndefined();
+      expect(response.headers.sunset).toBeUndefined();
+      expect(response.headers.link).toBeUndefined();
     });
 
     it('lists the caller tokens with created and last used', async () => {
@@ -228,6 +231,9 @@ describe('token routes', () => {
       const response = await sessionRequest('POST', '/api/auth/tokens', { name: 'Lane' });
 
       expect(response.statusCode).toBe(201);
+      expect(response.headers.deprecation).toBeUndefined();
+      expect(response.headers.sunset).toBeUndefined();
+      expect(response.headers.link).toBeUndefined();
       const body = response.json();
       expect(body.token.name).toBe('Lane');
       expect(body.rawToken).toMatch(/^[^:]+:[^:]+$/);

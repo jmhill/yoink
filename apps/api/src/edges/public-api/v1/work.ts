@@ -7,15 +7,12 @@ import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 // M5.2 keeps these routes on the public API edge and moves the queries into task-management.
-// eslint-disable-next-line boundaries/element-types
 import type { WorkHandlers } from '../../../work/application/create-work-handlers.js';
-/* eslint-disable boundaries/element-types -- M5.2 deep import until work queries move into task-management */
 import {
   mapListDueError,
   mapListNextActionsError,
   mapListWorkListsError,
 } from '../../../work/infrastructure/orpc-work-errors.js';
-/* eslint-enable boundaries/element-types */
 
 export type WorkEdgeDependencies = { workHandlers: WorkHandlers };
 

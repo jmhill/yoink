@@ -6,11 +6,8 @@ import { toNoteListBody } from '../../_shared/http-listed-page.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.7 removes these deep imports once notes exports its handlers from index.ts.
-// eslint-disable-next-line boundaries/element-types
 import type { NoteHandlers } from '../../../notes/application/create-note-handlers.js';
-// eslint-disable-next-line boundaries/element-types
 import { noteRequestValidationError } from '../../../notes/infrastructure/note-http-errors.js';
-/* eslint-disable boundaries/element-types -- M5.7 deep import until notes exports these mappers from index.ts */
 import {
   mapCreateNoteError,
   mapDeleteNoteError,
@@ -20,7 +17,6 @@ import {
   mapListNotesError,
   mapUpdateNoteError,
 } from '../../../notes/infrastructure/orpc-note-errors.js';
-/* eslint-enable boundaries/element-types */
 
 export type NoteEdgeDependencies = { noteHandlers: NoteHandlers };
 

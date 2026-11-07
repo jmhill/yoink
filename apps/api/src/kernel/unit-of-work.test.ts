@@ -3,7 +3,9 @@ import { errAsync, okAsync } from 'neverthrow';
 import type { IntegrationEvent } from './integration-event.js';
 import type { ModuleName } from './module-name.js';
 import {
+  appendEventSink,
   prepareCommit,
+  type EventSink,
   type Policy,
   type PolicyRefusal,
   type StepFailure,
@@ -133,5 +135,64 @@ describe('prepareCommit', () => {
         reason: 'no-participant',
       });
     }
+  });
+});
+
+describe('appendEventSink', () => {
+  it('records caller and policy events once and does not feed the sink back', async () => {
+    const prepared = await prepareCommit({
+      works: [work('task-management', ['TaskDeleted'])],
+      policies: [
+        {
+          on: 'TaskDeleted',
+          react: () => okAsync(work('captures', ['CaptureDeleted'])),
+        },
+        {
+          on: 'CaptureDeleted',
+          react: () => okAsync(work('notes')),
+        },
+      ],
+      owners: owners('task-management', 'captures', 'notes'),
+    });
+    expect(prepared.isOk()).toBe(true);
+    if (prepared.isErr()) {
+      return;
+    }
+
+    const seen: string[] = [];
+    const sink: EventSink = {
+      owner: 'history',
+      prepare: (events) => {
+        seen.push(...events.map((item) => item.type));
+        return { rows: seen.length };
+      },
+    };
+
+    const withSink = appendEventSink(prepared.value, sink);
+    const again = appendEventSink(withSink, sink);
+
+    expect(seen).toEqual(['TaskDeleted', 'CaptureDeleted', 'TaskDeleted', 'CaptureDeleted']);
+    expect(withSink.steps.map((step) => step.step.owner)).toEqual([
+      'task-management',
+      'captures',
+      'history',
+    ]);
+    expect(withSink.steps[2]?.events).toEqual([]);
+    expect(again.steps).toHaveLength(4);
+  });
+
+  it('adds no step when prepare has nothing to write', async () => {
+    const prepared = await prepareCommit({
+      works: [work('captures', ['TaskDeleted'])],
+      policies: [],
+      owners: owners('captures'),
+    });
+    expect(prepared.isOk()).toBe(true);
+    if (prepared.isErr()) {
+      return;
+    }
+    const sink: EventSink = { owner: 'history', prepare: () => null };
+    expect(appendEventSink(prepared.value, sink).steps).toHaveLength(1);
+    expect(appendEventSink(prepared.value, undefined).steps).toHaveLength(1);
   });
 });

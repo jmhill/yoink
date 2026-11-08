@@ -6,7 +6,7 @@ import { dispatchOrpc } from '../_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
 import type { HealthChecker } from '../../platform/health/health-checker.js';
-import { mapHealthCheckError } from '../../health/application/orpc-health-errors.js';
+import { mapHealthCheckError } from './orpc-health-errors.js';
 
 export type OrpcHealthRoutesDependencies = {
   healthChecker: HealthChecker;

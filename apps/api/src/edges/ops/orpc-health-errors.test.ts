@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { healthCheckError } from '../../platform/health/health-errors.js';
-import { mapHealthCheckError } from '../../health/application/orpc-health-errors.js';
+import { mapHealthCheckError } from './orpc-health-errors.js';
 import { yoinkErrorBody } from '../_shared/orpc/yoink-error-body.js';
 
 describe('mapHealthCheckError', () => {

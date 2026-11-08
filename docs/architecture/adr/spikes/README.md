@@ -53,3 +53,20 @@ One run, exit 0, `durations.processMs` 7366.9, stderr empty. Same host, Node, an
 | Statement index | Null. U1 does not need it. The owner is the awaited step. |
 
 Parent accepted U1 at 2026-11-06 8:37 CT as the §12 fallback, after review of `0fd9fb8`. The acceptance adds no failure kind and no product behavior. No production unit of work was added by this spike. M4.1 then shipped the per-statement transaction. M4.1b ([#325](https://github.com/jmhill/yoink/issues/325)) is the later one-batch proof. It does not rerun these runners.
+
+## M4.1b remote proof, 2026-11-07 7:28 CT
+
+Passed once. Exit 0. Test database only (`yoink-m02-spike`), with the existing scoped test token. Not `yoink-prod`. The M0.2 runners were not rerun. The sanitized report is [m4-1b-u1-batch.remote.json](./m4-1b-u1-batch.remote.json). No runner, bundle, or lockfile is stored for this proof. Base main in the report is `d68e766292c419dec56841f8768b6afc01312353`. Node v22.23.2, `@libsql/client` 0.15.15. `durations.processMs` is 5740.2. The client API in the report is `client.transaction('write')` and then one `tx.batch`. It is not `client.batch(statements, mode)`.
+
+This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. Implementation, tests, review, and merge are still required. M5.1, M5.3, and M5.5 stay gated on that merge.
+
+| Check | Result |
+|---|---|
+| Zero-row update | Passed. `rowsAffected` `[1, 0, 1, 1]`. The batch continued. That proof then rolled back: item count 0, note count 0. |
+| Rollback | Passed. Rolled-back `rowsAffected` `[1, 0, 1]`. Afterwards the kept title is `kept`, the other title is null, item count 1, note count 0. The earlier committed row survived. |
+| 2,000 statements | Passed. One `tx.batch` of 1,000 updates and 1,000 inserts. `batchMs` 374.1. `finishMs` 174.2. `openMs` 0. Those phases sum to 548.3. Historical U2 `client.batch` for 2,000 statements was 494.3 ms. That run was not repeated. |
+| 3,000 statements | Passed. One `tx.batch` of 2,000 updates and 1,000 inserts. `batchMs` 346.3. `finishMs` 191.9. `openMs` 0. Those phases sum to 538.2. Historical U2 for 3,000 statements was 728.9 ms and included 1,000 guard assertions. The shapes differ, so the comparison is approximate. That run was not repeated. |
+| HTTP fetches | 2 per measured batch: `batch` 1, `finish` 1, `open` 0. The same 2 on the 2,000-statement batch and the 3,000-statement batch. Not 3. |
+| Cleanup | Both proof tables dropped. `remaining` 0. |
+
+A duplicate primary key threw `LibsqlError` `SQLITE_CONSTRAINT`, with `rawCode` null and `index` null, on the error and on its cause. The error has no statement index. This log does not choose how that error maps to `StepFailure.owner`. The implementation has to keep the existing owner contract. If that cannot be done without inventing an owner, stop and escalate to Justin. Do not record a new failure kind here.

@@ -1,0 +1,296 @@
+{
+  "ok": true,
+  "code": "M41B_BATCH_PROOF",
+  "issue": 325,
+  "baseMain": "d68e766292c419dec56841f8768b6afc01312353",
+  "libsqlClient": "0.15.15",
+  "node": "v22.23.2",
+  "host": "yoink-m02-spike-jmhill.aws-us-east-1.turso.io",
+  "clientApi": "client.transaction('write') then one tx.batch. Not client.batch(statements, mode).",
+  "historicalU2": {
+    "source": "docs/architecture/adr/spikes/m0-2-u2-batch.remote.json on main before this proof",
+    "note": "Stored U2 client.batch timings. This runner does not rerun that spike.",
+    "statements2000": {
+      "field": "largeBatch.batch.ms",
+      "ms": 494.3,
+      "issueRounding": "0.5s"
+    },
+    "statements3000": {
+      "field": "largeGuardedBatch.batch.ms",
+      "ms": 728.9,
+      "issueRounding": "0.7s"
+    }
+  },
+  "tables": [
+    "m41b_e4233060_item",
+    "m41b_e4233060_note"
+  ],
+  "proofs": {
+    "zeroUpdate": {
+      "pass": true,
+      "rowsAffected": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "summary": {
+        "count": 4,
+        "numeric": true,
+        "sum": 3,
+        "zeros": 1,
+        "first": [
+          1,
+          0,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          0,
+          1,
+          1
+        ]
+      },
+      "afterRollback": {
+        "itemCount": 0,
+        "noteCount": 0
+      },
+      "calls": {
+        "transaction": 1,
+        "batch": 1,
+        "commit": 0,
+        "rollback": 1
+      },
+      "fetches": {
+        "open": 0,
+        "batch": 1,
+        "finish": 1
+      },
+      "batchMs": 145.8
+    },
+    "rollback": {
+      "pass": true,
+      "rolledBackRowsAffected": [
+        1,
+        0,
+        1
+      ],
+      "after": {
+        "keptTitle": "kept",
+        "goneTitle": null,
+        "itemCount": 1,
+        "noteCount": 0
+      },
+      "calls": {
+        "transaction": 1,
+        "batch": 1,
+        "commit": 0,
+        "rollback": 1
+      },
+      "fetches": {
+        "open": 0,
+        "batch": 1,
+        "finish": 1
+      }
+    },
+    "seed": {
+      "statementCount": 1000,
+      "batchMs": 350.9,
+      "rowsAffected": {
+        "count": 1000,
+        "numeric": true,
+        "sum": 1000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "calls": {
+        "transaction": 1,
+        "batch": 1,
+        "commit": 1,
+        "rollback": 0
+      },
+      "fetches": {
+        "open": 0,
+        "batch": 1,
+        "finish": 1
+      }
+    },
+    "statements2000": {
+      "pass": true,
+      "shape": "1000 updates + 1000 inserts inside one tx.batch. U2 2000 was 1000 updates + 1000 change_log inserts via client.batch.",
+      "statementCount": 2000,
+      "batchMs": 374.1,
+      "openMs": 0,
+      "finishMs": 174.2,
+      "rowsAffected": {
+        "count": 2000,
+        "numeric": true,
+        "sum": 2000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "calls": {
+        "transaction": 1,
+        "batch": 1,
+        "commit": 1,
+        "rollback": 0
+      },
+      "fetches": {
+        "open": 0,
+        "batch": 1,
+        "finish": 1
+      },
+      "historicalU2BatchMs": 494.3,
+      "deltaMs": -120.2,
+      "itemCount": 1000,
+      "noteCount": 1000
+    },
+    "statements3000": {
+      "pass": true,
+      "shape": "2000 updates + 1000 inserts inside one tx.batch. U2 3000 included 1000 guard assertions and used client.batch.",
+      "statementCount": 3000,
+      "batchMs": 346.3,
+      "openMs": 0,
+      "finishMs": 191.9,
+      "rowsAffected": {
+        "count": 3000,
+        "numeric": true,
+        "sum": 3000,
+        "zeros": 0,
+        "first": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "last": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "calls": {
+        "transaction": 1,
+        "batch": 1,
+        "commit": 1,
+        "rollback": 0
+      },
+      "fetches": {
+        "open": 0,
+        "batch": 1,
+        "finish": 1
+      },
+      "historicalU2BatchMs": 728.9,
+      "deltaMs": -382.6,
+      "titledFourth": "fourth",
+      "noteCount": 2000
+    },
+    "duplicateKey": {
+      "pass": true,
+      "observation": {
+        "threw": true,
+        "error": {
+          "name": "LibsqlError",
+          "code": "SQLITE_CONSTRAINT",
+          "rawCode": null,
+          "index": null,
+          "ownKeys": [
+            "cause",
+            "code",
+            "message",
+            "name",
+            "proofCalls",
+            "proofFetches",
+            "rawCode",
+            "stack"
+          ],
+          "causeKeys": [
+            "code",
+            "message",
+            "name",
+            "proto",
+            "stack"
+          ],
+          "causeCode": "SQLITE_CONSTRAINT",
+          "causeRawCode": null,
+          "causeIndex": null,
+          "hasSqlKey": false,
+          "hasArgsKey": false,
+          "messageContainsTable": true,
+          "messageContainsArg": false
+        },
+        "calls": {
+          "transaction": 1,
+          "batch": 0,
+          "commit": 0,
+          "rollback": 1
+        }
+      },
+      "after": {
+        "itemCount": 1000,
+        "titleOf1": "fourth"
+      }
+    }
+  },
+  "roundTrips": {
+    "measuredBy": "createClient fetch option, one count per HTTP request",
+    "note": "A null or zero total means the client did not use this fetch. That is not a claim of three round trips.",
+    "perProof": [
+      {
+        "name": "statements2000",
+        "total": 2
+      },
+      {
+        "name": "statements3000",
+        "total": 2
+      }
+    ],
+    "independentOfBatchSize": true
+  },
+  "durations": {
+    "processMs": 5740.2
+  },
+  "cleanup": {
+    "dropped": [
+      "m41b_e4233060_item",
+      "m41b_e4233060_note"
+    ],
+    "remaining": 0
+  }
+}

@@ -4,12 +4,12 @@ import { errAsync, okAsync } from 'neverthrow';
 import type { AuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
 import { invalidCursorError } from '../kernel/listing/domain/invalid-cursor.js';
 import type { AuthContext } from '../kernel/auth-context.js';
-import type { CaptureHandlers } from '../captures/application/create-capture-handlers.js';
+import type { Captures } from '../modules/captures/index.js';
 import {
   captureAlreadyTrashedError,
   captureNotInTrashError,
   storageError,
-} from '../captures/domain/capture-errors.js';
+} from '../modules/captures/domain/messages/capture-errors.js';
 import type { CaptureProcessingService } from '../processing/application/create-processing-handlers.js';
 import { registerPublicApiV1 } from '../edges/public-api/v1/index.js';
 import type { PublicApiV1Dependencies } from '../edges/public-api/v1/register.js';
@@ -40,18 +40,33 @@ const authAs = (context: AuthContext): AuthMiddleware => async (request) => {
 
 const unused = () => errAsync(storageError('unused'));
 
-const handlers = (overrides: Partial<CaptureHandlers>): CaptureHandlers => ({
-  create: unused,
-  find: unused,
-  list: unused,
-  update: unused,
-  trash: unused,
-  restore: unused,
-  snooze: unused,
-  unsnooze: unused,
-  delete: unused,
-  emptyTrash: unused,
-  ...overrides,
+const capturesOf = (
+  overrides: {
+    commands?: Partial<Captures['commands']>;
+    queries?: Partial<Captures['queries']>;
+  } = {}
+): Captures => ({
+  commands: {
+    createCapture: unused,
+    updateCapture: unused,
+    trashCapture: unused,
+    restoreCapture: unused,
+    snoozeCapture: unused,
+    unsnoozeCapture: unused,
+    deleteCapture: unused,
+    emptyTrash: unused,
+    ...overrides.commands,
+  },
+  queries: {
+    findCapture: unused,
+    listCaptures: unused,
+    findInboxCapture: unused,
+    ...overrides.queries,
+  },
+  prepare: {
+    markProcessed: unused,
+    deleteProcessedCapture: unused,
+  },
 });
 
 const processing: CaptureProcessingService = {
@@ -73,13 +88,13 @@ const mount = async (
   app: FastifyInstance,
   options: {
     authMiddleware?: AuthMiddleware;
-    captureHandlers?: CaptureHandlers;
+    captures?: Captures;
     captureProcessingService?: CaptureProcessingService;
   } = {}
 ) => {
   const auth = options.authMiddleware ?? authAs(humanContext);
   const deps = stub<PublicApiV1Dependencies>();
-  deps.captureHandlers = options.captureHandlers ?? handlers({});
+  deps.captures = options.captures ?? capturesOf();
   deps.captureProcessingService = options.captureProcessingService ?? processing;
   deps.tokenHandlers = undefined;
   deps.aliasRetirement = undefined;
@@ -117,8 +132,8 @@ describe('oRPC capture create and list', () => {
     const cause = storageError('disk full', new Error('sqlite'));
     const { app, lines } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        create: () => errAsync(cause),
+      captures: capturesOf({
+        commands: { createCapture: () => errAsync(cause) },
       }),
     });
 
@@ -140,8 +155,8 @@ describe('oRPC capture create and list', () => {
   it('returns invalid_cursor without calling out to a different envelope', async () => {
     const { app } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        list: () => errAsync(invalidCursorError()),
+      captures: capturesOf({
+        queries: { listCaptures: () => errAsync(invalidCursorError()) },
       }),
     });
 
@@ -157,8 +172,9 @@ describe('oRPC capture create and list', () => {
   it('returns the capture view on 201', async () => {
     const { app } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        create: () =>
+      captures: capturesOf({
+        commands: {
+          createCapture: () =>
           okAsync({
             event: {
               type: 'CaptureCreated',
@@ -170,6 +186,7 @@ describe('oRPC capture create and list', () => {
             },
             view: captureView,
           }),
+        },
       }),
     });
 
@@ -192,10 +209,12 @@ describe('oRPC capture create and list', () => {
     const { app } = loggedApp();
     await mount(app, {
       authMiddleware: authAs(agentContext),
-      captureHandlers: handlers({
-        create: () => {
-          calls += 1;
-          return errAsync(storageError('should not run'));
+      captures: capturesOf({
+        commands: {
+          createCapture: () => {
+            calls += 1;
+            return errAsync(storageError('should not run'));
+          },
         },
       }),
     });
@@ -216,23 +235,25 @@ describe('oRPC capture lifecycle', () => {
   it('gets, updates, trashes, and restores on the capture paths', async () => {
     const { app } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        find: () => okAsync(captureView),
-        update: () =>
-          okAsync({
-            event: null,
-            view: { ...captureView, content: 'Updated' },
-          }),
-        trash: () =>
-          okAsync({
-            event: null,
-            view: { ...captureView, status: 'trashed' },
-          }),
-        restore: () =>
-          okAsync({
-            event: null,
-            view: captureView,
-          }),
+      captures: capturesOf({
+        queries: { findCapture: () => okAsync(captureView) },
+        commands: {
+          updateCapture: () =>
+            okAsync({
+              event: null,
+              view: { ...captureView, content: 'Updated' },
+            }),
+          trashCapture: () =>
+            okAsync({
+              event: null,
+              view: { ...captureView, status: 'trashed' },
+            }),
+          restoreCapture: () =>
+            okAsync({
+              event: null,
+              view: captureView,
+            }),
+        },
       }),
     });
 
@@ -272,14 +293,16 @@ describe('oRPC capture lifecycle', () => {
   it('rejects a trashed snooze, deletes only from trash, and empties trash', async () => {
     const { app } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        snooze: () => errAsync(captureAlreadyTrashedError(captureView.id)),
-        delete: () => errAsync(captureNotInTrashError(captureView.id)),
-        emptyTrash: () =>
-          okAsync({
-            event: { type: 'CaptureTrashEmptied', organizationId: captureView.organizationId },
-            deletedCount: 2,
-          }),
+      captures: capturesOf({
+        commands: {
+          snoozeCapture: () => errAsync(captureAlreadyTrashedError(captureView.id)),
+          deleteCapture: () => errAsync(captureNotInTrashError(captureView.id)),
+          emptyTrash: () =>
+            okAsync({
+              event: { type: 'CaptureTrashEmptied', organizationId: captureView.organizationId },
+              deletedCount: 2,
+            }),
+        },
       }),
     });
 
@@ -313,13 +336,15 @@ describe('oRPC capture lifecycle', () => {
   it('returns an empty 204 when a trashed capture is deleted', async () => {
     const { app } = loggedApp();
     await mount(app, {
-      captureHandlers: handlers({
-        delete: () =>
-          okAsync({
-            type: 'CaptureDeleted',
-            id: captureView.id,
-            organizationId: captureView.organizationId,
-          }),
+      captures: capturesOf({
+        commands: {
+          deleteCapture: () =>
+            okAsync({
+              type: 'CaptureDeleted',
+              id: captureView.id,
+              organizationId: captureView.organizationId,
+            }),
+        },
       }),
     });
 

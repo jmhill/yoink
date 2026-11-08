@@ -111,6 +111,11 @@ const elements = [
   // Those rules would warn on imports this code already has. This descriptor
   // is first, so the current history element wins. M5.10-history removes it.
   { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
+  // M5.1 moved captures to src/modules/captures. Target layer rules disallow
+  // @yoink/api-contracts, which this module still imports until M5.11-captures.
+  // Turning those rules on would add a warning per import. This descriptor is
+  // first, so the current captures element wins. M5.11-captures removes it.
+  { type: 'captures', pattern: 'src/modules/captures/**', mode: 'full' },
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {

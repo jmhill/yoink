@@ -27,7 +27,7 @@ import type {
   TransferOwnershipHandler,
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
-import type { CaptureHandlers } from './captures/application/index.js';
+import type { Captures } from './modules/captures/index.js';
 import type { ListHandlers } from './lists/application/index.js';
 import type { ProjectHandlers } from './projects/application/index.js';
 import type { NoteHandlers } from './notes/application/create-note-handlers.js';
@@ -107,7 +107,7 @@ export type SignupConfig = {
 };
 
 export type AppDependencies = {
-  captureHandlers: CaptureHandlers;
+  captures: Captures;
   listHandlers: ListHandlers;
   projectHandlers: ProjectHandlers;
   noteHandlers: NoteHandlers;
@@ -218,7 +218,7 @@ export const createApp = async (deps: AppDependencies) => {
         ? tokenOnly
         : withAuthenticatedRateLimit(tokenOnly, applyAuthenticatedRateLimit);
   await registerPublicApiV1(app, {
-    captureHandlers: deps.captureHandlers,
+    captures: deps.captures,
     captureProcessingService: deps.captureProcessingService,
     listHandlers: deps.listHandlers,
     projectHandlers: deps.projectHandlers,

@@ -7,6 +7,7 @@ import { registerJsonBodyParser } from '../edges/_shared/server/json-body.js';
 import { runMigrations } from '../platform/database/migrator.js';
 import { migrations } from '../platform/database/migrations.js';
 import {
+  createTestAppWithWebAuthn,
   seedTestUserSession,
   TEST_SESSION_COOKIE,
   TEST_SESSION_ID,
@@ -27,17 +28,7 @@ for (const route of publicApiV1Routes) {
   for (const method of methods) frozenProcedures.push({ method, path: route.path });
 }
 
-const boot = async () => {
-  const infrastructure = createInfrastructure(testConfigWithWebAuthn);
-  await runMigrations(infrastructure.database, migrations);
-  const app = await bootstrapApp({
-    config: testConfigWithWebAuthn,
-    infrastructure,
-    silent: true,
-  });
-  await seedTestUserSession(infrastructure.database);
-  return app;
-};
+const boot = () => createTestAppWithWebAuthn();
 
 describe('public API v1 on the bootstrapped app', () => {
   it('mounts all 59 frozen routes at /api/v1 and the alias', async () => {

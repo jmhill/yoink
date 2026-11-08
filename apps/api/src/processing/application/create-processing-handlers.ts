@@ -1,5 +1,5 @@
-import type { ProcessCaptureToProjectCommand } from '../../captures/domain/capture-commands.js';
-import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToProjectCommand } from '../../modules/captures/domain/messages/capture-commands.js';
+import type { ProcessCaptureToTaskCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import {
   withCommandLog,
   type CommandLogger,

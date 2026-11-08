@@ -19,7 +19,7 @@ import { createTokenService } from '../access/domain/token-service.js';
 import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
 import { createUserService } from '../access/domain/user-service.js';
-import { captureNotInInboxError } from '../captures/domain/capture-errors.js';
+import { captureNotInInboxError } from '../modules/captures/domain/messages/capture-errors.js';
 import { authenticateTokenWith } from '../access/application/authenticate-principal.js';
 import { createAuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
 import { combinedAuthFromServices } from '../edges/_shared/auth/auth-from-services.js';
@@ -32,7 +32,7 @@ import { createFakeOrganizationStore } from '../access/infrastructure/fake-organ
 import { createFakeTokenStore } from '../access/infrastructure/fake-token-store.js';
 import { createFakeUserSessionStore } from '../access/infrastructure/fake-user-session-store.js';
 import { createFakeUserStore } from '../access/infrastructure/fake-user-store.js';
-import type { CaptureHandlers } from '../captures/application/create-capture-handlers.js';
+import type { Captures } from '../modules/captures/index.js';
 import {
   PUBLIC_API_ALIAS_MIN_WINDOW_MS,
   publicApiV1Routes,
@@ -163,8 +163,11 @@ describe('public API v1 mount', () => {
       status: 'inbox' as const,
       capturedAt: '2026-10-12T01:00:00.000Z',
     };
-    const captureHandlers = stub<CaptureHandlers>();
-    captureHandlers.create = () =>
+    const captures = stub<Captures>();
+    captures.commands = stub<Captures['commands']>();
+    captures.queries = stub<Captures['queries']>();
+    captures.prepare = stub<Captures['prepare']>();
+    captures.commands.createCapture = () =>
       okAsync({
         event: {
           type: 'CaptureCreated',
@@ -176,7 +179,7 @@ describe('public API v1 mount', () => {
         },
         view: captureView,
       });
-    captureHandlers.list = () =>
+    captures.queries.listCaptures = () =>
       okAsync({ items: [], hasMore: false, nextCursor: null, total: 0 });
     const captureProcessingService = stub<PublicApiV1Dependencies['captureProcessingService']>();
     captureProcessingService.processCaptureToTask = () =>
@@ -213,7 +216,7 @@ describe('public API v1 mount', () => {
     });
     await app.register(cookie);
     const deps = stub<PublicApiV1Dependencies>();
-    deps.captureHandlers = captureHandlers;
+    deps.captures = captures;
     deps.captureProcessingService = captureProcessingService;
     deps.tokenHandlers = tokenHandlers;
     deps.aliasRetirement = undefined;

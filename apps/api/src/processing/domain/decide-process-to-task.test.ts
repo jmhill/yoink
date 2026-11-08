@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Capture } from '@yoink/api-contracts';
-import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToTaskCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import { decideProcessCaptureToTask } from './decide-process-to-task.js';
 
 const inboxCapture = (overrides: Partial<Capture> = {}): Capture => ({

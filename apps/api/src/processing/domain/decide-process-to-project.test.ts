@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Capture } from '@yoink/api-contracts';
-import type { ProcessCaptureToProjectCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToProjectCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import { decideProcessCaptureToProject } from './decide-process-to-project.js';
 
 const inboxCapture = (): Capture => ({

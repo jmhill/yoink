@@ -64,14 +64,15 @@ Each migration task under ADR-001 adds entries here when it hits repeated boiler
 | 2026-11-06 | M2.4 | none | — | — | — |
 | 2026-11-06 | M0.3 | none | — | — | — |
 | 2026-11-06 | M3.1 | none | — | — | — |
-| 2026-11-06 | M4.1 | none | — | — | — |
+| 2026-11-06 | M4.1 | Two commit loops, not one shared runner. SQLite opens `transaction('write')` and awaits `execute` once per compiled statement. The in-memory unit of work is a separate snapshot loop. A shared statement runner waits until M4.1b measures one batch. | `apps/api/src/platform/unit-of-work/sqlite-unit-of-work.ts`, `in-memory-unit-of-work.ts` | 2 | Not yet. One batch is M4.1b, not a kit. |
 | 2026-11-06 | M4.2 | none | — | — | — |
-| 2026-11-06 | M4.3 | none | — | — | — |
-| 2026-11-06 | M3.2 | none | — | — | — |
+| 2026-11-06 | M4.3 | One empty sink. The composition root builds `createHistoryEventSink` with `EMPTY_EVENT_SINK_MAP` once and passes that same object to both unit-of-work factories. No route calls `commit`. There is no repeated builder table. | `apps/api/src/composition-root.ts`, `modules/history/domain/event-sink.ts` | 1 | Nothing to generate until a module emits events. |
+| 2026-11-06 | M3.2 | One registrar. `app.ts` calls `registerPublicApiV1`, which mounts the frozen procedures at `/api/v1` and the `/api` alias. No second client edge uses that shape. | `apps/api/src/app.ts`, `edges/public-api/v1/register.ts` | 1 | A declarative edge list is early until a second edge mounts the same way. |
 | 2026-11-07 | M3.3 | none | — | — | — |
 | 2026-11-07 | M3.4 | none | — | — | — |
 | 2026-11-07 | M3.5 | none | — | — | — |
 | 2026-11-07 | M3.6 | none | — | — | — |
+| 2026-11-07 | M3.7 | The platform migration runner cannot import tests, so it takes a `seed` callback and the caller passes `seedMigrationTestData`. The two helpers are `*.test.ts`, which the ownership scanner already skips, and Vitest excludes exactly those two paths so they are not collected as suites. Ten allowlist rows were removed (the file had 10 `removedBy: 'M7.5'` rows, not 21). None were retargeted. Allowlist 43 to 33. No production exemption. App root, ESLint rules, and the baseline were not changed. | `platform/database/migration-test-runner.ts`, `tests/helpers/migration-seed.test.ts`, `tests/helpers/seed-test-user-session.test.ts`, `apps/api/vitest.config.ts` | 2 helpers, 10 rows | The existing `*.test.ts` skip was enough. |
 | 2026-11-07 | M5.1-check | none | — | — | — |
 
 ## 6. When to start the full ADR

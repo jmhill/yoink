@@ -1,7 +1,0 @@
-{
-  "extends": "../../../../tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
-  "include": ["m0-3-spread.ts"]
-}

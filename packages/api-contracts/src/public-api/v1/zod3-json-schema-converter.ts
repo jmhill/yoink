@@ -1,4 +1,7 @@
 import type { ZodTypeAny } from 'zod';
+import { ImportNoteFromObsidianSchema, UpdateNoteSchema } from '../../schemas/note.js';
+import { UpdateProjectSchema } from '../../schemas/project.js';
+import { TimeZoneSchema } from '../../schemas/work.js';
 
 type Direction = 'input' | 'output';
 
@@ -13,6 +16,8 @@ type ZodCheck = {
   inclusive?: boolean;
   regex?: { source: string; flags: string };
 };
+
+type EncodeRefinement = (inner: JsonSchema) => JsonSchema;
 
 type ZodDef = {
   typeName?: string;
@@ -79,48 +84,79 @@ const withDescription = (schema: ZodTypeAny, json: JsonSchema): JsonSchema => {
   return { ...json, description };
 };
 
+/**
+ * Zod applies `trim()` before later min/max, and the wire value keeps its
+ * surrounding whitespace. `minLength` measures the raw string, so it accepts
+ * whitespace-only input and rejects padded values the wire accepts.
+ * The pattern measures the length after `String.prototype.trim`.
+ */
+const trimmedLengthPattern = (minimum: number | undefined, maximum: number | undefined): string => {
+  if (minimum === undefined || !Number.isInteger(minimum) || minimum < 1) return unsupported('ZodString trim length');
+  if (maximum !== undefined && (!Number.isInteger(maximum) || maximum < minimum)) {
+    return unsupported('ZodString trim length');
+  }
+  if (maximum === undefined) {
+    return minimum === 1 ? '^\\s*\\S(?:[\\s\\S]*\\S)?\\s*$' : `^\\s*\\S[\\s\\S]{${minimum - 2},}\\S\\s*$`;
+  }
+  if (minimum === 1 && maximum === 1) return '^\\s*\\S\\s*$';
+  if (minimum === 1) return `^\\s*\\S(?:[\\s\\S]{0,${maximum - 2}}\\S)?\\s*$`;
+  return `^\\s*\\S[\\s\\S]{${minimum - 2},${maximum - 2}}\\S\\s*$`;
+};
+
 const stringSchema = (checks: readonly ZodCheck[] | undefined): JsonSchema => {
   const json: JsonSchema = { type: 'string' };
+  let trimmed = false;
+  let trimMin: number | undefined;
+  let trimMax: number | undefined;
+  let trimLength = false;
   for (const check of checks ?? []) {
+    if (check.inclusive === false && (check.kind === 'min' || check.kind === 'max' || check.kind === 'length')) {
+      return unsupported('ZodString exclusive length');
+    }
     switch (check.kind) {
-      case 'min':
-        json.minLength = check.value;
-        break;
-      case 'max':
-        json.maxLength = check.value;
-        break;
-      case 'length':
-        json.minLength = check.value;
-        json.maxLength = check.value;
-        break;
-      case 'uuid':
-        json.format = 'uuid';
-        break;
-      case 'email':
-        json.format = 'email';
-        break;
-      case 'url':
-        json.format = 'uri';
-        break;
-      case 'datetime':
-        json.format = 'date-time';
-        break;
-      case 'date':
-        json.format = 'date';
-        break;
-      case 'regex':
-        if (check.regex === undefined || check.regex.flags !== '') return unsupported('ZodString regex flag');
-        json.pattern = check.regex?.source;
-        break;
       case 'trim':
+        if (trimmed || json.minLength !== undefined || json.maxLength !== undefined || json.pattern !== undefined || json.format !== undefined) {
+          return unsupported('ZodString trim');
+        }
+        trimmed = true;
+        break;
       case 'toLowerCase':
       case 'toUpperCase':
+        return unsupported(`ZodString check ${check.kind}`);
+      case 'min':
+      case 'max':
+      case 'length':
+        if (trimmed) {
+          trimLength = true;
+          if (check.kind === 'min' || check.kind === 'length') trimMin = check.value;
+          if (check.kind === 'max' || check.kind === 'length') trimMax = check.value;
+          break;
+        }
+        if (check.kind === 'min' || check.kind === 'length') json.minLength = check.value;
+        if (check.kind === 'max' || check.kind === 'length') json.maxLength = check.value;
+        break;
+      case 'uuid':
+      case 'email':
+      case 'url':
+      case 'datetime':
+      case 'date':
+      case 'regex':
+        if (trimmed) return unsupported(`ZodString check ${check.kind} after trim`);
+        if (check.kind === 'uuid') json.format = 'uuid';
+        else if (check.kind === 'email') json.format = 'email';
+        else if (check.kind === 'url') json.format = 'uri';
+        else if (check.kind === 'datetime') json.format = 'date-time';
+        else if (check.kind === 'date') json.format = 'date';
+        else if (check.regex === undefined || check.regex.flags !== '') return unsupported('ZodString regex flag');
+        else json.pattern = check.regex.source;
         break;
       default:
         return unsupported(`ZodString check ${check.kind ?? '(missing)'}`);
     }
   }
-  return json;
+  if (!trimmed) return json;
+  if (!trimLength) return unsupported('ZodString trim');
+  return { type: 'string', pattern: trimmedLengthPattern(trimMin, trimMax) };
 };
 
 const numberSchema = (checks: readonly ZodCheck[] | undefined): JsonSchema => {
@@ -169,6 +205,79 @@ const arraySchema = (def: ZodDef, convert: (schema: ZodTypeAny) => JsonSchema): 
   return json;
 };
 
+const refinementOf = (schema: ZodTypeAny): unknown => {
+  const refinement = (schema._def as { effect?: { refinement?: unknown } }).effect?.refinement;
+  if (refinement === undefined) throw new Error('certified Zod refinement is missing');
+  return refinement;
+};
+
+const updateProjectRefinement = refinementOf(UpdateProjectSchema);
+const updateNoteRefinement = refinementOf(UpdateNoteSchema);
+const importNoteRefinement = refinementOf(ImportNoteFromObsidianSchema);
+const timeZoneRefinement = refinementOf(TimeZoneSchema);
+
+const UPDATE_PROJECT_KEYS = ['name', 'objective', 'notebookPages', 'reason', 'suggestedNextAction'] as const;
+const UPDATE_NOTE_KEYS = ['title', 'body'] as const;
+
+const objectProperties = (schema: JsonSchema): Record<string, JsonSchema> => {
+  if (schema.type !== 'object' || typeof schema.properties !== 'object' || schema.properties === null) {
+    return unsupported('certified refinement object');
+  }
+  return schema.properties as Record<string, JsonSchema>;
+};
+
+const atLeastOneOf = (schema: JsonSchema, keys: readonly string[]): JsonSchema => {
+  const properties = objectProperties(schema);
+  const already = Array.isArray(schema.required)
+    ? schema.required.filter((key): key is string => typeof key === 'string')
+    : [];
+  return {
+    anyOf: keys.map((key) => {
+      if (!Object.hasOwn(properties, key)) return unsupported(`certified refinement key ${key}`);
+      return { ...schema, required: [...new Set([...already, key])] };
+    }),
+  };
+};
+
+const requireWhenPresent = (schema: JsonSchema, key: string, dependency: string): JsonSchema => {
+  const properties = objectProperties(schema);
+  if (!Object.hasOwn(properties, key) || !Object.hasOwn(properties, dependency)) {
+    return unsupported('certified refinement dependency');
+  }
+  return { ...schema, dependentRequired: { [key]: [dependency] } };
+};
+
+/**
+ * Certified by function identity. Detach copies the effect object and keeps
+ * the same function. Any other refinement, preprocess, or transform throws
+ * instead of publishing the inner schema.
+ */
+const unwrapSchema = (schema: ZodTypeAny): ZodTypeAny => {
+  const def = schema._def as { typeName?: string; innerType?: ZodTypeAny };
+  if (
+    (def.typeName === 'ZodOptional' || def.typeName === 'ZodNullable' || def.typeName === 'ZodDefault') &&
+    def.innerType !== undefined
+  ) {
+    return unwrapSchema(def.innerType);
+  }
+  return schema;
+};
+
+/** True when the schema is TimeZoneSchema, including optional and nullable wrappers. */
+export const isUnencodedTimeZone = (schema: ZodTypeAny): boolean => {
+  const inner = unwrapSchema(schema);
+  const def = inner._def as { typeName?: string; effect?: { refinement?: unknown } };
+  return def.typeName === 'ZodEffects' && def.effect?.refinement === timeZoneRefinement;
+};
+
+const certifiedRefinement = (refinement: unknown): EncodeRefinement | undefined => {
+  if (refinement === updateProjectRefinement) return (inner) => atLeastOneOf(inner, UPDATE_PROJECT_KEYS);
+  if (refinement === updateNoteRefinement) return (inner) => atLeastOneOf(inner, UPDATE_NOTE_KEYS);
+  if (refinement === importNoteRefinement) return (inner) => requireWhenPresent(inner, 'noteId', 'baseVersion');
+  if (refinement === timeZoneRefinement) return () => unsupported('ZodEffects refinement Intl.DateTimeFormat timeZone');
+  return undefined;
+};
+
 /**
  * Converts Zod 3 schemas for `@orpc/openapi` 2.0.0-beta.48.
  * `@orpc/zod@2.0.0-beta.48` imports `process` from `zod/v4/core`, which Zod 3.25.76 does not export.
@@ -191,10 +300,13 @@ export class Zod3JsonSchemaConverter {
     switch (def.typeName) {
       case 'ZodEffects': {
         const inner = def.schema;
-        if (def.effect?.type !== 'refinement' || inner === undefined) {
-          return unsupported(`ZodEffects ${def.effect?.type ?? '(missing)'}`);
+        const effect = def.effect as { type?: string; refinement?: unknown } | undefined;
+        if (effect?.type !== 'refinement' || inner === undefined) {
+          return unsupported(`ZodEffects ${effect?.type ?? '(missing)'}`);
         }
-        return this.toJsonSchema(inner, direction);
+        const encode = certifiedRefinement(effect.refinement);
+        if (encode === undefined) return unsupported('ZodEffects refinement');
+        return encode(this.toJsonSchema(inner, direction));
       }
       case 'ZodDefault': {
         const inner = def.innerType;

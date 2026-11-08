@@ -1,7 +1,23 @@
 import { getOpenAPIMeta, OpenAPIGenerator } from '@orpc/openapi';
+import addFormatsModule from 'ajv-formats';
+import type { FormatsPlugin } from 'ajv-formats';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+
+// ajv-formats is CJS. Its default export is the plugin function; the declared type is the module namespace.
 import { describe, expect, it } from 'vitest';
+import type { ZodTypeAny } from 'zod';
+import { CreateNamedListSchema, RenameNamedListSchema } from '../../schemas/list.js';
+import { CreateNoteSchema, ImportNoteFromObsidianSchema, NOTE_TITLE_MAX_LENGTH, UpdateNoteSchema } from '../../schemas/note.js';
+import {
+  CreateProjectSchema,
+  PROJECT_NAME_MAX_LENGTH,
+  SetProjectNextActionSchema,
+  UpdateProjectSchema,
+} from '../../schemas/project.js';
+import { TimeZoneSchema } from '../../schemas/work.js';
 import { publicApiV1Contract } from './contract.js';
-import { generatePublicApiV1OpenApi } from './openapi-document.js';
+import { TIME_ZONE_UNENCODED_REASON, generatePublicApiV1OpenApi } from './openapi-document.js';
+import { Zod3JsonSchemaConverter } from './zod3-json-schema-converter.js';
 
 type Json = Record<string, unknown>;
 
@@ -13,10 +29,17 @@ type Parameter = {
   content?: Record<string, { schema?: Json }>;
 };
 
+type UnencodedField = {
+  name?: string;
+  in?: string;
+  reason?: string;
+};
+
 type Operation = {
   parameters?: Parameter[];
   requestBody?: { content?: Record<string, { schema?: Json }> };
   responses?: Record<string, { description?: string; content?: Record<string, { schema?: Json }> }>;
+  'x-yoink-unencoded'?: UnencodedField[];
 };
 
 type Document = {
@@ -62,6 +85,14 @@ const invalidTimeZoneBody = {
   additionalProperties: false,
 };
 
+const listedBadRequest = {
+  oneOf: [{ anyOf: [validationFailedBody, invalidTimeZoneBody] }, invalidCursorBody],
+};
+
+const addFormats = addFormatsModule as unknown as FormatsPlugin;
+const ajv = new Ajv2020({ allErrors: true, strict: false });
+addFormats(ajv);
+
 const operation = (document: Document, path: string, method: string): Operation => {
   const found = document.paths?.[path]?.[method];
   if (found === undefined) throw new Error(`missing ${method} ${path}`);
@@ -105,6 +136,48 @@ const assertSchemaShaped = (schema: unknown, path: string): void => {
     for (const [name, property] of Object.entries(record.properties)) {
       assertSchemaShaped(property, `${path}/properties/${name}`);
     }
+  }
+};
+
+const expectAcceptance = (schema: Json, zodSchema: ZodTypeAny, cases: ReadonlyArray<{ value: unknown; accepts: boolean }>): void => {
+  const validate = ajv.compile(schema);
+  for (const testCase of cases) {
+    const wireAccepts = zodSchema.safeParse(testCase.value).success;
+    expect(wireAccepts, JSON.stringify(testCase.value)).toBe(testCase.accepts);
+    expect(validate(testCase.value), JSON.stringify({ value: testCase.value, errors: validate.errors })).toBe(testCase.accepts);
+  }
+};
+
+const trimmedValues = (max: number): Array<{ value: string; accepts: boolean }> => [
+  { value: '   ', accepts: false },
+  { value: '\t\n', accepts: false },
+  { value: '\u00A0', accepts: false },
+  { value: '\u3000', accepts: false },
+  { value: '\uFEFF', accepts: false },
+  { value: '  a  ', accepts: true },
+  { value: '\u00A0a\u00A0', accepts: true },
+  { value: '\u200B', accepts: true },
+  { value: '\u0085', accepts: true },
+  { value: 'a'.repeat(max), accepts: true },
+  { value: 'a'.repeat(max + 1), accepts: false },
+  { value: ` ${'a'.repeat(max)} `, accepts: true },
+  { value: ` ${'a'.repeat(max + 1)} `, accepts: false },
+];
+
+const propertySchemasNamed = (schema: unknown, name: string, found: Json[]): void => {
+  if (typeof schema !== 'object' || schema === null) return;
+  const record = schema as Json;
+  const properties = record.properties;
+  if (typeof properties === 'object' && properties !== null && !Array.isArray(properties) && name in properties) {
+    found.push((properties as Json)[name] as Json);
+  }
+  for (const key of ['anyOf', 'oneOf', 'allOf', 'items']) {
+    const child = record[key];
+    if (Array.isArray(child)) child.forEach((item) => propertySchemasNamed(item, name, found));
+    else if (child !== undefined && key === 'items') propertySchemasNamed(child, name, found);
+  }
+  if (typeof properties === 'object' && properties !== null && !Array.isArray(properties)) {
+    for (const property of Object.values(properties)) propertySchemasNamed(property, name, found);
   }
 };
 
@@ -245,7 +318,7 @@ describe('public v1 OpenAPI document', () => {
           newTask: {
             type: 'object',
             properties: {
-              title: { type: 'string', minLength: 1, maxLength: 500 },
+              title: expect.any(Object),
               dueDate: { type: 'string', format: 'date' },
               assigneeId: { type: 'string', format: 'uuid' },
               listId: { type: 'string', format: 'uuid' },
@@ -265,13 +338,195 @@ describe('public v1 OpenAPI document', () => {
       { type: 'string', const: 'deleted' },
     ]);
 
+    const nextTask = ((bodySchema(nextAction).anyOf as Json[])[2]?.properties as Json).newTask as Json;
+    const nextTitle = (nextTask.properties as Json).title as Json;
+    expect(nextTitle.minLength).toBeUndefined();
+    expect(nextTitle.maxLength).toBeUndefined();
+    expect(nextTitle.pattern).toEqual(expect.any(String));
+
     const tasks = operation(document, '/tasks', 'get');
-    expect(responseSchema(tasks, '400')).toEqual({
-      oneOf: [{ anyOf: [validationFailedBody, invalidTimeZoneBody] }, invalidCursorBody],
-    });
+    expect(responseSchema(tasks, '400')).toEqual(listedBadRequest);
+    expect(responseSchema(operation(document, '/work/due', 'get'), '400')).toEqual(listedBadRequest);
+    expect(responseSchema(operation(document, '/work/due', 'get'), '401')).toEqual(messageBody);
+    expect(responseSchema(operation(document, '/work/due', 'get'), '500')).toEqual(messageBody);
+    expect(responseSchema(operation(document, '/review', 'get'), '400')).toEqual(listedBadRequest);
+    expect(responseSchema(operation(document, '/review', 'get'), '500')).toEqual(messageBody);
 
     const deleted = operation(document, '/captures/{id}', 'delete');
     expect(deleted.responses?.['204']?.content).toBeUndefined();
     expect(deleted.responses?.['204']?.description).toEqual(expect.any(String));
+  });
+
+  it('rejects the same illegal bodies the frozen Zod schemas reject', async () => {
+    const document = (await generatePublicApiV1OpenApi()) as Document;
+    const projectId = '550e8400-e29b-41d4-a716-446655440000';
+    const noteId = '550e8400-e29b-41d4-a716-446655440001';
+
+    const createProject = bodySchema(operation(document, '/projects', 'post'));
+    const createName = (createProject.properties as Json).name as Json;
+    expect(createName.minLength).toBeUndefined();
+    expect(createName.maxLength).toBeUndefined();
+    expectAcceptance(
+      createProject,
+      CreateProjectSchema,
+      trimmedValues(PROJECT_NAME_MAX_LENGTH).map((testCase) => ({ value: { name: testCase.value }, accepts: testCase.accepts })),
+    );
+
+    const updateProject = bodySchema(operation(document, '/projects/{id}', 'patch'));
+    expect((updateProject.anyOf as Json[]).map((branch) => branch.required)).toEqual([
+      ['name'],
+      ['objective'],
+      ['notebookPages'],
+      ['reason'],
+      ['suggestedNextAction'],
+    ]);
+    const updateName = (((updateProject.anyOf as Json[])[0]?.properties as Json).name ?? {}) as Json;
+    expect(updateName.minLength).toBeUndefined();
+    expect(updateName.pattern).toEqual(expect.any(String));
+    expectAcceptance(updateProject, UpdateProjectSchema, [
+      { value: {}, accepts: false },
+      { value: { extra: true }, accepts: false },
+      { value: { objective: null }, accepts: true },
+      { value: { notebookPages: [] }, accepts: true },
+      { value: { reason: null }, accepts: true },
+      { value: { suggestedNextAction: null }, accepts: true },
+      { value: { name: null }, accepts: false },
+      ...trimmedValues(PROJECT_NAME_MAX_LENGTH).map((testCase) => ({
+        value: { name: testCase.value },
+        accepts: testCase.accepts,
+      })),
+    ]);
+
+    const updateNote = bodySchema(operation(document, '/projects/{projectId}/notes/{noteId}', 'patch'));
+    expect((updateNote.anyOf as Json[]).map((branch) => branch.required)).toEqual([
+      ['expectedVersion', 'title'],
+      ['expectedVersion', 'body'],
+    ]);
+    expectAcceptance(updateNote, UpdateNoteSchema, [
+      { value: { expectedVersion: '1' }, accepts: false },
+      { value: { title: 'Note', expectedVersion: '1' }, accepts: true },
+      { value: { body: '', expectedVersion: '1' }, accepts: true },
+      { value: { body: 'x', expectedVersion: '1' }, accepts: true },
+      { value: { title: '   ', expectedVersion: '1' }, accepts: false },
+      { value: { title: '  a  ', expectedVersion: '1' }, accepts: true },
+      { value: { title: `\u00A0${'a'.repeat(NOTE_TITLE_MAX_LENGTH)}\u00A0`, expectedVersion: '1' }, accepts: true },
+      { value: { title: 'a'.repeat(NOTE_TITLE_MAX_LENGTH + 1), expectedVersion: '1' }, accepts: false },
+    ]);
+
+    const createNote = bodySchema(operation(document, '/projects/{projectId}/notes', 'post'));
+    expect((createNote.properties as Json).projectId).toBeUndefined();
+    expectAcceptance(
+      createNote,
+      CreateNoteSchema,
+      trimmedValues(NOTE_TITLE_MAX_LENGTH).map((testCase) => ({ value: { title: testCase.value }, accepts: testCase.accepts })),
+    );
+
+    const imported = bodySchema(operation(document, '/notes/import', 'post'));
+    expect(imported.dependentRequired).toEqual({ noteId: ['baseVersion'] });
+    const importBase = { projectId, title: 'Note', body: 'Body' };
+    expectAcceptance(imported, ImportNoteFromObsidianSchema, [
+      { value: importBase, accepts: true },
+      { value: { ...importBase, noteId }, accepts: false },
+      { value: { ...importBase, noteId, baseVersion: '1' }, accepts: true },
+      { value: { ...importBase, baseVersion: '1' }, accepts: true },
+      { value: { ...importBase, title: '   ' }, accepts: false },
+      { value: { ...importBase, title: '  a  ' }, accepts: true },
+    ]);
+
+    const createList = bodySchema(operation(document, '/lists', 'post'));
+    expect(((createList.properties as Json).name as Json).minLength).toBeUndefined();
+    expectAcceptance(
+      createList,
+      CreateNamedListSchema,
+      trimmedValues(200).map((testCase) => ({ value: { name: testCase.value }, accepts: testCase.accepts })),
+    );
+    const renameList = bodySchema(operation(document, '/lists/{id}', 'patch'));
+    expect((renameList.properties as Json).id).toBeUndefined();
+    expectAcceptance(
+      renameList,
+      RenameNamedListSchema,
+      trimmedValues(200).map((testCase) => ({ value: { name: testCase.value }, accepts: testCase.accepts })),
+    );
+
+    const nextAction = bodySchema(operation(document, '/projects/{id}/next-action', 'put'));
+    expectAcceptance(
+      nextAction,
+      SetProjectNextActionSchema,
+      trimmedValues(500).map((testCase) => ({ value: { newTask: { title: testCase.value } }, accepts: testCase.accepts })),
+    );
+    expectAcceptance(nextAction, SetProjectNextActionSchema, [
+      { value: {}, accepts: false },
+      { value: { taskId: projectId }, accepts: true },
+      { value: { taskId: null }, accepts: true },
+    ]);
+  });
+
+  it('does not publish a time zone schema that accepts Mars/Base', async () => {
+    const taskInput = publicApiV1Contract.tasks.list['~orpc'].inputSchemas?.[0] as ZodTypeAny;
+    const doneOutput = publicApiV1Contract.review.done['~orpc'].outputSchemas?.[0] as unknown as {
+      shape: Record<string, unknown>;
+    };
+    expect(taskInput.safeParse({ timeZone: 'Mars/Base' }).success).toBe(false);
+    expect(taskInput.safeParse({ timeZone: 'America/Chicago' }).success).toBe(true);
+    expect(taskInput.safeParse({}).success).toBe(true);
+    expect(doneOutput.shape.timeZone).toBeDefined();
+    expect(TimeZoneSchema.safeParse('Mars/Base').success).toBe(false);
+    expect(TimeZoneSchema.safeParse('Not/AZone').success).toBe(false);
+    expect(TimeZoneSchema.safeParse('America/Chicago').success).toBe(true);
+    expect(TimeZoneSchema.safeParse('america/chicago').success).toBe(true);
+    expect(TimeZoneSchema.safeParse('UTC').success).toBe(true);
+    expect(TimeZoneSchema.safeParse('US/Central').success).toBe(true);
+    expect(TimeZoneSchema.safeParse('+05:30').success).toBe(true);
+    expect(() => new Zod3JsonSchemaConverter().convert(TimeZoneSchema, 'input')).toThrow(
+      'Zod 3 schema has no JSON Schema mapping: ZodEffects refinement Intl.DateTimeFormat timeZone',
+    );
+
+    const document = (await generatePublicApiV1OpenApi()) as Document;
+    const timeZoneSchemas: Json[] = [];
+    for (const { operation } of walkOperations(document)) {
+      for (const parameter of operation.parameters ?? []) {
+        expect(parameter.name).not.toBe('timeZone');
+        propertySchemasNamed(parameter.schema, 'timeZone', timeZoneSchemas);
+      }
+      propertySchemasNamed(operation.requestBody?.content?.['application/json']?.schema, 'timeZone', timeZoneSchemas);
+      for (const response of Object.values(operation.responses ?? {})) {
+        for (const media of Object.values(response.content ?? {})) propertySchemasNamed(media.schema, 'timeZone', timeZoneSchemas);
+      }
+    }
+    expect(timeZoneSchemas).toEqual([]);
+
+    const unencoded = walkOperations(document).flatMap(({ method, path, operation }) =>
+      (operation['x-yoink-unencoded'] ?? []).map((field) => ({
+        method,
+        path,
+        name: field.name,
+        in: field.in,
+        reason: field.reason,
+      })),
+    );
+    expect(unencoded).toEqual([
+      { method: 'get', path: '/tasks', name: 'timeZone', in: 'query', reason: TIME_ZONE_UNENCODED_REASON },
+      { method: 'get', path: '/work/due', name: 'timeZone', in: 'query', reason: TIME_ZONE_UNENCODED_REASON },
+      { method: 'get', path: '/review', name: 'timeZone', in: 'query', reason: TIME_ZONE_UNENCODED_REASON },
+      { method: 'get', path: '/review/done', name: 'timeZone', in: 'response', reason: TIME_ZONE_UNENCODED_REASON },
+    ]);
+    const done = operation(document, '/review/done', 'get');
+    expect((responseSchema(done, '200').properties as Json).week).toEqual({
+      type: 'object',
+      properties: {
+        start: { type: 'string', format: 'date' },
+        end: { type: 'string', format: 'date' },
+      },
+      required: ['start', 'end'],
+    });
+    expect((responseSchema(done, '200').properties as Json).timeZone).toBeUndefined();
+    expect(parameterSchema(operation(document, '/tasks', 'get'), 'limit').schema).toEqual({
+      type: 'integer',
+      minimum: 1,
+      maximum: 1000,
+    });
+    expect(parameterSchema(operation(document, '/work/due', 'get'), 'owner').schema).toMatchObject({
+      enum: ['all', 'me'],
+    });
   });
 });

@@ -318,7 +318,7 @@ All M2 tasks are **moves plus import rewrites**, with no behaviour change. Use a
 
 - **Depends on:** M0.5
 - **Do:** the live lint before the fix was 4 errors and 0 warnings, all `@typescript-eslint/no-unused-vars`: `staged`, `mineMilk`, `eggs`, `bread`. Those unused bindings are dropped and the awaited calls stay. `pnpm quality` lints every package, including `@yoink/acceptance-tests`, then runs build, typecheck, and test with `--filter=!@yoink/acceptance-tests`. PR and trunk Quality Checks run that script. The browser suite stays in the CI E2E job. Do not rewrite `docs/architecture/ESLINT_BASELINE.md`.
-- **Accept:** the four errors are gone. The baseline file is unchanged. The acceptance suite is not part of `pnpm quality`. ADR-002 records why this is not a module-kit change.
+- **Accept:** the four errors are gone. The historical 177 census tables are unchanged. The acceptance suite is not part of `pnpm quality`. ADR-002 records why this is not a module-kit change.
 
 ## M4: Unit of work, integration events, history as sink
 

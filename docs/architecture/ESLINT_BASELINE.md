@@ -2,7 +2,7 @@
 
 The measurements below are the historical census. They are not regenerated. The API warning figure in the M2.4 table stays **177**.
 
-Resolved by [#328](https://github.com/jmhill/yoink/pull/328) (`5f377b3c3cf12ec2b7137e31f5f79707a8c76651`). The four `@yoink/acceptance-tests` unused-local errors recorded below (`staged`, `mineMilk`, `eggs`, `bread`) are gone. Acceptance-test lint now runs in `pnpm quality`. The tables and counts stay the figures measured on those days.
+Resolved by [#328](https://github.com/jmhill/yoink/issues/328) in [#332](https://github.com/jmhill/yoink/pull/332) (`5f377b3c3cf12ec2b7137e31f5f79707a8c76651`). The four `@yoink/acceptance-tests` unused-local errors recorded below (`staged`, `mineMilk`, `eggs`, `bread`) are gone. Acceptance-test lint now runs in `pnpm quality`. The tables and counts stay the figures measured on those days.
 
 Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured). The current tree is the [M2.4 re-measure](#m24-re-measure). The sections under Result are the M1.1 census that re-measure is compared to.
 
@@ -438,7 +438,7 @@ Configured at `warn` in `eslint.config.base.js`. All 7 are in `@yoink/web`, one 
 
 ## `@typescript-eslint/no-unused-vars` (4 errors)
 
-Configured as `error` in `eslint.config.base.js` (names matching `/^_/` are allowed). This table is the census measured here. Those four errors were later resolved by [#328](https://github.com/jmhill/yoink/pull/328). The lines and names are not a new lint run, and the counts in this file are not regenerated.
+Configured as `error` in `eslint.config.base.js` (names matching `/^_/` are allowed). This table is the census measured here. Those four errors were later resolved by [#328](https://github.com/jmhill/yoink/issues/328) in [#332](https://github.com/jmhill/yoink/pull/332) (`5f377b3c3cf12ec2b7137e31f5f79707a8c76651`). The lines and names are not a new lint run, and the counts in this file are not regenerated.
 
 | File | Line | Name |
 |---|---:|---|

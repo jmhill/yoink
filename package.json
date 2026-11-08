@@ -9,7 +9,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "quality": "turbo run lint build typecheck test --filter=!@yoink/acceptance-tests",
+    "quality": "turbo run lint && turbo run build typecheck test --filter=!@yoink/acceptance-tests",
     "e2e:test": "./scripts/e2e-test.sh",
     "dev": "turbo run dev",
     "prepare": "husky"

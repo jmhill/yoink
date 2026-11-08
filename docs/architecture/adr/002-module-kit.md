@@ -74,6 +74,7 @@ Each migration task under ADR-001 adds entries here when it hits repeated boiler
 | 2026-11-07 | M3.6 | none | — | — | — |
 | 2026-11-07 | M3.7 | The platform migration runner cannot import tests, so it takes a `seed` callback and the caller passes `seedMigrationTestData`. The two helpers are `*.test.ts`, which the ownership scanner already skips, and Vitest excludes exactly those two paths so they are not collected as suites. Ten allowlist rows were removed (the file had 10 `removedBy: 'M7.5'` rows, not 21). None were retargeted. Allowlist 43 to 33. No production exemption. App root, ESLint rules, and the baseline were not changed. | `platform/database/migration-test-runner.ts`, `tests/helpers/migration-seed.test.ts`, `tests/helpers/seed-test-user-session.test.ts`, `apps/api/vitest.config.ts` | 2 helpers, 10 rows | The existing `*.test.ts` skip was enough. |
 | 2026-11-07 | M5.1-check | none | — | — | — |
+| 2026-11-08 | LINT-ACCEPTANCE | No module wiring. Four unused bindings were dropped and the awaited calls stayed. Quality lints every package, including `@yoink/acceptance-tests`, then build, typecheck, and test still exclude that package. The browser suite stays in the E2E job. Nothing here repeats an API handler or edge. | `package.json`, `packages/acceptance-tests/src/use-cases/project-import.test.ts`, `single-rail-and-direct-list-screens.test.ts`, `task-row-no-pin.test.ts` | 4 bindings | No kit. Lint coverage is a quality script, not a module helper. |
 
 ## 6. When to start the full ADR
 

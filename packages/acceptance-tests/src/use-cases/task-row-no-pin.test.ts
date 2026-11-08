@@ -27,8 +27,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
     it('hides pin on named-list and Today rows and leaves one-pile drag working', async () => {
       const groceries = await alice.createNamedList('Groceries');
       const milk = await alice.createTask({ title: 'Milk', listId: groceries.id });
-      const eggs = await alice.createTask({ title: 'Eggs', listId: groceries.id });
-      const bread = await alice.createTask({ title: 'Bread', listId: groceries.id });
+      await alice.createTask({ title: 'Eggs', listId: groceries.id });
+      await alice.createTask({ title: 'Bread', listId: groceries.id });
       const call = await alice.createTask({
         title: 'Call',
         dueDate: isoDateOffset(0),

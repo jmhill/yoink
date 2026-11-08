@@ -2117,7 +2117,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked until M4.1b. The health HTTP error mapper follow-up is still open.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked. M4.1b's spike passed and its implementation is blocked. The health HTTP error mapper follow-up is still open.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

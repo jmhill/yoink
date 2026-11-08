@@ -58,7 +58,7 @@ Parent accepted U1 at 2026-11-06 8:37 CT as the §12 fallback, after review of `
 
 Passed once. Exit 0. Test database only (`yoink-m02-spike`), with the existing scoped test token. Not `yoink-prod`. The M0.2 runners were not rerun. The sanitized report is [m4-1b-u1-batch.remote.json](./m4-1b-u1-batch.remote.json). No runner, bundle, or lockfile is stored for this proof. Base main in the report is `d68e766292c419dec56841f8768b6afc01312353`. Node v22.23.2, `@libsql/client` 0.15.15. `durations.processMs` is 5740.2. The client API in the report is `client.transaction('write')` and then one `tx.batch`. It is not `client.batch(statements, mode)`.
 
-This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. Implementation, tests, review, and merge are still required. M5.1, M5.3, and M5.5 stay gated on that merge.
+This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. The implementation is blocked, not ready, and not done. M5.1, M5.3, and M5.5 stay gated on the implementation, its tests, review, and merge.
 
 | Check | Result |
 |---|---|
@@ -69,4 +69,4 @@ This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The
 | HTTP fetches | 2 per measured batch: `batch` 1, `finish` 1, `open` 0. The same 2 on the 2,000-statement batch and the 3,000-statement batch. Not 3. |
 | Cleanup | Both proof tables dropped. `remaining` 0. |
 
-A duplicate primary key threw `LibsqlError` `SQLITE_CONSTRAINT`, with `rawCode` null and `index` null, on the error and on its cause. The error has no statement index. This log does not choose how that error maps to `StepFailure.owner`. The implementation has to keep the existing owner contract. If that cannot be done without inventing an owner, stop and escalate to Justin. Do not record a new failure kind here.
+A duplicate primary key threw `LibsqlError` `SQLITE_CONSTRAINT`, with `rawCode` null and `index` null, on the error and on its cause. The error has no statement index. Guard-miss owner mapping from the result index works. A thrown execute in a mixed-owner batch cannot recover that owner, which the per-statement unit of work named exactly. That is the existing failure contract. No new contract is adopted. ADR §6.1 is unchanged. The implementation is blocked on this question. An independent review of the public supported driver API is in progress. Justin decides after that review. This log does not choose a mapping.

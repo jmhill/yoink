@@ -58,7 +58,7 @@ Parent accepted U1 at 2026-11-06 8:37 CT as the §12 fallback, after review of `
 
 Passed once. Exit 0. Test database only (`yoink-m02-spike`), with the existing scoped test token. Not `yoink-prod`. The M0.2 runners were not rerun. The sanitized report is [m4-1b-u1-batch.remote.json](./m4-1b-u1-batch.remote.json). No runner, bundle, or lockfile is stored for this proof. Base main in the report is `d68e766292c419dec56841f8768b6afc01312353`. Node v22.23.2, `@libsql/client` 0.15.15. `durations.processMs` is 5740.2. The client API in the report is `client.transaction('write')` and then one `tx.batch`. It is not `client.batch(statements, mode)`.
 
-This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. The implementation is blocked, not ready, and not done. M5.1, M5.3, and M5.5 stay gated on the implementation, its tests, review, and merge.
+This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. Justin approved the ADR §6.1 contract. The implementation is ready and not done. M5.1, M5.3, and M5.5 stay gated on the implementation, its tests, review, merge, and a check of current main.
 
 | Check | Result |
 |---|---|
@@ -69,7 +69,7 @@ This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The
 | HTTP fetches | 2 per measured batch: `batch` 1, `finish` 1, `open` 0. The same 2 on the 2,000-statement batch and the 3,000-statement batch. Not 3. |
 | Cleanup | Both proof tables dropped. `remaining` 0. |
 
-A duplicate primary key threw `LibsqlError` `SQLITE_CONSTRAINT`, with `rawCode` null and `index` null, on the error and on its cause. The public `tx.batch` error has no SQL statement index. Guard-miss owner mapping from the result index works, and a single-owner batch still names that owner. A thrown execute in a mixed-owner batch cannot recover an owner. A proposal, not approved, is `Storage` with `owner: null` for that mixed-owner case only. ADR §6.1 is unchanged until Justin answers. The implementation stays blocked. This log does not choose a mapping.
+A duplicate primary key threw `LibsqlError` `SQLITE_CONSTRAINT`, with `rawCode` null and `index` null, on the error and on its cause. The public `tx.batch` error has no SQL statement index. Guard-miss owner mapping from the result index works. A single-owner throw can name that owner. A mixed-owner throw cannot. The approved contract is in ADR §6.1: `Conflict.owner` from the result position, `Storage.owner` only when every statement has the same owner, and `owners` always the modules in the batch. There is no `owner: null`. This log does not add a mapping of its own.
 
 ## M0.3 oRPC spread
 

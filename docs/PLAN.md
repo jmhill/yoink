@@ -680,6 +680,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M3.5 Auth middlewares to `edges/_shared/`
 - [x] M3.6 Retire HTTP tests from module folders
 - [x] M3.7 Remove test-helper SQL ownership exceptions
+- [ ] M3.7 correction: helper filenames and the test-support exemption (approved; not implemented)
 - [x] Health HTTP error mapper on the ops edge
 - [ ] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1`
 - [ ] TOKEN-LIST Confirm integration token listing and pin public v1
@@ -687,14 +688,14 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 
 ### M4: Unit of work, integration events, history as sink - In progress
 - [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
-- [ ] M4.1b U1 with one batch inside the transaction
+- [ ] M4.1b One batch inside the transaction (contract approved; implementation not done)
 - [x] M4.2 Create `modules/history/` and move the change log
 - [x] M4.3 History as the event sink
 - [ ] M4.4 Remove guards that read across modules
 
 ### M5: Modules, one at a time - M5.1 parked
 - [x] M5.1-check History subject type allows capture
-- [ ] M5.1 Captures (pilot, parked until M4.1b)
+- [ ] M5.1 Captures (pilot, parked until M4.1b is verified on current main)
 - [ ] M5.2 Task Management: structural merge
 - [ ] M5.3 Task Management: interface, unit of work, events
 - [ ] M5.4 Task Management: legacy services and the domain importing HTTP code
@@ -705,7 +706,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [ ] M5.9 Remove `project_notes.project_id → projects` foreign key
 - [ ] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module
-- [ ] M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
+- [ ] M5.12 Access: interface, unit of work, signup atomicity (unique-email race is Conflict, not 500)
 - [ ] M5.13 Access: migrate legacy services (closes 8.5.4)
 
 ### M6: Client edges - Not started
@@ -2117,7 +2118,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked. M4.1b's spike passed and its implementation is blocked. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Four architecture choices stay unapproved. Nothing here adopts them.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked until M4.1b's implementation is verified on current main and the helper-filename correction has landed. M4.1b's spike passed and its failure contract is approved. The implementation is ready and not done. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Command-log work, command-log review, and token listing stay unapproved. Nothing here adopts them.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

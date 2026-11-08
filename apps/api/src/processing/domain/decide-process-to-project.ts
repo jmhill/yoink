@@ -1,13 +1,13 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { Capture } from '@yoink/api-contracts';
 import { requirePerson } from '../../kernel/auth-context.js';
-import type { ProcessCaptureToProjectCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToProjectCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import {
   captureNotFoundError,
   captureNotInInboxError,
   type CaptureNotFoundError,
   type CaptureNotInInboxError,
-} from '../../captures/domain/capture-errors.js';
+} from '../../modules/captures/domain/messages/capture-errors.js';
 import type { ProjectCreated } from '../../projects/domain/events.js';
 import {
   duplicateProjectNameError,

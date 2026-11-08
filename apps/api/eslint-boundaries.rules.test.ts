@@ -91,7 +91,7 @@ describe('boundaries target rules', () => {
       'src/modules/access/testing.ts': `
         export { fakeStore } from './infrastructure/fakes/store.js';
         export { sqlite } from './infrastructure/sqlite.js';
-        export { otherFake } from '../captures/infrastructure/fakes/store.js';
+        export { otherFake } from '../inbox/infrastructure/fakes/store.js';
       `,
       'src/modules/access/infrastructure/fakes/store.ts': `export const fakeStore = {};\n`,
       'src/modules/access/infrastructure/sqlite.ts': `export const sqlite = {};\n`,
@@ -106,11 +106,11 @@ describe('boundaries target rules', () => {
       'src/modules/access/domain/model.ts': `
         export type { Capture } from '@yoink/api-contracts';
       `,
-      'src/modules/captures/infrastructure/fakes/store.ts': `export const otherFake = {};\n`,
-      'src/modules/captures/domain/other.ts': `
+      'src/modules/inbox/infrastructure/fakes/store.ts': `export const otherFake = {};\n`,
+      'src/modules/inbox/domain/other.ts': `
         export { access } from '../../access/index.js';
       `,
-      'src/modules/captures/index.ts': `export const access = {};\n`,
+      'src/modules/inbox/index.ts': `export const access = {};\n`,
       'src/workflows/processing/application/run.ts': `export const run = {};\n`,
       'src/workflows/processing/index.ts': `
         export { run } from './application/run.js';
@@ -134,7 +134,7 @@ describe('boundaries target rules', () => {
       }),
       expect.objectContaining({
         ruleId: 'boundaries/element-types',
-        message: expect.stringContaining("module 'captures'"),
+        message: expect.stringContaining("module 'inbox'"),
       }),
     ]);
     expect(messagesFor('src/modules/access/index.ts')).toEqual([
@@ -149,7 +149,7 @@ describe('boundaries target rules', () => {
         message: expect.stringContaining("'@yoink/api-contracts'"),
       }),
     ]);
-    expect(messagesFor('src/modules/captures/domain/other.ts')).toEqual([
+    expect(messagesFor('src/modules/inbox/domain/other.ts')).toEqual([
       expect.objectContaining({
         ruleId: 'boundaries/element-types',
         message: expect.stringContaining("type 'module-entry'"),

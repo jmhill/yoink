@@ -13,12 +13,17 @@ import {
   type WriteClient,
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
 import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
-import { EMPTY_EVENT_SINK_MAP } from './modules/history/domain/event-sink.js';
+import { CAPTURE_TIMELINE_BUILDERS } from './modules/history/domain/capture-timeline.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
-import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
-import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
-import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
+import { createCaptures } from './modules/captures/index.js';
+import { createFakeCaptureParticipant } from './modules/captures/infrastructure/fakes/fake-capture-participant.js';
+import { createFakeCaptureStore } from './modules/captures/infrastructure/fakes/fake-capture-store.js';
+import { capturesSqlParticipant } from './modules/captures/infrastructure/persistence/capture-sql-participant.js';
+import {
+  countTrashedCaptures,
+  createSqliteCaptureStore,
+} from './modules/captures/infrastructure/persistence/sqlite-capture-store.js';
 import { createListHandlers } from './lists/application/create-list-handlers.js';
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
 import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
@@ -494,11 +499,25 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   // Create capture store and service (async initialization)
   const captureStore = await createSqliteCaptureStore(database, clock);
-  const captureHandlers = createCaptureHandlers({
-    persist: createStoreBackedPersist(captureStore),
+  const historySink = createHistoryEventSink({
+    ids: idGenerator,
+    builders: CAPTURE_TIMELINE_BUILDERS,
+  });
+  const unitOfWork = createSqliteUnitOfWork({
+    client: writeClient,
+    participants: [historySqlParticipant, capturesSqlParticipant],
+    sink: historySink,
+  });
+  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
+    participants: [createFakeHistoryParticipant(), createFakeCaptureParticipant(createFakeCaptureStore())],
+    sink: historySink,
+  });
+  const captures = createCaptures({
     load: (id) => captureStore.findById(id),
     list: (options) => captureStore.findByOrganization(options),
-    nextId: () => idGenerator.generate(),
+    countTrashed: (organizationId) => countTrashedCaptures(database, organizationId),
+    uow: unitOfWork,
+    ids: idGenerator,
     now: () => clock.now().toISOString(),
   });
 
@@ -720,23 +739,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     };
   }
 
-  const historySink = createHistoryEventSink({
-    ids: idGenerator,
-    builders: EMPTY_EVENT_SINK_MAP,
-  });
-  const unitOfWork = createSqliteUnitOfWork({
-    client: writeClient,
-    participants: [historySqlParticipant],
-    sink: historySink,
-  });
-  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
-    participants: [createFakeHistoryParticipant()],
-    sink: historySink,
-  });
-
   const server = await createApp({
     app: options.app ?? app,
-    captureHandlers,
+    captures,
     listHandlers,
     projectHandlers,
     noteHandlers,

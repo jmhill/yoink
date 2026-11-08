@@ -144,6 +144,31 @@ export const noteDeletedPayloadV1Schema = z.object({
   title: z.string(),
 });
 
+/** Stored for the capture outbox. The visible timeline SQL does not select subject_type capture. */
+export const captureCreatedPayloadV1Schema = z.object({
+  content: z.string(),
+});
+
+export const captureContentUpdatedPayloadV1Schema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+});
+
+export const captureSnoozedPayloadV1Schema = z.object({
+  until: z.string(),
+});
+
+export const captureEmptyPayloadV1Schema = z.object({});
+
+export const captureTrashEmptiedPayloadV1Schema = z.object({
+  deletedCount: z.number().int().min(0),
+});
+
+export const captureProcessedPayloadV1Schema = z.object({
+  processedToType: z.string(),
+  processedToId: z.string(),
+});
+
 export const projectImportedPayloadV1Schema = z.object({
   taskCount: z.number().int().min(0),
   name: z.string().optional(),
@@ -195,3 +220,9 @@ export type ProjectImportedPayloadV1 = z.infer<typeof projectImportedPayloadV1Sc
 export type NoteCreatedPayloadV1 = z.infer<typeof noteCreatedPayloadV1Schema>;
 export type NoteUpdatedPayloadV1 = z.infer<typeof noteUpdatedPayloadV1Schema>;
 export type NoteDeletedPayloadV1 = z.infer<typeof noteDeletedPayloadV1Schema>;
+export type CaptureCreatedPayloadV1 = z.infer<typeof captureCreatedPayloadV1Schema>;
+export type CaptureContentUpdatedPayloadV1 = z.infer<typeof captureContentUpdatedPayloadV1Schema>;
+export type CaptureSnoozedPayloadV1 = z.infer<typeof captureSnoozedPayloadV1Schema>;
+export type CaptureEmptyPayloadV1 = z.infer<typeof captureEmptyPayloadV1Schema>;
+export type CaptureTrashEmptiedPayloadV1 = z.infer<typeof captureTrashEmptiedPayloadV1Schema>;
+export type CaptureProcessedPayloadV1 = z.infer<typeof captureProcessedPayloadV1Schema>;

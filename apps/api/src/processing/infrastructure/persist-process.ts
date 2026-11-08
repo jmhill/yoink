@@ -8,7 +8,7 @@ import {
   storageError as captureStorageError,
   type CaptureNotInInboxError,
   type StorageError as CaptureStorageError,
-} from '../../captures/domain/capture-errors.js';
+} from '../../modules/captures/domain/messages/capture-errors.js';
 import {
   duplicateProjectNameError,
   storageError as projectStorageError,
@@ -17,7 +17,7 @@ import {
 } from '../../projects/domain/project-errors.js';
 import type { FakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import type { FakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
+import type { FakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
 import type {
   PersistProcessToProject,
   PersistProcessToTask,

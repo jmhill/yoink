@@ -1,11 +1,11 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { ProcessCaptureToTaskCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToTaskCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import type {
   CaptureNotFoundError,
   CaptureNotInInboxError,
   StorageError as CaptureStorageError,
-} from '../../captures/domain/capture-errors.js';
+} from '../../modules/captures/domain/messages/capture-errors.js';
 import type { CreateTaskError } from '../../tasks/domain/task-errors.js';
 import { decideProcessCaptureToTask } from '../domain/decide-process-to-task.js';
 import { planTaskChange } from '../../tasks/domain/plan-task-change.js';

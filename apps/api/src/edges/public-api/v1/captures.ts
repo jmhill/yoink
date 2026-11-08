@@ -12,8 +12,7 @@ import {
   yoinkOpenApiHandlerOptions,
 } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
-// M5.1 removes these deep imports once captures exports its handlers from index.ts.
-import type { CaptureHandlers } from '../../../captures/application/create-capture-handlers.js';
+import type { Captures } from '../../../modules/captures/index.js';
 // M5.5 removes this deep import once processing exports its workflow from index.ts.
 import type { CaptureProcessingService } from '../../../processing/application/create-processing-handlers.js';
 import {
@@ -30,12 +29,12 @@ import {
   mapTrashCaptureError,
   mapUnsnoozeCaptureError,
   mapUpdateCaptureError,
-} from '../../../captures/infrastructure/orpc-capture-errors.js';
+} from './orpc-capture-errors.js';
 // M5.3 removes this deep import. Process-to-project keeps today's project validation body.
 import { projectRequestValidationError } from '../../../projects/infrastructure/project-http-errors.js';
 
 export type CaptureEdgeDependencies = {
-  captureHandlers: CaptureHandlers;
+  captures: Captures;
   captureProcessingService: CaptureProcessingService;
 };
 
@@ -68,13 +67,14 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
   const create: Procedure<typeof legacy.create> = async ({ input, context }) => {
     const refusal = mapAgentCaptureRefusal(context.request.authContext.principalKind);
     if (refusal) throw refusal;
-    const result = await deps.captureHandlers.create({
+    const result = await deps.captures.commands.createCapture({
       content: input.content,
       title: input.title,
       sourceUrl: input.sourceUrl,
       sourceApp: input.sourceApp,
       organizationId: context.request.authContext.organizationId,
       createdById: context.request.authContext.userId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -84,7 +84,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const list: Procedure<typeof legacy.list> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.list({
+    const result = await deps.captures.queries.listCaptures({
       organizationId: context.request.authContext.organizationId,
       status: input.status,
       snoozed: input.snoozed,
@@ -99,7 +99,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const get: Procedure<typeof legacy.get> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.find({
+    const result = await deps.captures.queries.findCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
     });
@@ -111,11 +111,12 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const update: Procedure<typeof legacy.update> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.update({
+    const result = await deps.captures.commands.updateCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
       title: input.title,
       content: input.content,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -125,9 +126,10 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const trash: Procedure<typeof legacy.trash> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.trash({
+    const result = await deps.captures.commands.trashCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -137,9 +139,10 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const restore: Procedure<typeof legacy.restore> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.restore({
+    const result = await deps.captures.commands.restoreCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -149,10 +152,11 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const snooze: Procedure<typeof legacy.snooze> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.snooze({
+    const result = await deps.captures.commands.snoozeCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
       until: input.until,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -162,9 +166,10 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const unsnooze: Procedure<typeof legacy.unsnooze> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.unsnooze({
+    const result = await deps.captures.commands.unsnoozeCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       ({ view }) => view,
@@ -174,9 +179,10 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const deleteCapture: Procedure<typeof legacy.delete> = async ({ input, context }) => {
-    const result = await deps.captureHandlers.delete({
+    const result = await deps.captures.commands.deleteCapture({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       () => undefined,
@@ -186,8 +192,9 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
     );
   };
   const emptyTrash: Procedure<typeof legacy.emptyTrash> = async ({ context }) => {
-    const result = await deps.captureHandlers.emptyTrash({
+    const result = await deps.captures.commands.emptyTrash({
       organizationId: context.request.authContext.organizationId,
+      actor: context.request.authContext.actor,
     });
     return result.match(
       (emptied) => ({ deletedCount: emptied.deletedCount }),

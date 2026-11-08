@@ -1,12 +1,12 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Capture, Project } from '@yoink/api-contracts';
-import type { ProcessCaptureToProjectCommand } from '../../captures/domain/capture-commands.js';
+import type { ProcessCaptureToProjectCommand } from '../../modules/captures/domain/messages/capture-commands.js';
 import {
   captureNotFoundError,
   type CaptureNotFoundError,
   type CaptureNotInInboxError,
   type StorageError as CaptureStorageError,
-} from '../../captures/domain/capture-errors.js';
+} from '../../modules/captures/domain/messages/capture-errors.js';
 import type {
   DuplicateProjectNameError,
   InvalidProjectNameError,

@@ -50,7 +50,7 @@ pnpm test:coverage
 pnpm e2e:test
 
 # Run specific unit test file
-pnpm --filter @yoink/api test src/captures/domain/decide-create.test.ts
+pnpm --filter @yoink/api test src/modules/captures/domain/decisions/decide-create.test.ts
 
 # Run tests matching a name pattern (the -- is required so the flag
 # reaches vitest instead of being consumed by pnpm; note that

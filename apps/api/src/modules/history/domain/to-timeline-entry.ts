@@ -256,6 +256,16 @@ export const toTimelineEntry = (
         kind: 'NoteDeleted',
         title: record.payload.title,
       });
+    case 'CaptureCreated':
+    case 'CaptureContentUpdated':
+    case 'CaptureTrashed':
+    case 'CaptureRestored':
+    case 'CaptureSnoozed':
+    case 'CaptureUnsnoozed':
+    case 'CaptureDeleted':
+    case 'CaptureTrashEmptied':
+    case 'CaptureProcessed':
+      return null;
   }
 };
 

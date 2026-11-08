@@ -680,10 +680,10 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M3.5 Auth middlewares to `edges/_shared/`
 - [x] M3.6 Retire HTTP tests from module folders
 - [x] M3.7 Remove test-helper SQL ownership exceptions
-- [ ] Requested health mapper follow-up (unmerged; not done)
+- [x] Health HTTP error mapper on the ops edge
 - [ ] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1`
 - [ ] TOKEN-LIST Confirm integration token listing and pin public v1
-- [ ] LINT-ACCEPTANCE Acceptance-test lint joins quality; browser suite stays in the E2E job
+- [x] LINT-ACCEPTANCE Acceptance-test lint joins quality; browser suite stays in the E2E job
 
 ### M4: Unit of work, integration events, history as sink - In progress
 - [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
@@ -2117,7 +2117,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked. M4.1b's spike passed and its implementation is blocked. The requested health mapper follow-up is unmerged and not done. LINT-ACCEPTANCE is in progress: acceptance-test lint joins quality, and the browser suite stays in the E2E job.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked. M4.1b's spike passed and its implementation is blocked. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Four architecture choices stay unapproved. Nothing here adopts them.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

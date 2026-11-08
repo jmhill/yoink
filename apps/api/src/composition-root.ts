@@ -10,6 +10,7 @@ import { createInMemoryUnitOfWork } from './platform/unit-of-work/in-memory-unit
 import {
   createSqliteUnitOfWork,
   libsqlWriteClient,
+  type UnitOfWorkLogger,
   type WriteClient,
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
 import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
@@ -724,10 +725,16 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     ids: idGenerator,
     builders: EMPTY_EVENT_SINK_MAP,
   });
+  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
   const unitOfWork = createSqliteUnitOfWork({
     client: writeClient,
     participants: [historySqlParticipant],
     sink: historySink,
+    logger: {
+      error: (fields) => {
+        batchLog.error?.(fields);
+      },
+    },
   });
   const inMemoryUnitOfWork = createInMemoryUnitOfWork({
     participants: [createFakeHistoryParticipant()],
@@ -766,5 +773,8 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     cookie: config.cookie,
     viaFly,
   });
+  batchLog.error = (fields) => {
+    server.log.error(fields);
+  };
   return Object.assign(server, { unitOfWork, inMemoryUnitOfWork });
 };

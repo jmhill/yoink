@@ -11,11 +11,44 @@ export type Step = {
   readonly plan: unknown;
 };
 
-/** Closed. U1 does not add a kind. The owner is the awaited step, not a driver field. */
-export type StepFailure = {
-  readonly kind: 'Conflict' | 'Storage';
+/**
+ * Closed. Conflict names the guarded statement. Storage names every module
+ * in the batch, and `owner` only when they are all the same module.
+ * There is no `owner: null`, and no caller branches on `Storage.owner`.
+ */
+export type ConflictFailure = {
+  readonly kind: 'Conflict';
   readonly owner: ModuleName;
   readonly reason: string;
+};
+
+export type StorageFailure = {
+  readonly kind: 'Storage';
+  readonly owner?: ModuleName;
+  readonly owners: readonly ModuleName[];
+  readonly reason: string;
+};
+
+export type StepFailure = ConflictFailure | StorageFailure;
+
+/** `owner` is set only when every module in `modules` is that one module. */
+export const storageFailure = (
+  modules: readonly ModuleName[],
+  reason: string
+): StorageFailure => {
+  const owners: ModuleName[] = [];
+  for (const moduleName of modules) {
+    if (!owners.includes(moduleName)) {
+      owners.push(moduleName);
+    }
+  }
+  if (owners.length === 1) {
+    const owner = owners[0];
+    if (owner !== undefined) {
+      return { kind: 'Storage', owner, owners, reason };
+    }
+  }
+  return { kind: 'Storage', owners, reason };
 };
 
 export type Work<T, E extends IntegrationEvent = IntegrationEvent> = {
@@ -161,14 +194,11 @@ const missingOwner = (
   works: readonly Work<unknown>[],
   owners: ReadonlySet<ModuleName>
 ): StepFailure | undefined => {
-  for (const work of works) {
-    if (!owners.has(work.step.owner)) {
-      return {
-        kind: 'Storage',
-        owner: work.step.owner,
-        reason: NO_PARTICIPANT,
-      };
-    }
+  if (works.every((work) => owners.has(work.step.owner))) {
+    return undefined;
   }
-  return undefined;
+  return storageFailure(
+    works.map((work) => work.step.owner),
+    NO_PARTICIPANT
+  );
 };

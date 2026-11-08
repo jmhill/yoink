@@ -683,12 +683,12 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [ ] M3.7 correction: helper filenames and the test-support exemption (approved; not implemented)
 - [x] Health HTTP error mapper on the ops edge
 - [ ] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1` (parked; awaits review and priority)
-- [ ] TOKEN-LIST Confirm integration token listing and pin public v1
+- [ ] TOKEN-LIST Confirm integration token listing and pin public v1 (approved 2026-11-07 21:45 CST; tests queued; not done)
 - [x] LINT-ACCEPTANCE Acceptance-test lint joins quality; browser suite stays in the E2E job
 
 ### M4: Unit of work, integration events, history as sink - In progress
 - [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
-- [ ] M4.1b One batch inside the transaction (contract approved; implementation not done)
+- [ ] M4.1b One batch inside the transaction (implementation in progress, unmerged; not done)
 - [x] M4.2 Create `modules/history/` and move the change log
 - [x] M4.3 History as the event sink
 - [ ] M4.4 Remove guards that read across modules
@@ -2118,7 +2118,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked until M4.1b's implementation is verified on current main and the helper-filename correction has landed. M4.1b's spike passed and its failure contract is approved. The implementation is ready and not done. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved, as does token listing. Nothing here adopts them.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked until M4.1b's implementation is verified on current main and the helper-filename correction has landed. M4.1b's spike passed and its failure contract is approved. The implementation is in progress and unmerged. It is not done until parent merge. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved. Token listing is approved and its tests are queued, not done. Nothing here adopts CL-WORK or CL-REVIEW.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

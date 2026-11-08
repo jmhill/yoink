@@ -132,8 +132,27 @@ describe('prepareCommit', () => {
       expect(prepared.error).toEqual({
         kind: 'Storage',
         owner: 'notes',
+        owners: ['notes'],
         reason: 'no-participant',
       });
+    }
+  });
+
+  it('omits owner when a missing participant sits among other modules', async () => {
+    const prepared = await prepareCommit({
+      works: [work('captures'), work('notes')],
+      policies: [],
+      owners: owners('captures'),
+    });
+
+    expect(prepared.isErr()).toBe(true);
+    if (prepared.isErr()) {
+      expect(prepared.error).toEqual({
+        kind: 'Storage',
+        owners: ['captures', 'notes'],
+        reason: 'no-participant',
+      });
+      expect('owner' in prepared.error).toBe(false);
     }
   });
 });

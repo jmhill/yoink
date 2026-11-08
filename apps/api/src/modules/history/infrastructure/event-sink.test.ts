@@ -241,9 +241,10 @@ describe('history event sink on a file database', () => {
     if (failed.isErr()) {
       expect(failed.error).toEqual({
         kind: 'Storage',
-        owner: 'history',
+        owners: ['captures', 'history'],
         reason: 'execute-failed',
       });
+      expect('owner' in failed.error).toBe(false);
     }
     expect(await kept(read)).toEqual([]);
     expect(await rows(read)).toEqual([]);
@@ -454,9 +455,10 @@ describe('history event sink in memory', () => {
     if (missing.isErr()) {
       expect(missing.error).toEqual({
         kind: 'Storage',
-        owner: 'history',
+        owners: ['captures', 'history'],
         reason: 'no-participant',
       });
+      expect('owner' in missing.error).toBe(false);
     }
     expect(caller.applied()).toBe(0);
   });
@@ -469,6 +471,7 @@ describe('history event sink in memory', () => {
       expect(applied.error).toEqual({
         kind: 'Storage',
         owner: 'history',
+        owners: ['history'],
         reason: 'plan-rejected',
       });
     }
@@ -507,7 +510,7 @@ describe('history sql participant', () => {
       transaction: () => {
         calls.opened += 1;
         return Promise.resolve({
-          execute: () => Promise.resolve({ rowsAffected: 1 }),
+          batch: () => Promise.resolve([]),
           commit: () => Promise.resolve(),
           rollback: () => Promise.resolve(),
           close: () => undefined,
@@ -526,9 +529,10 @@ describe('history sql participant', () => {
     if (missing.isErr()) {
       expect(missing.error).toEqual({
         kind: 'Storage',
-        owner: 'history',
+        owners: ['captures', 'history'],
         reason: 'no-participant',
       });
+      expect('owner' in missing.error).toBe(false);
     }
     expect(calls.opened).toBe(0);
   });
@@ -539,9 +543,11 @@ describe('history sql participant', () => {
       transaction: () => {
         calls.opened += 1;
         const tx: WriteTransaction = {
-          execute: (statement) => {
-            calls.sql.push(statement.sql);
-            return Promise.resolve({ rowsAffected: 1 });
+          batch: (statements) => {
+            for (const statement of statements) {
+              calls.sql.push(statement.sql);
+            }
+            return Promise.resolve(statements.map(() => ({ rowsAffected: 1 })));
           },
           commit: () => Promise.resolve(),
           rollback: () => Promise.resolve(),
@@ -566,6 +572,7 @@ describe('history sql participant', () => {
       expect(failed.error).toEqual({
         kind: 'Storage',
         owner: 'history',
+        owners: ['history'],
         reason: 'read-rejected',
       });
     }

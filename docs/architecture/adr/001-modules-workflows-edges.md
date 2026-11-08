@@ -345,7 +345,9 @@ Processing is a workflow, not a module, so this table doesn't apply to it. Today
 ```ts
 // kernel
 type Step        = { readonly owner: ModuleName; readonly plan: unknown };   // plan is opaque to everyone but its owner
-type StepFailure = { kind: 'Conflict' | 'Storage'; owner: ModuleName; reason: string };
+type StepFailure =
+  | { readonly kind: 'Conflict'; readonly owner: ModuleName; readonly reason: string }
+  | { readonly kind: 'Storage'; readonly owner?: ModuleName; readonly owners: readonly ModuleName[]; readonly reason: string };
 type Work<T, E extends IntegrationEvent = IntegrationEvent> =
   { readonly result: T; readonly events: readonly E[]; readonly step: Step };
 type UnitOfWork = { commit(works: readonly Work<unknown>[]): ResultAsync<void, StepFailure> };
@@ -366,11 +368,15 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
 - The unit of work awaits each statement on `client.transaction('write')`. It does not call `db.execute` with a transaction-control statement. In `@libsql/client` 0.15.15, mode `write` is the library's own immediate transaction (`transactionModeToBegin`).
 - No reads inside the transaction, including no `PRAGMA` query. Setup and snapshots stay outside. Steps stay short.
 - The pinned client does not take a timeout. `Config` and `transaction(mode)` have no timeout field, and `@libsql/hrana-client` 0.7.0 exposes none. The runner passes `transaction('write')` and `{ url, authToken }` only. The words "5-second lock timeout" occurred only in the earlier fallback sentence of this section. They are not a configured value. This record does not claim that timeout and does not hold a transaction open to probe one.
-- `StepFailure` stays `{ kind: 'Conflict' | 'Storage'; owner: ModuleName; reason: string }`.
-- The owner is the awaited step's `ModuleName`. Each call is that step, so the compiler knows the owner. It is not read from `code`, `rawCode`, or `index`.
-- A guarded write whose `rowsAffected` is `0` is `kind: 'Conflict'` and `reason: 'guard-miss'`.
-- An ordinary `execute` that throws is `kind: 'Storage'` and `reason: 'execute-failed'`, with the owner of that step.
-- Neither path parses a SQL message or fills in a missing `rawCode` or `index`.
+- Justin approved the batch failure contract on 2026-11-07 at 21:31 CST, for [#325](https://github.com/jmhill/yoink/issues/325). `Conflict` and `Storage` stay the only kinds. There is no `owner: null` variant. The 2026-11-06 sentence above added no failure kind. This contract changes the shape of `StepFailure`.
+- M4.1 still awaits one `execute` per statement inside `transaction('write')`. M4.1b replaces that loop with one `tx.batch` in the same transaction. The implementation is ready and not done. This document does not switch the file.
+- `Conflict.owner` is the module of the guarded statement at that position in the `tx.batch` result. A guarded write whose `rowsAffected` is `0` is `kind: 'Conflict'` and `reason: 'guard-miss'`.
+- `Storage.owner` is present only when every statement in the batch belongs to that one module. `Storage.owners` is always every module in the batch, for diagnostics. A mixed-owner throw has no `owner` and still has `owners`. No caller branches on `Storage.owner`.
+- A module does not treat a constraint violation as a domain outcome. An expected conflict is a guard: `UPDATE … WHERE …`, or `INSERT … SELECT … WHERE NOT EXISTS`. `rowsAffected === 0` is `Conflict`. A throw during commit is always `Storage`, a bug or infrastructure failure. The edge returns 500 and may retry.
+- A failed batch is not run again one statement at a time. That doubles writes and races.
+- A log of a failed batch carries the driver cause, `owners`, and the batch size. It carries no SQL arguments and no secrets. The cause is preserved. A raw driver message can contain SQL arguments, so the log redacts that message under an explicit contract and does not write it raw.
+- Classification does not read `code`, `rawCode`, or `index`. The public `tx.batch` error has no SQL statement index. Neither path parses a SQL message or fills in a missing `rawCode` or `index`.
+- The implementation's tests are: a mixed-owner guard miss is `Conflict` with that statement's owner; a single-owner throw is `Storage` with `owner` and `owners`; a mixed-owner throw is `Storage` with no `owner` and with `owners`. All three roll back. A local libsql batch has at least 2,000 statements. The remote proof already passed, with 2 HTTP fetches and not 3. The historical U2 times stay approximate and are not rerun.
 - The guard `CHECK` remains a probe. Its thrown error is recorded next to a primary-key error. It corroborates that the assertion statement failed. It is not the classification input. On Turso the check and the primary key reported the same allowlisted fields, and the mapping did not use them.
 - The throwaway runners are removed. The sanitized reports and the run log are [docs/architecture/adr/spikes/README.md](./spikes/README.md). The runners remain at `d68e766292c419dec56841f8768b6afc01312353`. Do not rerun them. `u1_tasks` was left in the spike database. Production code was unchanged by the spike. The record is on main as `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29` ([#312](https://github.com/jmhill/yoink/pull/312)).
 
@@ -383,11 +389,11 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
   It then runs everything in **one `db.batch(..., 'write')`**.
 - Guards are the module's own conditional writes (e.g. `UPDATE captures … WHERE status = 'inbox'`). Each is immediately followed by a platform-provided assertion that makes the batch fail when the guarded write changed no rows. For example, a statement that inserts `changes() > 0` into a guard table owned by platform, with `CHECK (ok = 1)`.
 - **Statement order doesn't matter for atomicity.** Any failed guard aborts the whole batch. The only ordering rule is that each assertion comes straight after its own guarded write, and participants handle that themselves.
-- If the batch fails, the unit of work classifies a typed `Conflict` or `Storage` failure from the client error. The spike log found no statement index on that error, so `StepFailure.owner` cannot be filled from it.
+- If the batch fails, this rejected path classified a typed `Conflict` or `Storage` failure from the client error. The spike log found no statement index on that error, so an owner cannot be filled from it. The approved mapping is the `tx.batch` contract above, not this path.
 - All reads and decisions happen **before** the batch runs, including reads by policies. A batch contains only guarded writes.
 - **No module's SQL references another module's table.** The current `EXISTS (SELECT … FROM <other table>)` guards, including history's `existsClause`, are removed. Inside one batch, the owning module's step guarantees the subject exists.
 
-**Evidence.** U2 is not confirmed. Turso reported one `SQLITE_CONSTRAINT` with null `rawCode` and null `index` for both a guard failure and a duplicate primary key, so the owner cannot be read from the batch error. U1 classifies from the awaited step and from `rowsAffected`. `foreignKeys: null` in the U1 remote report is a column-name bug: the reader asked for `value`, and `PRAGMA foreign_keys` returns `foreign_keys`. M4.1 tests foreign keys. The measurements, including the 2,000- and 3,000-statement samples, are in the spike log. No production unit of work was added by this spike. M4.1 shipped the per-statement transaction. One batch inside that transaction is M4.1b, and it does not rerun these proofs.
+**Evidence.** U2 is not confirmed. Turso reported one `SQLITE_CONSTRAINT` with null `rawCode` and null `index` for both a guard failure and a duplicate primary key, so an owner cannot be read from the batch error. `foreignKeys: null` in the U1 remote report is a column-name bug: the reader asked for `value`, and `PRAGMA foreign_keys` returns `foreign_keys`. M4.1 tests foreign keys. The measurements, including the 2,000- and 3,000-statement samples, are in the spike log. No production unit of work was added by this spike. M4.1 shipped the per-statement transaction. One `tx.batch` inside that transaction is M4.1b. The failure contract above is approved. The implementation has not landed, and it does not rerun these proofs.
 
 **In-memory unit of work** (tests). On commit, it snapshots every registered `FakeParticipant` and applies each step's plan, plus the event sink and the policies' work. On any failure it restores every participant. This replaces the hand-written snapshot and restore code in today's fake persist adapters.
 

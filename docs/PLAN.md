@@ -652,42 +652,49 @@ Most violations listed in MODULAR_MONOLITH.md dissolved with the bounded-context
 
 **Plan:** [001-migration-plan.md](./architecture/adr/001-migration-plan.md) has every task, its dependencies, acceptance criteria and the shared definition of done. Each task can be handed to an agent on its own. **Deferred:** [ADR-002 (module kit)](./architecture/adr/002-module-kit.md). Every task adds to its lessons log.
 
-The execution index in that plan is the handoff list (task keys, dependencies, serialization, status, gates, GitHub links). Seventy-seven issues are published. M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). Its issue stays pending publication, pending user Submit. M0.3 is done on main (`b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313)). M3.1 is done on main (`198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315)). M4.2 is done on main (`a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316)). M3.2 is done on main (`0a1b7aa7b4d532663c7cd27194bba82cd3527a31`, [#317](https://github.com/jmhill/yoink/pull/317)). M5.1-check is done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). M5.1 has not started. M3.3 is done on main (`0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320)). Client-only routes are in `edges/legacy/`. M3.4 is done on main (`67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321)). Health is in `edges/ops/` and fixtures are at `/test-api/`. M3.5 is done on main (`f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322)). Auth middleware is in `edges/_shared/auth/`. M3.6 is in progress: HTTP tests sit next to the edge routes, not done until review and merge. M4.3 is done on main (`eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318)). The composition root registers one empty history sink on both unit-of-work implementations. No route uses the unit of work yet. M4 stays open. M4.4 remains. M1 is done at `warn`. M2 is complete. The migration is not done. This file does not duplicate that list.
+Status lives in that plan's execution index. These checkboxes do not repeat it.
 
 ### M0: Adopt, prove, inventory - Done
 - [x] M0.1 Adopt the ADRs into the repo
-- [x] M0.2 Spike: unit-of-work batch guards (done on main, `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312))
-- [x] M0.3 Spike: oRPC contract and router spreading (done on main, `b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313), [#224](https://github.com/jmhill/yoink/issues/224))
-- [x] M0.4 Route inventory ([#301](https://github.com/jmhill/yoink/pull/301), [#223](https://github.com/jmhill/yoink/issues/223))
-- [x] M0.5 Refresh the ESLint baseline (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225))
+- [x] M0.2 Spike: unit-of-work batch guards
+- [x] M0.3 Spike: oRPC contract and router spreading
+- [x] M0.4 Route inventory
+- [x] M0.5 Refresh the ESLint baseline
 
 ### M1: Enforcement at `warn` - Done
-- [x] M1.1 Boundaries elements and rules for the target layout (`3b0441b`, [#302](https://github.com/jmhill/yoink/pull/302), [#226](https://github.com/jmhill/yoink/issues/226))
-- [x] M1.2 Table-ownership architecture test (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227))
-- [x] M1.3 Migration ownership (`cedc109`, [#305](https://github.com/jmhill/yoink/pull/305), [#228](https://github.com/jmhill/yoink/issues/228))
+- [x] M1.1 Boundaries elements and rules for the target layout
+- [x] M1.2 Table-ownership architecture test
+- [x] M1.3 Migration ownership
 
 ### M2: Kernel, platform, `edges/_shared` - Done
-- [x] M2.1 Create `kernel/` (`db23e4f`, [#306](https://github.com/jmhill/yoink/pull/306), [#229](https://github.com/jmhill/yoink/issues/229))
-- [x] M2.2 Create `platform/` (`882488f`, [#308](https://github.com/jmhill/yoink/pull/308), [#230](https://github.com/jmhill/yoink/issues/230))
-- [x] M2.3 Split `@yoink/infrastructure` (`c1358cc`, [#309](https://github.com/jmhill/yoink/pull/309), [#231](https://github.com/jmhill/yoink/issues/231))
-- [x] M2.4 Create `edges/_shared/` (`cecc6e4cc5371a1a54184eab61172a9d24eb911f`, [#310](https://github.com/jmhill/yoink/pull/310), [#232](https://github.com/jmhill/yoink/issues/232))
+- [x] M2.1 Create `kernel/`
+- [x] M2.2 Create `platform/`
+- [x] M2.3 Split `@yoink/infrastructure`
+- [x] M2.4 Create `edges/_shared/`
 
-### M3: HTTP out of modules, public API v1 live - In Progress
-- [x] M3.1 Public API v1 contracts (done on main, `198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315), [#233](https://github.com/jmhill/yoink/issues/233))
-- [x] M3.2 `edges/public-api/v1/` at `/api/v1` and the `/api` alias (done on main, `0a1b7aa7b4d532663c7cd27194bba82cd3527a31`, [#317](https://github.com/jmhill/yoink/pull/317), [#234](https://github.com/jmhill/yoink/issues/234))
-- [x] M3.3 `edges/legacy/` for client-only routes (done on main, `0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320), [#235](https://github.com/jmhill/yoink/issues/235))
-- [x] M3.4 `edges/ops/` and `edges/test-fixtures/` (done on main, `67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321), [#236](https://github.com/jmhill/yoink/issues/236))
-- [x] M3.5 Auth middlewares to `edges/_shared/` (done on main, `f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322), [#237](https://github.com/jmhill/yoink/issues/237))
-- [ ] M3.6 Retire HTTP tests from module folders (in progress; moved, not done until review and merge)
+### M3: HTTP out of modules, public API v1 live - In progress
+- [x] M3.1 Public API v1 contracts
+- [x] M3.2 `edges/public-api/v1/` at `/api/v1` and the `/api` alias
+- [x] M3.3 `edges/legacy/` for client-only routes
+- [x] M3.4 `edges/ops/` and `edges/test-fixtures/`
+- [x] M3.5 Auth middlewares to `edges/_shared/`
+- [x] M3.6 Retire HTTP tests from module folders
+- [x] M3.7 Remove test-helper SQL ownership exceptions
+- [ ] Health HTTP error mapper still in `health/application/` (open follow-up on the M3.6 issue; not done)
+- [ ] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1`
+- [ ] TOKEN-LIST Confirm integration token listing and pin public v1
+- [ ] LINT-ACCEPTANCE Fix acceptance-test lint and decide CI coverage
 
-### M4: Unit of work, integration events, history as sink - Not Started
-- [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations (done on main, `e0fc57687d8de09b0da3d9d22871007e6255d58f`, [#314](https://github.com/jmhill/yoink/pull/314), [#239](https://github.com/jmhill/yoink/issues/239))
-- [x] M4.2 Create `modules/history/` and move the change log (done on main, `a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316), [#240](https://github.com/jmhill/yoink/issues/240))
-- [x] M4.3 History as the event sink (done on main, `eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318), [#241](https://github.com/jmhill/yoink/issues/241); empty sink on both implementations; no route uses it yet)
-- [ ] M4.4 Remove guards that read across modules (finishing step)
+### M4: Unit of work, integration events, history as sink - In progress
+- [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
+- [ ] M4.1b U1 with one batch inside the transaction
+- [x] M4.2 Create `modules/history/` and move the change log
+- [x] M4.3 History as the event sink
+- [ ] M4.4 Remove guards that read across modules
 
-### M5: Modules, one at a time - Not Started
-- [ ] M5.1 Captures (pilot). M5.1-check is done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319), [#246](https://github.com/jmhill/yoink/issues/246)). M5.1 has not started.
+### M5: Modules, one at a time - M5.1 parked
+- [x] M5.1-check History subject type allows capture
+- [ ] M5.1 Captures (pilot, parked until M4.1b)
 - [ ] M5.2 Task Management: structural merge
 - [ ] M5.3 Task Management: interface, unit of work, events
 - [ ] M5.4 Task Management: legacy services and the domain importing HTTP code
@@ -701,7 +708,7 @@ The execution index in that plan is the handoff list (task keys, dependencies, s
 - [ ] M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 - [ ] M5.13 Access: migrate legacy services (closes 8.5.4)
 
-### M6: Client edges - Not Started
+### M6: Client edges - Not started
 - [ ] M6.1 Extension edge (`/extension-api/v1/`)
 - [ ] M6.2 Web edge foundation (`/web-api/`)
 - [ ] M6.3 Web edge screens
@@ -709,7 +716,7 @@ The execution index in that plan is the handoff list (task keys, dependencies, s
 - [ ] M6.5 Remove client-only legacy routes
 - [ ] M6.6 Remove `/api/admin/...` from the dev proxy and docs
 
-### M7: Contract, enforce, review - Not Started
+### M7: Contract, enforce, review - Not started
 - [ ] M7.1 Announce the `/api` alias sunset
 - [ ] M7.2 Remove the `/api` alias
 - [ ] M7.3 Retire `combined-auth-middleware` (after 7.7c)
@@ -2110,9 +2117,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Done on main: M0.1 (`11da980`). M0.4 ([#301](https://github.com/jmhill/yoink/pull/301), [#223](https://github.com/jmhill/yoink/issues/223)). M0.5 (`93584ce`, [#225](https://github.com/jmhill/yoink/issues/225)). M1.1 (`3b0441b`, [#302](https://github.com/jmhill/yoink/pull/302), [#226](https://github.com/jmhill/yoink/issues/226)): ADR §10 rules 1–7 stay at `warn`, and `boundaries/no-unknown` is 0 in `docs/architecture/ESLINT_BASELINE.md`. M1.2 (`f2a94e7`, [#227](https://github.com/jmhill/yoink/issues/227)). M1.3 (`cedc109`, [#305](https://github.com/jmhill/yoink/pull/305), [#228](https://github.com/jmhill/yoink/issues/228)). M1 is done.
-
-M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). M0.3 is done on main (`b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313)). M0.2's local libsql evidence is [#303](https://github.com/jmhill/yoink/pull/303) and ADR §6.1. The issue stays pending user Submit and has no issue URL. Submit approval for that replacement stays skipped: do not create, edit, resubmit, or duplicate the form, and do not open a new issue. Turso OAuth is connected (2026-11-06 6:24 CT). Empty unbranched `yoink-m02-spike` was created at 6:27 CT in the default group. Existing `jhtc-yoink` was not queried or changed. The connector lists 18 tools and has no client token and no batch tool. A scoped one-day token is present on the parent box (presence checked 2026-11-06 8:15 CT). It was not forwarded. The standalone runner is [docs/architecture/adr/spikes/remote-runner/](./architecture/adr/spikes/remote-runner/manifest.json). The parent ran it once on 2026-11-06 8:28 CT. The report is [m0-2-u2-batch.remote.json](./architecture/adr/spikes/m0-2-u2-batch.remote.json). Atomicity and the tested batch sizes held. The statement index was null, and a guard failure and a duplicate key reported the same `SQLITE_CONSTRAINT`. U2 is not confirmed. U1 (`client.transaction('write')`) is the chosen implementation in ADR §6.1. The parent accepted that §12 fallback at 2026-11-06 8:37 CT after review of `0fd9fb8`. The acceptance adds no failure kind: a guarded write with `rowsAffected === 0` is Conflict for the awaited step's owner, and an ordinary thrown execute is Storage. The guard `CHECK` is a probe, not the classification. The pinned client sets no timeout; the 5-second sentence was only in ADR §6.1 and is not claimed. The parent ran U1 once at 8:48 CT. The report is [m0-2-u1-transaction.remote.json](./architecture/adr/spikes/m0-2-u1-transaction.remote.json). Exit 0, `processMs` 7366.9, stderr empty, Node v22.23.2, client 0.15.15. Commit 406.2 ms, stale-guard rollback 378.9 ms, check probe 481.5 ms, primary-key rollback 458.1 ms. Both thrown errors are `SQLITE_CONSTRAINT` with null `rawCode` and null `index`. `foreignKeys` is null because the reader asked for column `value`; that is inconclusive, and M4.1 tests foreign keys explicitly. The runner is [remote-runner-u1](./architecture/adr/spikes/remote-runner-u1/manifest.json). `u1_tasks` now exists, so do not run it again. The U2 tables were left in `yoink-m02-spike`, so the U2 runner must not be repeated. No production unit of work. M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). M0.3 is done on main (`b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313)). M3.1 is done on main (`198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315)). Its serialization column is empty. v1 schemas are detached copies, pinned by `packages/api-contracts/src/public-api/v1/frozen-shape.json`, and do not share Zod objects with the live legacy schemas. M4.1 is done on main (`e0fc57687d8de09b0da3d9d22871007e6255d58f`, [#314](https://github.com/jmhill/yoink/pull/314)). M4.2 is done on main (`a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316)). `shared/` is removed. M4.3 is done on main (`eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318)). M4.4 has not started. The M4 heading stays not started. The composition root registers one empty history sink on both unit-of-work implementations. No route uses the unit of work yet. M2.1 is Done on main (`db23e4f`, [#306](https://github.com/jmhill/yoink/pull/306), [#229](https://github.com/jmhill/yoink/issues/229)). M2.2 is Done on main (`882488f`, [#308](https://github.com/jmhill/yoink/pull/308), [#230](https://github.com/jmhill/yoink/issues/230)). M2.3 is Done on main (`c1358cc`, [#309](https://github.com/jmhill/yoink/pull/309), [#231](https://github.com/jmhill/yoink/issues/231)). M2.4 is Done on main (`cecc6e4cc5371a1a54184eab61172a9d24eb911f`, [#310](https://github.com/jmhill/yoink/pull/310), [#232](https://github.com/jmhill/yoink/issues/232)). M2 is complete. The migration is not complete. M3.1 is done. M3.2 is done on main (`0a1b7aa7b4d532663c7cd27194bba82cd3527a31`, [#317](https://github.com/jmhill/yoink/pull/317)). M3.3 is done on main (`0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320)). M3.4 is done on main (`67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321)). M3.5 is done on main (`f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322)). M3.6 is in progress: HTTP tests sit next to the edge routes, not done until review and merge. M5.1-check is done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). M5.1 has not started. M7.5 error enforcement is not done. Read [ADR-001](./architecture/adr/001-modules-workflows-edges.md). Phase 8.5's open items are superseded by this migration.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M5.1 was partially started and is parked until M4.1b. The health HTTP error mapper follow-up is still open.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

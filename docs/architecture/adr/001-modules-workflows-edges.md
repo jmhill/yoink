@@ -1,6 +1,6 @@
 # ADR-001: Modules, workflows, and edges
 
-- **Status:** Accepted. The unit-of-work spike is done on main (U1, `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). The oRPC spread pattern is done on main (`b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313)). M3.1's frozen copy is done on main (`198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315)). M4.2's history move is done on main (`a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316)). M4.3's empty history sink is done on main (`eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318)). M3.2's public API edge is done on main (`0a1b7aa7b4d532663c7cd27194bba82cd3527a31`, [#317](https://github.com/jmhill/yoink/pull/317)). M5.1-check is done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). M5.1 has not started. M3.3 is done on main (`0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320)). M3.4 is done on main (`67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321)): health is in `edges/ops/` and fixtures are at `/test-api/`. M3.5 is done on main (`f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322)): auth middleware is in `edges/_shared/auth/`. M3.6 is in progress: HTTP tests sit next to the edge routes, not done until review and merge. M4 stays open. M4.4 remains.
+- **Status:** Accepted (2026-11-06). Spikes resolved: see §6.1, §9.
 - **Date:** 2026-11-06
 - **Deciders:** Justin
 - **Migration plan:** [001-migration-plan.md](./001-migration-plan.md)
@@ -361,7 +361,7 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
 - Compiling a plan is pure, so a module can unit-test its plan-to-SQL output without a database.
 - History's event sink is a participant too. Its prepare phase maps integration events to timeline records, and its compile phase turns those into `change_log` inserts (§7.2).
 
-**Chosen implementation (U1): `client.transaction('write')`.** Parent accepted this at 2026-11-06 8:37 CT, after review of `0fd9fb8` confirmed the §12 trigger: the Turso batch error did not identify the failing statement. The Turso U1 run at 8:48 CT is recorded below. This is the fallback already written in §12. It adds no failure kind and no product behavior.
+**Chosen implementation (U1): `client.transaction('write')`.** Parent accepted this at 2026-11-06 8:37 CT, after review of `0fd9fb8` confirmed the §12 trigger: the Turso batch error did not identify the failing statement. The Turso U1 run at 8:48 CT is recorded in the spike log. This is the fallback already written in §12. It adds no failure kind and no product behavior.
 
 - The unit of work awaits each statement on `client.transaction('write')`. It does not call `db.execute` with a transaction-control statement. In `@libsql/client` 0.15.15, mode `write` is the library's own immediate transaction (`transactionModeToBegin`).
 - No reads inside the transaction, including no `PRAGMA` query. Setup and snapshots stay outside. Steps stay short.
@@ -372,7 +372,7 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
 - An ordinary `execute` that throws is `kind: 'Storage'` and `reason: 'execute-failed'`, with the owner of that step.
 - Neither path parses a SQL message or fills in a missing `rawCode` or `index`.
 - The guard `CHECK` remains a probe. Its thrown error is recorded next to a primary-key error. It corroborates that the assertion statement failed. It is not the classification input. On Turso the check and the primary key reported the same allowlisted fields, and the mapping did not use them.
-- The runner is `docs/architecture/adr/spikes/remote-runner-u1/`. It was executed once. `u1_tasks` now exists, so it must not be run again. Production code is unchanged. This record is on main as `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29` ([#312](https://github.com/jmhill/yoink/pull/312)).
+- The throwaway runners are removed. The sanitized reports and the run log are [docs/architecture/adr/spikes/README.md](./spikes/README.md). The runners remain at `d68e766292c419dec56841f8768b6afc01312353`. Do not rerun them. `u1_tasks` was left in the spike database. Production code was unchanged by the spike. The record is on main as `0d2a87077dce8dbdd0bbf0546607adb01ed9ca29` ([#312](https://github.com/jmhill/yoink/pull/312)).
 
 **Recorded alternative (U2), not chosen.** One batch with guards owned by each module.
 - The SQLite unit of work collects statements in three steps:
@@ -383,98 +383,11 @@ type FakeParticipant<P> = { owner: ModuleName; apply: (plan: P) => Result<void, 
   It then runs everything in **one `db.batch(..., 'write')`**.
 - Guards are the module's own conditional writes (e.g. `UPDATE captures … WHERE status = 'inbox'`). Each is immediately followed by a platform-provided assertion that makes the batch fail when the guarded write changed no rows. For example, a statement that inserts `changes() > 0` into a guard table owned by platform, with `CHECK (ok = 1)`.
 - **Statement order doesn't matter for atomicity.** Any failed guard aborts the whole batch. The only ordering rule is that each assertion comes straight after its own guarded write, and participants handle that themselves.
-- If the batch fails, the unit of work classifies a typed `Conflict` or `Storage` failure from the client error. The local spike below found no statement index on that error, so `StepFailure.owner` cannot be filled from it.
+- If the batch fails, the unit of work classifies a typed `Conflict` or `Storage` failure from the client error. The spike log found no statement index on that error, so `StepFailure.owner` cannot be filled from it.
 - All reads and decisions happen **before** the batch runs, including reads by policies. A batch contains only guarded writes.
 - **No module's SQL references another module's table.** The current `EXISTS (SELECT … FROM <other table>)` guards, including history's `existsClause`, are removed. Inside one batch, the owning module's step guarantees the subject exists.
 
-**Local spike, 2026-11-06. U2 is not confirmed.** The remote half is the next section. U1 is the chosen implementation above and has its own local file run further down. Production `createDatabase` was not changed. The runner is `docs/architecture/adr/spikes/m0-2-u2-batch.ts`. The captured local output is `docs/architecture/adr/spikes/m0-2-u2-batch.local.json`.
-
-The run used `createDatabase({ type: 'file' })` on a temporary file, Node v24.22.2, and the pinned `@libsql/client` 0.15.15. `PRAGMA foreign_keys` read back `1`. The client maps `db.batch(..., 'write')` to `BEGIN IMMEDIATE` (`@libsql/core` `transactionModeToBegin`). The temporary file was deleted after the run.
-
-Guard table, owned by the spike the way platform will own it:
-
-```sql
-CREATE TABLE platform_batch_guard (
-  ok INTEGER NOT NULL CHECK (ok = 1)
-);
-```
-
-Assertion, placed immediately after each guarded write:
-
-```sql
-INSERT INTO platform_batch_guard (ok) VALUES (changes() > 0);
-```
-
-The guarded writes used the current statement shapes. The task write is `updateTaskQuery` (`tasks/infrastructure/task-row-statements.ts`): `UPDATE tasks SET` title, due date, completed at, pinned at, assignee, list, project, open order, and the three last-changed columns `WHERE id = ? AND organization_id = ? AND deleted_at IS NULL`. The capture write is `markCaptureProcessedIfInboxQuery` (`processing/infrastructure/process-row-statements.ts`): `UPDATE captures SET status = 'processed', processed_at = ?, processed_to_type = ?, processed_to_id = ? WHERE id = ? AND organization_id = ? AND status = 'inbox' AND deleted_at IS NULL`. The history write is `insertChangeLogQuery` for a task (`shared/change-log/infrastructure/sql.ts`): `INSERT INTO change_log (...) SELECT ... COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1 WHERE EXISTS (SELECT 1 FROM tasks WHERE id = ? AND organization_id = ? AND deleted_at IS NULL)`. The throwaway tables had those columns and the current `change_log` checks, including `UNIQUE` on `seq`. They were not the production schema.
-
-`changes()` inside the same batch saw the previous write. After a matching `UPDATE`, `SELECT changes()` returned `1` (`rowsAffected` `[1, 0]`). After an `UPDATE` whose id was missing, it returned `0` (`rowsAffected` `[0, 0]`). A later 0-row `UPDATE` still made the assertion fail when an earlier statement in that batch had changed a row. `changes()` did not stay stuck at the earlier write.
-
-Commit when both guards match. One batch: capture update, assertion, task update, assertion, history insert. 5 statements, 0.7 ms, every `rowsAffected` was 1. Afterwards the capture was `processed`, the task title was `after`, `change_log` had 1 row, and `platform_batch_guard` had 2 rows whose `ok` values were 1.
-
-Stale capture guard rolls the whole batch back, including history and the earlier task write. Before the batch the capture was already `processed`. The batch was: matching task update, assertion, history insert, `markCaptureProcessedIfInboxQuery` (0 rows), assertion, another history insert. It threw. Afterwards the task title was still `before`, `change_log` was empty, and the guard table was empty. The capture stayed `processed`, which is the pre-batch row, not a write from the batch.
-
-Stale task guard rolls back the other participant. Before the batch the task's `deleted_at` was set, so `updateTaskQuery` matches 0 rows and the history `EXISTS` also matches 0 rows. The batch was: matching capture update, assertion, history insert, task update, assertion. It threw. Afterwards the capture was still `inbox`, so the capture update did not commit. `deleted_at` was unchanged. History and the guard table were empty.
-
-Both failures threw `LibsqlError`. The guard failure was `code: "SQLITE_CONSTRAINT_CHECK"`, `rawCode: 275`, `message: "SQLITE_CONSTRAINT_CHECK: CHECK constraint failed: ok = 1"`. The cause was `SqliteError` with `message: "CHECK constraint failed: ok = 1"`. A duplicate task primary key in the same batch, after a matching task update, assertion, and history insert, threw `code: "SQLITE_CONSTRAINT_PRIMARYKEY"`, `rawCode: 1555`, `message: "SQLITE_CONSTRAINT_PRIMARYKEY: UNIQUE constraint failed: tasks.id"`, and the task title and history were unchanged. Own properties on both errors were `stack`, `message`, `cause`, `code`, `rawCode`, and `name`. There is no statement index. `StepFailure.owner` cannot be recovered from this client.
-
-Error mapping from that output:
-
-- `code === "SQLITE_CONSTRAINT_CHECK"` and the message contains `CHECK constraint failed: ok = 1` → `kind: "Conflict"`, `reason` is the message.
-- Any other `LibsqlError` from the batch → `kind: "Storage"`, `reason` is the message.
-- `owner` stays unknown until a client reports the failing statement index.
-
-Large batch, same task update and history insert, `seq` computed as `MAX(seq) + 1`. 1,000 updates plus 1,000 history inserts (2,000 statements) committed in 73.8 ms. 1,000 tasks were retitled, 1,000 history rows were inserted, and `seq` was 1 through 1,000 with 1,000 distinct values. The U2-shaped batch, 1,000 updates plus 1,000 assertions plus 1,000 history inserts (3,000 statements), committed in 83.6 ms. 1,000 tasks were retitled, the guard table had 1,000 rows, and history `seq` was again 1 through 1,000. No batch limit was hit.
-
-Two local caveats stay in force. Each successful assertion inserts a `platform_batch_guard` row, and the spike does not delete those rows except when a later scenario resets the table, so the table accumulates. `changes()` is connection state: the local file run found that a later 0-row update still failed its own assertion when an earlier statement in that batch had changed a row, and `changes()` did not stay stuck on the earlier write. The remote run did not add a separate mid-batch `changes()` probe.
-
-**Remote spike, 2026-11-06 8:28 CT. U2 is not confirmed.** The parent ran the committed runner once on the box that holds the token. Exit 0, about 5.6 seconds, stderr empty. Node v22.23.2, `@libsql/client` 0.15.15, `npm ci` with `--ignore-scripts`, token left unset in the cloud environment. Host `libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io`. Bundle sha256 `c3bdf00e2556343d1b5fd70b279d02179e237070109dc052be21b252db92f813`, built from commit `1435cffa7996df62a42b201d6a2fd0e76a50e6f5` on base `9e6b2ad32155c7085b10ef43161cbde47dda9ec5`. The five source hashes in the report are the hashes of that commit. The sanitized report is `docs/architecture/adr/spikes/m0-2-u2-batch.remote.json`. `jhtc-yoink` was not queried. The database was not deleted. The tables and the last committed rows were left in place. `CREATE TABLE` will fail if the runner is pointed at that database again, so it must not be rerun.
-
-The report field `database.groupId` stores the database id `01a1b366-ad01-751d-bbab-7852a143f84b`, not a Turso group id. `database.temporary: false` means the database is not a temporary file. It does not mean the database is production. Later runner builds label that id `databaseId`. The stored report is unchanged.
-
-`PRAGMA foreign_keys` read back `1`. `changes()` was `1` after a matching update and `0` after a missing update. The matching guard batch was 5 statements, 115.9 ms: task title `after`, capture `processed`, 1 history row, 2 guard rows whose `ok` values were 1. The stale capture guard was 6 statements, 94.7 ms, and rolled back: task title `before`, history 0, guards 0. The capture stayed `processed` because the setup statement before the batch had already committed it. The stale task guard was 5 statements, 98.4 ms: capture stayed `inbox`, history 0. The duplicate primary key was 4 statements, 110.3 ms, and rolled back to task title `before` and history 0. The 2,000-statement batch (1,000 updates + 1,000 history inserts) committed in 494.3 ms: 1,000 retitled tasks, 1,000 history rows, `seq` 1 through 1,000. The 3,000-statement batch (1,000 updates + 1,000 assertions + 1,000 history inserts) committed in 728.9 ms with those same counts plus 1,000 guard rows. Those are the sizes that were run. No maximum batch size was observed, and the timings are one sample, not a performance guarantee.
-
-Every failed batch reported the same allowlisted error, on the error and on its cause: `code` `SQLITE_CONSTRAINT`, `rawCode` null, `index` null. The guard failure and the duplicate-key failure are not distinguishable from those fields. They do not identify the failing statement, the step owner, or the failure kind. The local map (`SQLITE_CONSTRAINT_CHECK` to Conflict, any other code to Storage) does not describe this Turso result. `StepFailure.owner` stays unknown.
-
-M0.2's statement-index check failed. Atomicity of the tested batches and the tested sizes succeeded. That is not confirmation of U2. The index requirement is not waived.
-
-The batch error mapping stays the measurement of U2: one `SQLITE_CONSTRAINT` with null `rawCode` and null `index` covered both the guard check and a duplicate primary key. Those fields do not classify Conflict versus Storage and do not name an owner.
-
-**U1 local file run, 2026-11-06. Not the Turso proof.** The runner is `docs/architecture/adr/spikes/m0-2-u1-transaction-proof.ts`, checked by `m0-2-u1-remote-check.ts`. It uses `client.transaction('write')` on a temporary file and `@libsql/client` 0.15.15. Tables are prefixed `u1_`. The run is once-only: a second call sees `u1_tasks` and writes nothing. It does not drop tables. Setup `PRAGMA` and the later snapshots are outside the transaction. No step inside a transaction is a read.
-
-A matching transaction committed: capture `processed`, task title `after`, one history row, and `rowsAffected` 1 on each awaited write. A stale capture guard stopped when that update's `rowsAffected` was 0, called `rollback` and `close`, and did not call `commit`. The task title stayed `before` and history stayed 0. The capture stayed `processed` because that status was committed before the transaction. The mapped failure was `{ kind: 'Conflict', owner: 'captures', reason: 'guard-miss' }` from `rowsAffected`, with no driver error. A following history insert in that same transaction was not executed.
-
-The check probe ran the same writes and then `INSERT INTO u1_platform_batch_guard (ok) VALUES (changes() > 0)`. That statement threw. The transaction rolled back to the same snapshot. The probe's mapped failure is null: the thrown check is not classified. A duplicate primary key threw, rolled back to task title `before` and history 0, and mapped `{ kind: 'Storage', owner: 'task-management', reason: 'execute-failed' }`. On this file the check error was `code` `SQLITE_CONSTRAINT_CHECK`, `rawCode` 275, `index` null, and the primary-key error was `code` `SQLITE_CONSTRAINT_PRIMARYKEY`, `rawCode` 1555, `index` null. Those fields were recorded and `usedForClassification` is false. The Turso U2 run collapsed both to `SQLITE_CONSTRAINT` with null `rawCode` and null `index`, so this local difference is not a claim about Turso. The remote U1 run still has to record the actual `rowsAffected`, the rollback, and the check and primary-key `code` / `rawCode` / `index`.
-
-The removed `withTransaction` helper (`4e7afab`, `d1e3625`) issued its transaction start through `db.execute()`, which cannot work over HTTP. U1 does not do that.
-
-**Remote spike, 2026-11-06 8:48 CT. U1 ran once.** The parent ran the committed runner on the box that holds the token. Exit 0, about 7.5 seconds, stderr empty. The report's `durations.processMs` is 7366.9. Node v22.23.2, `@libsql/client` 0.15.15, `npm ci` with `--ignore-scripts`, token left unset in the cloud environment. Host `libsql://yoink-m02-spike-jmhill.aws-us-east-1.turso.io`. Bundle sha256 `f8c8aef03221fc2a5298157808badc08c2abe260ec6d9e9238eae542c74a47e4`, built from commit `9e782fb56a09949628d55f57f99b528de50eb7c9`. The sanitized report is `docs/architecture/adr/spikes/m0-2-u1-transaction.remote.json`. Its sha256 is `4944aa9a6c677e0ad1db7beca21b06470938a14e19845953bc554d9195de19b1`. The four source hashes in that report are the hashes of that commit. `jhtc-yoink` was not queried. The database was not deleted. The U2 tables were not changed. The `u1_` tables and the last committed rows were left in place. Do not run the runner again.
-
-`readsInsideTransaction` is false. `manualBegin` is false. Every scenario has `closeCalled` true. `timeout.configuredMs` is null and `setByRunner` is false. The longest transaction was the check probe at 481.5 ms. The process duration of 7366.9 ms is longer than five seconds. No timeout was configured, so that duration is not a 5-second lock result and it is not a guarantee.
-
-`foreignKeys` is null. That is a reporter bug, not a measurement that foreign keys are off. The reader takes column `value`. The snapshot queries alias that name. `PRAGMA foreign_keys` returns column `foreign_keys`, so the reader stored null. The stored report is unchanged. No scenario depends on a foreign-key failure. The U2 report's foreign-keys value of 1 was a different connection and does not prove this one. A second remote probe was not run. M4.1 tests foreign-key enforcement explicitly. This gap does not leave M0.2 open.
-
-Matching commit, 406.2 ms. Capture update, task update, and history insert each reported `rowsAffected` 1. The transaction committed. Afterwards the task title was `after`, the capture was `processed`, and history count was 1. Guard count was 0 because this path does not insert the probe row.
-
-Stale capture guard, 378.9 ms. Task update `rowsAffected` 1, history insert `rowsAffected` 1, capture update `rowsAffected` 0. The runner stopped there and did not execute the later history insert. `commitCalled` is false, `rollbackCalled` is true, `driverError` is null. The mapped failure is `{ kind: "Conflict", owner: "captures", reason: "guard-miss", source: "rowsAffected" }`. Afterwards the task title was `before` and history count was 0. The capture stayed `processed` because that status was committed in setup before the transaction.
-
-Check probe, 481.5 ms. The same three writes ran, the capture update again affected 0 rows, and `INSERT INTO u1_platform_batch_guard (ok) VALUES (changes() > 0)` threw. The following history insert did not run. Rollback left the task `before`, history 0, and guard count 0. `mapped` is null. The driver error, and its cause, are `code` `SQLITE_CONSTRAINT`, `rawCode` null, `index` null.
-
-Duplicate primary key, 458.1 ms. Task update and history insert affected 1 row each, then the duplicate insert threw. Rollback left the task `before`, the capture `inbox`, and history 0. The mapped failure is `{ kind: "Storage", owner: "task-management", reason: "execute-failed", source: "thrown-execute" }`. The driver error matches the check probe: `SQLITE_CONSTRAINT`, `rawCode` null, `index` null. `allowlistedFieldsEqual` is true and `usedForClassification` is false. The kind and the owner come from the awaited step and, for Conflict, from `rowsAffected`.
-
-| Criterion | Turso result |
-|---|---|
-| Matching commit | Met. 406.2 ms. `rowsAffected` 1, 1, 1. Task `after`, capture `processed`, history 1. |
-| Stale-guard rollback | Met. 378.9 ms. Stopped at capture `rowsAffected` 0, before the later history insert. No commit. Task `before`, history 0. Conflict owner `captures`. |
-| Primary-key rollback | Met. 458.1 ms. Thrown duplicate insert. Task `before`, capture `inbox`, history 0. Storage owner `task-management`. |
-| Check probe | Met as corroboration only. 481.5 ms. Thrown, rolled back, guard count 0, `mapped` null. |
-| Driver `code` / `rawCode` / `index` | Recorded. Both failures are `SQLITE_CONSTRAINT`, null, null. Not used to classify. |
-| Reads inside the transaction, manual transaction start | Both false. |
-| Close after commit and after rollback | `closeCalled` true on every scenario. |
-| Timeout | `configuredMs` null. Not claimed. Longest transaction 481.5 ms. Process 7366.9 ms. |
-| Foreign keys | Inconclusive. Stored `foreignKeys` is null because the reader asked for column `value`. |
-| Statement index | Null, as on the U2 run. U1 does not need it. The owner is the awaited step. |
-
-M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)). The findings are this section. Production code is unchanged. No production unit of work is added by this record.
+**Evidence.** U2 is not confirmed. Turso reported one `SQLITE_CONSTRAINT` with null `rawCode` and null `index` for both a guard failure and a duplicate primary key, so the owner cannot be read from the batch error. U1 classifies from the awaited step and from `rowsAffected`. `foreignKeys: null` in the U1 remote report is a column-name bug: the reader asked for `value`, and `PRAGMA foreign_keys` returns `foreign_keys`. M4.1 tests foreign keys. The measurements, including the 2,000- and 3,000-statement samples, are in the spike log. No production unit of work was added by this spike. M4.1 shipped the per-statement transaction. One batch inside that transaction is M4.1b, and it does not rerun these proofs.
 
 **In-memory unit of work** (tests). On commit, it snapshots every registered `FakeParticipant` and applies each step's plan, plus the event sink and the policies' work. On any failure it restores every participant. This replaces the hand-written snapshot and restore code in today's fake persist adapters.
 
@@ -780,7 +693,7 @@ The first enforcement task refreshes `ESLINT_BASELINE.md`, which still says 15 w
 
 | Risk | Mitigation |
 |---|---|
-| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules. Local libsql on 2026-11-06 accepted the assertion, rolled back on a stale guard, and accepted a 3,000-statement batch (§6.1). The local error has no statement index. Turso on 2026-11-06 8:28 CT committed the same batches, including 2,000 and 3,000 statements, and rolled them back on a stale guard. Its error `code` was `SQLITE_CONSTRAINT` for both the guard and a duplicate primary key, with `rawCode` null and `index` null. U2 is not confirmed. U1 is the chosen implementation (§6.1), accepted 2026-11-06 8:37 CT as this fallback, not as a new failure model. Turso ran U1 once at 8:48 CT: commit, stale-guard rollback, and primary-key rollback held, and both thrown errors were `SQLITE_CONSTRAINT` with null `rawCode` and null `index`. Classification used the awaited step and `rowsAffected`, not those fields. `foreignKeys: null` in that report is a column-name bug and is inconclusive. M0.2 is done on main (`0d2a87077dce8dbdd0bbf0546607adb01ed9ca29`, [#312](https://github.com/jmhill/yoink/pull/312)) |
+| U2's guard assertion (`changes()` within a libsql batch, plus a `CHECK` constraint) behaves differently locally and on Turso, batch errors don't identify the failing statement, or large batches are rejected | **Spike first** (local libsql + Turso), including one large batch (about 1,000 task updates plus their change-log records, matching `OPEN_TASKS_FETCH_LIMIT` when a project is marked done). Fall back to U1 with its rules. U2 is not confirmed: the Turso batch error did not identify the failing statement. U1 is the chosen implementation (§6.1), accepted 2026-11-06 8:37 CT as this fallback, not as a new failure model. Measurements are in the [spike log](./spikes/README.md). `foreignKeys: null` in the U1 report is a column-name bug and is inconclusive. M4.1 tests foreign keys. M0.2 is done. There is no M0.2 issue. |
 | Spreading oRPC routers or contracts for version sharing doesn't type-check | Measured on `2.0.0-beta.48` in `apps/api/spikes/m0-3/`. `{ ...v1, one: changed }` typechecks for the contract and for the implemented procedures. The explicit-list fallback was not used. A spread copies paths, so the version lives in the `handle` prefix (§9). M0.3 is done on main (`b30fe62241ef3335fc058d34f100f55b4a3672e1`, [#313](https://github.com/jmhill/yoink/pull/313)). Repeat this spike after an oRPC upgrade |
 | Integration events lack fields consumers need | Consumer-driven: history's timeline mapping is the first consumer, and its tests define the required fields |
 | Edges grow business rules | Lint (no SQL, entry points only), the one-command rule, and code review guidance in `apps/api/AGENTS.md` |

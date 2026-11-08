@@ -521,7 +521,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
           token: minted.rawToken,
         });
         const { projects } = await inventedBatch(alice);
-        const staged = await bot.stageProjectImport(projects);
+        await bot.stageProjectImport(projects);
 
         await alice.goToAllProjects();
         await alice.shouldSeePendingImportBanner('Lane staged an import of 3 projects');

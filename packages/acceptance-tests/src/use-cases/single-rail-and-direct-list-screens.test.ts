@@ -137,7 +137,7 @@ usingDrivers(['playwright'] as const, (ctx) => {
 
     it('keeps Mine assignee-only with no reorder when opened from the rail', async () => {
       const list = await alice.createNamedList('Groceries');
-      const mineMilk = await alice.createTask({
+      await alice.createTask({
         title: 'Mine milk',
         assigneeId: alice.userId,
         listId: list.id,

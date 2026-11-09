@@ -8,7 +8,7 @@ import {
   type CaptureNotFoundError,
   type CaptureNotInInboxError,
 } from '../../modules/captures/domain/messages/capture-errors.js';
-import type { ProjectCreated } from '../../projects/domain/events.js';
+import type { ProjectCreated } from '../../modules/task-management/domain/messages/project-events.js';
 import {
   duplicateProjectNameError,
   projectCreateRequiresPersonError,
@@ -16,9 +16,9 @@ import {
   type InvalidProjectNameError,
   type ProjectCreateRequiresPersonError,
   type ProjectNameBlankError,
-} from '../../projects/domain/project-errors.js';
-import { parseProjectName, projectNameIsTaken } from '../../projects/domain/project-name.js';
-import { parseProjectObjective } from '../../projects/domain/project-objective.js';
+} from '../../modules/task-management/domain/messages/project-errors.js';
+import { parseProjectName, projectNameIsTaken } from '../../modules/task-management/domain/model/project-name.js';
+import { parseProjectObjective } from '../../modules/task-management/domain/model/project-objective.js';
 
 export type CaptureProcessedToProject = {
   type: 'CaptureProcessed';

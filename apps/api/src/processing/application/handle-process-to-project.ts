@@ -13,10 +13,10 @@ import type {
   ProjectCreateRequiresPersonError,
   ProjectNameBlankError,
   StorageError as ProjectStorageError,
-} from '../../projects/domain/project-errors.js';
+} from '../../modules/task-management/domain/messages/project-errors.js';
 import { decideProcessCaptureToProject } from '../domain/decide-process-to-project.js';
 import { applyCaptureProcessed } from '../domain/apply-capture-processed.js';
-import { planProjectChange } from '../../projects/domain/plan-project-change.js';
+import { planProjectChange } from '../../modules/task-management/domain/projections/plan-project-change.js';
 import type { ListProjects, LoadCapture, PersistProcessToProject } from './ports.js';
 
 export type HandleProcessCaptureToProjectDeps = {

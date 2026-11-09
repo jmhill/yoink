@@ -14,7 +14,7 @@ import {
   storageError,
   type ProjectNotFoundError,
   type StorageError,
-} from '../../../projects/domain/project-errors.js';
+} from '../../task-management/domain/messages/project-errors.js';
 import type { ListFinishedTasksOnProjectQuery } from '../domain/queries.js';
 import type { LoadProject, LoadTimelineLookups, PageFinishedTasksInProject } from './ports.js';
 

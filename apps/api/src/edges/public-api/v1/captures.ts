@@ -30,8 +30,8 @@ import {
   mapUnsnoozeCaptureError,
   mapUpdateCaptureError,
 } from './orpc-capture-errors.js';
-// M5.3 removes this deep import. Process-to-project keeps today's project validation body.
-import { projectRequestValidationError } from '../../../projects/infrastructure/project-http-errors.js';
+// Process-to-project keeps today's project validation body. The mapper lives on this edge.
+import { projectRequestValidationError } from './project-http-errors.js';
 
 export type CaptureEdgeDependencies = {
   captures: Captures;

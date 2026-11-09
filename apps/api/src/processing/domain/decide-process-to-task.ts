@@ -10,9 +10,9 @@ import {
 import {
   decideCreateTask,
   type DecideCreateTaskError,
-} from '../../tasks/domain/decide-create.js';
-import type { CreateTaskCommand, LoadedProject } from '../../tasks/domain/task-commands.js';
-import type { TaskCreated } from '../../tasks/domain/events.js';
+} from '../../modules/task-management/domain/decisions/decide-create-task.js';
+import type { CreateTaskCommand, LoadedProject } from '../../modules/task-management/domain/messages/task-commands.js';
+import type { TaskCreated } from '../../modules/task-management/domain/messages/task-events.js';
 
 const MAX_TASK_TITLE_LENGTH = 100;
 

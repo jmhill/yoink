@@ -1,0 +1,164 @@
+import type { Actor } from '../../../../kernel/auth-context.js';
+import { hiddenFor } from '../../../history/domain/kinds.js';
+import type { ChangeLogRecord } from '../../../history/domain/record.js';
+import type {
+  ProjectCreatedPayloadV1,
+  ProjectNextActionClearedPayloadV1,
+  ProjectNextActionSetPayloadV1,
+  ProjectStatusChangedPayloadV1,
+  ProjectUpdatedPayloadV1,
+  ProjectWaitingChangedPayloadV1,
+} from '../../../history/domain/payloads.js';
+import type { ProjectEvent } from '../messages/project-events.js';
+
+export type ProjectChangeLogIds = {
+  recordId: string;
+};
+
+export type ChangeLogRecordsFromProjectEventInput = {
+  event: ProjectEvent;
+  actor: Actor;
+  ids: ProjectChangeLogIds;
+};
+
+const actorFields = (actor: Actor) => ({
+  actorUserId: actor.userId,
+  actorKind: actor.kind,
+});
+
+const envelope = (
+  input: ChangeLogRecordsFromProjectEventInput,
+  organizationId: string,
+  projectId: string,
+  occurredAt: string
+) => ({
+  id: input.ids.recordId,
+  organizationId,
+  projectId,
+  subjectType: 'project' as const,
+  subjectId: projectId,
+  schemaVersion: 1 as const,
+  occurredAt,
+  ...actorFields(input.actor),
+});
+
+const projectPayloadByType = {
+  ProjectCreated: (
+    event: Extract<ProjectEvent, { type: 'ProjectCreated' }>
+  ): ProjectCreatedPayloadV1 => {
+    const payload: ProjectCreatedPayloadV1 = {
+      name: event.name,
+      status: event.status,
+      createdById: event.createdById,
+      ...(event.objective !== undefined ? { objective: event.objective } : {}),
+      ...(event.captureId !== undefined ? { captureId: event.captureId } : {}),
+      ...(event.reason !== undefined ? { reason: event.reason } : {}),
+      ...(event.suggestedNextAction !== undefined
+        ? { suggestedNextAction: event.suggestedNextAction }
+        : {}),
+    };
+    return payload;
+  },
+  ProjectUpdated: (
+    event: Extract<ProjectEvent, { type: 'ProjectUpdated' }>
+  ): ProjectUpdatedPayloadV1 => ({
+    ...(event.name !== undefined ? { name: event.name } : {}),
+    ...(event.objective !== undefined ? { objective: event.objective } : {}),
+    ...(event.notebookPages !== undefined ? { notebookPages: event.notebookPages } : {}),
+    ...(event.reason !== undefined ? { reason: event.reason } : {}),
+    ...(event.suggestedNextAction !== undefined
+      ? { suggestedNextAction: event.suggestedNextAction }
+      : {}),
+  }),
+  ProjectStatusChanged: (
+    event: Extract<ProjectEvent, { type: 'ProjectStatusChanged' }>
+  ): ProjectStatusChangedPayloadV1 => ({
+    from: event.from,
+    to: event.to,
+    waitingOn: event.waitingOn,
+    waitingSince: event.waitingSince,
+  }),
+  ProjectWaitingChanged: (
+    event: Extract<ProjectEvent, { type: 'ProjectWaitingChanged' }>
+  ): ProjectWaitingChangedPayloadV1 => ({
+    waitingOn: event.waitingOn,
+    waitingSince: event.waitingSince,
+  }),
+  ProjectNextActionSet: (
+    event: Extract<ProjectEvent, { type: 'ProjectNextActionSet' }>
+  ): ProjectNextActionSetPayloadV1 => ({
+    taskId: event.taskId,
+    previousTaskId: event.previousTaskId,
+  }),
+  ProjectNextActionCleared: (
+    event: Extract<ProjectEvent, { type: 'ProjectNextActionCleared' }>
+  ): ProjectNextActionClearedPayloadV1 => ({
+    taskId: event.taskId,
+    reason: event.reason,
+  }),
+} satisfies {
+  [K in ProjectEvent['type']]: (event: Extract<ProjectEvent, { type: K }>) => unknown;
+};
+
+export const changeLogRecordsFromProjectEvent = (
+  input: ChangeLogRecordsFromProjectEventInput
+): ChangeLogRecord[] => {
+  const { event } = input;
+
+  switch (event.type) {
+    case 'ProjectCreated':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectCreated',
+          hidden: hiddenFor('ProjectCreated'),
+          payload: projectPayloadByType.ProjectCreated(event),
+        },
+      ];
+    case 'ProjectUpdated':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectUpdated',
+          hidden: hiddenFor('ProjectUpdated'),
+          payload: projectPayloadByType.ProjectUpdated(event),
+        },
+      ];
+    case 'ProjectStatusChanged':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectStatusChanged',
+          hidden: hiddenFor('ProjectStatusChanged'),
+          payload: projectPayloadByType.ProjectStatusChanged(event),
+        },
+      ];
+    case 'ProjectWaitingChanged':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectWaitingChanged',
+          hidden: hiddenFor('ProjectWaitingChanged'),
+          payload: projectPayloadByType.ProjectWaitingChanged(event),
+        },
+      ];
+    case 'ProjectNextActionSet':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectNextActionSet',
+          hidden: hiddenFor('ProjectNextActionSet'),
+          payload: projectPayloadByType.ProjectNextActionSet(event),
+        },
+      ];
+    case 'ProjectNextActionCleared':
+      return [
+        {
+          ...envelope(input, event.organizationId, event.id, event.occurredAt),
+          kind: 'ProjectNextActionCleared',
+          hidden: hiddenFor('ProjectNextActionCleared'),
+          payload: projectPayloadByType.ProjectNextActionCleared(event),
+        },
+      ];
+  }
+};

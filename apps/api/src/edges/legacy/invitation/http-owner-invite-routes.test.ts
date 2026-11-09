@@ -51,7 +51,7 @@ import { createFakeUserStore } from '../../../access/infrastructure/fake-user-st
 import { createFakeInvitationStore } from '../../../access/infrastructure/fake-invitation-store.js';
 import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
-import { createFakeProjectStore } from '../../../projects/infrastructure/fake-project-store.js';
+import { createFakeProjectStore } from '../../../modules/task-management/testing.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
 import {

@@ -17,7 +17,7 @@ import type {
   StagedImportList,
   Task,
 } from '@yoink/api-contracts';
-import { buildObsidianUrl } from '../../../projects/domain/notebook-pages.js';
+import { buildObsidianUrl } from '../../../modules/task-management/domain/rules/notebook-pages.js';
 
 describe('project import HTTP', () => {
   let app: FastifyInstance;

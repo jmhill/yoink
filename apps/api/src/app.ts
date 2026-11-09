@@ -29,13 +29,15 @@ import type {
 } from './access/application/index.js';
 import type { TokenHandlers } from './access/application/create-token-handlers.js';
 import type { Captures } from './modules/captures/index.js';
-import type { ListHandlers } from './lists/application/index.js';
-import type { ProjectHandlers } from './projects/application/index.js';
+import type {
+  ListHandlers,
+  ProjectHandlers,
+  TaskHandlers,
+  TaskService,
+  WorkHandlers,
+} from './modules/task-management/index.js';
 import type { NoteHandlers } from './notes/application/create-note-handlers.js';
 import type { HistoryHandlers } from './modules/history/index.js';
-import type { TaskService } from './tasks/domain/task-service.js';
-import type { TaskHandlers } from './tasks/application/index.js';
-import type { WorkHandlers } from './work/application/create-work-handlers.js';
 import type { ReviewHandlers } from './review/application/create-review-handlers.js';
 import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
 import type { HealthChecker } from './platform/health/health-checker.js';

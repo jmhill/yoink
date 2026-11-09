@@ -6,9 +6,9 @@ import type {
   CaptureNotInInboxError,
   StorageError as CaptureStorageError,
 } from '../../modules/captures/domain/messages/capture-errors.js';
-import type { CreateTaskError } from '../../tasks/domain/task-errors.js';
+import type { CreateTaskError } from '../../modules/task-management/domain/messages/task-errors.js';
 import { decideProcessCaptureToTask } from '../domain/decide-process-to-task.js';
-import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
+import { planTaskChange } from '../../modules/task-management/domain/projections/plan-task-change.js';
 import type {
   LoadCapture,
   LoadNamedList,

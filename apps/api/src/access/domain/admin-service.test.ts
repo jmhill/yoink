@@ -6,7 +6,7 @@ import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-or
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
+import { createFakeProjectStore } from '../../modules/task-management/testing.js';
 import type { Organization } from './organization.js';
 import type { User } from './user.js';
 import {

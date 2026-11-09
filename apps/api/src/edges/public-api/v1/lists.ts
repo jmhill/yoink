@@ -5,8 +5,7 @@ import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toNamedListListBody, toTaskListBody } from '../../_shared/http-listed-page.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
-// M5.3 removes this deep import once lists export their handlers from index.ts.
-import type { ListHandlers } from '../../../lists/application/create-list-handlers.js';
+import type { ListHandlers } from '../../../modules/task-management/index.js';
 import {
   mapCreateNamedListError,
   mapDeleteNamedListError,
@@ -16,7 +15,7 @@ import {
   mapRenameNamedListError,
   mapReorderOpenTasksError,
   mapReorderUnlistedOpenTasksError,
-} from '../../../lists/infrastructure/orpc-list-errors.js';
+} from './orpc-list-errors.js';
 
 export type ListEdgeDependencies = { listHandlers: ListHandlers };
 

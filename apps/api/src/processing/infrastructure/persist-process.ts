@@ -14,9 +14,9 @@ import {
   storageError as projectStorageError,
   type DuplicateProjectNameError,
   type StorageError as ProjectStorageError,
-} from '../../projects/domain/project-errors.js';
-import type { FakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
-import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
+} from '../../modules/task-management/domain/messages/project-errors.js';
+import type { FakeProjectStore } from '../../modules/task-management/infrastructure/fakes/fake-project-store.js';
+import type { FakeTaskStore } from '../../modules/task-management/infrastructure/fakes/fake-task-store.js';
 import type { FakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
 import type {
   PersistProcessToProject,

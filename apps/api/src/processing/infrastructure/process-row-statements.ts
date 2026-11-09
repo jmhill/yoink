@@ -1,7 +1,7 @@
 import type { Project, Task } from '@yoink/api-contracts';
 import type { SqlQuery } from '../../modules/history/infrastructure/sql.js';
-import { insertProjectQuery } from '../../projects/infrastructure/project-row-statements.js';
-import { insertTaskQuery } from '../../tasks/infrastructure/task-row-statements.js';
+import { insertProjectQuery } from '../../modules/task-management/infrastructure/persistence/rows/project-row-statements.js';
+import { insertTaskQuery } from '../../modules/task-management/infrastructure/persistence/rows/task-row-statements.js';
 
 const inboxExistsSql = `
   EXISTS (

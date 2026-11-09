@@ -5,12 +5,14 @@ import type { Capture, NamedList, Task } from '@yoink/api-contracts';
 import { createProcessingHandlers } from '../application/create-processing-handlers.js';
 import { createFakeProcessToTaskPersist } from '../infrastructure/persist-process.js';
 import { createFakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
-import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
+import {
+  createFakeListStore,
+  createFakeTaskStore,
+  type FakeTaskStore,
+} from '../../modules/task-management/testing.js';
 import { createFakeChangeLogStore } from '../../modules/history/testing.js';
 import type { FakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
-import type { FakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
-import type { ListStore } from '../../lists/domain/list-store.js';
+import type { ListStore } from '../../modules/task-management/domain/ports/list-store.js';
 import type { CaptureProcessingService } from '../application/create-processing-handlers.js';
 
 describe('process capture to task', () => {

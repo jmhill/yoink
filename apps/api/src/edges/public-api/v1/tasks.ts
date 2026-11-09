@@ -8,9 +8,7 @@ import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
 import type { HistoryHandlers } from '../../../modules/history/index.js';
-// M5.3 removes these deep imports once tasks export their handlers from index.ts.
-import type { TaskHandlers } from '../../../tasks/application/create-task-handlers.js';
-import type { TaskService } from '../../../tasks/domain/task-service.js';
+import type { TaskHandlers, TaskService } from '../../../modules/task-management/index.js';
 import {
   mapCompleteTaskError,
   mapCreateTaskError,
@@ -22,7 +20,7 @@ import {
   mapUncompleteTaskError,
   mapUnpinTaskError,
   mapUpdateTaskError,
-} from '../../../tasks/infrastructure/orpc-task-errors.js';
+} from './orpc-task-errors.js';
 
 export type TaskEdgeDependencies = {
   taskService: TaskService;

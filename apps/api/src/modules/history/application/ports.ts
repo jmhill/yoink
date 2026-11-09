@@ -7,7 +7,7 @@ import type {
   ChangeLogStorageError,
   HistoryPageItem,
 } from '../domain/history-page-item.js';
-import type { StorageError } from '../../../projects/domain/project-errors.js';
+import type { StorageError } from '../../task-management/domain/messages/project-errors.js';
 import type { TimelineLookups } from '../domain/to-timeline-entry.js';
 
 export type { HistoryReadLogger };

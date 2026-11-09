@@ -62,7 +62,8 @@ export default defineConfig({
         // still shows the update banner.
         clientsClaim: true,
         // SW scope is `/`. The denylist keeps `/admin`, `/api`, `/test-api`,
-        // and the reserved edge prefixes off the web index.html fallback.
+        // `/web-api` (mounted), and the other reserved edge prefixes off the
+        // web index.html fallback.
         navigateFallbackDenylist: PWA_NAVIGATE_FALLBACK_DENYLIST,
       },
     }),
@@ -77,6 +78,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': 'http://localhost:3000',
+      '/web-api': 'http://localhost:3000',
       '/extension-api': 'http://localhost:3000',
       '/test-api': 'http://localhost:3000',
     },

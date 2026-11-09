@@ -3908,6 +3908,31 @@ export const createPlaywrightActor = (
       await expect(page.getByPlaceholder('Quick capture...')).toBeVisible();
     },
 
+    async shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void> {
+      const inboxList = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/inbox'
+      );
+      await inboxPage.goto();
+      await inboxList;
+      const content = `web-edge-${Date.now()}`;
+      const inboxCreate = page.waitForRequest(
+        (request) =>
+          request.method() === 'POST' && new URL(request.url()).pathname === '/web-api/inbox'
+      );
+      const captureId = await inboxPage.quickAdd(content);
+      await inboxCreate;
+      if (!captureId) {
+        throw new Error(`Quick capture did not land in Inbox: "${content}"`);
+      }
+      const alias = page.waitForRequest(
+        (request) => new URL(request.url()).pathname === '/api/tasks'
+      );
+      await tasksPage.goto('today');
+      await alias;
+      await tasksPage.waitForTasksOrEmpty();
+    },
+
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
@@ -5595,7 +5620,7 @@ export const createPlaywrightActor = (
     ): Promise<void> {
       await waitForLiveJsonGet(
         page,
-        (pathname) => pathname === '/api/captures',
+        (pathname) => pathname === '/web-api/inbox' || pathname === '/api/captures',
         (body) => {
           const captures = asInboxCaptures(body);
           return captures !== null && matches(captures);
@@ -5684,7 +5709,8 @@ export const createPlaywrightActor = (
           url.includes('/api/tasks') ||
           url.includes('/api/lists') ||
           url.includes('/api/unlisted') ||
-          url.includes('/api/captures')
+          url.includes('/api/captures') ||
+          url.includes('/web-api/inbox')
         ) {
           count += 1;
         }
@@ -5711,6 +5737,7 @@ export const createPlaywrightActor = (
       await page.route('**/api/lists**', failGet);
       await page.route('**/api/unlisted**', failGet);
       await page.route('**/api/captures**', failGet);
+      await page.route('**/web-api/inbox**', failGet);
     },
 
     async restoreBackgroundLiveQueries(): Promise<void> {
@@ -5718,6 +5745,7 @@ export const createPlaywrightActor = (
       await page.unroute('**/api/lists**');
       await page.unroute('**/api/unlisted**');
       await page.unroute('**/api/captures**');
+      await page.unroute('**/web-api/inbox**');
     },
 
     async shouldNotSeeQueryError(): Promise<void> {

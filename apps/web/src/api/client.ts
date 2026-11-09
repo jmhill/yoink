@@ -2,6 +2,7 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
+import { webInboxContract } from '@yoink/api-contracts/web';
 import {
   authOrpcContract,
   captureOrpcContract,
@@ -19,6 +20,13 @@ import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request
 import { tokenStorage } from '@/lib/token';
 
 type CaptureClient = JsonifiedClient<RouterContractClient<typeof captureOrpcContract>>;
+type InboxClient = JsonifiedClient<RouterContractClient<typeof webInboxContract>>;
+
+/** Build id from Vite. Vitest leaves the identifier unset, which is `dev`. */
+const webBuildId = (): string =>
+  typeof __COMMIT_SHA__ === 'string' && __COMMIT_SHA__.length > 0 ? __COMMIT_SHA__ : 'dev';
+
+export const YOINK_BUILD_HEADER = 'X-Yoink-Build';
 type ProcessToProjectClient = JsonifiedClient<
   RouterContractClient<typeof processCaptureToProjectOrpcContract>
 >;
@@ -107,6 +115,9 @@ const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => 
     headersForApiRequest(init.headers ?? {}, init.body),
     tokenStorage.get()
   );
+  if (!headers.has(YOINK_BUILD_HEADER)) {
+    headers.set(YOINK_BUILD_HEADER, webBuildId());
+  }
   return globalThis
     .fetch(url, {
       ...init,
@@ -131,6 +142,17 @@ const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => 
 
 export const captureClient: CaptureClient = createORPCClient(
   new OpenAPILink(captureOrpcContract, { fetch: fetchWithSession })
+);
+
+/**
+ * OpenAPILink joins the origin pathname with the absolute contract path,
+ * so `/web-api` plus `/inbox` is `/web-api/inbox`.
+ */
+export const inboxClient: InboxClient = createORPCClient(
+  new OpenAPILink(webInboxContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const processToProjectClient: ProcessToProjectClient = createORPCClient(

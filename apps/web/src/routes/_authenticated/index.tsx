@@ -5,7 +5,7 @@ import { Button } from '@yoink/ui-base/components/button';
 import { consumeQuickCaptureFocus } from '@/lib/quick-capture-shortcut';
 import { QuickCaptureField } from '@/components/quick-capture-field';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { captureClient, isNetworkFailure, listClient, projectClient } from '@/api/client';
+import { inboxClient, isNetworkFailure, listClient, projectClient } from '@/api/client';
 import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { useInboxTriage } from '@/lib/use-inbox-triage';
@@ -72,19 +72,19 @@ function InboxPage() {
   const projects = projectsData?.projects ?? [];
 
   const { data, isPending, error, refetch } = useQuery({
-    queryKey: ['captures', 'inbox'],
+    queryKey: ['captures', 'inbox', 'screen'],
     queryFn: () =>
-      captureClient.list({ status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP }),
+      inboxClient.list({ status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: Parameters<typeof captureClient.create>[0]) => captureClient.create(input),
+    mutationFn: (input: Parameters<typeof inboxClient.create>[0]) => inboxClient.create(input),
     onMutate: async (body) => {
       // Cancel in-flight queries to prevent overwrites
       await cancelLiveQueries(queryClient);
 
       // Snapshot current state for rollback
-      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousInbox = queryClient.getQueryData(['captures', 'inbox', 'screen']);
 
       // Create optimistic capture with temp ID
       const optimisticCapture = {
@@ -100,7 +100,7 @@ function InboxPage() {
       };
 
       if (isCapturePage(previousInbox)) {
-        queryClient.setQueryData(['captures', 'inbox'], {
+        queryClient.setQueryData(['captures', 'inbox', 'screen'], {
           ...previousInbox,
           captures: [optimisticCapture, ...previousInbox.captures],
           total: previousInbox.total + 1,
@@ -116,7 +116,7 @@ function InboxPage() {
     onError: (err, _variables, context) => {
       // Rollback on error
       if (context?.previousInbox) {
-        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
+        queryClient.setQueryData(['captures', 'inbox', 'screen'], context.previousInbox);
       }
       // Restore the input content so user doesn't lose their text
       if (context?.previousContent) {

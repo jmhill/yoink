@@ -2,10 +2,11 @@
  * Which unmatched URL may receive an SPA `index.html`.
  *
  * `/admin` and `/admin/...` are the admin app. `/admin-api` is a separate
- * prefix and is not that app. `/api`, `/test-api`, `/web-api`, and
- * `/extension-api` are the same kind of prefix. An unmatched URL under one
- * of them is a JSON 404. M3.4 mounts `/test-api`. M6.1 mounts
- * `/extension-api/v1`. `/web-api` and `/admin-api` are not mounted.
+ * prefix and is not that app, even though the path starts with `/admin`.
+ * `/api`, `/test-api`, `/web-api`, and `/extension-api` are the same kind of
+ * prefix. An unmatched URL under one of them is a JSON 404. M3.4 mounts
+ * `/test-api`. M6.1 mounts `/extension-api/v1`. M6.2 mounts `/web-api`.
+ * `/admin-api` is not mounted.
  */
 
 const RESERVED_API_PREFIXES = [

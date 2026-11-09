@@ -19,6 +19,10 @@
     "./extension/v1": {
       "types": "./dist/extension/v1/index.d.ts",
       "import": "./dist/extension/v1/index.js"
+    },
+    "./web": {
+      "types": "./dist/web/index.d.ts",
+      "import": "./dist/web/index.js"
     }
   },
   "scripts": {

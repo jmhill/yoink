@@ -2388,6 +2388,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldSeeQuickAddCapture', 'http');
     },
 
+    async shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepInboxOnWebEdgeAndTodayOnApiAlias', 'http');
+    },
+
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
     },

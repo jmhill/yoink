@@ -406,7 +406,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.2 Task Management: structural merge (no behaviour change)
 
-**Execution:** `M5.2`, after `CL-WORK`. [#248](https://github.com/jmhill/yoink/issues/248), [#243](https://github.com/jmhill/yoink/issues/243). Status is the execution index. `CL-WORK` awaits Justin and is not approved.
+**Execution:** `M5.2`, after `CL-WORK`. [#248](https://github.com/jmhill/yoink/issues/248), [#243](https://github.com/jmhill/yoink/issues/243). Status is the execution index. `CL-WORK` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026)). M5.2 is ready.
 
 - **Depends on:** M5.1
 - **Do:**
@@ -497,11 +497,11 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.10 Review and history (queries)
 
-**Execution:** `M5.10-review` (after `CL-REVIEW`) and `M5.10-history`. `CL-REVIEW` stays open with a recommendation. It is not pre-marked blocked on Justin. [#259](https://github.com/jmhill/yoink/issues/259), [#244](https://github.com/jmhill/yoink/issues/244), [#260](https://github.com/jmhill/yoink/issues/260).
+**Execution:** `M5.10-review` and `M5.10-history`. `CL-REVIEW` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `M5.10-review` still needs M5.3 and M4.3. [#259](https://github.com/jmhill/yoink/issues/259), [#244](https://github.com/jmhill/yoink/issues/244), [#260](https://github.com/jmhill/yoink/issues/260).
 
 - **Depends on:** M5.3, M4.3
 - **Do:**
-  - **Review** gets the standard checklist. Its current read models become Task Management queries consumed through consumer-owned ports, or move to edge composition in M6.3, whichever keeps Task Management's queries meaningful in its own terms. The organization time zone comes through an access port. The review fixture routes stay in `edges/test-fixtures/` (see M7.4).
+  - **Review** gets the standard checklist. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. Task Management exposes project, next-action, and completed-task facts in its own terms, not a query shaped as what Review needs. History supplies last-change facts. Access supplies the organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. There is no cross-module SQL, and no new Review table just to establish ownership. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. The review fixture routes stay in `edges/test-fixtures/` (see M7.4).
   - **History** gets the standard checklist for its queries. Lookups for task, project, note and user names go through consumer-owned ports instead of reading `tasks`, `projects`, `project_notes` and `users`.
 - **Accept:** no review or history SQL touches another module's tables. Standard checklist complete.
 
@@ -727,7 +727,7 @@ Tycho owns engineering decisions, tests, architecture review, and merge gates. T
 
 One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, this plan, and ADR-001. No new module kit and no DI container. Domain stays a pure `Result` with closed error unions. Effects stay in adapters. Only the owning module's infrastructure names a table in SQL. Baselines and the table-ownership allowlist only shrink. Public v1 and the `/api` alias keep today's HTTP status and error bodies. Migrations are forward-only. Compatibility windows and sunset dates are gates, not guesses. Do not apply the `approved-plan` label. This authorization was not approval in the Yoink Dev Team room.
 
-`CL-WORK` (#243) and `CL-REVIEW` (#244) await Justin. They are not approved. This plan does not choose them. Token listing (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
+`CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Token listing (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
 Notes mirror-bot resolution keeps today's order: stored designation, then `NOTES_MIRROR_BOT_USER_ID`, then the first agent named `NOTES_MIRROR_BOT_NAME`. Do not drop the environment fallback.
 
@@ -743,7 +743,7 @@ This table is the only status list. The row count is the number of rows below. I
 
 M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-on-Submit note is retired. Do not create or close an issue for it. Measurements are in `docs/architecture/adr/spikes/README.md`.
 
-`CL-WORK` (#243) and `CL-REVIEW` (#244) have recommendations posted. Justin has not adopted them. This plan does not choose them. `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
+`CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
 The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
 
@@ -777,11 +777,11 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M4.2` | `M4.1`, `M2.4` | — | Done (`a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316)) | None. `shared/` is removed. No unit-of-work sink. | [#240](https://github.com/jmhill/yoink/issues/240) |
 | `M4.3` | `M4.2` | — | Done on main (`eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318)). Empty sink on both implementations. No route uses it yet. | None. | [#241](https://github.com/jmhill/yoink/issues/241) |
 | `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | Not started | None. | [#242](https://github.com/jmhill/yoink/issues/242) |
-| `CL-WORK` | — | — | Not started. Recommendation posted, not adopted. | Awaiting Justin on [#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6716776253). Not approved. The ADR text is unchanged. | [#243](https://github.com/jmhill/yoink/issues/243) |
-| `CL-REVIEW` | — | — | Not started. Recommendation posted, not adopted. | Awaiting Justin on [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6716776257). Not approved. The ADR text is unchanged. | [#244](https://github.com/jmhill/yoink/issues/244) |
+| `CL-WORK` | — | — | Done. Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026)). | None. Task Management owns the Now, due, and work-list queries, including keyset order and pagination. Those queries return already ordered, filtered, cursor-paginated pages. The web edge composes screen sections, header counts, and owner display labels. It does not re-sort those pages. ADR §8.2 "display ordering" means screen and section composition. | [#243](https://github.com/jmhill/yoink/issues/243) |
+| `CL-REVIEW` | — | — | Done. Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). | None. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. | [#244](https://github.com/jmhill/yoink/issues/244) |
 | `M5.1-check` | `M1.3`, `M4.2` | — | Done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). `change_log.subject_type` may be `capture`. No capture event is emitted. | None. | [#246](https://github.com/jmhill/yoink/issues/246) |
 | `M5.1` | `M3.6`, `M4.3`, `M5.1-check`, `M4.1b` | — | Done ([#343](https://github.com/jmhill/yoink/pull/343), `72780cac9169dd24ab1403ae69395da72f9ee253`). | None. | [#247](https://github.com/jmhill/yoink/issues/247) |
-| `M5.2` | `M5.1`, `CL-WORK` | — | Not started | None. | [#248](https://github.com/jmhill/yoink/issues/248) |
+| `M5.2` | `M5.1`, `CL-WORK` | — | Not started | Ready. `M5.1` and `CL-WORK` are done. | [#248](https://github.com/jmhill/yoink/issues/248) |
 | `M5.3` | `M5.2`, `M4.1b` | — | Not started | None. Still depends on M5.2. | [#249](https://github.com/jmhill/yoink/issues/249) |
 | `M5.4` | `M5.3` | — | Not started | None. | [#250](https://github.com/jmhill/yoink/issues/250) |
 | `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Not started | None. Still depends on M5.3. | [#251](https://github.com/jmhill/yoink/issues/251) |
@@ -792,7 +792,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | [#256](https://github.com/jmhill/yoink/issues/256) |
 | `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | [#257](https://github.com/jmhill/yoink/issues/257) |
 | `M5.9` | `M5.7` | — | Not started | None. | [#258](https://github.com/jmhill/yoink/issues/258) |
-| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | None. | [#259](https://github.com/jmhill/yoink/issues/259) |
+| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Still needs M5.3 and M4.3. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. | [#259](https://github.com/jmhill/yoink/issues/259) |
 | `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | [#260](https://github.com/jmhill/yoink/issues/260) |
 | `M5.11-captures` | `M5.1` | — | Not started | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
 | `M5.11-task-management` | `M5.4` | — | Not started | None. | [#262](https://github.com/jmhill/yoink/issues/262) |

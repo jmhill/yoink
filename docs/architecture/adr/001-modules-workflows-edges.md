@@ -1,6 +1,6 @@
 # ADR-001: Modules, workflows, and edges
 
-- **Status:** Accepted (2026-11-06). Spikes resolved: see §6.1, §9.
+- **Status:** Accepted (2026-11-06). Spikes resolved: see §6.1, §9. Clarified 2026-11-09: Justin adopted work-query ownership and review-policy ownership, both option 1, at 10:43am CST. See §3.1 and §8.2.
 - **Date:** 2026-11-06
 - **Deciders:** Justin
 - **Migration plan:** [001-migration-plan.md](./001-migration-plan.md)
@@ -88,11 +88,19 @@ apps/api/src/
 |---|---|---|---|
 | `access` | users, organizations, memberships, membership events, invitations, tokens, passkeys, sessions | (upstream of everything) | Unchanged scope. Its older services migrate to the functional pattern (§11) |
 | `captures` | captures | Capture | |
-| `task-management` | tasks, projects, lists, project imports; goals and milestones later | Organize | Merges `tasks/`, `projects/`, `lists/`. Hosts the Now and next-action queries. Absorbs the Goals → Milestones → Projects → Tasks redesign internally |
+| `task-management` | tasks, projects, lists, project imports; goals and milestones later | Organize | Merges `tasks/`, `projects/`, `lists/`. Owns the Now, due, and work-list queries, including keyset order and pagination. Absorbs the Goals → Milestones → Projects → Tasks redesign internally |
 | `notes` | project notes, notes settings (including the designated mirror bot) | Reference | Separate context. Reads project data through Task Management queries |
-| `review` | review sessions (future) | Reflect | Will have its own state. Until then, its edge views use Task Management queries |
+| `review` | review sessions (future) | Reflect | Will have its own state (review sessions). Owns the attention policy: classification, section order, and queries. Consumes Task Management, history, and access ports |
 | `history` | `change_log` | (cross-cutting) | Event sink for the unit of work. Owns timeline and history queries |
 | `planning` | daily plans, time blocks (future) | Engage | Reserved name. Must not absorb Task Management's Now and next-action rules |
+
+**Query ownership (2026-11-09).** Justin adopted option 1 for both decisions at 10:43am CST: [work-query ownership](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026) and [review-policy ownership](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813).
+
+Task Management owns the Now, due, and work-list queries, including keyset order and pagination. Those queries return already ordered, filtered, cursor-paginated pages.
+
+Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access through ports. Task Management exposes project, next-action, and completed-task facts in its own terms, not a query shaped as what Review needs. History supplies last-change facts. Access supplies the organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. There is no cross-module SQL, and no new Review table just to establish ownership. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`.
+
+Edges compose screens and sections. They do not re-sort a paginated result. In §8.2, "display ordering" means that screen and section composition. It is not a second keyset sort.
 
 `health` stops being a module. The health checker moves to `platform/`, and `/api/health` (used by Fly's blue-green check) is served by `edges/ops/`.
 
@@ -544,10 +552,12 @@ The web and admin apps send a build-id request header for this. Admin follows th
 
 - An edge handler calls **at most one command or workflow**, and any number of queries. If a screen needs two changes to succeed together, that's a workflow in the core.
 - Edges **compose, filter and shape**:
-  - screen composition (e.g. Now = next actions + loose dated tasks; header counts; owner labels; display ordering)
+  - screen and section composition (for example Now = next actions + loose dated tasks, header counts, and owner labels). "Display ordering" means this composition. It is not a second keyset sort.
   - mapping module documents to contract types
   - mapping errors to HTTP
-- Edges contain **no business rules, no SQL, and no state.**
+- Task Management owns the Now, due, and work-list queries, including keyset order and pagination (§3.1). Those queries return already ordered, filtered, cursor-paginated pages. The web edge composes screen sections, header counts, and owner display labels. It does not re-sort those pages.
+- Review owns the attention policy: classification, section order, and queries (§3.1). It consumes Task Management, history, and access ports. Task Management exposes project, next-action, and completed-task facts in its own terms, not a query shaped as what Review needs. History supplies last-change facts. Access supplies the organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases call the same Review query. There is no cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`.
+- Edges contain **no business rules, no SQL, and no state.** They never re-sort a paginated result.
 - Pagination across modules: page through one module's query, then enrich the page with batched lookups by id from the others. A view that needs more than that is a sign the owning module should publish a query for it, or that the view needs its own state, which would make it a module.
 - What `edges/_shared/` contains is listed in §3.4.
 

@@ -308,11 +308,11 @@ Shipped in [#324](https://github.com/jmhill/yoink/pull/324): the helpers were `m
 
 ### TOKEN-LIST Confirm integration token listing and pin public v1
 
-**Execution:** `TOKEN-LIST`. [#327](https://github.com/jmhill/yoink/issues/327). Status is the execution index. Justin approved this on 2026-11-07 at 21:45 CST. Tests are queued. Not done. This plan does not add those tests.
+**Execution:** `TOKEN-LIST`. [#327](https://github.com/jmhill/yoink/issues/327). Status is the execution index. In review ([#340](https://github.com/jmhill/yoink/pull/340)). Justin approved this on 2026-11-07 at 21:45 CST. The tests pin that decision. Runtime behavior is unchanged.
 
 - **Depends on:** M3.2
-- **Do:** `GET /api/auth/tokens` lists the authenticated principal's own non-revoked token metadata within the organization, including sibling tokens. It is not a whole-organization inventory. The fields are `id`, `name`, optional `lastUsedAt`, and `createdAt`. The response never includes a hash or a raw secret. Session-only create, revoke, and reissue stay unchanged. Acceptance isolation covers both the canonical v1 path and the `/api` alias. Those tests are queued and are not part of M4.1b.
-- **Accept:** the listing decision is approved. The route stays as it is until the queued tests land. Not done. ADR-002 gets one lesson when the tests land, or a specific reason none arose.
+- **Do:** `GET /api/auth/tokens` lists the authenticated principal's own non-revoked token metadata within the organization, including sibling tokens. It is not a whole-organization inventory. The fields are `id`, `name`, optional `lastUsedAt`, and `createdAt`. The response never includes a hash or a raw secret. `/api/v1` stays bearer-only. The `/api` alias keeps session or bearer. Session-only create, revoke, and reissue stay unchanged. Integration and acceptance tests cover both routes.
+- **Accept:** the listing decision is approved and the tests pin today's behavior. The route is unchanged. ADR-002 records why this did not add a module-kit helper.
 
 ### LINT-ACCEPTANCE Fix acceptance-test lint and decide CI coverage
 
@@ -766,7 +766,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M3.1` | `M0.3`, `M0.4` | — | Done (`198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315)) | None. The frozen copy does not mount a route. | [#233](https://github.com/jmhill/yoink/issues/233) |
 | `M3.2` | `M3.1`, `M2.4` | — | Done ([#317](https://github.com/jmhill/yoink/pull/317)). | Dates stay unset until M7.1. | [#234](https://github.com/jmhill/yoink/issues/234) |
 | `OPENAPI-V1` | `M3.2` | — | Done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). [#329](https://github.com/jmhill/yoink/issues/329) closed completed. | None. The converter stays on Zod 3. It does not upgrade oRPC or Zod. | [#329](https://github.com/jmhill/yoink/issues/329) |
-| `TOKEN-LIST` | `M3.2` | — | Approved 2026-11-07 21:45 CST. Tests queued. Not done. | The list is the authenticated principal's own non-revoked token metadata within the org, including siblings. It is not a whole-org inventory. Fields are `id`, `name`, optional `lastUsedAt`, and `createdAt`. Never a hash or a raw secret. Session-only create, revoke, and reissue stay unchanged. Acceptance isolation covers both routes. No token tests in the M4.1b change. | [#327](https://github.com/jmhill/yoink/issues/327) |
+| `TOKEN-LIST` | `M3.2` | — | In review ([#340](https://github.com/jmhill/yoink/pull/340)). Tests pin the approved list. Runtime behavior is unchanged. | Justin approved on 2026-11-07 at 21:45 CST. Own principal, including a sibling. Non-revoked metadata only: `id`, `name`, optional `lastUsedAt`, `createdAt`. Never a hash or a raw secret. v1 is bearer-only. The alias accepts session or bearer. Create, revoke, and reissue stay session-only. | [#327](https://github.com/jmhill/yoink/issues/327) |
 | `M3.3` | `M0.4`, `M2.4` | `M3.2` | Done on main (`0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320)). | None. | [#235](https://github.com/jmhill/yoink/issues/235) |
 | `M3.4` | `M2.2`, `M3.3` | — | Done on main (`67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321)). | None. | [#236](https://github.com/jmhill/yoink/issues/236) |
 | `M3.5` | `M3.2`, `M3.3` | — | Done on main (`f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322)). | None. | [#237](https://github.com/jmhill/yoink/issues/237) |

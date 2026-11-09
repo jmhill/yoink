@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { type Page, expect } from '@playwright/test';
+import { type Page, expect, request as playwrightRequest } from '@playwright/test';
 import {
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
   INVITATION_ALREADY_USED_MESSAGE,
@@ -52,6 +52,8 @@ import type {
   ProcessCaptureToProjectResult,
   CreateInvitationInput,
   MintedAgent,
+  TokenRouteCall,
+  TokenRouteResult,
   MobileTabKey,
   CreateProjectInput,
   ListProjectsQuery,
@@ -76,6 +78,7 @@ import {
   TokenLimitReachedError,
   AlreadyMemberError,
 } from '../../dsl/index.js';
+import { compileTokenRoute, parseResponseBody } from '../token-route.js';
 import {
   AppRail,
   DESKTOP_VIEWPORT,
@@ -493,6 +496,32 @@ export const createPlaywrightActor = (
     }
     const contentElement = card.getByTestId('capture-content');
     return await contentElement.textContent();
+  };
+
+  const callTokenRoute = async (input: TokenRouteCall): Promise<TokenRouteResult> => {
+    const route = compileTokenRoute(input, credentials.organizationId);
+    if (input.authorization === 'session') {
+      const response = await page.request.fetch(route.path, {
+        method: route.method,
+        ...(route.payload === undefined ? {} : { data: route.payload }),
+      });
+      return { statusCode: response.status(), body: parseResponseBody(await response.text()) };
+    }
+    if (input.rawToken === undefined) {
+      throw new Error('Browser bearer calls need the raw token');
+    }
+    const origin = new URL(page.url()).origin;
+    const api = await playwrightRequest.newContext({ baseURL: origin });
+    try {
+      const response = await api.fetch(route.path, {
+        method: route.method,
+        headers: { authorization: `Bearer ${input.rawToken}` },
+        ...(route.payload === undefined ? {} : { data: route.payload }),
+      });
+      return { statusCode: response.status(), body: parseResponseBody(await response.text()) };
+    } finally {
+      await api.dispose();
+    }
   };
 
   return {
@@ -6259,6 +6288,8 @@ export const createPlaywrightActor = (
       const data = await response.json();
       return data.tokens;
     },
+
+    callTokenRoute,
 
     async createToken(name: string): Promise<CreateTokenResult> {
       const response = await page.request.post('/api/auth/tokens', {

@@ -1,4 +1,4 @@
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { UnsnoozeCaptureCommand } from '../messages/capture-commands.js';
 import type { CaptureUnsnoozed, Noop } from '../messages/events.js';
 

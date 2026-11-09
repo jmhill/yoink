@@ -6,7 +6,7 @@ import {
   captureOrpcContract,
   processCaptureToProjectOrpcContract,
 } from '@yoink/api-contracts/orpc';
-import { toCaptureListBody } from '../../_shared/http-listed-page.js';
+import { toContractCapture, toContractCaptureList } from './map-capture.js';
 import {
   openApiHandlerOptions,
   yoinkOpenApiHandlerOptions,
@@ -77,7 +77,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapCreateCaptureError(error);
       },
@@ -92,7 +92,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       cursor: input.cursor,
     });
     return result.match(
-      (page) => toCaptureListBody(page),
+      (page) => toContractCaptureList(page),
       (error) => {
         throw mapListCapturesError(error);
       },
@@ -104,7 +104,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       organizationId: context.request.authContext.organizationId,
     });
     return result.match(
-      (capture) => capture,
+      (capture) => toContractCapture(capture),
       (error) => {
         throw mapFindCaptureError(error);
       },
@@ -119,7 +119,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapUpdateCaptureError(error);
       },
@@ -132,7 +132,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapTrashCaptureError(error);
       },
@@ -145,7 +145,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapRestoreCaptureError(error);
       },
@@ -159,7 +159,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapSnoozeCaptureError(error);
       },
@@ -172,7 +172,7 @@ export const createCaptureHandlers = (deps: CaptureEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractCapture(view),
       (error) => {
         throw mapUnsnoozeCaptureError(error);
       },

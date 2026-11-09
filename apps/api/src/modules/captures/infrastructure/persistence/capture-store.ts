@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Capture, CaptureStatus, ProcessedToType } from '@yoink/api-contracts';
+import type { Capture, CaptureStatus, ProcessedToType } from '../../domain/model/capture.js';
 import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
 import type { FindByOrganizationOptions } from '../../application/ports.js';
 import type { CaptureNotInInboxError, StorageError } from '../../domain/messages/capture-errors.js';

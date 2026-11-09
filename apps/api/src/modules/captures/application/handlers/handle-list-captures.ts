@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../../domain/model/capture.js';
 import type { ListCapturesQuery } from '../../domain/messages/capture-commands.js';
 import type { ListCapturesError } from '../../domain/messages/capture-errors.js';
 import { listKindForCaptureList, resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

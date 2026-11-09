@@ -516,6 +516,8 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
   - edges map module documents to contract types
 - **Accept:** zero `@yoink/api-contracts` lint warnings for that module. When the last module is done, the transitional rule moves to `error`.
 
+`M5.11-captures` is in review (PR #347). The document is `modules/captures/domain/model/capture.ts`. Domain, application, and infrastructure in that module do not import `@yoink/api-contracts`. `edges/public-api/v1` maps the document onto the contract capture. The `src/modules/captures/**` current element is removed. The folder-mode `src/captures/**` pattern stays for the boundary fixtures. The transitional `@yoink/api-contracts` rule stays at `warn` until `M5.11-access`.
+
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 
 **Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267). Done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, [#342](https://github.com/jmhill/yoink/pull/342)). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here.
@@ -794,7 +796,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.9` | `M5.7` | — | Not started | None. | [#258](https://github.com/jmhill/yoink/issues/258) |
 | `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Still needs M5.3 and M4.3. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. | [#259](https://github.com/jmhill/yoink/issues/259) |
 | `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | [#260](https://github.com/jmhill/yoink/issues/260) |
-| `M5.11-captures` | `M5.1` | — | Not started | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
+| `M5.11-captures` | `M5.1` | — | In review (PR #347) | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
 | `M5.11-task-management` | `M5.4` | — | Not started | None. | [#262](https://github.com/jmhill/yoink/issues/262) |
 | `M5.11-notes` | `M5.7` | — | Not started | None. | [#263](https://github.com/jmhill/yoink/issues/263) |
 | `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |

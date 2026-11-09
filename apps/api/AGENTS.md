@@ -30,7 +30,7 @@ Most modules still follow this structure:
     routes.ts       # Fastify routes
 ```
 
-`modules/captures/` is the captures pilot. `index.ts` publishes `{ commands, queries, prepare }`. Domain decisions and plans stay pure. The SQL participant and the fake participant live in infrastructure. Edges map the closed `Result`. `lists/` follows the older sandwich for view + create + rename + delete + list-open-tasks + reorder (named list or the unlisted pile). Task create, PATCH, complete, and uncomplete are sandwiched the same way; pin/delete still use `TaskService`. See `docs/architecture/FUNCTIONAL_CORE.md`:
+`modules/captures/` is the captures pilot. `index.ts` publishes `{ commands, queries, prepare }` and the capture document in `domain/model/capture.ts`. Domain and application do not import `@yoink/api-contracts`. Domain decisions and plans stay pure. The SQL participant and the fake participant live in infrastructure. The public-api edge maps that document onto the contract capture and maps the closed `Result`. `lists/` follows the older sandwich for view + create + rename + delete + list-open-tasks + reorder (named list or the unlisted pile). Task create, PATCH, complete, and uncomplete are sandwiched the same way; pin/delete still use `TaskService`. See `docs/architecture/FUNCTIONAL_CORE.md`:
 
 ```
 modules/captures/   commands, queries, prepare; unit of work writes the plan

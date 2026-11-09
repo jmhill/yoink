@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideTrashCapture } from './decide-trash.js';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 
 const inboxCapture: Capture = {
   id: 'capture-123',

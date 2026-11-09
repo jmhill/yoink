@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import { planFromCaptureEvent, planMarkProcessed } from './plan-capture.js';
 
 const view: Capture = {

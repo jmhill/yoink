@@ -1,4 +1,4 @@
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { RestoreCaptureCommand } from '../messages/capture-commands.js';
 import type { CaptureRestored, Noop } from '../messages/events.js';
 

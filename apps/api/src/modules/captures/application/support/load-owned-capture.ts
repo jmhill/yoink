@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../../domain/model/capture.js';
 import { captureNotFoundError, type FindCaptureError } from '../../domain/messages/capture-errors.js';
 import type { LoadCapture } from '../ports.js';
 

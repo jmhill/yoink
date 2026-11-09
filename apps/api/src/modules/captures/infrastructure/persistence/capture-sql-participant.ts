@@ -1,4 +1,4 @@
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../../domain/model/capture.js';
 import type { GuardedStatement, SqlParticipant } from '../../../../kernel/unit-of-work.js';
 import type { CapturePlan, CaptureWrite } from '../../domain/projections/plan-capture.js';
 

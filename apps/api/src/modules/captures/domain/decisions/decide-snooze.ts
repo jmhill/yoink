@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { SnoozeCaptureCommand } from '../messages/capture-commands.js';
 import type { CaptureSnoozed } from '../messages/events.js';
 import {

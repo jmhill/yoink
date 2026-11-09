@@ -1,3 +1,4 @@
+export type { Capture, CaptureStatus, ProcessedToType } from './domain/model/capture.js';
 export { createCaptures } from './application/create-captures.js';
 export type {
   Captures,

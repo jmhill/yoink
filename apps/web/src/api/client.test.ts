@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { captureClient, httpFailureBody, httpStatusOf, taskClient } from './client';
+import { captureClient, httpFailureBody, httpStatusOf, inboxClient, taskClient, YOINK_BUILD_HEADER } from './client';
 import { tokenStorage } from '@/lib/token';
 
 const jsonResponse = (status: number, body: unknown) =>
@@ -22,6 +22,7 @@ describe('web OpenAPI client', () => {
       authorization: string | null;
       contentType: string | null;
       redirect: RequestRedirect | undefined;
+      build: string | null;
     }[] = [];
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       const headers = new Headers(init.headers);
@@ -31,6 +32,7 @@ describe('web OpenAPI client', () => {
         authorization: headers.get('Authorization'),
         contentType: headers.get('content-type'),
         redirect: init.redirect,
+        build: headers.get(YOINK_BUILD_HEADER),
       });
       return jsonResponse(200, {
         captures: [],
@@ -51,6 +53,47 @@ describe('web OpenAPI client', () => {
     expect(call?.authorization).toBe('Bearer token-id:secret');
     expect(call?.contentType).toBeNull();
     expect(call?.redirect).toBe('follow');
+    expect(call?.build).toBe('dev');
+  });
+
+  it('lists and creates Inbox captures on /web-api and sends the build id', async () => {
+    const calls: { url: string; method: string; build: string | null; credentials: RequestCredentials | undefined }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const headers = new Headers(init.headers);
+      calls.push({
+        url,
+        method: init.method ?? 'GET',
+        build: headers.get(YOINK_BUILD_HEADER),
+        credentials: init.credentials,
+      });
+      if ((init.method ?? 'GET') === 'POST') {
+        return jsonResponse(201, {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          organizationId: '550e8400-e29b-41d4-a716-446655440001',
+          createdById: '550e8400-e29b-41d4-a716-446655440002',
+          content: 'Hello',
+          status: 'inbox',
+          capturedAt: '2024-06-15T12:00:00.000Z',
+        });
+      }
+      return jsonResponse(200, {
+        captures: [],
+        hasMore: false,
+        nextCursor: null,
+        total: 0,
+      });
+    });
+
+    await inboxClient.list({ status: 'inbox', snoozed: false, limit: 1 });
+    await inboxClient.create({ content: 'Hello', sourceApp: 'web' });
+
+    expect(calls[0]?.url.startsWith('/web-api/inbox?')).toBe(true);
+    expect(calls[0]?.url).toContain('snoozed=false');
+    expect(calls[0]?.credentials).toBe('include');
+    expect(calls[0]?.build).toBe('dev');
+    expect(calls[1]?.url).toBe('/web-api/inbox');
+    expect(calls[1]?.method).toBe('POST');
+    expect(calls[1]?.build).toBe('dev');
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

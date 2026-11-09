@@ -35,6 +35,59 @@ const errorCode = (err: unknown): string | undefined => {
   return undefined;
 };
 
+/** Badge and process keep `['captures', 'inbox']` on `/api`. The Inbox screen is the next key. */
+const inboxListQueryKeys = [
+  ['captures', 'inbox'],
+  ['captures', 'inbox', 'screen'],
+] as const;
+
+type InboxListSnapshot = {
+  queryKey: (typeof inboxListQueryKeys)[number];
+  data: unknown;
+};
+
+const snapshotInboxLists = (
+  queryClient: ReturnType<typeof useQueryClient>
+): InboxListSnapshot[] =>
+  inboxListQueryKeys.map((queryKey) => ({
+    queryKey,
+    data: queryClient.getQueryData(queryKey),
+  }));
+
+const restoreInboxLists = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshots: InboxListSnapshot[] | undefined
+) => {
+  for (const snapshot of snapshots ?? []) {
+    queryClient.setQueryData(snapshot.queryKey, snapshot.data);
+  }
+};
+
+const removeFromInboxLists = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string
+) => {
+  for (const queryKey of inboxListQueryKeys) {
+    const page = queryClient.getQueryData(queryKey);
+    if (isCapturePage(page)) {
+      queryClient.setQueryData(queryKey, inboxQueryWithoutCapture(page, id));
+    }
+  }
+};
+
+const findInboxCapture = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string
+): Capture | undefined => {
+  for (const queryKey of inboxListQueryKeys) {
+    const page = queryClient.getQueryData(queryKey);
+    if (!isCapturePage(page)) continue;
+    const capture = page.captures.find((item) => item.id === id);
+    if (capture) return capture;
+  }
+  return undefined;
+};
+
 const isCapturePage = (
   value: unknown
 ): value is { captures: Capture[]; total: number } =>
@@ -65,7 +118,7 @@ const INBOX_TRIAGE_TOAST_PREFIX = 'inbox-triage';
 
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
- * Optimistic updates and rollback stay on the shared inbox query key.
+ * Optimistic updates and rollback cover the badge list and the Inbox screen list.
  */
 export function useInboxTriage() {
   const navigate = useNavigate();
@@ -132,35 +185,26 @@ export function useInboxTriage() {
       markActed(id);
       await cancelLiveQueries(queryClient);
 
-      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousInbox = snapshotInboxLists(queryClient);
       const previousTrashed = queryClient.getQueryData(['captures', 'trashed']);
+      const captureToTrash = findInboxCapture(queryClient, id);
+      removeFromInboxLists(queryClient, id);
 
-      if (isCapturePage(previousInbox)) {
-        const captureToTrash = previousInbox.captures.find((capture) => capture.id === id);
-
+      if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
         queryClient.setQueryData(
-          ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, id)
+          ['captures', 'trashed'],
+          prependCaptureHistoryPageItem(previousTrashed, {
+            ...captureToTrash,
+            status: 'trashed',
+          })
         );
-
-        if (captureToTrash && isCaptureHistoryData(previousTrashed)) {
-          queryClient.setQueryData(
-            ['captures', 'trashed'],
-            prependCaptureHistoryPageItem(previousTrashed, {
-              ...captureToTrash,
-              status: 'trashed',
-            })
-          );
-        }
       }
 
       return { previousInbox, previousTrashed };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousInbox) {
-        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
-      }
+      restoreInboxLists(queryClient, context?.previousInbox);
       if (context?.previousTrashed) {
         queryClient.setQueryData(['captures', 'trashed'], context.previousTrashed);
       }
@@ -196,33 +240,24 @@ export function useInboxTriage() {
       markActed(id);
       await cancelLiveQueries(queryClient);
 
-      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousInbox = snapshotInboxLists(queryClient);
       const previousSnoozed = queryClient.getQueryData(['captures', 'snoozed']);
+      const captureToSnooze = findInboxCapture(queryClient, id);
+      removeFromInboxLists(queryClient, id);
 
-      if (isCapturePage(previousInbox)) {
-        const captureToSnooze = previousInbox.captures.find((capture) => capture.id === id);
-
-        queryClient.setQueryData(
-          ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, id)
-        );
-
-        if (captureToSnooze && isCapturePage(previousSnoozed)) {
-          queryClient.setQueryData(['captures', 'snoozed'], {
-            ...previousSnoozed,
-            captures: [captureToSnooze, ...previousSnoozed.captures],
-            total: previousSnoozed.total + 1,
-          });
-        }
+      if (captureToSnooze && isCapturePage(previousSnoozed)) {
+        queryClient.setQueryData(['captures', 'snoozed'], {
+          ...previousSnoozed,
+          captures: [captureToSnooze, ...previousSnoozed.captures],
+          total: previousSnoozed.total + 1,
+        });
       }
 
       return { previousInbox, previousSnoozed };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousInbox) {
-        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
-      }
+      restoreInboxLists(queryClient, context?.previousInbox);
       if (context?.previousSnoozed) {
         queryClient.setQueryData(['captures', 'snoozed'], context.previousSnoozed);
       }
@@ -262,22 +297,13 @@ export function useInboxTriage() {
       markActed(id);
       await cancelLiveQueries(queryClient);
 
-      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
-
-      if (isCapturePage(previousInbox)) {
-        queryClient.setQueryData(
-          ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, id)
-        );
-      }
-
+      const previousInbox = snapshotInboxLists(queryClient);
+      removeFromInboxLists(queryClient, id);
       return { previousInbox };
     },
 
     onError: (err, _variables, context) => {
-      if (context?.previousInbox) {
-        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
-      }
+      restoreInboxLists(queryClient, context?.previousInbox);
 
       if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');
@@ -308,20 +334,13 @@ export function useInboxTriage() {
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
-      const previousInbox = queryClient.getQueryData(['captures', 'inbox']);
+      const previousInbox = snapshotInboxLists(queryClient);
       const previousProjects = queryClient.getQueryData(['projects']);
-      if (isCapturePage(previousInbox)) {
-        queryClient.setQueryData(
-          ['captures', 'inbox'],
-          inboxQueryWithoutCapture(previousInbox, id)
-        );
-      }
+      removeFromInboxLists(queryClient, id);
       return { previousInbox, previousProjects };
     },
     onError: (err, _variables, context) => {
-      if (context?.previousInbox) {
-        queryClient.setQueryData(['captures', 'inbox'], context.previousInbox);
-      }
+      restoreInboxLists(queryClient, context?.previousInbox);
       if (context?.previousProjects) {
         queryClient.setQueryData(['projects'], context.previousProjects);
       }

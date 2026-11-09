@@ -1921,6 +1921,11 @@ export type BrowserActorOperations = {
   shouldSeeQuickAddCapture(): Promise<void>;
 
   /**
+   * Inbox list and create go to `/web-api`. Today still goes to `/api`.
+   */
+  shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void>;
+
+  /**
    * Assert the Inbox-tab quick-add capture field is not on this pane.
    */
   shouldNotSeeQuickAddCapture(): Promise<void>;

@@ -679,8 +679,8 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M3.4 `edges/ops/` and `edges/test-fixtures/`
 - [x] M3.5 Auth middlewares to `edges/_shared/`
 - [x] M3.6 Retire HTTP tests from module folders
-- [x] M3.7 Remove test-helper SQL ownership exceptions
-- [ ] M3.7 correction: helper filenames and the test-support exemption (implemented, unmerged; not done)
+- [x] M3.7 Remove test-helper SQL ownership exceptions (#324; correction #338, `a93e1bc1`)
+- [x] M3.7 correction: helper filenames and the test-support exemption (#338, `a93e1bc1`)
 - [x] Health HTTP error mapper on the ops edge
 - [x] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1` (done, #334, `30f08e33`)
 - [ ] TOKEN-LIST Confirm integration token listing and pin public v1 (approved 2026-11-07 21:45 CST; tests queued; not done)
@@ -693,9 +693,9 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M4.3 History as the event sink
 - [ ] M4.4 Remove guards that read across modules
 
-### M5: Modules, one at a time - M5.1 parked
+### M5: Modules, one at a time - M5.1 dependency-ready
 - [x] M5.1-check History subject type allows capture
-- [ ] M5.1 Captures (pilot, parked until the helper-filename correction)
+- [ ] M5.1 Captures (pilot off main, dependency-ready)
 - [ ] M5.2 Task Management: structural merge
 - [ ] M5.3 Task Management: interface, unit of work, events
 - [ ] M5.4 Task Management: legacy services and the domain importing HTTP code
@@ -2118,7 +2118,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M4.1b is done on main (`db30c3872b1c4a5855d285d49f6526fec418e085`, #336). OPENAPI-V1 is done on main (`30f08e333c45e7e7292955fa877c702fbef6374a`, #334). #329 is closed. M5.1 was partially started and stays parked until the helper-filename correction has landed. M5.3 waits on M5.2. M5.5 waits on M5.1 and M5.3. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved. Token listing is approved and its tests are queued, not done. Nothing here adopts CL-WORK or CL-REVIEW.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M4.1b is done on main (`db30c3872b1c4a5855d285d49f6526fec418e085`, #336). OPENAPI-V1 is done on main (`30f08e333c45e7e7292955fa877c702fbef6374a`, #334). #329 is closed. M3.7 is done on main (#324 and #338, `a93e1bc16f1c1cd99ee367eaeb44f07f914c0635`). M5.1 was partially started. Its dependencies are done, and the partial pilot stays off main. M5.3 waits on M5.2. M5.5 waits on M5.1 and M5.3. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved. Token listing is approved and its tests are queued, not done. Nothing here adopts CL-WORK or CL-REVIEW.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

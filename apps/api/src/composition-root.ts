@@ -9,7 +9,6 @@ import { openDatabase } from './platform/database/database.js';
 import { createInMemoryUnitOfWork } from './platform/unit-of-work/in-memory-unit-of-work.js';
 import {
   createSqliteUnitOfWork,
-  libsqlWriteClient,
   type UnitOfWorkLogger,
   type WriteClient,
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
@@ -176,7 +175,7 @@ const createPasswordHasher = (
 };
 
 export const createInfrastructure = (config: AppConfig): Infrastructure => {
-  const { database, client } = openDatabase(config.database);
+  const { database, writeClient } = openDatabase(config.database);
 
   const clock = createClock(config.infrastructure.clock);
   const idGenerator = createIdGenerator(config.infrastructure.idGenerator);
@@ -186,7 +185,7 @@ export const createInfrastructure = (config: AppConfig): Infrastructure => {
 
   return {
     database,
-    writeClient: libsqlWriteClient(client),
+    writeClient,
     clock,
     idGenerator,
     passwordHasher,

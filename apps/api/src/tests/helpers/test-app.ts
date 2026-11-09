@@ -12,10 +12,9 @@ import type { AppConfig } from '../../platform/config/schema.js';
 import { insertTestUserSession } from './seed-test-user-session.js';
 
 /**
- * libsql drops the schema of a `:memory:` database across `client.transaction()`.
- * Capture commands commit through that transaction, so a memory client loses the
- * token row on the next request. Each app gets its own file. Callers that already
- * pass a file or Turso database keep it.
+ * Each bootstrapped app gets its own file so its rows stay put for the whole
+ * process and the file can be deleted on close. Callers that already pass a
+ * file or Turso database keep it.
  */
 const fileBacked = (config: AppConfig): AppConfig => {
   if (config.database.type !== 'memory') {

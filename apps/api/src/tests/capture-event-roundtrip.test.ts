@@ -8,10 +8,7 @@ import type { Actor } from '../kernel/auth-context.js';
 import { openDatabase } from '../platform/database/database.js';
 import { migrations } from '../platform/database/migrations/index.js';
 import { runMigrations } from '../platform/database/migrator.js';
-import {
-  createSqliteUnitOfWork,
-  libsqlWriteClient,
-} from '../platform/unit-of-work/sqlite-unit-of-work.js';
+import { createSqliteUnitOfWork } from '../platform/unit-of-work/sqlite-unit-of-work.js';
 import { captureProcessedIntegrationEvent } from '../modules/captures/application/integration-events/to-capture-integration-event.js';
 import { createCaptures } from '../modules/captures/application/create-captures.js';
 import { captureWork } from '../modules/captures/application/support/commit-capture.js';
@@ -49,7 +46,7 @@ const openFileDatabase = async () => {
   const store = await createSqliteCaptureStore(opened.database, clock);
   const ids = createFakeIdGenerator();
   const unitOfWork = createSqliteUnitOfWork({
-    client: libsqlWriteClient(opened.client),
+    client: opened.writeClient,
     participants: [historySqlParticipant, capturesSqlParticipant],
     sink: createHistoryEventSink({ ids, builders: CAPTURE_TIMELINE_BUILDERS }),
   });

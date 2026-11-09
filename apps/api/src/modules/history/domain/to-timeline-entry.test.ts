@@ -241,6 +241,33 @@ const recordForKind = (kind: ChangeLogKind): ChangeLogRecord => {
         hidden: hiddenFor('NoteDeleted'),
         payload: { title: 'Meeting notes' },
       };
+    case 'CaptureCreated':
+      return { ...base, subjectType: 'capture', kind, hidden: false, payload: { content: 'Hello' } };
+    case 'CaptureContentUpdated':
+      return { ...base, subjectType: 'capture', kind, hidden: false, payload: { content: 'Hello' } };
+    case 'CaptureSnoozed':
+      return {
+        ...base,
+        subjectType: 'capture',
+        kind,
+        hidden: false,
+        payload: { until: '2026-11-08T00:00:00.000Z' },
+      };
+    case 'CaptureTrashEmptied':
+      return { ...base, subjectType: 'capture', kind, hidden: false, payload: { deletedCount: 1 } };
+    case 'CaptureProcessed':
+      return {
+        ...base,
+        subjectType: 'capture',
+        kind,
+        hidden: false,
+        payload: { processedToType: 'task', processedToId: 'task-1' },
+      };
+    case 'CaptureTrashed':
+    case 'CaptureRestored':
+    case 'CaptureUnsnoozed':
+    case 'CaptureDeleted':
+      return { ...base, subjectType: 'capture', kind, hidden: false, payload: {} };
   }
 };
 
@@ -254,7 +281,16 @@ describe('toTimelineEntry', () => {
       kind === 'OpenTasksRenumbered' ||
       kind === 'NamedListCreated' ||
       kind === 'NamedListRenamed' ||
-      kind === 'NamedListDeleted'
+      kind === 'NamedListDeleted' ||
+      kind === 'CaptureCreated' ||
+      kind === 'CaptureContentUpdated' ||
+      kind === 'CaptureTrashed' ||
+      kind === 'CaptureRestored' ||
+      kind === 'CaptureSnoozed' ||
+      kind === 'CaptureUnsnoozed' ||
+      kind === 'CaptureDeleted' ||
+      kind === 'CaptureTrashEmptied' ||
+      kind === 'CaptureProcessed'
     ) {
       expect(mapped).toBeNull();
       return;

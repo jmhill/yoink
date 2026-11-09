@@ -26,6 +26,15 @@ export const CHANGE_LOG_KINDS = [
   'NoteCreated',
   'NoteUpdated',
   'NoteDeleted',
+  'CaptureCreated',
+  'CaptureContentUpdated',
+  'CaptureTrashed',
+  'CaptureRestored',
+  'CaptureSnoozed',
+  'CaptureUnsnoozed',
+  'CaptureDeleted',
+  'CaptureTrashEmptied',
+  'CaptureProcessed',
 ] as const;
 
 export type ChangeLogKind = (typeof CHANGE_LOG_KINDS)[number];

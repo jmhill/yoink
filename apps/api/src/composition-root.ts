@@ -9,21 +9,25 @@ import { openDatabase } from './platform/database/database.js';
 import { createInMemoryUnitOfWork } from './platform/unit-of-work/in-memory-unit-of-work.js';
 import {
   createSqliteUnitOfWork,
-  libsqlWriteClient,
   type UnitOfWorkLogger,
   type WriteClient,
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
 import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
-import { EMPTY_EVENT_SINK_MAP } from './modules/history/domain/event-sink.js';
+import { CAPTURE_TIMELINE_BUILDERS } from './modules/history/domain/capture-timeline.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
 import { createAccess } from './access/index.js';
 import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
 import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
 import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
-import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
-import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
-import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
+import { createCaptures } from './modules/captures/index.js';
+import { createFakeCaptureParticipant } from './modules/captures/infrastructure/fakes/fake-capture-participant.js';
+import { createFakeCaptureStore } from './modules/captures/infrastructure/fakes/fake-capture-store.js';
+import { capturesSqlParticipant } from './modules/captures/infrastructure/persistence/capture-sql-participant.js';
+import {
+  countTrashedCaptures,
+  createSqliteCaptureStore,
+} from './modules/captures/infrastructure/persistence/sqlite-capture-store.js';
 import { createListHandlers } from './lists/application/create-list-handlers.js';
 import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
 import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
@@ -171,7 +175,7 @@ const createPasswordHasher = (
 };
 
 export const createInfrastructure = (config: AppConfig): Infrastructure => {
-  const { database, client } = openDatabase(config.database);
+  const { database, writeClient } = openDatabase(config.database);
 
   const clock = createClock(config.infrastructure.clock);
   const idGenerator = createIdGenerator(config.infrastructure.idGenerator);
@@ -181,7 +185,7 @@ export const createInfrastructure = (config: AppConfig): Infrastructure => {
 
   return {
     database,
-    writeClient: libsqlWriteClient(client),
+    writeClient,
     clock,
     idGenerator,
     passwordHasher,
@@ -491,11 +495,35 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   // Create capture store and service (async initialization)
   const captureStore = await createSqliteCaptureStore(database, clock);
-  const captureHandlers = createCaptureHandlers({
-    persist: createStoreBackedPersist(captureStore),
+  const historySink = createHistoryEventSink({
+    ids: idGenerator,
+    builders: CAPTURE_TIMELINE_BUILDERS,
+  });
+  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
+  const unitOfWork = createSqliteUnitOfWork({
+    client: writeClient,
+    participants: [accessSqlParticipant, historySqlParticipant, capturesSqlParticipant],
+    sink: historySink,
+    logger: {
+      error: (fields) => {
+        batchLog.error?.(fields);
+      },
+    },
+  });
+  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
+    participants: [
+      createFakeSignupParticipant(),
+      createFakeHistoryParticipant(),
+      createFakeCaptureParticipant(createFakeCaptureStore()),
+    ],
+    sink: historySink,
+  });
+  const captures = createCaptures({
     load: (id) => captureStore.findById(id),
     list: (options) => captureStore.findByOrganization(options),
-    nextId: () => idGenerator.generate(),
+    countTrashed: (organizationId) => countTrashedCaptures(database, organizationId),
+    uow: unitOfWork,
+    ids: idGenerator,
     now: () => clock.now().toISOString(),
   });
 
@@ -717,25 +745,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     };
   }
 
-  const historySink = createHistoryEventSink({
-    ids: idGenerator,
-    builders: EMPTY_EVENT_SINK_MAP,
-  });
-  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
-  const unitOfWork = createSqliteUnitOfWork({
-    client: writeClient,
-    participants: [accessSqlParticipant, historySqlParticipant],
-    sink: historySink,
-    logger: {
-      error: (fields) => {
-        batchLog.error?.(fields);
-      },
-    },
-  });
-  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
-    participants: [createFakeSignupParticipant(), createFakeHistoryParticipant()],
-    sink: historySink,
-  });
   const passkeyService = signupDraft?.passkeyService;
   const access = createAccess({
     tokenService,
@@ -782,7 +791,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   const server = await createApp({
     app: options.app ?? app,
-    captureHandlers,
+    captures,
     listHandlers,
     projectHandlers,
     noteHandlers,

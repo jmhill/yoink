@@ -16,6 +16,12 @@ import {
   noteCreatedPayloadV1Schema,
   noteUpdatedPayloadV1Schema,
   noteDeletedPayloadV1Schema,
+  captureCreatedPayloadV1Schema,
+  captureContentUpdatedPayloadV1Schema,
+  captureEmptyPayloadV1Schema,
+  captureProcessedPayloadV1Schema,
+  captureSnoozedPayloadV1Schema,
+  captureTrashEmptiedPayloadV1Schema,
   openTasksRenumberedPayloadV1Schema,
   openTasksReorderedPayloadV1Schema,
   taskCompletedPayloadV1Schema,
@@ -218,6 +224,48 @@ export const noteDeletedRecordSchema = z.object({
   payload: noteDeletedPayloadV1Schema,
 });
 
+const captureRecord = <K extends string, P extends z.ZodType>(kind: K, payload: P) =>
+  z.object({
+    ...envelope,
+    kind: z.literal(kind),
+    ...visibleV1,
+    payload,
+  });
+
+export const captureCreatedRecordSchema = captureRecord(
+  'CaptureCreated',
+  captureCreatedPayloadV1Schema
+);
+export const captureContentUpdatedRecordSchema = captureRecord(
+  'CaptureContentUpdated',
+  captureContentUpdatedPayloadV1Schema
+);
+export const captureTrashedRecordSchema = captureRecord('CaptureTrashed', captureEmptyPayloadV1Schema);
+export const captureRestoredRecordSchema = captureRecord(
+  'CaptureRestored',
+  captureEmptyPayloadV1Schema
+);
+export const captureSnoozedRecordSchema = captureRecord(
+  'CaptureSnoozed',
+  captureSnoozedPayloadV1Schema
+);
+export const captureUnsnoozedRecordSchema = captureRecord(
+  'CaptureUnsnoozed',
+  captureEmptyPayloadV1Schema
+);
+export const captureDeletedRecordSchema = captureRecord(
+  'CaptureDeleted',
+  captureEmptyPayloadV1Schema
+);
+export const captureTrashEmptiedRecordSchema = captureRecord(
+  'CaptureTrashEmptied',
+  captureTrashEmptiedPayloadV1Schema
+);
+export const captureProcessedRecordSchema = captureRecord(
+  'CaptureProcessed',
+  captureProcessedPayloadV1Schema
+);
+
 export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   taskCreatedRecordSchema,
   taskUpdatedRecordSchema,
@@ -243,6 +291,15 @@ export const changeLogRecordSchema = z.discriminatedUnion('kind', [
   noteCreatedRecordSchema,
   noteUpdatedRecordSchema,
   noteDeletedRecordSchema,
+  captureCreatedRecordSchema,
+  captureContentUpdatedRecordSchema,
+  captureTrashedRecordSchema,
+  captureRestoredRecordSchema,
+  captureSnoozedRecordSchema,
+  captureUnsnoozedRecordSchema,
+  captureDeletedRecordSchema,
+  captureTrashEmptiedRecordSchema,
+  captureProcessedRecordSchema,
 ]);
 
 export type ChangeLogRecord = z.infer<typeof changeLogRecordSchema>;

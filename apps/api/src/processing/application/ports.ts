@@ -3,7 +3,7 @@ import type { Capture, NamedList, Project } from '@yoink/api-contracts';
 import type {
   CaptureNotInInboxError,
   StorageError as CaptureStorageError,
-} from '../../captures/domain/capture-errors.js';
+} from '../../modules/captures/domain/messages/capture-errors.js';
 import type {
   DuplicateProjectNameError,
   StorageError as ProjectStorageError,

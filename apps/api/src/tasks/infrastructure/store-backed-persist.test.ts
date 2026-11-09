@@ -3,7 +3,7 @@ import { errAsync } from 'neverthrow';
 import { createFakeTaskStore } from './fake-task-store.js';
 import { createStoreBackedPersist } from './store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../modules/history/testing.js';
-import { createFakeCaptureStore } from '../../captures/infrastructure/fake-capture-store.js';
+import { createFakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
 import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
 import { planProjectChange } from '../../projects/domain/plan-project-change.js';
 import { planTaskChange } from '../domain/plan-task-change.js';

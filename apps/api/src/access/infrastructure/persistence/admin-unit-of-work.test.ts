@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { okAsync } from 'neverthrow';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createFakeClock, createFakeIdGenerator, createFakePasswordHasher } from '@yoink/infrastructure';
 import type { Client } from '@libsql/client';
@@ -169,6 +170,44 @@ describe('admin unit of work', () => {
       expect(result.error.owner).toBe('access');
       expect(result.error.owners).toEqual(['access']);
     }
+    expect(await count('SELECT COUNT(*) AS n FROM users')).toBe(0);
+    expect(await count('SELECT COUNT(*) AS n FROM organization_memberships')).toBe(0);
+  });
+
+  it('leaves no user row when createUser membership save fails', async () => {
+    const service = createAdminService({
+      organizationStore: {
+        findById: () => okAsync(organization),
+        save: () => okAsync(undefined),
+        findAll: () => okAsync([]),
+      },
+      organizationMembershipStore: await createSqliteOrganizationMembershipStore(db),
+      userStore: await createSqliteUserStore(db),
+      invitationStore: await createSqliteInvitationStore(db),
+      tokenStore: await createSqliteTokenStore(db),
+      projectStore: {
+        updateCreatedAt: () => {
+          throw new Error('project writes stay on the project store');
+        },
+        findById: () => {
+          throw new Error('project reads stay on the project store');
+        },
+      } as never,
+      clock: createFakeClock(new Date(NOW)),
+      idGenerator: createFakeIdGenerator(),
+      passwordHasher: createFakePasswordHasher(),
+      unitOfWork: createSqliteUnitOfWork({
+        client: libsqlWriteClient(client),
+        participants: [accessSqlParticipant],
+      }),
+    });
+
+    const created = await service.createUser({
+      organizationId: ORG,
+      email: 'ada@example.com',
+    });
+
+    expect(created.isErr() && created.error.type).toBe('USER_STORAGE_ERROR');
     expect(await count('SELECT COUNT(*) AS n FROM users')).toBe(0);
     expect(await count('SELECT COUNT(*) AS n FROM organization_memberships')).toBe(0);
   });

@@ -54,9 +54,9 @@ export type AdminServiceDependencies = {
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;
   /**
-   * Absent until the composition root can pass the sqlite unit of work.
-   * Plans then go through the access SQL participant. Until then the same
-   * plans are applied through these stores.
+   * The composition root passes the sqlite unit of work. Plans then go
+   * through the access SQL participant. Tests may omit it and apply the
+   * same plans through these stores.
    */
   unitOfWork?: UnitOfWork;
 };
@@ -112,10 +112,10 @@ const toApiTokenView = (token: ApiToken): ApiTokenView => {
 };
 
 /**
- * Reads stay on the stores. Writes are one plan. Without `unitOfWork` the
- * plan is applied through those stores, which is what the composition root
- * still constructs. A rename-user Conflict is user-not-found. Callers of
- * other plans do not guard, so they map every failure with `storage`.
+ * Reads stay on the stores. Writes are one plan. With `unitOfWork` the
+ * plan commits through the access participant. Without it the plan is
+ * applied through those stores. A rename-user Conflict is user-not-found.
+ * Callers of other plans do not guard, so they map every failure with `storage`.
  */
 export const createAdminService = (deps: AdminServiceDependencies): AdminService => {
   const persist = <E>(

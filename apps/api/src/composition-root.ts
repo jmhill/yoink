@@ -732,6 +732,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       clock,
       idGenerator,
       passwordHasher,
+      unitOfWork,
     });
 
     admin = {

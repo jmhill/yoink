@@ -71,6 +71,35 @@ describe('openDatabase', () => {
     await database.close();
   });
 
+  it('serves a query while a write transaction is still open', async () => {
+    const root = join(tmpdir(), `yoink-db-${randomUUID()}`);
+    cleanupPath = root;
+    const { database, writeClient } = openDatabase({
+      type: 'file',
+      path: join(root, 'captures.db'),
+    });
+    await database.execute({
+      sql: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)',
+    });
+
+    const tx = await writeClient.transaction('write');
+    await tx.batch([{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['held'] }]);
+    const read = database.execute({ sql: 'SELECT COUNT(*) AS n FROM notes' });
+    const winner = await Promise.race([
+      read.then(() => 'read' as const),
+      new Promise<'blocked'>((resolve) => {
+        setTimeout(() => resolve('blocked'), 500);
+      }),
+    ]);
+
+    expect(winner).toBe('read');
+    const count = await read;
+    expect(Number(count.rows[0]?.n)).toBe(0);
+    await tx.rollback();
+    tx.close();
+    await database.close();
+  });
+
   it('does not keep a native connection for every write transaction', async () => {
     const root = join(tmpdir(), `yoink-db-${randomUUID()}`);
     cleanupPath = root;

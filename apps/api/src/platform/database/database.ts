@@ -31,9 +31,9 @@ const createClientFor = (config: DatabaseConfig): Client => {
 type Release = () => void;
 
 /**
- * One libsql client is not safe for an open `transaction('write')` beside
- * `execute`. The native binding segfaults when those overlap. This gate
- * runs one turn at a time. A transaction holds its turn until `close`.
+ * One libsql client is not safe for an open transaction beside `execute`.
+ * The native binding segfaults when those overlap. This gate runs one turn
+ * at a time on that client. A transaction holds its turn until `close`.
  */
 const createClientGate = (): {
   acquire: () => Promise<Release>;
@@ -73,12 +73,25 @@ const mapResult = (result: {
   lastInsertRowid: result.lastInsertRowid ?? undefined,
 });
 
+const journalWal = (client: Client): (() => Promise<void>) => {
+  let pending: Promise<void> | undefined;
+  return () => {
+    pending ??= client
+      .execute('PRAGMA busy_timeout = 5000')
+      .then(() => client.execute('PRAGMA journal_mode = WAL'))
+      .then(() => undefined);
+    return pending;
+  };
+};
+
 const databaseFrom = (
   client: Client,
-  gate: ReturnType<typeof createClientGate>
+  gate: ReturnType<typeof createClientGate>,
+  before?: () => Promise<void>
 ): Database => ({
   execute: (query): Promise<QueryResult> =>
     gate.exclusive(async () => {
+      await before?.();
       const result = await client.execute({
         sql: query.sql,
         args: (query.args ?? []) as InValue[],
@@ -88,6 +101,7 @@ const databaseFrom = (
 
   batch: (queries, mode = 'write'): Promise<QueryResult[]> =>
     gate.exclusive(async () => {
+      await before?.();
       const results = await client.batch(
         queries.map((q) => ({
           sql: q.sql,
@@ -112,7 +126,8 @@ const databaseFrom = (
  */
 const sameConnectionTransaction = (
   client: Client,
-  release: Release
+  release: Release,
+  before?: () => Promise<void>
 ): Promise<WriteTransaction> => {
   let finished = false;
   const finish = (): void => {
@@ -127,7 +142,10 @@ const sameConnectionTransaction = (
     await client.execute('ROLLBACK');
   };
 
-  return client.execute('BEGIN IMMEDIATE').then(
+  return Promise.resolve()
+    .then(() => before?.())
+    .then(() => client.execute('BEGIN IMMEDIATE'))
+    .then(
     () => {
       open = true;
       return {
@@ -209,21 +227,23 @@ const remoteTransaction = async (
 const gatedWriteClient = (
   client: Client,
   gate: ReturnType<typeof createClientGate>,
-  remote: boolean
+  remote: boolean,
+  before?: () => Promise<void>
 ): WriteClient => ({
   transaction: async (mode): Promise<WriteTransaction> => {
     const release = await gate.acquire();
     if (remote) {
       return remoteTransaction(client, mode, release);
     }
-    return sameConnectionTransaction(client, release);
+    return sameConnectionTransaction(client, release, before);
   },
 });
 
 /**
- * One client for queries and for the unit of work. `writeClient` shares
- * that client's gate, so a transaction and a query do not overlap.
- * A second `:memory:` client is a different database.
+ * File databases use two connections to the same file. Queries keep their
+ * own gate, so a signup read is not queued behind every open commit.
+ * `:memory:` cannot do that: a second client is a different database, so
+ * memory and remote share one connection and one gate.
  */
 export const openDatabase = (
   config: DatabaseConfig
@@ -232,12 +252,37 @@ export const openDatabase = (
   readonly client: Client;
   readonly writeClient: WriteClient;
 } => {
-  const client = createClientFor(config);
-  const gate = createClientGate();
+  if (config.type !== 'file') {
+    const client = createClientFor(config);
+    const gate = createClientGate();
+    return {
+      database: databaseFrom(client, gate),
+      client,
+      writeClient: gatedWriteClient(client, gate, config.type === 'turso'),
+    };
+  }
+
+  const readClient = createClientFor(config);
+  const writeNative = createClientFor(config);
+  const readGate = createClientGate();
+  const writeGate = createClientGate();
+  const database = databaseFrom(readClient, readGate, journalWal(readClient));
   return {
-    database: databaseFrom(client, gate),
-    client,
-    writeClient: gatedWriteClient(client, gate, config.type === 'turso'),
+    database: {
+      execute: database.execute,
+      batch: database.batch,
+      close: async () => {
+        await database.close();
+        const release = await writeGate.acquire();
+        try {
+          writeNative.close();
+        } finally {
+          release();
+        }
+      },
+    },
+    client: readClient,
+    writeClient: gatedWriteClient(writeNative, writeGate, false, journalWal(writeNative)),
   };
 };
 

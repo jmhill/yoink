@@ -69,6 +69,7 @@ export const createSqliteUserStore = async (db: Database): Promise<UserStore> =>
         db.execute({
           sql: `SELECT * FROM users WHERE id = ?`,
           args: [id],
+          access: 'read',
         }),
         (error) => userStorageError('Failed to find user', error)
       ).map((result) => {

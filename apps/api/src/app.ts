@@ -1,4 +1,5 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyInstance } from 'fastify';
+import type { FastifyLoggerOptions, PinoLoggerOptions } from 'fastify/types/logger.js';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -68,7 +69,7 @@ import {
   type CookieConfig,
 } from './platform/config/schema.js';
 import type { Database } from './platform/database/types.js';
-import { createLoggerOptions } from './platform/logging/index.js';
+import { createLoggerOptions, registerRequestCompletedLog } from './platform/logging/index.js';
 import { shouldHandleError } from './platform/logging/should-handle-error.js';
 import { applyStaticCacheHeaders, NEVER_CACHE_CONTROL } from './edges/_shared/server/static-cache-control.js';
 import { decideSpaFallback } from './edges/_shared/server/spa-fallback.js';
@@ -143,12 +144,17 @@ export type AppDependencies = {
   viaFly?: boolean;
 };
 
-export const createFastifyInstance = (log: LogConfig): FastifyInstance => {
+export const createFastifyInstance = (
+  log: LogConfig,
+  logger: PinoLoggerOptions & FastifyLoggerOptions = {}
+): FastifyInstance => {
   const app = Fastify({
-    logger: createLoggerOptions(log),
+    logger: { ...createLoggerOptions(log), ...logger },
     trustProxy: trustImmediateProxy,
+    logController: new LogController({ disableRequestLogging: true }),
   });
   registerJsonBodyParser(app);
+  registerRequestCompletedLog(app);
   return app;
 };
 

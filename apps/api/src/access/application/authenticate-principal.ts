@@ -44,14 +44,10 @@ export const authenticatedSessionFrom = (
   session,
 });
 
-/** Same answer the token middleware gives today: any failure is unauthenticated. */
+/** Pass the closed token error through. The auth edge maps each case. */
 export const authenticateTokenWith =
   (tokenService: TokenService): AuthenticateToken =>
-  (plaintext) =>
-    tokenService
-      .validateToken({ plaintext })
-      .map(authenticatedTokenFrom)
-      .mapErr(() => ({ type: 'UNAUTHENTICATED' as const }));
+  (plaintext) => tokenService.validateToken({ plaintext }).map(authenticatedTokenFrom);
 
 export const authenticateSessionWith =
   (sessionService: SessionService): AuthenticateSession =>

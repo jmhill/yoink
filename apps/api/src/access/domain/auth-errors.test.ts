@@ -80,6 +80,7 @@ describe('auth-errors', () => {
 
       expect(error.type).toBe('TOKEN_NOT_FOUND');
       expect(error.tokenId).toBe('token-123');
+      expect(error.subject).toBe('token');
     });
   });
 

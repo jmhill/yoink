@@ -82,6 +82,7 @@ export const createSqliteOrganizationStore = async (
         db.execute({
           sql: `SELECT * FROM organizations WHERE id = ?`,
           args: [id],
+          access: 'read',
         }),
         (error) => organizationStorageError('Failed to find organization', error)
       ).andThen((result) => {

@@ -801,7 +801,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.11-history` | `M5.10-history` | — | Not started | None. | [#265](https://github.com/jmhill/yoink/issues/265) |
 | `M5.11-access` | `M5.13-user` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
 | `M5.12` | `M4.3`, `M3.5` | — | Done ([#342](https://github.com/jmhill/yoink/pull/342), `bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`). | None. Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. | [#267](https://github.com/jmhill/yoink/issues/267) |
-| `M5.13-admin` | `M5.12` | — | Not started | None. | [#268](https://github.com/jmhill/yoink/issues/268) |
+| `M5.13-admin` | `M5.12` | — | Done. `createAdminService` decides, then commits an access plan. The composition root still constructs it without `unitOfWork`, so those plans are applied through the stores until that argument is passed. | None. | [#268](https://github.com/jmhill/yoink/issues/268) |
 | `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
 | `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | [#270](https://github.com/jmhill/yoink/issues/270) |
 | `M5.13-invitation` | `M5.12` | `M5.13-agent` | Not started | None. | [#271](https://github.com/jmhill/yoink/issues/271) |

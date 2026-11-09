@@ -8,7 +8,7 @@ import {
   THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
 import { adminProtectedOrpcContract, adminPublicOrpcContract } from '@yoink/api-contracts/orpc';
-import type { AdminService } from '../../../access/domain/admin-service.js';
+import type { AdminService } from '../../../access/application/handle-admin.js';
 import type { AdminServiceError } from '../../../access/domain/admin-errors.js';
 import type { AdminSessionService } from '../../../access/domain/admin-session-service.js';
 import type { InvitationService } from '../../../access/domain/invitation-service.js';

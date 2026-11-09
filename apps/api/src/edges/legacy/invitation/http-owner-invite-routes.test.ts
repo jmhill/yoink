@@ -38,7 +38,7 @@ import { ADMIN_SESSION_COOKIE } from '../../_shared/auth/admin-session-middlewar
 import { registerAdminRoutes } from '../admin/admin-routes.js';
 import { registerInvitationRoutes } from './invitation-routes.js';
 import { createAdminSessionService } from '../../../access/domain/admin-session-service.js';
-import { createAdminService } from '../../../access/domain/admin-service.js';
+import { createAdminService } from '../../../access/application/handle-admin.js';
 import { createInvitationService } from '../../../access/domain/invitation-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/domain/membership-service.js';

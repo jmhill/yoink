@@ -29,7 +29,7 @@ export { createPasskeyService, type PasskeyService } from './passkey-service.js'
 export { createSignupService, type SignupService } from './signup-service.js';
 
 // Super-admin services
-export { createAdminService, type AdminService } from './admin-service.js';
+export { createAdminService, type AdminService } from '../application/handle-admin.js';
 export {
   createAdminSessionService,
   type AdminSessionService,

@@ -707,7 +707,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [ ] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module
 - [x] M5.12 Access: interface, unit of work, signup atomicity (done, #342, `bf10fb6d`; interim adapters deferred)
-- [ ] M5.13 Access: migrate legacy services (closes 8.5.4)
+- [ ] M5.13 Access: migrate legacy services (closes 8.5.4). M5.13-admin is in review (PR #345); the other access services are not.
 
 ### M6: Client edges - Not started
 - [ ] M6.1 Extension edge (`/extension-api/v1/`)
@@ -2118,7 +2118,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M4.1b is done on main (`db30c3872b1c4a5855d285d49f6526fec418e085`, #336). OPENAPI-V1 is done on main (`30f08e333c45e7e7292955fa877c702fbef6374a`, #334). #329 is closed. M3.7 is done on main (#324 and #338, `a93e1bc16f1c1cd99ee367eaeb44f07f914c0635`). M5.1 is done on main (`72780cac9169dd24ab1403ae69395da72f9ee253`, #343). M5.3 waits on M5.2. M5.5 waits on M5.3. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved. TOKEN-LIST is done on main (`dc7da8044357eda0887f9a9fc7e86acb002b3a58`, #340). #327 is closed. M5.12 is done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, #342). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. Nothing here adopts CL-WORK or CL-REVIEW.
+Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M4.1b is done on main (`db30c3872b1c4a5855d285d49f6526fec418e085`, #336). OPENAPI-V1 is done on main (`30f08e333c45e7e7292955fa877c702fbef6374a`, #334). #329 is closed. M3.7 is done on main (#324 and #338, `a93e1bc16f1c1cd99ee367eaeb44f07f914c0635`). M5.1 is done on main (`72780cac9169dd24ab1403ae69395da72f9ee253`, #343). M5.3 waits on M5.2. M5.5 waits on M5.3. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) and Review-policy ownership (CL-REVIEW) stay unapproved. TOKEN-LIST is done on main (`dc7da8044357eda0887f9a9fc7e86acb002b3a58`, #340). #327 is closed. M5.12 is done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, #342). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. Nothing here adopts CL-WORK or CL-REVIEW. M5.13-admin is in review (PR #345).
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

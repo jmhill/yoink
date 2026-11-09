@@ -518,7 +518,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 
-**Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267).
+**Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267). Done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, [#342](https://github.com/jmhill/yoink/pull/342)). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here.
 
 - **Depends on:** M4.3, M3.5
 - **Do:**
@@ -526,7 +526,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
   - Publish queries for other modules and edges: authenticate token, authenticate session, organization time zone, principal exists in organization, user display names.
   - Signup (user + organization + memberships + passkey + session) commits as **one** unit-of-work batch, replacing 8.5.6's `UserIdentityStore` idea.
   - Merge the duplicated error factories in `admin-errors.ts` (from 8.5.4).
-  - Replace the interim access adapters created in M5.3, M5.7 and M5.10 with adapters over the new queries.
+  - Replacing the interim access adapters from M5.3, M5.7, and M5.10 is deferred until those tasks exist. It was a no-op here.
 - **Accept:** standard checklist complete. Signup has an atomicity test (a failure in the last step leaves no rows behind). Signup creates the user with one guarded insert in that same batch (`INSERT … SELECT … WHERE NOT EXISTS`, or the equivalent guard). A unique-email race, the email already taken, is `Conflict` for the access module. It is not a thrown constraint and not HTTP 500. `edges/_shared/auth` uses access's interface.
 
 ### M5.13 Access: migrate legacy services (closes 8.5.4)
@@ -800,7 +800,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |
 | `M5.11-history` | `M5.10-history` | — | Not started | None. | [#265](https://github.com/jmhill/yoink/issues/265) |
 | `M5.11-access` | `M5.13-user` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
-| `M5.12` | `M4.3`, `M3.5` | — | In review | Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. | [#267](https://github.com/jmhill/yoink/issues/267) |
+| `M5.12` | `M4.3`, `M3.5` | — | Done ([#342](https://github.com/jmhill/yoink/pull/342), `bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`). | None. Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. | [#267](https://github.com/jmhill/yoink/issues/267) |
 | `M5.13-admin` | `M5.12` | — | Not started | None. | [#268](https://github.com/jmhill/yoink/issues/268) |
 | `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
 | `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | [#270](https://github.com/jmhill/yoink/issues/270) |

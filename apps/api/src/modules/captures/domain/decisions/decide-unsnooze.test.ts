@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideUnsnoozeCapture } from './decide-unsnooze.js';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 
 const snoozedCapture: Capture = {
   id: 'capture-123',

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyCaptureEvent } from './apply-capture-event.js';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { CaptureCreated } from '../messages/events.js';
 
 const current: Capture = {

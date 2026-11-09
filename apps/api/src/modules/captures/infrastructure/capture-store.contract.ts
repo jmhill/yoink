@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../domain/model/capture.js';
 import type { CaptureStore } from './persistence/capture-store.js';
 import { captureFeedKeys } from '../../../kernel/listing/domain/list-keys.js';
 

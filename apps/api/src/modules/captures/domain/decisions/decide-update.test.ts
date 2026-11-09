@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideUpdateCapture } from './decide-update.js';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 
 const capture: Capture = {
   id: 'capture-123',

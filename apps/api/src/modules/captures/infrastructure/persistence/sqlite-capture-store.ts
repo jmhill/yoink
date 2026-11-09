@@ -1,13 +1,13 @@
 import type { Database } from '../../../../platform/database/types.js';
 import { Result, ResultAsync, err, errAsync, ok, okAsync } from 'neverthrow';
 import { z } from 'zod';
+import type { Clock } from '../../../../kernel/clock.js';
 import {
-  CaptureStatusSchema,
-  ProcessedToTypeSchema,
+  CAPTURE_STATUSES,
+  PROCESSED_TO_TYPES,
   type Capture,
   type ProcessedToType,
-} from '@yoink/api-contracts';
-import type { Clock } from '@yoink/infrastructure';
+} from '../../domain/model/capture.js';
 import type {
   CaptureStore,
   FindByOrganizationOptions,
@@ -21,6 +21,9 @@ import {
   captureFeedDirection,
   snoozedCaptureDirection,
 } from '../../../../kernel/listing/domain/list-keys.js';
+
+const CaptureStatusSchema = z.enum(CAPTURE_STATUSES);
+const ProcessedToTypeSchema = z.enum(PROCESSED_TO_TYPES);
 
 const CaptureRowSchema = z.object({
   id: z.string(),

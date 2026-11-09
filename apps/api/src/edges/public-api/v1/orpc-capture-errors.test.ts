@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { invalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
 import { yoinkErrorBody } from '../../_shared/orpc/yoink-error-body.js';
-import { storageError } from '../../../modules/captures/domain/messages/capture-errors.js';
+import { storageError } from '../../../modules/captures/index.js';
 import {
   mapAgentCaptureRefusal,
   mapCreateCaptureError,

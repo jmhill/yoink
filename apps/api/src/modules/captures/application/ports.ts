@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Capture, CaptureStatus } from '@yoink/api-contracts';
+import type { Capture, CaptureStatus } from '../domain/model/capture.js';
 import type { IdGenerator } from '../../../kernel/id-generator.js';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';

@@ -111,16 +111,22 @@ const elements = [
   // Those rules would warn on imports this code already has. This descriptor
   // is first, so the current history element wins. M5.10-history removes it.
   { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
-  // M5.1 moved captures to src/modules/captures. Target layer rules disallow
-  // @yoink/api-contracts, which this module still imports until M5.11-captures.
-  // Turning those rules on would add a warning per import. This descriptor is
-  // first, so the current captures element wins. M5.11-captures removes it.
-  { type: 'captures', pattern: 'src/modules/captures/**', mode: 'full' },
+  // M5.11-captures removed the src/modules/captures/** current element.
+  // The folder-mode src/captures/** pattern below stays for boundary fixtures.
+  //
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {
     type: 'module-test',
     pattern: 'src/modules/([^/]+)/**/*.test.ts',
+    mode: 'full',
+    capture: ['module'],
+  },
+  // ADR §4.2 names port contract tests `*.contract.ts`. They are tests, so
+  // they are module-test rather than module-infrastructure.
+  {
+    type: 'module-test',
+    pattern: 'src/modules/([^/]+)/**/*.contract.ts',
     mode: 'full',
     capture: ['module'],
   },
@@ -434,6 +440,10 @@ export default [
               ],
             },
             {
+              // M5.11-captures. Colocated module tests already build the
+              // in-memory unit of work and open the test database. Those
+              // files are platform and platform-database. A store test imports
+              // the port contract file, which is also module-test.
               from: 'module-test',
               allow: [
                 sameModule('module-domain'),
@@ -442,7 +452,10 @@ export default [
                 sameModule('module-fakes'),
                 sameModule('module-entry'),
                 sameModule('module-testing'),
+                sameModule('module-test'),
                 'kernel',
+                'platform',
+                'platform-database',
                 'tests',
               ],
             },
@@ -672,8 +685,14 @@ export default [
             // Colocated tests are not production layers. vitest is the runner.
             // `@yoink/api-contracts` stays off this list, including type-only
             // imports (the plugin's default import nodes include `import type`).
+            // Module tests use the fake clock and id generator. The package
+            // stays off domain, application, and infrastructure.
             {
-              from: ['module-test', 'workflow-test', 'kernel-test'],
+              from: 'module-test',
+              allow: [...domainPackages, 'vitest', '@vitest/*', '@yoink/infrastructure'],
+            },
+            {
+              from: ['workflow-test', 'kernel-test'],
               allow: [...domainPackages, 'vitest', '@vitest/*'],
             },
             {

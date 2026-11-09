@@ -1,4 +1,4 @@
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { UpdateCaptureCommand } from '../messages/capture-commands.js';
 import type { CaptureContentUpdated } from '../messages/events.js';
 

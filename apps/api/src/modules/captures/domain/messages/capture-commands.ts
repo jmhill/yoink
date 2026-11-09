@@ -1,4 +1,5 @@
 import type { Actor } from '../../../../kernel/auth-context.js';
+import type { CaptureStatus } from '../model/capture.js';
 
 export type CreateCaptureCommand = {
   content: string;
@@ -12,7 +13,7 @@ export type CreateCaptureCommand = {
 
 export type ListCapturesQuery = {
   organizationId: string;
-  status?: 'inbox' | 'trashed' | 'processed';
+  status?: CaptureStatus;
   snoozed?: boolean; // true = only snoozed, false = exclude snoozed
   limit?: number;
   cursor?: string;

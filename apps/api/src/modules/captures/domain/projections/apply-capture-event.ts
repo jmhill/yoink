@@ -1,4 +1,4 @@
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { CaptureEvent } from '../messages/events.js';
 
 export const applyCaptureEvent = (

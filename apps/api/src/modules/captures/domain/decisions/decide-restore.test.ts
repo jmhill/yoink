@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decideRestoreCapture } from './decide-restore.js';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 
 const trashedCapture: Capture = {
   id: 'capture-123',

@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { Capture } from '@yoink/api-contracts';
+import type { Capture } from '../model/capture.js';
 import type { DeleteCaptureCommand } from '../messages/capture-commands.js';
 import type { CaptureDeleted } from '../messages/events.js';
 import { captureNotInTrashError, type CaptureNotInTrashError } from '../messages/capture-errors.js';

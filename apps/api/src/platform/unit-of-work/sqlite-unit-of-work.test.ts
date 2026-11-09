@@ -68,12 +68,23 @@ const passthrough = (owner: ModuleName): SqlParticipant<unknown> => ({
   compile: (plan) => [plan as GuardedStatement],
 });
 
+const LEAKED_SECRET = 'sk_live_do_not_log';
+
 type Calls = {
   modes: string[];
   sql: string[];
+  batches: number;
   commit: number;
   rollback: number;
   close: number;
+};
+
+type BatchLog = {
+  readonly msg: 'unit_of_work_batch_failed';
+  readonly reason: string;
+  readonly owners: readonly string[];
+  readonly batchSize: number;
+  readonly cause: string;
 };
 
 const scripted = (options?: {
@@ -82,7 +93,7 @@ const scripted = (options?: {
   readonly failRollback?: boolean;
   readonly failClose?: boolean;
 }): { readonly client: WriteClient; readonly calls: Calls } => {
-  const calls: Calls = { modes: [], sql: [], commit: 0, rollback: 0, close: 0 };
+  const calls: Calls = { modes: [], sql: [], batches: 0, commit: 0, rollback: 0, close: 0 };
   const client: WriteClient = {
     transaction: (mode) => {
       if (options?.failOpen) {
@@ -90,20 +101,31 @@ const scripted = (options?: {
       }
       calls.modes.push(mode);
       const tx: WriteTransaction = {
-        execute: (step) => {
-          calls.sql.push(step.sql);
-          if (step.sql.includes('/*throw*/')) {
-            return Promise.reject({
-              code: 'SQLITE_CONSTRAINT',
-              rawCode: null,
-              index: null,
-              message: 'CHECK constraint failed: ok = 1',
-            });
+        batch: (statements) => {
+          calls.batches += 1;
+          for (const step of statements) {
+            calls.sql.push(step.sql);
           }
-          if (step.sql.includes('/*miss*/')) {
-            return Promise.resolve({ rowsAffected: 0 });
+          if (statements.some((step) => step.sql.includes('/*throw*/'))) {
+            const error = new Error(
+              `CHECK constraint failed: secret-arg=${LEAKED_SECRET}`
+            );
+            error.name = 'LibsqlError';
+            return Promise.reject(
+              Object.assign(error, {
+                code: 'SQLITE_CONSTRAINT',
+                rawCode: null,
+                index: null,
+                sql: statements.map((step) => step.sql).join(';'),
+                args: [LEAKED_SECRET],
+              })
+            );
           }
-          return Promise.resolve({ rowsAffected: 1 });
+          return Promise.resolve(
+            statements.map((step) => ({
+              rowsAffected: step.sql.includes('/*miss*/') ? 0 : 1,
+            }))
+          );
         },
         commit: () => {
           calls.commit += 1;
@@ -208,6 +230,7 @@ describe('createSqliteUnitOfWork protocol', () => {
 
     expect(result.isOk()).toBe(true);
     expect(calls.modes).toEqual(['write']);
+    expect(calls.batches).toBe(1);
     expect(calls.sql).toEqual([OK]);
     expect(calls.commit).toBe(1);
     expect(calls.rollback).toBe(0);
@@ -225,7 +248,7 @@ describe('createSqliteUnitOfWork protocol', () => {
     expect(calls.modes).toEqual([]);
   });
 
-  it('maps a guarded write of zero rows to Conflict and stops', async () => {
+  it('maps a mixed-owner guard miss to Conflict for that statement and rolls the batch back', async () => {
     const { client, calls } = scripted();
     const result = await createSqliteUnitOfWork({ client, participants }).commit([
       work('captures', statement(OK)),
@@ -242,7 +265,8 @@ describe('createSqliteUnitOfWork protocol', () => {
       });
       expect(keysOf(result.error)).toEqual(['kind', 'owner', 'reason']);
     }
-    expect(calls.sql).toEqual([OK, MISS]);
+    expect(calls.batches).toBe(1);
+    expect(calls.sql).toEqual([OK, MISS, AFTER]);
     expect(calls.commit).toBe(0);
     expect(calls.rollback).toBe(1);
     expect(calls.close).toBe(1);
@@ -259,10 +283,15 @@ describe('createSqliteUnitOfWork protocol', () => {
     expect(calls.rollback).toBe(0);
   });
 
-  it('maps a thrown execute to Storage without reading driver fields', async () => {
+  it('maps a mixed-owner batch throw to Storage with no owner and does not log the driver message', async () => {
     const { client, calls } = scripted();
-    const result = await createSqliteUnitOfWork({ client, participants }).commit([
-      work('captures', statement(OK)),
+    const logs: BatchLog[] = [];
+    const result = await createSqliteUnitOfWork({
+      client,
+      participants,
+      logger: { error: (fields) => logs.push(fields) },
+    }).commit([
+      work('captures', statement(OK, [LEAKED_SECRET])),
       work('task-management', statement(THROW)),
       work('captures', statement(AFTER)),
     ]);
@@ -271,15 +300,54 @@ describe('createSqliteUnitOfWork protocol', () => {
     if (result.isErr()) {
       expect(result.error).toEqual({
         kind: 'Storage',
-        owner: 'task-management',
+        owners: ['captures', 'task-management'],
         reason: 'execute-failed',
       });
-      expect(keysOf(result.error)).toEqual(['kind', 'owner', 'reason']);
+      expect(keysOf(result.error)).toEqual(['kind', 'owners', 'reason']);
+      expect(result.error).not.toHaveProperty('code');
+      expect(result.error).not.toHaveProperty('rawCode');
+      expect(result.error).not.toHaveProperty('index');
     }
-    expect(calls.sql).toEqual([OK, THROW]);
+    expect(calls.batches).toBe(1);
+    expect(calls.sql).toEqual([OK, THROW, AFTER]);
     expect(calls.commit).toBe(0);
     expect(calls.rollback).toBe(1);
     expect(calls.close).toBe(1);
+    expect(logs).toEqual([
+      {
+        msg: 'unit_of_work_batch_failed',
+        reason: 'execute-failed',
+        owners: ['captures', 'task-management'],
+        batchSize: 3,
+        cause: 'LibsqlError',
+      },
+    ]);
+    expect(JSON.stringify(logs)).not.toContain(LEAKED_SECRET);
+    expect(JSON.stringify(logs)).not.toContain('CHECK constraint');
+    expect(JSON.stringify(logs)).not.toContain('SQLITE_CONSTRAINT');
+    expect(JSON.stringify(logs)).not.toContain(OK);
+  });
+
+  it('maps a single-owner batch throw to Storage with owner and owners', async () => {
+    const { client, calls } = scripted();
+    const result = await createSqliteUnitOfWork({
+      client,
+      participants: [passthrough('captures')],
+    }).commit([work('captures', statement(THROW))]);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toEqual({
+        kind: 'Storage',
+        owner: 'captures',
+        owners: ['captures'],
+        reason: 'execute-failed',
+      });
+      expect(keysOf(result.error)).toEqual(['kind', 'owner', 'owners', 'reason']);
+    }
+    expect(calls.batches).toBe(1);
+    expect(calls.rollback).toBe(1);
+    expect(calls.commit).toBe(0);
   });
 
   it('closes when rollback throws and still does not commit', async () => {
@@ -327,6 +395,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       expect(result.error).toEqual({
         kind: 'Storage',
         owner: 'captures',
+        owners: ['captures'],
         reason: 'commit-failed',
       });
     }
@@ -358,6 +427,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       expect(result.error).toEqual({
         kind: 'Storage',
         owner: 'captures',
+        owners: ['captures'],
         reason: 'transaction-failed',
       });
     }
@@ -376,9 +446,10 @@ describe('createSqliteUnitOfWork protocol', () => {
     if (result.isErr()) {
       expect(result.error).toEqual({
         kind: 'Storage',
-        owner: 'task-management',
+        owners: ['captures', 'task-management'],
         reason: 'read-rejected',
       });
+      expect('owner' in result.error).toBe(false);
     }
     expect(calls.modes).toEqual([]);
     expect(calls.sql).toEqual([]);
@@ -398,6 +469,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       expect(selected.error).toEqual({
         kind: 'Storage',
         owner: 'captures',
+        owners: ['captures'],
         reason: 'read-rejected',
       });
     }
@@ -406,6 +478,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       expect(pragma.error).toEqual({
         kind: 'Storage',
         owner: 'task-management',
+        owners: ['task-management'],
         reason: 'read-rejected',
       });
     }
@@ -432,7 +505,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       if (result.isErr()) {
         expect(result.error).toEqual({
           kind: 'Storage',
-          owner: 'task-management',
+          owners: ['captures', 'task-management'],
           reason: 'read-rejected',
         });
       }
@@ -452,6 +525,7 @@ describe('createSqliteUnitOfWork protocol', () => {
       expect(result.error).toEqual({
         kind: 'Storage',
         owner: 'notes',
+        owners: ['notes'],
         reason: 'no-participant',
       });
     }
@@ -515,7 +589,7 @@ describe('libsql write transaction', () => {
   it('commits INSERT ... SELECT and leaves a hidden read unexecuted', async () => {
     await withFile(async (raw) => {
       await raw.execute('CREATE TABLE parents (id TEXT PRIMARY KEY, status TEXT NOT NULL)');
-      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[] };
+      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[], batches: 0, statements: 0 };
       const uow = createSqliteUnitOfWork({
         client: record(libsqlWriteClient(raw), calls),
         participants: [passthrough('captures'), passthrough('task-management')],
@@ -541,6 +615,7 @@ describe('libsql write transaction', () => {
         expect(hidden.error).toEqual({
           kind: 'Storage',
           owner: 'task-management',
+          owners: ['task-management'],
           reason: 'read-rejected',
         });
       }
@@ -567,11 +642,13 @@ describe('libsql write transaction', () => {
         args: ['p', 'open'],
       });
 
-      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[] };
+      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[], batches: 0, statements: 0 };
+      const logs: BatchLog[] = [];
       const client = record(libsqlWriteClient(raw), calls);
       const uow = createSqliteUnitOfWork({
         client,
         participants: [passthrough('captures'), passthrough('notes'), passthrough('task-management')],
+        logger: { error: (fields) => logs.push(fields) },
       });
 
       const missed = await uow.commit([
@@ -606,10 +683,26 @@ describe('libsql write transaction', () => {
       if (duplicate.isErr()) {
         expect(duplicate.error).toEqual({
           kind: 'Storage',
-          owner: 'task-management',
+          owners: ['captures', 'task-management'],
           reason: 'execute-failed',
         });
-        expect(keysOf(duplicate.error)).toEqual(['kind', 'owner', 'reason']);
+        expect(keysOf(duplicate.error)).toEqual(['kind', 'owners', 'reason']);
+        expect('owner' in duplicate.error).toBe(false);
+      }
+      expect(await ids(raw, 'parents')).toEqual(['p']);
+
+      const single = await uow.commit([
+        work('captures', statement('INSERT INTO parents (id, status) VALUES (?, ?)', ['solo', 'open'])),
+        work('captures', statement('INSERT INTO parents (id, status) VALUES (?, ?)', ['solo', 'open'])),
+      ]);
+      expect(single.isErr()).toBe(true);
+      if (single.isErr()) {
+        expect(single.error).toEqual({
+          kind: 'Storage',
+          owner: 'captures',
+          owners: ['captures'],
+          reason: 'execute-failed',
+        });
       }
       expect(await ids(raw, 'parents')).toEqual(['p']);
 
@@ -621,9 +714,10 @@ describe('libsql write transaction', () => {
       if (dangling.isErr()) {
         expect(dangling.error).toEqual({
           kind: 'Storage',
-          owner: 'notes',
+          owners: ['captures', 'notes'],
           reason: 'execute-failed',
         });
+        expect('owner' in dangling.error).toBe(false);
       }
       expect(await ids(raw, 'parents')).toEqual(['p']);
       expect(await ids(raw, 'children')).toEqual([]);
@@ -644,8 +738,50 @@ describe('libsql write transaction', () => {
         args: ['p'],
       });
       expect(status.rows[0]?.status).toBe('done');
-      expect(calls.rollback).toBe(3);
+      expect(calls.rollback).toBe(4);
       expect(calls.commit).toBe(1);
+      expect(calls.batches).toBe(5);
+      const logged = JSON.stringify(logs);
+      expect(logged).not.toContain('UNIQUE');
+      expect(logged).not.toContain('FOREIGN');
+      expect(logged).not.toContain('INSERT INTO');
+      expect(logged).not.toContain('solo');
+      expect(logged).not.toContain('temp');
+      expect(logged).not.toContain('missing');
+      expect(logs.every((entry) => entry.cause === 'LibsqlError' || entry.cause === 'Error')).toBe(true);
+      expect(logs.map((entry) => entry.batchSize)).toEqual([2, 2, 2]);
+    });
+  });
+
+  it('runs at least 2000 statements in one local libsql batch', async () => {
+    await withFile(async (raw) => {
+      await raw.execute('CREATE TABLE kept (id INTEGER PRIMARY KEY, n INTEGER NOT NULL)');
+      await raw.execute({ sql: 'INSERT INTO kept (id, n) VALUES (?, ?)', args: [0, 0] });
+      const calls = { commit: 0, rollback: 0, close: 0, modes: [] as string[], batches: 0, statements: 0 };
+      const uow = createSqliteUnitOfWork({
+        client: record(libsqlWriteClient(raw), calls),
+        participants: [passthrough('captures')],
+      });
+      const writes = Array.from({ length: 2000 }, (_, index) =>
+        work(
+          'captures',
+          statement('INSERT INTO kept (id, n) VALUES (?, ?)', [index + 1, index])
+        )
+      );
+
+      const result = await uow.commit(writes);
+
+      expect(result.isOk()).toBe(true);
+      expect(calls.modes).toEqual(['write']);
+      expect(calls.batches).toBe(1);
+      expect(calls.statements).toBe(2000);
+      expect(calls.commit).toBe(1);
+      expect(calls.rollback).toBe(0);
+      const count = await raw.execute('SELECT COUNT(*) AS n FROM kept');
+      expect(Number(count.rows[0]?.n)).toBe(2001);
+      expect(await raw.execute({ sql: 'SELECT n FROM kept WHERE id = ?', args: [0] })).toMatchObject({
+        rows: [{ n: 0 }],
+      });
     });
   });
 });
@@ -659,13 +795,24 @@ const ids = async (client: Client, table: 'parents' | 'children'): Promise<unkno
 
 const record = (
   inner: WriteClient,
-  calls: { commit: number; rollback: number; close: number; modes: string[] }
+  calls: {
+    commit: number;
+    rollback: number;
+    close: number;
+    modes: string[];
+    batches: number;
+    statements: number;
+  }
 ): WriteClient => ({
   transaction: async (mode) => {
     calls.modes.push(mode);
     const tx = await inner.transaction(mode);
     return {
-      execute: (step) => tx.execute(step),
+      batch: async (statements) => {
+        calls.batches += 1;
+        calls.statements += statements.length;
+        return tx.batch(statements);
+      },
       commit: async () => {
         calls.commit += 1;
         await tx.commit();

@@ -3,6 +3,7 @@ import type { ModuleName } from '../../kernel/module-name.js';
 import {
   appendEventSink,
   prepareCommit,
+  storageFailure,
   type CommitFailure,
   type EventSink,
   type FakeParticipant,
@@ -62,20 +63,29 @@ const commitInMemory = async (input: {
     const participant = input.byOwner.get(work.step.owner);
     if (!participant) {
       restoreAll();
-      return err({
-        kind: 'Storage',
-        owner: work.step.owner,
-        reason: 'no-participant',
-      });
+      return err(
+        storageFailure(
+          steps.steps.map((step) => step.step.owner),
+          'no-participant'
+        )
+      );
     }
     const applied = participant.apply(work.step.plan);
     if (applied.isErr()) {
       restoreAll();
-      return err({
-        kind: applied.error.kind,
-        owner: work.step.owner,
-        reason: applied.error.reason,
-      });
+      if (applied.error.kind === 'Conflict') {
+        return err({
+          kind: 'Conflict',
+          owner: work.step.owner,
+          reason: applied.error.reason,
+        });
+      }
+      return err(
+        storageFailure(
+          steps.steps.map((step) => step.step.owner),
+          applied.error.reason
+        )
+      );
     }
   }
 

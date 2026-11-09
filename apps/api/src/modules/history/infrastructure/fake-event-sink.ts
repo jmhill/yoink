@@ -1,5 +1,9 @@
 import { err, ok, type Result } from 'neverthrow';
-import type { FakeParticipant, StepFailure } from '../../../kernel/unit-of-work.js';
+import {
+  storageFailure,
+  type FakeParticipant,
+  type StepFailure,
+} from '../../../kernel/unit-of-work.js';
 import { changeLogRecordSchema, type ChangeLogRecord } from '../domain/record.js';
 
 export type FakeHistoryParticipant = FakeParticipant<unknown> & {
@@ -7,7 +11,7 @@ export type FakeHistoryParticipant = FakeParticipant<unknown> & {
 };
 
 const planRejected = (): Result<void, StepFailure> =>
-  err({ kind: 'Storage', owner: 'history', reason: 'plan-rejected' });
+  err(storageFailure(['history'], 'plan-rejected'));
 
 /** In-memory sink store. Snapshot restores the record list. */
 export const createFakeHistoryParticipant = (): FakeHistoryParticipant => {

@@ -233,6 +233,7 @@ export const createApp = async (deps: AppDependencies) => {
     tokenAuth,
     aliasAuth: authMiddleware,
   });
+  // New extension builds. Older builds stay on the /api alias above.
   await registerExtensionApiV1(app, {
     captures: deps.captures,
     tokenAuth,

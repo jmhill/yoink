@@ -6,6 +6,10 @@ import type {
   UserSession,
 } from '../../../access/index.js';
 import type { AuthContext } from '../../../kernel/auth-context.js';
+import {
+  replyTokenValidationFailure,
+  validationDurationMs,
+} from './token-validation-response.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -89,27 +93,32 @@ export const createCombinedAuthMiddleware = (
     // Try Bearer token as fallback
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
+      const startedAt = performance.now();
       const tokenResult = await authenticateToken(token);
 
-      if (tokenResult.isOk()) {
-        request.authContext = {
-          organizationId: tokenResult.value.organizationId,
-          userId: tokenResult.value.userId,
-          principalKind: tokenResult.value.principalKind,
-          actor: tokenResult.value.actor,
-        };
-
-        // Bind auth context to request logger
-        request.log = request.log.child({
-          userId: request.authContext.userId,
-          orgId: request.authContext.organizationId,
-        });
-
-        return;
+      if (tokenResult.isErr()) {
+        return replyTokenValidationFailure(
+          request,
+          reply,
+          tokenResult.error,
+          validationDurationMs(startedAt)
+        );
       }
 
-      // Token was provided but invalid - return 401 with token error message
-      return reply.status(401).send({ message: 'Invalid token' });
+      request.authContext = {
+        organizationId: tokenResult.value.organizationId,
+        userId: tokenResult.value.userId,
+        principalKind: tokenResult.value.principalKind,
+        actor: tokenResult.value.actor,
+      };
+
+      // Bind auth context to request logger
+      request.log = request.log.child({
+        userId: request.authContext.userId,
+        orgId: request.authContext.organizationId,
+      });
+
+      return;
     }
 
     // If session cookie was provided but invalid (and no token), give session-specific error

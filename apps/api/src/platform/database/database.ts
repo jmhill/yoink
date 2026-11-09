@@ -4,21 +4,31 @@ import { createClient, type Client, type InValue } from '@libsql/client';
 import type { WriteClient, WriteTransaction } from '../unit-of-work/sqlite-unit-of-work.js';
 import type { DatabaseConfig } from '../config/schema.js';
 import type { Database, QueryResult } from './types.js';
+import { runTursoCall, TURSO_CALL_TIMEOUT_MS } from './run-turso-call.js';
+import { fetchWithTimeout } from './turso-fetch.js';
+
+export type DatabaseOptions = {
+  readonly tursoCallTimeoutMs?: number;
+};
 
 /**
  * Create a database connection based on the provided configuration.
  *
  * Supports three modes:
- * - `turso`: Connect to Turso cloud database (requires URL and auth token)
- * - `file`: Local file-based SQLite via LibSQL
- * - `memory`: In-memory SQLite for tests
+ * - `turso`: Connect to Turso cloud database (requires URL and auth token).
+ *   Each call times out. A read is tried once more after a connection failure.
+ *   A write is not retried, because the first request may already have committed.
+ * - `file`: Local file-based SQLite via LibSQL. Two connections, WAL, and
+ *   `BEGIN IMMEDIATE` on the write connection. No Turso timeout.
+ * - `memory`: In-memory SQLite for tests. One connection. No Turso timeout.
  */
-const createClientFor = (config: DatabaseConfig): Client => {
+const createClientFor = (config: DatabaseConfig, timeoutMs: number): Client => {
   switch (config.type) {
     case 'turso':
       return createClient({
         url: config.url,
         authToken: config.authToken,
+        fetch: fetchWithTimeout(timeoutMs),
       });
     case 'memory':
       return createClient({ url: ':memory:' });
@@ -27,6 +37,20 @@ const createClientFor = (config: DatabaseConfig): Client => {
       return createClient({ url: `file:${config.path}` });
   }
 };
+
+type DatabaseCall = <T>(operation: () => Promise<T>, retry: boolean) => Promise<T>;
+
+const directCall: DatabaseCall = (operation) => operation();
+
+const tursoCall =
+  (timeoutMs: number): DatabaseCall =>
+  async (operation, retry) => {
+    const settled = await runTursoCall(operation, { timeoutMs, retry });
+    if (settled.isErr()) {
+      return Promise.reject(settled.error);
+    }
+    return settled.value;
+  };
 
 type Release = () => void;
 
@@ -87,27 +111,36 @@ const journalWal = (client: Client): (() => Promise<void>) => {
 const databaseFrom = (
   client: Client,
   gate: ReturnType<typeof createClientGate>,
+  call: DatabaseCall,
   before?: () => Promise<void>
 ): Database => ({
   execute: (query): Promise<QueryResult> =>
     gate.exclusive(async () => {
       await before?.();
-      const result = await client.execute({
-        sql: query.sql,
-        args: (query.args ?? []) as InValue[],
-      });
+      const result = await call(
+        () =>
+          client.execute({
+            sql: query.sql,
+            args: (query.args ?? []) as InValue[],
+          }),
+        query.access === 'read'
+      );
       return mapResult(result);
     }),
 
   batch: (queries, mode = 'write'): Promise<QueryResult[]> =>
     gate.exclusive(async () => {
       await before?.();
-      const results = await client.batch(
-        queries.map((q) => ({
-          sql: q.sql,
-          args: (q.args ?? []) as InValue[],
-        })),
-        mode
+      const results = await call(
+        () =>
+          client.batch(
+            queries.map((q) => ({
+              sql: q.sql,
+              args: (q.args ?? []) as InValue[],
+            })),
+            mode
+          ),
+        mode === 'read'
       );
       return results.map((result) => mapResult(result));
     }),
@@ -246,27 +279,31 @@ const gatedWriteClient = (
  * memory and remote share one connection and one gate.
  */
 export const openDatabase = (
-  config: DatabaseConfig
+  config: DatabaseConfig,
+  options: DatabaseOptions = {}
 ): {
   readonly database: Database;
   readonly client: Client;
   readonly writeClient: WriteClient;
 } => {
+  const timeoutMs = options.tursoCallTimeoutMs ?? TURSO_CALL_TIMEOUT_MS;
+  const call = config.type === 'turso' ? tursoCall(timeoutMs) : directCall;
+
   if (config.type !== 'file') {
-    const client = createClientFor(config);
+    const client = createClientFor(config, timeoutMs);
     const gate = createClientGate();
     return {
-      database: databaseFrom(client, gate),
+      database: databaseFrom(client, gate, call),
       client,
       writeClient: gatedWriteClient(client, gate, config.type === 'turso'),
     };
   }
 
-  const readClient = createClientFor(config);
-  const writeNative = createClientFor(config);
+  const readClient = createClientFor(config, timeoutMs);
+  const writeNative = createClientFor(config, timeoutMs);
   const readGate = createClientGate();
   const writeGate = createClientGate();
-  const database = databaseFrom(readClient, readGate, journalWal(readClient));
+  const database = databaseFrom(readClient, readGate, call, journalWal(readClient));
   return {
     database: {
       execute: database.execute,
@@ -286,6 +323,9 @@ export const openDatabase = (
   };
 };
 
-export const createDatabase = (config: DatabaseConfig): Database => openDatabase(config).database;
+export const createDatabase = (
+  config: DatabaseConfig,
+  options: DatabaseOptions = {}
+): Database => openDatabase(config, options).database;
 
 export type { Database } from './types.js';

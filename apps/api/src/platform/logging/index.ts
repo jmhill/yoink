@@ -1,4 +1,5 @@
 export { createLoggerOptions, PINO_REDACT_PATHS } from './logger.js';
+export { registerRequestCompletedLog } from './request-log.js';
 export { createPinoCommandLogger } from './command-logger.js';
 export {
   createPinoHistoryReadLogger,

@@ -1,4 +1,5 @@
 import { errAsync } from 'neverthrow';
+import { invalidTokenFormatError } from '../../../access/domain/auth-errors.js';
 import {
   authenticateSessionWith,
   authenticateTokenWith,
@@ -30,4 +31,4 @@ export const userSessionAuthFromService = (
 });
 
 export const unauthenticatedToken: AuthenticateToken = () =>
-  errAsync({ type: 'UNAUTHENTICATED' });
+  errAsync(invalidTokenFormatError());

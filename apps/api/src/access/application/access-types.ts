@@ -1,6 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Actor, PrincipalKind } from '../../kernel/auth-context.js';
 import type { InvitationRole } from '../domain/invitation.js';
+import type { TokenValidationError } from '../domain/auth-errors.js';
 import type { UserSession } from '../domain/user-session.js';
 import type {
   SignupEmailAlreadyRegisteredError,
@@ -18,7 +19,7 @@ export type Unauthenticated = {
   readonly type: 'UNAUTHENTICATED';
 };
 
-/** Token auth's answer. Every failure, including a store failure, is unauthenticated. */
+/** Token auth's answer. The closed error says whether the token is bad or the check could not finish. */
 export type AuthenticatedToken = {
   readonly organizationId: string;
   readonly userId: string;
@@ -66,7 +67,7 @@ export type CompletedSignup = {
 
 export type AuthenticateToken = (
   plaintext: string
-) => ResultAsync<AuthenticatedToken, Unauthenticated>;
+) => ResultAsync<AuthenticatedToken, TokenValidationError>;
 
 export type AuthenticateSession = (
   sessionId: string

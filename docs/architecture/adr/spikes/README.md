@@ -58,7 +58,7 @@ Parent accepted U1 at 2026-11-06 8:37 CT as the §12 fallback, after review of `
 
 Passed once. Exit 0. Test database only (`yoink-m02-spike`), with the existing scoped test token. Not `yoink-prod`. The M0.2 runners were not rerun. The sanitized report is [m4-1b-u1-batch.remote.json](./m4-1b-u1-batch.remote.json). No runner, bundle, or lockfile is stored for this proof. Base main in the report is `d68e766292c419dec56841f8768b6afc01312353`. Node v22.23.2, `@libsql/client` 0.15.15. `durations.processMs` is 5740.2. The client API in the report is `client.transaction('write')` and then one `tx.batch`. It is not `client.batch(statements, mode)`.
 
-This pass does not close [#325](https://github.com/jmhill/yoink/issues/325). The sqlite unit of work still awaits one `execute` per statement. Justin approved the ADR §6.1 contract. The implementation is ready and not done. M5.1, M5.3, and M5.5 stay gated on the implementation, its tests, review, merge, and a check of current main.
+This pass did not close [#325](https://github.com/jmhill/yoink/issues/325). [#336](https://github.com/jmhill/yoink/pull/336) (`db30c3872b1c4a5855d285d49f6526fec418e085`) later did. The unit of work sends one `tx.batch` inside `transaction('write')`. This log is the proof record and is not rerun.
 
 | Check | Result |
 |---|---|

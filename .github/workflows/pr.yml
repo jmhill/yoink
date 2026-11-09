@@ -98,9 +98,64 @@ jobs:
 
       - name: Run E2E tests
         run: |
+          mkdir -p e2e-api-logs
+          (
+            set +e
+            cid=""
+            for _ in $(seq 1 180); do
+              cid=$(docker ps -aq \
+                --filter label=com.docker.compose.service=api \
+                --filter label=com.docker.compose.oneoff=False \
+                | head -n 1)
+              if [ -n "$cid" ]; then
+                break
+              fi
+              sleep 0.5
+            done
+            if [ -z "$cid" ]; then
+              echo "api container never appeared" > e2e-api-logs/api.log
+              exit 0
+            fi
+            docker logs -f "$cid" > e2e-api-logs/api.log 2>&1 &
+            logpid=$!
+            while true; do
+              if ! docker inspect "$cid" > e2e-api-logs/api-inspect.json.tmp 2>/dev/null; then
+                rm -f e2e-api-logs/api-inspect.json.tmp
+                break
+              fi
+              mv e2e-api-logs/api-inspect.json.tmp e2e-api-logs/api-inspect.json
+              if ! docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} finished={{.State.FinishedAt}} error={{.State.Error}}' \
+                "$cid" > e2e-api-logs/api-state.txt.tmp 2>/dev/null; then
+                rm -f e2e-api-logs/api-state.txt.tmp
+                break
+              fi
+              mv e2e-api-logs/api-state.txt.tmp e2e-api-logs/api-state.txt
+              running=$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo false)
+              if [ "$running" != "true" ]; then
+                break
+              fi
+              sleep 0.2
+            done
+            sleep 1
+            kill "$logpid" 2>/dev/null
+            wait "$logpid"
+          ) &
+          watcher=$!
+          status=0
           IMAGE=yoink-api:pr-${{ github.event.pull_request.number }} \
           CI=true \
-          ./scripts/e2e-test.sh
+          ./scripts/e2e-test.sh || status=$?
+          wait "$watcher" || true
+          exit "$status"
+
+      - name: Upload API container logs
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: e2e-api-logs
+          path: e2e-api-logs/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Generate Feature Report
         if: always()

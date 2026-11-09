@@ -2,10 +2,13 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
-import { captureOrpcContract } from '@yoink/api-contracts/orpc';
+import { extensionApiV1Contract } from '@yoink/api-contracts/extension/v1';
 import { storage } from './storage';
 
-type CaptureClient = JsonifiedClient<RouterContractClient<typeof captureOrpcContract>>;
+/** Chrome manifest version. Sent as `X-Yoink-Extension-Version`. */
+export const EXTENSION_VERSION = '1.0.2';
+
+type CaptureClient = JsonifiedClient<RouterContractClient<typeof extensionApiV1Contract>>;
 
 /**
  * HTTP status from an OpenAPI link error. Yoink error bodies are not the oRPC
@@ -18,12 +21,19 @@ export const httpStatusOf = (error: unknown): number | undefined => {
   return undefined;
 };
 
+/** OpenAPILink joins the origin pathname with an absolute contract path. */
+export const extensionApiOrigin = (apiUrl: string): string => {
+  const base = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+  return `${base}extension-api/v1`;
+};
+
 const captureClient = (apiUrl: string, token: string): CaptureClient => {
-  const link = new OpenAPILink(captureOrpcContract, {
-    origin: apiUrl,
+  const link = new OpenAPILink(extensionApiV1Contract, {
+    origin: extensionApiOrigin(apiUrl),
     headers: {
       Authorization: `Bearer ${token}`,
       'content-type': 'application/json',
+      'X-Yoink-Extension-Version': EXTENSION_VERSION,
     },
   });
   return createORPCClient(link);
@@ -48,7 +58,7 @@ export async function createCaptureApi(): Promise<CaptureClient | null> {
 
 /**
  * Creates an API client with explicit config (for validation).
- * Calls `POST /api/captures` and `GET /api/captures`.
+ * Calls `POST /extension-api/v1/captures` and `GET /extension-api/v1/captures`.
  */
 export function createCaptureApiWithConfig(options: {
   apiUrl: string;

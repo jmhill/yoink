@@ -516,7 +516,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
   - edges map module documents to contract types
 - **Accept:** zero `@yoink/api-contracts` lint warnings for that module. When the last module is done, the transitional rule moves to `error`.
 
-`M5.11-captures` is done on main (`5fe952f82298fd82f289a88932c563bfe3825d00`, [#347](https://github.com/jmhill/yoink/pull/347)). [#261](https://github.com/jmhill/yoink/issues/261) is closed completed. The document is `modules/captures/domain/model/capture.ts`. Domain, application, and infrastructure in that module do not import `@yoink/api-contracts`. `edges/public-api/v1` maps the document onto the contract capture. The `src/modules/captures/**` current element is removed. The folder-mode `src/captures/**` pattern stays for the boundary fixtures. The transitional `@yoink/api-contracts` rule stays at `warn` until `M5.11-access`.
+`M5.11-captures` is Merged (#347, `5fe952f8`), Trunk failing (run 42666346288). [#261](https://github.com/jmhill/yoink/issues/261) is closed completed. The document is `modules/captures/domain/model/capture.ts`. Domain, application, and infrastructure in that module do not import `@yoink/api-contracts`. `edges/public-api/v1` maps the document onto the contract capture. The `src/modules/captures/**` current element is removed. The folder-mode `src/captures/**` pattern stays for the boundary fixtures. The transitional `@yoink/api-contracts` rule stays at `warn` until `M5.11-access`.
 
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 
@@ -743,6 +743,8 @@ Stable task keys. M0.1 stays complete and has no issue. Logical dependencies are
 
 This table is the only status list. The row count is the number of rows below. It is not frozen. New tasks extend it. `docs/PLAN.md` keeps checkboxes only.
 
+A task is Done only after its merge commit's Trunk run succeeds, including deploy and post-deploy smoke. Until that run succeeds, the status is Merged, not Done.
+
 M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-on-Submit note is retired. Do not create or close an issue for it. Measurements are in `docs/architecture/adr/spikes/README.md`.
 
 `CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
@@ -796,7 +798,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.9` | `M5.7` | — | Not started | None. | [#258](https://github.com/jmhill/yoink/issues/258) |
 | `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Not started | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Still needs M5.3 and M4.3. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. | [#259](https://github.com/jmhill/yoink/issues/259) |
 | `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | [#260](https://github.com/jmhill/yoink/issues/260) |
-| `M5.11-captures` | `M5.1` | — | Done ([#347](https://github.com/jmhill/yoink/pull/347), `5fe952f82298fd82f289a88932c563bfe3825d00`). [#261](https://github.com/jmhill/yoink/issues/261) closed completed. | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
+| `M5.11-captures` | `M5.1` | — | Merged (#347, `5fe952f8`), Trunk failing (run 42666346288). [#261](https://github.com/jmhill/yoink/issues/261) closed completed. | None. | [#261](https://github.com/jmhill/yoink/issues/261) |
 | `M5.11-task-management` | `M5.4` | — | Not started | None. | [#262](https://github.com/jmhill/yoink/issues/262) |
 | `M5.11-notes` | `M5.7` | — | Not started | None. | [#263](https://github.com/jmhill/yoink/issues/263) |
 | `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |
@@ -814,7 +816,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.13-signup` | `M5.12` | `M5.13-session` | Not started | None. | [#276](https://github.com/jmhill/yoink/issues/276) |
 | `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | [#277](https://github.com/jmhill/yoink/issues/277) |
 | `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | [#278](https://github.com/jmhill/yoink/issues/278) |
-| `M6.1` | `M5.1`, `M3.2` | — | Not started | None. Next edit of `composition-root.ts` and `app.ts`. Already in progress. | [#279](https://github.com/jmhill/yoink/issues/279) |
+| `M6.1` | `M5.1`, `M3.2` | — | In review (PR #350). | None. | [#279](https://github.com/jmhill/yoink/issues/279) |
 | `M6.2` | `M3.5`, `M5.1` | — | Not started | None. | [#280](https://github.com/jmhill/yoink/issues/280) |
 | `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | [#281](https://github.com/jmhill/yoink/issues/281) |
 | `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | [#282](https://github.com/jmhill/yoink/issues/282) |

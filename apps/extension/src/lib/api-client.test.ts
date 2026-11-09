@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCaptureApiWithConfig, httpStatusOf } from './api-client';
+import { createCaptureApiWithConfig, EXTENSION_VERSION, httpStatusOf } from './api-client';
 
 const jsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -12,8 +13,21 @@ describe('createCaptureApiWithConfig', () => {
     vi.unstubAllGlobals();
   });
 
-  it('posts a capture to /api/captures with the bearer token', async () => {
-    const calls: { url: string; method: string; authorization: string | null; body: string }[] = [];
+  it('sends the manifest version on the extension edge', () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL('../manifest.json', import.meta.url), 'utf8')
+    ) as { version: string };
+    expect(EXTENSION_VERSION).toBe(manifest.version);
+  });
+
+  it('posts a capture to /extension-api/v1/captures with the bearer token', async () => {
+    const calls: {
+      url: string;
+      method: string;
+      authorization: string | null;
+      extensionVersion: string | null;
+      body: string;
+    }[] = [];
     vi.stubGlobal(
       'fetch',
       async (url: string, init: RequestInit) => {
@@ -22,6 +36,7 @@ describe('createCaptureApiWithConfig', () => {
           url,
           method: init.method ?? 'GET',
           authorization: headers.get('authorization'),
+          extensionVersion: headers.get('x-yoink-extension-version'),
           body: typeof init.body === 'string' ? init.body : '',
         });
         return jsonResponse(201, { id: 'capture' });
@@ -39,9 +54,10 @@ describe('createCaptureApiWithConfig', () => {
 
     expect(calls).toEqual([
       {
-        url: 'https://yoink.test/api/captures',
+        url: 'https://yoink.test/extension-api/v1/captures',
         method: 'POST',
         authorization: 'Bearer token-id:secret',
+        extensionVersion: EXTENSION_VERSION,
         body: JSON.stringify({
           content: 'hello',
           sourceApp: 'browser-extension',
@@ -67,7 +83,7 @@ describe('createCaptureApiWithConfig', () => {
       (error: unknown) => error
     );
 
-    expect(urls).toEqual(['https://yoink.test/api/captures?limit=1']);
+    expect(urls).toEqual(['https://yoink.test/extension-api/v1/captures?limit=1']);
     expect(httpStatusOf(failure)).toBe(401);
   });
 });

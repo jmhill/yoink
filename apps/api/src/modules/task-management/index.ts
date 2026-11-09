@@ -1,3 +1,5 @@
+// Today's published surface is the four handler factories and the task service.
+// M5.3 replaces this file with commands, queries, and prepare.
 export {
   createListHandlers,
   type ListHandlerDeps,

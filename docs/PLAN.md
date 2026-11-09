@@ -696,7 +696,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 ### M5: Modules, one at a time - M5.1 done
 - [x] M5.1-check History subject type allows capture
 - [x] M5.1 Captures (done, #343, `72780cac`)
-- [ ] M5.2 Task Management: structural merge (In review)
+- [ ] M5.2 Task Management: structural merge (In review (PR #352))
 - [ ] M5.3 Task Management: interface, unit of work, events
 - [ ] M5.4 Task Management: legacy services and the domain importing HTTP code
 - [ ] M5.5 Processing workflow and delete-source-capture policy

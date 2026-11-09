@@ -17,6 +17,8 @@ import { CAPTURE_TIMELINE_BUILDERS } from './modules/history/domain/capture-time
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
 import { createAccess } from './access/index.js';
+import { createAdminSessionParticipant } from './access/infrastructure/admin-session-participant.js';
+import { createNodeAdminSessionCrypto } from './access/infrastructure/node-admin-session-crypto.js';
 import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
 import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
 import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
@@ -717,11 +719,13 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   // Create admin services if admin config is provided
   let admin: AdminConfig | undefined;
   if (config.admin) {
+    const adminSessionCrypto = createNodeAdminSessionCrypto(config.admin.sessionSecret);
     const adminSessionService = createAdminSessionService({
       adminPassword: config.admin.password,
-      sessionSecret: config.admin.sessionSecret,
       clock,
       idGenerator, // Adds sessionId to tokens for defense-in-depth
+      crypto: adminSessionCrypto,
+      participant: createAdminSessionParticipant(adminSessionCrypto),
     });
 
     const adminService = createAdminService({

@@ -37,7 +37,9 @@ import {
 import { ADMIN_SESSION_COOKIE } from '../../_shared/auth/admin-session-middleware.js';
 import { registerAdminRoutes } from '../admin/admin-routes.js';
 import { registerInvitationRoutes } from './invitation-routes.js';
-import { createAdminSessionService } from '../../../access/domain/admin-session-service.js';
+import { createAdminSessionService } from '../../../access/domain/index.js';
+import { createAdminSessionParticipant } from '../../../access/infrastructure/admin-session-participant.js';
+import { createNodeAdminSessionCrypto } from '../../../access/infrastructure/node-admin-session-crypto.js';
 import { createAdminService } from '../../../access/application/handle-admin.js';
 import { createInvitationService } from '../../../access/domain/invitation-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
@@ -764,11 +766,13 @@ describe('owner invite storage failures log the original cause', () => {
     await failingApp.register(cookie);
     const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
     const idGenerator = createFakeIdGenerator();
+    const crypto = createNodeAdminSessionCrypto('test-session-secret-32-chars-min!');
     const adminSessionService = createAdminSessionService({
       adminPassword: TEST_ADMIN_PASSWORD,
-      sessionSecret: 'test-session-secret-32-chars-min!',
       clock,
       idGenerator,
+      crypto,
+      participant: createAdminSessionParticipant(crypto),
     });
     const organizationStore = createFakeOrganizationStore();
     const membershipStore = createFakeOrganizationMembershipStore();

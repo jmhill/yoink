@@ -10,7 +10,7 @@ import {
 import { adminProtectedOrpcContract, adminPublicOrpcContract } from '@yoink/api-contracts/orpc';
 import type { AdminService } from '../../../access/application/handle-admin.js';
 import type { AdminServiceError } from '../../../access/domain/admin-errors.js';
-import type { AdminSessionService } from '../../../access/domain/admin-session-service.js';
+import type { AdminSessionService } from '../../../access/domain/index.js';
 import type { InvitationService } from '../../../access/domain/invitation-service.js';
 import type { Invitation } from '../../../access/domain/invitation.js';
 import type { User } from '../../../access/domain/user.js';

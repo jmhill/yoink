@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { OrganizationStore } from '../../access/domain/organization-store.js';
 import type { InvitationStore } from '../../access/domain/invitation-store.js';
 import type { OrganizationMembershipStore } from '../../access/domain/organization-membership-store.js';
-import type { AdminSessionService } from '../../access/domain/admin-session-service.js';
+import type { AdminSessionService } from '../../access/domain/index.js';
 import { createAdminSessionMiddleware } from '../_shared/auth/admin-session-middleware.js';
 
 const OwnerlessBodySchema = z.object({

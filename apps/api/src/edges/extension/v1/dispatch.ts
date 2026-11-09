@@ -5,17 +5,14 @@ import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 export const EXTENSION_API_PREFIX = '/extension-api/v1';
 
 /**
- * Same empty-DELETE guard as the public API dispatch. The prefix is stripped
- * by oRPC before it matches `/captures`.
+ * The prefix is stripped by oRPC before it matches `/captures`.
+ * This edge has no DELETE procedure, so it does not rewrite an empty body.
  */
 export const dispatchExtensionApi = async (
   handler: OpenAPIHandler<OrpcHttpContext>,
   request: FastifyRequest,
   reply: FastifyReply
 ) => {
-  if (request.method === 'DELETE' && request.body === undefined) {
-    request.body = null;
-  }
   const result = await handler.handle(request, reply, {
     prefix: EXTENSION_API_PREFIX,
     context: { request, reply },

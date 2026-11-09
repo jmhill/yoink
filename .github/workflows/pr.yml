@@ -101,6 +101,7 @@ jobs:
           mkdir -p e2e-api-logs
           (
             set +e
+            set -o pipefail
             cid=""
             for _ in $(seq 1 180); do
               cid=$(docker ps -aq \
@@ -119,7 +120,9 @@ jobs:
             docker logs -f "$cid" > e2e-api-logs/api.log 2>&1 &
             logpid=$!
             while true; do
-              if ! docker inspect "$cid" > e2e-api-logs/api-inspect.json.tmp 2>/dev/null; then
+              # Config.Env holds ADMIN_PASSWORD, SESSION_SECRET, and WEBAUTHN_CHALLENGE_SECRET.
+              if ! docker inspect "$cid" 2>/dev/null \
+                | jq 'map(del(.Config.Env))' > e2e-api-logs/api-inspect.json.tmp; then
                 rm -f e2e-api-logs/api-inspect.json.tmp
                 break
               fi

@@ -37,6 +37,8 @@ import type {
   ProcessCaptureToProjectResult,
   MintedAgent,
   Member,
+  TokenRouteCall,
+  TokenRouteResult,
   CreateProjectInput,
   ListProjectsQuery,
   ConfirmProjectProposalInput,
@@ -56,6 +58,7 @@ import {
   TokenLimitReachedError,
 } from '../../dsl/index.js';
 import type { HttpClient } from './http-client.js';
+import { compileTokenRoute, parseResponseBody } from '../token-route.js';
 
 type ActorCredentials = {
   email: string;
@@ -102,6 +105,20 @@ export const createHttpActor = (
       throw new ValidationError(error.message ?? 'Invalid request');
     }
     return response.json<Capture>();
+  };
+
+  const callTokenRoute = async (input: TokenRouteCall): Promise<TokenRouteResult> => {
+    if (input.authorization === 'session') {
+      throw new UnsupportedOperationError('callTokenRoute session', 'http');
+    }
+    const route = compileTokenRoute(input, credentials.organizationId);
+    const response = await client.request({
+      method: route.method,
+      url: route.path,
+      headers: { authorization: `Bearer ${input.rawToken ?? credentials.token}` },
+      payload: route.payload,
+    });
+    return { statusCode: response.statusCode, body: parseResponseBody(response.body) };
   };
 
   return {
@@ -3357,6 +3374,8 @@ export const createHttpActor = (
       }
       return response.json<{ tokens: Token[] }>().tokens;
     },
+
+    callTokenRoute,
 
     async createToken(name: string): Promise<CreateTokenResult> {
       const response = await client.post('/api/auth/tokens', { name }, authHeaders());

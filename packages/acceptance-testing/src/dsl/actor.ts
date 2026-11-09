@@ -46,6 +46,23 @@ import type {
   ConfirmProjectProposalResult,
 } from './types.js';
 
+export type TokenRouteSurface = 'v1' | 'alias';
+
+export type TokenRouteCall = {
+  action: 'list' | 'create' | 'revoke' | 'reissue';
+  surface: TokenRouteSurface;
+  authorization: 'bearer' | 'session';
+  rawToken?: string;
+  name?: string;
+  tokenId?: string;
+  memberUserId?: string;
+};
+
+export type TokenRouteResult = {
+  statusCode: number;
+  body: unknown;
+};
+
 /**
  * Core actor operations available in all drivers (HTTP and browser).
  * These are the fundamental capture management operations.
@@ -214,6 +231,16 @@ export type CoreActor = {
    * List all API tokens for this user in the current organization.
    */
   listTokens(): Promise<Token[]>;
+
+  /**
+   * Call token list, create, revoke, or reissue on public v1 or the `/api` alias.
+   * Returns the raw HTTP body so tests can pin metadata and refuse hashes.
+   * `session` sends the browser session and no bearer token. The HTTP driver has
+   * no user session and throws UnsupportedOperationError for that mode.
+   * `bearer` sends only the raw token. The HTTP driver uses its actor token when
+   * `rawToken` is omitted.
+   */
+  callTokenRoute(input: TokenRouteCall): Promise<TokenRouteResult>;
 
   /**
    * Create a new API token for this user in the current organization.

@@ -39,6 +39,9 @@ export type {
   BrowserActorOperations,
   AnonymousActor,
   MobileTabKey,
+  TokenRouteCall,
+  TokenRouteResult,
+  TokenRouteSurface,
 } from './dsl/index.js';
 
 export type { Admin } from './dsl/index.js';

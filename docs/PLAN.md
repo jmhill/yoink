@@ -683,7 +683,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M3.7 correction: helper filenames and the test-support exemption (#338, `a93e1bc1`)
 - [x] Health HTTP error mapper on the ops edge
 - [x] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1` (done, #334, `30f08e33`)
-- [ ] TOKEN-LIST Confirm integration token listing and pin public v1 (approved 2026-11-07 21:45 CST; tests queued; not done)
+- [ ] TOKEN-LIST Confirm integration token listing and pin public v1 (in review, #340)
 - [x] LINT-ACCEPTANCE Acceptance-test lint joins quality; browser suite stays in the E2E job
 
 ### M4: Unit of work, integration events, history as sink - In progress

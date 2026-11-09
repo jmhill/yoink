@@ -97,6 +97,9 @@ export type {
   BrowserActorOperations,
   AnonymousActor,
   MobileTabKey,
+  TokenRouteCall,
+  TokenRouteResult,
+  TokenRouteSurface,
 } from './actor.js';
 export type { Admin } from './admin.js';
 export type { Health } from './health.js';

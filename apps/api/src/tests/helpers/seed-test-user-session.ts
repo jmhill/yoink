@@ -1,8 +1,8 @@
 /**
- * Session seed for in-process apps. The file is `*.test.ts` because that is
- * the suffix the table-ownership walker already skips. The SQL stays here so
- * `test-app.ts` does not carry an allowlisted INSERT.
- * Vitest excludes this path: a suite here would also run inside every importer.
+ * Session seed for in-process apps. This is test support under
+ * `src/tests/helpers/`, so the INSERT is exempt there and is not an allowlist
+ * row. `test-app.ts` imports it. The file is not a `*.test.ts` file, so
+ * Vitest does not collect it.
  */
 export const insertTestUserSession = async (
   database: {

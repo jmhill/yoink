@@ -1,8 +1,9 @@
 /**
- * Synthetic rows for the migration test CLI. The file is `*.test.ts` because
- * that is the suffix the table-ownership walker already skips. The platform
- * runner receives this function as an argument and does not import it.
- * Vitest excludes this path: a suite here would also run inside every importer.
+ * Synthetic rows for the migration test CLI. This is test support under
+ * `src/tests/helpers/`, the only directory the table-ownership scanner
+ * exempts besides real tests. It is not a `*.test.ts` file, so Vitest does
+ * not collect it. The platform runner receives this function as an argument
+ * and does not import it.
  */
 import type { Database } from '../../platform/database/types.js';
 

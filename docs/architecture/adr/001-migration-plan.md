@@ -308,7 +308,7 @@ Shipped in [#324](https://github.com/jmhill/yoink/pull/324): the helpers were `m
 
 ### TOKEN-LIST Confirm integration token listing and pin public v1
 
-**Execution:** `TOKEN-LIST`. [#327](https://github.com/jmhill/yoink/issues/327). Status is the execution index. In review ([#340](https://github.com/jmhill/yoink/pull/340)). Justin approved this on 2026-11-07 at 21:45 CST. The tests pin that decision. Runtime behavior is unchanged.
+**Execution:** `TOKEN-LIST`. [#327](https://github.com/jmhill/yoink/issues/327). Done on main (`dc7da8044357eda0887f9a9fc7e86acb002b3a58`, [#340](https://github.com/jmhill/yoink/pull/340)). [#327](https://github.com/jmhill/yoink/issues/327) is closed completed. Justin approved this on 2026-11-07 at 21:45 CST. The tests pin that decision. Runtime behavior is unchanged.
 
 - **Depends on:** M3.2
 - **Do:** `GET /api/auth/tokens` lists the authenticated principal's own non-revoked token metadata within the organization, including sibling tokens. It is not a whole-organization inventory. The fields are `id`, `name`, optional `lastUsedAt`, and `createdAt`. The response never includes a hash or a raw secret. `/api/v1` stays bearer-only. The `/api` alias keeps session or bearer. Session-only create, revoke, and reissue stay unchanged. Integration and acceptance tests cover both routes.
@@ -727,7 +727,7 @@ Tycho owns engineering decisions, tests, architecture review, and merge gates. T
 
 One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, this plan, and ADR-001. No new module kit and no DI container. Domain stays a pure `Result` with closed error unions. Effects stay in adapters. Only the owning module's infrastructure names a table in SQL. Baselines and the table-ownership allowlist only shrink. Public v1 and the `/api` alias keep today's HTTP status and error bodies. Migrations are forward-only. Compatibility windows and sunset dates are gates, not guesses. Do not apply the `approved-plan` label. This authorization was not approval in the Yoink Dev Team room.
 
-`CL-WORK` (#243) and `CL-REVIEW` (#244) await Justin. They are not approved. This plan does not choose them. Token listing (#327) is approved. Its tests are queued and not done.
+`CL-WORK` (#243) and `CL-REVIEW` (#244) await Justin. They are not approved. This plan does not choose them. Token listing (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
 Notes mirror-bot resolution keeps today's order: stored designation, then `NOTES_MIRROR_BOT_USER_ID`, then the first agent named `NOTES_MIRROR_BOT_NAME`. Do not drop the environment fallback.
 
@@ -743,7 +743,7 @@ This table is the only status list. The row count is the number of rows below. I
 
 M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-on-Submit note is retired. Do not create or close an issue for it. Measurements are in `docs/architecture/adr/spikes/README.md`.
 
-`CL-WORK` (#243) and `CL-REVIEW` (#244) have recommendations posted. Justin has not adopted them. This plan does not choose them. `TOKEN-LIST` (#327) is approved. Its tests are queued and not done.
+`CL-WORK` (#243) and `CL-REVIEW` (#244) have recommendations posted. Justin has not adopted them. This plan does not choose them. `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
 The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
 
@@ -766,7 +766,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M3.1` | `M0.3`, `M0.4` | — | Done (`198616d599acacd71b3e64203e62eb0ee5bc139d`, [#315](https://github.com/jmhill/yoink/pull/315)) | None. The frozen copy does not mount a route. | [#233](https://github.com/jmhill/yoink/issues/233) |
 | `M3.2` | `M3.1`, `M2.4` | — | Done ([#317](https://github.com/jmhill/yoink/pull/317)). | Dates stay unset until M7.1. | [#234](https://github.com/jmhill/yoink/issues/234) |
 | `OPENAPI-V1` | `M3.2` | — | Done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). [#329](https://github.com/jmhill/yoink/issues/329) closed completed. | None. The converter stays on Zod 3. It does not upgrade oRPC or Zod. | [#329](https://github.com/jmhill/yoink/issues/329) |
-| `TOKEN-LIST` | `M3.2` | — | In review ([#340](https://github.com/jmhill/yoink/pull/340)). Tests pin the approved list. Runtime behavior is unchanged. | Justin approved on 2026-11-07 at 21:45 CST. Own principal, including a sibling. Non-revoked metadata only: `id`, `name`, optional `lastUsedAt`, `createdAt`. Never a hash or a raw secret. v1 is bearer-only. The alias accepts session or bearer. Create, revoke, and reissue stay session-only. | [#327](https://github.com/jmhill/yoink/issues/327) |
+| `TOKEN-LIST` | `M3.2` | — | Done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) closed completed. | None. Justin approved on 2026-11-07 at 21:45 CST. Own principal, including a sibling. Non-revoked metadata only: `id`, `name`, optional `lastUsedAt`, `createdAt`. Never a hash or a raw secret. v1 is bearer-only. The alias accepts session or bearer. Create, revoke, and reissue stay session-only. Runtime behavior is unchanged. | [#327](https://github.com/jmhill/yoink/issues/327) |
 | `M3.3` | `M0.4`, `M2.4` | `M3.2` | Done on main (`0959d7d6d4f855a74331f08a485d8dd6a72321cf`, [#320](https://github.com/jmhill/yoink/pull/320)). | None. | [#235](https://github.com/jmhill/yoink/issues/235) |
 | `M3.4` | `M2.2`, `M3.3` | — | Done on main (`67e24d6b4e5d5f76db883679cf3cf6983ff4c598`, [#321](https://github.com/jmhill/yoink/pull/321)). | None. | [#236](https://github.com/jmhill/yoink/issues/236) |
 | `M3.5` | `M3.2`, `M3.3` | — | Done on main (`f422e83d14b1bb066f461d406b0b6eeaf9b821f6`, [#322](https://github.com/jmhill/yoink/pull/322)). | None. | [#237](https://github.com/jmhill/yoink/issues/237) |

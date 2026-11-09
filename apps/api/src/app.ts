@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerOrpcHealthRoutes } from './edges/ops/orpc-health-routes.js';
+import { registerExtensionApiV1 } from './edges/extension/v1/index.js';
 import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
 import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/legacy/admin/admin-routes.js';
 import { registerAuthRoutes } from './edges/legacy/auth/auth-routes.js';
@@ -232,6 +233,10 @@ export const createApp = async (deps: AppDependencies) => {
     tokenAuth,
     aliasAuth: authMiddleware,
   });
+  await registerExtensionApiV1(app, {
+    captures: deps.captures,
+    tokenAuth,
+  });
   if (deps.enableTestFixtures && deps.database) {
     await registerReviewFixtureRoutes(app, {
       authMiddleware,
@@ -377,7 +382,7 @@ export const createApp = async (deps: AppDependencies) => {
 
   // SPA fallback. `/admin` is the admin app. `/admin-api` is not.
   // `/api`, `/test-api`, `/web-api`, and `/extension-api` are not the web app.
-  // `/web-api`, `/admin-api`, and `/extension-api` are not mounted yet.
+  // `/extension-api/v1` is mounted. `/web-api` and `/admin-api` are not.
   app.setNotFoundHandler((request, reply) => {
     reply.header('Cache-Control', NEVER_CACHE_CONTROL);
     const decision = decideSpaFallback(request.url);

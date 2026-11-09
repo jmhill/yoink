@@ -542,6 +542,11 @@ export default [
               from: [['edge', { edge: 'public-api' }]],
               allow: ['captures', 'lists', 'notes', 'review', 'tasks', 'work', 'history'],
             },
+            // M6.1. The extension edge calls the captures interface only.
+            {
+              from: [['edge', { edge: 'extension' }]],
+              allow: ['captures'],
+            },
             // M3.3. Only the legacy client edge. These routes still call today's
             // access handlers. M6 moves each client to its own edge. M5.12 and
             // M5.13 give access an interface. Other modules stay disallowed.

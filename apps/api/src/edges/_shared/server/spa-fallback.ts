@@ -4,8 +4,8 @@
  * `/admin` and `/admin/...` are the admin app. `/admin-api` is a separate
  * prefix and is not that app. `/api`, `/test-api`, `/web-api`, and
  * `/extension-api` are the same kind of prefix. An unmatched URL under one
- * of them is a JSON 404. M3.4 mounts `/test-api`. It does not mount
- * `/web-api`, `/admin-api`, or `/extension-api`.
+ * of them is a JSON 404. M3.4 mounts `/test-api`. M6.1 mounts
+ * `/extension-api/v1`. `/web-api` and `/admin-api` are not mounted.
  */
 
 const RESERVED_API_PREFIXES = [

@@ -15,6 +15,10 @@
     "./public-api/v1": {
       "types": "./dist/public-api/v1/index.d.ts",
       "import": "./dist/public-api/v1/index.js"
+    },
+    "./extension/v1": {
+      "types": "./dist/extension/v1/index.d.ts",
+      "import": "./dist/extension/v1/index.js"
     }
   },
   "scripts": {

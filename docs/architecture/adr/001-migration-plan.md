@@ -814,7 +814,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.13-signup` | `M5.12` | `M5.13-session` | Not started | None. | [#276](https://github.com/jmhill/yoink/issues/276) |
 | `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | [#277](https://github.com/jmhill/yoink/issues/277) |
 | `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | [#278](https://github.com/jmhill/yoink/issues/278) |
-| `M6.1` | `M5.1`, `M3.2` | — | Not started | None. Next edit of `composition-root.ts` and `app.ts`. Already in progress. | [#279](https://github.com/jmhill/yoink/issues/279) |
+| `M6.1` | `M5.1`, `M3.2` | — | In review (PR #350). | None. | [#279](https://github.com/jmhill/yoink/issues/279) |
 | `M6.2` | `M3.5`, `M5.1` | — | Not started | None. | [#280](https://github.com/jmhill/yoink/issues/280) |
 | `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | [#281](https://github.com/jmhill/yoink/issues/281) |
 | `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | [#282](https://github.com/jmhill/yoink/issues/282) |

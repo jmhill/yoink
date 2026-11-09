@@ -5,6 +5,11 @@ import { passkeyOrpcContract } from '@yoink/api-contracts/orpc';
 import type { PasskeyService } from '../../../access/domain/passkey-service.js';
 import type { SessionService } from '../../../access/domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
+import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';
+import {
+  unauthenticatedToken,
+  userSessionAuthFromService,
+} from '../../_shared/auth/auth-from-services.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -139,20 +144,15 @@ export const registerPasskeyRoutes = async (
 ) => {
   const { passkeyService, sessionService, tokenService, sessionCookieName, cookieOptions } = deps;
 
-  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = tokenService
-    ? { tokenService, sessionService, sessionCookieName }
-    : {
-        tokenService: {
-          validateToken: () =>
-            Promise.resolve({
-              isErr: () => true,
-              isOk: () => false,
-              error: { type: 'INVALID_TOKEN_FORMAT' as const },
-            }),
-        } as unknown as TokenService,
-        sessionService,
-        sessionCookieName,
-      };
+  const sessionAuth = userSessionAuthFromService(sessionService);
+  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
+    authenticateToken: tokenService
+      ? authenticateTokenWith(tokenService)
+      : unauthenticatedToken,
+    authenticateSession: sessionAuth.authenticateSession,
+    recordSessionActivity: sessionAuth.recordSessionActivity,
+    sessionCookieName,
+  };
 
   const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
   const authMiddleware =

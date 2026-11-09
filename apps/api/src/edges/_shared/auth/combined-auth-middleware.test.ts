@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
+import { combinedAuthFromServices } from './auth-from-services.js';
 import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
@@ -135,11 +136,13 @@ describe('combinedAuthMiddleware', () => {
       refreshThresholdMs: 24 * 60 * 60 * 1000,
     });
 
-    const combinedAuthMiddleware = createCombinedAuthMiddleware({
-      tokenService,
-      sessionService,
-      sessionCookieName: USER_SESSION_COOKIE,
-    });
+    const combinedAuthMiddleware = createCombinedAuthMiddleware(
+      combinedAuthFromServices({
+        tokenService,
+        sessionService,
+        sessionCookieName: USER_SESSION_COOKIE,
+      })
+    );
 
     app = Fastify();
     await app.register(cookie);

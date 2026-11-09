@@ -800,7 +800,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |
 | `M5.11-history` | `M5.10-history` | — | Not started | None. | [#265](https://github.com/jmhill/yoink/issues/265) |
 | `M5.11-access` | `M5.13-user` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
-| `M5.12` | `M4.3`, `M3.5` | — | Not started | Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. | [#267](https://github.com/jmhill/yoink/issues/267) |
+| `M5.12` | `M4.3`, `M3.5` | — | In review | Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. | [#267](https://github.com/jmhill/yoink/issues/267) |
 | `M5.13-admin` | `M5.12` | — | Not started | None. | [#268](https://github.com/jmhill/yoink/issues/268) |
 | `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Not started | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
 | `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | [#270](https://github.com/jmhill/yoink/issues/270) |

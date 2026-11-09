@@ -6,6 +6,7 @@ import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
 import type { SessionService } from '../../../access/domain/session-service.js';
 import type { TokenService } from '../../../access/domain/token-service.js';
 import type { TokenHandlers } from '../../../access/application/create-token-handlers.js';
+import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -111,11 +112,11 @@ const tokenMutationHandler = (deps: TokenRoutesDependencies) => {
 };
 
 const protectedTokenAuth = (deps: TokenRoutesDependencies) => {
-  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
+  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = combinedAuthFromServices({
     tokenService: deps.tokenService,
     sessionService: deps.sessionService,
     sessionCookieName: deps.sessionCookieName,
-  };
+  });
   const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
   return deps.applyAuthenticatedRateLimit === undefined
     ? resolvedAuth

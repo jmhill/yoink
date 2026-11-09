@@ -43,6 +43,7 @@ import { createInvitationService } from '../../../access/domain/invitation-servi
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/domain/membership-service.js';
 import { createOrganizationService } from '../../../access/domain/organization-service.js';
+import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
@@ -958,11 +959,13 @@ describe('owner invite storage failures log the original cause', () => {
         errAsync({ type: 'INVITATION_STORAGE_ERROR', message: 'Find failed' }),
       acceptInvitation: () =>
         errAsync(acceptInvitationFailedError(new Error('disk full'))),
-      authMiddleware: createCombinedAuthMiddleware({
-        sessionService,
-        tokenService,
-        sessionCookieName: TEST_SESSION_COOKIE,
-      }),
+      authMiddleware: createCombinedAuthMiddleware(
+        combinedAuthFromServices({
+          sessionService,
+          tokenService,
+          sessionCookieName: TEST_SESSION_COOKIE,
+        })
+      ),
     });
     await failingApp.ready();
 

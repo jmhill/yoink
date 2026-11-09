@@ -706,7 +706,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [ ] M5.9 Remove `project_notes.project_id → projects` foreign key
 - [ ] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module
-- [ ] M5.12 Access: interface, unit of work, signup atomicity (unique-email race is Conflict, not 500)
+- [ ] M5.12 Access: interface, unit of work, signup atomicity (unique-email race is Conflict, not 500) — In review
 - [ ] M5.13 Access: migrate legacy services (closes 8.5.4)
 
 ### M6: Client edges - Not started

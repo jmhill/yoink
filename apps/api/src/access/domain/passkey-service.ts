@@ -10,7 +10,7 @@ import type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
 } from '@simplewebauthn/server';
-import { ResultAsync, errAsync } from 'neverthrow';
+import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { Clock } from '../../kernel/clock.js';
 import type { PasskeyCredential, PasskeyTransport } from './passkey-credential.js';
 import type { PasskeyCredentialStore } from './passkey-credential-store.js';
@@ -101,6 +101,14 @@ export type PasskeyService = {
   generateSignupRegistrationOptions(
     params: SignupRegistrationParams
   ): ResultAsync<RegistrationOptions, PasskeyServiceError>;
+
+  /**
+   * Verify a registration response and return the credential. Does not write.
+   * Signup puts that credential in the same unit of work as the user.
+   */
+  planRegistrationCredential(
+    params: VerifyRegistrationParams
+  ): ResultAsync<PasskeyCredential, PasskeyServiceError>;
 
   /**
    * Verify a registration response and save the new credential.
@@ -220,6 +228,66 @@ export const createPasskeyService = (
     };
   };
 
+  const planRegistrationCredential = (
+    params: VerifyRegistrationParams
+  ): ResultAsync<PasskeyCredential, PasskeyServiceError> => {
+    const { userId, challenge, response, credentialName, skipUserIdCheck } = params;
+
+    const challengeResult = challengeManager.validateChallenge(challenge, 'registration');
+    if (challengeResult.isErr()) {
+      const error = challengeResult.error;
+      if (error.type === 'CHALLENGE_EXPIRED') {
+        return errAsync(challengeExpiredError());
+      }
+      return errAsync(verificationFailedError('Invalid challenge'));
+    }
+
+    const validatedChallenge = challengeResult.value;
+    // Skip userId check during signup (challenge was created with email, not userId)
+    if (!skipUserIdCheck && validatedChallenge.payload.userId !== userId) {
+      return errAsync(verificationFailedError('Challenge user mismatch'));
+    }
+
+    const expectedOrigins = normalizeOrigin(config.origin);
+
+    return ResultAsync.fromPromise(
+      verifyRegistrationResponse({
+        response,
+        expectedChallenge: createChallengeVerifier(challenge),
+        expectedOrigin: expectedOrigins,
+        expectedRPID: config.rpId,
+        requireUserVerification: true,
+      }),
+      (error): PasskeyServiceError => {
+        return verificationFailedError(
+          error instanceof Error ? error.message : 'Registration verification failed'
+        );
+      }
+    ).andThen((verification) => {
+      if (!verification.verified || !verification.registrationInfo) {
+        return errAsync(verificationFailedError('Registration verification failed'));
+      }
+
+      const { registrationInfo } = verification;
+      const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo;
+
+      const passkeyCredential: PasskeyCredential = {
+        id: credential.id,
+        userId,
+        publicKey: Buffer.from(credential.publicKey).toString('base64url'),
+        counter: credential.counter,
+        transports: credential.transports as PasskeyTransport[] | undefined,
+        deviceType: credentialDeviceType,
+        backedUp: credentialBackedUp,
+        name: credentialName,
+        createdAt: clock.now().toISOString(),
+        lastUsedAt: undefined,
+      };
+
+      return okAsync(passkeyCredential);
+    });
+  };
+
   return {
     generateRegistrationOptions: (
       userId: string
@@ -302,67 +370,14 @@ export const createPasskeyService = (
       }));
     },
 
+    planRegistrationCredential,
+
     verifyRegistration: (
       params: VerifyRegistrationParams
-    ): ResultAsync<PasskeyCredential, PasskeyServiceError> => {
-      const { userId, challenge, response, credentialName, skipUserIdCheck } = params;
-
-      // Validate challenge
-      const challengeResult = challengeManager.validateChallenge(challenge, 'registration');
-      if (challengeResult.isErr()) {
-        const error = challengeResult.error;
-        if (error.type === 'CHALLENGE_EXPIRED') {
-          return errAsync(challengeExpiredError());
-        }
-        return errAsync(verificationFailedError('Invalid challenge'));
-      }
-
-      const validatedChallenge = challengeResult.value;
-      // Skip userId check during signup (challenge was created with email, not userId)
-      if (!skipUserIdCheck && validatedChallenge.payload.userId !== userId) {
-        return errAsync(verificationFailedError('Challenge user mismatch'));
-      }
-
-      const expectedOrigins = normalizeOrigin(config.origin);
-
-      return ResultAsync.fromPromise(
-        verifyRegistrationResponse({
-          response,
-          expectedChallenge: createChallengeVerifier(challenge),
-          expectedOrigin: expectedOrigins,
-          expectedRPID: config.rpId,
-          requireUserVerification: true,
-        }),
-        (error): PasskeyServiceError => {
-          return verificationFailedError(
-            error instanceof Error ? error.message : 'Registration verification failed'
-          );
-        }
-      ).andThen((verification) => {
-        if (!verification.verified || !verification.registrationInfo) {
-          return errAsync(verificationFailedError('Registration verification failed'));
-        }
-
-        const { registrationInfo } = verification;
-        const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo;
-
-        // Create domain credential
-        const passkeyCredential: PasskeyCredential = {
-          id: credential.id,
-          userId,
-          publicKey: Buffer.from(credential.publicKey).toString('base64url'),
-          counter: credential.counter,
-          transports: credential.transports as PasskeyTransport[] | undefined,
-          deviceType: credentialDeviceType,
-          backedUp: credentialBackedUp,
-          name: credentialName,
-          createdAt: clock.now().toISOString(),
-          lastUsedAt: undefined,
-        };
-
-        return credentialStore.save(passkeyCredential).map(() => passkeyCredential);
-      });
-    },
+    ): ResultAsync<PasskeyCredential, PasskeyServiceError> =>
+      planRegistrationCredential(params).andThen((passkeyCredential) =>
+        credentialStore.save(passkeyCredential).map(() => passkeyCredential)
+      ),
 
     generateAuthenticationOptions: (
       userId?: string

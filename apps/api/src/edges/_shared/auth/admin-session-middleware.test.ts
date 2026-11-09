@@ -6,7 +6,9 @@ import {
   createAdminSessionMiddleware,
   ADMIN_SESSION_COOKIE,
 } from './admin-session-middleware.js';
-import { createAdminSessionService } from '../../../access/domain/admin-session-service.js';
+import { createAdminSessionService } from '../../../access/domain/index.js';
+import { createAdminSessionParticipant } from '../../../access/infrastructure/admin-session-participant.js';
+import { createNodeAdminSessionCrypto } from '../../../access/infrastructure/node-admin-session-crypto.js';
 import { createFakeClock } from '@yoink/infrastructure';
 
 describe('adminSessionMiddleware', () => {
@@ -18,10 +20,12 @@ describe('adminSessionMiddleware', () => {
 
   beforeEach(async () => {
     const clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    const crypto = createNodeAdminSessionCrypto(SESSION_SECRET);
     const adminSessionService = createAdminSessionService({
       adminPassword: ADMIN_PASSWORD,
-      sessionSecret: SESSION_SECRET,
       clock,
+      crypto,
+      participant: createAdminSessionParticipant(crypto),
     });
 
     // Create a valid session token

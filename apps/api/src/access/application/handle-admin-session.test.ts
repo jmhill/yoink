@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createAdminSessionService, type AdminSessionService } from './admin-session-service.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
+import { createAdminSessionParticipant } from '../infrastructure/admin-session-participant.js';
+import { createNodeAdminSessionCrypto } from '../infrastructure/node-admin-session-crypto.js';
+import { createAdminSessionService, type AdminSessionService } from './handle-admin-session.js';
+
+const effectsFor = (sessionSecret: string) => {
+  const crypto = createNodeAdminSessionCrypto(sessionSecret);
+  return { crypto, participant: createAdminSessionParticipant(crypto) };
+};
 
 describe('AdminSessionService', () => {
   const ADMIN_PASSWORD = 'super-secret-password';
@@ -12,8 +19,8 @@ describe('AdminSessionService', () => {
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
     service = createAdminSessionService({
       adminPassword: ADMIN_PASSWORD,
-      sessionSecret: SESSION_SECRET,
       clock,
+      ...effectsFor(SESSION_SECRET),
     });
   });
 
@@ -121,9 +128,9 @@ describe('AdminSessionService', () => {
     it('respects custom session TTL', () => {
       const shortTtlService = createAdminSessionService({
         adminPassword: ADMIN_PASSWORD,
-        sessionSecret: SESSION_SECRET,
         clock,
         sessionTtlMs: 60 * 1000, // 1 minute
+        ...effectsFor(SESSION_SECRET),
       });
 
       const loginResult = shortTtlService.login(ADMIN_PASSWORD);
@@ -157,9 +164,9 @@ describe('AdminSessionService', () => {
       const idGenerator = createFakeIdGenerator();
       const serviceWithIds = createAdminSessionService({
         adminPassword: ADMIN_PASSWORD,
-        sessionSecret: SESSION_SECRET,
         clock,
         idGenerator,
+        ...effectsFor(SESSION_SECRET),
       });
 
       const token1 = serviceWithIds.createSessionToken();
@@ -177,9 +184,9 @@ describe('AdminSessionService', () => {
       const idGenerator = createFakeIdGenerator();
       const serviceWithIds = createAdminSessionService({
         adminPassword: ADMIN_PASSWORD,
-        sessionSecret: SESSION_SECRET,
         clock,
         idGenerator,
+        ...effectsFor(SESSION_SECRET),
       });
 
       const token = serviceWithIds.createSessionToken();
@@ -194,8 +201,8 @@ describe('AdminSessionService', () => {
     it('cannot verify tokens signed with different secret', () => {
       const otherService = createAdminSessionService({
         adminPassword: ADMIN_PASSWORD,
-        sessionSecret: 'a-different-32-char-secret-key!!',
         clock,
+        ...effectsFor('a-different-32-char-secret-key!!'),
       });
 
       const token = service.createSessionToken();

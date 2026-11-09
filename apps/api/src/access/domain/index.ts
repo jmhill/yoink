@@ -33,7 +33,8 @@ export { createAdminService, type AdminService } from '../application/handle-adm
 export {
   createAdminSessionService,
   type AdminSessionService,
-} from './admin-session-service.js';
+} from '../application/handle-admin-session.js';
+export type { AdminSession } from './admin-session.js';
 
 // Domain types
 export type { User } from './user.js';

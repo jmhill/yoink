@@ -5,19 +5,21 @@ import type { Capture } from '@yoink/api-contracts';
 import { createTestDatabase } from '../../platform/database/test-utils.js';
 import type { Database } from '../../platform/database/types.js';
 import { createFakeCaptureStore } from '../../modules/captures/infrastructure/fakes/fake-capture-store.js';
-import { createFakeProjectStore } from '../../projects/infrastructure/fake-project-store.js';
-import { createFakeTaskStore } from '../../tasks/infrastructure/fake-task-store.js';
+import {
+  createFakeListStore,
+  createFakeProjectStore,
+  createFakeTaskStore,
+} from '../../modules/task-management/testing.js';
 import { createFakeChangeLogStore } from '../../modules/history/testing.js';
-import { createFakeListStore } from '../../lists/infrastructure/fake-list-store.js';
 import { createSqliteCaptureStore } from '../../modules/captures/infrastructure/persistence/sqlite-capture-store.js';
-import { createSqliteProjectStore } from '../../projects/infrastructure/sqlite-project-store.js';
-import { createSqliteTaskStore } from '../../tasks/infrastructure/sqlite-task-store.js';
+import { createSqliteProjectStore } from '../../modules/task-management/infrastructure/persistence/sqlite-project-store.js';
+import { createSqliteTaskStore } from '../../modules/task-management/infrastructure/persistence/sqlite-task-store.js';
 import { handleProcessCaptureToProject } from '../application/handle-process-to-project.js';
 import { handleProcessCaptureToTask } from '../application/handle-process-to-task.js';
 import { decideProcessCaptureToProject } from '../domain/decide-process-to-project.js';
 import { decideProcessCaptureToTask } from '../domain/decide-process-to-task.js';
-import { planProjectChange } from '../../projects/domain/plan-project-change.js';
-import { planTaskChange } from '../../tasks/domain/plan-task-change.js';
+import { planProjectChange } from '../../modules/task-management/domain/projections/plan-project-change.js';
+import { planTaskChange } from '../../modules/task-management/domain/projections/plan-task-change.js';
 import {
   createFakeProcessToProjectPersist,
   createFakeProcessToTaskPersist,

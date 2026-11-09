@@ -8,7 +8,7 @@ import {
   projectNotFoundError,
   type ProjectNotFoundError,
   type StorageError,
-} from '../../../projects/domain/project-errors.js';
+} from '../../task-management/domain/messages/project-errors.js';
 import type { ChangeLogStorageError } from '../domain/history-page-item.js';
 import type { ListProjectHistoryQuery } from '../domain/queries.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';

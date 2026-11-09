@@ -30,14 +30,14 @@ Most modules still follow this structure:
     routes.ts       # Fastify routes
 ```
 
-`modules/captures/` is the captures pilot. `index.ts` publishes `{ commands, queries, prepare }` and the capture document in `domain/model/capture.ts`. Domain and application do not import `@yoink/api-contracts`. Domain decisions and plans stay pure. The SQL participant and the fake participant live in infrastructure. The public-api edge maps that document onto the contract capture and maps the closed `Result`. `lists/` follows the older sandwich for view + create + rename + delete + list-open-tasks + reorder (named list or the unlisted pile). Task create, PATCH, complete, and uncomplete are sandwiched the same way; pin/delete still use `TaskService`. See `docs/architecture/FUNCTIONAL_CORE.md`:
+`modules/captures/` is the captures pilot. `index.ts` publishes `{ commands, queries, prepare }` and the capture document in `domain/model/capture.ts`. Domain and application do not import `@yoink/api-contracts`. Domain decisions and plans stay pure. The SQL participant and the fake participant live in infrastructure. The public-api edge maps that document onto the contract capture and maps the closed `Result`. `modules/task-management/` holds tasks, projects, lists, and the Now, due, and work-list queries. Those queries return already ordered, filtered, cursor-paginated pages. `now-order.ts` keeps the fake-store comparisons on the same keyset keys as the SQL. The public API work routes stay on `edges/public-api/v1/` and call those queries. List view, create, rename, delete, list-open-tasks, and reorder (named list or the unlisted pile) still use the older sandwich. Task create, PATCH, complete, and uncomplete are sandwiched the same way; pin and delete still use `TaskService`. M5.3 replaces that surface with `{ commands, queries, prepare }`. See `docs/architecture/FUNCTIONAL_CORE.md`:
 
 ```
-modules/captures/   commands, queries, prepare; unit of work writes the plan
-lists/  and  tasks/ create + PATCH + complete + uncomplete
-  domain/           # Types + pure decide_* + apply
-  application/      # Command/query handlers
-  infrastructure/   # Persist adapters
+modules/captures/          commands, queries, prepare; unit of work writes the plan
+modules/task-management/   tasks, projects, lists, Now / due / work-list queries
+  domain/                  model, messages, decisions, projections, rules
+  application/             handlers and ports; index.ts publishes today's factories
+  infrastructure/          persistence, rows, fakes
 ```
 
 ## Key Patterns

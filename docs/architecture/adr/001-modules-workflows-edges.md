@@ -464,7 +464,7 @@ Current inventory:
 
 Re-checked against the codebase on 2026-11-06. Of all current operations, only processing capture → task and capture → project are workflows, and only "delete source capture" is a policy. Everything else is a single-module command, and some of those query other modules first:
 
-- Every task, project and list operation is internal to Task Management. That includes next-action clearing, closing a project with its open tasks, confirming proposals, imports, reordering, and refusing to delete a list that still has open tasks.
+- Every task, project and list operation is internal to Task Management. That includes next-action clearing, the Now, due, and work-list queries (keyset order and pagination included), closing a project with its open tasks, confirming proposals, imports, reordering, and refusing to delete a list that still has open tasks.
 - Assigning a task queries access.
 - Note create, edit and import query Task Management (and access, for the mirror bot).
 - The designated mirror bot moves into a table owned by notes, which removes the only write notes makes into access's tables.

@@ -1,7 +1,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
 import type { ReviewNextAction } from '@yoink/api-contracts';
-import { parseProjectRow } from '../../projects/infrastructure/parse-project-row.js';
+import { parseProjectRow } from '../../modules/task-management/infrastructure/persistence/rows/parse-project-row.js';
 import { storageError, type StorageError } from '../domain/review-errors.js';
 import type { ReviewCandidate } from '../domain/build-review.js';
 

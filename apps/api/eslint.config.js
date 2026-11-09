@@ -28,6 +28,7 @@ const currentFeatureTypes = [
   'review',
   'shared',
   'tasks',
+  'task-management',
   'work',
 ];
 
@@ -113,7 +114,13 @@ const elements = [
   { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
   // M5.11-captures removed the src/modules/captures/** current element.
   // The folder-mode src/captures/** pattern below stays for boundary fixtures.
-  //
+  // M5.2 moved tasks, projects, lists, and work into task-management.
+  // Target layer rules disallow @yoink/api-contracts, which this module still
+  // imports until M5.11-task-management. Turning those rules on would add a
+  // warning per import. This descriptor is first, so the current element wins.
+  // M5.11-task-management removes it. The old src/tasks, src/projects,
+  // src/lists, and src/work patterns stay for boundary fixtures.
+  { type: 'task-management', pattern: 'src/modules/task-management/**', mode: 'full' },
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {
@@ -371,7 +378,7 @@ export default [
             { from: 'captures', allow: ['captures'] },
             // M3.6 moved the health HTTP tests onto the ops edge.
             { from: 'health', allow: ['health'] },
-            { from: 'history', allow: ['history', 'projects', 'tasks'] },
+            { from: 'history', allow: ['history', 'task-management'] },
             // M4.2: lists, notes, and processing still import the change log.
             { from: 'lists', allow: ['lists', 'history'] },
             { from: 'projects', allow: ['projects', 'history'] },
@@ -380,6 +387,9 @@ export default [
             { from: 'notes', allow: ['notes', 'history'] },
             { from: 'review', allow: ['review'] },
             { from: 'work', allow: ['work'] },
+            // M5.2. One element, so tasks, projects, lists, and the Now queries
+            // import each other. History stays until M5.3 moves the change log.
+            { from: 'task-management', allow: ['task-management', 'history'] },
             { from: 'server', allow: ['server'] },
             // Rule 1. Own module only; capture is the module directory name.
             {
@@ -532,15 +542,13 @@ export default [
             },
             // M3.2. Only the public-api edge, not every edge. These are the
             // module handlers this edge still calls:
-            // M5.1 captures, M5.2 work, M5.3 tasks and lists, M5.7 notes,
+            // M5.1 captures, M5.2 task-management, M5.7 notes,
             // M5.10 review, M5.10-history history.
-            // projects, processing, and access are not allowed. captures→projects
-            // and captures→processing stay visible. The projects-module imports
-            // on this edge stay visible until a narrower rule can name them
-            // without also allowing that captures debt.
+            // processing and access are not allowed. captures→processing stays
+            // visible. Task, project, list, and work routes call task-management.
             {
               from: [['edge', { edge: 'public-api' }]],
-              allow: ['captures', 'lists', 'notes', 'review', 'tasks', 'work', 'history'],
+              allow: ['captures', 'notes', 'review', 'task-management', 'history'],
             },
             // M6.1. The extension edge calls the captures interface only.
             {
@@ -595,10 +603,10 @@ export default [
             },
             // M3.6. Legacy HTTP tests use the access fakes and boot helpers
             // they already used. Production legacy still cannot import
-            // projects, composition, or platform-database.
+            // task-management, composition, or platform-database.
             {
               from: [['edge-test', { edge: 'legacy' }]],
-              allow: ['access', 'platform-database', 'composition', 'projects'],
+              allow: ['access', 'platform-database', 'composition', 'task-management'],
             },
             // M3.6. The health error-map test imports the map that stays in
             // health. Production ops already may import health.
@@ -607,21 +615,17 @@ export default [
               allow: ['health'],
             },
             // M3.6. The modules this edge already calls, plus the test
-            // database and the projects helper the import HTTP test already
-            // used. Production public-api still does not allow projects,
-            // processing, access, or platform-database.
+            // database. Production public-api still does not allow processing,
+            // access, or platform-database.
             {
               from: [['edge-test', { edge: 'public-api' }]],
               allow: [
                 'captures',
-                'lists',
                 'notes',
                 'review',
-                'tasks',
-                'work',
+                'task-management',
                 'history',
                 'platform-database',
-                'projects',
               ],
             },
             { from: 'kernel', allow: ['kernel'] },

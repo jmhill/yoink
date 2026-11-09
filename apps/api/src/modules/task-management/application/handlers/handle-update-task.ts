@@ -1,0 +1,146 @@
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import type { UpdateTaskCommand } from '../../domain/messages/task-commands.js';
+import type { UpdateTaskError } from '../../domain/messages/task-errors.js';
+import type { TaskUpdated } from '../../domain/messages/task-events.js';
+import { decideUpdateTask } from '../../domain/decisions/decide-update-task.js';
+import { planTaskChange } from '../../domain/projections/plan-task-change.js';
+import { loadOwnedTask } from '../support/load-owned-task.js';
+import type {
+  LoadNamedList,
+  LoadNextOpenOrder,
+  LoadProject,
+  LoadTask,
+  PersistTaskChange,
+} from '../ports.js';
+import { kindsFromRecords, type WriteResult } from '../support/write-result.js';
+import type { OrgPrincipalLookup } from '../../domain/model/org-principal-lookup.js';
+import { changeLogIdsForTaskUpdated } from '../../domain/projections/task-change-log-records.js';
+import { planNextActionClear } from '../../domain/projections/plan-next-action-clear.js';
+
+export type HandleUpdateTaskDeps = {
+  load: LoadTask;
+  loadList: LoadNamedList;
+  loadProject: LoadProject;
+  loadNextOpenOrder: LoadNextOpenOrder;
+  persist: PersistTaskChange;
+  principalLookup?: OrgPrincipalLookup;
+  nextId: () => string;
+  now: () => string;
+};
+
+export const handleUpdateTask = (
+  command: UpdateTaskCommand,
+  deps: HandleUpdateTaskDeps
+): ResultAsync<WriteResult<TaskUpdated>, UpdateTaskError> => {
+  return loadOwnedTask({
+    id: command.id,
+    organizationId: command.organizationId,
+    load: deps.load,
+  }).andThen((current) => {
+    const listIdToLoad =
+      command.listId !== undefined &&
+      command.listId !== null &&
+      command.listId !== current.listId
+        ? command.listId
+        : null;
+    const loadedList = listIdToLoad
+      ? deps.loadList(listIdToLoad)
+      : okAsync(null);
+
+    const destProjectId =
+      command.projectId !== undefined &&
+      command.projectId !== null &&
+      command.projectId !== current.projectId
+        ? command.projectId
+        : null;
+    const loadedDestProject = destProjectId
+      ? deps.loadProject(destProjectId)
+      : okAsync(null);
+
+    const leavingProject =
+      command.projectId !== undefined && command.projectId !== current.projectId;
+    const loadedCurrentProject =
+      leavingProject && current.projectId
+        ? deps.loadProject(current.projectId)
+        : okAsync(null);
+
+    const destListId =
+      command.listId !== undefined && command.listId !== current.listId
+        ? command.listId
+        : undefined;
+    const loadedNextOpenOrder =
+      destListId !== undefined
+        ? deps.loadNextOpenOrder(command.organizationId, destListId)
+        : okAsync(0);
+
+    return loadedList.andThen((list) =>
+      loadedDestProject.andThen((project) =>
+        loadedCurrentProject.andThen((currentProject) =>
+          loadedNextOpenOrder.andThen((nextOpenOrder) => {
+            const assigneeCheck: ResultAsync<boolean | null, UpdateTaskError> =
+              command.assigneeId !== undefined && command.assigneeId !== null
+                ? deps.principalLookup
+                  ? deps.principalLookup.existsInOrganization(
+                      command.assigneeId,
+                      command.organizationId
+                    )
+                  : okAsync(false)
+                : okAsync(null);
+
+            return assigneeCheck.andThen((assigneeInOrganization) => {
+              const now = deps.now();
+              const decision = decideUpdateTask({
+                current,
+                command,
+                list,
+                project,
+                assigneeInOrganization,
+                nextOpenOrder,
+                now,
+              });
+
+              if (decision.isErr()) {
+                return errAsync(decision.error);
+              }
+
+              if (decision.value.type === 'Noop') {
+                return okAsync({ event: null, view: current, eventKinds: [] });
+              }
+
+              const event = decision.value;
+              const plan = planTaskChange({
+                event,
+                current,
+                actor: command.actor,
+                ids: changeLogIdsForTaskUpdated(event, current, deps.nextId),
+                ...(project !== null && current.projectId !== undefined
+                  ? { destinationProjectName: project.name }
+                  : {}),
+              });
+              const projectPlan =
+                currentProject === null
+                  ? null
+                  : planNextActionClear({
+                      project: currentProject,
+                      change: { type: 'removedFromProject', taskId: current.id },
+                      actor: command.actor,
+                      now,
+                      recordId: deps.nextId(),
+                    });
+              return deps
+                .persist(plan, projectPlan ? { project: projectPlan } : undefined)
+                .map(() => ({
+                  event,
+                  view: plan.view,
+                  eventKinds: kindsFromRecords([
+                    ...plan.records,
+                    ...(projectPlan?.records ?? []),
+                  ]),
+                }));
+            });
+          })
+        )
+      )
+    );
+  });
+};

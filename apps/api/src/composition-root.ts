@@ -28,10 +28,16 @@ import {
   countTrashedCaptures,
   createSqliteCaptureStore,
 } from './modules/captures/infrastructure/persistence/sqlite-capture-store.js';
-import { createListHandlers } from './lists/application/create-list-handlers.js';
-import { createSqliteListStore } from './lists/infrastructure/sqlite-list-store.js';
-import { createSqliteListPersist } from './lists/infrastructure/store-backed-persist.js';
-import { createProjectHandlers } from './projects/application/create-project-handlers.js';
+import {
+  createListHandlers,
+  createProjectHandlers,
+  createTaskHandlers,
+  createTaskService,
+  createWorkHandlers,
+  storageError,
+} from './modules/task-management/index.js';
+import { createSqliteListStore } from './modules/task-management/infrastructure/persistence/sqlite-list-store.js';
+import { createSqliteListPersist } from './modules/task-management/infrastructure/persistence/list-store-backed-persist.js';
 import { createNoteHandlers } from './notes/application/create-note-handlers.js';
 import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
 import { loadOrgPersonFromSqlite } from './notes/infrastructure/load-org-person.js';
@@ -40,29 +46,25 @@ import {
   loadNotesMirrorBotFromSqlite,
 } from './notes/infrastructure/load-notes-mirror-bot.js';
 import { storageError as noteStorageError } from './notes/domain/note-errors.js';
-import { createSqliteProjectStore } from './projects/infrastructure/sqlite-project-store.js';
+import { createSqliteProjectStore } from './modules/task-management/infrastructure/persistence/sqlite-project-store.js';
 import {
   createSqliteImportDiscard,
   createSqliteImportPersist,
   createSqliteProjectPersist,
   createSqliteProjectStatusPersist,
-} from './projects/infrastructure/store-backed-persist.js';
-import { createSqliteImportStore } from './projects/infrastructure/sqlite-import-store.js';
-import { storageError } from './projects/domain/project-errors.js';
-import { createTaskService } from './tasks/domain/task-service.js';
-import { createSqliteTaskStore } from './tasks/infrastructure/sqlite-task-store.js';
-import { createSqliteTaskPersist } from './tasks/infrastructure/store-backed-persist.js';
+} from './modules/task-management/infrastructure/persistence/project-store-backed-persist.js';
+import { createSqliteImportStore } from './modules/task-management/infrastructure/persistence/sqlite-import-store.js';
+import { createSqliteTaskStore } from './modules/task-management/infrastructure/persistence/sqlite-task-store.js';
+import { createSqliteTaskPersist } from './modules/task-management/infrastructure/persistence/task-store-backed-persist.js';
 import {
   clearCompletedListIdQuery,
   setOpenOrderQueries,
-} from './tasks/infrastructure/task-row-statements.js';
+} from './modules/task-management/infrastructure/persistence/rows/task-row-statements.js';
 import { createPinoCommandLogger, createPinoHistoryReadLogger } from './platform/logging/index.js';
 import { createHistoryHandlers } from './modules/history/index.js';
 import { createSqliteChangeLogStore } from './modules/history/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTimelineLookups } from './modules/history/infrastructure/sqlite-history-lookups.js';
-import { createTaskHandlers } from './tasks/application/create-task-handlers.js';
-import { createWorkHandlers } from './work/application/create-work-handlers.js';
-import { createSqliteWorkStore } from './work/infrastructure/sqlite-work-store.js';
+import { createSqliteWorkStore } from './modules/task-management/infrastructure/persistence/sqlite-work-store.js';
 import { createReviewHandlers } from './review/application/create-review-handlers.js';
 import { createSqliteReviewStore } from './review/infrastructure/sqlite-review-store.js';
 import { createProcessingHandlers } from './processing/application/create-processing-handlers.js';

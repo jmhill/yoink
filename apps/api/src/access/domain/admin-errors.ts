@@ -25,7 +25,7 @@ import {
   type TokenStorageError,
 } from './auth-errors.js';
 import type { InvalidTokenNameError } from './token-errors.js';
-import type { ProjectNotFoundError, StorageError as ProjectStorageError } from '../../projects/domain/project-errors.js';
+import type { ProjectNotFoundError, StorageError as ProjectStorageError } from '../../modules/task-management/domain/messages/project-errors.js';
 
 // Re-export storage errors for convenience
 export type { OrganizationStorageError, MembershipStorageError, UserStorageError, TokenStorageError };

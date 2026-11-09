@@ -7,9 +7,9 @@ import type {
 import type {
   DuplicateProjectNameError,
   StorageError as ProjectStorageError,
-} from '../../projects/domain/project-errors.js';
-import type { ProjectChangePlan } from '../../projects/domain/plan-project-change.js';
-import type { TaskChangePlan } from '../../tasks/domain/plan-task-change.js';
+} from '../../modules/task-management/domain/messages/project-errors.js';
+import type { ProjectChangePlan } from '../../modules/task-management/domain/projections/plan-project-change.js';
+import type { TaskChangePlan } from '../../modules/task-management/domain/projections/plan-task-change.js';
 
 export type LoadCapture = (
   id: string

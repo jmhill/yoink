@@ -57,44 +57,10 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     removedBy: 'M4.4',
   },
 
-  // M5.2 moves work's queries into task-management and deletes work/.
-  // M5.2
-  {
-    path: 'work/infrastructure/sqlite-work-store.ts',
-    keyword: 'FROM',
-    table: 'lists',
-    count: 1,
-    removedBy: 'M5.2',
-  },
-  // M5.2
-  {
-    path: 'work/infrastructure/sqlite-work-store.ts',
-    keyword: 'FROM',
-    table: 'projects',
-    count: 2,
-    removedBy: 'M5.2',
-  },
-  // M5.2 — countUnlistedOpen. pageSqlite's bare from: 'tasks' is not keyword-led.
-  {
-    path: 'work/infrastructure/sqlite-work-store.ts',
-    keyword: 'FROM',
-    table: 'tasks',
-    count: 1,
-    removedBy: 'M5.2',
-  },
-  // M5.2
-  {
-    path: 'work/infrastructure/sqlite-work-store.ts',
-    keyword: 'JOIN',
-    table: 'tasks',
-    count: 3,
-    removedBy: 'M5.2',
-  },
-
   // M5.3 stops task-management SQL from deleting history rows.
   // M5.3
   {
-    path: 'projects/infrastructure/store-backed-persist.ts',
+    path: 'modules/task-management/infrastructure/persistence/project-store-backed-persist.ts',
     keyword: 'FROM',
     table: 'change_log',
     count: 1,
@@ -136,7 +102,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M5.5 — softDeleteCaptureQuery.
   {
-    path: 'tasks/infrastructure/task-row-statements.ts',
+    path: 'modules/task-management/infrastructure/persistence/rows/task-row-statements.ts',
     keyword: 'UPDATE',
     table: 'captures',
     count: 1,

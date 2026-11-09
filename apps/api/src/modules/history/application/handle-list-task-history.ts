@@ -4,8 +4,8 @@ import type { InvalidCursorError } from '../../../kernel/listing/domain/invalid-
 import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { taskHistoryCursor } from '../../../kernel/listing/domain/list-keys.js';
 import { runListedQuery } from '../../../kernel/listing/application/run-listed-query.js';
-import { taskNotFoundError, type TaskNotFoundError } from '../../../tasks/domain/task-errors.js';
-import type { StorageError } from '../../../projects/domain/project-errors.js';
+import { taskNotFoundError, type TaskNotFoundError } from '../../task-management/domain/messages/task-errors.js';
+import type { StorageError } from '../../task-management/domain/messages/project-errors.js';
 import type { ChangeLogStorageError } from '../domain/history-page-item.js';
 import type { ListTaskHistoryQuery } from '../domain/queries.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';

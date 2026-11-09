@@ -7,9 +7,10 @@ import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
 import type { HistoryHandlers } from '../../../modules/history/index.js';
-// M5.3 removes these deep imports once projects export their handlers from index.ts.
-import type { ProjectHandlers } from '../../../projects/application/create-project-handlers.js';
-import type { SetProjectNextActionCommand } from '../../../projects/domain/project-commands.js';
+import type {
+  ProjectHandlers,
+  SetProjectNextActionCommand,
+} from '../../../modules/task-management/index.js';
 import {
   mapApplyImportError,
   mapChangeProjectStatusError,
@@ -27,8 +28,8 @@ import {
   mapSetNextActionError,
   mapStageImportError,
   mapUpdateProjectError,
-} from '../../../projects/infrastructure/orpc-project-errors.js';
-import { projectRequestValidationError } from '../../../projects/infrastructure/project-http-errors.js';
+} from './orpc-project-errors.js';
+import { projectRequestValidationError } from './project-http-errors.js';
 
 export type ProjectEdgeDependencies = {
   projectHandlers: ProjectHandlers;

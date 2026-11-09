@@ -1,0 +1,114 @@
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import type { Project } from '@yoink/api-contracts';
+import type { ProjectStore } from '../../domain/ports/project-store.js';
+import { projectNotFoundError, type StorageError } from '../../domain/messages/project-errors.js';
+import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
+
+export type FakeProjectStore = ProjectStore & {
+  captureSnapshot: () => () => void;
+  hasActive: (id: string) => boolean;
+  applyInsert: (project: Project) => void;
+  applyReplace: (project: Project) => void;
+  applyClearNextAction: (input: {
+    projectId: string;
+    previousTaskId: string;
+    lastChangedAt: string | null;
+    lastChangedBy: string | null;
+  }) => boolean;
+  applySetNextAction: (input: {
+    projectId: string;
+    nextActionTaskId: string;
+    lastChangedAt: string | null;
+    lastChangedBy: string | null;
+  }) => boolean;
+};
+
+export const createFakeProjectStore = (initial: Project[] = []): FakeProjectStore => {
+  const projects: Project[] = [...initial];
+
+  return {
+    captureSnapshot: () => {
+      const copy = projects.map((project) => ({ ...project }));
+      return () => {
+        projects.length = 0;
+        projects.push(...copy);
+      };
+    },
+    hasActive: (id: string) => projects.some((project) => project.id === id),
+    applyInsert: (project: Project) => {
+      projects.push(project);
+    },
+    applyReplace: (project: Project) => {
+      const index = projects.findIndex((item) => item.id === project.id);
+      if (index !== -1) {
+        projects[index] = project;
+      }
+    },
+    applyClearNextAction: (input) => {
+      const index = projects.findIndex((item) => item.id === input.projectId);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current || current.nextActionTaskId !== input.previousTaskId) {
+        return false;
+      }
+      projects[index] = {
+        ...current,
+        nextActionTaskId: null,
+        lastChangedAt: input.lastChangedAt,
+        lastChangedBy: input.lastChangedBy,
+      };
+      return true;
+    },
+    applySetNextAction: (input) => {
+      const index = projects.findIndex((item) => item.id === input.projectId);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current || current.status === 'done') {
+        return false;
+      }
+      projects[index] = {
+        ...current,
+        nextActionTaskId: input.nextActionTaskId,
+        lastChangedAt: input.lastChangedAt,
+        lastChangedBy: input.lastChangedBy,
+      };
+      return true;
+    },
+    findById: (id: string): ResultAsync<Project | null, StorageError> =>
+      okAsync(projects.find((project) => project.id === id) ?? null),
+    updateCreatedAt: (id: string, createdAt: string) => {
+      const index = projects.findIndex((project) => project.id === id);
+      const current = index === -1 ? undefined : projects[index];
+      if (!current) {
+        return errAsync(projectNotFoundError(id));
+      }
+      projects[index] = { ...current, createdAt };
+      return okAsync(undefined);
+    },
+    findByOrganization: (organizationId: string): ResultAsync<Project[], StorageError> =>
+      okAsync(projects.filter((project) => project.organizationId === organizationId)),
+    pageByOrganization: (options: {
+      organizationId: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+      statuses?: readonly Project['status'][];
+      createdById?: string;
+    }): ResultAsync<KeysetRows<Project>, StorageError> => {
+      const matching = projects.filter((project) => {
+        if (project.organizationId !== options.organizationId) {
+          return false;
+        }
+        if (options.statuses && !options.statuses.some((status) => status === project.status)) {
+          return false;
+        }
+        if (options.createdById !== undefined && project.createdById !== options.createdById) {
+          return false;
+        }
+        return true;
+      });
+      return okAsync({
+        rows: matching.slice(0, options.fetchLimit),
+        total: matching.length,
+      });
+    },
+  };
+};

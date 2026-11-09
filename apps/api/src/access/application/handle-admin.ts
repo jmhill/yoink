@@ -4,8 +4,8 @@ import type { Clock } from '../../kernel/clock.js';
 import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { PasswordHasher } from '../../kernel/password-hasher.js';
 import type { CommitFailure, UnitOfWork } from '../../kernel/unit-of-work.js';
-import type { ProjectStore } from '../../projects/domain/project-store.js';
-import { projectNotFoundError } from '../../projects/domain/project-errors.js';
+import type { ProjectStore } from '../../modules/task-management/domain/ports/project-store.js';
+import { projectNotFoundError } from '../../modules/task-management/domain/messages/project-errors.js';
 import type { AdminPlan } from '../domain/admin-plan.js';
 import type { ApiToken } from '../domain/api-token.js';
 import {

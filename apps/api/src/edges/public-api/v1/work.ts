@@ -6,13 +6,12 @@ import { toTaskListBody, toWorkListsBody, toWorkNextActionsBody } from '../../_s
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
-// M5.2 keeps these routes on the public API edge and moves the queries into task-management.
-import type { WorkHandlers } from '../../../work/application/create-work-handlers.js';
+import type { WorkHandlers } from '../../../modules/task-management/index.js';
 import {
   mapListDueError,
   mapListNextActionsError,
   mapListWorkListsError,
-} from '../../../work/infrastructure/orpc-work-errors.js';
+} from './orpc-work-errors.js';
 
 export type WorkEdgeDependencies = { workHandlers: WorkHandlers };
 

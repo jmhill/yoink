@@ -763,7 +763,7 @@ describe('current tree', () => {
 
   it('passes with the checked-in allowlist and fails closed without it', () => {
     const bare = checkTableOwnership(files, []);
-    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(33);
+    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(29);
     expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(bare.violations.length);
     const helperHits = files
       .filter((file) => file.path.startsWith('tests/helpers/'))
@@ -822,7 +822,13 @@ describe('current tree', () => {
 
     expect(count('processing/infrastructure/process-row-statements.ts', 'FROM', 'captures')).toBe(1);
     expect(count('processing/infrastructure/process-row-statements.ts', 'UPDATE', 'captures')).toBe(1);
-    expect(count('tasks/infrastructure/task-row-statements.ts', 'UPDATE', 'captures')).toBe(1);
+    expect(
+      count(
+        'modules/task-management/infrastructure/persistence/rows/task-row-statements.ts',
+        'UPDATE',
+        'captures'
+      )
+    ).toBe(1);
     expect(count('modules/history/infrastructure/sql.ts', 'FROM', 'tasks')).toBe(2);
     expect(count('modules/history/infrastructure/sql.ts', 'INTO', 'change_log')).toBe(1);
     expect(count('notes/infrastructure/note-row-statements.ts', 'JOIN', 'users')).toBe(4);

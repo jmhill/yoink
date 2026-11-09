@@ -1,7 +1,7 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import type { Database } from '../../../platform/database/types.js';
-import { storageError } from '../../../projects/domain/project-errors.js';
+import { storageError } from '../../task-management/domain/messages/project-errors.js';
 import {
   UNKNOWN_ACTOR_NAME,
   type TimelineLookups,

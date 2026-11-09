@@ -1,0 +1,178 @@
+import { err, ok, type Result } from 'neverthrow';
+import type { Task } from '@yoink/api-contracts';
+import type { LoadedProject, UpdateTaskCommand } from '../messages/task-commands.js';
+import type { Noop, TaskUpdated } from '../messages/task-events.js';
+import {
+  assigneeNotInOrganizationError,
+  listNotInOrganizationError,
+  projectDoneError,
+  projectNotInOrganizationError,
+  projectProposedError,
+  taskNotOpenError,
+  type AssigneeNotInOrganizationError,
+  type ListNotInOrganizationError,
+  type ProjectDoneError,
+  type ProjectNotInOrganizationError,
+  type ProjectProposedError,
+  type TaskNotOpenError,
+} from '../messages/task-errors.js';
+
+export type DecideUpdateTaskInput = {
+  current: Task;
+  command: UpdateTaskCommand;
+  /** Loaded list when command.listId is a uuid change; null if missing, not loaded, or clearing. */
+  list: { id: string; organizationId: string } | null;
+  /** Loaded project when command.projectId is a uuid change; null if missing, not loaded, or clearing. */
+  project: LoadedProject | null;
+  /**
+   * Whether command.assigneeId (when a principal id) is in the org.
+   * Null when assignee is omitted or being cleared.
+   */
+  assigneeInOrganization: boolean | null;
+  /** Next open-order index in the destination pile when listId changes. */
+  nextOpenOrder: number;
+  now: string;
+};
+
+export type DecideUpdateTaskError =
+  | ListNotInOrganizationError
+  | AssigneeNotInOrganizationError
+  | ProjectNotInOrganizationError
+  | ProjectDoneError
+  | ProjectProposedError
+  | TaskNotOpenError;
+
+const changedTitle = (current: Task, command: UpdateTaskCommand): string | undefined =>
+  command.title !== undefined && command.title !== current.title ? command.title : undefined;
+
+const changedDueDate = (current: Task, command: UpdateTaskCommand): string | null | undefined =>
+  command.dueDate !== undefined && command.dueDate !== (current.dueDate ?? null)
+    ? command.dueDate
+    : undefined;
+
+const changedAssigneeId = (current: Task, command: UpdateTaskCommand): string | null | undefined =>
+  command.assigneeId !== undefined && command.assigneeId !== (current.assigneeId ?? null)
+    ? command.assigneeId
+    : undefined;
+
+const hasOtherFieldChanges = (current: Task, command: UpdateTaskCommand): boolean =>
+  changedTitle(current, command) !== undefined ||
+  changedDueDate(current, command) !== undefined ||
+  changedAssigneeId(current, command) !== undefined;
+
+const listForUpdate = (
+  current: Task,
+  command: UpdateTaskCommand,
+  list: { id: string; organizationId: string } | null,
+  nextOpenOrder: number
+): Result<
+  { listId?: string | null; openOrder?: number },
+  ListNotInOrganizationError | TaskNotOpenError
+> => {
+  if (command.listId === undefined) {
+    return ok({});
+  }
+  const currentListId = current.listId ?? null;
+  if (command.listId === currentListId) {
+    return ok({});
+  }
+  if (current.completedAt) {
+    return err(taskNotOpenError(command.id, 'list'));
+  }
+  if (command.listId === null) {
+    return ok({ listId: null, openOrder: nextOpenOrder });
+  }
+  if (
+    !list ||
+    list.id !== command.listId ||
+    list.organizationId !== command.organizationId
+  ) {
+    return err(listNotInOrganizationError(command.listId, command.organizationId));
+  }
+  return ok({ listId: command.listId, openOrder: nextOpenOrder });
+};
+
+const projectForUpdate = (
+  current: Task,
+  command: UpdateTaskCommand,
+  project: LoadedProject | null
+): Result<
+  { projectId?: string | null },
+  ProjectNotInOrganizationError | ProjectDoneError | ProjectProposedError | TaskNotOpenError
+> => {
+  if (command.projectId === undefined) {
+    return ok({});
+  }
+  const currentProjectId = current.projectId ?? null;
+  if (command.projectId === currentProjectId) {
+    return ok({});
+  }
+  if (current.completedAt) {
+    return err(taskNotOpenError(command.id, 'project'));
+  }
+  if (command.projectId === null) {
+    return ok({ projectId: null });
+  }
+  if (
+    !project ||
+    project.id !== command.projectId ||
+    project.organizationId !== command.organizationId
+  ) {
+    return err(projectNotInOrganizationError(command.projectId, command.organizationId));
+  }
+  if (project.status === 'done') {
+    return err(projectDoneError(command.projectId));
+  }
+  if (project.status === 'proposed' || project.status === 'declined') {
+    return err(projectProposedError(command.projectId));
+  }
+  return ok({ projectId: command.projectId });
+};
+
+export const decideUpdateTask = ({
+  current,
+  command,
+  list,
+  project,
+  assigneeInOrganization,
+  nextOpenOrder,
+  now,
+}: DecideUpdateTaskInput): Result<TaskUpdated | Noop, DecideUpdateTaskError> => {
+  const listDecision = listForUpdate(current, command, list, nextOpenOrder);
+  if (listDecision.isErr()) {
+    return err(listDecision.error);
+  }
+
+  const projectDecision = projectForUpdate(current, command, project);
+  if (projectDecision.isErr()) {
+    return err(projectDecision.error);
+  }
+
+  if (command.assigneeId !== undefined && command.assigneeId !== null) {
+    if (assigneeInOrganization !== true) {
+      return err(
+        assigneeNotInOrganizationError(command.assigneeId, command.organizationId)
+      );
+    }
+  }
+
+  const { listId, openOrder } = listDecision.value;
+  const { projectId } = projectDecision.value;
+
+  if (listId === undefined && projectId === undefined && !hasOtherFieldChanges(current, command)) {
+    return ok({ type: 'Noop' });
+  }
+
+  return ok({
+    type: 'TaskUpdated',
+    id: command.id,
+    organizationId: command.organizationId,
+    title: changedTitle(current, command),
+    dueDate: changedDueDate(current, command),
+    assigneeId: changedAssigneeId(current, command),
+    listId,
+    projectId,
+    openOrder,
+    occurredAt: now,
+  });
+};

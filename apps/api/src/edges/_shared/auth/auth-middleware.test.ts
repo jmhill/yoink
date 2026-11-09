@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';
 import { createAuthMiddleware } from './auth-middleware.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
 import type { Organization } from '../../../access/domain/organization.js';
@@ -73,7 +74,9 @@ describe('authMiddleware', () => {
       clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
     });
 
-    const authMiddleware = createAuthMiddleware({ tokenService });
+    const authMiddleware = createAuthMiddleware({
+      authenticateToken: authenticateTokenWith(tokenService),
+    });
 
     app = Fastify();
     app.addHook('preHandler', authMiddleware);

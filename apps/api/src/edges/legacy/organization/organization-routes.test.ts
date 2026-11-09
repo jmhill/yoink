@@ -54,6 +54,7 @@ import { createFakeUserStore } from '../../../access/infrastructure/fake-user-st
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
+import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
 import type { User } from '../../../access/domain/user.js';
@@ -396,7 +397,7 @@ describe('organization routes', () => {
     app = Fastify();
     await app.register(cookie);
 
-    const authMiddleware = createCombinedAuthMiddleware({
+    const authMiddleware = createCombinedAuthMiddleware(combinedAuthFromServices({
       tokenService: createTokenService({
         organizationStore,
         userStore,
@@ -406,7 +407,7 @@ describe('organization routes', () => {
       }),
       sessionService,
       sessionCookieName: USER_SESSION_COOKIE,
-    });
+    }));
 
     await registerOrganizationRoutes(app, {
       sessionService,
@@ -552,7 +553,7 @@ describe('organization routes', () => {
           nextId: () => idGenerator.generate(),
           now: () => clock.now().toISOString(),
         }),
-      authMiddleware: createCombinedAuthMiddleware({
+      authMiddleware: createCombinedAuthMiddleware(combinedAuthFromServices({
         tokenService: createTokenService({
           organizationStore,
           userStore,
@@ -562,7 +563,7 @@ describe('organization routes', () => {
         }),
         sessionService,
         sessionCookieName: USER_SESSION_COOKIE,
-      }),
+      })),
     });
     await failingApp.ready();
     return { app: failingApp, logs };
@@ -1458,7 +1459,7 @@ describe('organization routes', () => {
             nextId: () => idGenerator.generate(),
             now: () => clock.now().toISOString(),
           }),
-        authMiddleware: createCombinedAuthMiddleware({
+        authMiddleware: createCombinedAuthMiddleware(combinedAuthFromServices({
           tokenService: createTokenService({
             organizationStore,
             userStore,
@@ -1468,7 +1469,7 @@ describe('organization routes', () => {
           }),
           sessionService,
           sessionCookieName: USER_SESSION_COOKIE,
-        }),
+        })),
       });
       await failingApp.ready();
 

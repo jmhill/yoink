@@ -3,9 +3,9 @@ import rateLimit from '@fastify/rate-limit';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { signupOrpcContract } from '@yoink/api-contracts/orpc';
+import type { Access } from '../../../access/index.js';
 import type { SignupService } from '../../../access/domain/signup-service.js';
 import type { PasskeyService } from '../../../access/domain/passkey-service.js';
-import type { SessionService } from '../../../access/domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../../platform/config/schema.js';
 import type { ClientIpOf } from '../../_shared/request-client-ip.js';
@@ -21,7 +21,7 @@ import {
 export type SignupRoutesDependencies = {
   signupService: SignupService;
   passkeyService: PasskeyService;
-  sessionService: SessionService;
+  completeSignup: Access['commands']['completeSignup'];
   /** Session cookie name */
   sessionCookieName: string;
   /** Session cookie settings */
@@ -46,7 +46,7 @@ export const registerSignupRoutes = async (
   const {
     signupService,
     passkeyService,
-    sessionService,
+    completeSignup,
     sessionCookieName,
     cookieOptions,
     clientIpOf,
@@ -88,40 +88,28 @@ export const registerSignupRoutes = async (
       };
     }),
     verify: signup.verify.handler(async ({ input, context }) => {
-      const signupResult = await signupService.completeSignup({
-        code: input.code,
-        email: input.email,
-      });
-      if (signupResult.isErr()) {
-        throw acceptInvitationErrorResponse(signupResult.error);
-      }
-
-      const { user, personalOrganization, invitedOrganization } = signupResult.value;
       if (!isRegistrationResponse(input.credential)) {
         throw accessHttpError({ code: 'BAD_REQUEST', message: 'Passkey registration failed' });
       }
 
-      const verifyResult = await passkeyService.verifyRegistration({
-        userId: user.id,
+      const signupResult = await completeSignup({
+        code: input.code,
+        email: input.email,
         challenge: input.challenge,
-        response: input.credential,
-        credentialName: input.credentialName,
-        skipUserIdCheck: true,
+        credential: input.credential,
+        ...(input.credentialName === undefined
+          ? {}
+          : { credentialName: input.credentialName }),
       });
-
-      if (verifyResult.isErr()) {
-        throw accessHttpError({ code: 'BAD_REQUEST', message: 'Passkey registration failed' });
+      if (signupResult.isErr()) {
+        if (signupResult.error.type === 'PASSKEY_REGISTRATION_FAILED') {
+          throw accessHttpError({ code: 'BAD_REQUEST', message: 'Passkey registration failed' });
+        }
+        throw acceptInvitationErrorResponse(signupResult.error);
       }
 
-      const sessionResult = await sessionService.createSession({
-        userId: user.id,
-        organizationId: personalOrganization.id,
-      });
-      if (sessionResult.isErr()) {
-        throw accessStorageError(sessionResult.error, 'Failed to create session');
-      }
-
-      context.reply.setCookie(sessionCookieName, sessionResult.value.id, {
+      const { user, personalOrganization, invitedOrganization, sessionId } = signupResult.value;
+      context.reply.setCookie(sessionCookieName, sessionId, {
         ...sessionCookieBase,
         maxAge: cookieOptions.maxAge,
       });

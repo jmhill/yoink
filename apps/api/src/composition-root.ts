@@ -17,6 +17,10 @@ import { createHistoryEventSink } from './modules/history/application/prepare-ev
 import { EMPTY_EVENT_SINK_MAP } from './modules/history/domain/event-sink.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
+import { createAccess } from './access/index.js';
+import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
+import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
+import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
 import { createSqliteCaptureStore } from './captures/infrastructure/sqlite-capture-store.js';
 import { createStoreBackedPersist } from './captures/infrastructure/store-backed-persist.js';
 import { createCaptureHandlers } from './captures/application/create-capture-handlers.js';
@@ -63,7 +67,7 @@ import {
   createSqliteProcessToTaskPersist,
 } from './processing/infrastructure/persist-process.js';
 import { createSqliteHealthChecker } from './platform/health/sqlite-health-checker.js';
-import { createAuthMiddleware } from './edges/_shared/auth/auth-middleware.js';
+import { createAuthMiddleware, type AuthMiddleware } from './edges/_shared/auth/auth-middleware.js';
 import { createCombinedAuthMiddleware } from './edges/_shared/auth/combined-auth-middleware.js';
 import { decideViaFly } from './edges/_shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
@@ -332,7 +336,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   // Passkey and session services (for signup flow)
   // Only created if webauthn config is provided
-  let signupConfig: SignupConfig | undefined;
+  let signupDraft: Omit<SignupConfig, 'authenticateToken' | 'completeSignup'> | undefined;
   if (config.webauthn) {
     const passkeyCredentialStore = await createSqlitePasskeyCredentialStore(database);
     const userSessionStore = await createSqliteUserSessionStore(database);
@@ -465,7 +469,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         ),
     };
 
-    signupConfig = {
+    signupDraft = {
       signupService,
       passkeyService,
       sessionService,
@@ -480,15 +484,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     };
   }
 
-  // Create auth middleware - uses combined auth if WebAuthn is enabled
-  // Combined auth supports both session cookies (for passkey users) and Bearer tokens
-  const authMiddleware = signupConfig
-    ? createCombinedAuthMiddleware({
-        tokenService,
-        sessionService: signupConfig.sessionService,
-        sessionCookieName: config.cookie.sessionName,
-      })
-    : createAuthMiddleware({ tokenService });
+  let authMiddleware: AuthMiddleware;
 
   // Create health checker
   const healthChecker = createSqliteHealthChecker(database);
@@ -728,7 +724,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
   const unitOfWork = createSqliteUnitOfWork({
     client: writeClient,
-    participants: [historySqlParticipant],
+    participants: [accessSqlParticipant, historySqlParticipant],
     sink: historySink,
     logger: {
       error: (fields) => {
@@ -737,9 +733,52 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     },
   });
   const inMemoryUnitOfWork = createInMemoryUnitOfWork({
-    participants: [createFakeHistoryParticipant()],
+    participants: [createFakeSignupParticipant(), createFakeHistoryParticipant()],
     sink: historySink,
   });
+  const passkeyService = signupDraft?.passkeyService;
+  const access = createAccess({
+    tokenService,
+    sessionService: signupDraft?.sessionService ?? null,
+    userStore,
+    membershipStore,
+    invitationStore,
+    organizationStore,
+    loadOrganizationTimeZone: createSqliteOrganizationTimeZone(database),
+    clock,
+    idGenerator,
+    unitOfWork,
+    verifySignupCredential: passkeyService
+      ? (input) =>
+          passkeyService.planRegistrationCredential({
+            userId: input.userId,
+            challenge: input.challenge,
+            response: input.response,
+            ...(input.credentialName === undefined
+              ? {}
+              : { credentialName: input.credentialName }),
+            skipUserIdCheck: true,
+          })
+      : null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+  });
+  const signupConfig: SignupConfig | undefined = signupDraft
+    ? {
+        ...signupDraft,
+        authenticateToken: access.queries.authenticateToken,
+        completeSignup: access.commands.completeSignup,
+      }
+    : undefined;
+  authMiddleware = signupConfig
+    ? createCombinedAuthMiddleware({
+        authenticateToken: access.queries.authenticateToken,
+        authenticateSession: access.queries.authenticateSession,
+        recordSessionActivity: access.commands.recordSessionActivity,
+        sessionCookieName: config.cookie.sessionName,
+      })
+    : createAuthMiddleware({
+        authenticateToken: access.queries.authenticateToken,
+      });
 
   const server = await createApp({
     app: options.app ?? app,

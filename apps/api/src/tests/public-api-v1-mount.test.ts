@@ -20,7 +20,9 @@ import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
 import { createUserService } from '../access/domain/user-service.js';
 import { captureNotInInboxError } from '../captures/domain/capture-errors.js';
+import { authenticateTokenWith } from '../access/application/authenticate-principal.js';
 import { createAuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
+import { combinedAuthFromServices } from '../edges/_shared/auth/auth-from-services.js';
 import { createCombinedAuthMiddleware } from '../edges/_shared/auth/combined-auth-middleware.js';
 import { registerTokenMutationRoutes } from '../edges/legacy/tokens/token-routes.js';
 import type { TokenHandlers } from '../access/application/create-token-handlers.js';
@@ -215,12 +217,16 @@ describe('public API v1 mount', () => {
     deps.captureProcessingService = captureProcessingService;
     deps.tokenHandlers = tokenHandlers;
     deps.aliasRetirement = undefined;
-    deps.tokenAuth = createAuthMiddleware({ tokenService });
-    deps.aliasAuth = createCombinedAuthMiddleware({
-      tokenService,
-      sessionService,
-      sessionCookieName: USER_SESSION_COOKIE,
+    deps.tokenAuth = createAuthMiddleware({
+      authenticateToken: authenticateTokenWith(tokenService),
     });
+    deps.aliasAuth = createCombinedAuthMiddleware(
+      combinedAuthFromServices({
+        tokenService,
+        sessionService,
+        sessionCookieName: USER_SESSION_COOKIE,
+      })
+    );
     await registerPublicApiV1(app, deps);
     await registerTokenMutationRoutes(app, {
       tokenHandlers,
@@ -406,7 +412,9 @@ describe('public API v1 mount', () => {
       clock,
     });
     const deps = stub<PublicApiV1Dependencies>();
-    deps.tokenAuth = createAuthMiddleware({ tokenService });
+    deps.tokenAuth = createAuthMiddleware({
+      authenticateToken: authenticateTokenWith(tokenService),
+    });
     deps.aliasAuth = deps.tokenAuth;
     deps.tokenHandlers = stub<TokenHandlers>();
     deps.tokenHandlers.list = () => okAsync({ tokens: [] });

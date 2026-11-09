@@ -1,8 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import type { AuthenticateToken } from '../../../access/index.js';
 import type { AuthContext } from '../../../kernel/auth-context.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
-import { actorFromToken } from '../../../kernel/auth-context.js';
-import { principalKindOf } from '../../../access/domain/user.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -16,11 +14,11 @@ export type AuthMiddleware = (
 ) => Promise<void>;
 
 export type AuthMiddlewareDependencies = {
-  tokenService: TokenService;
+  authenticateToken: AuthenticateToken;
 };
 
 export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
-  const { tokenService } = deps;
+  const { authenticateToken } = deps;
 
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const authHeader = request.headers.authorization;
@@ -30,8 +28,7 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
     }
 
     const token = authHeader.slice(7);
-
-    const result = await tokenService.validateToken({ plaintext: token });
+    const result = await authenticateToken(token);
 
     if (result.isErr()) {
       // For security, we don't reveal specific error details to the client
@@ -39,10 +36,10 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
     }
 
     request.authContext = {
-      organizationId: result.value.organization.id,
-      userId: result.value.user.id,
-      principalKind: principalKindOf(result.value.user),
-      actor: actorFromToken(result.value.token, principalKindOf(result.value.user)),
+      organizationId: result.value.organizationId,
+      userId: result.value.userId,
+      principalKind: result.value.principalKind,
+      actor: result.value.actor,
     };
 
     // Bind auth context to request logger for all subsequent logs

@@ -1,39 +1,42 @@
-import type {
-  OrganizationStorageError,
-  MembershipStorageError,
-  BotCannotChangeRolesError,
-  BotCannotHavePrivilegedRoleError,
-  CannotAssignOwnerRoleError,
-  CannotChangeOwnRoleError,
-  LastAdminError,
-  MembershipNotFoundError,
-  OwnerMustTransferError,
-  OwnerRoleLockedError,
-  RoleChangeNotAllowedError,
-  TargetNotWorkspaceMemberError,
+import {
+  organizationNotFoundError,
+  type BotCannotChangeRolesError,
+  type BotCannotHavePrivilegedRoleError,
+  type CannotAssignOwnerRoleError,
+  type CannotChangeOwnRoleError,
+  type LastAdminError,
+  type MembershipNotFoundError,
+  type MembershipStorageError,
+  type OrganizationNotFoundError,
+  type OrganizationStorageError,
+  type OwnerMustTransferError,
+  type OwnerRoleLockedError,
+  type RoleChangeNotAllowedError,
+  type TargetNotWorkspaceMemberError,
 } from './organization-errors.js';
-import type { UserStorageError } from './user-errors.js';
-import type { TokenStorageError } from './auth-errors.js';
+import {
+  userNotFoundError,
+  type UserNotFoundError,
+  type UserStorageError,
+} from './user-errors.js';
+import {
+  tokenNotFoundError,
+  type TokenNotFoundError,
+  type TokenStorageError,
+} from './auth-errors.js';
 import type { InvalidTokenNameError } from './token-errors.js';
 import type { ProjectNotFoundError, StorageError as ProjectStorageError } from '../../projects/domain/project-errors.js';
 
 // Re-export storage errors for convenience
 export type { OrganizationStorageError, MembershipStorageError, UserStorageError, TokenStorageError };
 
-// Admin-specific error types
-export type OrganizationNotFoundError = {
-  readonly type: 'ORGANIZATION_NOT_FOUND';
-  readonly organizationId: string;
-};
-
-export type UserNotFoundError = {
-  readonly type: 'USER_NOT_FOUND';
-  readonly userId: string;
-};
-
-export type TokenNotFoundError = {
-  readonly type: 'TOKEN_NOT_FOUND';
-  readonly tokenId: string;
+export {
+  organizationNotFoundError,
+  type OrganizationNotFoundError,
+  tokenNotFoundError,
+  type TokenNotFoundError,
+  userNotFoundError,
+  type UserNotFoundError,
 };
 
 // Union type for all admin service errors
@@ -58,21 +61,3 @@ export type AdminServiceError =
   | RoleChangeNotAllowedError
   | CannotChangeOwnRoleError
   | OwnerRoleLockedError;
-
-// Factory functions
-export const organizationNotFoundError = (
-  organizationId: string
-): OrganizationNotFoundError => ({
-  type: 'ORGANIZATION_NOT_FOUND',
-  organizationId,
-});
-
-export const userNotFoundError = (userId: string): UserNotFoundError => ({
-  type: 'USER_NOT_FOUND',
-  userId,
-});
-
-export const tokenNotFoundError = (tokenId: string): TokenNotFoundError => ({
-  type: 'TOKEN_NOT_FOUND',
-  tokenId,
-});

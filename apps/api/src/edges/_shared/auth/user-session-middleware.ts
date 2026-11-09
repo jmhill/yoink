@@ -1,8 +1,10 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import type {
+  AuthenticateSession,
+  RecordSessionActivity,
+  UserSession,
+} from '../../../access/index.js';
 import type { AuthContext } from '../../../kernel/auth-context.js';
-import type { UserSession } from '../../../access/domain/user-session.js';
-import type { SessionService } from '../../../access/domain/session-service.js';
-import { actorFromSession } from '../../../kernel/auth-context.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -19,13 +21,14 @@ export type UserSessionMiddleware = (
 ) => Promise<void>;
 
 export type UserSessionMiddlewareDependencies = {
-  sessionService: SessionService;
+  authenticateSession: AuthenticateSession;
+  recordSessionActivity: RecordSessionActivity;
 };
 
 export const createUserSessionMiddleware = (
   deps: UserSessionMiddlewareDependencies
 ): UserSessionMiddleware => {
-  const { sessionService } = deps;
+  const { authenticateSession, recordSessionActivity } = deps;
 
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const sessionId = (request.cookies as Record<string, string>)?.[USER_SESSION_COOKIE];
@@ -34,7 +37,7 @@ export const createUserSessionMiddleware = (
       return reply.status(401).send({ message: 'Not authenticated' });
     }
 
-    const result = await sessionService.validateSession(sessionId);
+    const result = await authenticateSession(sessionId);
 
     if (result.isErr()) {
       // Storage error - log and return generic error
@@ -42,21 +45,21 @@ export const createUserSessionMiddleware = (
       return reply.status(500).send({ message: 'Internal server error' });
     }
 
-    const session = result.value;
-    if (!session) {
+    const authenticated = result.value;
+    if (!authenticated) {
       return reply.status(401).send({ message: 'Invalid or expired session' });
     }
 
     // Set auth context for downstream handlers
     request.authContext = {
-      organizationId: session.currentOrganizationId,
-      userId: session.userId,
-      principalKind: 'human',
-      actor: actorFromSession(session.userId),
+      organizationId: authenticated.organizationId,
+      userId: authenticated.userId,
+      principalKind: authenticated.principalKind,
+      actor: authenticated.actor,
     };
 
     // Also expose the full session for handlers that need it
-    request.userSession = session;
+    request.userSession = authenticated.session;
 
     // Bind auth context to request logger for all subsequent logs
     request.log = request.log.child({
@@ -67,7 +70,7 @@ export const createUserSessionMiddleware = (
     // Optionally refresh session if it's been idle
     // Note: We don't await this to avoid slowing down the request
     // Using Promise.resolve() to get a proper Promise with .catch() support
-    Promise.resolve(sessionService.refreshSession(sessionId))
+    Promise.resolve(recordSessionActivity(sessionId))
       .then((refreshResult) => {
         if (refreshResult.isErr()) {
           request.log.warn({ error: refreshResult.error }, 'Session refresh failed');

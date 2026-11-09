@@ -38,6 +38,7 @@ import type { WorkHandlers } from './work/application/create-work-handlers.js';
 import type { ReviewHandlers } from './review/application/create-review-handlers.js';
 import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
 import type { HealthChecker } from './platform/health/health-checker.js';
+import type { Access } from './access/index.js';
 import type {
   AdminService,
   AdminSessionService,
@@ -94,6 +95,8 @@ export type SignupConfig = {
   passkeyService: PasskeyService;
   sessionService: SessionService;
   tokenService: TokenService;
+  authenticateToken: Access['queries']['authenticateToken'];
+  completeSignup: Access['commands']['completeSignup'];
   userService: UserService;
   tokenHandlers: TokenHandlers;
   agentService: AgentService;
@@ -207,7 +210,7 @@ export const createApp = async (deps: AppDependencies) => {
   const tokenOnly =
     deps.signup === undefined
       ? deps.authMiddleware
-      : createAuthMiddleware({ tokenService: deps.signup.tokenService });
+      : createAuthMiddleware({ authenticateToken: deps.signup.authenticateToken });
   const tokenAuth =
     deps.signup === undefined
       ? authMiddleware
@@ -284,7 +287,7 @@ export const createApp = async (deps: AppDependencies) => {
     await registerSignupRoutes(app, {
       signupService: deps.signup.signupService,
       passkeyService: deps.signup.passkeyService,
-      sessionService: deps.signup.sessionService,
+      completeSignup: deps.signup.completeSignup,
       sessionCookieName,
       cookieOptions,
       clientIpOf,

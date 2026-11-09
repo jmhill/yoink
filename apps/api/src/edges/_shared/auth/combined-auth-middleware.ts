@@ -1,10 +1,11 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import type {
+  AuthenticateSession,
+  AuthenticateToken,
+  RecordSessionActivity,
+  UserSession,
+} from '../../../access/index.js';
 import type { AuthContext } from '../../../kernel/auth-context.js';
-import type { UserSession } from '../../../access/domain/user-session.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
-import type { SessionService } from '../../../access/domain/session-service.js';
-import { actorFromSession, actorFromToken } from '../../../kernel/auth-context.js';
-import { principalKindOf } from '../../../access/domain/user.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -21,8 +22,9 @@ export type CombinedAuthMiddleware = (
 ) => Promise<void>;
 
 export type CombinedAuthMiddlewareDependencies = {
-  tokenService: TokenService;
-  sessionService: SessionService;
+  authenticateToken: AuthenticateToken;
+  authenticateSession: AuthenticateSession;
+  recordSessionActivity: RecordSessionActivity;
   sessionCookieName: string;
 };
 
@@ -37,7 +39,8 @@ export type CombinedAuthMiddlewareDependencies = {
 export const createCombinedAuthMiddleware = (
   deps: CombinedAuthMiddlewareDependencies
 ): CombinedAuthMiddleware => {
-  const { tokenService, sessionService, sessionCookieName } = deps;
+  const { authenticateToken, authenticateSession, recordSessionActivity, sessionCookieName } =
+    deps;
 
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const sessionId = (request.cookies as Record<string, string>)?.[sessionCookieName];
@@ -45,20 +48,20 @@ export const createCombinedAuthMiddleware = (
 
     // Try session cookie first (preferred auth method)
     if (sessionId) {
-      const sessionResult = await sessionService.validateSession(sessionId);
+      const sessionResult = await authenticateSession(sessionId);
 
       if (sessionResult.isOk()) {
-        const session = sessionResult.value;
-        if (session) {
+        const authenticated = sessionResult.value;
+        if (authenticated) {
           // Valid session - use it
           request.authContext = {
-            organizationId: session.currentOrganizationId,
-            userId: session.userId,
+            organizationId: authenticated.organizationId,
+            userId: authenticated.userId,
             // Sessions are passkey-issued; agents cannot passkey.
-            principalKind: 'human',
-            actor: actorFromSession(session.userId),
+            principalKind: authenticated.principalKind,
+            actor: authenticated.actor,
           };
-          request.userSession = session;
+          request.userSession = authenticated.session;
 
           // Bind auth context to request logger
           request.log = request.log.child({
@@ -67,7 +70,7 @@ export const createCombinedAuthMiddleware = (
           });
 
           // Refresh session in background if idle
-          Promise.resolve(sessionService.refreshSession(sessionId))
+          Promise.resolve(recordSessionActivity(sessionId))
             .then((refreshResult) => {
               if (refreshResult.isErr()) {
                 request.log.warn({ error: refreshResult.error }, 'Session refresh failed');
@@ -86,17 +89,14 @@ export const createCombinedAuthMiddleware = (
     // Try Bearer token as fallback
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      const tokenResult = await tokenService.validateToken({ plaintext: token });
+      const tokenResult = await authenticateToken(token);
 
       if (tokenResult.isOk()) {
         request.authContext = {
-          organizationId: tokenResult.value.organization.id,
-          userId: tokenResult.value.user.id,
-          principalKind: principalKindOf(tokenResult.value.user),
-          actor: actorFromToken(
-            tokenResult.value.token,
-            principalKindOf(tokenResult.value.user)
-          ),
+          organizationId: tokenResult.value.organizationId,
+          userId: tokenResult.value.userId,
+          principalKind: tokenResult.value.principalKind,
+          actor: tokenResult.value.actor,
         };
 
         // Bind auth context to request logger

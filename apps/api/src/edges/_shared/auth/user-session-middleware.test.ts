@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
+import { userSessionAuthFromService } from './auth-from-services.js';
 import {
   createUserSessionMiddleware,
   USER_SESSION_COOKIE,
@@ -88,7 +89,7 @@ describe('UserSessionMiddleware', () => {
 
   describe('with missing session cookie', () => {
     it('returns 401', async () => {
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({});
       const reply = createMockReply();
 
@@ -101,7 +102,7 @@ describe('UserSessionMiddleware', () => {
 
   describe('with invalid session id', () => {
     it('returns 401 for non-existent session', async () => {
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({
         [USER_SESSION_COOKIE]: 'non-existent-session-id',
       });
@@ -124,7 +125,7 @@ describe('UserSessionMiddleware', () => {
       // Advance time past expiry
       clock.advanceBy(8 * 24 * 60 * 60 * 1000);
 
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({
         [USER_SESSION_COOKIE]: session.id,
       });
@@ -144,7 +145,7 @@ describe('UserSessionMiddleware', () => {
       expect(createResult.isOk()).toBe(true);
       const session = createResult._unsafeUnwrap();
 
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({
         [USER_SESSION_COOKIE]: session.id,
       });
@@ -167,7 +168,7 @@ describe('UserSessionMiddleware', () => {
       expect(createResult.isOk()).toBe(true);
       const session = createResult._unsafeUnwrap();
 
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({
         [USER_SESSION_COOKIE]: session.id,
       });
@@ -184,7 +185,7 @@ describe('UserSessionMiddleware', () => {
       expect(createResult.isOk()).toBe(true);
       const session = createResult._unsafeUnwrap();
 
-      const middleware = createUserSessionMiddleware({ sessionService });
+      const middleware = createUserSessionMiddleware(userSessionAuthFromService(sessionService));
       const request = createMockRequest({
         [USER_SESSION_COOKIE]: session.id,
       });

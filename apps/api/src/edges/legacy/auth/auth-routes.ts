@@ -9,6 +9,11 @@ import type { SessionService } from '../../../access/domain/session-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
 import type { MembershipService } from '../../../access/domain/membership-service.js';
 import type { OrganizationStore } from '../../../access/domain/organization-store.js';
+import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';
+import {
+  unauthenticatedToken,
+  userSessionAuthFromService,
+} from '../../_shared/auth/auth-from-services.js';
 import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
@@ -126,20 +131,15 @@ export const registerAuthRoutes = async (
     clientIpOf,
   } = deps;
 
-  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = tokenService
-    ? { tokenService, sessionService, sessionCookieName }
-    : {
-        tokenService: {
-          validateToken: () =>
-            Promise.resolve({
-              isErr: () => true,
-              isOk: () => false,
-              error: { type: 'INVALID_TOKEN_FORMAT' as const },
-            }),
-        } as unknown as TokenService,
-        sessionService,
-        sessionCookieName,
-      };
+  const sessionAuth = userSessionAuthFromService(sessionService);
+  const authMiddlewareDeps: CombinedAuthMiddlewareDependencies = {
+    authenticateToken: tokenService
+      ? authenticateTokenWith(tokenService)
+      : unauthenticatedToken,
+    authenticateSession: sessionAuth.authenticateSession,
+    recordSessionActivity: sessionAuth.recordSessionActivity,
+    sessionCookieName,
+  };
 
   const resolvedAuth = createCombinedAuthMiddleware(authMiddlewareDeps);
   const authMiddleware =

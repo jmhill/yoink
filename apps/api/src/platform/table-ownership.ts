@@ -34,6 +34,9 @@
  *
  * - Comments, including JSDoc examples.
  * - `*.test.ts` files (the walker and {@link classifyApiPath} both skip them).
+ * - `src/tests/helpers/**` only. That directory holds test-support helpers
+ *   that are not test suites. A file anywhere else, including the rest of
+ *   `src/tests/`, is not this exemption. Production paths are not exempt.
  * - Migrations `001`–`043`. A later migration file is not platform code: the
  *   path rule skips it, and {@link checkMigrationOwnership} applies the owner,
  *   reason, and foreign-key rules. That checker is still this keyword
@@ -138,7 +141,7 @@ export const FIXTURE_ROUTE_PATHS = [
 export type FileRole =
   | {
       kind: 'exempt';
-      reason: 'test-file' | 'legacy-migration' | 'later-migration' | 'test-fixtures';
+      reason: 'test-file' | 'test-support' | 'legacy-migration' | 'later-migration' | 'test-fixtures';
     }
   | { kind: 'module-infrastructure'; owner: ModuleName }
   | { kind: 'module-other'; owner: ModuleName }
@@ -251,6 +254,10 @@ export const classifyApiPath = (relativePath: string): FileRole => {
   const path = normalizeApiPath(relativePath);
   if (path.endsWith('.test.ts')) {
     return { kind: 'exempt', reason: 'test-file' };
+  }
+  // Test-support helpers only. `tests/helpers.ts` and `tests/helpers-extra/` do not match.
+  if (path.startsWith('tests/helpers/')) {
+    return { kind: 'exempt', reason: 'test-support' };
   }
   if (path === 'edges/test-fixtures' || path.startsWith('edges/test-fixtures/')) {
     return { kind: 'exempt', reason: 'test-fixtures' };

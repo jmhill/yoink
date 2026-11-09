@@ -680,7 +680,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M3.5 Auth middlewares to `edges/_shared/`
 - [x] M3.6 Retire HTTP tests from module folders
 - [x] M3.7 Remove test-helper SQL ownership exceptions
-- [ ] M3.7 correction: helper filenames and the test-support exemption (approved; not implemented)
+- [ ] M3.7 correction: helper filenames and the test-support exemption (implemented, unmerged; not done)
 - [x] Health HTTP error mapper on the ops edge
 - [x] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1` (done, #334, `30f08e33`)
 - [ ] TOKEN-LIST Confirm integration token listing and pin public v1 (approved 2026-11-07 21:45 CST; tests queued; not done)

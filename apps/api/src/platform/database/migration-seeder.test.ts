@@ -4,7 +4,7 @@ import type { Database } from './types.js';
 import {
   seedMigrationTestData,
   type SeedResult,
-} from '../../tests/helpers/migration-seed.test.js';
+} from '../../tests/helpers/migration-seed.js';
 
 describe('Migration seeder', () => {
   let db: Database;

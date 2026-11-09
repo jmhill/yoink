@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -283,6 +283,14 @@ describe('path ownership', () => {
       kind: 'exempt',
       reason: 'test-file',
     });
+    expect(classifyApiPath('tests/helpers/migration-seed.ts')).toEqual({
+      kind: 'exempt',
+      reason: 'test-support',
+    });
+    expect(classifyApiPath('tests/helpers/nested/seed.ts')).toEqual({
+      kind: 'exempt',
+      reason: 'test-support',
+    });
     for (const path of FIXTURE_ROUTE_PATHS) {
       expect(classifyApiPath(path)).toEqual({ kind: 'exempt', reason: 'test-fixtures' });
     }
@@ -295,6 +303,214 @@ describe('path ownership', () => {
     expect(TABLE_OWNERS.organizations).toBe('access');
     expect(TABLE_OWNERS.users).toBe('access');
     expect(TABLE_OWNERS._migrations).toBe('platform');
+  });
+});
+
+const HELPER_SQL = 'export const q = "INSERT INTO user_sessions (id) VALUES (?)";';
+
+const REAL_TEST_CALL = /(?:^|[^\w$.])(?:it|test)(?:\.[A-Za-z_$][\w$]*)*\s*\(/;
+
+const codeWithoutCommentsAndStrings = (source: string): string => {
+  const code: string[] = [];
+  let index = 0;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      const end = source.indexOf('\n', index);
+      index = end === -1 ? source.length : end + 1;
+      code.push('\n');
+      continue;
+    }
+    if (source.startsWith('/*', index)) {
+      const end = source.indexOf('*/', index + 2);
+      index = end === -1 ? source.length : end + 2;
+      code.push(' ');
+      continue;
+    }
+    const quote = source[index];
+    if (quote === "'" || quote === '"' || quote === '`') {
+      index += 1;
+      while (index < source.length) {
+        if (source[index] === '\\') {
+          index += 2;
+          continue;
+        }
+        if (source[index] === quote) {
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      code.push(' ');
+      continue;
+    }
+    code.push(quote ?? '');
+    index += 1;
+  }
+  return code.join('');
+};
+
+const sourceHasRealTest = (source: string): boolean =>
+  REAL_TEST_CALL.test(codeWithoutCommentsAndStrings(source));
+
+const resolveRelativeTs = (fromFile: string, specifier: string): string | undefined => {
+  if (!specifier.startsWith('.')) {
+    return undefined;
+  }
+  const base = join(dirname(fromFile), specifier);
+  const candidates = [base, base.replace(/\.js$/, '.ts'), `${base}.ts`];
+  for (const candidate of candidates) {
+    if (candidate.endsWith('.ts') && existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+};
+
+/** A suite is an `it`/`test` call, or a called relative import that contains one. */
+const fileRegistersTests = (file: string): boolean => {
+  const source = readFileSync(file, 'utf8');
+  if (sourceHasRealTest(source)) {
+    return true;
+  }
+  const calls = new Set<string>();
+  for (const match of codeWithoutCommentsAndStrings(source).matchAll(
+    /(?:^|[^\w$.])([A-Za-z_$][\w$]*)\s*\(/g
+  )) {
+    const name = match[1];
+    if (name !== undefined) {
+      calls.add(name);
+    }
+  }
+  const imported =
+    /import\s+(?:type\s+)?\{([\s\S]*?)\}\s*from\s*['"](\.[^'"]+)['"]/g;
+  for (const match of source.matchAll(imported)) {
+    const body = match[1];
+    const specifier = match[2];
+    if (body === undefined || specifier === undefined) {
+      continue;
+    }
+    const target = resolveRelativeTs(file, specifier);
+    if (target === undefined || !sourceHasRealTest(readFileSync(target, 'utf8'))) {
+      continue;
+    }
+    for (const part of body.split(',')) {
+      const cleaned = part.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+      const alias = /^(?:type\s+)?([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/.exec(
+        cleaned
+      );
+      const local = alias?.[2] ?? alias?.[1];
+      if (local !== undefined && calls.has(local)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+const listTestSources = (root: string): string[] => {
+  const found: string[] = [];
+  const skip = new Set(['node_modules', 'dist', 'coverage', '.turbo']);
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!skip.has(entry.name)) {
+          walk(join(dir, entry.name));
+        }
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith('.test.ts')) {
+        found.push(join(dir, entry.name));
+      }
+    }
+  };
+  walk(root);
+  return found;
+};
+
+describe('test-support exemption', () => {
+  it('applies only under tests/helpers and leaves every other path enforced', () => {
+    const outside = [
+      'tests/test-app.ts',
+      'tests/helpers.ts',
+      'tests/helpers-extra/seed.ts',
+      'captures/tests/helpers/seed.ts',
+      'platform/tests/helpers/seed.ts',
+      'modules/history/tests/helpers/seed.ts',
+      'platform/database/migrator.ts',
+    ];
+    for (const path of outside) {
+      const role = classifyApiPath(path);
+      if (role.kind === 'exempt') {
+        expect(role.reason).not.toBe('test-support');
+      }
+    }
+    expect(classifyApiPath('tests/test-app.ts')).toEqual({ kind: 'no-sql', area: 'tests' });
+    expect(classifyApiPath('tests/helpers.ts')).toEqual({ kind: 'no-sql', area: 'tests' });
+    expect(classifyApiPath('platform/database/migrator.ts')).toEqual({ kind: 'platform' });
+
+    const helper = checkTableOwnership([scanned('tests/helpers/seed.ts', HELPER_SQL)], []);
+    expect(helper.violations).toEqual([]);
+    const testsRoot = checkTableOwnership([scanned('tests/seed.ts', HELPER_SQL)], []);
+    expect(testsRoot.violations).toEqual([
+      { path: 'tests/seed.ts', keyword: 'INTO', table: 'user_sessions', count: 1 },
+    ]);
+    const production = checkTableOwnership(
+      [scanned('captures/infrastructure/seed.ts', HELPER_SQL)],
+      []
+    );
+    expect(production.violations).toEqual([
+      {
+        path: 'captures/infrastructure/seed.ts',
+        keyword: 'INTO',
+        table: 'user_sessions',
+        count: 1,
+      },
+    ]);
+  });
+
+  it('fails when a *.test.ts file has no real test', () => {
+    expect(sourceHasRealTest('export const seed = () => {};')).toBe(false);
+    expect(sourceHasRealTest('describe("empty", () => { /* no test */ });')).toBe(false);
+    expect(sourceHasRealTest('// it("commented")\nexport const x = 1;')).toBe(false);
+    expect(sourceHasRealTest('const label = "it(\\"not a call\\")";')).toBe(false);
+    expect(sourceHasRealTest('it.each([1])("n", () => {});')).toBe(true);
+    expect(sourceHasRealTest('test.skip("held", () => {});')).toBe(true);
+
+    const scratch = mkdtempSync(join(tmpdir(), 'yoink-suite-'));
+    try {
+      writeFileSync(join(scratch, 'empty.test.ts'), 'export const seed = () => {};\n');
+      writeFileSync(
+        join(scratch, 'contract.ts'),
+        'export const run = () => { it("n", () => {}); };\n'
+      );
+      writeFileSync(
+        join(scratch, 'uses.test.ts'),
+        'import { run } from "./contract.js";\ndescribe("s", () => { run(); });\n'
+      );
+      writeFileSync(
+        join(scratch, 'idle.test.ts'),
+        'import { run } from "./contract.js";\nexport const unused = run;\n'
+      );
+      expect(fileRegistersTests(join(scratch, 'empty.test.ts'))).toBe(false);
+      expect(fileRegistersTests(join(scratch, 'uses.test.ts'))).toBe(true);
+      expect(fileRegistersTests(join(scratch, 'idle.test.ts'))).toBe(false);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+
+    const apiRoot = dirname(apiSrc);
+    const missing = listTestSources(apiRoot)
+      .filter((file) => !fileRegistersTests(file))
+      .map((file) => posixRelative(apiRoot, file))
+      .sort();
+    expect(missing).toEqual([]);
+    expect(existsSync(join(apiSrc, 'tests/helpers/migration-seed.ts'))).toBe(true);
+    expect(existsSync(join(apiSrc, 'tests/helpers/seed-test-user-session.ts'))).toBe(true);
+    expect(existsSync(join(apiSrc, 'tests/helpers/migration-seed.test.ts'))).toBe(false);
+    expect(existsSync(join(apiSrc, 'tests/helpers/seed-test-user-session.test.ts'))).toBe(false);
+    const vitestConfig = readFileSync(join(apiRoot, 'vitest.config.ts'), 'utf8');
+    expect(vitestConfig).not.toContain('migration-seed.test.ts');
+    expect(vitestConfig).not.toContain('seed-test-user-session.test.ts');
   });
 });
 
@@ -547,7 +763,18 @@ describe('current tree', () => {
 
   it('passes with the checked-in allowlist and fails closed without it', () => {
     const bare = checkTableOwnership(files, []);
+    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(33);
     expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(bare.violations.length);
+    const helperHits = files
+      .filter((file) => file.path.startsWith('tests/helpers/'))
+      .flatMap((file) => file.literals.flatMap(tableReferencesInLiteral));
+    expect(helperHits.length).toBeGreaterThan(0);
+    expect(
+      checkTableOwnership(
+        files.filter((file) => file.path.startsWith('tests/helpers/')),
+        []
+      ).violations
+    ).toEqual([]);
     const failures = collectOwnershipFailures({
       files,
       allowlist: TABLE_OWNERSHIP_ALLOWLIST,

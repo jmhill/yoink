@@ -1,4 +1,3 @@
-import { UNLISTED_PILE_SUBJECT_ID } from '../domain/kinds.js';
 import type { ChangeLogRecord } from '../domain/record.js';
 
 export type SqlQuery = {
@@ -43,96 +42,47 @@ export const PROJECT_TIMELINE_SQL = `
   END
 `;
 
-const existsClause = (
-  record: ChangeLogRecord
-): { sql: string; args: unknown[] } => {
-  if (record.subjectType === 'task') {
-    return {
-      sql: `SELECT 1 FROM tasks WHERE id = ? AND organization_id = ? AND deleted_at IS NULL`,
-      args: [record.subjectId, record.organizationId],
-    };
-  }
-  if (record.subjectType === 'project') {
-    return {
-      sql: `SELECT 1 FROM projects WHERE id = ? AND organization_id = ?`,
-      args: [record.subjectId, record.organizationId],
-    };
-  }
-  if (record.subjectType === 'note') {
-    return {
-      sql: `SELECT 1 FROM project_notes WHERE id = ? AND organization_id = ?`,
-      args: [record.subjectId, record.organizationId],
-    };
-  }
-  if (record.subjectType === 'capture') {
-    return { sql: 'SELECT 1 WHERE 0', args: [] };
-  }
-  if (record.subjectId === UNLISTED_PILE_SUBJECT_ID) {
-    return {
-      sql: `SELECT 1 FROM organizations WHERE id = ?`,
-      args: [record.organizationId],
-    };
-  }
-  return {
-    sql: `SELECT 1 FROM lists WHERE id = ? AND organization_id = ?`,
-    args: [record.subjectId, record.organizationId],
-  };
-};
-
-/**
- * Insert a history row only when the subject still exists, so two concurrent
- * deletes cannot both log.
- */
-export const insertChangeLogQuery = (
-  record: ChangeLogRecord,
-  requireTask?: { id: string; organizationId: string }
-): SqlQuery => {
-  const exists = existsClause(record);
-  const alsoExists = requireTask
-    ? {
-        sql: ` AND EXISTS (SELECT 1 FROM tasks WHERE id = ? AND organization_id = ? AND deleted_at IS NULL)`,
-        args: [requireTask.id, requireTask.organizationId],
-      }
-    : { sql: '', args: [] as unknown[] };
-  return {
-    sql: `
+const changeLogInsertSql = (where?: string): string => `
       INSERT INTO change_log (
         id, organization_id, project_id, subject_type, subject_id,
         kind, schema_version, payload_json, actor_user_id, actor_kind,
         occurred_at, hidden, seq
       )
       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-             COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1
-      WHERE EXISTS (${exists.sql})${alsoExists.sql}
-    `,
-    args: [
-      record.id,
-      record.organizationId,
-      record.projectId,
-      record.subjectType,
-      record.subjectId,
-      record.kind,
-      record.schemaVersion,
-      JSON.stringify(record.payload),
-      record.actorUserId,
-      record.actorKind,
-      record.occurredAt,
-      record.hidden ? 1 : 0,
-      ...exists.args,
-      ...alsoExists.args,
-    ],
-  };
-};
+             COALESCE((SELECT MAX(seq) FROM change_log), 0) + 1${where ?? ''}
+    `;
+
+const changeLogArgs = (record: ChangeLogRecord): unknown[] => [
+  record.id,
+  record.organizationId,
+  record.projectId,
+  record.subjectType,
+  record.subjectId,
+  record.kind,
+  record.schemaVersion,
+  JSON.stringify(record.payload),
+  record.actorUserId,
+  record.actorKind,
+  record.occurredAt,
+  record.hidden ? 1 : 0,
+];
 
 /**
- * Same as {@link insertChangeLogQuery}, but only if the previous statement
- * in this batch changed a row (`changes() > 0`). Used after a guarded
- * `UPDATE ... WHERE next_action_task_id = ?` so a 0-row clear writes no history.
+ * Append a change_log row. This statement names only change_log.
+ * The owning module's statement in the same batch is what guarantees
+ * the subject exists. A second delete then changes no row, and
+ * {@link insertChangeLogIfChangedQuery} writes no second history row.
  */
-export const insertChangeLogIfChangedQuery = (record: ChangeLogRecord): SqlQuery => {
-  const base = insertChangeLogQuery(record);
-  return {
-    sql: `${base.sql.trimEnd()} AND changes() > 0`,
-    args: base.args,
-  };
-};
+export const insertChangeLogQuery = (record: ChangeLogRecord): SqlQuery => ({
+  sql: changeLogInsertSql(),
+  args: changeLogArgs(record),
+});
+
+/**
+ * Same insert, but only when the previous statement in this batch changed
+ * a row (`changes() > 0`). A 0-row update or delete writes no history.
+ */
+export const insertChangeLogIfChangedQuery = (record: ChangeLogRecord): SqlQuery => ({
+  sql: changeLogInsertSql('\n      WHERE changes() > 0'),
+  args: changeLogArgs(record),
+});

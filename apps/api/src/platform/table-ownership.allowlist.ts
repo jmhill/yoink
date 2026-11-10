@@ -13,50 +13,9 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * soft-delete. Processing is a workflow and writes through each module.
  * M5.7 moved notes' user, membership, and project lookups onto ports.
  * History writes the note timeline from the integration event.
+ * M4.4 removed existsClause. History SQL no longer names another module's table.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
-  // M4.4 deletes existsClause and the other cross-module guards in history SQL.
-  // M4.4
-  {
-    path: 'modules/history/infrastructure/sql.ts',
-    keyword: 'FROM',
-    table: 'lists',
-    count: 1,
-    removedBy: 'M4.4',
-  },
-  // M4.4
-  {
-    path: 'modules/history/infrastructure/sql.ts',
-    keyword: 'FROM',
-    table: 'organizations',
-    count: 1,
-    removedBy: 'M4.4',
-  },
-  // M4.4
-  {
-    path: 'modules/history/infrastructure/sql.ts',
-    keyword: 'FROM',
-    table: 'project_notes',
-    count: 1,
-    removedBy: 'M4.4',
-  },
-  // M4.4
-  {
-    path: 'modules/history/infrastructure/sql.ts',
-    keyword: 'FROM',
-    table: 'projects',
-    count: 1,
-    removedBy: 'M4.4',
-  },
-  // M4.4 — existsClause for tasks, plus insertChangeLogQuery's requireTask guard.
-  {
-    path: 'modules/history/infrastructure/sql.ts',
-    keyword: 'FROM',
-    table: 'tasks',
-    count: 2,
-    removedBy: 'M4.4',
-  },
-
   // M5.8c moves organizations.notes_mirror_bot_user_id onto notes_settings.
   // M5.8
   {

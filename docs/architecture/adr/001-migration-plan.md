@@ -20,7 +20,7 @@ The [execution index](#execution-index) is the only status list: task keys, logi
 1. **Releasable.** `pnpm quality` passes. If the task touches HTTP, auth, persistence or the composition root, `pnpm e2e:test` also passes.
 2. **No behaviour change** unless the task says otherwise. Moves and renames preserve git history (`git mv`).
 3. **Expand/migrate/contract.** A task never removes an old path, route, column or adapter that still has callers. Removal is its own task, or its own final step once callers are gone.
-4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations. The baselines are allowlist 11, API lint 5 warnings (`boundaries/element-types`), and web 32.
+4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations. The baselines are allowlist 6, API lint 5 warnings (`boundaries/element-types`), and web 32.
 5. **Docs updated:**
    - mark the task in `docs/PLAN.md`
    - update `apps/api/AGENTS.md` if the task changes where things live

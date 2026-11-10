@@ -1,6 +1,6 @@
 import type { ReviewCounts, ReviewProject } from '@yoink/api-contracts';
-import { compareKeyset } from '../../kernel/listing/domain/keyset-window.js';
-import { reviewKeys, type ReviewCursorRow } from '../../kernel/listing/domain/list-keys.js';
+import { compareKeyset } from '../../../kernel/listing/domain/keyset-window.js';
+import { reviewKeys, type ReviewCursorRow } from '../../../kernel/listing/domain/list-keys.js';
 
 export const REVIEW_SECTION_NEEDS_NEXT = '0';
 export const REVIEW_SECTION_QUIET = '1';

@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/server';
-import { yoinkHttpError, yoinkServerError } from '../../edges/_shared/orpc/yoink-http-error.js';
-import type { ListDoneError, ListReviewError } from '../domain/review-errors.js';
+import type { ListDoneError, ListReviewError } from '../../../modules/review/index.js';
+import { yoinkHttpError, yoinkServerError } from '../../_shared/orpc/yoink-http-error.js';
 
 export const mapListReviewError = (error: ListReviewError) => {
   switch (error.type) {

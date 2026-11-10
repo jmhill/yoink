@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewerToday } from '../../kernel/viewer-today.js';
+import { viewerToday } from '../../../kernel/viewer-today.js';
 import { calendarDaysBetween } from './calendar-days.js';
 
 describe('calendarDaysBetween', () => {

@@ -1,13 +1,10 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import type { Project, Task } from '@yoink/api-contracts';
-import { DEFAULT_VIEWER_TIME_ZONE } from '../../kernel/viewer-today.js';
-import { pageOrdered } from '../../kernel/listing/domain/keyset-window.js';
-import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../kernel/listing/domain/list-keys.js';
-import {
-  buildReviewItems,
-  latestIsoInstant,
-  type ReviewCandidate,
-} from '../domain/build-review.js';
+import { DEFAULT_VIEWER_TIME_ZONE } from '../../../kernel/viewer-today.js';
+import { pageOrdered } from '../../../kernel/listing/domain/keyset-window.js';
+import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../../kernel/listing/domain/list-keys.js';
+import { buildReviewItems } from '../domain/build-review.js';
+import { reviewCandidatesFromFacts } from '../application/review-from-facts.js';
 import { asFinishedTaskOrNull, type DoneListRow } from '../domain/group-done.js';
 import { countReviewReasons } from '../domain/review-order.js';
 import { storageError, type StorageError } from '../domain/review-errors.js';
@@ -27,57 +24,34 @@ export type FakeReviewStoreOptions = {
   shouldFail?: boolean;
 };
 
-const lastChangeAtFor = (
-  project: Project,
+const changesFor = (
+  organizationId: string,
   changeLog: readonly ReviewChangeLogEntry[]
-): string => {
-  const fromLog = changeLog
-    .filter(
-      (entry) =>
-        entry.organizationId === project.organizationId && entry.projectId === project.id
-    )
-    .map((entry) => entry.occurredAt);
-  return (
-    latestIsoInstant([project.lastChangedAt, project.createdAt, ...fromLog]) ??
-    project.createdAt
-  );
-};
-
-const nextActionFor = (
-  project: Project,
-  tasks: readonly Task[],
-  deleted: ReadonlySet<string>
-): ReviewCandidate['nextAction'] => {
-  if (project.nextActionTaskId === null) {
-    return null;
+): { projectId: string; occurredAt: string }[] => {
+  const latest = new Map<string, string>();
+  for (const entry of changeLog) {
+    if (entry.organizationId !== organizationId || entry.projectId === null) {
+      continue;
+    }
+    const current = latest.get(entry.projectId);
+    if (current === undefined || entry.occurredAt > current) {
+      latest.set(entry.projectId, entry.occurredAt);
+    }
   }
-  const task = tasks.find((item) => item.id === project.nextActionTaskId);
-  if (!task || deleted.has(task.id)) {
-    return null;
-  }
-  return {
-    id: task.id,
-    title: task.title,
-    dueDate: task.dueDate ?? null,
-  };
+  return [...latest].map(([projectId, occurredAt]) => ({ projectId, occurredAt }));
 };
 
 const candidatesFor = (
   options: FakeReviewStoreOptions,
   organizationId: string
-): ReviewCandidate[] => {
-  const projects = options.projects ?? [];
-  const tasks = options.tasks ?? [];
-  const changeLog = options.changeLog ?? [];
+) => {
   const deleted = new Set(options.deletedTaskIds ?? []);
-  return projects
-    .filter((project) => project.organizationId === organizationId)
-    .filter((project) => project.status === 'active' || project.status === 'waiting')
-    .map((project) => ({
-      project,
-      lastChangeAt: lastChangeAtFor(project, changeLog),
-      nextAction: nextActionFor(project, tasks, deleted),
-    }));
+  return reviewCandidatesFromFacts({
+    organizationId,
+    projects: options.projects ?? [],
+    tasks: (options.tasks ?? []).filter((task) => !deleted.has(task.id)),
+    changes: changesFor(organizationId, options.changeLog ?? []),
+  });
 };
 
 const compareFinished = (left: DoneListRow, right: DoneListRow): number => {

@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import type { ReviewCounts } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../kernel/listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../kernel/listing/domain/listed-page.js';
+import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
 import type { RankedReviewProject } from './review-order.js';
 import type { DoneListRow } from './group-done.js';
 import type { StorageError } from './review-errors.js';

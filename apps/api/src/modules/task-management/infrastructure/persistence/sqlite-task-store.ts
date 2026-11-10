@@ -284,6 +284,65 @@ export const createSqliteTaskStore = async (
       }).andThen(parsePage);
     },
 
+    pageFinishedWithProject: (options: {
+      organizationId: string;
+      completedAfter: string;
+      completedBefore: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> =>
+      pageSqlite({
+        db,
+        from: `
+          tasks t
+          JOIN projects p
+            ON p.id = t.project_id
+           AND p.organization_id = t.organization_id
+        `,
+        selectSql: 'SELECT t.*',
+        whereSql: `
+          t.organization_id = ?
+            AND t.project_id IS NOT NULL
+            AND t.completed_at IS NOT NULL
+            AND t.completed_at >= ?
+            AND t.completed_at < ?
+            AND t.deleted_at IS NULL
+        `,
+        whereArgs: [options.organizationId, options.completedAfter, options.completedBefore],
+        orderSql: `ORDER BY t.completed_at DESC, t.id DESC`,
+        keyColumns: ['t.completed_at', 't.id'],
+        direction: finishedProjectTaskDirection,
+        fetchLimit: options.fetchLimit,
+        seek: options.seek,
+        mapRow: (row) => row,
+        errorMessage: 'Failed to list finished tasks on a project',
+      }).andThen(parsePage),
+
+    countFinishedWithoutProject: (options: {
+      organizationId: string;
+      completedAfter: string;
+      completedBefore: string;
+    }): ResultAsync<number, StorageError> =>
+      ResultAsync.fromPromise(
+        db.execute({
+          sql: `
+            SELECT COUNT(*) AS count
+            FROM tasks
+            WHERE organization_id = ?
+              AND project_id IS NULL
+              AND completed_at IS NOT NULL
+              AND completed_at >= ?
+              AND completed_at < ?
+              AND deleted_at IS NULL
+          `,
+          args: [options.organizationId, options.completedAfter, options.completedBefore],
+        }),
+        (error) => storageError('Failed to count finished tasks without a project', error)
+      ).map((result) => {
+        const count = Number(result.rows[0]?.count ?? 0);
+        return Number.isFinite(count) ? count : 0;
+      }),
+
     findOpenInPile: (options: {
       organizationId: string;
       listId: string | null;

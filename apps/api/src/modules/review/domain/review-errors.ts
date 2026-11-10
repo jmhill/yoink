@@ -1,4 +1,4 @@
-import type { InvalidCursorError } from '../../kernel/listing/domain/invalid-cursor.js';
+import type { InvalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
 
 export type StorageError = {
   readonly type: 'STORAGE_ERROR';

@@ -1,5 +1,5 @@
 import type { Project, Task } from '@yoink/api-contracts';
-import type { FinishedTask } from '../../kernel/listing/domain/list-keys.js';
+import type { FinishedTask } from '../../../kernel/listing/domain/list-keys.js';
 
 export type DoneListNextAction = {
   readonly id: string;

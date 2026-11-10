@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Project, Task } from '@yoink/api-contracts';
-import { doneListCursor } from '../../kernel/listing/domain/list-keys.js';
+import { doneListCursor } from '../../../kernel/listing/domain/list-keys.js';
 import type { ReviewStore } from './review-store.js';
 import { weekUtcBounds } from './week-bounds.js';
 

@@ -1,5 +1,6 @@
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
-import type { Task } from '@yoink/api-contracts';
+
 import { applyTaskCreated, applyTaskMutation } from './apply-task-event.js';
 
 const meta = { actorUserId: null };

@@ -1,4 +1,4 @@
-import type { NowOwner } from '@yoink/api-contracts';
+import type { NowOwner } from '../model/work-item.js';
 import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
 
 /** Persistence page for the Now next-action keyset. */

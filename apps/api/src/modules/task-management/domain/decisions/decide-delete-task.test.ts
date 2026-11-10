@@ -1,5 +1,6 @@
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
-import type { Task } from '@yoink/api-contracts';
+
 import { decideDeleteTask } from './decide-delete-task.js';
 
 const current: Task = {

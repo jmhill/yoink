@@ -1,4 +1,4 @@
-import type { NamedList } from '@yoink/api-contracts';
+import type { NamedList } from '../model/named-list.js';
 import type { ListEvent, NamedListCreated, NamedListRenamed } from '../messages/list-events.js';
 
 export const applyNamedListCreated = (event: NamedListCreated): NamedList => ({

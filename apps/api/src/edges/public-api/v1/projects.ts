@@ -3,6 +3,12 @@ import { implement } from '@orpc/server';
 import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toProjectListBody, toTaskListBody } from '../../_shared/http-listed-page.js';
+import {
+  toContractAppliedImport,
+  toContractDiscardedImport,
+  toContractProject,
+  toContractStagedImport,
+} from '../../_shared/map-task-document.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
@@ -71,7 +77,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractProject(view),
       (error) => {
         throw mapCreateProjectError(error);
       },
@@ -85,7 +91,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      (view) => view,
+      (view) => toContractStagedImport(view),
       (error) => {
         throw mapStageImportError(error);
       },
@@ -96,7 +102,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       organizationId: context.request.authContext.organizationId,
     });
     return result.match(
-      (body) => body,
+      (body) => ({ imports: body.imports.map(toContractStagedImport) }),
       (error) => {
         throw mapListImportsError(error);
       },
@@ -110,7 +116,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      (view) => view,
+      (view) => toContractStagedImport(view),
       (error) => {
         throw mapGetImportError(error);
       },
@@ -123,7 +129,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      (view) => view,
+      (view) => toContractAppliedImport(view),
       (error) => {
         throw mapApplyImportError(error);
       },
@@ -136,7 +142,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      (view) => view,
+      (view) => toContractDiscardedImport(view),
       (error) => {
         throw mapDiscardImportError(error);
       },
@@ -148,7 +154,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       organizationId: context.request.authContext.organizationId,
     });
     return result.match(
-      (view) => view,
+      (view) => toContractProject(view),
       (error) => {
         throw mapGetProjectError(error);
       },
@@ -202,7 +208,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractProject(view),
       (error) => {
         throw mapUpdateProjectError(error);
       },
@@ -220,7 +226,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
     });
     return result.match(
       ({ view, completedTaskCount, removedTaskCount }) => ({
-        project: view,
+        project: toContractProject(view),
         completedTaskCount,
         removedTaskCount,
       }),
@@ -243,7 +249,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
     });
     return result.match(
       ({ view, task }) => ({
-        project: view,
+        project: toContractProject(view),
         ...(task ? { task: { id: task.id, title: task.title } } : {}),
       }),
       (error) => {
@@ -258,7 +264,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractProject(view),
       (error) => {
         throw mapDeclineProposalError(error);
       },
@@ -271,7 +277,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractProject(view),
       (error) => {
         throw mapRestoreProposalError(error);
       },
@@ -292,7 +298,7 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
     const result = await projectHandlers.setNextAction(command);
     return result.match(
       ({ view, task }) => ({
-        project: view,
+        project: toContractProject(view),
         ...(task ? { task: { id: task.id, title: task.title } } : {}),
       }),
       (error) => {

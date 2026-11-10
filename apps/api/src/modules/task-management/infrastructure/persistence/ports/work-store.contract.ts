@@ -1,5 +1,8 @@
+import type { NamedList } from '../../../domain/model/named-list.js';
+import type { Project } from '../../../domain/model/project-document.js';
+import type { Task } from '../../../domain/model/task.js';
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { NamedList, Project, Task } from '@yoink/api-contracts';
+
 import {
   workDueCursor,
   workListCursor,

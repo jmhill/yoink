@@ -1,8 +1,6 @@
+import { PROJECT_REASON_MAX_LENGTH, PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH } from './limits.js';
 import { err, ok, type Result } from 'neverthrow';
-import {
-  PROJECT_REASON_MAX_LENGTH,
-  PROJECT_SUGGESTED_NEXT_ACTION_MAX_LENGTH,
-} from '@yoink/api-contracts';
+
 import {
   invalidProjectReasonError,
   invalidSuggestedNextActionError,

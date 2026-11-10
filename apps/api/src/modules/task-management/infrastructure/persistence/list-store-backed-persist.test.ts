@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
-import type { Task } from '@yoink/api-contracts';
+
 import { createFakeListStore } from '../fakes/fake-list-store.js';
 import { createFakeTaskStore } from '../fakes/fake-task-store.js';
 import { createFakeChangeLogStore } from '../../../history/testing.js';

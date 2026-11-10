@@ -3,6 +3,7 @@ import { implement } from '@orpc/server';
 import { taskOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toTaskListBody } from '../../_shared/http-listed-page.js';
+import { toContractTask } from '../../_shared/map-task-document.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
@@ -45,7 +46,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapCreateTaskError(error);
       },
@@ -73,7 +74,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       organizationId: context.request.authContext.organizationId,
     });
     return result.match(
-      (task) => task,
+      (task) => toContractTask(task),
       (error) => {
         throw mapFindTaskError(error);
       },
@@ -91,7 +92,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapUpdateTaskError(error);
       },
@@ -104,7 +105,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapCompleteTaskError(error);
       },
@@ -117,7 +118,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapUncompleteTaskError(error);
       },
@@ -130,7 +131,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapPinTaskError(error);
       },
@@ -143,7 +144,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractTask(view),
       (error) => {
         throw mapUnpinTaskError(error);
       },

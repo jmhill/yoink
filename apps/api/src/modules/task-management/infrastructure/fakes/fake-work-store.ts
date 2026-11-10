@@ -1,5 +1,9 @@
+import type { NamedList } from '../../domain/model/named-list.js';
+import type { NowNextActionItem } from '../../domain/model/work-item.js';
+import type { Project } from '../../domain/model/project-document.js';
+import type { Task } from '../../domain/model/task.js';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { NamedList, NowNextActionItem, Project, Task } from '@yoink/api-contracts';
+
 import { pageOrdered } from '../../../../kernel/listing/domain/keyset-window.js';
 import {
   workDueDirection,

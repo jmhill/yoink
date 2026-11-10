@@ -1,4 +1,4 @@
-import type { Task } from '@yoink/api-contracts';
+import type { Task } from '../../../domain/model/task.js';
 import type { SqlQuery } from '../../../../history/infrastructure/sql.js';
 
 export const insertTaskQuery = (task: Task): SqlQuery => ({

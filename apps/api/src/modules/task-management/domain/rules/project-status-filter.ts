@@ -1,9 +1,9 @@
 import { err, ok, type Result } from 'neverthrow';
 import {
-  ProjectStatusSchema,
+  isProjectStatus,
   WORKING_PROJECT_STATUSES,
   type ProjectStatus,
-} from '@yoink/api-contracts';
+} from '../model/project-document.js';
 import {
   invalidProjectStatusError,
   type InvalidProjectStatusError,
@@ -23,12 +23,12 @@ export const parseProjectStatusFilter = (
     return err(invalidProjectStatusError());
   }
 
-  const parsed = parts.map((part) => ProjectStatusSchema.safeParse(part));
-  if (parsed.some((item) => !item.success)) {
+  const parsed = parts.filter(isProjectStatus);
+  if (parsed.length !== parts.length) {
     return err(invalidProjectStatusError());
   }
 
-  const unique = [...new Set(parsed.flatMap((item) => (item.success ? [item.data] : [])))];
+  const unique = [...new Set(parsed)];
 
   if (unique.length < 1) {
     return err(invalidProjectStatusError());

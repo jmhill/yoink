@@ -1,6 +1,7 @@
+import type { StagedImport } from '../../domain/model/import-document.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Actor } from '../../../../kernel/auth-context.js';
-import type { StagedImport } from '@yoink/api-contracts';
+
 import { decideImport } from '../../domain/decisions/decide-import.js';
 import { importNotFoundError, type GetImportError } from '../../domain/messages/project-errors.js';
 import { loadImportContext, type LoadImportContextDeps } from '../support/load-import-context.js';

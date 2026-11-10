@@ -1,5 +1,7 @@
+import type { Project } from '../../domain/model/project-document.js';
+import type { Task } from '../../domain/model/task.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+
 import type { ChangeLogKind } from '../../../history/domain/kinds.js';
 import { decideCreateTask } from '../../domain/decisions/decide-create-task.js';
 import { planTaskChange } from '../../domain/projections/plan-task-change.js';

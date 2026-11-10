@@ -1,5 +1,7 @@
+import type { NowNextActionItem } from '../model/work-item.js';
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
-import type { NowNextActionItem, Task } from '@yoink/api-contracts';
+
 import { compareNowDue, compareNowNextActions } from './now-order.js';
 
 const lastChanged = {

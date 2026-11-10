@@ -1,6 +1,7 @@
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import { handleListTasks } from './handle-list-tasks.js';
 import { createFakeTaskStore } from '../../infrastructure/fakes/fake-task-store.js';
 import { asFinishedTask, completedTaskCursor } from '../../../../kernel/listing/domain/list-keys.js';

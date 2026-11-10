@@ -1,5 +1,6 @@
+import type { NowNextActionItem } from '../../domain/model/work-item.js';
 import type { ResultAsync } from 'neverthrow';
-import type { NowNextActionItem } from '@yoink/api-contracts';
+
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';
 import { workNextActionCursor } from '../../../../kernel/listing/domain/list-keys.js';
 import { runListedQuery } from '../../../../kernel/listing/application/run-listed-query.js';

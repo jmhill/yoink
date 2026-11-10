@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { ListTasksQuery } from '../../domain/messages/task-commands.js';
 import { storageError, type ListTasksError } from '../../domain/messages/task-errors.js';
 import { listKindForTaskFilter, resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

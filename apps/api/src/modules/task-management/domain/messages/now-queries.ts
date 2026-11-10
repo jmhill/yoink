@@ -1,5 +1,4 @@
-import type { NowOwner } from '@yoink/api-contracts';
-
+import type { NowOwner } from '../model/work-item.js';
 export type ListNowNextActionsQuery = {
   organizationId: string;
   callerId: string;

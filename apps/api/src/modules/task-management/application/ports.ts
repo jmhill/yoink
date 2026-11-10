@@ -1,5 +1,10 @@
+import type { ImportProject } from '../domain/model/import-document.js';
+import type { NamedList } from '../domain/model/named-list.js';
+import type { NowNextActionItem } from '../domain/model/work-item.js';
+import type { Project } from '../domain/model/project-document.js';
+import type { Task } from '../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { ImportProject, NamedList, NowNextActionItem, Project, Task } from '@yoink/api-contracts';
+
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
 import type { WorkListCursorRow } from '../../../kernel/listing/domain/list-keys.js';

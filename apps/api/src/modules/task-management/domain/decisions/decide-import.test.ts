@@ -1,6 +1,8 @@
+import { IMPORT_TASKS_MAX, PROJECT_OBJECTIVE_MAX_LENGTH } from '../model/limits.js';
+import type { ImportProject } from '../model/import-document.js';
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
-import { IMPORT_TASKS_MAX, PROJECT_OBJECTIVE_MAX_LENGTH } from '@yoink/api-contracts';
-import type { ImportProject, Task } from '@yoink/api-contracts';
+
 import { decideImport, type DecideImportInput } from './decide-import.js';
 import { buildObsidianUrl } from '../rules/notebook-pages.js';
 

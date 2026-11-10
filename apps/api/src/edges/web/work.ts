@@ -6,6 +6,7 @@ import type { UserService } from '../../access/application/handle-user.js';
 import { resolveViewerToday } from '../../kernel/viewer-today.js';
 import type { WorkHandlers } from '../../modules/task-management/index.js';
 import { toWorkListsBody } from '../_shared/http-listed-page.js';
+import { toContractNowNextActionItem, toContractTask } from '../_shared/map-task-document.js';
 import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
 import { membershipFailure, userFailure } from './settings-errors.js';
 import { arrangeWorkSections, workOwnerLabel, type ArrangedWorkRow } from './work-sections.js';
@@ -98,8 +99,8 @@ export const createWebWorkHandlers = (deps: WebWorkDependencies) => {
         timeZone: input.timeZone,
       });
       const sections = arrangeWorkSections({
-        nextActions: nextResult.value.items,
-        dueTasks: dueResult.value.items,
+        nextActions: nextResult.value.items.map(toContractNowNextActionItem),
+        dueTasks: dueResult.value.items.map(toContractTask),
         today,
       });
 

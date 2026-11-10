@@ -1,6 +1,7 @@
+import type { Task } from '../../../domain/model/task.js';
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { Task } from '@yoink/api-contracts';
+
 import { storageError, type StorageError } from '../../../domain/messages/task-errors.js';
 
 const optionalText = z.string().min(1).nullable().optional();

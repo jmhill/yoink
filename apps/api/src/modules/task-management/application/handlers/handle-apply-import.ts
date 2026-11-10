@@ -1,6 +1,7 @@
+import type { AppliedImport } from '../../domain/model/import-document.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
 import type { Actor } from '../../../../kernel/auth-context.js';
-import type { AppliedImport } from '@yoink/api-contracts';
+
 import { requirePerson } from '../../../../kernel/auth-context.js';
 import { decideImport } from '../../domain/decisions/decide-import.js';
 import { planImport } from '../../domain/projections/plan-project-import.js';

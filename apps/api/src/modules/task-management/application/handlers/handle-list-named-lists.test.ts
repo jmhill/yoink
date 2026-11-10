@@ -1,6 +1,7 @@
+import type { NamedList } from '../../domain/model/named-list.js';
 import { describe, it, expect } from 'vitest';
 import { okAsync, errAsync } from 'neverthrow';
-import type { NamedList } from '@yoink/api-contracts';
+
 import { handleListNamedLists } from './handle-list-named-lists.js';
 import { storageError } from '../../domain/messages/list-errors.js';
 import { namedListCursor } from '../../../../kernel/listing/domain/list-keys.js';

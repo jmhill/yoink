@@ -1,5 +1,6 @@
+import type { NamedList } from '../../../domain/model/named-list.js';
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { NamedList } from '@yoink/api-contracts';
+
 import type { ListStore } from './list-store.js';
 
 const createTestList = (overrides: Partial<NamedList> = {}): NamedList => ({

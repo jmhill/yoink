@@ -1,6 +1,8 @@
+import type { NamedList } from '../../domain/model/named-list.js';
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
-import type { NamedList, Task } from '@yoink/api-contracts';
+
 import { handleUpdateTask } from './handle-update-task.js';
 import type { LoadNamedList, PersistTaskChange } from '../ports.js';
 import { storageError } from '../../domain/messages/task-errors.js';

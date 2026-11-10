@@ -1,4 +1,4 @@
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from '../model/project-document.js';
 import { notebookPagesFromPaths } from '../rules/notebook-pages.js';
 import type {
   ProjectCreated,

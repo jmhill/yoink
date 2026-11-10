@@ -1,5 +1,6 @@
+import type { Project } from '../domain/model/project-document.js';
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import type { Actor } from '../../../kernel/auth-context.js';
 import type { Work } from '../../../kernel/unit-of-work.js';
 import type { CreateProjectCommand } from '../domain/messages/project-commands.js';

@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { TaskStore, FindByOrganizationOptions } from '../persistence/ports/task-store.js';
 import { storageError, type StorageError } from '../../domain/messages/task-errors.js';
 import { compareOpenOrder, nextOpenOrder } from '../../domain/rules/open-order.js';

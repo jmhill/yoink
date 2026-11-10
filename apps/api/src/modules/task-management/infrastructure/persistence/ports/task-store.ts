@@ -1,5 +1,6 @@
+import type { Task } from '../../../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { KeysetCursor } from '../../../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
 import type { StorageError } from '../../../domain/messages/task-errors.js';

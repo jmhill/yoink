@@ -1,6 +1,7 @@
+import type { NamedList } from '../../../domain/model/named-list.js';
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { NamedList } from '@yoink/api-contracts';
+
 import { storageError, type StorageError } from '../../../domain/messages/list-errors.js';
 
 const ListRowSchema = z.object({

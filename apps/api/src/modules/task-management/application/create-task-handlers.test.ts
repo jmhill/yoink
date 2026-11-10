@@ -1,6 +1,7 @@
+import type { Task } from '../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import { createTaskHandlers } from './create-task-handlers.js';
 import type { CommandLogFields } from '../../../kernel/command-log.js';
 import type { PersistTaskChange } from './ports.js';

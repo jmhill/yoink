@@ -1,10 +1,10 @@
+import type { NamedList } from '../../domain/model/named-list.js';
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
 import { handleCreateNamedList } from './handle-create-named-list.js';
 import type { ListNamedLists, PersistNamedListChange } from '../ports.js';
 import { storageError } from '../../domain/messages/list-errors.js';
 import type { ListEvent } from '../../domain/messages/list-events.js';
-import type { NamedList } from '@yoink/api-contracts';
 
 const groceries: NamedList = {
   id: 'list-existing',

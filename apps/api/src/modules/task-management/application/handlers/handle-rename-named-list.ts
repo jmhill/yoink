@@ -1,5 +1,6 @@
+import type { NamedList } from '../../domain/model/named-list.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { NamedList } from '@yoink/api-contracts';
+
 import type { RenameNamedListCommand } from '../../domain/messages/list-commands.js';
 import type { NamedListRenamed } from '../../domain/messages/list-events.js';
 import { listNotFoundError, type RenameNamedListError } from '../../domain/messages/list-errors.js';

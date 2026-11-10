@@ -1,5 +1,6 @@
+import type { Project } from '../model/project-document.js';
 import { err, ok, type Result } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import { requirePerson } from '../../../../kernel/auth-context.js';
 import type { ConfirmProposedProjectCommand } from '../messages/project-commands.js';
 import type { ProjectStatusChanged, ProjectUpdated } from '../messages/project-events.js';

@@ -1,4 +1,5 @@
-import type { ProjectStatus, TaskFilter } from '@yoink/api-contracts';
+import type { ProjectStatus } from '../model/project-document.js';
+import type { TaskFilter } from '../model/task.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
 
 /** Loaded project when command.projectId is set or changing. */

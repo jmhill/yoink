@@ -1,5 +1,6 @@
+import type { Project } from '../../domain/model/project-document.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import type { CreateProjectCommand } from '../../domain/messages/project-commands.js';
 import type { ProjectCreated } from '../../domain/messages/project-events.js';
 import { type CreateProjectError } from '../../domain/messages/project-errors.js';

@@ -1,5 +1,4 @@
-import type { ProjectStatus } from '@yoink/api-contracts';
-
+import type { ProjectStatus } from '../model/project-document.js';
 export type ProjectCreated = {
   type: 'ProjectCreated';
   id: string;

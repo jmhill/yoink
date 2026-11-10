@@ -1,5 +1,6 @@
+import type { NamedList } from '../model/named-list.js';
 import { err, ok, type Result } from 'neverthrow';
-import type { NamedList } from '@yoink/api-contracts';
+
 import type { RenameNamedListCommand } from '../messages/list-commands.js';
 import type { NamedListRenamed } from '../messages/list-events.js';
 import {

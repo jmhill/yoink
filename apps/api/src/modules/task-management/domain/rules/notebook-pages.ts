@@ -1,5 +1,5 @@
+import { NOTEBOOK_PAGE_PATH_MAX_LENGTH, NOTEBOOK_PAGES_MAX } from '../model/limits.js';
 import { err, ok, type Result } from 'neverthrow';
-import { NOTEBOOK_PAGE_PATH_MAX_LENGTH, NOTEBOOK_PAGES_MAX } from '@yoink/api-contracts';
 
 export const OBSIDIAN_VAULT_NAME = 'jmhill-personal';
 

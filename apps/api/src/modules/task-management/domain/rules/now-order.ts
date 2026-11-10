@@ -1,5 +1,5 @@
-import type { NowNextActionItem, Task } from '@yoink/api-contracts';
-
+import type { NowNextActionItem } from '../model/work-item.js';
+import type { Task } from '../model/task.js';
 // Task Management owns this order. SQL, the fake store, and cursors share these keys.
 // A screen composes sections from the returned pages and does not sort them again.
 import { compareKeyset } from '../../../../kernel/listing/domain/keyset-window.js';

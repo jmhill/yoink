@@ -1,5 +1,7 @@
+import type { NowNextActionItem } from '../../../domain/model/work-item.js';
+import type { Task } from '../../../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { NowNextActionItem, Task } from '@yoink/api-contracts';
+
 import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
 import type { WorkListCursorRow } from '../../../../../kernel/listing/domain/list-keys.js';
 import type { StorageError } from '../../../domain/messages/work-errors.js';

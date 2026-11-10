@@ -1,5 +1,6 @@
+import type { NamedList } from '../../domain/model/named-list.js';
 import type { ResultAsync } from 'neverthrow';
-import type { NamedList } from '@yoink/api-contracts';
+
 import type { ListNamedListsQuery } from '../../domain/messages/list-queries.js';
 import type { ListNamedListsError } from '../../domain/messages/list-errors.js';
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

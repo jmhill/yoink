@@ -1,5 +1,5 @@
+import type { ProjectStatus } from '../model/project-document.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
-import type { ProjectStatus } from '@yoink/api-contracts';
 
 export type ListProjectsQuery = {
   organizationId: string;

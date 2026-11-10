@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';
 import { workDueCursor } from '../../../../kernel/listing/domain/list-keys.js';
 import { runListedQuery } from '../../../../kernel/listing/application/run-listed-query.js';

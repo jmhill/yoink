@@ -1,5 +1,6 @@
+import type { NamedList } from '../model/named-list.js';
 import { describe, it, expect } from 'vitest';
-import type { NamedList } from '@yoink/api-contracts';
+
 import { decideDeleteNamedList } from './decide-delete-list.js';
 
 const groceries: NamedList = {

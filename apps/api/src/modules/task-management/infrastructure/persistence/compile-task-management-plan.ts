@@ -1,4 +1,4 @@
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from '../../domain/model/project-document.js';
 import type { GuardedStatement, WriteVerb } from '../../../../kernel/unit-of-work.js';
 import {
   changeLogInsert,

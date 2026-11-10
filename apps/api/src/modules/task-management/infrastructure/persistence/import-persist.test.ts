@@ -1,6 +1,8 @@
+import type { ImportProject } from '../../domain/model/import-document.js';
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { errAsync } from 'neverthrow';
-import type { ImportProject, Task } from '@yoink/api-contracts';
+
 import { createTestDatabase } from '../../../../platform/database/test-utils.js';
 import type { Database } from '../../../../platform/database/types.js';
 import { createSqliteTaskPersist } from './task-store-backed-persist.js';

@@ -13,7 +13,7 @@ import type { OrganizationStore } from '../../access/domain/organization-store.j
 import type { PasskeyService } from '../../access/application/handle-passkey.js';
 import type { SessionService } from '../../access/application/handle-session.js';
 import type { SignupService } from '../../access/application/handle-signup.js';
-import type { UserService } from '../../access/domain/user-service.js';
+import type { UserService } from '../../access/application/handle-user.js';
 import type { ClientIpOf } from '../_shared/request-client-ip.js';
 import {
   acceptInvitationErrorResponse,

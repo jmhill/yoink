@@ -26,7 +26,7 @@ import {
 import type { UserSession } from '../../domain/user-session.js';
 import type { UserSessionStore } from '../../domain/user-session-store.js';
 import type { User } from '../../domain/user.js';
-import { createUserService } from '../../domain/user-service.js';
+import { createUserService } from '../../application/handle-user.js';
 import { createFakeOrganizationMembershipStore } from '../fake-organization-membership-store.js';
 import { createFakeOrganizationStore } from '../fake-organization-store.js';
 import { createFakeUserStore } from '../fake-user-store.js';

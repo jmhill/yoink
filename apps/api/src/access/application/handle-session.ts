@@ -29,7 +29,7 @@ import {
 } from '../domain/session-plan.js';
 import type { UserSession } from '../domain/user-session.js';
 import type { UserSessionStore } from '../domain/user-session-store.js';
-import type { UserService } from '../domain/user-service.js';
+import type { UserService } from './handle-user.js';
 
 export type { CreateSessionCommand } from '../domain/session-commands.js';
 

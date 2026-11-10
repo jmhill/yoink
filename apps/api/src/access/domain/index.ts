@@ -4,7 +4,7 @@
 // not exported — they are implementation details of this context.
 
 // Identity & membership services
-export { createUserService, type UserService } from './user-service.js';
+export { createUserService, type UserService } from '../application/handle-user.js';
 export {
   createAgentService,
   type AgentService,

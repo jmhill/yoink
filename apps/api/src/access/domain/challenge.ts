@@ -1,6 +1,15 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ok, err, type Result } from 'neverthrow';
 import type { Clock } from '../../kernel/clock.js';
+
+/**
+ * HMAC and random bytes. `node:crypto` stays in infrastructure.
+ * Domain only sees this port.
+ */
+export type ChallengeCrypto = {
+  randomBytes(size: number): Buffer;
+  hmacSha256(secret: string, data: Buffer): Buffer;
+  timingSafeEqual(left: Buffer, right: Buffer): boolean;
+};
 
 /**
  * Challenge payload embedded in the challenge string.
@@ -55,6 +64,7 @@ export type ChallengeManager = {
 export type ChallengeManagerDependencies = {
   secret: string;
   clock: Clock;
+  crypto: ChallengeCrypto;
 };
 
 /**
@@ -74,17 +84,13 @@ const base64UrlDecode = (str: string): Buffer => {
 export const createChallengeManager = (
   deps: ChallengeManagerDependencies
 ): ChallengeManager => {
-  const { secret, clock } = deps;
-  
-  const sign = (data: Buffer): Buffer => {
-    const hmac = createHmac('sha256', secret);
-    hmac.update(data);
-    return hmac.digest();
-  };
+  const { secret, clock, crypto } = deps;
+
+  const sign = (data: Buffer): Buffer => crypto.hmacSha256(secret, data);
   
   const generateChallenge = (payload: ChallengePayload): string => {
     // Generate random bytes for uniqueness
-    const randomPart = randomBytes(32);
+    const randomPart = crypto.randomBytes(32);
     
     // Encode payload as JSON
     const payloadBytes = Buffer.from(JSON.stringify(payload), 'utf8');
@@ -148,7 +154,7 @@ export const createChallengeManager = (
         const dataToSign = Buffer.concat([randomPart, payloadBytes]);
         const expectedSignature = sign(dataToSign);
         
-        if (!timingSafeEqual(providedSignature, expectedSignature)) {
+        if (!crypto.timingSafeEqual(providedSignature, expectedSignature)) {
           return err({ type: 'CHALLENGE_TAMPERED' });
         }
         

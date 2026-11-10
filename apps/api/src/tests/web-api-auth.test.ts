@@ -17,7 +17,7 @@ import { createSessionService } from '../access/application/handle-session.js';
 import { createTokenService } from '../access/application/handle-token.js';
 import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
-import { createUserService } from '../access/domain/user-service.js';
+import { createUserService } from '../access/application/handle-user.js';
 import { createFakeOrganizationMembershipStore } from '../access/infrastructure/fake-organization-membership-store.js';
 import { createFakeOrganizationStore } from '../access/infrastructure/fake-organization-store.js';
 import { createFakeTokenStore } from '../access/infrastructure/fake-token-store.js';

@@ -8,7 +8,7 @@ import {
 } from './user-session-middleware.js';
 import { createSessionService, type SessionService } from '../../../access/application/handle-session.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
-import { createUserService } from '../../../access/domain/user-service.js';
+import { createUserService } from '../../../access/application/handle-user.js';
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
 import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
 import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';

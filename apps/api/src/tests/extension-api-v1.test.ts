@@ -15,7 +15,7 @@ import { createSessionService } from '../access/application/handle-session.js';
 import { createTokenService } from '../access/application/handle-token.js';
 import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';
-import { createUserService } from '../access/domain/user-service.js';
+import { createUserService } from '../access/application/handle-user.js';
 import { authenticateTokenWith } from '../access/application/authenticate-principal.js';
 import { createAuthMiddleware } from '../edges/_shared/auth/auth-middleware.js';
 import { combinedAuthFromServices } from '../edges/_shared/auth/auth-from-services.js';

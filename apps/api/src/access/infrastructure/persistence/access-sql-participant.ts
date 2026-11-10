@@ -8,6 +8,7 @@ import { isPasskeyPlan } from '../../domain/passkey-plan.js';
 import { isSessionPlan } from '../../domain/session-plan.js';
 import { isSignupPlan } from '../../domain/signup-plan.js';
 import { isTokenPlan } from '../../domain/token-plan.js';
+import { isCreateUserPlan } from '../../domain/user-plan.js';
 import { compileAdminPlan } from './compile-admin.js';
 import { compileMintAgentPlan } from './compile-agent.js';
 import { compileInvitationPlan } from './compile-invitation.js';
@@ -17,6 +18,7 @@ import { compilePasskeyPlan } from './compile-passkey.js';
 import { compileSessionPlan } from './compile-session.js';
 import { compileSignupPlan } from './compile-signup.js';
 import { compileTokenPlan } from './compile-token.js';
+import { compileUserPlan } from './compile-user.js';
 
 /** Empty sql is not a write. The unit of work reports Storage and does not run it. */
 const NOT_A_PLAN: GuardedStatement = {
@@ -55,6 +57,9 @@ export const accessSqlParticipant: SqlParticipant<unknown> = {
     }
     if (isTokenPlan(plan)) {
       return compileTokenPlan(plan);
+    }
+    if (isCreateUserPlan(plan)) {
+      return compileUserPlan(plan);
     }
     return [NOT_A_PLAN];
   },

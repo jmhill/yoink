@@ -5,9 +5,10 @@ import cookie from '@fastify/cookie';
 import { registerPasskeyRoutes } from './passkey-routes.js';
 import { createPasskeyService } from '../../../access/application/handle-passkey.js';
 import { createChallengeManager } from '../../../access/domain/challenge.js';
+import { nodeChallengeCrypto } from '../../../access/infrastructure/node-challenge-crypto.js';
 import { createFakeWebAuthnVerifier } from '../../../access/infrastructure/fake-webauthn-verifier.js';
 import { createSessionService } from '../../../access/application/handle-session.js';
-import { createUserService } from '../../../access/domain/user-service.js';
+import { createUserService } from '../../../access/application/handle-user.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
@@ -109,7 +110,7 @@ describe('passkey routes', () => {
       userService,
       clock,
       verifier,
-      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
+      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock, crypto: nodeChallengeCrypto }),
     });
 
     const sessionService = createSessionService({

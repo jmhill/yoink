@@ -42,7 +42,7 @@ import { createAdminSessionParticipant } from '../../../access/infrastructure/ad
 import { createNodeAdminSessionCrypto } from '../../../access/infrastructure/node-admin-session-crypto.js';
 import { createAdminService } from '../../../access/application/handle-admin.js';
 import { createInvitationService } from '../../../access/application/handle-invitation.js';
-import { createUserService } from '../../../access/domain/user-service.js';
+import { createUserService } from '../../../access/application/handle-user.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createOrganizationService } from '../../../access/application/handle-organization.js';
 import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';

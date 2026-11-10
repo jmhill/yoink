@@ -35,7 +35,6 @@ import type {
   ListHandlers,
   ProjectHandlers,
   TaskHandlers,
-  TaskService,
   WorkHandlers,
 } from './modules/task-management/index.js';
 import type { NoteHandlers } from './notes/application/create-note-handlers.js';
@@ -117,7 +116,6 @@ export type AppDependencies = {
   projectHandlers: ProjectHandlers;
   noteHandlers: NoteHandlers;
   historyHandlers: HistoryHandlers;
-  taskService: TaskService;
   taskHandlers: TaskHandlers;
   workHandlers: WorkHandlers;
   reviewHandlers: ReviewHandlers;
@@ -234,7 +232,6 @@ export const createApp = async (deps: AppDependencies) => {
     projectHandlers: deps.projectHandlers,
     historyHandlers: deps.historyHandlers,
     noteHandlers: deps.noteHandlers,
-    taskService: deps.taskService,
     taskHandlers: deps.taskHandlers,
     workHandlers: deps.workHandlers,
     reviewHandlers: deps.reviewHandlers,

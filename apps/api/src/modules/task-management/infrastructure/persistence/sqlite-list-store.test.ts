@@ -1,7 +1,7 @@
 import { describe, beforeAll, afterAll } from 'vitest';
 import { createSqliteListStore } from './sqlite-list-store.js';
 import { createTestDatabase, type Database } from '../../../../platform/database/test-utils.js';
-import { runListStoreContractTests } from '../../domain/ports/list-store.contract.js';
+import { runListStoreContractTests } from './ports/list-store.contract.js';
 
 describe('SqliteListStore', () => {
   let db: Database;

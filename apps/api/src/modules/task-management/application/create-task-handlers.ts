@@ -8,6 +8,8 @@ import { handleUncompleteTask } from './handlers/handle-uncomplete-task.js';
 import type { HandleUncompleteTaskDeps } from './handlers/handle-uncomplete-task.js';
 import { handleListTasks } from './handlers/handle-list-tasks.js';
 import type { HandleListTasksDeps } from './handlers/handle-list-tasks.js';
+import { handleGetTask } from './handlers/handle-get-task.js';
+import type { HandleGetTaskDeps } from './handlers/handle-get-task.js';
 import { handlePinTask } from './handlers/handle-pin-task.js';
 import type { HandlePinTaskDeps } from './handlers/handle-pin-task.js';
 import { handleUnpinTask } from './handlers/handle-unpin-task.js';
@@ -25,6 +27,7 @@ export type TaskHandlerDeps = HandleCreateTaskDeps &
   HandleCompleteTaskDeps &
   HandleUncompleteTaskDeps &
   HandleListTasksDeps &
+  HandleGetTaskDeps &
   HandlePinTaskDeps &
   HandleUnpinTaskDeps &
   HandleDeleteTaskDeps & {
@@ -80,6 +83,7 @@ export const createTaskHandlers = (deps: TaskHandlerDeps) => ({
     ),
   list: (query: Parameters<typeof handleListTasks>[0]) =>
     handleListTasks(query, deps),
+  get: (query: Parameters<typeof handleGetTask>[0]) => handleGetTask(query, deps),
   pin: (command: Parameters<typeof handlePinTask>[0]) =>
     withCommandLog(
       deps.logger,

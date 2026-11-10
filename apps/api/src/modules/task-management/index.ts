@@ -27,7 +27,6 @@ export {
   type WorkHandlerDeps,
   type WorkHandlers,
 } from './application/create-work-handlers.js';
-export { createTaskService, type TaskService } from './domain/services/task-service.js';
 export { storageError, type StorageError } from './domain/messages/storage-error.js';
 export { duplicateProjectNameError } from './domain/messages/project-errors.js';
 export type { SetProjectNextActionCommand } from './domain/messages/project-commands.js';

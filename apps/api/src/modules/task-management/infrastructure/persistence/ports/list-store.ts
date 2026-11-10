@@ -1,8 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
-import type { StorageError } from '../messages/list-errors.js';
+import type { KeysetCursor } from '../../../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
+import type { StorageError } from '../../../domain/messages/list-errors.js';
 
 export type ListStore = {
   findById(id: string): ResultAsync<NamedList | null, StorageError>;

@@ -17,7 +17,7 @@ import type {
   PageNowNextActionsOptions,
   PageWorkListsOptions,
   WorkStore,
-} from '../../domain/ports/work-store.js';
+} from './ports/work-store.js';
 import { parseNowNextActionRow } from './rows/parse-now-next-action-row.js';
 import { parseWorkListRow } from './rows/parse-work-list-row.js';
 

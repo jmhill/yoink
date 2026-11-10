@@ -1,6 +1,6 @@
 import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
-import type { ListStore } from '../../domain/ports/list-store.js';
+import type { ListStore } from '../persistence/ports/list-store.js';
 import { storageError, type StorageError } from '../../domain/messages/list-errors.js';
 import { compareKeyset, pageOrdered } from '../../../../kernel/listing/domain/keyset-window.js';
 import { namedListDirection, namedListKeys } from '../../../../kernel/listing/domain/list-keys.js';

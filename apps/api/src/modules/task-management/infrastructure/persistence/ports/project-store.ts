@@ -1,8 +1,8 @@
 import type { ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
-import type { ProjectNotFoundError, StorageError } from '../messages/project-errors.js';
+import type { KeysetCursor } from '../../../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
+import type { ProjectNotFoundError, StorageError } from '../../../domain/messages/project-errors.js';
 
 export type ProjectStore = {
   findById(id: string): ResultAsync<Project | null, StorageError>;

@@ -8,7 +8,7 @@ import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 // M5.10 keeps history's read handlers on index.ts. The file is still the history element.
 import type { HistoryHandlers } from '../../../modules/history/index.js';
-import type { TaskHandlers, TaskService } from '../../../modules/task-management/index.js';
+import type { TaskHandlers } from '../../../modules/task-management/index.js';
 import {
   mapCompleteTaskError,
   mapCreateTaskError,
@@ -23,7 +23,6 @@ import {
 } from './orpc-task-errors.js';
 
 export type TaskEdgeDependencies = {
-  taskService: TaskService;
   taskHandlers: TaskHandlers;
   historyHandlers: HistoryHandlers;
 };
@@ -69,7 +68,7 @@ export const createTaskHandlers = (deps: TaskEdgeDependencies) => {
     );
   };
   const get: Procedure<typeof legacy.get> = async ({ input, context }) => {
-    const result = await deps.taskService.find({
+    const result = await deps.taskHandlers.get({
       id: input.id,
       organizationId: context.request.authContext.organizationId,
     });

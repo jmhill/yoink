@@ -10,7 +10,7 @@ import type {
   ImportNotPendingError,
   ProjectDoneError,
 } from '../domain/messages/project-errors.js';
-import type { FindByOrganizationOptions } from '../domain/ports/task-store.js';
+import type { FindByOrganizationOptions } from '../domain/messages/task-page.js';
 import type { ListChangePlan } from '../domain/projections/plan-list-change.js';
 import type { ProjectChangePlan } from '../domain/projections/plan-project-change.js';
 import type { ImportWritePlan } from '../domain/projections/plan-project-import.js';
@@ -20,7 +20,7 @@ import type {
   PageNowDueOptions,
   PageNowNextActionsOptions,
   PageWorkListsOptions,
-} from '../domain/ports/work-store.js';
+} from '../domain/messages/work-page.js';
 
 export type LoadTask = (id: string) => ResultAsync<Task | null, StorageError>;
 

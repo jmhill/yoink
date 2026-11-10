@@ -1,7 +1,7 @@
 import type { Database } from '../../../../platform/database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Task } from '@yoink/api-contracts';
-import type { TaskStore, FindByOrganizationOptions } from '../../domain/ports/task-store.js';
+import type { TaskStore, FindByOrganizationOptions } from './ports/task-store.js';
 import { storageError, type StorageError } from '../../domain/messages/task-errors.js';
 import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';

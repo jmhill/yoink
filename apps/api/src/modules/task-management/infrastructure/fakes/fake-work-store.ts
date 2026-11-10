@@ -16,7 +16,7 @@ import type {
   PageNowNextActionsOptions,
   PageWorkListsOptions,
   WorkStore,
-} from '../../domain/ports/work-store.js';
+} from '../persistence/ports/work-store.js';
 import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
 
 export type FakeWorkStoreOptions = {

@@ -25,36 +25,33 @@ import {
   updateTaskQuery,
 } from './rows/task-row-statements.js';
 
-const historyQueries = (plan: TaskChangePlan) =>
-  plan.action === 'uncomplete'
-    ? plan.records.map((record) =>
-        insertChangeLogQuery(record, {
-          id: plan.view.id,
-          organizationId: plan.organizationId,
-        })
-      )
-    : plan.records.map((record) => insertChangeLogQuery(record));
+const historyAfterInsert = (plan: TaskChangePlan) =>
+  plan.records.map((record) => insertChangeLogQuery(record));
+
+const historyAfterChange = (plan: TaskChangePlan) =>
+  plan.records.map((record) => insertChangeLogIfChangedQuery(record));
 
 export const queriesForTaskPlan = (plan: TaskChangePlan) => {
-  const history = historyQueries(plan);
-
   switch (plan.action) {
     case 'insert':
-      return [insertTaskQuery(plan.view), ...history];
+      return [insertTaskQuery(plan.view), ...historyAfterInsert(plan)];
     case 'update':
-      return [updateTaskQuery(plan.view), ...history];
+      return [updateTaskQuery(plan.view), ...historyAfterChange(plan)];
     case 'uncomplete':
       return [
         updateTaskQuery(plan.view),
+        ...historyAfterChange(plan),
         ...setOpenOrderQueries(
           plan.organizationId,
           plan.siblingOrders,
           plan.view.id
         ),
-        ...history,
       ];
     case 'delete':
-      return [...history, softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt)];
+      return [
+        softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt),
+        ...historyAfterChange(plan),
+      ];
   }
 };
 
@@ -62,12 +59,13 @@ const subjectIdOf = (plan: TaskChangePlan): string =>
   plan.action === 'delete' ? plan.taskId : plan.view.id;
 
 const queriesForProjectExtra = (project: ProjectChangePlan) => {
-  const history = project.records.map((record) => insertChangeLogQuery(record));
+  const written = project.records.map((record) => insertChangeLogQuery(record));
+  const changed = project.records.map((record) => insertChangeLogIfChangedQuery(record));
   switch (project.action) {
     case 'insert':
-      return [insertProjectQuery(project.view), ...history];
+      return [insertProjectQuery(project.view), ...written];
     case 'update':
-      return [updateProjectQuery(project.view), ...history];
+      return [updateProjectQuery(project.view), ...changed];
     case 'clearNextAction':
       return [
         clearNextActionQuery({
@@ -100,11 +98,8 @@ const mutationMissed = (plan: TaskChangePlan, results: QueryResult[]): boolean =
     case 'update':
     case 'uncomplete':
       return (results[0]?.rowsAffected ?? 0) === 0;
-    case 'delete': {
-      const history = results[0];
-      const softDelete = results[plan.records.length];
-      return (history?.rowsAffected ?? 0) === 0 || (softDelete?.rowsAffected ?? 0) === 0;
-    }
+    case 'delete':
+      return (results[0]?.rowsAffected ?? 0) === 0;
   }
 };
 

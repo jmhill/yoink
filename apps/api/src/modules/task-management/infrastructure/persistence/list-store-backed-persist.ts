@@ -1,6 +1,10 @@
 import { okAsync, ResultAsync } from 'neverthrow';
 import type { Database } from '../../../../platform/database/types.js';
-import { insertChangeLogQuery, type SqlQuery } from '../../../history/infrastructure/sql.js';
+import {
+  insertChangeLogIfChangedQuery,
+  insertChangeLogQuery,
+  type SqlQuery,
+} from '../../../history/infrastructure/sql.js';
 import type { FakeChangeLogStore } from '../../../history/infrastructure/fake-change-log-store.js';
 import { storageError, type StorageError } from '../../domain/messages/list-errors.js';
 import type { PersistNamedListChange } from '../../application/ports.js';
@@ -21,24 +25,25 @@ export type ListTaskSql = {
 };
 
 const queriesForPlan = (plan: ListChangePlan, taskSql: ListTaskSql): SqlQuery[] => {
-  const history = plan.records.map((record) => insertChangeLogQuery(record));
+  const written = plan.records.map((record) => insertChangeLogQuery(record));
+  const changed = plan.records.map((record) => insertChangeLogIfChangedQuery(record));
 
   switch (plan.action) {
     case 'insert':
-      return [insertListQuery(plan.view), ...history];
+      return [insertListQuery(plan.view), ...written];
     case 'rename':
       return [
         updateListNameQuery(plan.listId, plan.organizationId, plan.name),
-        ...history,
+        ...changed,
       ];
     case 'delete':
       return [
-        ...history,
         taskSql.clearCompletedListId(plan.listId, plan.organizationId),
         removeListQuery(plan.listId, plan.organizationId),
+        ...changed,
       ];
     case 'reorder':
-      return [...taskSql.setOpenOrders(plan.organizationId, plan.orders), ...history];
+      return [...taskSql.setOpenOrders(plan.organizationId, plan.orders), ...written];
   }
 };
 

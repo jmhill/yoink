@@ -20,7 +20,7 @@ The [execution index](#execution-index) is the only status list: task keys, logi
 1. **Releasable.** `pnpm quality` passes. If the task touches HTTP, auth, persistence or the composition root, `pnpm e2e:test` also passes.
 2. **No behaviour change** unless the task says otherwise. Moves and renames preserve git history (`git mv`).
 3. **Expand/migrate/contract.** A task never removes an old path, route, column or adapter that still has callers. Removal is its own task, or its own final step once callers are gone.
-4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations. The baselines are allowlist 11, API lint 5 warnings (`boundaries/element-types`), and web 32.
+4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations. The baselines are allowlist 6, API lint 5 warnings (`boundaries/element-types`), and web 32.
 5. **Docs updated:**
    - mark the task in `docs/PLAN.md`
    - update `apps/api/AGENTS.md` if the task changes where things live
@@ -372,7 +372,7 @@ Shipped in [#324](https://github.com/jmhill/yoink/pull/324): the helpers were `m
 
 ### M4.4 Remove guards that read across modules (finishing step)
 
-**Execution:** `M4.4`. [#242](https://github.com/jmhill/yoink/issues/242).
+**Execution:** `M4.4`. [#242](https://github.com/jmhill/yoink/issues/242). In review ([#381](https://github.com/jmhill/yoink/pull/381)).
 
 - **Depends on:** all M5 module tasks that remove their callers of `existsClause` and `insertChangeLogIfChangedQuery`
 - **Do:** delete `existsClause` and any `EXISTS (SELECT … FROM <another module's table>)` guard left in history's SQL.
@@ -497,7 +497,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.10 Review and history (queries)
 
-**Execution:** `M5.10-review` and `M5.10-history`. `CL-REVIEW` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `M5.10-review` ([#259](https://github.com/jmhill/yoink/issues/259)) is In review ([#379](https://github.com/jmhill/yoink/pull/379)). [#244](https://github.com/jmhill/yoink/issues/244), [#260](https://github.com/jmhill/yoink/issues/260).
+**Execution:** `M5.10-review` and `M5.10-history`. `CL-REVIEW` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `M5.10-review` ([#259](https://github.com/jmhill/yoink/issues/259)) is Done (#379, `ea48d512`, Trunk 42895657418). [#244](https://github.com/jmhill/yoink/issues/244), [#260](https://github.com/jmhill/yoink/issues/260).
 
 - **Depends on:** M5.3, M4.3
 - **Do:**
@@ -782,7 +782,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M4.1b` | `M4.1` | — | Done ([#336](https://github.com/jmhill/yoink/pull/336), `db30c3872b1c4a5855d285d49f6526fec418e085`). Spike passed (2026-11-07 7:28 CT, exit 0, test database only). Justin approved the contract on 2026-11-07 at 21:31 CST ([#325](https://github.com/jmhill/yoink/issues/325)). | None. `sqlite-unit-of-work.ts` sends one `tx.batch` inside `transaction('write')`. M5.3 is Done. M5.5 is Done (#373, `8903adaf`, Trunk 42822389879). | [#325](https://github.com/jmhill/yoink/issues/325) |
 | `M4.2` | `M4.1`, `M2.4` | — | Done (`a445f0ec62bbe822c770eb2cefc4b9a8aa1423fc`, [#316](https://github.com/jmhill/yoink/pull/316)) | None. `shared/` is removed. No unit-of-work sink. | [#240](https://github.com/jmhill/yoink/issues/240) |
 | `M4.3` | `M4.2` | — | Done on main (`eb4fcf4ae007d178b2b9346ebf1c03880da374a6`, [#318](https://github.com/jmhill/yoink/pull/318)). Empty sink on both implementations. No route uses it yet. | None. | [#241](https://github.com/jmhill/yoink/issues/241) |
-| `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | Not started | None. | [#242](https://github.com/jmhill/yoink/issues/242) |
+| `M4.4` | `M5.3`, `M5.5`, `M5.7` | — | In review ([#381](https://github.com/jmhill/yoink/pull/381)). | The five history `sql.ts` allowlist rows are gone. History lookup rows stay for M5.10-history. Allowlist 11 to 6. API lint stays 5. Web stays 32. `app.ts` and `composition-root.ts` do not change. | [#242](https://github.com/jmhill/yoink/issues/242) |
 | `CL-WORK` | — | — | Done. Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026)). | None. Task Management owns the Now, due, and work-list queries, including keyset order and pagination. Those queries return already ordered, filtered, cursor-paginated pages. The web edge composes screen sections, header counts, and owner display labels. It does not re-sort those pages. ADR §8.2 "display ordering" means screen and section composition. | [#243](https://github.com/jmhill/yoink/issues/243) |
 | `CL-REVIEW` | — | — | Done. Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). | None. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. | [#244](https://github.com/jmhill/yoink/issues/244) |
 | `M5.1-check` | `M1.3`, `M4.2` | — | Done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). `change_log.subject_type` may be `capture`. No capture event is emitted. | None. | [#246](https://github.com/jmhill/yoink/issues/246) |
@@ -798,7 +798,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | [#256](https://github.com/jmhill/yoink/issues/256) |
 | `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | [#257](https://github.com/jmhill/yoink/issues/257) |
 | `M5.9` | `M5.7` | — | Not started | None. | [#258](https://github.com/jmhill/yoink/issues/258) |
-| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | In review ([#379](https://github.com/jmhill/yoink/pull/379)). | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Review owns the attention policy. It reads Task Management projects and finished tasks, history's latest project change, and access's organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share that query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. Allowlist 17 to 11. API lint 10 to 5. Web stays 32. | [#259](https://github.com/jmhill/yoink/issues/259) |
+| `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Done (#379, `ea48d512`, Trunk 42895657418). | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Review owns the attention policy. It reads Task Management projects and finished tasks, history's latest project change, and access's organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share that query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. Allowlist 17 to 11. API lint 10 to 5. Web stays 32. | [#259](https://github.com/jmhill/yoink/issues/259) |
 | `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Not started | None. | [#260](https://github.com/jmhill/yoink/issues/260) |
 | `M5.11-captures` | `M5.1` | — | Done ([#347](https://github.com/jmhill/yoink/pull/347), `5fe952f8`). [#261](https://github.com/jmhill/yoink/issues/261) closed completed. Its own Trunk run [42666346288](https://github.com/jmhill/yoink/actions/runs/42666346288) failed on flaky [#356](https://github.com/jmhill/yoink/issues/356). The first passing Trunk that contains it is [42686703032](https://github.com/jmhill/yoink/actions/runs/42686703032) on `7cca4c32` (deploy and smoke green). | Known issue [#356](https://github.com/jmhill/yoink/issues/356). | [#261](https://github.com/jmhill/yoink/issues/261) |
 | `M5.11-task-management` | `M5.4` | — | Not started | None. | [#262](https://github.com/jmhill/yoink/issues/262) |

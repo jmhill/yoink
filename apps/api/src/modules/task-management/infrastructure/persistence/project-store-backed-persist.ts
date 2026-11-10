@@ -40,13 +40,14 @@ import type { FakeProjectStore } from '../fakes/fake-project-store.js';
 import type { FakeImportStore } from '../fakes/fake-import-store.js';
 
 export const queriesForProjectPlan = (plan: ProjectChangePlan): SqlQuery[] => {
-  const history = plan.records.map((record) => insertChangeLogQuery(record));
+  const written = plan.records.map((record) => insertChangeLogQuery(record));
+  const changed = plan.records.map((record) => insertChangeLogIfChangedQuery(record));
 
   switch (plan.action) {
     case 'insert':
-      return [insertProjectQuery(plan.view), ...history];
+      return [insertProjectQuery(plan.view), ...written];
     case 'update':
-      return [updateProjectQuery(plan.view), ...history];
+      return [updateProjectQuery(plan.view), ...changed];
     case 'clearNextAction':
       return [
         clearNextActionQuery({

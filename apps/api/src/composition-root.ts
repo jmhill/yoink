@@ -70,11 +70,7 @@ import { createAuthMiddleware, type AuthMiddleware } from './edges/_shared/auth/
 import { createCombinedAuthMiddleware } from './edges/_shared/auth/combined-auth-middleware.js';
 import { decideViaFly } from './edges/_shared/rate-limit-policy.js';
 import { createTokenHandlers } from './access/application/create-token-handlers.js';
-import {
-  createStoreBackedTokenCreated,
-  createStoreBackedTokenRevoked,
-  createStoreBackedTokenReissue,
-} from './access/infrastructure/store-backed-token-persist.js';
+import { createStoreBackedTokenReissue } from './access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './access/application/handle-transfer-ownership.js';
 import { handleCreateWorkspace } from './access/application/handle-create-workspace.js';
@@ -426,6 +422,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
 
+    // Issue and revoke decide, then commit one token plan. List reads this
+    // principal's own non-revoked tokens in the organization and returns
+    // metadata only. Reissue stays on the token store.
     const tokenHandlers = createTokenHandlers({
       listUserOrgTokens: (userId, organizationId) =>
         tokenStore.findByUserAndOrganization(userId, organizationId),
@@ -447,8 +446,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
                 }
               : null
           ),
-      persistCreate: createStoreBackedTokenCreated(tokenStore),
-      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
+      unitOfWork,
       hashSecret: (secret) =>
         ResultAsync.fromPromise(
           passwordHasher.hash(secret),

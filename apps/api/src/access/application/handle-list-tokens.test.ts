@@ -17,6 +17,7 @@ describe('handleListTokens', () => {
       },
     ];
 
+    let queried: [string, string] | undefined;
     const result = await handleListTokens(
       {
         actor: { kind: 'user', userId: 'user-1', via: 'session' as const },
@@ -24,12 +25,16 @@ describe('handleListTokens', () => {
         organizationId: 'org-1',
       },
       {
-        listUserOrgTokens: () => okAsync(tokens),
+        listUserOrgTokens: (userId, organizationId) => {
+          queried = [userId, organizationId];
+          return okAsync(tokens);
+        },
       }
     );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
+      expect(queried).toEqual(['user-1', 'org-1']);
       expect(result.value.tokens).toEqual([
         {
           id: 'token-1',
@@ -38,6 +43,7 @@ describe('handleListTokens', () => {
           createdAt: '2026-01-01T00:00:00.000Z',
         },
       ]);
+      expect(JSON.stringify(result.value)).not.toContain('hash');
     }
   });
 });

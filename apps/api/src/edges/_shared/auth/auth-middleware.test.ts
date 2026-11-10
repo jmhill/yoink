@@ -6,7 +6,7 @@ import type { PasswordHasher } from '../../../kernel/password-hasher.js';
 import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';
 import { AUTH_TRY_AGAIN_MESSAGE } from './token-validation-response.js';
 import { createAuthMiddleware } from './auth-middleware.js';
-import { createTokenService } from '../../../access/domain/token-service.js';
+import { createTokenService } from '../../../access/application/handle-token.js';
 import type { Organization } from '../../../access/domain/organization.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
 import type { User } from '../../../access/domain/user.js';

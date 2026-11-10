@@ -18,7 +18,7 @@ import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
 } from '../../_shared/auth/combined-auth-middleware.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
+import type { TokenService } from '../../../access/application/handle-token.js';
 import type { RateLimitConfig } from '../../../platform/config/schema.js';
 import type { ClientIpOf } from '../../_shared/request-client-ip.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';

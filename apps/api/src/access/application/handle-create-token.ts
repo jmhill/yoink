@@ -1,9 +1,11 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
+import type { CommitFailure, UnitOfWork } from '../../kernel/unit-of-work.js';
 import type { CreateTokenCommand } from '../domain/token-commands.js';
 import type { TokenCreated } from '../domain/token-events.js';
 import type { TokenInfo } from '../domain/token-info.js';
 import { applyTokenEvent } from '../domain/apply-token-event.js';
 import { decideCreateToken } from '../domain/decide-create-token.js';
+import { planIssueToken, type IssueTokenPlan } from '../domain/token-plan.js';
 import { tokenStorageError } from '../domain/auth-errors.js';
 import type { CreateTokenError } from '../domain/token-errors.js';
 import type {
@@ -18,12 +20,45 @@ export type HandleCreateTokenDeps = {
   listUserOrgTokens: ListUserOrgTokens;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
-  persistCreate: PersistTokenCreated;
+  persistCreate?: PersistTokenCreated;
+  unitOfWork?: UnitOfWork;
   hashSecret: HashSecret;
   nextId: () => string;
   nextSecret: () => string;
   now: () => string;
   maxTokensPerUserPerOrg: number;
+};
+
+const commitIssue = (
+  plan: IssueTokenPlan,
+  deps: HandleCreateTokenDeps
+): ResultAsync<void, CreateTokenError> => {
+  if (deps.unitOfWork !== undefined) {
+    return deps.unitOfWork
+      .commit([
+        {
+          result: null,
+          events: [],
+          step: { owner: 'access', plan },
+        },
+      ])
+      .map(() => undefined)
+      .mapErr((failure: CommitFailure) => tokenStorageError('Failed to save token', failure));
+  }
+  if (deps.persistCreate !== undefined) {
+    return deps.persistCreate({
+      event: {
+        type: 'TokenCreated',
+        id: plan.id,
+        userId: plan.userId,
+        organizationId: plan.organizationId,
+        name: plan.name,
+        createdAt: plan.createdAt,
+      },
+      tokenHash: plan.tokenHash,
+    });
+  }
+  return errAsync(tokenStorageError('Failed to save token'));
 };
 
 export type CreateTokenResult = {
@@ -66,7 +101,17 @@ export const handleCreateToken = (
         }
 
         return deps.hashSecret(secret).andThen((tokenHash) =>
-          deps.persistCreate({ event, tokenHash }).map(() => ({
+          commitIssue(
+            planIssueToken({
+              id: event.id,
+              userId: event.userId,
+              organizationId: event.organizationId,
+              tokenHash,
+              name: event.name,
+              createdAt: event.createdAt,
+            }),
+            deps
+          ).map(() => ({
             event,
             token: projected,
             rawToken: `${id}:${secret}`,

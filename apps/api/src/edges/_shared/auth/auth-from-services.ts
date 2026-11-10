@@ -6,7 +6,7 @@ import {
   recordSessionActivityWith,
 } from '../../../access/application/authenticate-principal.js';
 import type { SessionService } from '../../../access/application/handle-session.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
+import type { TokenService } from '../../../access/application/handle-token.js';
 import type { AuthenticateToken } from '../../../access/index.js';
 import type { CombinedAuthMiddlewareDependencies } from './combined-auth-middleware.js';
 import type { UserSessionMiddlewareDependencies } from './user-session-middleware.js';

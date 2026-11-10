@@ -55,7 +55,7 @@ import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
 import { createFakeProjectStore } from '../../../modules/task-management/testing.js';
 import { createSessionService } from '../../../access/application/handle-session.js';
-import { createTokenService } from '../../../access/domain/token-service.js';
+import { createTokenService } from '../../../access/application/handle-token.js';
 import {
   acceptInvitationFailedError,
   createWorkspaceFailedError,

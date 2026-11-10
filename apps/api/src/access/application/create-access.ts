@@ -8,7 +8,7 @@ import type { OrganizationMembershipStore } from '../domain/organization-members
 import type { OrganizationStore } from '../domain/organization-store.js';
 import type { SessionService } from './handle-session.js';
 import type { SignupService } from './handle-signup.js';
-import type { TokenService } from '../domain/token-service.js';
+import type { TokenService } from './handle-token.js';
 import type { UserStore } from '../domain/user-store.js';
 import type {
   AccessStorageError,

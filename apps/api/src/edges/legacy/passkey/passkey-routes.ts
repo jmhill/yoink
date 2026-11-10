@@ -14,7 +14,7 @@ import {
   createCombinedAuthMiddleware,
   type CombinedAuthMiddlewareDependencies,
 } from '../../_shared/auth/combined-auth-middleware.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
+import type { TokenService } from '../../../access/application/handle-token.js';
 import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';

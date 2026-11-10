@@ -90,6 +90,10 @@ describe('Migration 47: drop tasks.capture_id foreign key', () => {
         'project-1',
       ],
     });
+    await db.execute({
+      sql: `UPDATE projects SET next_action_task_id = ? WHERE id = ?`,
+      args: ['task-1', 'project-1'],
+    });
 
     expect(await foreignKeyTables(db)).toContain('captures');
     const indexesBefore = await indexNames(db);
@@ -118,6 +122,18 @@ describe('Migration 47: drop tasks.capture_id foreign key', () => {
         args: ['task-4', 'org-1', 'user-1', 'Missing project', 'missing-project', at],
       })
     ).rejects.toThrow();
+
+    const foreignKeyCheck = await db.execute({ sql: 'PRAGMA foreign_key_check' });
+    expect(foreignKeyCheck.rows).toEqual([]);
+    const nextAction = await db.execute({
+      sql: `SELECT next_action_task_id FROM projects WHERE id = ?`,
+      args: ['project-1'],
+    });
+    expect(nextAction.rows[0]?.next_action_task_id).toBe('task-1');
+    const leftover = await db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE name IN ('tasks_new', '_yoink_fk_guard')`,
+    });
+    expect(leftover.rows).toEqual([]);
 
     await db.execute({ sql: `DELETE FROM captures WHERE id = ?`, args: ['capture-1'] });
     const kept = await db.execute({

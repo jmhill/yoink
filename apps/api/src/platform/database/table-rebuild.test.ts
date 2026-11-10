@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { rebuildTable } from './table-rebuild.js';
 import { createBareTestDatabase, type Database } from './test-utils.js';
+import type { QueryResult } from './types.js';
 
 describe('rebuildTable', () => {
   let db: Database;
@@ -278,5 +279,105 @@ describe('rebuildTable', () => {
     const dataResult = await db.execute({ sql: 'SELECT * FROM users' });
     const rows = dataResult.rows as { id: string; org_id: string; name: string }[];
     expect(rows[0]).toEqual({ id: '1', org_id: 'org-1', name: 'Alice' });
+  });
+
+  it('rebuilds a parent while a child row references it, even when a prior foreign_keys pragma does not stick', async () => {
+    const inner = createBareTestDatabase();
+    await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
+    await inner.execute({
+      sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+    });
+    await inner.execute({
+      sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parents(id))',
+    });
+    await inner.execute({
+      sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
+    });
+    await inner.execute({
+      sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'p1')`,
+    });
+
+    const ignored: QueryResult = { rows: [], rowsAffected: 0 };
+    const remote: Database = {
+      execute: (query) => {
+        if (/PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(query.sql)) {
+          return Promise.resolve(ignored);
+        }
+        return inner.execute(query);
+      },
+      batch: async (queries, mode) => {
+        await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
+        return inner.batch(queries, mode);
+      },
+      migrate: (queries) => {
+        const migrate = inner.migrate;
+        if (migrate === undefined) {
+          throw new Error('expected migrate');
+        }
+        return migrate(queries);
+      },
+      close: () => inner.close(),
+    };
+
+    try {
+      await rebuildTable(remote, {
+        tableName: 'parents',
+        newSchema: `
+          CREATE TABLE parents (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL
+          )
+        `,
+        columnMapping: 'SELECT id, name',
+      });
+
+      const check = await inner.execute({ sql: 'PRAGMA foreign_key_check' });
+      expect(check.rows).toEqual([]);
+      const child = await inner.execute({ sql: 'SELECT parent_id FROM children' });
+      expect(child.rows[0]?.parent_id).toBe('p1');
+      const leftover = await inner.execute({
+        sql: `SELECT name FROM sqlite_master WHERE name IN ('parents_new', '_yoink_fk_guard')`,
+      });
+      expect(leftover.rows).toEqual([]);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it('rolls the rebuild back when foreign_key_check would not be clean', async () => {
+    await db.execute({ sql: 'PRAGMA foreign_keys = OFF' });
+    await db.execute({
+      sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+    });
+    await db.execute({
+      sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parents(id))',
+    });
+    await db.execute({
+      sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
+    });
+    await db.execute({
+      sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'missing')`,
+    });
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
+
+    await expect(
+      rebuildTable(db, {
+        tableName: 'parents',
+        newSchema: `
+          CREATE TABLE parents (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL
+          )
+        `,
+        columnMapping: 'SELECT id, name',
+      })
+    ).rejects.toThrow(/CHECK constraint failed/);
+
+    const parents = await db.execute({ sql: 'SELECT id, name FROM parents' });
+    expect(parents.rows).toEqual([{ id: 'p1', name: 'Acme' }]);
+    const leftover = await db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE name IN ('parents_new', '_yoink_fk_guard')`,
+    });
+    expect(leftover.rows).toEqual([]);
   });
 });

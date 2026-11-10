@@ -725,7 +725,7 @@ describe('table inventory', () => {
     );
     expect(migrationVersion(legacyPaths[0] ?? '')).toBe(1);
     expect(migrationVersion(legacyPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION);
-    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION + 2);
+    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION + 3);
 
     for (const path of migrationPaths) {
       applySchemaLiterals(byPath.get(path) ?? [], live);
@@ -1115,9 +1115,9 @@ describe('migration ownership', () => {
   it('matches the checked-in sequence and leaves 001 through the legacy cutoff exempt', () => {
     const indexed = migrations.map((migration) => migration.version).sort((left, right) => left - right);
     expect(indexed).toEqual(
-      Array.from({ length: LEGACY_MIGRATION_VERSION + 2 }, (_, index) => index + 1)
+      Array.from({ length: LEGACY_MIGRATION_VERSION + 3 }, (_, index) => index + 1)
     );
-    expect(Math.max(...indexed)).toBe(LEGACY_MIGRATION_VERSION + 2);
+    expect(Math.max(...indexed)).toBe(LEGACY_MIGRATION_VERSION + 3);
 
     const files = scanSourceFiles(apiSrc);
     const onDisk = files

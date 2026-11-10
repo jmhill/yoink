@@ -1,27 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { errAsync } from 'neverthrow';
 import { createFakeClock } from '@yoink/infrastructure';
-import { createPasskeyService, type PasskeyService } from './passkey-service.js';
+import { createPasskeyService, type PasskeyService } from './handle-passkey.js';
+import { createChallengeManager } from '../domain/challenge.js';
 import { createFakePasskeyCredentialStore } from '../infrastructure/fake-passkey-credential-store.js';
+import { createFakeWebAuthnVerifier } from '../infrastructure/fake-webauthn-verifier.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createUserService } from './user-service.js';
-import type { User } from './user.js';
-import type { WebAuthnConfig } from '../../platform/config/schema.js';
-import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
-
-// Mock the simplewebauthn functions
-vi.mock('@simplewebauthn/server', () => ({
-  generateRegistrationOptions: vi.fn(),
-  verifyRegistrationResponse: vi.fn(),
-  generateAuthenticationOptions: vi.fn(),
-  verifyAuthenticationResponse: vi.fn(),
-}));
-
-import {
-  generateRegistrationOptions as mockGenerateRegOpts,
-  verifyRegistrationResponse as mockVerifyReg,
-  generateAuthenticationOptions as mockGenerateAuthOpts,
-  verifyAuthenticationResponse as mockVerifyAuth,
-} from '@simplewebauthn/server';
+import { createUserService } from '../domain/user-service.js';
+import type { User } from '../domain/user.js';
 
 const TEST_USER: User = {
   id: '550e8400-e29b-41d4-a716-446655440001',
@@ -29,11 +15,16 @@ const TEST_USER: User = {
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-const TEST_CONFIG: WebAuthnConfig = {
-  rpId: 'localhost',
-  rpName: 'Test App',
-  origin: 'http://localhost:3000',
-  challengeSecret: 'test-secret-that-is-at-least-32-bytes-long-for-hmac',
+const CHALLENGE_SECRET = 'test-secret-that-is-at-least-32-bytes-long-for-hmac';
+
+const verifiedRegistration = {
+  verified: true as const,
+  id: 'new-credential-id',
+  publicKey: Buffer.from([1, 2, 3]).toString('base64url'),
+  counter: 0,
+  transports: ['internal', 'hybrid'] as const,
+  deviceType: 'multiDevice' as const,
+  backedUp: true,
 };
 
 describe('createPasskeyService', () => {
@@ -41,20 +32,21 @@ describe('createPasskeyService', () => {
   let credentialStore: ReturnType<typeof createFakePasskeyCredentialStore>;
   let userStore: ReturnType<typeof createFakeUserStore>;
   let clock: ReturnType<typeof createFakeClock>;
+  let verifier: ReturnType<typeof createFakeWebAuthnVerifier>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
-    
     clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
     credentialStore = createFakePasskeyCredentialStore();
     userStore = createFakeUserStore({ initialUsers: [TEST_USER] });
+    verifier = createFakeWebAuthnVerifier();
     const userService = createUserService({ userStore });
-    
+
     service = createPasskeyService({
       credentialStore,
       userService,
-      config: TEST_CONFIG,
       clock,
+      verifier,
+      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
     });
   });
 
@@ -63,11 +55,8 @@ describe('createPasskeyService', () => {
       const mockOptions = {
         challenge: 'test-challenge',
         rp: { name: 'Test App', id: 'localhost' },
-        user: { id: 'user-id', name: 'test@example.com', displayName: 'test@example.com' },
-        pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
       };
-      
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue(mockOptions as any);
+      verifier.setRegistrationOptions(mockOptions);
 
       const result = await service.generateRegistrationOptions(TEST_USER.id);
 
@@ -95,6 +84,7 @@ describe('createPasskeyService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('AGENT_CANNOT_USE_PASSKEY');
       }
+      expect(verifier.registrationOptionCalls).toHaveLength(0);
     });
 
     it('returns error for non-existent user', async () => {
@@ -107,7 +97,6 @@ describe('createPasskeyService', () => {
     });
 
     it('excludes existing credentials from options', async () => {
-      // Add existing credential
       await credentialStore.save({
         id: 'existing-cred-id',
         userId: TEST_USER.id,
@@ -119,19 +108,12 @@ describe('createPasskeyService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({
-        challenge: 'test-challenge',
-      } as any);
-
       await service.generateRegistrationOptions(TEST_USER.id);
 
-      expect(mockGenerateRegOpts).toHaveBeenCalledWith(
-        expect.objectContaining({
-          excludeCredentials: [
-            expect.objectContaining({ id: 'existing-cred-id' }),
-          ],
-        })
-      );
+      expect(verifier.registrationOptionCalls[0]?.excludeCredentials).toEqual([
+        { id: 'existing-cred-id', transports: ['internal'] },
+      ]);
+      expect(verifier.registrationOptionCalls[0]?.userName).toBe(TEST_USER.email);
     });
   });
 
@@ -140,11 +122,8 @@ describe('createPasskeyService', () => {
       const mockOptions = {
         challenge: 'test-challenge',
         rp: { name: 'Test App', id: 'localhost' },
-        user: { id: 'user-id', name: 'alice@example.com', displayName: 'alice@example.com' },
-        pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
       };
-      
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue(mockOptions as any);
+      verifier.setRegistrationOptions(mockOptions);
 
       const result = await service.generateSignupRegistrationOptions({
         email: 'alice@example.com',
@@ -160,16 +139,12 @@ describe('createPasskeyService', () => {
     });
 
     it('generates options with empty excludeCredentials (new user)', async () => {
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({
-        challenge: 'test-challenge',
-      } as any);
-
       await service.generateSignupRegistrationOptions({
         email: 'alice@example.com',
         identifier: 'alice@example.com',
       });
 
-      expect(mockGenerateRegOpts).toHaveBeenCalledWith(
+      expect(verifier.registrationOptionCalls[0]).toEqual(
         expect.objectContaining({
           userName: 'alice@example.com',
           userDisplayName: 'alice@example.com',
@@ -181,42 +156,15 @@ describe('createPasskeyService', () => {
 
   describe('verifyRegistration', () => {
     it('saves credential on successful verification', async () => {
-      // First generate registration options to get a valid challenge
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateRegistrationOptions(TEST_USER.id);
       expect(optionsResult.isOk()).toBe(true);
       const challenge = optionsResult._unsafeUnwrap().challenge;
-
-      // Mock successful verification
-      vi.mocked(mockVerifyReg).mockResolvedValue({
-        verified: true,
-        registrationInfo: {
-          credential: {
-            id: 'new-credential-id',
-            publicKey: new Uint8Array([1, 2, 3]),
-            counter: 0,
-            transports: ['internal', 'hybrid'],
-          },
-          credentialDeviceType: 'multiDevice',
-          credentialBackedUp: true,
-        },
-      } as any);
-
-      const response: RegistrationResponseJSON = {
-        id: 'new-credential-id',
-        rawId: 'new-credential-id',
-        response: {
-          clientDataJSON: 'base64-encoded',
-          attestationObject: 'base64-encoded',
-        },
-        type: 'public-key',
-        clientExtensionResults: {},
-      };
+      verifier.setRegistrationVerification(verifiedRegistration);
 
       const result = await service.verifyRegistration({
         userId: TEST_USER.id,
         challenge,
-        response,
+        response: { id: 'new-credential-id' },
         credentialName: 'My MacBook',
       });
 
@@ -227,9 +175,10 @@ describe('createPasskeyService', () => {
         expect(result.value.name).toBe('My MacBook');
         expect(result.value.deviceType).toBe('multiDevice');
         expect(result.value.backedUp).toBe(true);
+        expect(result.value.publicKey).toBe(verifiedRegistration.publicKey);
+        expect(result.value.createdAt).toBe('2024-01-01T00:00:00.000Z');
       }
 
-      // Verify credential was saved
       const saved = await credentialStore.findById('new-credential-id');
       expect(saved.isOk()).toBe(true);
       if (saved.isOk()) {
@@ -237,19 +186,35 @@ describe('createPasskeyService', () => {
       }
     });
 
+    it('plans a credential without writing it', async () => {
+      const optionsResult = await service.generateSignupRegistrationOptions({
+        email: 'alice@example.com',
+        identifier: 'alice@example.com',
+      });
+      const challenge = optionsResult._unsafeUnwrap().challenge;
+      verifier.setRegistrationVerification(verifiedRegistration);
+
+      const planned = await service.planRegistrationCredential({
+        userId: TEST_USER.id,
+        challenge,
+        response: {},
+        skipUserIdCheck: true,
+      });
+
+      expect(planned.isOk() && planned.value.id).toBe('new-credential-id');
+      const saved = await credentialStore.findById('new-credential-id');
+      expect(saved.isOk() && saved.value).toBeNull();
+    });
+
     it('rejects expired challenge', async () => {
-      // Generate challenge
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateRegistrationOptions(TEST_USER.id);
       const challenge = optionsResult._unsafeUnwrap().challenge;
-
-      // Advance past expiry
-      clock.advanceBy(6 * 60 * 1000); // 6 minutes
+      clock.advanceBy(6 * 60 * 1000);
 
       const result = await service.verifyRegistration({
         userId: TEST_USER.id,
         challenge,
-        response: {} as any,
+        response: {},
       });
 
       expect(result.isErr()).toBe(true);
@@ -259,16 +224,13 @@ describe('createPasskeyService', () => {
     });
 
     it('rejects challenge for different user', async () => {
-      // Generate challenge for TEST_USER
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateRegistrationOptions(TEST_USER.id);
       const challenge = optionsResult._unsafeUnwrap().challenge;
 
-      // Try to use it for different user
       const result = await service.verifyRegistration({
         userId: 'different-user-id',
         challenge,
-        response: {} as any,
+        response: {},
       });
 
       expect(result.isErr()).toBe(true);
@@ -278,18 +240,14 @@ describe('createPasskeyService', () => {
     });
 
     it('returns error when verification fails', async () => {
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateRegistrationOptions(TEST_USER.id);
       const challenge = optionsResult._unsafeUnwrap().challenge;
-
-      vi.mocked(mockVerifyReg).mockResolvedValue({
-        verified: false,
-      } as any);
+      verifier.setRegistrationVerification({ verified: false });
 
       const result = await service.verifyRegistration({
         userId: TEST_USER.id,
         challenge,
-        response: {} as any,
+        response: {},
       });
 
       expect(result.isErr()).toBe(true);
@@ -297,16 +255,47 @@ describe('createPasskeyService', () => {
         expect(result.error.type).toBe('VERIFICATION_FAILED');
       }
     });
+
+    it('maps a unit-of-work storage failure to the same credential storage error', async () => {
+      const optionsResult = await service.generateRegistrationOptions(TEST_USER.id);
+      const challenge = optionsResult._unsafeUnwrap().challenge;
+      verifier.setRegistrationVerification(verifiedRegistration);
+      const failingService = createPasskeyService({
+        credentialStore,
+        userService: createUserService({ userStore }),
+        clock,
+        verifier,
+        challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
+        unitOfWork: {
+          commit: () =>
+            errAsync({
+              kind: 'Storage',
+              owner: 'access',
+              owners: ['access'],
+              reason: 'disk',
+            }),
+        },
+      });
+
+      const result = await failingService.verifyRegistration({
+        userId: TEST_USER.id,
+        challenge,
+        response: {},
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr() && result.error.type === 'PASSKEY_CREDENTIAL_STORAGE_ERROR') {
+        expect(result.error.message).toBe('Failed to save passkey credential');
+      } else {
+        expect(result.isErr() && result.error.type).toBe('PASSKEY_CREDENTIAL_STORAGE_ERROR');
+      }
+    });
   });
 
   describe('generateAuthenticationOptions', () => {
     it('generates options for discoverable credentials', async () => {
-      const mockOptions = {
-        challenge: 'test-challenge',
-        rpId: 'localhost',
-      };
-      
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue(mockOptions as any);
+      const mockOptions = { challenge: 'test-challenge', rpId: 'localhost' };
+      verifier.setAuthenticationOptions(mockOptions);
 
       const result = await service.generateAuthenticationOptions();
 
@@ -315,10 +304,10 @@ describe('createPasskeyService', () => {
         expect(result.value.options).toEqual(mockOptions);
         expect(result.value.challenge).toBeDefined();
       }
+      expect(verifier.authenticationOptionCalls[0]?.allowCredentials).toBeUndefined();
     });
 
     it('generates options with allowCredentials for specific user', async () => {
-      // Add credentials for user
       await credentialStore.save({
         id: 'cred-1',
         userId: TEST_USER.id,
@@ -330,18 +319,12 @@ describe('createPasskeyService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({
-        challenge: 'test-challenge',
-      } as any);
-
       const result = await service.generateAuthenticationOptions(TEST_USER.id);
 
       expect(result.isOk()).toBe(true);
-      expect(mockGenerateAuthOpts).toHaveBeenCalledWith(
-        expect.objectContaining({
-          allowCredentials: [expect.objectContaining({ id: 'cred-1' })],
-        })
-      );
+      expect(verifier.authenticationOptionCalls[0]?.allowCredentials).toEqual([
+        { id: 'cred-1', transports: ['internal'] },
+      ]);
     });
 
     it('returns error when user has no credentials', async () => {
@@ -356,53 +339,24 @@ describe('createPasskeyService', () => {
 
   describe('verifyAuthentication', () => {
     it('verifies authentication and updates counter', async () => {
-      // Save existing credential
-      const existingCred = {
+      await credentialStore.save({
         id: 'cred-1',
         userId: TEST_USER.id,
         publicKey: Buffer.from([1, 2, 3]).toString('base64url'),
         counter: 5,
-        transports: ['internal'] as ('usb' | 'ble' | 'nfc' | 'internal' | 'hybrid')[],
-        deviceType: 'multiDevice' as const,
+        transports: ['internal'],
+        deviceType: 'multiDevice',
         backedUp: true,
         createdAt: '2024-01-01T00:00:00.000Z',
-      };
-      await credentialStore.save(existingCred);
+      });
 
-      // Generate challenge
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateAuthenticationOptions(TEST_USER.id);
       const challenge = optionsResult._unsafeUnwrap().challenge;
-
-      // Mock successful verification
-      vi.mocked(mockVerifyAuth).mockResolvedValue({
-        verified: true,
-        authenticationInfo: {
-          credentialID: 'cred-1',
-          newCounter: 6,
-          userVerified: true,
-          credentialDeviceType: 'multiDevice',
-          credentialBackedUp: true,
-          origin: 'http://localhost:3000',
-          rpID: 'localhost',
-        },
-      } as any);
-
-      const response: AuthenticationResponseJSON = {
-        id: 'cred-1',
-        rawId: 'cred-1',
-        response: {
-          clientDataJSON: 'base64',
-          authenticatorData: 'base64',
-          signature: 'base64',
-        },
-        type: 'public-key',
-        clientExtensionResults: {},
-      };
+      verifier.setAuthenticationVerification({ verified: true, newCounter: 6 });
 
       const result = await service.verifyAuthentication({
         challenge,
-        response,
+        response: { id: 'cred-1' },
       });
 
       expect(result.isOk()).toBe(true);
@@ -411,12 +365,11 @@ describe('createPasskeyService', () => {
         expect(result.value.credentialId).toBe('cred-1');
       }
 
-      // Check counter was updated
       const updated = await credentialStore.findById('cred-1');
       expect(updated.isOk()).toBe(true);
       if (updated.isOk() && updated.value) {
         expect(updated.value.counter).toBe(6);
-        expect(updated.value.lastUsedAt).toBeDefined();
+        expect(updated.value.lastUsedAt).toBe('2024-01-01T00:00:00.000Z');
       }
     });
 
@@ -431,16 +384,13 @@ describe('createPasskeyService', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       });
 
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateAuthenticationOptions(TEST_USER.id);
       const challenge = optionsResult._unsafeUnwrap().challenge;
-
-      // Advance past expiry
       clock.advanceBy(6 * 60 * 1000);
 
       const result = await service.verifyAuthentication({
         challenge,
-        response: { id: 'cred-1' } as any,
+        response: { id: 'cred-1' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -450,13 +400,12 @@ describe('createPasskeyService', () => {
     });
 
     it('rejects unknown credential', async () => {
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({ challenge: 'test' } as any);
       const optionsResult = await service.generateAuthenticationOptions();
       const challenge = optionsResult._unsafeUnwrap().challenge;
 
       const result = await service.verifyAuthentication({
         challenge,
-        response: { id: 'unknown-cred' } as any,
+        response: { id: 'unknown-cred' },
       });
 
       expect(result.isErr()).toBe(true);
@@ -576,7 +525,6 @@ describe('createPasskeyService', () => {
         expect(result.error.type).toBe('CANNOT_DELETE_LAST_PASSKEY');
       }
 
-      // Credential should still exist
       const findResult = await credentialStore.findById('only-cred');
       expect(findResult.isOk()).toBe(true);
       if (findResult.isOk()) {

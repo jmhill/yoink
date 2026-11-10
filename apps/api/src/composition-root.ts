@@ -20,6 +20,7 @@ import { historySqlParticipant } from './modules/history/infrastructure/sqlite-e
 import { createAccess } from './access/index.js';
 import { createAdminSessionParticipant } from './access/infrastructure/admin-session-participant.js';
 import { createNodeAdminSessionCrypto } from './access/infrastructure/node-admin-session-crypto.js';
+import { createSimpleWebAuthnVerifier } from './access/infrastructure/simplewebauthn-verifier.js';
 import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
 import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
 import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
@@ -95,6 +96,7 @@ import {
   createSqliteSignupStore,
   seedAuthData,
 } from './access/infrastructure/index.js';
+import { createChallengeManager } from './access/domain/challenge.js';
 import {
   createTokenService,
   type TokenService,
@@ -353,7 +355,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     unitOfWork,
   });
 
-  // Passkey and session services (for signup flow)
+  // Registration verify, authentication verify, and delete decide, then
+  // commit one access plan. Option generation and list stay reads.
+  // planRegistrationCredential still does not write. Signup's batch is unchanged.
   // Only created if webauthn config is provided
   let signupDraft:
     | Omit<SignupConfig, 'authenticateToken' | 'completeSignup' | 'agentService'>
@@ -365,8 +369,13 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     const passkeyService = createPasskeyService({
       credentialStore: passkeyCredentialStore,
       userService,
-      config: config.webauthn,
       clock,
+      verifier: createSimpleWebAuthnVerifier(config.webauthn),
+      challenges: createChallengeManager({
+        secret: config.webauthn.challengeSecret,
+        clock,
+      }),
+      unitOfWork,
     });
 
     const sessionService = createSessionService({

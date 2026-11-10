@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerAuthRoutes } from './auth-routes.js';
 import { clientIpOfRequest } from '../../_shared/request-client-ip.js';
-import { createPasskeyService } from '../../../access/domain/passkey-service.js';
+import { createPasskeyService } from '../../../access/application/handle-passkey.js';
+import { createChallengeManager } from '../../../access/domain/challenge.js';
+import { createFakeWebAuthnVerifier } from '../../../access/infrastructure/fake-webauthn-verifier.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
@@ -18,26 +20,14 @@ import type { Organization } from '../../../access/domain/organization.js';
 import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
 import type { UserSession } from '../../../access/domain/user-session.js';
 import type { PasskeyCredential } from '../../../access/domain/passkey-credential.js';
-import type { WebAuthnConfig, RateLimitConfig } from '../../../platform/config/schema.js';
+import type { RateLimitConfig } from '../../../platform/config/schema.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
 } from '@yoink/infrastructure';
 
-// Mock the simplewebauthn functions
-vi.mock('@simplewebauthn/server', () => ({
-  generateRegistrationOptions: vi.fn(),
-  verifyRegistrationResponse: vi.fn(),
-  generateAuthenticationOptions: vi.fn(),
-  verifyAuthenticationResponse: vi.fn(),
-}));
-
-import {
-  generateAuthenticationOptions as mockGenerateAuthOpts,
-  verifyAuthenticationResponse as mockVerifyAuth,
-} from '@simplewebauthn/server';
-
 const USER_SESSION_COOKIE = 'user_session';
+const CHALLENGE_SECRET = 'test-secret-that-is-at-least-32-bytes-long-for-hmac';
 
 describe('auth routes', () => {
   let app: FastifyInstance;
@@ -45,6 +35,7 @@ describe('auth routes', () => {
   let credentialStore: ReturnType<typeof createFakePasskeyCredentialStore>;
   let sessionStore: ReturnType<typeof createFakeUserSessionStore>;
   let userStore: ReturnType<typeof createFakeUserStore>;
+  let verifier: ReturnType<typeof createFakeWebAuthnVerifier>;
 
   const testOrg: Organization = {
     id: '550e8400-e29b-41d4-a716-446655440001',
@@ -88,13 +79,6 @@ describe('auth routes', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
-  const webauthnConfig: WebAuthnConfig = {
-    rpId: 'localhost',
-    rpName: 'Test App',
-    origin: 'http://localhost:3000',
-    challengeSecret: 'test-secret-that-is-at-least-32-bytes-long-for-hmac',
-  };
-
   const rateLimitConfig: RateLimitConfig = {
     enabled: false, // Disable rate limiting in unit tests
     globalMax: 100,
@@ -109,8 +93,8 @@ describe('auth routes', () => {
   };
 
   beforeEach(async () => {
-    vi.resetAllMocks();
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    verifier = createFakeWebAuthnVerifier();
     const idGenerator = createFakeIdGenerator();
 
     const organizationStore = createFakeOrganizationStore({
@@ -139,8 +123,9 @@ describe('auth routes', () => {
     const passkeyService = createPasskeyService({
       credentialStore,
       userService,
-      config: webauthnConfig,
       clock,
+      verifier,
+      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
     });
 
     const sessionService = createSessionService({
@@ -185,7 +170,7 @@ describe('auth routes', () => {
         allowCredentials: [],
       };
 
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue(mockOptions as any);
+      verifier.setAuthenticationOptions(mockOptions);
 
       const response = await app.inject({
         method: 'POST',
@@ -200,10 +185,10 @@ describe('auth routes', () => {
     });
 
     it('does not require authentication (public endpoint)', async () => {
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({
+      verifier.setAuthenticationOptions({
         challenge: 'test',
         rpId: 'localhost',
-      } as any);
+      });
 
       const response = await app.inject({
         method: 'POST',
@@ -223,7 +208,7 @@ describe('auth routes', () => {
 
       // Generate options first to get a valid challenge
       const mockOptions = { challenge: 'test-challenge', rpId: 'localhost' };
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue(mockOptions as any);
+      verifier.setAuthenticationOptions(mockOptions);
 
       const optionsResponse = await app.inject({
         method: 'POST',
@@ -232,17 +217,7 @@ describe('auth routes', () => {
       });
       const { challenge } = optionsResponse.json();
 
-      // Mock successful verification
-      vi.mocked(mockVerifyAuth).mockResolvedValue({
-        verified: true,
-        authenticationInfo: {
-          newCounter: 1,
-          credentialID: testCredential.id,
-          userVerified: true,
-          credentialDeviceType: 'multiDevice',
-          credentialBackedUp: true,
-        },
-      } as any);
+      verifier.setAuthenticationVerification({ verified: true, newCounter: 1 });
 
       const response = await app.inject({
         method: 'POST',
@@ -277,10 +252,10 @@ describe('auth routes', () => {
 
     it('returns 401 when credential not found', async () => {
       // Generate options first
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({
+      verifier.setAuthenticationOptions({
         challenge: 'test',
         rpId: 'localhost',
-      } as any);
+      });
 
       const optionsResponse = await app.inject({
         method: 'POST',
@@ -315,10 +290,10 @@ describe('auth routes', () => {
       await credentialStore.save(testCredential);
 
       // Generate options
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({
+      verifier.setAuthenticationOptions({
         challenge: 'test',
         rpId: 'localhost',
-      } as any);
+      });
 
       const optionsResponse = await app.inject({
         method: 'POST',
@@ -355,10 +330,10 @@ describe('auth routes', () => {
     it('returns 400 when verification fails', async () => {
       await credentialStore.save(testCredential);
 
-      vi.mocked(mockGenerateAuthOpts).mockResolvedValue({
+      verifier.setAuthenticationOptions({
         challenge: 'test',
         rpId: 'localhost',
-      } as any);
+      });
 
       const optionsResponse = await app.inject({
         method: 'POST',
@@ -367,10 +342,7 @@ describe('auth routes', () => {
       });
       const { challenge } = optionsResponse.json();
 
-      // Mock failed verification
-      vi.mocked(mockVerifyAuth).mockResolvedValue({
-        verified: false,
-      } as any);
+      verifier.setAuthenticationVerification({ verified: false });
 
       const response = await app.inject({
         method: 'POST',

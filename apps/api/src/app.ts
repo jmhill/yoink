@@ -41,7 +41,7 @@ import type {
 import type { NoteHandlers } from './notes/application/create-note-handlers.js';
 import type { HistoryHandlers } from './modules/history/index.js';
 import type { ReviewHandlers } from './review/application/create-review-handlers.js';
-import type { CaptureProcessingService } from './processing/application/create-processing-handlers.js';
+import type { CaptureProcessingService } from './workflows/processing/index.js';
 import type { HealthChecker } from './platform/health/health-checker.js';
 import type { Access } from './access/index.js';
 import type {

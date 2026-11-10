@@ -3,7 +3,6 @@ import { errAsync } from 'neverthrow';
 import { createFakeTaskStore } from '../fakes/fake-task-store.js';
 import { createStoreBackedPersist } from './task-store-backed-persist.js';
 import { createFakeChangeLogStore } from '../../../history/testing.js';
-import { createFakeCaptureStore } from '../../../captures/infrastructure/fakes/fake-capture-store.js';
 import { createFakeProjectStore } from '../fakes/fake-project-store.js';
 import { planProjectChange } from '../../domain/projections/plan-project-change.js';
 import { planTaskChange } from '../../domain/projections/plan-task-change.js';
@@ -27,13 +26,11 @@ const current: Task = {
 
 const persistOf = (
   store = createFakeTaskStore(),
-  changeLog = createFakeChangeLogStore(),
-  captures = createFakeCaptureStore()
+  changeLog = createFakeChangeLogStore()
 ) => ({
   store,
   changeLog,
-  captures,
-  persist: createStoreBackedPersist({ store, changeLog, captures }),
+  persist: createStoreBackedPersist({ store, changeLog }),
 });
 
 const persistEvent = (
@@ -159,23 +156,11 @@ describe('createStoreBackedPersist', () => {
     expect(changeLog.records).toHaveLength(0);
   });
 
-  it('rolls back the capture delete when history insert fails', async () => {
+  it('rolls back the task delete when history insert fails', async () => {
     const withCapture: Task = { ...current, captureId: 'cap-1' };
     const store = createFakeTaskStore({ initialTasks: [withCapture] });
     const changeLog = createFakeChangeLogStore({ shouldFailOnInsert: true });
-    const captures = createFakeCaptureStore({
-      initialCaptures: [
-        {
-          id: 'cap-1',
-          organizationId: 'org-123',
-          createdById: 'user-456',
-          content: 'milk',
-          status: 'processed',
-          capturedAt: '2025-01-15T09:00:00.000Z',
-        },
-      ],
-    });
-    const persist = createStoreBackedPersist({ store, changeLog, captures });
+    const { persist } = persistOf(store, changeLog);
 
     const result = await persistEvent(persist, {
       type: 'TaskDeleted',
@@ -188,7 +173,6 @@ describe('createStoreBackedPersist', () => {
 
     expect(result.isErr()).toBe(true);
     expect((await store.findById(withCapture.id))._unsafeUnwrap()?.title).toBe('Buy milk');
-    expect((await captures.findById('cap-1'))._unsafeUnwrap()?.id).toBe('cap-1');
     expect(changeLog.records).toHaveLength(0);
   });
 
@@ -223,7 +207,6 @@ describe('createStoreBackedPersist', () => {
     const persist = createStoreBackedPersist({
       store,
       changeLog,
-      captures: createFakeCaptureStore(),
       projects,
     });
     const actor = { kind: 'user' as const, userId: 'user-1', via: 'session' as const };

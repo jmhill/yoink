@@ -119,15 +119,3 @@ export const clearCompletedListIdQuery = (listId: string, organizationId: string
   `,
   args: [listId, organizationId],
 });
-
-export const softDeleteCaptureQuery = (
-  id: string,
-  organizationId: string,
-  deletedAt: string
-): SqlQuery => ({
-  sql: `
-    UPDATE captures SET deleted_at = ?
-    WHERE id = ? AND organization_id = ? AND deleted_at IS NULL
-  `,
-  args: [deletedAt, id, organizationId],
-});

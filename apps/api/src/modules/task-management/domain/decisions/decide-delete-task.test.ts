@@ -29,7 +29,7 @@ describe('decideDeleteTask', () => {
     });
   });
 
-  it('includes the source capture id so persist can cascade without logging it', () => {
+  it('includes the source capture id on the delete fact', () => {
     const result = decideDeleteTask({
       current: { ...current, captureId: 'cap-1' },
       command: { id: current.id, organizationId: current.organizationId, actor: { kind: 'user' as const, userId: 'user-1', via: 'session' as const } },

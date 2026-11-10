@@ -40,6 +40,21 @@ describe('decideCreateProject', () => {
     }
   });
 
+  it('copies a source capture id onto the created fact', () => {
+    const captureId = '11111111-1111-4111-8111-111111111111';
+    const result = decideCreateProject({
+      command: { ...personCommand(), captureId },
+      existingNames: [],
+      id: 'project-id-1',
+      now: '2025-01-15T10:00:00.000Z',
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.captureId).toBe(captureId);
+    }
+  });
+
   it('includes a trimmed optional objective', () => {
     const result = decideCreateProject({
       command: { ...personCommand(), objective: '  Grow tomatoes  ' },

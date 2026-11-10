@@ -84,6 +84,7 @@ export const decideCreateProject = ({
     status: status.value,
     createdAt: now,
     occurredAt: now,
+    ...(command.captureId !== undefined ? { captureId: command.captureId } : {}),
     ...(objective !== undefined ? { objective } : {}),
     ...(reason.value !== undefined ? { reason: reason.value } : {}),
     ...(suggestedNextAction.value !== undefined

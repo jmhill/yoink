@@ -195,7 +195,7 @@ describe('sqlite task persist', () => {
     expect(loaded?.lastChangedBy).toBeNull();
   });
 
-  it('writes exactly one TaskDeleted record, no capture record, and soft-deletes the capture', async () => {
+  it('writes exactly one TaskDeleted record and leaves the source capture for the policy', async () => {
     await db.execute({
       sql: `INSERT INTO captures (id, organization_id, created_by_id, content, status, captured_at)
             VALUES (?, ?, ?, ?, ?, ?)`,
@@ -235,7 +235,7 @@ describe('sqlite task persist', () => {
       sql: `SELECT deleted_at FROM captures WHERE id = ?`,
       args: ['cap-1'],
     });
-    expect(capture.rows[0]?.deleted_at).toBe(later);
+    expect(capture.rows[0]?.deleted_at).toBeNull();
 
     const log = createSqliteChangeLogStore(db);
     const taskRecords = (await log.findBySubject('task', 'task-1'))._unsafeUnwrap();

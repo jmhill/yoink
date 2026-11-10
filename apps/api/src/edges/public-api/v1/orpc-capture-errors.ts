@@ -1,8 +1,10 @@
 import { ORPCError } from '@orpc/server';
 import type { PrincipalKind } from '../../../kernel/auth-context.js';
 import { yoinkHttpError, yoinkServerError } from '../../_shared/orpc/yoink-http-error.js';
-import type { ProcessCaptureToProjectError } from '../../../processing/application/handle-process-to-project.js';
-import type { ProcessCaptureToTaskError } from '../../../processing/application/handle-process-to-task.js';
+import type {
+  ProcessCaptureToProjectError,
+  ProcessCaptureToTaskError,
+} from '../../../workflows/processing/index.js';
 import type {
   CreateCaptureError,
   DeleteCaptureError,

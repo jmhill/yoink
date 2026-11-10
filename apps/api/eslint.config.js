@@ -511,6 +511,20 @@ export default [
                 'tests',
               ],
             },
+            // M5.5. Task Management's index is still the current
+            // `task-management` element until M5.11-task-management, so a
+            // workflow import of that index is not a module-entry import.
+            // Workflows import index.ts only. Captures is already module-entry.
+            {
+              from: [
+                'workflow-domain',
+                'workflow-application',
+                'workflow-policies',
+                'workflow-entry',
+                'workflow-test',
+              ],
+              allow: ['task-management'],
+            },
             // Rule 5. Platform except database and sql. test-fixtures is the
             // ADR exception that may touch SQL. Full mode makes each edge file
             // its own element, so files in one edge must be allowed by capture.
@@ -544,8 +558,9 @@ export default [
             // module handlers this edge still calls:
             // M5.1 captures, M5.2 task-management, M5.7 notes,
             // M5.10 review, M5.10-history history.
-            // processing and access are not allowed. captures→processing stays
-            // visible. Task, project, list, and work routes call task-management.
+            // Processing is a workflow, reached through workflow-entry on the
+            // general edge rule. Access is not allowed.
+            // Task, project, list, and work routes call task-management.
             {
               from: [['edge', { edge: 'public-api' }]],
               allow: ['captures', 'notes', 'review', 'task-management', 'history'],

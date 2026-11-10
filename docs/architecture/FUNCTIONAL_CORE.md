@@ -58,7 +58,7 @@ The sandwich is the reusable idea, not a generic handler type. Create, update-is
 ## What stayed out of this pilot
 
 Superseded. ADR-001 and its [migration plan](./adr/001-migration-plan.md) now cover each of these:
-- processing becomes a workflow (M5.5)
+- processing is the workflow in `workflows/processing/` (M5.5, in review)
 - store objects become internal to persistence (M5 checklist)
 - modules get their own types instead of `@yoink/api-contracts` (M5.11)
 - access moves to this pattern (M5.12, M5.13)

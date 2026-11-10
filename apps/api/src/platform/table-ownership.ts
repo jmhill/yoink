@@ -71,8 +71,8 @@
  * anchors from ADR §5.1. They are not violations. Any other reference to
  * `users` or `organizations` is. Review owns no table. The unit-of-work
  * guard table has no name until M4.1; add that name here when it exists.
- * `notes_settings` is in the map now (M5.8a creates it) so the first SQL
- * statement is already owned.
+ * `notes_settings` is in the map (M5.8a created it). It stays empty until
+ * M5.8b. The old organization column stays the source of truth until M5.8c.
  *
  * A migration after {@link LEGACY_MIGRATION_VERSION} declares `owner` and,
  * for `platform`, a non-empty `reason` (`owner: 'platform'` / `reason: '...'`
@@ -124,8 +124,8 @@ export const TABLE_OWNERS = {
 
 export type TableName = keyof typeof TABLE_OWNERS;
 
-/** In the map before a migration creates it. M5.8a adds `notes_settings`. */
-export const PLANNED_TABLES = ['notes_settings'] as const satisfies readonly TableName[];
+/** In the map before a migration creates it. M5.8a created `notes_settings`. */
+export const PLANNED_TABLES = [] as const satisfies readonly TableName[];
 
 export const SQL_KEYWORDS = ['FROM', 'JOIN', 'INTO', 'UPDATE', 'TABLE', 'REFERENCES'] as const;
 

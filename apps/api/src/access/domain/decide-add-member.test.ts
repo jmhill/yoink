@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideAddMember } from './decide-add-member.js';
+import { decideAddMember, decideAddMemberOrganization, decideAddMemberUser, planAddMember } from './decide-add-member.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { User } from './user.js';
 
@@ -29,16 +29,41 @@ const member = (overrides: Partial<OrganizationMembership> = {}): OrganizationMe
 });
 
 describe('decideAddMember', () => {
+  it('refuses a missing user before the workspace', () => {
+    const result = decideAddMemberUser({
+      command: { userId: human.id, organizationId: orgId, role: 'member' },
+      user: null,
+    });
+    expect(result.isErr() && result.error.type).toBe('USER_NOT_FOUND');
+  });
+
+  it('refuses a missing workspace before memberships are loaded', () => {
+    const result = decideAddMemberOrganization({
+      command: { userId: human.id, organizationId: orgId, role: 'member' },
+      organization: null,
+    });
+    expect(result.isErr() && result.error.type).toBe('ORGANIZATION_NOT_FOUND');
+  });
+
   it('adds a human member', () => {
     const result = decideAddMember({
       command: { userId: human.id, organizationId: orgId, role: 'member' },
       user: human,
       existing: null,
       members: [],
-      membershipId: 'new-id',
-      now: '2024-02-01T00:00:00.000Z',
     });
     expect(result.isOk() && result.value.role).toBe('member');
+    expect(result.isOk() && result.value.isPersonalOrg).toBe(false);
+  });
+
+  it('keeps a personal workspace flag', () => {
+    const result = decideAddMember({
+      command: { userId: human.id, organizationId: orgId, role: 'owner', isPersonalOrg: true },
+      user: human,
+      existing: null,
+      members: [],
+    });
+    expect(result.isOk() && result.value.isPersonalOrg).toBe(true);
   });
 
   it('allows the first owner on a zero-owner workspace', () => {
@@ -47,8 +72,6 @@ describe('decideAddMember', () => {
       user: human,
       existing: null,
       members: [],
-      membershipId: 'new-id',
-      now: '2024-02-01T00:00:00.000Z',
     });
     expect(result.isOk() && result.value.role).toBe('owner');
   });
@@ -58,9 +81,7 @@ describe('decideAddMember', () => {
       command: { userId: human.id, organizationId: orgId, role: 'owner' },
       user: human,
       existing: null,
-      members: [member({ userId: 'other', role: 'owner' })],
-      membershipId: 'new-id',
-      now: '2024-02-01T00:00:00.000Z',
+      members: [member({ userId: '550e8400-e29b-41d4-a716-446655440099', role: 'owner' })],
     });
     expect(result.isErr() && result.error.type).toBe('SECOND_OWNER');
   });
@@ -71,8 +92,6 @@ describe('decideAddMember', () => {
       user: bot,
       existing: null,
       members: [],
-      membershipId: 'new-id',
-      now: '2024-02-01T00:00:00.000Z',
     });
     expect(result.isErr() && result.error.type).toBe('BOT_CANNOT_HAVE_PRIVILEGED_ROLE');
   });
@@ -84,9 +103,33 @@ describe('decideAddMember', () => {
       user: human,
       existing,
       members: [existing],
-      membershipId: 'new-id',
-      now: '2024-02-01T00:00:00.000Z',
     });
     expect(result.isErr() && result.error.type).toBe('ALREADY_MEMBER');
+  });
+
+  it('plans the membership id and joinedAt after the decision', () => {
+    const decision = decideAddMember({
+      command: { userId: human.id, organizationId: orgId, role: 'member' },
+      user: human,
+      existing: null,
+      members: [],
+    });
+    if (decision.isErr()) {
+      throw new Error('expected a member decision');
+    }
+    const plan = planAddMember({
+      decision: decision.value,
+      membershipId: '550e8400-e29b-41d4-a716-446655440030',
+      now: '2024-02-01T00:00:00.000Z',
+    });
+    expect(plan.kind).toBe('add-member');
+    expect(plan.membership).toEqual({
+      id: '550e8400-e29b-41d4-a716-446655440030',
+      userId: human.id,
+      organizationId: orgId,
+      role: 'member',
+      isPersonalOrg: false,
+      joinedAt: '2024-02-01T00:00:00.000Z',
+    });
   });
 });

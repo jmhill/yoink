@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiToken } from '../access/domain/api-token.js';
 import type { OrganizationMembership } from '../access/domain/organization-membership.js';
 import type { Organization } from '../access/domain/organization.js';
-import { createMembershipService } from '../access/domain/membership-service.js';
+import { createMembershipService } from '../access/application/handle-membership.js';
 import { createSessionService } from '../access/domain/session-service.js';
 import { createTokenService } from '../access/domain/token-service.js';
 import type { UserSession } from '../access/domain/user-session.js';

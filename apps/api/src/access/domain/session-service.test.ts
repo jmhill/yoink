@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import { createSessionService, type SessionService } from './session-service.js';
-import { createMembershipService, type MembershipService } from './membership-service.js';
+import { createMembershipService, type MembershipService } from '../application/handle-membership.js';
 import { createUserService, type UserService } from './user-service.js';
 import type { UserSessionStore } from './user-session-store.js';
 import type { User } from './user.js';

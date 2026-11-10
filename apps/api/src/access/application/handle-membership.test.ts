@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMembershipService, type MembershipService } from './membership-service.js';
+import { createMembershipService, type MembershipService } from './handle-membership.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createUserService } from './user-service.js';
+import { createUserService } from '../domain/user-service.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
-import type { OrganizationMembership } from './organization-membership.js';
-import type { User } from './user.js';
+import type { Organization } from '../domain/organization.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
+import type { User } from '../domain/user.js';
 
 const TEST_DATE = new Date('2024-01-15T10:00:00.000Z');
 
@@ -286,6 +286,32 @@ describe('MembershipService', () => {
       if (result.isOk()) {
         expect(result.value).toBe(false);
       }
+    });
+  });
+
+  describe('removeMember leave guards', () => {
+    it('refuses leaving a personal organization before deleting the membership', async () => {
+      const org = createTestOrg();
+      const user = createTestUser();
+      const personal = createTestMembership({
+        userId: user.id,
+        organizationId: org.id,
+        role: 'owner',
+        isPersonalOrg: true,
+      });
+      await organizationStore.save(org);
+      await userStore.save(user);
+      await membershipStore.save(personal);
+
+      const result = await service.removeMember({
+        organizationId: org.id,
+        userId: user.id,
+        by: { kind: 'self' },
+      });
+
+      expect(result.isErr() && result.error.type).toBe('CANNOT_LEAVE_PERSONAL_ORG');
+      const remaining = await membershipStore.findByOrganizationId(org.id);
+      expect(remaining.isOk() && remaining.value).toHaveLength(1);
     });
   });
 });

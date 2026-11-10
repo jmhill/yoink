@@ -4,7 +4,7 @@ import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { UserSession } from './user-session.js';
 import type { UserSessionStore } from './user-session-store.js';
 import type { UserService } from './user-service.js';
-import type { MembershipService } from './membership-service.js';
+import type { MembershipService } from '../application/handle-membership.js';
 import {
   noMembershipsError,
   notAMemberError,

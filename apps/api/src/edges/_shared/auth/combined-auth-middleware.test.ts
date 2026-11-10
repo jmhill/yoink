@@ -17,7 +17,7 @@ import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
 import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';
 import { createUserService } from '../../../access/domain/user-service.js';
-import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createMembershipService } from '../../../access/application/handle-membership.js';
 import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
 import type { UserSession } from '../../../access/domain/user-session.js';
 import {

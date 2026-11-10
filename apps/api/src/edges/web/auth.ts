@@ -7,7 +7,7 @@ import type { HandleValidateInvitationError } from '../../access/application/han
 import type { AcceptInvitation } from '../../access/domain/decide-accept-invitation.js';
 import type { ValidateInvitation } from '../../access/domain/decide-validate-invitation.js';
 import type { Invitation } from '../../access/domain/invitation.js';
-import type { MembershipService } from '../../access/domain/membership-service.js';
+import type { MembershipService } from '../../access/application/handle-membership.js';
 import type { OrganizationService } from '../../access/domain/organization-service.js';
 import type { OrganizationStore } from '../../access/domain/organization-store.js';
 import type { PasskeyService } from '../../access/domain/passkey-service.js';

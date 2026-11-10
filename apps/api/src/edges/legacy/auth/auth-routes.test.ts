@@ -7,7 +7,7 @@ import { clientIpOfRequest } from '../../_shared/request-client-ip.js';
 import { createPasskeyService } from '../../../access/domain/passkey-service.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
-import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createFakeUserStore } from '../../../access/infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../../../access/infrastructure/fake-organization-membership-store.js';

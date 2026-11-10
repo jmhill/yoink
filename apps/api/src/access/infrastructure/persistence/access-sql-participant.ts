@@ -1,7 +1,9 @@
 import type { GuardedStatement, SqlParticipant } from '../../../kernel/unit-of-work.js';
 import { isAdminPlan } from '../../domain/admin-plan.js';
+import { isMintAgentPlan } from '../../domain/agent-plan.js';
 import { isSignupPlan } from '../../domain/signup-plan.js';
 import { compileAdminPlan } from './compile-admin.js';
+import { compileMintAgentPlan } from './compile-agent.js';
 import { compileSignupPlan } from './compile-signup.js';
 
 /** Empty sql is not a write. The unit of work reports Storage and does not run it. */
@@ -20,6 +22,9 @@ export const accessSqlParticipant: SqlParticipant<unknown> = {
     }
     if (isAdminPlan(plan)) {
       return compileAdminPlan(plan);
+    }
+    if (isMintAgentPlan(plan)) {
+      return compileMintAgentPlan(plan);
     }
     return [NOT_A_PLAN];
   },

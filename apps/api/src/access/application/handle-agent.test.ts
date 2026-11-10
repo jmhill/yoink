@@ -1,26 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createAgentService, type AgentService } from './agent-service.js';
-import { createUserService } from './user-service.js';
-import { createMembershipService } from './membership-service.js';
-import { createTokenHandlers } from '../application/create-token-handlers.js';
-import {
-  createStoreBackedTokenCreated,
-  createStoreBackedTokenRevoked,
-  createStoreBackedTokenReissue,
-} from '../infrastructure/store-backed-token-persist.js';
-import { handleReissueAgentToken } from '../application/handle-reissue-agent-token.js';
-import { tokenStorageError } from './auth-errors.js';
-import { principalKindOf } from './user.js';
+import { createFakeClock, createFakeIdGenerator, createFakePasswordHasher } from '@yoink/infrastructure';
 import { ResultAsync } from 'neverthrow';
+import { createAgentService, type AgentService } from './handle-agent.js';
+import { handleReissueAgentToken } from './handle-reissue-agent-token.js';
+import { createStoreBackedTokenReissue } from '../infrastructure/store-backed-token-persist.js';
+import { tokenStorageError } from '../domain/auth-errors.js';
+import { agentEmailFor } from '../domain/user.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
-import type { OrganizationMembership } from './organization-membership.js';
-import type { User } from './user.js';
-import { agentEmailFor } from './user.js';
+import type { Organization } from '../domain/organization.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
+import type { User } from '../domain/user.js';
 
 const TEST_DATE = new Date('2024-01-15T10:00:00.000Z');
 
@@ -68,76 +60,34 @@ const memberMembership: OrganizationMembership = {
   joinedAt: '2024-01-01T00:00:00.000Z',
 };
 
-describe('AgentService', () => {
+describe('createAgentService', () => {
   let service: AgentService;
   let userStore: ReturnType<typeof createFakeUserStore>;
+  let organizationStore: ReturnType<typeof createFakeOrganizationStore>;
   let membershipStore: ReturnType<typeof createFakeOrganizationMembershipStore>;
   let tokenStore: ReturnType<typeof createFakeTokenStore>;
 
   beforeEach(() => {
     userStore = createFakeUserStore({ initialUsers: [owner, member] });
-    const organizationStore = createFakeOrganizationStore({ initialOrganizations: [org] });
+    organizationStore = createFakeOrganizationStore({ initialOrganizations: [org] });
     membershipStore = createFakeOrganizationMembershipStore({
       initialMemberships: [ownerMembership, memberMembership],
     });
     tokenStore = createFakeTokenStore();
 
-    const idGenerator = createFakeIdGenerator([
-      AGENT_ID,
-      AGENT_MEMBERSHIP_ID,
-      AGENT_TOKEN_ID,
-      AGENT_TOKEN_SECRET,
-    ]);
-    const clock = createFakeClock(TEST_DATE);
-    const userService = createUserService({ userStore });
-    const membershipService = createMembershipService({
-      membershipStore,
-      userService,
-      organizationStore,
-      clock,
-      idGenerator,
-    });
-    const tokenHandlers = createTokenHandlers({
-      listUserOrgTokens: (userId, organizationId) =>
-        tokenStore.findByUserAndOrganization(userId, organizationId),
-      load: (id) => tokenStore.findById(id),
-      loadMembership: (userId, organizationId) =>
-        membershipStore
-          .findByUserAndOrg(userId, organizationId)
-          .mapErr((error) => tokenStorageError(error.message, error))
-          .map((membership) => (membership ? { role: membership.role } : null)),
-      loadOwner: (userId) =>
-        userStore
-          .findById(userId)
-          .mapErr((error) => tokenStorageError(error.message, error))
-          .map((user) =>
-            user
-              ? {
-                  userId: user.id,
-                  kind: principalKindOf(user),
-                }
-              : null
-          ),
-      persistCreate: createStoreBackedTokenCreated(tokenStore),
-      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
-      hashSecret: (secret) =>
-        ResultAsync.fromPromise(
-          Promise.resolve(`hashed:${secret}`),
-          (error) => tokenStorageError('Failed to hash token secret', error)
-        ),
-      nextId: () => idGenerator.generate(),
-      nextSecret: () => idGenerator.generate(),
-      now: () => clock.now().toISOString(),
-      maxTokensPerUserPerOrg: 2,
-    });
-
     service = createAgentService({
-      userService,
-      membershipService,
-      createToken: (command) =>
-        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
-      clock,
-      idGenerator,
+      userStore,
+      membershipStore,
+      organizationStore,
+      tokenStore,
+      clock: createFakeClock(TEST_DATE),
+      idGenerator: createFakeIdGenerator([
+        AGENT_ID,
+        AGENT_MEMBERSHIP_ID,
+        AGENT_TOKEN_ID,
+        AGENT_TOKEN_SECRET,
+      ]),
+      passwordHasher: createFakePasswordHasher(),
     });
   });
 
@@ -158,6 +108,7 @@ describe('AgentService', () => {
         createdAt: TEST_DATE.toISOString(),
       });
       expect(result.value.membership).toMatchObject({
+        id: AGENT_MEMBERSHIP_ID,
         userId: AGENT_ID,
         organizationId: ORG_ID,
         role: 'member',
@@ -167,6 +118,8 @@ describe('AgentService', () => {
       expect(result.value.rawToken).toBe(`${AGENT_TOKEN_ID}:${AGENT_TOKEN_SECRET}`);
     }
 
+    const stored = await tokenStore.findByUserAndOrganization(AGENT_ID, ORG_ID);
+    expect(stored._unsafeUnwrap()[0]?.tokenHash).toBe(`fake-hash:${AGENT_TOKEN_SECRET}`);
     const ownerTokens = await tokenStore.findByUserAndOrganization(OWNER_ID, ORG_ID);
     expect(ownerTokens.isOk() && ownerTokens.value).toHaveLength(0);
   });
@@ -182,6 +135,7 @@ describe('AgentService', () => {
     if (result.isErr()) {
       expect(result.error.type).toBe('INSUFFICIENT_PERMISSIONS');
     }
+    expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
   });
 
   it('rejects minting when the actor is not a member', async () => {
@@ -195,6 +149,46 @@ describe('AgentService', () => {
     if (result.isErr()) {
       expect(result.error.type).toBe('MEMBERSHIP_NOT_FOUND');
     }
+  });
+
+  it('refuses a blank name before writing a member', async () => {
+    const membersBefore = await membershipStore.findByOrganizationId(ORG_ID);
+
+    const result = await service.mintAgent({
+      actor: { kind: 'user', userId: OWNER_ID, via: 'session' as const },
+      organizationId: ORG_ID,
+      name: '   ',
+    });
+
+    expect(result.isErr() && result.error.type).toBe('INVALID_TOKEN_NAME');
+    const membersAfter = await membershipStore.findByOrganizationId(ORG_ID);
+    expect(membersAfter._unsafeUnwrap()).toHaveLength(membersBefore._unsafeUnwrap().length);
+  });
+
+  it('refuses a missing workspace before writing a user', async () => {
+    const local = createAgentService({
+      userStore,
+      membershipStore,
+      organizationStore: createFakeOrganizationStore({ initialOrganizations: [] }),
+      tokenStore,
+      clock: createFakeClock(TEST_DATE),
+      idGenerator: createFakeIdGenerator([
+        AGENT_ID,
+        AGENT_MEMBERSHIP_ID,
+        AGENT_TOKEN_ID,
+        AGENT_TOKEN_SECRET,
+      ]),
+      passwordHasher: createFakePasswordHasher(),
+    });
+
+    const result = await local.mintAgent({
+      actor: { kind: 'user', userId: OWNER_ID, via: 'session' as const },
+      organizationId: ORG_ID,
+      name: 'Vault bot',
+    });
+
+    expect(result.isErr() && result.error.type).toBe('ORGANIZATION_NOT_FOUND');
+    expect((await userStore.findById(AGENT_ID))._unsafeUnwrap()).toBeNull();
   });
 
   it('refuses a bot actor before validating the name', async () => {

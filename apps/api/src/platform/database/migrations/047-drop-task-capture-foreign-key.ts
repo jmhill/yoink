@@ -8,7 +8,7 @@ import { rebuildTable } from '../table-rebuild.js';
  * identity anchors.
  */
 export const migration: Migration = {
-  version: 46,
+  version: 47,
   name: 'drop_task_capture_foreign_key',
   owner: 'task-management',
   up: async (db) => {

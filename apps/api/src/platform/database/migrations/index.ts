@@ -57,7 +57,7 @@ import { migration as membershipEventsV2 } from './042-membership-events-v2.js';
 import { migration as ownerInvites } from './043-owner-invites.js';
 import { migration as allowCaptureChangeLogSubject } from './044-allow-capture-change-log-subject.js';
 import { migration as createNotesSettings } from './045-create-notes-settings.js';
-import { migration as dropTaskCaptureForeignKey } from './046-drop-task-capture-foreign-key.js';
+import { migration as dropTaskCaptureForeignKey } from './047-drop-task-capture-foreign-key.js';
 
 export const migrations: Migration[] = [
   createOrganizations,

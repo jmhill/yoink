@@ -4,7 +4,7 @@ import { runMigrations } from '../migrator.js';
 import { migrations } from './index.js';
 import type { Database } from '../types.js';
 
-const before46 = migrations.filter((migration) => migration.version < 46);
+const before47 = migrations.filter((migration) => migration.version < 47);
 const at = '2026-11-10T00:00:00.000Z';
 
 const foreignKeyTables = async (db: Database): Promise<string[]> => {
@@ -27,7 +27,7 @@ const taskRow = async (db: Database) => {
   return result.rows[0];
 };
 
-describe('Migration 46: drop tasks.capture_id foreign key', () => {
+describe('Migration 47: drop tasks.capture_id foreign key', () => {
   let db: Database;
 
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('Migration 46: drop tasks.capture_id foreign key', () => {
   });
 
   it('keeps the column and the row, and drops only the captures foreign key', async () => {
-    await runMigrations(db, before46);
+    await runMigrations(db, before47);
     await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
 
     await db.execute({

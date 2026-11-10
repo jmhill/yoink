@@ -8,6 +8,8 @@ export type CreateProjectCommand = {
   suggestedNextAction?: string;
   organizationId: string;
   createdById: string;
+  /** Source capture, when processing creates the project. */
+  captureId?: string;
   actor: Actor;
 };
 

@@ -21,7 +21,6 @@ import type { FakeProjectStore } from '../fakes/fake-project-store.js';
 import {
   insertTaskQuery,
   setOpenOrderQueries,
-  softDeleteCaptureQuery,
   softDeleteTaskQuery,
   updateTaskQuery,
 } from './rows/task-row-statements.js';
@@ -54,15 +53,8 @@ export const queriesForTaskPlan = (plan: TaskChangePlan) => {
         ),
         ...history,
       ];
-    case 'delete': {
-      const queries = [...history, softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt)];
-      if (plan.captureId) {
-        queries.push(
-          softDeleteCaptureQuery(plan.captureId, plan.organizationId, plan.deletedAt)
-        );
-      }
-      return queries;
-    }
+    case 'delete':
+      return [...history, softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt)];
   }
 };
 
@@ -134,21 +126,16 @@ export const createSqliteTaskPersist = (deps: { db: Database }): PersistTaskChan
     );
 };
 
-export type CaptureSideEffects = {
-  captureSnapshot: () => () => void;
-  applySoftDelete: (id: string) => void;
-};
-
 export type FakeTaskPersistDeps = {
   store: FakeTaskStore;
   changeLog: FakeChangeLogStore;
-  captures: CaptureSideEffects;
   projects?: FakeProjectStore;
 };
 
 /**
  * In-memory persist: apply the plan's row mutations and history in one snapshot
- * so a failing change-log insert leaves the task (and capture) unchanged.
+ * so a failing change-log insert leaves the task unchanged.
+ * A source capture is deleted by the processing policy, not here.
  */
 const applyProjectPlan = (
   projects: FakeProjectStore | undefined,
@@ -192,12 +179,11 @@ const applyProjectPlan = (
 };
 
 export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTaskChange => {
-  const { store, changeLog, captures, projects } = deps;
+  const { store, changeLog, projects } = deps;
 
   return (plan, extras) => {
     const restoreTask = store.captureSnapshot();
     const restoreLog = changeLog.captureSnapshot();
-    const restoreCaptures = captures.captureSnapshot();
     const restoreProjects = projects?.captureSnapshot();
 
     const persistRecords = (): ResultAsync<void, StorageError> =>
@@ -237,9 +223,6 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
             return missing();
           }
           store.applySoftDelete(plan.taskId);
-          if (plan.captureId) {
-            captures.applySoftDelete(plan.captureId);
-          }
           return persistRecords();
       }
     };
@@ -263,7 +246,6 @@ export const createStoreBackedPersist = (deps: FakeTaskPersistDeps): PersistTask
       .mapErr((error) => {
         restoreTask();
         restoreLog();
-        restoreCaptures();
         restoreProjects?.();
         return error;
       });

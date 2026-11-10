@@ -25,7 +25,6 @@ import {
   clearCompletedListIdQuery,
   insertTaskQuery,
   setOpenOrderQueries,
-  softDeleteCaptureQuery,
   softDeleteTaskQuery,
   updateTaskQuery,
 } from './rows/task-row-statements.js';
@@ -140,21 +139,14 @@ const domainTaskStatements = (plan: TaskChangePlan, whenProjectExists: boolean):
           write(query, 'update')
         ),
       ];
-    case 'delete': {
-      const statements = [
+    case 'delete':
+      return [
         write(
           softDeleteTaskQuery(plan.taskId, plan.organizationId, plan.deletedAt),
           'update',
           'task-missing'
         ),
       ];
-      if (plan.captureId) {
-        statements.push(
-          write(softDeleteCaptureQuery(plan.captureId, plan.organizationId, plan.deletedAt), 'update')
-        );
-      }
-      return statements;
-    }
   }
 };
 

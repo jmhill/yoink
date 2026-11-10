@@ -8,13 +8,14 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * `edges/test-fixtures/` is exempt. The ownerless fixture has no
  * keyword-led table reference. The review fixture's SQL is exempt with
  * that directory. M7.4 retires both files.
+ *
+ * M5.5 removed the processing statements and task-management's capture
+ * soft-delete. Processing is a workflow and writes through each module.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
-  // tasks, projects, lists, processing, and notes still import
-  // insertChangeLogQuery from modules/history/infrastructure/sql.ts.
-  // That SQL stays in that file, so the imports are not new rows.
-  // The tasks that stop the calls: tasks, projects, and lists are M5.3;
-  // processing is M5.5; notes is M5.7.
+  // Notes still imports insertChangeLogQuery from
+  // modules/history/infrastructure/sql.ts. That SQL stays in that file,
+  // so the import is not a new row. M5.7 stops the call.
   // M4.4 deletes existsClause and the other cross-module guards in history SQL.
   // M4.4
   {
@@ -55,48 +56,6 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     table: 'tasks',
     count: 2,
     removedBy: 'M4.4',
-  },
-
-  // M5.5 deletes process-row-statements.ts and softDeleteCaptureQuery.
-  // M5.5
-  {
-    path: 'processing/infrastructure/process-row-statements.ts',
-    keyword: 'FROM',
-    table: 'captures',
-    count: 1,
-    removedBy: 'M5.5',
-  },
-  // M5.5
-  {
-    path: 'processing/infrastructure/process-row-statements.ts',
-    keyword: 'INTO',
-    table: 'projects',
-    count: 1,
-    removedBy: 'M5.5',
-  },
-  // M5.5
-  {
-    path: 'processing/infrastructure/process-row-statements.ts',
-    keyword: 'INTO',
-    table: 'tasks',
-    count: 1,
-    removedBy: 'M5.5',
-  },
-  // M5.5
-  {
-    path: 'processing/infrastructure/process-row-statements.ts',
-    keyword: 'UPDATE',
-    table: 'captures',
-    count: 1,
-    removedBy: 'M5.5',
-  },
-  // M5.5 — softDeleteCaptureQuery.
-  {
-    path: 'modules/task-management/infrastructure/persistence/rows/task-row-statements.ts',
-    keyword: 'UPDATE',
-    table: 'captures',
-    count: 1,
-    removedBy: 'M5.5',
   },
 
   // M5.7 moves notes' user, membership, and project lookups onto consumer-owned ports.

@@ -1,21 +1,18 @@
-import type { ProcessCaptureToProjectCommand } from '../../modules/captures/domain/messages/capture-commands.js';
-import type { ProcessCaptureToTaskCommand } from '../../modules/captures/domain/messages/capture-commands.js';
-import {
-  withCommandLog,
-  type CommandLogger,
-} from '../../kernel/command-log.js';
-import {
-  handleProcessCaptureToProject,
-  type HandleProcessCaptureToProjectDeps,
-} from './handle-process-to-project.js';
-import {
-  handleProcessCaptureToTask,
-  type HandleProcessCaptureToTaskDeps,
-} from './handle-process-to-task.js';
+import { withCommandLog, type CommandLogger } from '../../../kernel/command-log.js';
+import type { UnitOfWork } from '../../../kernel/unit-of-work.js';
+import type { Captures } from '../../../modules/captures/index.js';
+import type { TaskManagement } from '../../../modules/task-management/index.js';
+import type {
+  ProcessCaptureToProjectCommand,
+  ProcessCaptureToTaskCommand,
+} from '../domain/commands.js';
+import { handleProcessCaptureToProject } from './handle-process-to-project.js';
+import { handleProcessCaptureToTask } from './handle-process-to-task.js';
 
 export type ProcessingHandlerDeps = {
-  processToTask: HandleProcessCaptureToTaskDeps;
-  processToProject: HandleProcessCaptureToProjectDeps;
+  captures: Captures;
+  taskManagement: TaskManagement;
+  uow: UnitOfWork;
   logger: CommandLogger;
 };
 
@@ -29,7 +26,7 @@ export const createProcessingHandlers = (deps: ProcessingHandlerDeps) => ({
         actor: command.actor,
       },
       () => ['TaskCreated' as const],
-      () => handleProcessCaptureToTask(command, deps.processToTask)
+      () => handleProcessCaptureToTask(command, deps)
     ),
   processCaptureToProject: (command: ProcessCaptureToProjectCommand) =>
     withCommandLog(
@@ -40,7 +37,7 @@ export const createProcessingHandlers = (deps: ProcessingHandlerDeps) => ({
         actor: command.actor,
       },
       () => ['ProjectCreated' as const],
-      () => handleProcessCaptureToProject(command, deps.processToProject)
+      () => handleProcessCaptureToProject(command, deps)
     ),
 });
 

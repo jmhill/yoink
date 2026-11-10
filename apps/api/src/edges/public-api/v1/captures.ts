@@ -13,8 +13,7 @@ import {
 } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import type { Captures } from '../../../modules/captures/index.js';
-// M5.5 removes this deep import once processing exports its workflow from index.ts.
-import type { CaptureProcessingService } from '../../../processing/application/create-processing-handlers.js';
+import type { CaptureProcessingService } from '../../../workflows/processing/index.js';
 import {
   mapAgentCaptureRefusal,
   mapCreateCaptureError,

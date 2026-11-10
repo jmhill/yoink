@@ -10,7 +10,7 @@ import {
   captureNotInTrashError,
   storageError,
 } from '../modules/captures/domain/messages/capture-errors.js';
-import type { CaptureProcessingService } from '../processing/application/create-processing-handlers.js';
+import type { CaptureProcessingService } from '../workflows/processing/index.js';
 import { registerPublicApiV1 } from '../edges/public-api/v1/index.js';
 import type { PublicApiV1Dependencies } from '../edges/public-api/v1/register.js';
 

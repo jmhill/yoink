@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { okAsync, ResultAsync } from 'neverthrow';
-import type { UnitOfWork } from './kernel/unit-of-work.js';
+import type { Policy, UnitOfWork } from './kernel/unit-of-work.js';
 import type { Task } from '@yoink/api-contracts';
 import type { Database } from './platform/database/types.js';
 import { createApp, createFastifyInstance, type AdminConfig, type SignupConfig } from './app.js';
@@ -58,11 +58,10 @@ import { createSqliteTimelineLookups } from './modules/history/infrastructure/sq
 import { createSqliteWorkStore } from './modules/task-management/infrastructure/persistence/sqlite-work-store.js';
 import { createReviewHandlers } from './review/application/create-review-handlers.js';
 import { createSqliteReviewStore } from './review/infrastructure/sqlite-review-store.js';
-import { createProcessingHandlers } from './processing/application/create-processing-handlers.js';
 import {
-  createSqliteProcessToProjectPersist,
-  createSqliteProcessToTaskPersist,
-} from './processing/infrastructure/persist-process.js';
+  createProcessingHandlers,
+  deleteSourceCapturePolicy,
+} from './workflows/processing/index.js';
 import { createSqliteHealthChecker } from './platform/health/sqlite-health-checker.js';
 import { createAuthMiddleware, type AuthMiddleware } from './edges/_shared/auth/auth-middleware.js';
 import { createCombinedAuthMiddleware } from './edges/_shared/auth/combined-auth-middleware.js';
@@ -310,6 +309,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     builders: { ...CAPTURE_TIMELINE_BUILDERS, ...TASK_TIMELINE_BUILDERS },
   });
   const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
+  // Filled after captures exists. Both factories keep this array, and commit
+  // reads it then. The policy needs captures; captures needs the unit of work.
+  const processingPolicies: Policy[] = [];
   const unitOfWork = createSqliteUnitOfWork({
     client: writeClient,
     participants: [
@@ -318,6 +320,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       capturesSqlParticipant,
       taskManagementSqlParticipant,
     ],
+    policies: processingPolicies,
     sink: historySink,
     logger: {
       error: (fields) => {
@@ -332,6 +335,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       createFakeCaptureParticipant(createFakeCaptureStore()),
       createFakeTaskManagementParticipant(),
     ],
+    policies: processingPolicies,
     sink: historySink,
   });
 
@@ -504,6 +508,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     ids: idGenerator,
     now: () => clock.now().toISOString(),
   });
+  processingPolicies.push(deleteSourceCapturePolicy(captures));
 
   const app = createFastifyInstance(config.log);
   const commandLogger = createPinoCommandLogger(app.log);
@@ -631,26 +636,10 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     now: () => clock.now(),
   });
 
-  const processToTaskPersist = createSqliteProcessToTaskPersist({ db: database });
-  const processToProjectPersist = createSqliteProcessToProjectPersist({ db: database });
   const captureProcessingService = createProcessingHandlers({
-    processToTask: {
-      loadCapture: (id) => captureStore.findById(id),
-      loadList: (id) => listStore.findById(id),
-      loadProject: (id) => projectStore.findById(id),
-      loadNextOpenOrder: (organizationId, listId) =>
-        taskStore.nextOpenOrderInPile({ organizationId, listId }),
-      persist: processToTaskPersist,
-      nextId: () => idGenerator.generate(),
-      now: () => clock.now().toISOString(),
-    },
-    processToProject: {
-      loadCapture: (id) => captureStore.findById(id),
-      listProjects: (organizationId) => projectStore.findByOrganization(organizationId),
-      persist: processToProjectPersist,
-      nextId: () => idGenerator.generate(),
-      now: () => clock.now().toISOString(),
-    },
+    captures,
+    taskManagement,
+    uow: unitOfWork,
     logger: commandLogger,
   });
 

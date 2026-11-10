@@ -126,6 +126,11 @@ const elements = [
   // the current element wins. M5.11-notes removes it. The old src/notes/**
   // pattern stays for boundary fixtures.
   { type: 'notes', pattern: 'src/modules/notes/**', mode: 'full' },
+  // M5.10-review moved review. Target layer rules disallow @yoink/api-contracts,
+  // which this module still imports until M5.11-review. This descriptor is
+  // first, so the current element wins. M5.11-review removes it. The old
+  // src/review/** pattern stays for boundary fixtures.
+  { type: 'review', pattern: 'src/modules/review/**', mode: 'full' },
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {

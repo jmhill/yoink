@@ -59,8 +59,12 @@ import { createHistoryHandlers } from './modules/history/index.js';
 import { createSqliteChangeLogStore } from './modules/history/infrastructure/sqlite-change-log-store.js';
 import { createSqliteTimelineLookups } from './modules/history/infrastructure/sqlite-history-lookups.js';
 import { createSqliteWorkStore } from './modules/task-management/infrastructure/persistence/sqlite-work-store.js';
-import { createReviewHandlers } from './review/application/create-review-handlers.js';
-import { createSqliteReviewStore } from './review/infrastructure/sqlite-review-store.js';
+import { createSqliteProjectChanges } from './modules/history/infrastructure/sqlite-project-changes.js';
+import {
+  createReviewFromFacts,
+  createReviewHandlers,
+  storageError as reviewStorageError,
+} from './modules/review/index.js';
 import {
   createProcessingHandlers,
   deleteSourceCapturePolicy,
@@ -677,7 +681,21 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const taskHandlers = taskManagement.taskHandlers;
   const workHandlers = taskManagement.workHandlers;
 
-  const reviewStore = createSqliteReviewStore(database);
+  const reviewError = (error: { message: string }) => reviewStorageError(error.message, error);
+  const projectChanges = createSqliteProjectChanges(database);
+  const organizationTimeZone = createSqliteOrganizationTimeZone(database);
+  const reviewStore = createReviewFromFacts({
+    listProjects: (organizationId) =>
+      projectStore.findByOrganization(organizationId).mapErr(reviewError),
+    listTasks: (ids) => taskStore.findByIds(ids).mapErr(reviewError),
+    pageFinishedOnProject: (options) =>
+      taskStore.pageFinishedWithProject(options).mapErr(reviewError),
+    countFinishedWithoutProject: (options) =>
+      taskStore.countFinishedWithoutProject(options).mapErr(reviewError),
+    latestProjectChanges: (organizationId) =>
+      projectChanges(organizationId).mapErr(reviewError),
+    loadTimeZone: (organizationId) => organizationTimeZone(organizationId).mapErr(reviewError),
+  });
   const reviewLookups = createSqliteTimelineLookups(database);
   const reviewHandlers = createReviewHandlers({
     pageReview: (options) => reviewStore.pageReview(options),

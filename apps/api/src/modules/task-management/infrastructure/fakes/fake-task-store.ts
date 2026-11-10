@@ -306,6 +306,67 @@ export const createFakeTaskStore = (
       );
     },
 
+    pageFinishedWithProject: (window: {
+      organizationId: string;
+      completedAfter: string;
+      completedBefore: string;
+      fetchLimit: number;
+      seek?: KeysetCursor;
+    }): ResultAsync<KeysetRows<Task>, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const knownProjects = new Set(
+        tasks
+          .filter((task) => task.organizationId === window.organizationId)
+          .map((task) => task.projectId)
+          .filter((projectId): projectId is string => typeof projectId === 'string')
+      );
+      const finished = tasks
+        .filter((task) => task.organizationId === window.organizationId)
+        .filter((task) => !deletedIds.has(task.id))
+        .flatMap((task) => {
+          const finishedTask = asFinishedTask(task);
+          return finishedTask ? [finishedTask] : [];
+        })
+        .filter((task) => typeof task.projectId === 'string' && knownProjects.has(task.projectId))
+        .filter((task) => task.completedAt >= window.completedAfter)
+        .filter((task) => task.completedAt < window.completedBefore)
+        .sort((a, b) => {
+          const cmp = compareKeyset(finishedProjectTaskKeys(a), finishedProjectTaskKeys(b));
+          return -cmp;
+        });
+      return okAsync(
+        pageOrdered({
+          ordered: finished,
+          keysOf: finishedProjectTaskKeys,
+          direction: finishedProjectTaskDirection,
+          fetchLimit: window.fetchLimit,
+          seek: window.seek,
+        })
+      );
+    },
+
+    countFinishedWithoutProject: (window: {
+      organizationId: string;
+      completedAfter: string;
+      completedBefore: string;
+    }): ResultAsync<number, StorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(storageError('Find failed'));
+      }
+      const count = tasks.filter(
+        (task) =>
+          task.organizationId === window.organizationId &&
+          !deletedIds.has(task.id) &&
+          task.projectId === undefined &&
+          typeof task.completedAt === 'string' &&
+          task.completedAt >= window.completedAfter &&
+          task.completedAt < window.completedBefore
+      ).length;
+      return okAsync(count);
+    },
+
     findOpenInPile: (pile: {
       organizationId: string;
       listId: string | null;

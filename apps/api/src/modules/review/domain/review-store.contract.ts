@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Project, Task } from '@yoink/api-contracts';
-import { reviewCursor } from '../../kernel/listing/domain/list-keys.js';
+import { reviewCursor } from '../../../kernel/listing/domain/list-keys.js';
 import type { ReviewChangeLogEntry, ReviewStore } from './review-store.js';
 
 export const REVIEW_TODAY = '2026-10-12';

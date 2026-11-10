@@ -40,6 +40,18 @@ export type TaskStore = {
     completedAfter?: string;
     completedBefore?: string;
   }): ResultAsync<KeysetRows<Task>, StorageError>;
+  pageFinishedWithProject(options: {
+    organizationId: string;
+    completedAfter: string;
+    completedBefore: string;
+    fetchLimit: number;
+    seek?: KeysetCursor;
+  }): ResultAsync<KeysetRows<Task>, StorageError>;
+  countFinishedWithoutProject(options: {
+    organizationId: string;
+    completedAfter: string;
+    completedBefore: string;
+  }): ResultAsync<number, StorageError>;
   nextOpenOrderInPile(options: {
     organizationId: string;
     listId: string | null;

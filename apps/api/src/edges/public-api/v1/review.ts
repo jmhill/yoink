@@ -7,10 +7,8 @@ import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
-// M5.10 removes these deep imports once review exports its handlers from index.ts.
-import type { ReviewHandlers } from '../../../review/application/create-review-handlers.js';
-import type { RankedReviewProject } from '../../../review/domain/review-order.js';
-import { mapListDoneError, mapListReviewError } from '../../../review/infrastructure/orpc-review-errors.js';
+import type { RankedReviewProject, ReviewHandlers } from '../../../modules/review/index.js';
+import { mapListDoneError, mapListReviewError } from './review-errors.js';
 
 export type ReviewEdgeDependencies = { reviewHandlers: ReviewHandlers };
 

@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe } from 'vitest';
-import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
-import { insertProjectQuery } from '../../modules/task-management/infrastructure/persistence/rows/project-row-statements.js';
-import { insertTaskQuery, softDeleteTaskQuery } from '../../modules/task-management/infrastructure/persistence/rows/task-row-statements.js';
+import { createSqliteOrganizationTimeZone } from '../access/infrastructure/sqlite-organization-time-zone.js';
+import { createSqliteProjectChanges } from '../modules/history/infrastructure/sqlite-project-changes.js';
+import { createReviewFromFacts } from '../modules/review/application/review-from-facts.js';
+import { storageError } from '../modules/review/domain/review-errors.js';
+import { createTestDatabase, type Database } from '../platform/database/test-utils.js';
+import { insertProjectQuery } from '../modules/task-management/infrastructure/persistence/rows/project-row-statements.js';
+import { insertTaskQuery, softDeleteTaskQuery } from '../modules/task-management/infrastructure/persistence/rows/task-row-statements.js';
+import { createSqliteProjectStore } from '../modules/task-management/infrastructure/persistence/sqlite-project-store.js';
+import { createSqliteTaskStore } from '../modules/task-management/infrastructure/persistence/sqlite-task-store.js';
 import {
   DONE_ORG,
   DONE_OTHER_ORG,
@@ -12,7 +18,7 @@ import {
   doneFixtureProjects,
   doneFixtureTasks,
   runDoneListStoreContractTests,
-} from '../domain/done-list-store.contract.js';
+} from '../modules/review/domain/done-list-store.contract.js';
 import {
   REVIEW_CHANGE,
   REVIEW_CREATED_BY,
@@ -24,8 +30,27 @@ import {
   reviewFixtureProjects,
   reviewFixtureTasks,
   runReviewStoreContractTests,
-} from '../domain/review-store.contract.js';
-import { createSqliteReviewStore } from './sqlite-review-store.js';
+} from '../modules/review/domain/review-store.contract.js';
+
+const reviewStoreFor = async (db: Database) => {
+  const projectStore = await createSqliteProjectStore(db);
+  const taskStore = await createSqliteTaskStore(db);
+  const projectChanges = createSqliteProjectChanges(db);
+  const timeZone = createSqliteOrganizationTimeZone(db);
+  const asReviewError = (error: { message: string }) => storageError(error.message, error);
+  return createReviewFromFacts({
+    listProjects: (organizationId) =>
+      projectStore.findByOrganization(organizationId).mapErr(asReviewError),
+    listTasks: (ids) => taskStore.findByIds(ids).mapErr(asReviewError),
+    pageFinishedOnProject: (options) =>
+      taskStore.pageFinishedWithProject(options).mapErr(asReviewError),
+    countFinishedWithoutProject: (options) =>
+      taskStore.countFinishedWithoutProject(options).mapErr(asReviewError),
+    latestProjectChanges: (organizationId) =>
+      projectChanges(organizationId).mapErr(asReviewError),
+    loadTimeZone: (organizationId) => timeZone(organizationId).mapErr(asReviewError),
+  });
+};
 
 const insertChangeLog = async (
   db: Database,
@@ -144,7 +169,7 @@ const seedDoneFixture = async (db: Database): Promise<void> => {
   });
 };
 
-describe('SqliteReviewStore', () => {
+describe('Review facts', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -156,8 +181,8 @@ describe('SqliteReviewStore', () => {
   });
 
   runReviewStoreContractTests({
-    createHarness: () => ({
-      store: createSqliteReviewStore(db),
+    createHarness: async () => ({
+      store: await reviewStoreFor(db),
     }),
     beforeEach: async () => {
       await db.execute({ sql: 'UPDATE projects SET next_action_task_id = NULL' });
@@ -174,8 +199,8 @@ describe('SqliteReviewStore', () => {
   });
 
   runDoneListStoreContractTests({
-    createHarness: () => ({
-      store: createSqliteReviewStore(db),
+    createHarness: async () => ({
+      store: await reviewStoreFor(db),
     }),
     beforeEach: async () => {
       await db.execute({ sql: 'UPDATE projects SET next_action_task_id = NULL' });

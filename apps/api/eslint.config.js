@@ -559,6 +559,8 @@ export default [
             // M6.3-settings and M6.3-auth call today's access handlers through narrow ports.
             // M6.3-tasks-lists calls the task-management list and task handlers.
             // M6.3-project-page calls the task-management project handlers.
+            // M6.3-work calls the Now, due, and work-list queries, then access member reads.
+            // It arranges those pages into sections and does not re-sort them.
             // Open-task pages stay in query order. Finished tasks and history stay on the alias.
             // M5.13 replaces the access handlers. This edge does not import access SQL.
             {

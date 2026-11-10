@@ -4140,6 +4140,58 @@ export const createPlaywrightActor = (
       }
     },
 
+    async shouldKeepWorkOnWebEdge(): Promise<void> {
+      const overdue = new Date(Date.now() - 86_400_000).toISOString().split('T')[0]!;
+      await this.createTask({ title: 'Overdue loose', dueDate: overdue });
+      const home = await this.createProject({ name: 'Home' });
+      const plain = await this.createTask({ title: 'Plain next', projectId: home.id });
+      await this.setNextAction(home.id, { taskId: plain.id });
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          path === '/api/work' ||
+          path.startsWith('/api/work/') ||
+          path.startsWith('/api/v1/work')
+        ) {
+          aliasHits.push(`${request.method()} ${path}`);
+        }
+      };
+      page.on('request', onRequest);
+      try {
+        for (const viewport of ['phone', 'desktop'] as const) {
+          if (viewport === 'phone') {
+            await this.useMobileViewport();
+          } else {
+            await this.useDesktopViewport();
+          }
+          const screen = page.waitForRequest(
+            (request) =>
+              request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/work'
+          );
+          const lists = page.waitForRequest(
+            (request) =>
+              request.method() === 'GET' &&
+              new URL(request.url()).pathname === '/web-api/work/lists'
+          );
+          await this.openWork();
+          await screen;
+          await lists;
+          await this.shouldSeeNowReady('all');
+          await this.shouldSeeNowSections(['due', 'next-actions']);
+          await this.saveWalkthroughScreenshot({
+            story: 'adr-001-work',
+            step: 'sections',
+          });
+        }
+      } finally {
+        page.off('request', onRequest);
+      }
+      if (aliasHits.length > 0) {
+        throw new Error(`Work still called the alias: ${aliasHits.join(', ')}`);
+      }
+    },
+
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       await expect(page.getByPlaceholder('Quick capture...')).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
@@ -5840,31 +5892,41 @@ export const createPlaywrightActor = (
     ): Promise<void> {
       await waitForLiveJsonGet(
         page,
-        (pathname) => pathname === '/api/work/next-actions',
+        (pathname) => pathname === '/web-api/work',
         (body) => {
-          if (typeof body !== 'object' || body === null || !('items' in body)) {
+          if (typeof body !== 'object' || body === null || !('sections' in body)) {
             return false;
           }
-          const items = (body as { items: unknown }).items;
-          if (!Array.isArray(items)) {
+          const sections = (body as { sections: unknown }).sections;
+          if (!Array.isArray(sections)) {
             return false;
           }
           const rows: Array<{ title: string; project: string }> = [];
-          for (const item of items) {
+          for (const section of sections) {
             if (
-              typeof item !== 'object' ||
-              item === null ||
-              !('task' in item) ||
-              !('project' in item)
+              typeof section !== 'object' ||
+              section === null ||
+              !('name' in section) ||
+              !('rows' in section) ||
+              (section as { name: unknown }).name !== 'next-actions'
             ) {
+              continue;
+            }
+            const sectionRows = (section as { rows: unknown }).rows;
+            if (!Array.isArray(sectionRows)) {
               return false;
             }
-            const task = (item as { task: { title?: unknown } }).task;
-            const project = (item as { project: { name?: unknown } }).project;
-            if (typeof task?.title !== 'string' || typeof project?.name !== 'string') {
-              return false;
+            for (const row of sectionRows) {
+              if (typeof row !== 'object' || row === null || !('task' in row)) {
+                return false;
+              }
+              const task = (row as { task: { title?: unknown } }).task;
+              const project = (row as { projectLabel?: unknown }).projectLabel;
+              if (typeof task?.title !== 'string' || typeof project !== 'string') {
+                return false;
+              }
+              rows.push({ title: task.title, project });
             }
-            rows.push({ title: task.title, project: project.name });
           }
           return matches(rows);
         }

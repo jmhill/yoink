@@ -112,31 +112,45 @@ export type NextActionProjectRef = {
   name: string;
 };
 
-type NowNextActionsResult = {
-  items: { task: Task; project: { id: string; name: string } }[];
-  total?: number;
+type WorkScreenRow = {
+  task: { id: string };
+  source: 'due' | 'next-action' | 'both';
+  projectId?: string;
+  projectLabel?: string;
 };
 
-type NowDueResult = { tasks: Task[]; total?: number };
+type WorkScreenResult = {
+  nextActionCount: number;
+  dueCount: number;
+  sections: { name: string; rows: WorkScreenRow[] }[];
+};
 
-const NowNextActionsResultSchema = z.object({
-  items: z.array(
+const WorkScreenResultSchema = z.object({
+  nextActionCount: z.number(),
+  dueCount: z.number(),
+  sections: z.array(
     z.object({
-      task: z.object({ id: z.string() }).passthrough(),
-      project: z.object({ id: z.string(), name: z.string() }),
+      name: z.string(),
+      rows: z.array(
+        z
+          .object({
+            task: z.object({ id: z.string() }).passthrough(),
+            source: z.enum(['due', 'next-action', 'both']),
+            projectId: z.string().optional(),
+            projectLabel: z.string().optional(),
+          })
+          .passthrough()
+      ),
     })
   ),
-  total: z.number().optional(),
 });
 
-const isNowNextActionsResult = (data: unknown): data is NowNextActionsResult =>
-  NowNextActionsResultSchema.safeParse(data).success;
-
-const isNowDueResult = (data: unknown): data is NowDueResult => isTaskListResult(data);
+const isWorkScreenResult = (data: unknown): data is WorkScreenResult =>
+  WorkScreenResultSchema.safeParse(data).success;
 
 export const isLiveNowQueryKey = (queryKey: QueryKey): boolean => {
   const [root, section] = queryKey;
-  return root === 'work' && (section === 'next-actions' || section === 'due');
+  return root === 'work' && section === 'screen';
 };
 
 export const snapshotLiveNowSections = (
@@ -154,31 +168,34 @@ export const mapLiveNowSections = (
     predicate: (query) => isLiveNowQueryKey(query.queryKey),
   });
   for (const [queryKey, data] of entries) {
-    if (isNowNextActionsResult(data)) {
-      const items = data.items.filter((item) => item.task.id !== removeTaskId);
-      const total =
-        typeof data.total === 'number'
-          ? Math.max(0, data.total + (items.length - data.items.length))
-          : data.total;
-      queryClient.setQueryData(queryKey, {
-        ...data,
-        items,
-        ...(typeof total === 'number' ? { total } : {}),
-      });
+    if (!isWorkScreenResult(data)) {
       continue;
     }
-    if (isNowDueResult(data)) {
-      const tasks = data.tasks.filter((task) => task.id !== removeTaskId);
-      const total =
-        typeof data.total === 'number'
-          ? Math.max(0, data.total + (tasks.length - data.tasks.length))
-          : data.total;
-      queryClient.setQueryData(queryKey, {
-        ...data,
-        tasks,
-        ...(typeof total === 'number' ? { total } : {}),
-      });
-    }
+    let nextDelta = 0;
+    let dueDelta = 0;
+    const sections = data.sections
+      .map((section) => ({
+        ...section,
+        rows: section.rows.filter((row) => {
+          if (row.task.id !== removeTaskId) {
+            return true;
+          }
+          if (row.source === 'due' || row.source === 'both') {
+            dueDelta += 1;
+          }
+          if (row.source === 'next-action' || row.source === 'both') {
+            nextDelta += 1;
+          }
+          return false;
+        }),
+      }))
+      .filter((section) => section.rows.length > 0);
+    queryClient.setQueryData(queryKey, {
+      ...data,
+      sections,
+      nextActionCount: Math.max(0, data.nextActionCount - nextDelta),
+      dueCount: Math.max(0, data.dueCount - dueDelta),
+    });
   }
 };
 
@@ -200,14 +217,17 @@ export const projectsWithNextAction = (
       }
     }
   }
-  const nowEntries = queryClient.getQueriesData({ queryKey: ['work', 'next-actions'] });
+  const nowEntries = queryClient.getQueriesData({ queryKey: ['work', 'screen'] });
   for (const [, data] of nowEntries) {
-    if (!isNowNextActionsResult(data)) {
+    if (!isWorkScreenResult(data)) {
       continue;
     }
-    for (const item of data.items) {
-      if (item.task.id === taskId) {
-        found.set(item.project.id, { id: item.project.id, name: item.project.name });
+    for (const section of data.sections) {
+      for (const row of section.rows) {
+        if (row.task.id !== taskId || row.projectId === undefined || row.projectLabel === undefined) {
+          continue;
+        }
+        found.set(row.projectId, { id: row.projectId, name: row.projectLabel });
       }
     }
   }

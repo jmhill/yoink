@@ -257,9 +257,9 @@ export const createApp = async (deps: AppDependencies) => {
     maxAge: deps.cookie.maxAge,
   };
 
-  // Inbox, tasks and lists, the project page and staged import, settings,
-  // and auth when signup exists. Notes, history, review, and work stay
-  // on the /api alias.
+  // Inbox, tasks and lists, the project page and staged import, the Work
+  // screen, settings, and auth when signup exists. Notes, history, and
+  // review stay on the /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
     combinedAuth: authMiddleware,
@@ -269,6 +269,11 @@ export const createApp = async (deps: AppDependencies) => {
     },
     projectPage: {
       projectHandlers: deps.projectHandlers,
+    },
+    work: {
+      workHandlers: deps.workHandlers,
+      membershipService: deps.membershipService,
+      userService: deps.userService,
     },
     settings:
       deps.signup === undefined

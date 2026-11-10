@@ -9,6 +9,7 @@ import {
   webProjectsContract,
   webSettingsContract,
   webTasksContract,
+  webWorkContract,
 } from '@yoink/api-contracts/web';
 import {
   authOrpcContract,
@@ -19,7 +20,6 @@ import {
   projectOrpcContract,
   reviewOrpcContract,
   taskOrpcContract,
-  workOrpcContract,
 } from '@yoink/api-contracts/orpc';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
 import { tokenStorage } from '@/lib/token';
@@ -44,7 +44,7 @@ type OrganizationClient = JsonifiedClient<RouterContractClient<typeof organizati
 type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>;
 type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
 type WebProjectClient = JsonifiedClient<RouterContractClient<typeof webProjectsContract>>;
-type WorkClient = JsonifiedClient<RouterContractClient<typeof workOrpcContract>>;
+type WorkClient = JsonifiedClient<RouterContractClient<typeof webWorkContract>>;
 type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
 type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
 
@@ -204,7 +204,7 @@ export const taskClient: TaskClient = createORPCClient(
 /**
  * Task board create, list, update, complete, uncomplete, and delete.
  * `/web-api` plus `/tasks` is `/web-api/tasks`. Get, pin, and history stay
- * on `taskClient`. Project, work, and review keep `taskClient` on `/api`.
+ * on `taskClient`. Project, work, and review keep task writes on `taskClient`.
  */
 export const webTaskClient: WebTaskClient = createORPCClient(
   new OpenAPILink(webTasksContract, {
@@ -255,8 +255,16 @@ export const webProjectClient: WebProjectClient = createORPCClient(
   })
 );
 
+/**
+ * Work screen and work lists. `/web-api` plus `/work` is `/web-api/work`.
+ * Sections, query totals, and owner labels come from that response.
+ * The page does not sort them. Task writes stay on `taskClient`.
+ */
 export const workClient: WorkClient = createORPCClient(
-  new OpenAPILink(workOrpcContract, { fetch: fetchWithSession })
+  new OpenAPILink(webWorkContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const reviewClient: ReviewClient = createORPCClient(

@@ -10,6 +10,8 @@ import {
   decideRetryAfterMs,
   isBlockingQueryFailure,
   isLiveOpenTaskListQueryKey,
+  mapLiveNowSections,
+  projectsWithNextAction,
   liveQueryRefetchInterval,
   liveQueryRefetchOnWindowFocus,
   liveQueryRetryDelayMs,
@@ -187,5 +189,83 @@ describe('live query interval', () => {
     await fetchPromise.catch(() => undefined);
 
     expect(client.getQueryData(key)).toEqual(mutated);
+  });
+
+  it('drops a completed Work row and adjusts the query totals, not the section length', () => {
+    const client = createAppQueryClient();
+    const task = (id: string) => ({ id, title: id });
+    client.setQueryData(['work', 'screen', 'all'], {
+      nextActionCount: 4,
+      dueCount: 3,
+      sections: [
+        {
+          name: 'due',
+          rows: [
+            { task: task('loose'), source: 'due' },
+            {
+              task: task('alpha'),
+              source: 'next-action',
+              projectId: 'project-alpha',
+              projectLabel: 'Alpha',
+            },
+          ],
+        },
+        {
+          name: 'next-actions',
+          rows: [
+            {
+              task: task('bravo'),
+              source: 'next-action',
+              projectId: 'project-bravo',
+              projectLabel: 'Bravo',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(projectsWithNextAction(client, 'alpha')).toEqual([
+      { id: 'project-alpha', name: 'Alpha' },
+    ]);
+
+    mapLiveNowSections(client, 'alpha');
+
+    expect(client.getQueryData(['work', 'screen', 'all'])).toEqual({
+      nextActionCount: 3,
+      dueCount: 3,
+      sections: [
+        { name: 'due', rows: [{ task: task('loose'), source: 'due' }] },
+        {
+          name: 'next-actions',
+          rows: [
+            {
+              task: task('bravo'),
+              source: 'next-action',
+              projectId: 'project-bravo',
+              projectLabel: 'Bravo',
+            },
+          ],
+        },
+      ],
+    });
+
+    mapLiveNowSections(client, 'loose');
+    expect(client.getQueryData(['work', 'screen', 'all'])).toEqual({
+      nextActionCount: 3,
+      dueCount: 2,
+      sections: [
+        {
+          name: 'next-actions',
+          rows: [
+            {
+              task: task('bravo'),
+              source: 'next-action',
+              projectId: 'project-bravo',
+              projectLabel: 'Bravo',
+            },
+          ],
+        },
+      ],
+    });
   });
 });

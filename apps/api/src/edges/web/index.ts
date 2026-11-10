@@ -5,3 +5,4 @@ export type { WebAuthDependencies } from './auth.js';
 export type { WebSettingsDependencies } from './settings.js';
 export type { WebProjectPageDependencies } from './project-page.js';
 export type { WebTasksListsDependencies } from './tasks-lists.js';
+export type { WebWorkDependencies } from './work.js';

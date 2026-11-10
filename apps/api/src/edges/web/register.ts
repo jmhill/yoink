@@ -21,6 +21,7 @@ import {
   createWebTasksListsHandlers,
   type WebTasksListsDependencies,
 } from './tasks-lists.js';
+import { createWebWorkHandlers, type WebWorkDependencies } from './work.js';
 
 export type WebApiAuth = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
@@ -38,6 +39,11 @@ export type WebApiDependencies = {
    * same handlers. Finished tasks, history, and notes stay off this edge.
    */
   projectPage?: WebProjectPageDependencies;
+  /**
+   * Work screen and work lists. Public v1 and the `/api` alias keep the
+   * same Now, due, and work-list queries. This edge does not sort them.
+   */
+  work?: WebWorkDependencies;
   /**
    * Present when signup services exist. Token list stays on this edge.
    * Public v1 token list stays bearer-only.
@@ -124,6 +130,7 @@ const mountWebAuth = async (
  * `/web-api` is already the web edge prefix.
  * Inbox list and create, tasks and lists when `tasksLists` is set,
  * the project page and staged import when `projectPage` is set,
+ * the Work screen and work lists when `work` is set,
  * settings and organizations when `settings` is set,
  * and login, signup, session, passkeys, and join when `auth` is set.
  * Session plus legacy token, the same combined auth as the `/api` alias.
@@ -181,6 +188,18 @@ export const registerWebApi = async (
     at('POST', '/projects/:id/confirm');
     at('POST', '/projects/:id/decline');
     at('POST', '/projects/:id/restore');
+  }
+
+  if (deps.work !== undefined) {
+    const work = new OpenAPIHandler(
+      createWebWorkHandlers(deps.work),
+      openApiHandlerOptions(listedRequestValidationError)
+    );
+    const at = (method: WebMethod | WebMethod[], path: string) => {
+      mount(app, work, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at('GET', '/work/lists');
+    at('GET', '/work');
   }
 
   if (deps.settings !== undefined) {

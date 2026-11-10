@@ -3,7 +3,7 @@ import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { invitationOrpcContract } from '@yoink/api-contracts/orpc';
 import type { InvitationService } from '../../../access/domain/index.js';
-import type { MembershipService } from '../../../access/domain/membership-service.js';
+import type { MembershipService } from '../../../access/application/handle-membership.js';
 import type { OrganizationService } from '../../../access/domain/organization-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
 import type { AuthMiddleware } from '../../_shared/auth/auth-middleware.js';

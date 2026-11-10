@@ -14,7 +14,7 @@ export { principalKindOf, isAgent, type PrincipalKind } from './user.js';
 export {
   createMembershipService,
   type MembershipService,
-} from './membership-service.js';
+} from '../application/handle-membership.js';
 
 // Organization & invitation services
 export {

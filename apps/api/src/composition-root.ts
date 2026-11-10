@@ -74,8 +74,6 @@ import {
 } from './access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from './access/application/handle-reissue-agent-token.js';
 import { handleTransferOwnership } from './access/application/handle-transfer-ownership.js';
-import { handleChangeMemberRole } from './access/application/handle-change-member-role.js';
-import { handleRemoveMember } from './access/application/handle-remove-member.js';
 import { handleCreateWorkspace } from './access/application/handle-create-workspace.js';
 import { handleIssueOwnerInvitation } from './access/application/handle-issue-owner-invitation.js';
 import { handleGetOwnerInvitation } from './access/application/handle-get-owner-invitation.js';
@@ -107,6 +105,7 @@ import {
   createOrganizationService,
   createUserService,
   createMembershipService,
+  type MembershipService,
   createAgentService,
   createAdminSessionService,
   createAdminService,
@@ -304,13 +303,45 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   // Create UserService to be used by other services
   const userService = createUserService({ userStore });
 
-  // MembershipService - used by invitation routes for creating memberships
+  const historySink = createHistoryEventSink({
+    ids: idGenerator,
+    builders: { ...CAPTURE_TIMELINE_BUILDERS, ...TASK_TIMELINE_BUILDERS },
+  });
+  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
+  const unitOfWork = createSqliteUnitOfWork({
+    client: writeClient,
+    participants: [
+      accessSqlParticipant,
+      historySqlParticipant,
+      capturesSqlParticipant,
+      taskManagementSqlParticipant,
+    ],
+    sink: historySink,
+    logger: {
+      error: (fields) => {
+        batchLog.error?.(fields);
+      },
+    },
+  });
+  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
+    participants: [
+      createFakeSignupParticipant(),
+      createFakeHistoryParticipant(),
+      createFakeCaptureParticipant(createFakeCaptureStore()),
+      createFakeTaskManagementParticipant(),
+    ],
+    sink: historySink,
+  });
+
+  // Add, leave, remove, and role change commit one access plan.
+  // Ownership transfer stays on handleTransferOwnership.
   const membershipService = createMembershipService({
     membershipStore,
     userService,
     organizationStore,
     clock,
     idGenerator,
+    unitOfWork,
   });
 
   // OrganizationService - manages organization CRUD
@@ -399,25 +430,11 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         now: () => clock.now().toISOString(),
       });
 
-    const changeMemberRole = (request: Parameters<typeof handleChangeMemberRole>[0]) =>
-      handleChangeMemberRole(request, {
-        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
-        loadUser: (userId) => userService.getUser(userId),
-        persistChange: ({ membership, event }) =>
-          membershipStore.changeMemberRole(membership, event),
-        nextId: () => idGenerator.generate(),
-        now: () => clock.now().toISOString(),
-      });
+    const changeMemberRole = (request: Parameters<MembershipService['changeMemberRole']>[0]) =>
+      membershipService.changeMemberRole(request);
 
-    const removeMember = (request: Parameters<typeof handleRemoveMember>[0]) =>
-      handleRemoveMember(request, {
-        loadMembers: (organizationId) => membershipStore.findByOrganizationId(organizationId),
-        loadUser: (userId) => userService.getUser(userId),
-        persistRemove: ({ membershipId, event }) =>
-          membershipStore.removeMember(membershipId, event),
-        nextId: () => idGenerator.generate(),
-        now: () => clock.now().toISOString(),
-      });
+    const removeMember = (request: Parameters<MembershipService['removeMember']>[0]) =>
+      membershipService.removeMember(request);
 
     const reissueAgentToken = (command: Parameters<typeof handleReissueAgentToken>[0]) =>
       handleReissueAgentToken(command, {
@@ -456,35 +473,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   // Create capture store and service (async initialization)
   const captureStore = await createSqliteCaptureStore(database, clock);
-  const historySink = createHistoryEventSink({
-    ids: idGenerator,
-    builders: { ...CAPTURE_TIMELINE_BUILDERS, ...TASK_TIMELINE_BUILDERS },
-  });
-  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
-  const unitOfWork = createSqliteUnitOfWork({
-    client: writeClient,
-    participants: [
-      accessSqlParticipant,
-      historySqlParticipant,
-      capturesSqlParticipant,
-      taskManagementSqlParticipant,
-    ],
-    sink: historySink,
-    logger: {
-      error: (fields) => {
-        batchLog.error?.(fields);
-      },
-    },
-  });
-  const inMemoryUnitOfWork = createInMemoryUnitOfWork({
-    participants: [
-      createFakeSignupParticipant(),
-      createFakeHistoryParticipant(),
-      createFakeCaptureParticipant(createFakeCaptureStore()),
-      createFakeTaskManagementParticipant(),
-    ],
-    sink: historySink,
-  });
   const invitationService = createInvitationService({
     invitationStore,
     organizationStore,

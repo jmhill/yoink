@@ -7,7 +7,7 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyService } from '../../../access/domain/passkey-service.js';
 import type { SessionService } from '../../../access/domain/session-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
-import type { MembershipService } from '../../../access/domain/membership-service.js';
+import type { MembershipService } from '../../../access/application/handle-membership.js';
 import type { OrganizationStore } from '../../../access/domain/organization-store.js';
 import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';
 import {

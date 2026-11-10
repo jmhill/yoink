@@ -6,7 +6,7 @@ import cookie from '@fastify/cookie';
 import { registerOrganizationRoutes } from './organization-routes.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
-import { createMembershipService } from '../../../access/domain/membership-service.js';
+import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createAgentService } from '../../../access/application/handle-agent.js';
 import { createStoreBackedTokenReissue } from '../../../access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from '../../../access/application/handle-reissue-agent-token.js';
@@ -642,7 +642,7 @@ describe('organization routes', () => {
       expect(response.json().message).toContain('Cannot leave your personal organization');
     });
 
-    // Note: The LAST_ADMIN case is thoroughly tested in membership-service.test.ts
+    // Note: The LAST_ADMIN case is thoroughly tested in handle-membership.test.ts
     // The routes layer simply forwards the domain error to a 400 response.
     // Testing it here would require significant setup duplication.
 

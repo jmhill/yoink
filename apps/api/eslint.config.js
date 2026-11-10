@@ -121,6 +121,11 @@ const elements = [
   // M5.11-task-management removes it. The old src/tasks, src/projects,
   // src/lists, and src/work patterns stay for boundary fixtures.
   { type: 'task-management', pattern: 'src/modules/task-management/**', mode: 'full' },
+  // M5.7 moved notes. Target layer rules disallow @yoink/api-contracts, which
+  // this module still imports until M5.11-notes. This descriptor is first, so
+  // the current element wins. M5.11-notes removes it. The old src/notes/**
+  // pattern stays for boundary fixtures.
+  { type: 'notes', pattern: 'src/modules/notes/**', mode: 'full' },
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {
@@ -384,7 +389,7 @@ export default [
             { from: 'projects', allow: ['projects', 'history'] },
             { from: 'tasks', allow: ['tasks', 'history'] },
             { from: 'processing', allow: ['processing', 'history'] },
-            { from: 'notes', allow: ['notes', 'history'] },
+            { from: 'notes', allow: ['notes'] },
             { from: 'review', allow: ['review'] },
             { from: 'work', allow: ['work'] },
             // M5.2. One element, so tasks, projects, lists, and the Now queries

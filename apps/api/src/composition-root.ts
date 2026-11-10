@@ -14,6 +14,7 @@ import {
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
 import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
 import { CAPTURE_TIMELINE_BUILDERS } from './modules/history/domain/capture-timeline.js';
+import { NOTE_TIMELINE_BUILDERS } from './modules/history/domain/note-timeline.js';
 import { TASK_TIMELINE_BUILDERS } from './modules/history/domain/task-timeline.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
@@ -24,6 +25,7 @@ import { createSimpleWebAuthnVerifier } from './access/infrastructure/simpleweba
 import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
 import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
 import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
+import { loadNamedAgentFromSqlite } from './access/infrastructure/load-named-agent.js';
 import { createCaptures } from './modules/captures/index.js';
 import { createFakeCaptureParticipant } from './modules/captures/infrastructure/fakes/fake-capture-participant.js';
 import { createFakeCaptureStore } from './modules/captures/infrastructure/fakes/fake-capture-store.js';
@@ -39,14 +41,16 @@ import {
 import { createFakeTaskManagementParticipant } from './modules/task-management/infrastructure/fakes/fake-task-management-participant.js';
 import { taskManagementSqlParticipant } from './modules/task-management/infrastructure/persistence/task-management-sql-participant.js';
 import { createSqliteListStore } from './modules/task-management/infrastructure/persistence/sqlite-list-store.js';
-import { createNoteHandlers } from './notes/application/create-note-handlers.js';
-import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
-import { loadOrgPersonFromSqlite } from './notes/infrastructure/load-org-person.js';
+import { createNotes, storageError as noteStorageError } from './modules/notes/index.js';
+import { createFakeNotesBackend } from './modules/notes/infrastructure/fakes/fake-notes-backend.js';
+import { createFakeNotesParticipant } from './modules/notes/infrastructure/fakes/fake-notes-participant.js';
+import { notesSqlParticipant } from './modules/notes/infrastructure/persistence/notes-sql-participant.js';
+import { createSqliteNotesStore } from './modules/notes/infrastructure/persistence/sqlite-notes-store.js';
+import { loadOrgPersonFromSqlite } from './access/infrastructure/load-org-person.js';
 import {
   designateNotesMirrorBotFromSqlite,
   loadNotesMirrorBotFromSqlite,
-} from './notes/infrastructure/load-notes-mirror-bot.js';
-import { storageError as noteStorageError } from './notes/domain/note-errors.js';
+} from './modules/notes/infrastructure/persistence/load-notes-mirror-bot.js';
 import { createSqliteProjectStore } from './modules/task-management/infrastructure/persistence/sqlite-project-store.js';
 import { createSqliteImportStore } from './modules/task-management/infrastructure/persistence/sqlite-import-store.js';
 import { createSqliteTaskStore } from './modules/task-management/infrastructure/persistence/sqlite-task-store.js';
@@ -303,7 +307,11 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   const historySink = createHistoryEventSink({
     ids: idGenerator,
-    builders: { ...CAPTURE_TIMELINE_BUILDERS, ...TASK_TIMELINE_BUILDERS },
+    builders: {
+      ...CAPTURE_TIMELINE_BUILDERS,
+      ...TASK_TIMELINE_BUILDERS,
+      ...NOTE_TIMELINE_BUILDERS,
+    },
   });
   const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
   // Filled after captures exists. Both factories keep this array, and commit
@@ -316,6 +324,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       historySqlParticipant,
       capturesSqlParticipant,
       taskManagementSqlParticipant,
+      notesSqlParticipant,
     ],
     policies: processingPolicies,
     sink: historySink,
@@ -331,6 +340,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       createFakeHistoryParticipant(),
       createFakeCaptureParticipant(createFakeCaptureStore()),
       createFakeTaskManagementParticipant(),
+      createFakeNotesParticipant(createFakeNotesBackend()),
     ],
     policies: processingPolicies,
     sink: historySink,
@@ -595,24 +605,60 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const listHandlers = taskManagement.listHandlers;
   const projectHandlers = taskManagement.projectHandlers;
 
-  const noteHandlers = createNoteHandlers({
-    backend: createSqliteNotesBackend(database),
+  const noteStorageFromUser = (error: { message?: string; type?: string }) =>
+    noteStorageError(
+      'message' in error && typeof error.message === 'string' ? error.message : (error.type ?? 'storage')
+    );
+  const notes = createNotes({
+    backend: createSqliteNotesStore(database, {
+      loadProject: (id) =>
+        projectStore
+          .findById(id)
+          .map((project) =>
+            project
+              ? { id: project.id, organizationId: project.organizationId, name: project.name }
+              : null
+          )
+          .mapErr((error) => noteStorageError(error.message, error.cause)),
+      loadNoteActors: (userIds) =>
+        userStore
+          .findByIds([...userIds])
+          .map((users) =>
+            users.map((user) => ({
+              id: user.id,
+              name: user.name ?? null,
+              email: user.email,
+            }))
+          )
+          .mapErr(noteStorageFromUser),
+    }),
     loadProject: (id) =>
-      projectStore.findById(id).mapErr((error) => noteStorageError(error.message, error.cause)),
+      projectStore
+        .findById(id)
+        .map((project) =>
+          project
+            ? { id: project.id, organizationId: project.organizationId, name: project.name }
+            : null
+        )
+        .mapErr((error) => noteStorageError(error.message, error.cause)),
     loadActorName: (userId) =>
       userStore
         .findById(userId)
         .map((user) => user?.name ?? user?.email ?? 'Unknown')
-        .mapErr((error) =>
-          noteStorageError(
-            'message' in error && typeof error.message === 'string' ? error.message : error.type
-          )
-        ),
-    loadOrgPerson: loadOrgPersonFromSqlite(database),
+        .mapErr(noteStorageFromUser),
+    loadOrgPerson: (organizationId) =>
+      loadOrgPersonFromSqlite(database)(organizationId).mapErr((error) =>
+        noteStorageError(error.message, error.cause)
+      ),
     loadNotesMirrorBot: loadNotesMirrorBotFromSqlite(
       database,
-      config.notesMirrorBotUserId ?? null
+      config.notesMirrorBotUserId ?? null,
+      (input) =>
+        loadNamedAgentFromSqlite(database)(input).mapErr((error) =>
+          noteStorageError(error.message, error.cause)
+        )
     ),
+    uow: unitOfWork,
     nextId: () => idGenerator.generate(),
     now: () => clock.now().toISOString(),
     logger: commandLogger,
@@ -765,7 +811,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     captures,
     listHandlers,
     projectHandlers,
-    noteHandlers,
+    noteHandlers: notes,
     historyHandlers,
     taskHandlers,
     workHandlers,

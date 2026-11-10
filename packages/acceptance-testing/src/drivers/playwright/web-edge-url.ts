@@ -1,3 +1,60 @@
+/**
+ * Project status on the web edge or the alias.
+ * `/web-api/projects/:id/status` does not contain `/api/projects/`.
+ */
+export const isProjectStatusUrl = (url: string): boolean => {
+  const path = requestPathname(url);
+  return (
+    (path.startsWith('/api/projects/') || path.startsWith('/web-api/projects/')) &&
+    path.endsWith('/status')
+  );
+};
+
+/**
+ * One project, not its tasks, history, notes, or status.
+ * Create stays on the collection path.
+ */
+export const isProjectItemUrl = (url: string): boolean => {
+  const path = requestPathname(url);
+  return /^\/api\/projects\/[^/]+$/.test(path) || /^\/web-api\/projects\/[^/]+$/.test(path);
+};
+
+/**
+ * Project-page and staged-import calls that must leave the alias.
+ * The shared catalog, finished tasks, history, and notes stay.
+ */
+export const isOwnedProjectAliasUrl = (url: string): boolean => {
+  const path = requestPathname(url);
+  const search = (() => {
+    try {
+      return new URL(url).search;
+    } catch {
+      return '';
+    }
+  })();
+  if (path === '/api/projects/imports' || path.startsWith('/api/projects/imports/')) {
+    return true;
+  }
+  const match = /^\/api\/projects\/([^/]+)(?:\/(.*))?$/.exec(path);
+  if (match === null) {
+    return false;
+  }
+  const rest = match[2] ?? '';
+  if (rest === '') {
+    return true;
+  }
+  if (rest === 'tasks') {
+    return !search.includes('finished');
+  }
+  return (
+    rest === 'status' ||
+    rest === 'next-action' ||
+    rest === 'confirm' ||
+    rest === 'decline' ||
+    rest === 'restore'
+  );
+};
+
 /** Pathname of a browser request. Query strings stay off the comparison. */
 export const requestPathname = (url: string): string => {
   try {

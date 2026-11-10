@@ -8,7 +8,7 @@ import {
   httpFailureMessage,
   httpStatusOf,
   isNetworkFailure,
-  projectClient,
+  webProjectClient,
 } from '@/api/client';
 import { Button } from '@yoink/ui-base/components/button';
 import { cn } from '@yoink/ui-base/lib/utils';
@@ -147,13 +147,13 @@ function ImportPreviewPage() {
   const queryClient = useQueryClient();
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ['project-imports', importId],
-    queryFn: () => projectClient.getImport({ id: importId }),
+    queryFn: () => webProjectClient.getImport({ id: importId }),
   });
   const [toggled, setToggled] = useState<Record<number, boolean>>({});
 
   const applyMutation = useMutation({
-    mutationFn: (input: Parameters<typeof projectClient.applyImport>[0]) =>
-      projectClient.applyImport(input),
+    mutationFn: (input: Parameters<typeof webProjectClient.applyImport>[0]) =>
+      webProjectClient.applyImport(input),
     onSuccess: async () => {
       toast.success('Projects imported');
       await queryClient.invalidateQueries({ queryKey: ['project-imports'] });
@@ -181,8 +181,8 @@ function ImportPreviewPage() {
   });
 
   const discardMutation = useMutation({
-    mutationFn: (input: Parameters<typeof projectClient.discardImport>[0]) =>
-      projectClient.discardImport(input),
+    mutationFn: (input: Parameters<typeof webProjectClient.discardImport>[0]) =>
+      webProjectClient.discardImport(input),
     onSuccess: async () => {
       toast.success('Import discarded');
       await queryClient.invalidateQueries({ queryKey: ['project-imports'] });

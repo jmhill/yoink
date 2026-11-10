@@ -1932,6 +1932,12 @@ export type BrowserActorOperations = {
   shouldKeepTasksListsOnWebEdge(): Promise<void>;
 
   /**
+   * The project page and staged import go to `/web-api`.
+   * Finished tasks, history, notes, and the shared project catalog stay on `/api`.
+   */
+  shouldKeepProjectPageOnWebEdge(): Promise<void>;
+
+  /**
    * Settings members, invitations, tokens, and passkeys go to `/web-api`.
    */
   shouldKeepSettingsOnWebEdge(): Promise<void>;

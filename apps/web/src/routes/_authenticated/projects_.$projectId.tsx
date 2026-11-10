@@ -31,7 +31,8 @@ import {
   listClient,
   organizationClient,
   projectClient,
-  taskClient,
+  webProjectClient,
+  webTaskClient,
 } from '@/api/client';
 import { memberLabel } from '@/api/auth';
 import { PILE_SAFETY_CAP, type Task } from '@yoink/api-contracts';
@@ -66,7 +67,7 @@ function ProjectPage() {
   const queryClient = useQueryClient();
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ['projects', projectId],
-    queryFn: () => projectClient.get({ id: projectId }),
+    queryFn: () => webProjectClient.get({ id: projectId }),
   });
 
   const {
@@ -76,7 +77,7 @@ function ProjectPage() {
     refetch: refetchOpenTasks,
   } = useQuery({
     queryKey: ['tasks', 'project', projectId],
-    queryFn: () => projectClient.listOpenTasks({ id: projectId, limit: PILE_SAFETY_CAP }),
+    queryFn: () => webProjectClient.listOpenTasks({ id: projectId, limit: PILE_SAFETY_CAP }),
   });
 
   const { data: listsData } = useQuery({
@@ -114,6 +115,7 @@ function ProjectPage() {
       (viewerEmail ? { kind: 'human', email: viewerEmail } : undefined)
   );
   const proposalActions = useProposalActions(restoredByName, {
+    commands: webProjectClient,
     onDeclined: () => {
       void navigate({ to: '/process' });
     },
@@ -149,8 +151,8 @@ function ProjectPage() {
   }, [editingTask, membersQuery.refetch]);
 
   const statusMutation = useMutation({
-    mutationFn: (input: Parameters<typeof projectClient.changeStatus>[0]) =>
-      projectClient.changeStatus(input),
+    mutationFn: (input: Parameters<typeof webProjectClient.changeStatus>[0]) =>
+      webProjectClient.changeStatus(input),
     onSuccess: async () => {
       setStatusError(null);
       toast.success('Project status saved');
@@ -176,7 +178,8 @@ function ProjectPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (input: Parameters<typeof projectClient.update>[0]) => projectClient.update(input),
+    mutationFn: (input: Parameters<typeof webProjectClient.update>[0]) =>
+      webProjectClient.update(input),
     onSuccess: async () => {
       setFormError(null);
       setEditOpen(false);
@@ -201,8 +204,8 @@ function ProjectPage() {
   });
 
   const nextActionMutation = useMutation({
-    mutationFn: (input: Parameters<typeof projectClient.setNextAction>[0]) =>
-      projectClient.setNextAction(input),
+    mutationFn: (input: Parameters<typeof webProjectClient.setNextAction>[0]) =>
+      webProjectClient.setNextAction(input),
     onSuccess: async () => {
       setNextActionError(null);
       setPickerOpen(false);
@@ -229,8 +232,8 @@ function ProjectPage() {
   });
 
   const uncompleteMutation = useMutation({
-    mutationFn: (input: Parameters<typeof taskClient.uncomplete>[0]) =>
-      taskClient.uncomplete(input),
+    mutationFn: (input: Parameters<typeof webTaskClient.uncomplete>[0]) =>
+      webTaskClient.uncomplete(input),
     onSettled: () => {
       void invalidateLiveQueries(queryClient);
     },
@@ -238,6 +241,7 @@ function ProjectPage() {
 
   const { completeMutation, deleteMutation, updateMutation: updateTaskMutation } =
     useOpenTaskMutations(queryClient, {
+      commands: webTaskClient,
       onUpdated: () => setEditingTask(null),
       mapUpdate: (tasks, queryKey, { id, body }) =>
         tasks.flatMap((task) => {

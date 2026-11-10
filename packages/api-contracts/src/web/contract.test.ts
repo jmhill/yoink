@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { webAuthContract } from './auth-contract.js';
 import { webInboxContract } from './contract.js';
 import { webListsContract } from './lists-contract.js';
+import { webProjectsContract } from './projects-contract.js';
 import { webSettingsContract } from './settings-contract.js';
 import { webTasksContract } from './tasks-contract.js';
 
@@ -110,6 +111,30 @@ describe('web lists contract', () => {
       { key: 'listUnlistedOpenTasks', method: 'GET', path: '/unlisted/tasks' },
       { key: 'reorderUnlistedOpenTasks', method: 'PUT', path: '/unlisted/tasks/order' },
     ]);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web projects contract', () => {
+  it('is the project page and staged import, without history, notes, or finished tasks', () => {
+    const listed = procedures(webProjectsContract);
+    expect(listed).toEqual([
+      { key: 'get', method: 'GET', path: '/projects/{id}' },
+      { key: 'listOpenTasks', method: 'GET', path: '/projects/{id}/tasks' },
+      { key: 'update', method: 'PATCH', path: '/projects/{id}' },
+      { key: 'changeStatus', method: 'PUT', path: '/projects/{id}/status' },
+      { key: 'setNextAction', method: 'PUT', path: '/projects/{id}/next-action' },
+      { key: 'confirmProposal', method: 'POST', path: '/projects/{id}/confirm' },
+      { key: 'declineProposal', method: 'POST', path: '/projects/{id}/decline' },
+      { key: 'restoreProposal', method: 'POST', path: '/projects/{id}/restore' },
+      { key: 'listImports', method: 'GET', path: '/projects/imports' },
+      { key: 'getImport', method: 'GET', path: '/projects/imports/{id}' },
+      { key: 'applyImport', method: 'POST', path: '/projects/imports/{id}/apply' },
+      { key: 'discardImport', method: 'POST', path: '/projects/imports/{id}/discard' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('history'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('notes'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });

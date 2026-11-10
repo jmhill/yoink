@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { projectClient } from '@/api/client';
+import { webProjectClient } from '@/api/client';
 import { LIVE_QUERY_REFETCH_INTERVAL_MS } from '@/lib/live-query';
 
 export function PendingImportBanner() {
   const { data } = useQuery({
     queryKey: ['project-imports'],
-    queryFn: () => projectClient.listImports({}),
+    queryFn: () => webProjectClient.listImports({}),
     refetchInterval: () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return false;

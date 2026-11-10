@@ -11,6 +11,11 @@ import { createWebAuthHandlers, type WebAuthDependencies } from './auth.js';
 import { WEB_API_PREFIX, dispatchWebApi } from './dispatch.js';
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
 import { webRequestLog } from './log-context.js';
+import {
+  createWebProjectPageHandlers,
+  type WebProjectPageDependencies,
+} from './project-page.js';
+import { projectPageRequestValidationError } from './project-page-errors.js';
 import { createWebSettingsHandlers, type WebSettingsDependencies } from './settings.js';
 import {
   createWebTasksListsHandlers,
@@ -28,6 +33,11 @@ export type WebApiDependencies = {
    * Tasks and lists. Public v1 and the `/api` alias keep the same handlers.
    */
   tasksLists?: WebTasksListsDependencies;
+  /**
+   * Project page and staged import. Public v1 and the `/api` alias keep the
+   * same handlers. Finished tasks, history, and notes stay off this edge.
+   */
+  projectPage?: WebProjectPageDependencies;
   /**
    * Present when signup services exist. Token list stays on this edge.
    * Public v1 token list stays bearer-only.
@@ -113,6 +123,7 @@ const mountWebAuth = async (
 /**
  * `/web-api` is already the web edge prefix.
  * Inbox list and create, tasks and lists when `tasksLists` is set,
+ * the project page and staged import when `projectPage` is set,
  * settings and organizations when `settings` is set,
  * and login, signup, session, passkeys, and join when `auth` is set.
  * Session plus legacy token, the same combined auth as the `/api` alias.
@@ -149,6 +160,27 @@ export const registerWebApi = async (
     at(tasks, ['PATCH', 'DELETE'], '/tasks/:id');
     at(tasks, 'POST', '/tasks/:id/complete');
     at(tasks, 'POST', '/tasks/:id/uncomplete');
+  }
+
+  if (deps.projectPage !== undefined) {
+    const projects = new OpenAPIHandler(
+      createWebProjectPageHandlers(deps.projectPage),
+      openApiHandlerOptions(projectPageRequestValidationError)
+    );
+    const at = (method: WebMethod | WebMethod[], path: string) => {
+      mount(app, projects, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at('GET', '/projects/imports');
+    at('GET', '/projects/imports/:id');
+    at('POST', '/projects/imports/:id/apply');
+    at('POST', '/projects/imports/:id/discard');
+    at(['GET', 'PATCH'], '/projects/:id');
+    at('GET', '/projects/:id/tasks');
+    at('PUT', '/projects/:id/status');
+    at('PUT', '/projects/:id/next-action');
+    at('POST', '/projects/:id/confirm');
+    at('POST', '/projects/:id/decline');
+    at('POST', '/projects/:id/restore');
   }
 
   if (deps.settings !== undefined) {

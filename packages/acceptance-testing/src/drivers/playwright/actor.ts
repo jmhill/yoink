@@ -92,7 +92,13 @@ import {
   SnoozedPage,
   TasksPage,
 } from './page-objects.js';
-import { isLiveTaskOrListGet, isTaskCollectionUrl, isTaskItemUrl } from './web-edge-url.js';
+import {
+  isLiveTaskOrListGet,
+  isOwnedProjectAliasUrl,
+  isProjectStatusUrl,
+  isTaskCollectionUrl,
+  isTaskItemUrl,
+} from './web-edge-url.js';
 import { proposedGroupExpectation } from './proposed-rail-check.js';
 import {
   OPEN_DIALOG_CONTENT,
@@ -2473,6 +2479,7 @@ export const createPlaywrightActor = (
 
     async pressImportDiscardAndHold(): Promise<void> {
       await page.unroute('**/api/projects/imports/*/discard').catch(() => undefined);
+      await page.unroute('**/web-api/projects/imports/*/discard').catch(() => undefined);
       let release: (() => void) | undefined;
       const held = new Promise<void>((resolve) => {
         release = resolve;
@@ -2480,10 +2487,12 @@ export const createPlaywrightActor = (
       heldImportDiscardRelease = () => {
         release?.();
       };
-      await page.route('**/api/projects/imports/*/discard', async (route) => {
+      const holdDiscard = async (route: { continue: () => Promise<void> }) => {
         await held;
         await route.continue();
-      });
+      };
+      await page.route('**/api/projects/imports/*/discard', holdDiscard);
+      await page.route('**/web-api/projects/imports/*/discard', holdDiscard);
       const discard = page.locator('[data-import-discard]');
       await discard.scrollIntoViewIfNeeded();
       await discard.click();
@@ -2502,6 +2511,7 @@ export const createPlaywrightActor = (
       await waitForReviewReady(page);
       await expect(page.getByText('Nothing needs attention')).toBeVisible();
       await page.unroute('**/api/projects/imports/*/discard');
+      await page.unroute('**/web-api/projects/imports/*/discard');
     },
 
     async shouldSeeNotebookPage(path: string): Promise<void> {
@@ -2614,9 +2624,7 @@ export const createPlaywrightActor = (
       const labels = { active: 'Active', someday: 'Someday', done: 'Done' };
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/projects/') &&
-          response.url().includes('/status') &&
-          response.request().method() === 'PUT'
+          isProjectStatusUrl(response.url()) && response.request().method() === 'PUT'
       );
       await this.openProjectStatusSelect(labels[status]);
       await page.locator(`[data-project-status-option="${status}"]`).click();
@@ -2661,9 +2669,7 @@ export const createPlaywrightActor = (
       }
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/projects/') &&
-          response.url().includes('/status') &&
-          response.request().method() === 'PUT'
+          isProjectStatusUrl(response.url()) && response.request().method() === 'PUT'
       );
       await projectPage.waitingSave().click();
       const response = await responsePromise;
@@ -2685,9 +2691,7 @@ export const createPlaywrightActor = (
       await waitForSettledOpenDialog({ page });
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/projects/') &&
-          response.url().includes('/status') &&
-          response.request().method() === 'PUT'
+          isProjectStatusUrl(response.url()) && response.request().method() === 'PUT'
       );
       await page.locator('[data-project-done-complete]').click();
       const response = await responsePromise;
@@ -2705,9 +2709,7 @@ export const createPlaywrightActor = (
       await waitForSettledOpenDialog({ page });
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/projects/') &&
-          response.url().includes('/status') &&
-          response.request().method() === 'PUT'
+          isProjectStatusUrl(response.url()) && response.request().method() === 'PUT'
       );
       await page.locator('[data-project-done-remove]').click();
       const response = await responsePromise;
@@ -4079,6 +4081,62 @@ export const createPlaywrightActor = (
       }
       if (aliasHits.length > 0) {
         throw new Error(`Tasks and lists still called the alias: ${aliasHits.join(', ')}`);
+      }
+    },
+
+    async shouldKeepProjectPageOnWebEdge(): Promise<void> {
+      const project = await this.createProject({ name: 'Harbor' });
+      await this.createTask({ title: 'Paint the door', projectId: project.id });
+      const staged = await this.stageProjectImport([
+        {
+          name: 'Harbor shed',
+          status: 'active',
+          newTasks: [{ key: 'paint', title: 'Paint the door' }],
+        },
+      ]);
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        if (isOwnedProjectAliasUrl(request.url())) {
+          aliasHits.push(`${request.method()} ${new URL(request.url()).pathname}`);
+        }
+      };
+      page.on('request', onRequest);
+      try {
+        const projectGet = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === `/web-api/projects/${project.id}`
+        );
+        const openTasks = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === `/web-api/projects/${project.id}/tasks`
+        );
+        const imports = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === '/web-api/projects/imports'
+        );
+        await page.goto(`/projects/${project.id}`);
+        await projectGet;
+        await openTasks;
+        await imports;
+        await projectPage.waitForVisible();
+        await this.setProjectStatusFromPage('someday');
+
+        const importGet = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === `/web-api/projects/imports/${staged.id}`
+        );
+        await page.goto(`/projects/imports/${staged.id}`);
+        await importGet;
+        await expect(page.locator('[data-import-preview]')).toBeVisible();
+      } finally {
+        page.off('request', onRequest);
+      }
+      if (aliasHits.length > 0) {
+        throw new Error(`Project page still called the alias: ${aliasHits.join(', ')}`);
       }
     },
 

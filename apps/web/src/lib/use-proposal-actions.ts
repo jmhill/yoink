@@ -20,10 +20,18 @@ const isProjectListPage = (
 
 const PROPOSAL_TOAST_PREFIX = 'proposal-actions';
 
+type ProposalCommands = {
+  restoreProposal: typeof projectClient.restoreProposal;
+  declineProposal: typeof projectClient.declineProposal;
+  confirmProposal: typeof projectClient.confirmProposal;
+  update: typeof projectClient.update;
+};
+
 export function useProposalActions(
   restoredByName: string,
-  options: { onDeclined?: () => void } = {}
+  options: { onDeclined?: () => void; commands?: ProposalCommands } = {}
 ) {
+  const commands = options.commands ?? projectClient;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const actedIds = useRef(new Set<string>());
@@ -45,7 +53,7 @@ export function useProposalActions(
   };
 
   const restoreMutation = useMutation({
-    mutationFn: (input: { id: string }) => projectClient.restoreProposal(input),
+    mutationFn: (input: { id: string }) => commands.restoreProposal(input),
     onSuccess: () => {
       toast.success(proposalRestoredToast(restoredByName), { id: toastId() });
     },
@@ -62,7 +70,7 @@ export function useProposalActions(
   });
 
   const declineMutation = useMutation({
-    mutationFn: (input: { id: string }) => projectClient.declineProposal(input),
+    mutationFn: (input: { id: string }) => commands.declineProposal(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
@@ -106,7 +114,7 @@ export function useProposalActions(
 
   const confirmMutation = useMutation({
     mutationFn: (input: { id: string } & ConfirmProposedProject) =>
-      projectClient.confirmProposal(input),
+      commands.confirmProposal(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
@@ -158,7 +166,7 @@ export function useProposalActions(
   });
 
   const updateMutation = useMutation({
-    mutationFn: (input: { id: string } & UpdateProject) => projectClient.update(input),
+    mutationFn: (input: { id: string } & UpdateProject) => commands.update(input),
     onError: (err) => {
       if (isNetworkFailure(err)) {
         toast.error('Network error. Please check your connection.');

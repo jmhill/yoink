@@ -22,7 +22,7 @@ import { AlertCircle, Crown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { TRANSFER_OWNERSHIP_STORAGE_MESSAGE } from '@yoink/api-contracts';
 import { memberDisplayName, type Member } from '@/api/auth';
-import { httpFailureMessage, organizationClient } from '@/api/client';
+import { httpFailureMessage, settingsClient } from '@/api/client';
 import { useDesktopLayout } from '@/lib/use-desktop-layout';
 
 type OwnershipCardProps = {
@@ -82,8 +82,8 @@ function OwnershipCardOpen({
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (input: Parameters<typeof organizationClient.transferOwner>[0]) =>
-      organizationClient.transferOwner(input),
+    mutationFn: (input: Parameters<typeof settingsClient.transferOwner>[0]) =>
+      settingsClient.transferOwner(input),
     onSuccess: (result) => {
       toast.success(`${memberDisplayName(result.owner)} is now the owner.`);
       setOpen(false);

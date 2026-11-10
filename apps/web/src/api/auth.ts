@@ -16,7 +16,7 @@ import {
   type SignupOptionsResponse,
   type SignupVerifyResponse,
 } from '@yoink/api-contracts';
-import { z } from 'zod';
+import { httpFailureBody, httpFailureMessage, httpStatusOf, settingsClient } from '@/api/client';
 
 const messageFromErrorBody = (body: unknown, fallback: string): string => {
   const parsed = ErrorSchema.safeParse(body);
@@ -141,6 +141,8 @@ export const loginWithPasskey = async (): Promise<
 
 /**
  * Switch the current organization for the session.
+ * Join still uses this alias path. Settings and the header switcher use
+ * `switchWebOrganization`.
  */
 export const switchOrganization = async (
   organizationId: string
@@ -160,39 +162,56 @@ export const switchOrganization = async (
   return { ok: true, data: { success: true } };
 };
 
+/** Header and settings organization switch. */
+export const switchWebOrganization = async (
+  organizationId: string
+): Promise<ApiResponse<{ success: true }>> => {
+  try {
+    await settingsClient.switchOrganization({ organizationId });
+    return { ok: true, data: { success: true } };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to switch organization' };
+  }
+};
+
 /**
  * Leave an organization.
  * Returns specific error messages for personal org and last admin cases.
  */
+const handoverPathOf = (error: unknown): string | undefined => {
+  const body = httpFailureBody(error);
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'handoverPath' in body &&
+    typeof body.handoverPath === 'string'
+  ) {
+    return body.handoverPath;
+  }
+  return undefined;
+};
+
 export const leaveOrganization = async (
   organizationId: string
 ): Promise<ApiResponse<{ success: true }>> => {
-  const response = await fetch(`/api/organizations/${organizationId}/leave`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const parsed = z.object({
-      message: z.string().optional(),
-      handoverPath: z.string().optional(),
-    }).safeParse(await response.json().catch(() => ({})));
-    const message = parsed.success ? parsed.data.message : undefined;
-    const handoverPath = parsed.success ? parsed.data.handoverPath : undefined;
-    if (response.status === 404) {
+  try {
+    await settingsClient.leave({ organizationId });
+    return { ok: true, data: { success: true } };
+  } catch (error) {
+    const status = httpStatusOf(error);
+    const message = httpFailureMessage(error);
+    if (status === 404) {
       return { ok: false, error: 'Not a member of this organization' };
     }
-    if (response.status === 400) {
+    if (status === 400) {
       return { ok: false, error: message ?? 'Cannot leave this organization' };
     }
     return {
       ok: false,
       error: message ?? 'Failed to leave organization',
-      handoverPath,
+      handoverPath: handoverPathOf(error),
     };
   }
-
-  return { ok: true, data: { success: true } };
 };
 
 /**
@@ -429,18 +448,12 @@ export const memberLabel = (member: Pick<Member, 'email' | 'name' | 'kind'>): st
 export const listMembers = async (
   organizationId: string
 ): Promise<ApiResponse<{ members: Member[] }>> => {
-  const response = await fetch(`/api/organizations/${organizationId}/members`, {
-    method: 'GET',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to list members' };
+  try {
+    const data = await settingsClient.listMembers({ organizationId });
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to list members' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -450,23 +463,16 @@ export const mintAgent = async (
   organizationId: string,
   name: string
 ): Promise<ApiResponse<MintedAgent>> => {
-  const response = await fetch(`/api/organizations/${organizationId}/agents`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ name }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
-      return { ok: false, error: body.message || 'Only owners and admins can mint agents' };
+  try {
+    const data = await settingsClient.createAgent({ organizationId, name });
+    return { ok: true, data };
+  } catch (error) {
+    const message = httpFailureMessage(error);
+    if (httpStatusOf(error) === 403) {
+      return { ok: false, error: message || 'Only owners and admins can mint agents' };
     }
-    return { ok: false, error: body.message || 'Failed to mint agent' };
+    return { ok: false, error: message || 'Failed to mint agent' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -476,23 +482,20 @@ export const removeMember = async (
   organizationId: string,
   userId: string
 ): Promise<ApiResponse<void>> => {
-  const response = await fetch(`/api/organizations/${organizationId}/members/${userId}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
-      return { ok: false, error: body.message || REMOVE_NOT_ALLOWED_MESSAGE };
+  try {
+    await settingsClient.removeMember({ organizationId, userId });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    const message = httpFailureMessage(error);
+    const status = httpStatusOf(error);
+    if (status === 403) {
+      return { ok: false, error: message || REMOVE_NOT_ALLOWED_MESSAGE };
     }
-    if (response.status === 400) {
-      return { ok: false, error: body.message || 'Cannot remove this member' };
+    if (status === 400) {
+      return { ok: false, error: message || 'Cannot remove this member' };
     }
-    return { ok: false, error: body.message || removeMemberFailedMessage('member') };
+    return { ok: false, error: message || removeMemberFailedMessage('member') };
   }
-
-  return { ok: true, data: undefined };
 };
 
 // ============================================================================
@@ -504,7 +507,7 @@ export type Invitation = {
   code: string;
   email: string | null;
   organizationId: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member';
   expiresAt: string;
   createdAt: string;
 };
@@ -516,27 +519,19 @@ export const createInvitation = async (
   organizationId: string,
   options: { role?: 'admin' | 'member'; email?: string }
 ): Promise<ApiResponse<Invitation>> => {
-  const response = await fetch('/api/invitations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
+  try {
+    const data = await settingsClient.createInvitation({
       organizationId,
       role: options.role ?? 'member',
       email: options.email,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
+    });
+    return { ok: true, data };
+  } catch (error) {
+    if (httpStatusOf(error) === 403) {
       return { ok: false, error: 'You do not have permission to create invitations' };
     }
-    return { ok: false, error: body.message || 'Failed to create invitation' };
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to create invitation' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -545,21 +540,15 @@ export const createInvitation = async (
 export const listPendingInvitations = async (
   organizationId: string
 ): Promise<ApiResponse<{ invitations: Invitation[] }>> => {
-  const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
-    method: 'GET',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
+  try {
+    const data = await settingsClient.listPendingInvitations({ organizationId });
+    return { ok: true, data: { invitations: data.invitations } };
+  } catch (error) {
+    if (httpStatusOf(error) === 403) {
       return { ok: false, error: 'You do not have permission to view invitations' };
     }
-    return { ok: false, error: body.message || 'Failed to list invitations' };
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to list invitations' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -568,24 +557,18 @@ export const listPendingInvitations = async (
 export const revokeInvitation = async (
   invitationId: string
 ): Promise<ApiResponse<void>> => {
-  const response = await fetch(`/api/invitations/${invitationId}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 403) {
+  try {
+    await settingsClient.revokeInvitation({ invitationId });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    if (httpStatusOf(error) === 403) {
       return { ok: false, error: 'You do not have permission to revoke this invitation' };
     }
     return {
       ok: false,
-      error: messageFromErrorBody(
-        body,
-        response.status === 404 ? INVITATION_NOT_FOUND_MESSAGE : 'Failed to revoke invitation'
-      ),
+      error:
+        httpFailureMessage(error) ||
+        (httpStatusOf(error) === 404 ? INVITATION_NOT_FOUND_MESSAGE : 'Failed to revoke invitation'),
     };
   }
-
-  return { ok: true, data: undefined };
 };

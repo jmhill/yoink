@@ -3908,6 +3908,52 @@ export const createPlaywrightActor = (
       await expect(page.getByPlaceholder('Quick capture...')).toBeVisible();
     },
 
+    async shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void> {
+      const passkeys = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' &&
+          new URL(request.url()).pathname === '/api/auth/passkey/credentials'
+      );
+      await settingsPage.goto();
+      await passkeys;
+
+      const members = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' &&
+          /^\/web-api\/organizations\/[^/]+\/members$/.test(new URL(request.url()).pathname)
+      );
+      const tokens = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/auth/tokens'
+      );
+      const invitations = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' &&
+          /^\/web-api\/organizations\/[^/]+\/invitations$/.test(new URL(request.url()).pathname)
+      );
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          path.startsWith('/api/organizations') ||
+          path.startsWith('/api/invitations') ||
+          path === '/api/auth/tokens' ||
+          path.startsWith('/api/auth/tokens/')
+        ) {
+          aliasHits.push(`${request.method()} ${path}`);
+        }
+      };
+      page.on('request', onRequest);
+      await settingsPage.openOrganizationTab();
+      await members;
+      await tokens;
+      await invitations;
+      page.off('request', onRequest);
+      if (aliasHits.length > 0) {
+        throw new Error(`Settings still called the alias: ${aliasHits.join(', ')}`);
+      }
+    },
+
     async shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void> {
       const inboxList = page.waitForRequest(
         (request) =>
@@ -6306,7 +6352,7 @@ export const createPlaywrightActor = (
 
     // API Token operations - use API directly since we have session cookie
     async listTokens(): Promise<Token[]> {
-      const response = await page.request.get('/api/auth/tokens');
+      const response = await page.request.get('/web-api/auth/tokens');
       if (!response.ok()) {
         if (response.status() === 401) {
           throw new UnauthorizedError();
@@ -6320,7 +6366,7 @@ export const createPlaywrightActor = (
     callTokenRoute,
 
     async createToken(name: string): Promise<CreateTokenResult> {
-      const response = await page.request.post('/api/auth/tokens', {
+      const response = await page.request.post('/web-api/auth/tokens', {
         data: { name },
       });
 
@@ -6353,7 +6399,7 @@ export const createPlaywrightActor = (
       const orgId = sessionData.organizationId;
 
       const response = await page.request.post(
-        `/api/organizations/${orgId}/members/${memberUserId}/token`,
+        `/web-api/organizations/${orgId}/members/${memberUserId}/token`,
         { data: {} }
       );
 
@@ -6378,7 +6424,7 @@ export const createPlaywrightActor = (
     },
 
     async revokeToken(tokenId: string): Promise<void> {
-      const response = await page.request.delete(`/api/auth/tokens/${tokenId}`);
+      const response = await page.request.delete(`/web-api/auth/tokens/${tokenId}`);
 
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -6400,7 +6446,7 @@ export const createPlaywrightActor = (
       const sessionData = await session.json();
       const orgId = sessionData.organizationId;
 
-      const response = await page.request.post(`/api/organizations/${orgId}/agents`, {
+      const response = await page.request.post(`/web-api/organizations/${orgId}/agents`, {
         data: { name },
       });
 
@@ -6439,7 +6485,7 @@ export const createPlaywrightActor = (
     },
 
     async switchOrganization(organizationId: string): Promise<void> {
-      const response = await page.request.post('/api/organizations/switch', {
+      const response = await page.request.post('/web-api/organizations/switch', {
         data: { organizationId },
       });
 
@@ -6634,7 +6680,7 @@ export const createPlaywrightActor = (
     },
 
     async leaveOrganization(organizationId: string): Promise<void> {
-      const response = await page.request.post(`/api/organizations/${organizationId}/leave`);
+      const response = await page.request.post(`/web-api/organizations/${organizationId}/leave`);
 
       if (response.status() === 404) {
         throw new NotMemberError(organizationId);
@@ -6682,7 +6728,7 @@ export const createPlaywrightActor = (
       const sessionData = await session.json();
       const orgId = sessionData.organizationId;
 
-      const response = await page.request.get(`/api/organizations/${orgId}/members`);
+      const response = await page.request.get(`/web-api/organizations/${orgId}/members`);
 
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -6709,7 +6755,7 @@ export const createPlaywrightActor = (
       const orgId = sessionData.organizationId;
 
       const response = await page.request.patch(
-        `/api/organizations/${orgId}/members/${userId}/role`,
+        `/web-api/organizations/${orgId}/members/${userId}/role`,
         { data: { role } }
       );
 
@@ -6748,7 +6794,7 @@ export const createPlaywrightActor = (
       const sessionData = await session.json();
       const orgId = sessionData.organizationId;
 
-      const response = await page.request.delete(`/api/organizations/${orgId}/members/${userId}`);
+      const response = await page.request.delete(`/web-api/organizations/${orgId}/members/${userId}`);
 
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -6804,7 +6850,7 @@ export const createPlaywrightActor = (
       const sessionData = await session.json();
       const orgId = sessionData.organizationId;
 
-      const response = await page.request.post('/api/invitations', {
+      const response = await page.request.post('/web-api/invitations', {
         data: {
           organizationId: orgId,
           role: input?.role ?? 'member',
@@ -6837,7 +6883,7 @@ export const createPlaywrightActor = (
       const sessionData = await session.json();
       const orgId = sessionData.organizationId;
 
-      const response = await page.request.get(`/api/organizations/${orgId}/invitations`);
+      const response = await page.request.get(`/web-api/organizations/${orgId}/invitations`);
 
       if (response.status() === 401) {
         throw new UnauthorizedError();
@@ -6856,7 +6902,7 @@ export const createPlaywrightActor = (
     },
 
     async revokeInvitation(invitationId: string): Promise<void> {
-      const response = await page.request.delete(`/api/invitations/${invitationId}`);
+      const response = await page.request.delete(`/web-api/invitations/${invitationId}`);
 
       if (response.status() === 401) {
         throw new UnauthorizedError();

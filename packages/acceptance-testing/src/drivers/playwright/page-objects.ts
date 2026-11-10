@@ -2219,7 +2219,7 @@ export class OrganizationSwitcherChrome {
 
   async expectSwitchFailureToast(orgName: string): Promise<void> {
     await this.open();
-    await this.page.route('**/api/organizations/switch', async (route) => {
+    await this.page.route('**/web-api/organizations/switch', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
           status: 500,
@@ -2235,7 +2235,7 @@ export class OrganizationSwitcherChrome {
       hasText: 'Failed to switch organization',
     });
     await expect(toast).toBeVisible();
-    await this.page.unroute('**/api/organizations/switch');
+    await this.page.unroute('**/web-api/organizations/switch');
   }
 }
 

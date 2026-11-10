@@ -342,7 +342,7 @@ export type BrowserActorOperations = {
   pickOrganizationFromHeader(orgName: string): Promise<void>;
 
   /**
-   * Intercept POST /api/organizations/switch as a failure, pick this org
+   * Intercept POST /web-api/organizations/switch as a failure, pick this org
    * from the header, and assert an error toast is shown (not silent).
    * Session stays on the previous org.
    */
@@ -1924,6 +1924,12 @@ export type BrowserActorOperations = {
    * Inbox list and create go to `/web-api`. Today still goes to `/api`.
    */
   shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void>;
+
+  /**
+   * Settings members, invitations, and tokens go to `/web-api`.
+   * Passkey credentials stay on `/api`.
+   */
+  shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void>;
 
   /**
    * Assert the Inbox-tab quick-add capture field is not on this pane.

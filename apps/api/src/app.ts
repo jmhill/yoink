@@ -247,10 +247,25 @@ export const createApp = async (deps: AppDependencies) => {
     captures: deps.captures,
     tokenAuth,
   });
-  // Inbox list and create. The rest of the web app stays on the /api alias.
+  // Inbox, and settings when signup exists. Other screens stay on the /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
     combinedAuth: authMiddleware,
+    settings:
+      deps.signup === undefined
+        ? undefined
+        : {
+            sessionService: deps.signup.sessionService,
+            membershipService: deps.membershipService,
+            userService: deps.signup.userService,
+            agentService: deps.signup.agentService,
+            reissueAgentToken: deps.signup.reissueAgentToken,
+            transferOwnership: deps.signup.transferOwnership,
+            changeMemberRole: deps.signup.changeMemberRole,
+            removeMember: deps.signup.removeMember,
+            invitationService: deps.invitationService,
+            tokenHandlers: deps.signup.tokenHandlers,
+          },
   });
   if (deps.enableTestFixtures && deps.database) {
     await registerReviewFixtureRoutes(app, {

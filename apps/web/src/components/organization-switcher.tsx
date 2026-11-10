@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, User, Building2 } from 'lucide-react';
 import { Button } from '@yoink/ui-base/components/button';
-import { getSession, switchOrganization, type SessionOrganization } from '@/api/auth';
+import { getSession, switchWebOrganization, type SessionOrganization } from '@/api/auth';
 import { cn } from '@yoink/ui-base/lib/utils';
 import {
   ORG_SWITCHER_MENU_WIDTH,
@@ -73,7 +73,7 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps) {
     close();
     setIsSwitching(true);
     try {
-      const result = await switchOrganization(orgId);
+      const result = await switchWebOrganization(orgId);
       if (result.ok) {
         window.location.reload();
         return;

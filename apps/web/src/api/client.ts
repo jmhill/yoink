@@ -2,7 +2,7 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
-import { webInboxContract } from '@yoink/api-contracts/web';
+import { webInboxContract, webSettingsContract } from '@yoink/api-contracts/web';
 import {
   authOrpcContract,
   captureOrpcContract,
@@ -13,7 +13,6 @@ import {
   projectOrpcContract,
   reviewOrpcContract,
   taskOrpcContract,
-  tokenOrpcContract,
   workOrpcContract,
 } from '@yoink/api-contracts/orpc';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
@@ -21,6 +20,7 @@ import { tokenStorage } from '@/lib/token';
 
 type CaptureClient = JsonifiedClient<RouterContractClient<typeof captureOrpcContract>>;
 type InboxClient = JsonifiedClient<RouterContractClient<typeof webInboxContract>>;
+type SettingsClient = JsonifiedClient<RouterContractClient<typeof webSettingsContract>>;
 
 /** Build id from Vite. Vitest leaves the identifier unset, which is `dev`. */
 const webBuildId = (): string =>
@@ -32,7 +32,6 @@ type ProcessToProjectClient = JsonifiedClient<
 >;
 type TaskClient = JsonifiedClient<RouterContractClient<typeof taskOrpcContract>>;
 type ListClient = JsonifiedClient<RouterContractClient<typeof listOrpcContract>>;
-type TokenClient = JsonifiedClient<RouterContractClient<typeof tokenOrpcContract>>;
 type OrganizationClient = JsonifiedClient<RouterContractClient<typeof organizationOrpcContract>>;
 type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>;
 type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
@@ -155,6 +154,17 @@ export const inboxClient: InboxClient = createORPCClient(
   })
 );
 
+/**
+ * Settings and organizations. `/web-api` plus `/organizations/switch`
+ * is `/web-api/organizations/switch`. Passkeys stay on `passkey.ts`.
+ */
+export const settingsClient: SettingsClient = createORPCClient(
+  new OpenAPILink(webSettingsContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
+);
+
 export const processToProjectClient: ProcessToProjectClient = createORPCClient(
   new OpenAPILink(processCaptureToProjectOrpcContract, { fetch: fetchWithSession })
 );
@@ -165,10 +175,6 @@ export const taskClient: TaskClient = createORPCClient(
 
 export const listClient: ListClient = createORPCClient(
   new OpenAPILink(listOrpcContract, { fetch: fetchWithSession })
-);
-
-export const tokenClient: TokenClient = createORPCClient(
-  new OpenAPILink(tokenOrpcContract, { fetch: fetchWithSession })
 );
 
 export const organizationClient: OrganizationClient = createORPCClient(

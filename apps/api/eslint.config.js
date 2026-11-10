@@ -555,10 +555,12 @@ export default [
               from: [['edge', { edge: 'extension' }]],
               allow: ['captures'],
             },
-            // M6.2. The web edge calls the captures interface for Inbox only.
+            // M6.2 Inbox calls the captures interface.
+            // M6.3-settings calls today's access handlers through narrow ports.
+            // M5.13 replaces those handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],
-              allow: ['captures'],
+              allow: ['captures', 'access'],
             },
             // M3.3. Only the legacy client edge. These routes still call today's
             // access handlers. M6 moves each client to its own edge. M5.12 and

@@ -2392,6 +2392,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldKeepInboxOnWebEdgeAndTodayOnApiAlias', 'http');
     },
 
+    async shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias', 'http');
+    },
+
     async shouldNotSeeQuickAddCapture(): Promise<void> {
       throw new UnsupportedOperationError('shouldNotSeeQuickAddCapture', 'http');
     },
@@ -3372,7 +3376,7 @@ export const createHttpActor = (
 
     // API Token operations
     async listTokens(): Promise<Token[]> {
-      const response = await client.get('/api/auth/tokens', authHeaders());
+      const response = await client.get('/web-api/auth/tokens', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -3382,7 +3386,7 @@ export const createHttpActor = (
     callTokenRoute,
 
     async createToken(name: string): Promise<CreateTokenResult> {
-      const response = await client.post('/api/auth/tokens', { name }, authHeaders());
+      const response = await client.post('/web-api/auth/tokens', { name }, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -3405,7 +3409,7 @@ export const createHttpActor = (
 
     async reissueAgentToken(memberUserId: string): Promise<{ token: Token; rawToken: string }> {
       const response = await client.post(
-        `/api/organizations/${credentials.organizationId}/members/${memberUserId}/token`,
+        `/web-api/organizations/${credentials.organizationId}/members/${memberUserId}/token`,
         {},
         authHeaders()
       );
@@ -3426,7 +3430,7 @@ export const createHttpActor = (
     },
 
     async revokeToken(tokenId: string): Promise<void> {
-      const response = await client.delete(`/api/auth/tokens/${tokenId}`, authHeaders());
+      const response = await client.delete(`/web-api/auth/tokens/${tokenId}`, authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -3445,7 +3449,7 @@ export const createHttpActor = (
       }
 
       const response = await client.post(
-        `/api/organizations/${credentials.organizationId}/agents`,
+        `/web-api/organizations/${credentials.organizationId}/agents`,
         { name },
         authHeaders()
       );
@@ -3677,7 +3681,7 @@ export const createHttpActor = (
 
     async listMembers(): Promise<Member[]> {
       const response = await client.get(
-        `/api/organizations/${credentials.organizationId}/members`,
+        `/web-api/organizations/${credentials.organizationId}/members`,
         authHeaders()
       );
       if (response.statusCode === 401) {

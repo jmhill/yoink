@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { captureClient, httpFailureBody, httpStatusOf, inboxClient, taskClient, YOINK_BUILD_HEADER } from './client';
+import {
+  captureClient,
+  httpFailureBody,
+  httpStatusOf,
+  inboxClient,
+  organizationClient,
+  settingsClient,
+  taskClient,
+  YOINK_BUILD_HEADER,
+} from './client';
 import { tokenStorage } from '@/lib/token';
 
 const jsonResponse = (status: number, body: unknown) =>
@@ -94,6 +103,33 @@ describe('web OpenAPI client', () => {
     expect(calls[1]?.url).toBe('/web-api/inbox');
     expect(calls[1]?.method).toBe('POST');
     expect(calls[1]?.build).toBe('dev');
+  });
+
+  it('calls settings on /web-api and leaves other screens on the organization alias', async () => {
+    const orgId = '550e8400-e29b-41d4-a716-446655440001';
+    const calls: { url: string; method: string; build: string | null }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const headers = new Headers(init.headers);
+      calls.push({
+        url,
+        method: init.method ?? 'GET',
+        build: headers.get(YOINK_BUILD_HEADER),
+      });
+      if ((init.method ?? 'GET') === 'POST') {
+        return jsonResponse(200, { success: true });
+      }
+      return jsonResponse(200, { members: [] });
+    });
+
+    await settingsClient.listMembers({ organizationId: orgId });
+    await settingsClient.switchOrganization({ organizationId: orgId });
+    await organizationClient.listMembers({ organizationId: orgId });
+
+    expect(calls[0]?.url).toBe(`/web-api/organizations/${orgId}/members`);
+    expect(calls[0]?.build).toBe('dev');
+    expect(calls[1]?.url).toBe('/web-api/organizations/switch');
+    expect(calls[1]?.method).toBe('POST');
+    expect(calls[2]?.url).toBe(`/api/organizations/${orgId}/members`);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

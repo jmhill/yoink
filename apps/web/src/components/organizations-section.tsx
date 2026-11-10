@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
 import { Building2, LogOut, Loader2, AlertCircle, User, Crown, Shield, Users } from 'lucide-react';
-import { getSession, leaveOrganization, switchOrganization, type SessionOrganization } from '@/api/auth';
+import { getSession, leaveOrganization, switchWebOrganization, type SessionOrganization } from '@/api/auth';
 
 type OrgsListState =
   | { status: 'loading' }
@@ -52,7 +52,7 @@ export function OrganizationsSection() {
     if (listState.status === 'success' && orgToLeave?.id === listState.currentOrgId) {
       const personalOrg = listState.organizations.find((org) => org.isPersonal);
       if (personalOrg) {
-        await switchOrganization(personalOrg.id);
+        await switchWebOrganization(personalOrg.id);
       }
     }
 

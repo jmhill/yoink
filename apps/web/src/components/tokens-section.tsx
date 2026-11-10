@@ -14,7 +14,7 @@ import {
 } from '@yoink/ui-base/components/dialog';
 import { Key, Plus, Trash2, Loader2, AlertCircle, Copy, Check } from 'lucide-react';
 import type { TokenInfo } from '@yoink/api-contracts';
-import { httpFailureMessage, tokenClient } from '@/api/client';
+import { httpFailureMessage, settingsClient } from '@/api/client';
 
 const MAX_TOKENS = 2;
 
@@ -25,7 +25,7 @@ export function TokensSection() {
 
   const listQuery = useQuery({
     queryKey: ['tokens'],
-    queryFn: () => tokenClient.list(),
+    queryFn: () => settingsClient.listTokens(),
   });
 
   const listBody = listQuery.data;
@@ -179,7 +179,8 @@ function CreateTokenDialog({ open, onOpenChange, onSuccess }: CreateTokenDialogP
   const [copied, setCopied] = useState(false);
 
   const createMutation = useMutation({
-    mutationFn: (input: Parameters<typeof tokenClient.create>[0]) => tokenClient.create(input),
+    mutationFn: (input: Parameters<typeof settingsClient.createToken>[0]) =>
+      settingsClient.createToken(input),
     onSuccess: (result) => {
       setRawToken(result.rawToken);
     },
@@ -338,7 +339,8 @@ function DeleteTokenDialog({
   const [error, setError] = useState<string | null>(null);
 
   const revokeMutation = useMutation({
-    mutationFn: (input: Parameters<typeof tokenClient.delete>[0]) => tokenClient.delete(input),
+    mutationFn: (input: Parameters<typeof settingsClient.deleteToken>[0]) =>
+      settingsClient.deleteToken(input),
     onSuccess: () => {
       onSuccess();
     },

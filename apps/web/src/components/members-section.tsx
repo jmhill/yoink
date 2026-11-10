@@ -24,7 +24,7 @@ import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
 import { toast } from 'sonner';
 import { listMembers, removeMember, mintAgent, memberDisplayName, memberLabel, type Member } from '@/api/auth';
-import { httpFailureMessage, organizationClient } from '@/api/client';
+import { httpFailureMessage, settingsClient } from '@/api/client';
 import {
   CHANGE_ROLE_STORAGE_MESSAGE,
   HAND_OVER_OWNERSHIP_FIRST_MESSAGE,
@@ -112,8 +112,8 @@ export function MembersSection({
   const viewer = { userId: currentUserId, role: currentUserRole };
 
   const reissueMutation = useMutation({
-    mutationFn: (input: Parameters<typeof organizationClient.reissueAgentToken>[0]) =>
-      organizationClient.reissueAgentToken(input),
+    mutationFn: (input: Parameters<typeof settingsClient.reissueAgentToken>[0]) =>
+      settingsClient.reissueAgentToken(input),
     onSuccess: (result) => {
       setRawReissuedToken(result.rawToken);
     },
@@ -123,8 +123,8 @@ export function MembersSection({
   });
 
   const changeRoleMutation = useMutation({
-    mutationFn: (input: Parameters<typeof organizationClient.changeMemberRole>[0]) =>
-      organizationClient.changeMemberRole(input),
+    mutationFn: (input: Parameters<typeof settingsClient.changeMemberRole>[0]) =>
+      settingsClient.changeMemberRole(input),
     onSuccess: (result, variables) => {
       const name = memberDisplayName(result.member);
       if (variables.role === 'admin') {

@@ -1921,9 +1921,15 @@ export type BrowserActorOperations = {
   shouldSeeQuickAddCapture(): Promise<void>;
 
   /**
-   * Inbox list and create go to `/web-api`. Today still goes to `/api`.
+   * Inbox list and create go to `/web-api`. Today goes to `/web-api/tasks`.
    */
-  shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void>;
+  shouldKeepInboxOnWebEdgeAndTasksOnWebEdge(): Promise<void>;
+
+  /**
+   * The tasks board, named-list order, and the unlisted pile go to `/web-api`.
+   * Those alias paths stay mounted for other clients.
+   */
+  shouldKeepTasksListsOnWebEdge(): Promise<void>;
 
   /**
    * Settings members, invitations, tokens, and passkeys go to `/web-api`.

@@ -5,9 +5,11 @@ import {
   httpFailureBody,
   httpStatusOf,
   inboxClient,
+  listClient,
   organizationClient,
   settingsClient,
   taskClient,
+  webTaskClient,
   YOINK_BUILD_HEADER,
 } from './client';
 import { tokenStorage } from '@/lib/token';
@@ -177,6 +179,36 @@ describe('web OpenAPI client', () => {
     expect(calls[1]?.url).toBe('/web-api/auth/session');
     expect(calls[2]?.url).toBe('/web-api/auth/passkey/credentials');
     expect(calls[3]?.url.startsWith('/api/captures?')).toBe(true);
+  });
+
+  it('calls tasks and lists on /web-api and leaves project-page task delete on the alias', async () => {
+    const calls: { url: string; method: string; build: string | null }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const headers = new Headers(init.headers);
+      calls.push({
+        url,
+        method: init.method ?? 'GET',
+        build: headers.get(YOINK_BUILD_HEADER),
+      });
+      if ((init.method ?? 'GET') === 'DELETE') {
+        return new Response(null, { status: 204 });
+      }
+      if (url.includes('/lists')) {
+        return jsonResponse(200, { lists: [], hasMore: false, nextCursor: null, total: 0 });
+      }
+      return jsonResponse(200, { tasks: [], hasMore: false, nextCursor: null, total: 0 });
+    });
+
+    await webTaskClient.list({ filter: 'today', limit: 1, timeZone: 'America/Chicago' });
+    await listClient.list({ limit: 1 });
+    await taskClient.delete({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    expect(calls[0]?.url.startsWith('/web-api/tasks?')).toBe(true);
+    expect(calls[0]?.url).toContain('filter=%22today%22');
+    expect(calls[0]?.build).toBe('dev');
+    expect(calls[1]?.url.startsWith('/web-api/lists?')).toBe(true);
+    expect(calls[2]?.url).toBe('/api/tasks/550e8400-e29b-41d4-a716-446655440000');
+    expect(calls[2]?.method).toBe('DELETE');
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

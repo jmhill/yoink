@@ -3,7 +3,9 @@ import { getOpenAPIMeta } from '@orpc/openapi';
 import { describe, expect, it } from 'vitest';
 import { webAuthContract } from './auth-contract.js';
 import { webInboxContract } from './contract.js';
+import { webListsContract } from './lists-contract.js';
 import { webSettingsContract } from './settings-contract.js';
+import { webTasksContract } from './tasks-contract.js';
 
 const procedures = (
   router: unknown,
@@ -90,6 +92,42 @@ describe('web auth contract', () => {
       { key: 'deletePasskey', method: 'DELETE', path: '/auth/passkey/credentials/{credentialId}' },
     ]);
     expect(listed.some((procedure) => procedure.path.includes('/auth/tokens'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web lists contract', () => {
+  it('is named lists and open-task order, on the resource path', () => {
+    const listed = procedures(webListsContract);
+    expect(listed).toEqual([
+      { key: 'list', method: 'GET', path: '/lists' },
+      { key: 'create', method: 'POST', path: '/lists' },
+      { key: 'rename', method: 'PATCH', path: '/lists/{id}' },
+      { key: 'delete', method: 'DELETE', path: '/lists/{id}' },
+      { key: 'listOpenTasks', method: 'GET', path: '/lists/{id}/tasks' },
+      { key: 'reorderOpenTasks', method: 'PUT', path: '/lists/{id}/tasks/order' },
+      { key: 'listUnlistedOpenTasks', method: 'GET', path: '/unlisted/tasks' },
+      { key: 'reorderUnlistedOpenTasks', method: 'PUT', path: '/unlisted/tasks/order' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web tasks contract', () => {
+  it('is the task board, without get, pin, or history', () => {
+    const listed = procedures(webTasksContract);
+    expect(listed).toEqual([
+      { key: 'create', method: 'POST', path: '/tasks' },
+      { key: 'list', method: 'GET', path: '/tasks' },
+      { key: 'update', method: 'PATCH', path: '/tasks/{id}' },
+      { key: 'complete', method: 'POST', path: '/tasks/{id}/complete' },
+      { key: 'uncomplete', method: 'POST', path: '/tasks/{id}/uncomplete' },
+      { key: 'delete', method: 'DELETE', path: '/tasks/{id}' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('history'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('pin'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });

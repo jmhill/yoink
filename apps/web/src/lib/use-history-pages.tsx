@@ -7,7 +7,7 @@ import {
   type Task,
   type TaskListPage,
 } from '@yoink/api-contracts';
-import { captureClient, taskClient } from '@/api/client';
+import { captureClient, webTaskClient } from '@/api/client';
 
 export const LOAD_MORE_TEST_ID = 'load-more';
 
@@ -154,7 +154,7 @@ export const useCompletedTaskPages = (enabled: boolean) => {
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const cursor = historyCursor(pageParam);
-      return taskClient.list({
+      return webTaskClient.list({
         filter: 'completed',
         limit: HISTORY_PAGE_DEFAULT,
         ...(cursor === undefined ? {} : { cursor }),

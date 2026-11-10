@@ -28,7 +28,7 @@ import {
   listClient,
   organizationClient,
   projectClient,
-  taskClient,
+  webTaskClient,
 } from '@/api/client';
 import { localCalendarDate, viewerTimeZone } from '@/lib/viewer-today';
 import {
@@ -335,7 +335,7 @@ function TasksPage() {
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['tasks', boardFilter],
     queryFn: () =>
-      taskClient.list({
+      webTaskClient.list({
         filter: boardFilter,
         limit: PILE_SAFETY_CAP,
         timeZone: viewerTimeZone(),
@@ -463,7 +463,7 @@ function TasksPage() {
 
   // Create task mutation
   const createMutation = useMutation({
-    mutationFn: (input: Parameters<typeof taskClient.create>[0]) => taskClient.create(input),
+    mutationFn: (input: Parameters<typeof webTaskClient.create>[0]) => webTaskClient.create(input),
     onMutate: async (body) => {
       await cancelLiveQueries(queryClient);
       const queryKey = displayedTasksQueryKey();
@@ -530,6 +530,7 @@ function TasksPage() {
   const { completeMutation, deleteMutation, updateMutation } = useOpenTaskMutations(
     queryClient,
     {
+      commands: webTaskClient,
       onUpdated: () => setEditingTask(null),
       mapUpdate: (tasks, queryKey, { id, body }) =>
         tasks.flatMap((task) => {
@@ -566,8 +567,8 @@ function TasksPage() {
 
   // Uncomplete mutation
   const uncompleteMutation = useMutation({
-    mutationFn: (input: Parameters<typeof taskClient.uncomplete>[0]) =>
-      taskClient.uncomplete(input),
+    mutationFn: (input: Parameters<typeof webTaskClient.uncomplete>[0]) =>
+      webTaskClient.uncomplete(input),
     onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
       const queryKey = displayedTasksQueryKey();

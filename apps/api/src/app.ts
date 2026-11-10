@@ -257,10 +257,15 @@ export const createApp = async (deps: AppDependencies) => {
     maxAge: deps.cookie.maxAge,
   };
 
-  // Inbox, settings, and auth when signup exists. Other screens stay on the /api alias.
+  // Inbox, tasks and lists, settings, and auth when signup exists.
+  // Other screens stay on the /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
     combinedAuth: authMiddleware,
+    tasksLists: {
+      listHandlers: deps.listHandlers,
+      taskHandlers: deps.taskHandlers,
+    },
     settings:
       deps.signup === undefined
         ? undefined

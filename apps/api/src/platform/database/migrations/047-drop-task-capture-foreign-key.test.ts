@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createBareTestDatabase } from '../test-utils.js';
 import { runMigrations } from '../migrator.js';
 import { migrations } from './index.js';
-import type { Database } from '../types.js';
+import { migration as dropTaskCaptureForeignKey } from './047-drop-task-capture-foreign-key.js';
+import type { Database, QueryResult } from '../types.js';
 
 const before47 = migrations.filter((migration) => migration.version < 47);
 const at = '2026-11-10T00:00:00.000Z';
@@ -25,6 +26,66 @@ const taskRow = async (db: Database) => {
     args: ['task-1'],
   });
   return result.rows[0];
+};
+
+/**
+ * Turso HTTP opens a new stream per request. `PRAGMA foreign_keys = OFF` on
+ * one `execute` does not apply to the next `batch`, which begins with foreign
+ * keys on. `migrate` is one stream: foreign keys off before `BEGIN`.
+ */
+const tursoHttpDatabase = (inner: Database): Database => {
+  const ignored: QueryResult = { rows: [], rowsAffected: 0 };
+  return {
+    execute: (query) => {
+      if (/PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(query.sql)) {
+        return Promise.resolve(ignored);
+      }
+      return inner.execute(query);
+    },
+    batch: async (queries, mode) => {
+      await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
+      return inner.batch(queries, mode);
+    },
+    migrate: (queries) => {
+      const migrate = inner.migrate;
+      if (migrate === undefined) {
+        throw new Error('expected migrate');
+      }
+      return migrate(queries);
+    },
+    close: () => inner.close(),
+  };
+};
+
+const seedTaskPointedAtByProject = async (db: Database): Promise<void> => {
+  await db.execute({
+    sql: `INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)`,
+    args: ['org-1', 'Org', at],
+  });
+  await db.execute({
+    sql: `INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)`,
+    args: ['user-1', 'owner@example.com', at],
+  });
+  await db.execute({
+    sql: `INSERT INTO captures (id, organization_id, created_by_id, content, captured_at) VALUES (?, ?, ?, ?, ?)`,
+    args: ['capture-1', 'org-1', 'user-1', 'A note', at],
+  });
+  await db.execute({
+    sql: `INSERT INTO projects (id, organization_id, created_by_id, name, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: ['project-1', 'org-1', 'user-1', 'Garden', 'active', at],
+  });
+  await db.execute({
+    sql: `
+      INSERT INTO tasks (
+        id, organization_id, created_by_id, title, capture_id, created_at, project_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+    args: ['task-1', 'org-1', 'user-1', 'Buy soil', 'capture-1', at, 'project-1'],
+  });
+  await db.execute({
+    sql: `UPDATE projects SET next_action_task_id = ? WHERE id = ?`,
+    args: ['task-1', 'project-1'],
+  });
 };
 
 describe('Migration 47: drop tasks.capture_id foreign key', () => {
@@ -141,5 +202,28 @@ describe('Migration 47: drop tasks.capture_id foreign key', () => {
       args: ['task-1'],
     });
     expect(kept.rows[0]?.capture_id).toBe('capture-1');
+  });
+
+  it('applies up() when a project next action points at a task and a standalone foreign_keys pragma does not reach batch', async () => {
+    await runMigrations(db, before47);
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
+    await seedTaskPointedAtByProject(db);
+    const before = await taskRow(db);
+
+    await dropTaskCaptureForeignKey.up(tursoHttpDatabase(db));
+
+    expect(await taskRow(db)).toEqual(before);
+    expect(await foreignKeyTables(db)).toEqual(['lists', 'organizations', 'projects', 'users']);
+    const nextAction = await db.execute({
+      sql: `SELECT next_action_task_id FROM projects WHERE id = ?`,
+      args: ['project-1'],
+    });
+    expect(nextAction.rows[0]?.next_action_task_id).toBe('task-1');
+    const foreignKeyCheck = await db.execute({ sql: 'PRAGMA foreign_key_check' });
+    expect(foreignKeyCheck.rows).toEqual([]);
+    const leftover = await db.execute({
+      sql: `SELECT name FROM sqlite_master WHERE name IN ('tasks_new', '_yoink_fk_guard')`,
+    });
+    expect(leftover.rows).toEqual([]);
   });
 });

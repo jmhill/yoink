@@ -18,7 +18,7 @@ import type { HandleIssueOwnerInvitationError } from '../../../access/applicatio
 import type { HandleAcceptInvitationError } from '../../../access/application/handle-accept-invitation.js';
 import type { HandleValidateInvitationError } from '../../../access/application/handle-validate-invitation.js';
 import type { InvitationServiceError } from '../../../access/domain/invitation-errors.js';
-import type { SignupServiceError } from '../../../access/domain/signup-service.js';
+import type { SignupServiceError } from '../../../access/domain/signup-commands.js';
 
 type AccessClientCode =
   | 'BAD_REQUEST'

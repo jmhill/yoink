@@ -4,7 +4,7 @@ import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { signupOrpcContract } from '@yoink/api-contracts/orpc';
 import type { Access } from '../../../access/index.js';
-import type { SignupService } from '../../../access/domain/signup-service.js';
+import type { SignupService } from '../../../access/application/handle-signup.js';
 import type { PasskeyService } from '../../../access/application/handle-passkey.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../../platform/config/schema.js';

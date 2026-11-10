@@ -8,7 +8,7 @@ import type {
   SignupOrganizationNotFoundError,
   SignupServiceError,
   SignupStorageError,
-} from '../domain/signup-service.js';
+} from '../domain/signup-commands.js';
 
 export type AccessStorageError = {
   readonly type: 'ACCESS_STORAGE';

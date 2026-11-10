@@ -7,13 +7,8 @@ import { registerOrganizationRoutes } from './organization-routes.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/domain/membership-service.js';
-import { createAgentService } from '../../../access/domain/agent-service.js';
-import { createTokenHandlers } from '../../../access/application/create-token-handlers.js';
-import {
-  createStoreBackedTokenCreated,
-  createStoreBackedTokenRevoked,
-  createStoreBackedTokenReissue,
-} from '../../../access/infrastructure/store-backed-token-persist.js';
+import { createAgentService } from '../../../access/application/handle-agent.js';
+import { createStoreBackedTokenReissue } from '../../../access/infrastructure/store-backed-token-persist.js';
 import { handleReissueAgentToken } from '../../../access/application/handle-reissue-agent-token.js';
 import { handleTransferOwnership } from '../../../access/application/handle-transfer-ownership.js';
 import {
@@ -46,7 +41,6 @@ import {
   TRANSFER_OWNERSHIP_STORAGE_MESSAGE,
 } from '@yoink/api-contracts';
 import { tokenStorageError } from '../../../access/domain/auth-errors.js';
-import { principalKindOf } from '../../../access/domain/user.js';
 import { errAsync, ResultAsync } from 'neverthrow';
 import { lastAdminError } from '../../../access/domain/organization-errors.js';
 import { createFakeTokenStore } from '../../../access/infrastructure/fake-token-store.js';
@@ -307,47 +301,14 @@ describe('organization routes', () => {
     });
 
     const passwordHasher = createFakePasswordHasher();
-    const tokenHandlers = createTokenHandlers({
-      listUserOrgTokens: (userId, organizationId) =>
-        tokenStore.findByUserAndOrganization(userId, organizationId),
-      load: (id) => tokenStore.findById(id),
-      loadMembership: (userId, organizationId) =>
-        membershipStore
-          .findByUserAndOrg(userId, organizationId)
-          .mapErr((error) => tokenStorageError(error.message, error))
-          .map((membership) => (membership ? { role: membership.role } : null)),
-      loadOwner: (userId) =>
-        userStore
-          .findById(userId)
-          .mapErr((error) => tokenStorageError(error.message, error))
-          .map((user) =>
-            user
-              ? {
-                  userId: user.id,
-                  kind: principalKindOf(user),
-                }
-              : null
-          ),
-      persistCreate: createStoreBackedTokenCreated(tokenStore),
-      persistRevoke: createStoreBackedTokenRevoked(tokenStore),
-      hashSecret: (secret) =>
-        ResultAsync.fromPromise(
-          passwordHasher.hash(secret),
-          (error) => tokenStorageError('Failed to hash token secret', error)
-        ),
-      nextId: () => idGenerator.generate(),
-      nextSecret: () => idGenerator.generate(),
-      now: () => clock.now().toISOString(),
-      maxTokensPerUserPerOrg: 2,
-    });
-
     const agentService = createAgentService({
-      userService,
-      membershipService,
-      createToken: (command) =>
-        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
+      userStore,
+      membershipStore,
+      organizationStore,
+      tokenStore,
       clock,
       idGenerator,
+      passwordHasher,
     });
     const transferOwnership = (request: Parameters<typeof handleTransferOwnership>[0]) =>
       handleTransferOwnership(request, {
@@ -498,13 +459,13 @@ describe('organization routes', () => {
       membershipService,
       userService,
       agentService: createAgentService({
-        userService,
-        membershipService,
-        createToken: () => {
-          throw new Error('unused');
-        },
+        userStore,
+        membershipStore: failingMembershipStore,
+        organizationStore,
+        tokenStore: failingTokenStore,
         clock,
         idGenerator,
+        passwordHasher,
       }),
       reissueAgentToken: (command) =>
         handleReissueAgentToken(command, {
@@ -1417,18 +1378,19 @@ describe('organization routes', () => {
         sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
         refreshThresholdMs: 24 * 60 * 60 * 1000,
       });
+      const passwordHasher = createFakePasswordHasher();
       await registerOrganizationRoutes(failingApp, {
         sessionService,
         membershipService,
         userService,
         agentService: createAgentService({
-          userService,
-          membershipService,
-          createToken: () => {
-            throw new Error('unused');
-          },
+          userStore,
+          membershipStore: failingStore,
+          organizationStore,
+          tokenStore: createFakeTokenStore({ initialTokens: [] }),
           clock,
           idGenerator,
+          passwordHasher,
         }),
         reissueAgentToken: () => {
           throw new Error('unused');

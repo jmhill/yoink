@@ -20,7 +20,7 @@ import { organizationOrpcContract } from '@yoink/api-contracts/orpc';
 import type { SessionService } from '../../../access/domain/session-service.js';
 import type { MembershipService } from '../../../access/domain/membership-service.js';
 import type { UserService } from '../../../access/domain/user-service.js';
-import type { AgentService, AgentServiceError } from '../../../access/domain/agent-service.js';
+import type { AgentService, AgentServiceError } from '../../../access/domain/index.js';
 import type { AuthMiddleware } from '../../_shared/auth/auth-middleware.js';
 import type { ReissueAgentToken, ReissueAgentTokenError } from '../../../access/application/handle-reissue-agent-token.js';
 import type {
@@ -449,32 +449,9 @@ const mintAgentFailure = (error: AgentServiceError) => {
       return accessHttpError({ code: 'BAD_REQUEST', message: error.message });
     case 'ORGANIZATION_NOT_FOUND':
       return accessHttpError({ code: 'NOT_FOUND', message: 'Organization not found' });
-    case 'ALREADY_MEMBER':
-    case 'CANNOT_LEAVE_PERSONAL_ORG':
-    case 'CANNOT_ASSIGN_OWNER_ROLE':
-    case 'OWNER_MUST_TRANSFER':
-    case 'OWNER_CANNOT_BE_REMOVED':
-    case 'NOT_CURRENT_OWNER':
-    case 'BOT_CANNOT_TRANSFER_OWNERSHIP':
-    case 'PERSONAL_WORKSPACE_TRANSFER':
-    case 'ALREADY_OWNER':
-    case 'SECOND_OWNER':
-    case 'BOT_CANNOT_HAVE_PRIVILEGED_ROLE':
-    case 'TARGET_NOT_WORKSPACE_MEMBER':
-    case 'LAST_ADMIN':
-    case 'BOT_CANNOT_CHANGE_ROLES':
-    case 'ROLE_CHANGE_NOT_ALLOWED':
-    case 'CANNOT_CHANGE_OWN_ROLE':
-    case 'OWNER_ROLE_LOCKED':
-    case 'CANNOT_REMOVE_SELF':
-    case 'REMOVE_NOT_ALLOWED':
-    case 'REISSUE_NOT_ALLOWED':
-    case 'USER_NOT_FOUND':
     case 'MEMBERSHIP_STORAGE_ERROR':
     case 'ORGANIZATION_STORAGE_ERROR':
     case 'USER_STORAGE_ERROR':
-    case 'TOKEN_LIMIT_REACHED':
-    case 'TOKEN_OWNERSHIP_ERROR':
     case 'TOKEN_STORAGE_ERROR':
       return accessStorageError(error, 'Failed to mint agent');
     default: {

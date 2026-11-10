@@ -419,7 +419,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.3 Task Management: interface, unit of work, events
 
-**Execution:** `M5.3`. [#249](https://github.com/jmhill/yoink/issues/249). merged, Trunk pending (run [42731265947](https://github.com/jmhill/yoink/actions/runs/42731265947)). [#361](https://github.com/jmhill/yoink/pull/361), `954619ed`.
+**Execution:** `M5.3`. [#249](https://github.com/jmhill/yoink/issues/249). Done ([#361](https://github.com/jmhill/yoink/pull/361), `954619ed`, Trunk [42731265947](https://github.com/jmhill/yoink/actions/runs/42731265947)).
 
 - **Depends on:** M5.2, M4.1b
 - **Do:** checklist steps 3–6:
@@ -533,7 +533,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.13 Access: migrate legacy services (closes 8.5.4)
 
-**Execution:** one issue per service, serialized: `M5.13-admin`, `M5.13-admin-session`, `M5.13-agent`, `M5.13-invitation`, `M5.13-membership`, `M5.13-organization`, `M5.13-passkey`, `M5.13-session`, `M5.13-signup`, `M5.13-token`, `M5.13-user`. [#268](https://github.com/jmhill/yoink/issues/268), [#269](https://github.com/jmhill/yoink/issues/269), [#270](https://github.com/jmhill/yoink/issues/270), [#271](https://github.com/jmhill/yoink/issues/271), [#272](https://github.com/jmhill/yoink/issues/272), [#273](https://github.com/jmhill/yoink/issues/273), [#274](https://github.com/jmhill/yoink/issues/274), [#275](https://github.com/jmhill/yoink/issues/275), [#276](https://github.com/jmhill/yoink/issues/276), [#277](https://github.com/jmhill/yoink/issues/277), [#278](https://github.com/jmhill/yoink/issues/278). `M5.13-admin` is done on main (`e8383e626c81de47e16ad352932254f2c9bd2bc1`, [#345](https://github.com/jmhill/yoink/pull/345)). [#268](https://github.com/jmhill/yoink/issues/268) is closed completed. `M5.13-admin-session` ([#269](https://github.com/jmhill/yoink/issues/269)) is Done (#357, `b66c9614`, Trunk 42716066202). [#279](https://github.com/jmhill/yoink/issues/279) (`M6.1`) is Done (#350, `ab09e22f`, Trunk 42692777112).
+**Execution:** one issue per service, serialized: `M5.13-admin`, `M5.13-admin-session`, `M5.13-agent`, `M5.13-invitation`, `M5.13-membership`, `M5.13-organization`, `M5.13-passkey`, `M5.13-session`, `M5.13-signup`, `M5.13-token`, `M5.13-user`. [#268](https://github.com/jmhill/yoink/issues/268), [#269](https://github.com/jmhill/yoink/issues/269), [#270](https://github.com/jmhill/yoink/issues/270), [#271](https://github.com/jmhill/yoink/issues/271), [#272](https://github.com/jmhill/yoink/issues/272), [#273](https://github.com/jmhill/yoink/issues/273), [#274](https://github.com/jmhill/yoink/issues/274), [#275](https://github.com/jmhill/yoink/issues/275), [#276](https://github.com/jmhill/yoink/issues/276), [#277](https://github.com/jmhill/yoink/issues/277), [#278](https://github.com/jmhill/yoink/issues/278). `M5.13-admin` is done on main (`e8383e626c81de47e16ad352932254f2c9bd2bc1`, [#345](https://github.com/jmhill/yoink/pull/345)). [#268](https://github.com/jmhill/yoink/issues/268) is closed completed. `M5.13-admin-session` ([#269](https://github.com/jmhill/yoink/issues/269)) is Done (#357, `b66c9614`, Trunk 42716066202). `M5.13-agent` ([#270](https://github.com/jmhill/yoink/issues/270)) is In review ([#360](https://github.com/jmhill/yoink/pull/360)). [#279](https://github.com/jmhill/yoink/issues/279) (`M6.1`) is Done (#350, `ab09e22f`, Trunk 42692777112).
 
 - **Depends on:** M5.12
 - **Do:**
@@ -593,7 +593,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.4 Admin edge (`/admin-api/`)
 
-**Execution:** `M6.4`. [#290](https://github.com/jmhill/yoink/issues/290). In review ([#359](https://github.com/jmhill/yoink/pull/359)).
+**Execution:** `M6.4`. [#290](https://github.com/jmhill/yoink/issues/290). Done ([#359](https://github.com/jmhill/yoink/pull/359), `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)).
 
 - **Depends on:** M5.12
 - **Do:**
@@ -788,7 +788,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.1-check` | `M1.3`, `M4.2` | — | Done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). `change_log.subject_type` may be `capture`. No capture event is emitted. | None. | [#246](https://github.com/jmhill/yoink/issues/246) |
 | `M5.1` | `M3.6`, `M4.3`, `M5.1-check`, `M4.1b` | — | Done ([#343](https://github.com/jmhill/yoink/pull/343), `72780cac9169dd24ab1403ae69395da72f9ee253`). | None. | [#247](https://github.com/jmhill/yoink/issues/247) |
 | `M5.2` | `M5.1`, `CL-WORK` | — | Done (#352, `4c4b28bb`, Trunk [42701505987](https://github.com/jmhill/yoink/actions/runs/42701505987)) | Tasks, projects, lists, and the Now, due, and work-list queries live in `modules/task-management/`. `work/` is gone. `/api/work/*` stays on the public API edge. `composition-root.ts` and `app.ts` changed only to import the new entry. Allowlist 33 to 29. Lint 150 to 93 (`boundaries/element-types` 117 to 60, `@typescript-eslint/no-explicit-any` 33). | [#248](https://github.com/jmhill/yoink/issues/248) |
-| `M5.3` | `M5.2`, `M4.1b` | — | merged, Trunk pending (run [42731265947](https://github.com/jmhill/yoink/actions/runs/42731265947)). [#361](https://github.com/jmhill/yoink/pull/361), `954619ed`. | Task, project, list, and import writes, including project-done for 1,000 open tasks, commit through the shared unit of work. `prepare.createTask` and `prepare.createProject` are published. `TaskDeleted` `source` is on the integration event; the timeline payload stays `{ captureId }`. The assignee port stays `OrgPrincipalLookup`. Allowlist 29 to 28: removed `FROM change_log` in `project-store-backed-persist.ts`. Lint unchanged at 93 (`boundaries/element-types` 60, `@typescript-eslint/no-explicit-any` 33). | [#249](https://github.com/jmhill/yoink/issues/249) |
+| `M5.3` | `M5.2`, `M4.1b` | — | Done (#361, `954619ed`, Trunk [42731265947](https://github.com/jmhill/yoink/actions/runs/42731265947)). | Task, project, list, and import writes, including project-done for 1,000 open tasks, commit through the shared unit of work. `prepare.createTask` and `prepare.createProject` are published. `TaskDeleted` `source` is on the integration event; the timeline payload stays `{ captureId }`. The assignee port stays `OrgPrincipalLookup`. Allowlist 29 to 28: removed `FROM change_log` in `project-store-backed-persist.ts`. Lint unchanged at 93 (`boundaries/element-types` 60, `@typescript-eslint/no-explicit-any` 33). | [#249](https://github.com/jmhill/yoink/issues/249) |
 | `M5.4` | `M5.3` | — | Not started | None. | [#250](https://github.com/jmhill/yoink/issues/250) |
 | `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Not started | None. Still depends on M5.3. | [#251](https://github.com/jmhill/yoink/issues/251) |
 | `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
@@ -809,7 +809,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.12` | `M4.3`, `M3.5` | — | Done ([#342](https://github.com/jmhill/yoink/pull/342), `bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`). | Known issue [#354](https://github.com/jmhill/yoink/issues/354): Trunk [42629355792](https://github.com/jmhill/yoink/actions/runs/42629355792) stopped responding mid-E2E. The next Trunk, [42647342791](https://github.com/jmhill/yoink/actions/runs/42647342791) on `72780cac`, passed. Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. | [#267](https://github.com/jmhill/yoink/issues/267) |
 | `M5.13-admin` | `M5.12` | — | Done ([#345](https://github.com/jmhill/yoink/pull/345), `e8383e626c81de47e16ad352932254f2c9bd2bc1`). [#268](https://github.com/jmhill/yoink/issues/268) closed completed. | None. `createAdminService` decides, then commits an access plan. The composition root passes the sqlite `unitOfWork` into `createAdminService`, so those plans commit through the access participant. | [#268](https://github.com/jmhill/yoink/issues/268) |
 | `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Done (#357, `b66c9614`, Trunk 42716066202). | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
-| `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Not started | None. | [#270](https://github.com/jmhill/yoink/issues/270) |
+| `M5.13-agent` | `M5.12` | `M5.13-admin-session` | In review ([#360](https://github.com/jmhill/yoink/pull/360)). | None. `createAgentService` decides from the mint command and the membership and organization queries, then commits one access plan. The composition root passes the sqlite `unitOfWork` into `createAgentService`. | [#270](https://github.com/jmhill/yoink/issues/270) |
 | `M5.13-invitation` | `M5.12` | `M5.13-agent` | Not started | None. | [#271](https://github.com/jmhill/yoink/issues/271) |
 | `M5.13-membership` | `M5.12` | `M5.13-invitation` | Not started | None. | [#272](https://github.com/jmhill/yoink/issues/272) |
 | `M5.13-organization` | `M5.12` | `M5.13-membership` | Not started | None. | [#273](https://github.com/jmhill/yoink/issues/273) |
@@ -829,7 +829,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M6.3-history` | `M6.2`, `M5.10-history` | `M6.3-project-page`, `M6.3-tasks-lists` | Not started | None. | [#287](https://github.com/jmhill/yoink/issues/287) |
 | `M6.3-settings` | `M6.2`, `M5.12` | — | Not started | None. | [#288](https://github.com/jmhill/yoink/issues/288) |
 | `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Not started | None. | [#289](https://github.com/jmhill/yoink/issues/289) |
-| `M6.4` | `M5.12` | — | In review (PR #359). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
+| `M6.4` | `M5.12` | — | Done (#359, `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
 | `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | [#291](https://github.com/jmhill/yoink/issues/291) |
 | `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | [#292](https://github.com/jmhill/yoink/issues/292) |
 | `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |

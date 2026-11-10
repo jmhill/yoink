@@ -332,7 +332,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   // Passkey and session services (for signup flow)
   // Only created if webauthn config is provided
-  let signupDraft: Omit<SignupConfig, 'authenticateToken' | 'completeSignup'> | undefined;
+  let signupDraft:
+    | Omit<SignupConfig, 'authenticateToken' | 'completeSignup' | 'agentService'>
+    | undefined;
   if (config.webauthn) {
     const passkeyCredentialStore = await createSqlitePasskeyCredentialStore(database);
     const userSessionStore = await createSqliteUserSessionStore(database);
@@ -443,28 +445,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         now: () => clock.now().toISOString(),
       });
 
-    const mintedAgentService = createAgentService({
-      userService,
-      membershipService,
-      createToken: (command) =>
-        tokenHandlers.create(command).map(({ token, rawToken }) => ({ token, rawToken })),
-      clock,
-      idGenerator,
-    });
-    const designateNotesMirrorBot = designateNotesMirrorBotFromSqlite(database);
-    const agentService: typeof mintedAgentService = {
-      mintAgent: (command) =>
-        mintedAgentService.mintAgent(command).andThen((minted) =>
-          designateNotesMirrorBot({
-            organizationId: command.organizationId,
-            userId: minted.user.id,
-            name: minted.user.name ?? command.name,
-          })
-            .mapErr((error) => tokenStorageError(error.message, error.cause))
-            .map(() => minted)
-        ),
-    };
-
     signupDraft = {
       signupService,
       passkeyService,
@@ -472,7 +452,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       tokenService,
       userService,
       tokenHandlers,
-      agentService,
       reissueAgentToken,
       transferOwnership,
       changeMemberRole,
@@ -710,6 +689,33 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     };
   }
 
+  let agentService: SignupConfig['agentService'] | undefined;
+  if (signupDraft) {
+    const mintedAgentService = createAgentService({
+      userStore,
+      membershipStore,
+      organizationStore,
+      tokenStore,
+      clock,
+      idGenerator,
+      passwordHasher,
+      unitOfWork,
+    });
+    const designateNotesMirrorBot = designateNotesMirrorBotFromSqlite(database);
+    agentService = {
+      mintAgent: (command) =>
+        mintedAgentService.mintAgent(command).andThen((minted) =>
+          designateNotesMirrorBot({
+            organizationId: command.organizationId,
+            userId: minted.user.id,
+            name: minted.user.name ?? command.name,
+          })
+            .mapErr((error) => tokenStorageError(error.message, error.cause))
+            .map(() => minted)
+        ),
+    };
+  }
+
   const passkeyService = signupDraft?.passkeyService;
   const access = createAccess({
     tokenService,
@@ -736,13 +742,15 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       : null,
     sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
   });
-  const signupConfig: SignupConfig | undefined = signupDraft
-    ? {
-        ...signupDraft,
-        authenticateToken: access.queries.authenticateToken,
-        completeSignup: access.commands.completeSignup,
-      }
-    : undefined;
+  const signupConfig: SignupConfig | undefined =
+    signupDraft && agentService
+      ? {
+          ...signupDraft,
+          agentService,
+          authenticateToken: access.queries.authenticateToken,
+          completeSignup: access.commands.completeSignup,
+        }
+      : undefined;
   authMiddleware = signupConfig
     ? createCombinedAuthMiddleware({
         authenticateToken: access.queries.authenticateToken,

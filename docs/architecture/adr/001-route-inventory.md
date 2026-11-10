@@ -143,7 +143,7 @@ Mounted only when `deps.signup` is set. The registrar still uses combined auth, 
 |---|---|---|---|---|---|---|
 | POST /api/auth/tokens | edges/legacy/tokens/token-routes.ts | tokens | combined | web, tests | client-only | `decide-create-token.ts` calls `requireWebSessionPerson`. Web settings: `apps/web/src/components/tokens-section.tsx`. |
 | DELETE /api/auth/tokens/{tokenId} | edges/legacy/tokens/token-routes.ts | tokens | combined | web, tests | client-only | `decide-revoke-token.ts` calls `requireWebSessionPerson`. |
-| POST /api/organizations/{organizationId}/agents | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | `agent-service.ts` documents a web-session person. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
+| POST /api/organizations/{organizationId}/agents | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | `decideMintAgentCommand` refuses anything other than a web-session person before the name is checked. HTTP actor: personal and agent tokens get 403. Web mint: `apps/web/src/api/auth.ts`. |
 | POST /api/organizations/{organizationId}/members/{userId}/token | edges/legacy/organization/organization-routes.ts | organizations | combined | web, tests | client-only | `decide-reissue-agent-token.ts` calls `requireWebSessionPerson`. Web reissue: `members-section.tsx`. Reissue returns a new raw token. |
 
 

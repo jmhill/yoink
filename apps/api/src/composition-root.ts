@@ -92,7 +92,6 @@ import {
   createSqliteInvitationStore,
   createSqliteUserStore,
   createSqliteWorkspaceStore,
-  createSqliteSignupStore,
   seedAuthData,
 } from './access/infrastructure/index.js';
 import { createChallengeManager } from './access/domain/challenge.js';
@@ -219,7 +218,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const membershipStore = await createSqliteOrganizationMembershipStore(database);
   const invitationStore = await createSqliteInvitationStore(database);
   const workspaceStore = createSqliteWorkspaceStore(database);
-  const signupStore = createSqliteSignupStore(database);
   const codeGenerator = createCodeGenerator();
 
   const createWorkspace = (command: Parameters<typeof handleCreateWorkspace>[0]) =>
@@ -395,14 +393,28 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       unitOfWork,
     });
 
+    // Validate decides and does not write. Complete decides from the same
+    // queries, planRegistrationCredential verifies and does not write, then
+    // commits the existing signup plan. The user insert stays the only guard.
     const signupService = createSignupService({
       invitationStore,
       userStore,
       organizationStore,
       membershipStore,
-      signupStore,
       clock,
       idGenerator,
+      unitOfWork,
+      verifySignupCredential: (input) =>
+        passkeyService.planRegistrationCredential({
+          userId: input.userId,
+          challenge: input.challenge,
+          response: input.response,
+          ...(input.credentialName === undefined
+            ? {}
+            : { credentialName: input.credentialName }),
+          skipUserIdCheck: true,
+        }),
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
 
     const tokenHandlers = createTokenHandlers({
@@ -706,7 +718,19 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     };
   }
 
-  const passkeyService = signupDraft?.passkeyService;
+  const signupService =
+    signupDraft?.signupService ??
+    createSignupService({
+      invitationStore,
+      userStore,
+      organizationStore,
+      membershipStore,
+      clock,
+      idGenerator,
+      unitOfWork,
+      verifySignupCredential: null,
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    });
   const access = createAccess({
     tokenService,
     sessionService: signupDraft?.sessionService ?? null,
@@ -718,19 +742,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     clock,
     idGenerator,
     unitOfWork,
-    verifySignupCredential: passkeyService
-      ? (input) =>
-          passkeyService.planRegistrationCredential({
-            userId: input.userId,
-            challenge: input.challenge,
-            response: input.response,
-            ...(input.credentialName === undefined
-              ? {}
-              : { credentialName: input.credentialName }),
-            skipUserIdCheck: true,
-          })
-      : null,
-    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    signupService,
   });
   const signupConfig: SignupConfig | undefined =
     signupDraft && agentService

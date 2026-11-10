@@ -17,5 +17,5 @@ export type {
   Unauthenticated,
   UserDisplayName,
 } from './application/access-types.js';
-export type { CompleteSignupInput } from './application/handle-complete-signup.js';
+export type { CompleteSignupInput } from './application/handle-signup.js';
 export type { UserSession } from './domain/user-session.js';

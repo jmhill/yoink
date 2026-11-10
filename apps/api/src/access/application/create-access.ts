@@ -7,6 +7,7 @@ import type { InvitationStore } from '../domain/invitation-store.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import type { SessionService } from './handle-session.js';
+import type { SignupService } from './handle-signup.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { UserStore } from '../domain/user-store.js';
 import type {
@@ -25,11 +26,7 @@ import {
   idleSession,
   recordSessionActivityWith,
 } from './authenticate-principal.js';
-import {
-  completeSignup,
-  type CompleteSignupInput,
-  type VerifySignupCredential,
-} from './handle-complete-signup.js';
+import type { CompleteSignupInput } from './handle-signup.js';
 
 export type LoadOrganizationTimeZone = (
   organizationId: string
@@ -46,8 +43,7 @@ export type AccessDependencies = {
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
   readonly unitOfWork: UnitOfWork;
-  readonly verifySignupCredential: VerifySignupCredential | null;
-  readonly sessionTtlMs: number;
+  readonly signupService: Pick<SignupService, 'completeSignup'>;
 };
 
 export type Access = {
@@ -89,7 +85,7 @@ export const createAccess = (deps: AccessDependencies): Access => {
 
   return {
     commands: {
-      completeSignup: (input) => completeSignup(input, deps),
+      completeSignup: (input) => deps.signupService.completeSignup(input),
       recordSessionActivity,
     },
     queries: {

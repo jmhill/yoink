@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { errAsync } from 'neverthrow';
 import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '@yoink/api-contracts';
-import { createSignupService, type SignupService } from './signup-service.js';
+import { createSignupService, type SignupService } from './handle-signup.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
-import { createFakeSignupStore } from '../infrastructure/fake-signup-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Invitation } from './invitation.js';
-import type { Organization } from './organization.js';
+import type { UnitOfWork } from '../../kernel/unit-of-work.js';
+import type { Invitation } from '../domain/invitation.js';
+import type { Organization } from '../domain/organization.js';
 
 const TEST_ORG: Organization = {
   id: '550e8400-e29b-41d4-a716-446655440001',
@@ -47,21 +48,26 @@ describe('SignupService', () => {
     userStore = createFakeUserStore();
     organizationStore = createFakeOrganizationStore({ initialOrganizations: [TEST_ORG] });
     membershipStore = createFakeOrganizationMembershipStore();
-    const signupStore = createFakeSignupStore({
-      userStore,
-      organizationStore,
-      membershipStore,
-      invitationStore,
-    });
+    const unitOfWork: UnitOfWork = {
+      commit: () =>
+        errAsync({
+          kind: 'Storage',
+          owner: 'access',
+          owners: ['access'],
+          reason: 'validate wrote',
+        }),
+    };
 
     service = createSignupService({
       invitationStore,
       userStore,
       organizationStore,
       membershipStore,
-      signupStore,
       clock,
       idGenerator,
+      unitOfWork,
+      verifySignupCredential: null,
+      sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
   });
 
@@ -197,154 +203,6 @@ describe('SignupService', () => {
       });
 
       expect(result.isOk()).toBe(true);
-    });
-  });
-
-  describe('completeSignup', () => {
-    it('creates user, personal org, and memberships', async () => {
-      const invitation = createTestInvitation();
-      await invitationStore.save(invitation);
-
-      const result = await service.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const { user, personalOrganization, invitedOrganization } = result.value;
-
-        // User created
-        expect(user.email).toBe('alice@example.com');
-
-        // Personal org created and named after email
-        expect(personalOrganization.name).toBe("alice@example.com's Workspace");
-
-        // Invited org info
-        expect(invitedOrganization.id).toBe(TEST_ORG.id);
-        expect(invitedOrganization.name).toBe(TEST_ORG.name);
-        expect(invitedOrganization.role).toBe('member');
-      }
-    });
-
-    it('creates membership as owner in personal org', async () => {
-      const invitation = createTestInvitation();
-      await invitationStore.save(invitation);
-
-      const result = await service.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const personalMembership = await membershipStore.findByUserAndOrg(
-          result.value.user.id,
-          result.value.personalOrganization.id
-        );
-        expect(personalMembership.isOk()).toBe(true);
-        if (personalMembership.isOk() && personalMembership.value) {
-          expect(personalMembership.value.role).toBe('owner');
-          expect(personalMembership.value.isPersonalOrg).toBe(true);
-        }
-      }
-    });
-
-    it('creates membership in invited org with invitation role', async () => {
-      const invitation = createTestInvitation({ role: 'admin' });
-      await invitationStore.save(invitation);
-
-      const result = await service.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const invitedMembership = await membershipStore.findByUserAndOrg(
-          result.value.user.id,
-          TEST_ORG.id
-        );
-        expect(invitedMembership.isOk()).toBe(true);
-        if (invitedMembership.isOk() && invitedMembership.value) {
-          expect(invitedMembership.value.role).toBe('admin');
-          expect(invitedMembership.value.isPersonalOrg).toBe(false);
-        }
-      }
-    });
-
-    it('marks invitation as accepted', async () => {
-      const invitation = createTestInvitation();
-      await invitationStore.save(invitation);
-
-      const result = await service.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const updatedInvitation = await invitationStore.findByCode('ABCD1234');
-        expect(updatedInvitation.isOk()).toBe(true);
-        if (updatedInvitation.isOk() && updatedInvitation.value) {
-          expect(updatedInvitation.value.acceptedAt).not.toBeNull();
-          expect(updatedInvitation.value.acceptedByUserId).toBe(result.value.user.id);
-        }
-      }
-    });
-
-    it('rejects when email already registered', async () => {
-      const invitation = createTestInvitation();
-      await invitationStore.save(invitation);
-
-      // Register a user with the same email
-      await userStore.save({
-        id: 'existing-user',
-        email: 'alice@example.com',
-        createdAt: '2024-01-01T00:00:00.000Z',
-      });
-
-      const result = await service.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe('EMAIL_ALREADY_REGISTERED');
-      }
-    });
-
-    it('leaves no user, org, membership, or accepted invite when signup persist fails', async () => {
-      const invitation = createTestInvitation();
-      await invitationStore.save(invitation);
-      const failingSignupStore = createFakeSignupStore({
-        userStore,
-        organizationStore,
-        membershipStore,
-        invitationStore,
-        shouldFailOnCompleteSignup: true,
-      });
-      const failingService = createSignupService({
-        invitationStore,
-        userStore,
-        organizationStore,
-        membershipStore,
-        signupStore: failingSignupStore,
-        clock,
-        idGenerator,
-      });
-
-      const result = await failingService.completeSignup({
-        code: 'ABCD1234',
-        email: 'alice@example.com',
-      });
-
-      expect(result.isErr()).toBe(true);
-      const users = await userStore.findByNormalizedEmail('alice@example.com');
-      expect(users.isOk() && users.value).toBeNull();
-      const stillPending = await invitationStore.findByCode('ABCD1234');
-      expect(stillPending.isOk() && stillPending.value?.acceptedAt).toBeNull();
     });
   });
 });

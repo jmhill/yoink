@@ -13,7 +13,7 @@ import {
   createSqliteUnitOfWork,
   libsqlWriteClient,
 } from '../../../platform/unit-of-work/sqlite-unit-of-work.js';
-import { completeSignup } from '../../application/handle-complete-signup.js';
+import { completeSignup } from '../../application/handle-signup.js';
 import type { SignupPlan } from '../../domain/signup-plan.js';
 import { createSqliteInvitationStore } from '../sqlite-invitation-store.js';
 import { createSqliteOrganizationMembershipStore } from '../sqlite-organization-membership-store.js';

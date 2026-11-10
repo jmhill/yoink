@@ -1,5 +1,12 @@
-// Today's published surface is the four handler factories and the task service.
-// M5.3 replaces this file with commands, queries, and prepare.
+// Commands, queries, and prepare are the published surface. The handler
+// factories stay so existing callers and tests keep their ports.
+export {
+  createTaskManagement,
+  type CreateTaskManagementDeps,
+  type ProjectStarter,
+  type TaskManagement,
+  type TaskStarter,
+} from './application/create-task-management.js';
 export {
   createListHandlers,
   type ListHandlerDeps,

@@ -57,16 +57,6 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     removedBy: 'M4.4',
   },
 
-  // M5.3 stops task-management SQL from deleting history rows.
-  // M5.3
-  {
-    path: 'modules/task-management/infrastructure/persistence/project-store-backed-persist.ts',
-    keyword: 'FROM',
-    table: 'change_log',
-    count: 1,
-    removedBy: 'M5.3',
-  },
-
   // M5.5 deletes process-row-statements.ts and softDeleteCaptureQuery.
   // M5.5
   {

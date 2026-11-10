@@ -14,6 +14,7 @@ import {
 } from './platform/unit-of-work/sqlite-unit-of-work.js';
 import { createHistoryEventSink } from './modules/history/application/prepare-event-sink.js';
 import { CAPTURE_TIMELINE_BUILDERS } from './modules/history/domain/capture-timeline.js';
+import { TASK_TIMELINE_BUILDERS } from './modules/history/domain/task-timeline.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
 import { createAccess } from './access/index.js';
@@ -31,15 +32,13 @@ import {
   createSqliteCaptureStore,
 } from './modules/captures/infrastructure/persistence/sqlite-capture-store.js';
 import {
-  createListHandlers,
-  createProjectHandlers,
-  createTaskHandlers,
+  createTaskManagement,
   createTaskService,
-  createWorkHandlers,
   storageError,
 } from './modules/task-management/index.js';
+import { createFakeTaskManagementParticipant } from './modules/task-management/infrastructure/fakes/fake-task-management-participant.js';
+import { taskManagementSqlParticipant } from './modules/task-management/infrastructure/persistence/task-management-sql-participant.js';
 import { createSqliteListStore } from './modules/task-management/infrastructure/persistence/sqlite-list-store.js';
-import { createSqliteListPersist } from './modules/task-management/infrastructure/persistence/list-store-backed-persist.js';
 import { createNoteHandlers } from './notes/application/create-note-handlers.js';
 import { createSqliteNotesBackend } from './notes/infrastructure/sqlite-notes-backend.js';
 import { loadOrgPersonFromSqlite } from './notes/infrastructure/load-org-person.js';
@@ -49,19 +48,8 @@ import {
 } from './notes/infrastructure/load-notes-mirror-bot.js';
 import { storageError as noteStorageError } from './notes/domain/note-errors.js';
 import { createSqliteProjectStore } from './modules/task-management/infrastructure/persistence/sqlite-project-store.js';
-import {
-  createSqliteImportDiscard,
-  createSqliteImportPersist,
-  createSqliteProjectPersist,
-  createSqliteProjectStatusPersist,
-} from './modules/task-management/infrastructure/persistence/project-store-backed-persist.js';
 import { createSqliteImportStore } from './modules/task-management/infrastructure/persistence/sqlite-import-store.js';
 import { createSqliteTaskStore } from './modules/task-management/infrastructure/persistence/sqlite-task-store.js';
-import { createSqliteTaskPersist } from './modules/task-management/infrastructure/persistence/task-store-backed-persist.js';
-import {
-  clearCompletedListIdQuery,
-  setOpenOrderQueries,
-} from './modules/task-management/infrastructure/persistence/rows/task-row-statements.js';
 import { createPinoCommandLogger, createPinoHistoryReadLogger } from './platform/logging/index.js';
 import { createHistoryHandlers } from './modules/history/index.js';
 import { createSqliteChangeLogStore } from './modules/history/infrastructure/sqlite-change-log-store.js';
@@ -501,12 +489,17 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const captureStore = await createSqliteCaptureStore(database, clock);
   const historySink = createHistoryEventSink({
     ids: idGenerator,
-    builders: CAPTURE_TIMELINE_BUILDERS,
+    builders: { ...CAPTURE_TIMELINE_BUILDERS, ...TASK_TIMELINE_BUILDERS },
   });
   const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
   const unitOfWork = createSqliteUnitOfWork({
     client: writeClient,
-    participants: [accessSqlParticipant, historySqlParticipant, capturesSqlParticipant],
+    participants: [
+      accessSqlParticipant,
+      historySqlParticipant,
+      capturesSqlParticipant,
+      taskManagementSqlParticipant,
+    ],
     sink: historySink,
     logger: {
       error: (fields) => {
@@ -519,6 +512,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       createFakeSignupParticipant(),
       createFakeHistoryParticipant(),
       createFakeCaptureParticipant(createFakeCaptureStore()),
+      createFakeTaskManagementParticipant(),
     ],
     sink: historySink,
   });
@@ -537,30 +531,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   const listStore = await createSqliteListStore(database);
   const taskStore = await createSqliteTaskStore(database);
-  const listHandlers = createListHandlers({
-    persist: createSqliteListPersist({
-      db: database,
-      taskSql: {
-        clearCompletedListId: clearCompletedListIdQuery,
-        setOpenOrders: setOpenOrderQueries,
-      },
-    }),
-    list: (organizationId) => listStore.findByOrganization(organizationId),
-    pageNamedLists: (options) => listStore.pageByOrganization(options),
-    load: (id) => listStore.findById(id),
-    countOpenOnList: (listId) => taskStore.countOpenOnList(listId),
-    loadOpenTasksOnList: (organizationId, listId) =>
-      taskStore.findOpenInPile({ organizationId, listId }),
-    pageOpenTasksOnList: (options) => taskStore.pageOpenInPile(options),
-    loadTasksByIds: (ids) =>
-      ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
-        tasks.filter((task): task is Task => task !== null)
-      ),
-    nextId: () => idGenerator.generate(),
-    now: () => clock.now().toISOString(),
-    logger: commandLogger,
-  });
-
   const projectStore = await createSqliteProjectStore(database);
   const principalLookup = {
     existsInOrganization: (principalId: string, organizationId: string) =>
@@ -569,18 +539,30 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         .map((membership) => membership !== null)
         .orElse(() => okAsync(false)),
   };
-  const persistProjectBatch = createSqliteProjectStatusPersist({ db: database });
   const importStore = createSqliteImportStore(database);
-  const projectHandlers = createProjectHandlers({
-    persist: createSqliteProjectPersist({ db: database }),
-    persistStatus: (input) =>
-      persistProjectBatch(input).mapErr((error) =>
-        error.type === 'PROJECT_DONE' ? storageError(error.message) : error
+  const workStore = createSqliteWorkStore(database);
+  const taskManagement = createTaskManagement({
+    uow: unitOfWork,
+    logger: commandLogger,
+    nextId: () => idGenerator.generate(),
+    now: () => clock.now().toISOString(),
+    viewerNow: () => clock.now(),
+    principalLookup,
+    listNamedLists: (organizationId) => listStore.findByOrganization(organizationId),
+    pageNamedLists: (options) => listStore.pageByOrganization(options),
+    loadNamedList: (id) => listStore.findById(id),
+    countOpenOnList: (listId) => taskStore.countOpenOnList(listId),
+    loadOpenTasksOnList: (organizationId, listId) =>
+      taskStore.findOpenInPile({ organizationId, listId }),
+    pageOpenTasksOnList: (options) => taskStore.pageOpenInPile(options),
+    loadListTasksByIds: (ids) =>
+      ResultAsync.combine(ids.map((id) => taskStore.findById(id))).map((tasks) =>
+        tasks.filter((task): task is Task => task !== null)
       ),
-    persistSetNextAction: persistProjectBatch,
+    loadOpenInPile: (organizationId, listId) =>
+      taskStore.findOpenInPile({ organizationId, listId }),
+    list: (options) => taskStore.findByOrganization(options),
     persistStage: (record) => importStore.insert(record),
-    persistApply: createSqliteImportPersist({ db: database }),
-    persistDiscard: createSqliteImportDiscard({ db: database }),
     loadImport: (id) => importStore.findById(id),
     listPendingImports: (organizationId) => importStore.listPending(organizationId),
     loadTasksByIds: (ids) => taskStore.findByIds(ids),
@@ -602,19 +584,20 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         .findById(userId)
         .map((user) => user?.name ?? user?.email ?? 'Unknown')
         .mapErr((error) => storageError(error.message)),
-    list: (organizationId) => projectStore.findByOrganization(organizationId),
+    listProjects: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
-    load: (id) => projectStore.findById(id),
+    loadProject: (id) => projectStore.findById(id),
     loadTask: (id) => taskStore.findById(id),
-    loadList: (id) => listStore.findById(id),
     loadNextOpenOrder: (organizationId, listId) =>
       taskStore.nextOpenOrderInPile({ organizationId, listId }),
     pageOpenTasksOnProject: (options) => taskStore.pageOpenInProject(options),
-    principalLookup,
-    nextId: () => idGenerator.generate(),
-    now: () => clock.now().toISOString(),
-    logger: commandLogger,
+    pageNextActions: (options) => workStore.pageNextActions(options),
+    pageDue: (options) => workStore.pageDue(options),
+    pageLists: (options) => workStore.pageLists(options),
+    countUnlistedOpen: (organizationId) => workStore.countUnlistedOpen(organizationId),
   });
+  const listHandlers = taskManagement.listHandlers;
+  const projectHandlers = taskManagement.projectHandlers;
 
   const noteHandlers = createNoteHandlers({
     backend: createSqliteNotesBackend(database),
@@ -652,33 +635,8 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const taskService = createTaskService({
     store: taskStore,
   });
-  const taskHandlers = createTaskHandlers({
-    persist: createSqliteTaskPersist({
-      db: database,
-    }),
-    load: (id) => taskStore.findById(id),
-    loadList: (id) => listStore.findById(id),
-    loadProject: (id) => projectStore.findById(id),
-    loadNextOpenOrder: (organizationId, listId) =>
-      taskStore.nextOpenOrderInPile({ organizationId, listId }),
-    loadOpenInPile: (organizationId, listId) =>
-      taskStore.findOpenInPile({ organizationId, listId }),
-    list: (options) => taskStore.findByOrganization(options),
-    viewerNow: () => clock.now(),
-    principalLookup,
-    nextId: () => idGenerator.generate(),
-    now: () => clock.now().toISOString(),
-    logger: commandLogger,
-  });
-
-  const workStore = createSqliteWorkStore(database);
-  const workHandlers = createWorkHandlers({
-    pageNextActions: (options) => workStore.pageNextActions(options),
-    pageDue: (options) => workStore.pageDue(options),
-    pageLists: (options) => workStore.pageLists(options),
-    countUnlistedOpen: (organizationId) => workStore.countUnlistedOpen(organizationId),
-    now: () => clock.now(),
-  });
+  const taskHandlers = taskManagement.taskHandlers;
+  const workHandlers = taskManagement.workHandlers;
 
   const reviewStore = createSqliteReviewStore(database);
   const reviewLookups = createSqliteTimelineLookups(database);

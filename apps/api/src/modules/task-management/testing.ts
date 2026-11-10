@@ -15,3 +15,4 @@ export {
   type FakeTaskStore,
 } from './infrastructure/fakes/fake-task-store.js';
 export { createFakeWorkStore } from './infrastructure/fakes/fake-work-store.js';
+export { createFakeTaskManagementParticipant } from './infrastructure/fakes/fake-task-management-participant.js';

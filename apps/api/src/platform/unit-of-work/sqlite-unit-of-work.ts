@@ -188,7 +188,7 @@ const commitSqlite = async (input: {
       return err({
         kind: 'Conflict',
         owner: step.owner,
-        reason: 'guard-miss',
+        reason: guardReason(step.statement.sql),
       });
     }
   }
@@ -207,6 +207,11 @@ const commitSqlite = async (input: {
   }
   return ok(undefined);
 };
+
+const GUARD_REASON = /--\s*guard:([a-z0-9-]+)/;
+
+/** A leading `-- guard:<reason>` names the conflict. Anything else stays guard-miss. */
+const guardReason = (sql: string): string => GUARD_REASON.exec(sql)?.[1] ?? 'guard-miss';
 
 const modulesOf = (planned: readonly Planned[]): readonly ModuleName[] =>
   planned.map((step) => step.owner);

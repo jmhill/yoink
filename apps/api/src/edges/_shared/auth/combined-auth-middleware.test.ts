@@ -6,7 +6,7 @@ import cookie from '@fastify/cookie';
 import { AUTH_TRY_AGAIN_MESSAGE } from './token-validation-response.js';
 import { combinedAuthFromServices } from './auth-from-services.js';
 import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
-import { createTokenService } from '../../../access/domain/token-service.js';
+import { createTokenService } from '../../../access/application/handle-token.js';
 import { createSessionService } from '../../../access/application/handle-session.js';
 import type { Organization } from '../../../access/domain/organization.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';

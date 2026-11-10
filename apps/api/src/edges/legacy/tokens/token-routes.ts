@@ -4,7 +4,7 @@ import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
 import type { SessionService } from '../../../access/application/handle-session.js';
-import type { TokenService } from '../../../access/domain/token-service.js';
+import type { TokenService } from '../../../access/application/handle-token.js';
 import type { TokenHandlers } from '../../../access/application/create-token-handlers.js';
 import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import {

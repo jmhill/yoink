@@ -1,6 +1,7 @@
 import { handleCreateToken } from './handle-create-token.js';
 import { handleListTokens } from './handle-list-tokens.js';
 import { handleRevokeToken } from './handle-revoke-token.js';
+import type { UnitOfWork } from '../../kernel/unit-of-work.js';
 import type {
   HashSecret,
   ListUserOrgTokens,
@@ -16,8 +17,9 @@ export type TokenHandlerDeps = {
   load: LoadToken;
   loadMembership: LoadActorMembership;
   loadOwner: LoadTokenOwner;
-  persistCreate: PersistTokenCreated;
-  persistRevoke: PersistTokenRevoked;
+  persistCreate?: PersistTokenCreated;
+  persistRevoke?: PersistTokenRevoked;
+  unitOfWork?: UnitOfWork;
   hashSecret: HashSecret;
   nextId: () => string;
   nextSecret: () => string;
@@ -35,7 +37,8 @@ export const createTokenHandlers = (deps: TokenHandlerDeps) => ({
   revoke: (command: Parameters<typeof handleRevokeToken>[0]) =>
     handleRevokeToken(command, {
       load: deps.load,
-      persistRevoke: deps.persistRevoke,
+      ...(deps.persistRevoke === undefined ? {} : { persistRevoke: deps.persistRevoke }),
+      ...(deps.unitOfWork === undefined ? {} : { unitOfWork: deps.unitOfWork }),
       now: deps.now,
     }),
 });

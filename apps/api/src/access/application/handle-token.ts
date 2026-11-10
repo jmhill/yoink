@@ -1,17 +1,17 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import type { Clock } from '../../kernel/clock.js';
 import type { PasswordHasher } from '../../kernel/password-hasher.js';
-import type { OrganizationStore } from './organization-store.js';
-import type { UserStore } from './user-store.js';
-import type { TokenStore } from './token-store.js';
-import type { ValidateTokenQuery } from './token-queries.js';
-import type { TokenValidationError } from './auth-errors.js';
+import type { OrganizationStore } from '../domain/organization-store.js';
+import type { UserStore } from '../domain/user-store.js';
+import type { TokenStore } from '../domain/token-store.js';
+import type { ValidateTokenQuery } from '../domain/token-queries.js';
+import type { TokenValidationError } from '../domain/auth-errors.js';
 import {
   decideValidateToken,
   parseToken,
   type ValidateTokenFacts,
   type ValidatedToken,
-} from './decide-validate-token.js';
+} from '../domain/decide-validate-token.js';
 
 export type AuthResult = ValidatedToken;
 
@@ -129,6 +129,7 @@ const loadValidateTokenFacts = async (
   };
 };
 
+/** Validate decides from the queries and the hash compare. The last-used update stays the token store and does not fail the request. */
 export const createTokenService = (deps: TokenServiceDependencies): TokenService => ({
   validateToken: (query) =>
     ResultAsync.fromSafePromise(loadValidateTokenFacts(query, deps)).andThen((facts) => {

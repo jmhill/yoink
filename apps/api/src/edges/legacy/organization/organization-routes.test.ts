@@ -50,7 +50,7 @@ import { createFakeOrganizationMembershipStore } from '../../../access/infrastru
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';
 import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
-import { createTokenService } from '../../../access/domain/token-service.js';
+import { createTokenService } from '../../../access/application/handle-token.js';
 import type { User } from '../../../access/domain/user.js';
 import type { Organization } from '../../../access/domain/organization.js';
 import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';

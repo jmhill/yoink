@@ -715,7 +715,8 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 ### M6: Client edges - Not started
 - [x] M6.1 Extension edge (`/extension-api/v1/`). Done (#350, `ab09e22f`, Trunk 42692777112).
 - [x] M6.2 Web edge foundation (`/web-api/`). Done (#358, `ae8e5ef8`, Trunk 42723879811).
-- [ ] M6.3 Web edge screens. M6.3-settings is Done (#362, `44626fc7`, Trunk 42751521944). M6.3-auth is Done (#364, `d4fb4c44`, Trunk 42762337377). M6.3-tasks-lists is Done (#366, `ba75294b`, Trunk 42775501771). M6.3-project-page is Done (#368, `9c065536`, Trunk 42788324468). M6.3-work is merged (#371, `0fa821ef`), Trunk pending. The other screens are not.- [x] M6.4 Admin edge (`/admin-api/`). Done (#359, `07fd98d3`, Trunk 42739846940).
+- [ ] M6.3 Web edge screens. M6.3-settings is Done (#362, `44626fc7`, Trunk 42751521944). M6.3-auth is Done (#364, `d4fb4c44`, Trunk 42762337377). M6.3-tasks-lists is Done (#366, `ba75294b`, Trunk 42775501771). M6.3-project-page is Done (#368, `9c065536`, Trunk 42788324468). M6.3-work is merged (#371, `0fa821ef`), Trunk pending. The other screens are not.
+- [x] M6.4 Admin edge (`/admin-api/`). Done (#359, `07fd98d3`, Trunk 42739846940).
 - [ ] M6.5 Remove client-only legacy routes
 - [ ] M6.6 Remove `/api/admin/...` from the dev proxy and docs
 

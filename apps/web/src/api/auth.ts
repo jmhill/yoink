@@ -16,7 +16,13 @@ import {
   type SignupOptionsResponse,
   type SignupVerifyResponse,
 } from '@yoink/api-contracts';
-import { httpFailureBody, httpFailureMessage, httpStatusOf, settingsClient } from '@/api/client';
+import {
+  authWebClient,
+  httpFailureBody,
+  httpFailureMessage,
+  httpStatusOf,
+  settingsClient,
+} from '@/api/client';
 
 const messageFromErrorBody = (body: unknown, fallback: string): string => {
   const parsed = ErrorSchema.safeParse(body);
@@ -46,18 +52,12 @@ export type SessionInfo = {
  * Used to check if user is authenticated.
  */
 export const getSession = async (): Promise<ApiResponse<SessionInfo>> => {
-  const response = await fetch('/api/auth/session', {
-    method: 'GET',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Not authenticated' };
+  try {
+    const data = await authWebClient.session();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Not authenticated' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -66,20 +66,18 @@ export const getSession = async (): Promise<ApiResponse<SessionInfo>> => {
 const getLoginOptions = async (): Promise<
   ApiResponse<{ options: PublicKeyCredentialRequestOptionsJSON; challenge: string }>
 > => {
-  const response = await fetch('/api/auth/login/options', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to get login options' };
+  try {
+    const data = await authWebClient.loginOptions({});
+    return {
+      ok: true,
+      data: {
+        options: data.options as PublicKeyCredentialRequestOptionsJSON,
+        challenge: data.challenge,
+      },
+    };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to get login options' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -89,20 +87,12 @@ const verifyLogin = async (options: {
   challenge: string;
   credential: AuthenticationResponseJSON;
 }): Promise<ApiResponse<{ user: { id: string; email: string } }>> => {
-  const response = await fetch('/api/auth/login/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Login failed' };
+  try {
+    const data = await authWebClient.loginVerify(options);
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Login failed' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -139,30 +129,7 @@ export const loginWithPasskey = async (): Promise<
   });
 };
 
-/**
- * Switch the current organization for the session.
- * Join still uses this alias path. Settings and the header switcher use
- * `switchWebOrganization`.
- */
-export const switchOrganization = async (
-  organizationId: string
-): Promise<ApiResponse<{ success: true }>> => {
-  const response = await fetch('/api/organizations/switch', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ organizationId }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to switch organization' };
-  }
-
-  return { ok: true, data: { success: true } };
-};
-
-/** Header and settings organization switch. */
+/** Header, settings, and join organization switch. */
 export const switchWebOrganization = async (
   organizationId: string
 ): Promise<ApiResponse<{ success: true }>> => {
@@ -218,17 +185,12 @@ export const leaveOrganization = async (
  * Logout - revoke session and clear cookie.
  */
 export const logout = async (): Promise<ApiResponse<{ success: true }>> => {
-  const response = await fetch('/api/auth/logout', {
-    method: 'POST',
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Logout failed' };
+  try {
+    await authWebClient.logout({});
+    return { ok: true, data: { success: true } };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Logout failed' };
   }
-
-  return { ok: true, data: { success: true } };
 };
 
 /**
@@ -247,29 +209,35 @@ export const validateInvitation = async (
     expiresAt: string;
   }>
 > => {
-  const response = await fetch('/api/invitations/validate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(email === undefined ? { code } : { code, email }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+  try {
+    const data = await authWebClient.validateInvitation(
+      email === undefined ? { code } : { code, email }
+    );
+    return {
+      ok: true,
+      data: {
+        id: data.id,
+        organizationId: data.organizationId,
+        organizationName: data.organizationName ?? '',
+        email: data.email,
+        role: data.role,
+        expiresAt: data.expiresAt,
+      },
+    };
+  } catch (error) {
+    const status = httpStatusOf(error);
     return {
       ok: false,
       error: messageFromErrorBody(
-        body,
-        response.status === 404
+        httpFailureBody(error),
+        status === 404
           ? INVITATION_NOT_FOUND_MESSAGE
-          : response.status === 410
+          : status === 410
             ? INVITATION_EXPIRED_MESSAGE
             : 'Invalid invitation'
       ),
     };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -286,26 +254,26 @@ export const acceptInvitation = async (
     role: 'owner' | 'admin' | 'member';
   }>
 > => {
-  const response = await fetch('/api/invitations/accept', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ code }),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    if (response.status === 401) {
+  try {
+    const data = await authWebClient.acceptInvitation({ code });
+    return {
+      ok: true,
+      data: {
+        id: data.id,
+        organizationId: data.organizationId,
+        organizationName: data.organizationName ?? '',
+        role: data.role,
+      },
+    };
+  } catch (error) {
+    if (httpStatusOf(error) === 401) {
       return { ok: false, error: 'Not authenticated' };
     }
     return {
       ok: false,
-      error: messageFromErrorBody(body, 'Failed to accept invitation'),
+      error: messageFromErrorBody(httpFailureBody(error), 'Failed to accept invitation'),
     };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -315,29 +283,23 @@ const getSignupOptions = async (options: {
   code: string;
   email: string;
 }): Promise<ApiResponse<SignupOptionsResponse>> => {
-  const response = await fetch('/api/auth/signup/options', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+  try {
+    const data = await authWebClient.signupOptions(options);
+    return { ok: true, data };
+  } catch (error) {
+    const status = httpStatusOf(error);
     return {
       ok: false,
       error: messageFromErrorBody(
-        body,
-        response.status === 409
+        httpFailureBody(error),
+        status === 409
           ? EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE
-          : response.status === 404
+          : status === 404
             ? INVITATION_NOT_FOUND_MESSAGE
             : 'Failed to get signup options'
       ),
     };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -350,26 +312,18 @@ const verifySignup = async (options: {
   credential: RegistrationResponseJSON;
   credentialName?: string;
 }): Promise<ApiResponse<SignupVerifyResponse>> => {
-  const response = await fetch('/api/auth/signup/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+  try {
+    const data = await authWebClient.signupVerify(options);
+    return { ok: true, data };
+  } catch (error) {
     return {
       ok: false,
       error: messageFromErrorBody(
-        body,
-        response.status === 409 ? EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE : 'Signup failed'
+        httpFailureBody(error),
+        httpStatusOf(error) === 409 ? EMAIL_ALREADY_HAS_ACCOUNT_MESSAGE : 'Signup failed'
       ),
     };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**

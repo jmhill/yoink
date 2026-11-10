@@ -2392,8 +2392,12 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldKeepInboxOnWebEdgeAndTodayOnApiAlias', 'http');
     },
 
-    async shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void> {
-      throw new UnsupportedOperationError('shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias', 'http');
+    async shouldKeepSettingsOnWebEdge(): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepSettingsOnWebEdge', 'http');
+    },
+
+    async shouldKeepAuthOnWebEdge(): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepAuthOnWebEdge', 'http');
     },
 
     async shouldNotSeeQuickAddCapture(): Promise<void> {
@@ -3350,7 +3354,7 @@ export const createHttpActor = (
     },
 
     async listPasskeys(): Promise<PasskeyCredentialInfo[]> {
-      const response = await client.get('/api/auth/passkey/credentials', authHeaders());
+      const response = await client.get('/web-api/auth/passkey/credentials', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -3358,7 +3362,10 @@ export const createHttpActor = (
     },
 
     async deletePasskey(credentialId: string): Promise<void> {
-      const response = await client.delete(`/api/auth/passkey/credentials/${credentialId}`, authHeaders());
+      const response = await client.delete(
+        `/web-api/auth/passkey/credentials/${credentialId}`,
+        authHeaders()
+      );
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }
@@ -3479,7 +3486,7 @@ export const createHttpActor = (
         role: 'owner' | 'admin' | 'member';
       }>;
     }> {
-      const response = await client.get('/api/auth/session', authHeaders());
+      const response = await client.get('/web-api/auth/session', authHeaders());
       if (response.statusCode === 401) {
         throw new UnauthorizedError();
       }

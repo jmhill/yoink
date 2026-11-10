@@ -4,49 +4,30 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 import type { PasskeyCredentialInfo } from '@yoink/api-contracts';
+import { authWebClient, httpFailureMessage } from '@/api/client';
 import { tokenStorage } from '@/lib/token';
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
 /**
- * Get headers for passkey API requests.
- * Includes Bearer token for backwards compatibility with token-authenticated users.
- * 
- * NOTE: Token fallback is for existing users who haven't migrated to passkeys yet.
- * Remove token handling once all users have registered passkeys.
- * See docs/PLAN.md Phase 7.7c for removal criteria.
- */
-const getAuthHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  const token = tokenStorage.get();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-};
-
-/**
  * Fetch passkey registration options from the server.
+ * The web client still sends a stored bearer token until PLAN 7.7c.
  */
 export const getPasskeyRegistrationOptions = async (): Promise<
   ApiResponse<{ options: PublicKeyCredentialCreationOptionsJSON; challenge: string }>
 > => {
-  const response = await fetch('/api/auth/passkey/register/options', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    credentials: 'include',
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to get registration options' };
+  try {
+    const data = await authWebClient.registerPasskeyOptions({});
+    return {
+      ok: true,
+      data: {
+        options: data.options as PublicKeyCredentialCreationOptionsJSON,
+        challenge: data.challenge,
+      },
+    };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to get registration options' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -57,20 +38,12 @@ export const verifyPasskeyRegistration = async (options: {
   credential: RegistrationResponseJSON;
   credentialName?: string;
 }): Promise<ApiResponse<{ credential: PasskeyCredentialInfo }>> => {
-  const response = await fetch('/api/auth/passkey/register/verify', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    credentials: 'include',
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to verify registration' };
+  try {
+    const data = await authWebClient.registerPasskey(options);
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to verify registration' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -79,19 +52,12 @@ export const verifyPasskeyRegistration = async (options: {
 export const listPasskeys = async (): Promise<
   ApiResponse<{ credentials: PasskeyCredentialInfo[] }>
 > => {
-  const response = await fetch('/api/auth/passkey/credentials', {
-    method: 'GET',
-    headers: getAuthHeaders(),
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to list passkeys' };
+  try {
+    const data = await authWebClient.listPasskeys();
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to list passkeys' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**
@@ -100,19 +66,12 @@ export const listPasskeys = async (): Promise<
 export const deletePasskey = async (
   credentialId: string
 ): Promise<ApiResponse<{ message: string }>> => {
-  const response = await fetch(`/api/auth/passkey/credentials/${encodeURIComponent(credentialId)}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    return { ok: false, error: body.message || 'Failed to delete passkey' };
+  try {
+    const data = await authWebClient.deletePasskey({ credentialId });
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: httpFailureMessage(error) || 'Failed to delete passkey' };
   }
-
-  const data = await response.json();
-  return { ok: true, data };
 };
 
 /**

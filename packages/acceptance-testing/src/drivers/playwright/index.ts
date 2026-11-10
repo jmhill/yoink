@@ -51,7 +51,7 @@ const throwSignupInvitationError = (errorMsg: string | null, code: string): neve
  */
 const readSignupSession = async (page: Page): Promise<SignupSession> => {
   const sessionPromise = page.evaluate(async () => {
-    const response = await fetch('/api/auth/session', {
+    const response = await fetch('/web-api/auth/session', {
       credentials: 'include',
     });
     if (!response.ok) {

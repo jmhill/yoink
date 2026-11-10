@@ -9,8 +9,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-settings-edge@example.com');
     });
 
-    it('loads members, invitations, and tokens on /web-api and passkeys on /api', async () => {
-      await alice.shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias();
+    it('loads members, invitations, tokens, and passkeys on /web-api', async () => {
+      await alice.shouldKeepSettingsOnWebEdge();
     });
   });
 });

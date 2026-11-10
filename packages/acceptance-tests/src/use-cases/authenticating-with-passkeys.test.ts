@@ -51,7 +51,7 @@ usingDrivers(['http'] as const, (ctx) => {
         // The login options endpoint should be accessible without auth
         // We can test this via a direct HTTP call since we just need to verify
         // the endpoint exists and returns 200
-        const response = await fetch(`${ctx.baseUrl}/api/auth/login/options`, {
+        const response = await fetch(`${ctx.baseUrl}/web-api/auth/login/options`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
@@ -63,12 +63,22 @@ usingDrivers(['http'] as const, (ctx) => {
         expect(body.options).toBeDefined();
         expect(body.challenge).toBeDefined();
       });
+
+      it('keeps alias login options public', async () => {
+        const response = await fetch(`${ctx.baseUrl}/api/auth/login/options`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+
+        expect(response.status).toBe(200);
+      });
     });
 
     describe('login verify endpoint', () => {
       it('returns 401 for invalid credential', async () => {
         // First get valid options with a challenge
-        const optionsResponse = await fetch(`${ctx.baseUrl}/api/auth/login/options`, {
+        const optionsResponse = await fetch(`${ctx.baseUrl}/web-api/auth/login/options`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
@@ -77,7 +87,7 @@ usingDrivers(['http'] as const, (ctx) => {
         const optionsBody = await optionsResponse.json() as { challenge: string };
 
         // Try to verify with a non-existent credential
-        const verifyResponse = await fetch(`${ctx.baseUrl}/api/auth/login/verify`, {
+        const verifyResponse = await fetch(`${ctx.baseUrl}/web-api/auth/login/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -103,11 +113,21 @@ usingDrivers(['http'] as const, (ctx) => {
 
     describe('logout endpoint', () => {
       it('returns 401 for unauthenticated requests', async () => {
-        const response = await fetch(`${ctx.baseUrl}/api/auth/logout`, {
+        const response = await fetch(`${ctx.baseUrl}/web-api/auth/logout`, {
           method: 'POST',
         });
 
         expect(response.status).toBe(401);
+      });
+
+      it('keeps alias logout and session on /api', async () => {
+        const logout = await fetch(`${ctx.baseUrl}/api/auth/logout`, {
+          method: 'POST',
+        });
+        const session = await fetch(`${ctx.baseUrl}/api/auth/session`);
+
+        expect(logout.status).toBe(401);
+        expect(session.status).toBe(401);
       });
 
       // Note: Testing successful logout with session cookie requires Playwright driver

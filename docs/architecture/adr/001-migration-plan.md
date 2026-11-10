@@ -593,7 +593,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.4 Admin edge (`/admin-api/`)
 
-**Execution:** `M6.4`. [#290](https://github.com/jmhill/yoink/issues/290). merged, Trunk pending (run [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). [#359](https://github.com/jmhill/yoink/pull/359), `07fd98d3`.
+**Execution:** `M6.4`. [#290](https://github.com/jmhill/yoink/issues/290). Done ([#359](https://github.com/jmhill/yoink/pull/359), `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)).
 
 - **Depends on:** M5.12
 - **Do:**
@@ -829,7 +829,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M6.3-history` | `M6.2`, `M5.10-history` | `M6.3-project-page`, `M6.3-tasks-lists` | Not started | None. | [#287](https://github.com/jmhill/yoink/issues/287) |
 | `M6.3-settings` | `M6.2`, `M5.12` | — | Not started | None. | [#288](https://github.com/jmhill/yoink/issues/288) |
 | `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Not started | None. | [#289](https://github.com/jmhill/yoink/issues/289) |
-| `M6.4` | `M5.12` | — | merged, Trunk pending (run [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). [#359](https://github.com/jmhill/yoink/pull/359), `07fd98d3`. | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
+| `M6.4` | `M5.12` | — | Done (#359, `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
 | `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | [#291](https://github.com/jmhill/yoink/issues/291) |
 | `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | [#292](https://github.com/jmhill/yoink/issues/292) |
 | `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |

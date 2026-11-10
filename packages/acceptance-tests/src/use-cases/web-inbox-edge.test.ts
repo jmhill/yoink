@@ -9,8 +9,8 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice@example.com');
     });
 
-    it('lists and creates Inbox captures on /web-api and loads Today on /api', async () => {
-      await alice.shouldKeepInboxOnWebEdgeAndTodayOnApiAlias();
+    it('lists and creates Inbox captures on /web-api and loads Today on /web-api', async () => {
+      await alice.shouldKeepInboxOnWebEdgeAndTasksOnWebEdge();
     });
   });
 });

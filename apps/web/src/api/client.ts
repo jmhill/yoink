@@ -2,11 +2,16 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
-import { webAuthContract, webInboxContract, webSettingsContract } from '@yoink/api-contracts/web';
+import {
+  webAuthContract,
+  webInboxContract,
+  webListsContract,
+  webSettingsContract,
+  webTasksContract,
+} from '@yoink/api-contracts/web';
 import {
   authOrpcContract,
   captureOrpcContract,
-  listOrpcContract,
   noteOrpcContract,
   organizationOrpcContract,
   processCaptureToProjectOrpcContract,
@@ -32,7 +37,8 @@ type ProcessToProjectClient = JsonifiedClient<
   RouterContractClient<typeof processCaptureToProjectOrpcContract>
 >;
 type TaskClient = JsonifiedClient<RouterContractClient<typeof taskOrpcContract>>;
-type ListClient = JsonifiedClient<RouterContractClient<typeof listOrpcContract>>;
+type WebTaskClient = JsonifiedClient<RouterContractClient<typeof webTasksContract>>;
+type ListClient = JsonifiedClient<RouterContractClient<typeof webListsContract>>;
 type OrganizationClient = JsonifiedClient<RouterContractClient<typeof organizationOrpcContract>>;
 type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>;
 type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
@@ -193,8 +199,28 @@ export const taskClient: TaskClient = createORPCClient(
   new OpenAPILink(taskOrpcContract, { fetch: fetchWithSession })
 );
 
+/**
+ * Task board create, list, update, complete, uncomplete, and delete.
+ * `/web-api` plus `/tasks` is `/web-api/tasks`. Get, pin, and history stay
+ * on `taskClient`. Project, work, and review keep `taskClient` on `/api`.
+ */
+export const webTaskClient: WebTaskClient = createORPCClient(
+  new OpenAPILink(webTasksContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
+);
+
+/**
+ * Named lists and open-task order. One client, because the rail and every
+ * `['lists']` query share that cache. `/web-api` plus `/lists` is
+ * `/web-api/lists`. The `/api` alias stays for other clients.
+ */
 export const listClient: ListClient = createORPCClient(
-  new OpenAPILink(listOrpcContract, { fetch: fetchWithSession })
+  new OpenAPILink(webListsContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const organizationClient: OrganizationClient = createORPCClient(

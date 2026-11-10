@@ -34,18 +34,27 @@ export type MapOpenTaskUpdate = (
   input: { id: string; body?: UpdateTaskBody }
 ) => Task[];
 
+type OpenTaskCommands = {
+  complete: typeof taskClient.complete;
+  delete: typeof taskClient.delete;
+  update: typeof taskClient.update;
+};
+
 /**
- * Shared complete / delete / edit mutations for Tasks and the project page.
+ * Shared complete / delete / edit mutations for Tasks, Work, and the project page.
+ * Tasks passes the `/web-api` client. The others keep the alias client.
  */
 export const useOpenTaskMutations = (
   queryClient: QueryClient,
   options: {
     mapUpdate: MapOpenTaskUpdate;
     onUpdated?: () => void;
+    commands?: OpenTaskCommands;
   }
 ) => {
+  const commands = options.commands ?? taskClient;
   const completeMutation = useMutation({
-    mutationFn: (input: { id: string }) => taskClient.complete(input),
+    mutationFn: (input: { id: string }) => commands.complete(input),
     onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
@@ -97,7 +106,7 @@ export const useOpenTaskMutations = (
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (input: { id: string }) => taskClient.delete(input),
+    mutationFn: (input: { id: string }) => commands.delete(input),
     onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);
@@ -153,7 +162,7 @@ export const useOpenTaskMutations = (
 
   const updateMutation = useMutation({
     mutationFn: (input: { id: string; body?: UpdateTaskBody }) =>
-      taskClient.update({ id: input.id, ...(input.body ?? {}) }),
+      commands.update({ id: input.id, ...(input.body ?? {}) }),
     onMutate: async ({ id, body }) => {
       await cancelLiveQueries(queryClient);
       const previous = snapshotLiveOpenTaskLists(queryClient);

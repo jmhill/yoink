@@ -1,19 +1,33 @@
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { listedRequestValidationError } from '../_shared/request-validation.js';
 import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
-import { yoinkOpenApiHandlerOptions } from '../_shared/orpc/handler-options.js';
+import {
+  openApiHandlerOptions,
+  yoinkOpenApiHandlerOptions,
+} from '../_shared/orpc/handler-options.js';
 import { createWebAuthHandlers, type WebAuthDependencies } from './auth.js';
 import { WEB_API_PREFIX, dispatchWebApi } from './dispatch.js';
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
 import { webRequestLog } from './log-context.js';
 import { createWebSettingsHandlers, type WebSettingsDependencies } from './settings.js';
+import {
+  createWebTasksListsHandlers,
+  type WebTasksListsDependencies,
+} from './tasks-lists.js';
 
 export type WebApiAuth = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+
+type WebMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 export type WebApiDependencies = {
   captures: WebInboxCaptures;
   combinedAuth: WebApiAuth;
+  /**
+   * Tasks and lists. Public v1 and the `/api` alias keep the same handlers.
+   */
+  tasksLists?: WebTasksListsDependencies;
   /**
    * Present when signup services exist. Token list stays on this edge.
    * Public v1 token list stays bearer-only.
@@ -29,7 +43,7 @@ export type WebApiDependencies = {
 const mount = (
   app: FastifyInstance,
   handler: OpenAPIHandler<OrpcHttpContext>,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | Array<'GET' | 'POST' | 'PATCH' | 'DELETE'>,
+  method: WebMethod | WebMethod[],
   url: string,
   preHandler?: WebApiAuth
 ) => {
@@ -98,7 +112,8 @@ const mountWebAuth = async (
 
 /**
  * `/web-api` is already the web edge prefix.
- * Inbox list and create, settings and organizations when `settings` is set,
+ * Inbox list and create, tasks and lists when `tasksLists` is set,
+ * settings and organizations when `settings` is set,
  * and login, signup, session, passkeys, and join when `auth` is set.
  * Session plus legacy token, the same combined auth as the `/api` alias.
  * Login options, login verify, signup, and invitation validate stay public.
@@ -109,6 +124,32 @@ export const registerWebApi = async (
 ): Promise<void> => {
   const inbox = new OpenAPIHandler(createWebInboxHandlers(deps), yoinkOpenApiHandlerOptions);
   mount(app, inbox, ['GET', 'POST'], `${WEB_API_PREFIX}/inbox`, deps.combinedAuth);
+
+  if (deps.tasksLists !== undefined) {
+    const tasksLists = createWebTasksListsHandlers(deps.tasksLists);
+    const lists = new OpenAPIHandler(tasksLists.lists, yoinkOpenApiHandlerOptions);
+    const tasks = new OpenAPIHandler(
+      tasksLists.tasks,
+      openApiHandlerOptions(listedRequestValidationError)
+    );
+    const at = (
+      handler: OpenAPIHandler<OrpcHttpContext>,
+      method: WebMethod | WebMethod[],
+      path: string
+    ) => {
+      mount(app, handler, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at(lists, ['GET', 'POST'], '/lists');
+    at(lists, ['PATCH', 'DELETE'], '/lists/:id');
+    at(lists, 'GET', '/lists/:id/tasks');
+    at(lists, 'PUT', '/lists/:id/tasks/order');
+    at(lists, 'GET', '/unlisted/tasks');
+    at(lists, 'PUT', '/unlisted/tasks/order');
+    at(tasks, ['GET', 'POST'], '/tasks');
+    at(tasks, ['PATCH', 'DELETE'], '/tasks/:id');
+    at(tasks, 'POST', '/tasks/:id/complete');
+    at(tasks, 'POST', '/tasks/:id/uncomplete');
+  }
 
   if (deps.settings !== undefined) {
     const settings = new OpenAPIHandler(

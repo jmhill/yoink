@@ -15,6 +15,7 @@ import {
   tasksBoardCopyForUrl,
 } from './tasks-board-url.js';
 import { waitForSettledOpenDialog, waitForSettledOpenSheet } from './walkthrough-screenshots.js';
+import { isNamedListCollectionUrl, isNamedListItemUrl } from './web-edge-url.js';
 
 /**
  * Page object for the login page (/login).
@@ -1531,8 +1532,7 @@ export class TasksPage {
 
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lists/') &&
-        response.request().method() === 'DELETE'
+        isNamedListItemUrl(response.url()) && response.request().method() === 'DELETE'
     );
     await deleteButton.click();
 
@@ -2896,8 +2896,7 @@ export class AppRail {
 
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lists') &&
-        response.request().method() === 'POST'
+        isNamedListCollectionUrl(response.url()) && response.request().method() === 'POST'
     );
     await createButton.click();
     const response = await responsePromise;
@@ -3187,8 +3186,7 @@ export class AppRail {
     await dialog.waitFor({ state: 'visible' });
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/lists/') &&
-        response.request().method() === 'DELETE'
+        isNamedListItemUrl(response.url()) && response.request().method() === 'DELETE'
     );
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
     const response = await responsePromise;
@@ -3256,8 +3254,7 @@ export class AppRail {
 
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/lists/${listId}`) &&
-        response.request().method() === 'PATCH'
+        isNamedListItemUrl(response.url(), listId) && response.request().method() === 'PATCH'
     );
     if (submit === 'done') {
       await done.click();

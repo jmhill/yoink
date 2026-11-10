@@ -92,6 +92,7 @@ import {
   SnoozedPage,
   TasksPage,
 } from './page-objects.js';
+import { isLiveTaskOrListGet, isTaskCollectionUrl, isTaskItemUrl } from './web-edge-url.js';
 import { proposedGroupExpectation } from './proposed-rail-check.js';
 import {
   OPEN_DIALOG_CONTENT,
@@ -2897,8 +2898,7 @@ export const createPlaywrightActor = (
       const confirm = page.getByRole('dialog', { name: 'Delete task?' });
       await expect(confirm).toBeVisible();
       const responsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/tasks/') && response.request().method() === 'DELETE'
+        (response) => isTaskItemUrl(response.url()) && response.request().method() === 'DELETE'
       );
       await confirm.getByRole('button', { name: 'Delete' }).click();
       const response = await responsePromise;
@@ -2910,8 +2910,7 @@ export const createPlaywrightActor = (
     async clearTaskProjectFromEdit(): Promise<void> {
       await tasksPage.clearProject();
       const responsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/tasks/') && response.request().method() === 'PATCH'
+        (response) => isTaskItemUrl(response.url()) && response.request().method() === 'PATCH'
       );
       await tasksPage.saveEdit();
       const response = await responsePromise;
@@ -3636,9 +3635,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('#create-task-title')).toBeVisible();
       const responsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/tasks') &&
-          !response.url().includes('/api/tasks/') &&
-          response.request().method() === 'POST'
+          isTaskCollectionUrl(response.url()) && response.request().method() === 'POST'
       );
       await tasksPage.quickAdd(title);
       const response = await responsePromise;
@@ -4000,7 +3997,7 @@ export const createPlaywrightActor = (
       }
     },
 
-    async shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void> {
+    async shouldKeepInboxOnWebEdgeAndTasksOnWebEdge(): Promise<void> {
       const inboxList = page.waitForRequest(
         (request) =>
           request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/inbox'
@@ -4017,12 +4014,72 @@ export const createPlaywrightActor = (
       if (!captureId) {
         throw new Error(`Quick capture did not land in Inbox: "${content}"`);
       }
-      const alias = page.waitForRequest(
-        (request) => new URL(request.url()).pathname === '/api/tasks'
+      const tasks = page.waitForRequest(
+        (request) => new URL(request.url()).pathname === '/web-api/tasks'
       );
       await tasksPage.goto('today');
-      await alias;
+      await tasks;
       await tasksPage.waitForTasksOrEmpty();
+    },
+
+    async shouldKeepTasksListsOnWebEdge(): Promise<void> {
+      const created = await page.request.post('/api/lists', { data: { name: 'Groceries' } });
+      if (created.status() !== 201) {
+        throw new Error(`Failed to create named list: ${created.status()}`);
+      }
+      const named = (await created.json()) as { id: string };
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          path === '/api/tasks' ||
+          path.startsWith('/api/tasks/') ||
+          path === '/api/lists' ||
+          path.startsWith('/api/lists/') ||
+          path === '/api/unlisted/tasks' ||
+          path.startsWith('/api/unlisted/')
+        ) {
+          aliasHits.push(`${request.method()} ${path}`);
+        }
+      };
+      page.on('request', onRequest);
+      try {
+        const today = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/tasks'
+        );
+        const lists = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/lists'
+        );
+        await tasksPage.goto('today');
+        await today;
+        await lists;
+        await tasksPage.waitForTasksOrEmpty();
+
+        const unlisted = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === '/web-api/unlisted/tasks'
+        );
+        await tasksPage.gotoUnlistedPile();
+        await unlisted;
+        await tasksPage.waitForTasksOrEmpty();
+
+        const openTasks = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === `/web-api/lists/${named.id}/tasks`
+        );
+        await tasksPage.gotoNamedPile(named.id);
+        await openTasks;
+        await tasksPage.waitForTasksOrEmpty({ heading: 'Groceries' });
+      } finally {
+        page.off('request', onRequest);
+      }
+      if (aliasHits.length > 0) {
+        throw new Error(`Tasks and lists still called the alias: ${aliasHits.join(', ')}`);
+      }
     },
 
     async shouldNotSeeQuickAddCapture(): Promise<void> {
@@ -5362,9 +5419,9 @@ export const createPlaywrightActor = (
       });
 
       const isOpenListTasksGet = (url: URL): boolean =>
-        url.pathname === `/api/lists/${listId}/tasks`;
+        url.pathname === `/web-api/lists/${listId}/tasks`;
       const isCompletePost = (url: URL): boolean =>
-        url.pathname === `/api/tasks/${taskId}/complete`;
+        url.pathname === `/web-api/tasks/${taskId}/complete`;
 
       const pollRoute = async (route: {
         request: () => { method: () => string };
@@ -5686,7 +5743,7 @@ export const createPlaywrightActor = (
     ): Promise<void> {
       await waitForLiveJsonGet(
         page,
-        (pathname) => pathname === `/api/lists/${listId}/tasks`,
+        (pathname) => pathname === `/web-api/lists/${listId}/tasks`,
         (body) => {
           const tasks = asNamedTasks(body);
           return tasks !== null && matches(tasks);
@@ -5699,7 +5756,7 @@ export const createPlaywrightActor = (
     ): Promise<void> {
       await waitForLiveJsonGet(
         page,
-        (pathname) => pathname === '/api/lists',
+        (pathname) => pathname === '/web-api/lists',
         (body) => {
           const lists = asNamedLists(body);
           return lists !== null && matches(lists);
@@ -5798,9 +5855,7 @@ export const createPlaywrightActor = (
         }
         const url = request.url();
         if (
-          url.includes('/api/tasks') ||
-          url.includes('/api/lists') ||
-          url.includes('/api/unlisted') ||
+          isLiveTaskOrListGet(url) ||
           url.includes('/api/captures') ||
           url.includes('/web-api/inbox')
         ) {
@@ -5826,16 +5881,22 @@ export const createPlaywrightActor = (
         await route.continue();
       };
       await page.route('**/api/tasks**', failGet);
+      await page.route('**/web-api/tasks**', failGet);
       await page.route('**/api/lists**', failGet);
+      await page.route('**/web-api/lists**', failGet);
       await page.route('**/api/unlisted**', failGet);
+      await page.route('**/web-api/unlisted**', failGet);
       await page.route('**/api/captures**', failGet);
       await page.route('**/web-api/inbox**', failGet);
     },
 
     async restoreBackgroundLiveQueries(): Promise<void> {
       await page.unroute('**/api/tasks**');
+      await page.unroute('**/web-api/tasks**');
       await page.unroute('**/api/lists**');
+      await page.unroute('**/web-api/lists**');
       await page.unroute('**/api/unlisted**');
+      await page.unroute('**/web-api/unlisted**');
       await page.unroute('**/api/captures**');
       await page.unroute('**/web-api/inbox**');
     },
@@ -5871,9 +5932,7 @@ export const createPlaywrightActor = (
 
         const responsePromise = page.waitForResponse(
           (response) =>
-            response.url().includes('/api/tasks') &&
-            !response.url().includes('/api/tasks/') &&
-            response.request().method() === 'POST'
+            isTaskCollectionUrl(response.url()) && response.request().method() === 'POST'
         );
         await tasksPage.quickAdd(input.title);
         const response = await responsePromise;

@@ -557,10 +557,11 @@ export default [
             },
             // M6.2 Inbox calls the captures interface.
             // M6.3-settings and M6.3-auth call today's access handlers through narrow ports.
-            // M5.13 replaces those handlers. This edge does not import access SQL.
+            // M6.3-tasks-lists calls the task-management list and task handlers.
+            // M5.13 replaces the access handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],
-              allow: ['captures', 'access'],
+              allow: ['captures', 'access', 'task-management'],
             },
             // M3.3. Only the legacy client edge. These routes still call today's
             // access handlers. M6 moves each client to its own edge. M5.12 and

@@ -725,7 +725,7 @@ describe('table inventory', () => {
     );
     expect(migrationVersion(legacyPaths[0] ?? '')).toBe(1);
     expect(migrationVersion(legacyPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION);
-    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION + 4);
+    expect(migrationVersion(migrationPaths.at(-1) ?? '')).toBe(LEGACY_MIGRATION_VERSION + 5);
 
     for (const path of migrationPaths) {
       applySchemaLiterals(byPath.get(path) ?? [], live);
@@ -1114,11 +1114,11 @@ describe('migration ownership', () => {
 
   it('matches the checked-in sequence and leaves 001 through the legacy cutoff exempt', () => {
     const indexed = migrations.map((migration) => migration.version).sort((left, right) => left - right);
-    // 046 is this branch (M5.8b). 047 is on main (#383 and #387, M5.6).
+    // 046 and 047 are on main. This branch is 048.
     expect(indexed).toEqual(
-      Array.from({ length: LEGACY_MIGRATION_VERSION + 4 }, (_, index) => index + 1)
+      Array.from({ length: LEGACY_MIGRATION_VERSION + 5 }, (_, index) => index + 1)
     );
-    expect(Math.max(...indexed)).toBe(LEGACY_MIGRATION_VERSION + 4);
+    expect(Math.max(...indexed)).toBe(LEGACY_MIGRATION_VERSION + 5);
 
     const files = scanSourceFiles(apiSrc);
     const onDisk = files

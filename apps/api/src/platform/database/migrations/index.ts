@@ -59,6 +59,7 @@ import { migration as allowCaptureChangeLogSubject } from './044-allow-capture-c
 import { migration as createNotesSettings } from './045-create-notes-settings.js';
 import { migration as backfillNotesSettings } from './046-backfill-notes-settings.js';
 import { migration as dropTaskCaptureForeignKey } from './047-drop-task-capture-foreign-key.js';
+import { migration as dropProjectNotesProjectForeignKey } from './048-drop-project-notes-project-foreign-key.js';
 
 export const migrations: Migration[] = [
   createOrganizations,
@@ -108,6 +109,7 @@ export const migrations: Migration[] = [
   createNotesSettings,
   backfillNotesSettings,
   dropTaskCaptureForeignKey,
+  dropProjectNotesProjectForeignKey,
 ];
 
 export type { Migration };

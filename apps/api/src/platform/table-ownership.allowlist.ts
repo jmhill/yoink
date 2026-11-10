@@ -11,11 +11,10 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  *
  * M5.5 removed the processing statements and task-management's capture
  * soft-delete. Processing is a workflow and writes through each module.
+ * M5.7 moved notes' user, membership, and project lookups onto ports.
+ * History writes the note timeline from the integration event.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
-  // Notes still imports insertChangeLogQuery from
-  // modules/history/infrastructure/sql.ts. That SQL stays in that file,
-  // so the import is not a new row. M5.7 stops the call.
   // M4.4 deletes existsClause and the other cross-module guards in history SQL.
   // M4.4
   {
@@ -58,60 +57,10 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     removedBy: 'M4.4',
   },
 
-  // M5.7 moves notes' user, membership, and project lookups onto consumer-owned ports.
-  // M5.7
-  {
-    path: 'notes/infrastructure/load-notes-mirror-bot.ts',
-    keyword: 'FROM',
-    table: 'organization_memberships',
-    count: 1,
-    removedBy: 'M5.7',
-  },
-  // M5.7
-  {
-    path: 'notes/infrastructure/load-notes-mirror-bot.ts',
-    keyword: 'JOIN',
-    table: 'users',
-    count: 1,
-    removedBy: 'M5.7',
-  },
-  // M5.7 — load-org-person.ts is the same person lookup. The issue names the mirror-bot file; this one is the same removal.
-  {
-    path: 'notes/infrastructure/load-org-person.ts',
-    keyword: 'FROM',
-    table: 'organization_memberships',
-    count: 1,
-    removedBy: 'M5.7',
-  },
-  // M5.7
-  {
-    path: 'notes/infrastructure/load-org-person.ts',
-    keyword: 'JOIN',
-    table: 'users',
-    count: 1,
-    removedBy: 'M5.7',
-  },
-  // M5.7
-  {
-    path: 'notes/infrastructure/note-row-statements.ts',
-    keyword: 'JOIN',
-    table: 'projects',
-    count: 1,
-    removedBy: 'M5.7',
-  },
-  // M5.7
-  {
-    path: 'notes/infrastructure/note-row-statements.ts',
-    keyword: 'JOIN',
-    table: 'users',
-    count: 4,
-    removedBy: 'M5.7',
-  },
-
-  // M5.8 moves organizations.notes_mirror_bot_user_id onto notes_settings.
+  // M5.8c moves organizations.notes_mirror_bot_user_id onto notes_settings.
   // M5.8
   {
-    path: 'notes/infrastructure/load-notes-mirror-bot.ts',
+    path: 'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
     keyword: 'FROM',
     table: 'organizations',
     count: 1,
@@ -119,7 +68,7 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
   },
   // M5.8
   {
-    path: 'notes/infrastructure/load-notes-mirror-bot.ts',
+    path: 'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
     keyword: 'UPDATE',
     table: 'organizations',
     count: 2,

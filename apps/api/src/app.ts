@@ -37,7 +37,7 @@ import type {
   TaskHandlers,
   WorkHandlers,
 } from './modules/task-management/index.js';
-import type { NoteHandlers } from './notes/application/create-note-handlers.js';
+import type { Notes } from './modules/notes/index.js';
 import type { HistoryHandlers } from './modules/history/index.js';
 import type { ReviewHandlers } from './review/application/create-review-handlers.js';
 import type { CaptureProcessingService } from './workflows/processing/index.js';
@@ -114,7 +114,7 @@ export type AppDependencies = {
   captures: Captures;
   listHandlers: ListHandlers;
   projectHandlers: ProjectHandlers;
-  noteHandlers: NoteHandlers;
+  noteHandlers: Notes;
   historyHandlers: HistoryHandlers;
   taskHandlers: TaskHandlers;
   workHandlers: WorkHandlers;

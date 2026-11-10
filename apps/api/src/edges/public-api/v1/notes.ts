@@ -5,9 +5,8 @@ import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toNoteListBody } from '../../_shared/http-listed-page.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
-// M5.7 removes these deep imports once notes exports its handlers from index.ts.
-import type { NoteHandlers } from '../../../notes/application/create-note-handlers.js';
-import { noteRequestValidationError } from '../../../notes/infrastructure/note-http-errors.js';
+import type { Notes } from '../../../modules/notes/index.js';
+import { noteRequestValidationError } from './note-http-errors.js';
 import {
   mapCreateNoteError,
   mapDeleteNoteError,
@@ -16,9 +15,9 @@ import {
   mapListNotesChangedError,
   mapListNotesError,
   mapUpdateNoteError,
-} from '../../../notes/infrastructure/orpc-note-errors.js';
+} from './orpc-note-errors.js';
 
-export type NoteEdgeDependencies = { noteHandlers: NoteHandlers };
+export type NoteEdgeDependencies = { noteHandlers: Notes };
 
 type Procedure<T> = T extends { handler: (fn: infer Fn) => unknown } ? Fn : never;
 
@@ -27,7 +26,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
   const v1 = implement(publicApiV1Contract.notes).$context<OrpcHttpContext>();
 
   const list: Procedure<typeof legacy.list> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.list({
+    const result = await deps.noteHandlers.queries.listNotes({
       projectId: input.projectId,
       organizationId: context.request.authContext.organizationId,
       limit: input.limit,
@@ -41,7 +40,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const get: Procedure<typeof legacy.get> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.get({
+    const result = await deps.noteHandlers.queries.getNote({
       noteId: input.noteId,
       projectId: input.projectId,
       organizationId: context.request.authContext.organizationId,
@@ -54,7 +53,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const create: Procedure<typeof legacy.create> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.create({
+    const result = await deps.noteHandlers.commands.createNote({
       projectId: input.projectId,
       organizationId: context.request.authContext.organizationId,
       title: input.title,
@@ -69,7 +68,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const update: Procedure<typeof legacy.update> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.update({
+    const result = await deps.noteHandlers.commands.updateNote({
       noteId: input.noteId,
       projectId: input.projectId,
       organizationId: context.request.authContext.organizationId,
@@ -86,7 +85,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const listChanged: Procedure<typeof legacy.listChanged> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.listChanged({
+    const result = await deps.noteHandlers.queries.listNotesChanged({
       organizationId: context.request.authContext.organizationId,
       since: input.since,
       limit: input.limit,
@@ -100,7 +99,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const importFromObsidian: Procedure<typeof legacy.importFromObsidian> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.importFromObsidian({
+    const result = await deps.noteHandlers.commands.importNote({
       organizationId: context.request.authContext.organizationId,
       projectId: input.projectId,
       noteId: input.noteId,
@@ -120,7 +119,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     );
   };
   const deleteNote: Procedure<typeof legacy.delete> = async ({ input, context }) => {
-    const result = await deps.noteHandlers.delete({
+    const result = await deps.noteHandlers.commands.deleteNote({
       noteId: input.noteId,
       projectId: input.projectId,
       organizationId: context.request.authContext.organizationId,

@@ -320,16 +320,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     idGenerator,
   });
 
-  // InvitationService - manages organization invitations
-  const invitationService = createInvitationService({
-    invitationStore,
-    organizationStore,
-    membershipStore,
-    clock,
-    idGenerator,
-    codeGenerator,
-  });
-
   // Passkey and session services (for signup flow)
   // Only created if webauthn config is provided
   let signupDraft:
@@ -494,6 +484,15 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       createFakeTaskManagementParticipant(),
     ],
     sink: historySink,
+  });
+  const invitationService = createInvitationService({
+    invitationStore,
+    organizationStore,
+    membershipStore,
+    clock,
+    idGenerator,
+    codeGenerator,
+    unitOfWork,
   });
   const captures = createCaptures({
     load: (id) => captureStore.findById(id),

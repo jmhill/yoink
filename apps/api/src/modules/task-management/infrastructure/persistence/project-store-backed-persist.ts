@@ -126,51 +126,9 @@ export const createSqliteProjectStatusPersist = (deps: {
   return (input) => {
     const projectQueries = queriesForProjectPlan(input.project);
     const taskQueries = input.tasks.flatMap((plan) => queriesForTaskPlan(plan));
-    const setPlan =
-      input.project.action === 'setNextAction' ? input.project : null;
-    const cleanup = setPlan
-      ? input.tasks.flatMap((plan) =>
-          plan.action === 'insert'
-            ? [
-                {
-                  sql: `
-                      DELETE FROM change_log
-                      WHERE subject_id = ? AND organization_id = ?
-                        AND EXISTS (
-                          SELECT 1 FROM projects
-                          WHERE id = ? AND organization_id = ? AND status = 'done'
-                        )
-                    `,
-                  args: [
-                    plan.view.id,
-                    plan.view.organizationId,
-                    setPlan.projectId,
-                    setPlan.organizationId,
-                  ],
-                },
-                {
-                  sql: `
-                      DELETE FROM tasks
-                      WHERE id = ? AND organization_id = ?
-                        AND EXISTS (
-                          SELECT 1 FROM projects
-                          WHERE id = ? AND organization_id = ? AND status = 'done'
-                        )
-                    `,
-                  args: [
-                    plan.view.id,
-                    plan.view.organizationId,
-                    setPlan.projectId,
-                    setPlan.organizationId,
-                  ],
-                },
-              ]
-            : []
-        )
-      : [];
 
     return ResultAsync.fromPromise(
-      deps.db.batch([...taskQueries, ...projectQueries, ...cleanup], 'write'),
+      deps.db.batch([...taskQueries, ...projectQueries], 'write'),
       (error): StorageError | ProjectDoneError => {
         if (projectDoneAborted(error) && input.project.action === 'setNextAction') {
           return projectDoneError(input.project.projectId);

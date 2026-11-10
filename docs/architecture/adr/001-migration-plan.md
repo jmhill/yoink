@@ -419,7 +419,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.3 Task Management: interface, unit of work, events
 
-**Execution:** `M5.3`. [#249](https://github.com/jmhill/yoink/issues/249).
+**Execution:** `M5.3`. [#249](https://github.com/jmhill/yoink/issues/249). In review ([#361](https://github.com/jmhill/yoink/pull/361)).
 
 - **Depends on:** M5.2, M4.1b
 - **Do:** checklist steps 3–6:
@@ -562,7 +562,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.2 Web edge foundation (`/web-api/`)
 
-**Execution:** `M6.2`. [#280](https://github.com/jmhill/yoink/issues/280). In review ([#358](https://github.com/jmhill/yoink/pull/358)).
+**Execution:** `M6.2`. [#280](https://github.com/jmhill/yoink/issues/280). Done ([#358](https://github.com/jmhill/yoink/pull/358), `ae8e5ef8`, Trunk [42723879811](https://github.com/jmhill/yoink/actions/runs/42723879811)).
 
 - **Depends on:** M3.5
 - **Do:**
@@ -788,7 +788,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.1-check` | `M1.3`, `M4.2` | — | Done on main (`3729b977c1cf2da5baa2e58cb99a8c0facb47942`, [#319](https://github.com/jmhill/yoink/pull/319)). `change_log.subject_type` may be `capture`. No capture event is emitted. | None. | [#246](https://github.com/jmhill/yoink/issues/246) |
 | `M5.1` | `M3.6`, `M4.3`, `M5.1-check`, `M4.1b` | — | Done ([#343](https://github.com/jmhill/yoink/pull/343), `72780cac9169dd24ab1403ae69395da72f9ee253`). | None. | [#247](https://github.com/jmhill/yoink/issues/247) |
 | `M5.2` | `M5.1`, `CL-WORK` | — | Done (#352, `4c4b28bb`, Trunk [42701505987](https://github.com/jmhill/yoink/actions/runs/42701505987)) | Tasks, projects, lists, and the Now, due, and work-list queries live in `modules/task-management/`. `work/` is gone. `/api/work/*` stays on the public API edge. `composition-root.ts` and `app.ts` changed only to import the new entry. Allowlist 33 to 29. Lint 150 to 93 (`boundaries/element-types` 117 to 60, `@typescript-eslint/no-explicit-any` 33). | [#248](https://github.com/jmhill/yoink/issues/248) |
-| `M5.3` | `M5.2`, `M4.1b` | — | Not started | None. Still depends on M5.2. | [#249](https://github.com/jmhill/yoink/issues/249) |
+| `M5.3` | `M5.2`, `M4.1b` | — | In review ([#361](https://github.com/jmhill/yoink/pull/361)) | Task, project, list, and import writes, including project-done for 1,000 open tasks, commit through the shared unit of work. `prepare.createTask` and `prepare.createProject` are published. `TaskDeleted` `source` is on the integration event; the timeline payload stays `{ captureId }`. The assignee port stays `OrgPrincipalLookup`. Allowlist 29 to 28: removed `FROM change_log` in `project-store-backed-persist.ts`. Lint unchanged at 93 (`boundaries/element-types` 60, `@typescript-eslint/no-explicit-any` 33). | [#249](https://github.com/jmhill/yoink/issues/249) |
 | `M5.4` | `M5.3` | — | Not started | None. | [#250](https://github.com/jmhill/yoink/issues/250) |
 | `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Not started | None. Still depends on M5.3. | [#251](https://github.com/jmhill/yoink/issues/251) |
 | `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
@@ -819,7 +819,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.13-token` | `M5.12` | `M5.13-signup` | Not started | None. | [#277](https://github.com/jmhill/yoink/issues/277) |
 | `M5.13-user` | `M5.12` | `M5.13-token` | Not started | None. | [#278](https://github.com/jmhill/yoink/issues/278) |
 | `M6.1` | `M5.1`, `M3.2` | — | Done (#350, `ab09e22f`, Trunk [42692777112](https://github.com/jmhill/yoink/actions/runs/42692777112)) | None. | [#279](https://github.com/jmhill/yoink/issues/279) |
-| `M6.2` | `M3.5`, `M5.1` | — | In review (PR #358). | None. | [#280](https://github.com/jmhill/yoink/issues/280) |
+| `M6.2` | `M3.5`, `M5.1` | — | Done (#358, `ae8e5ef8`, Trunk [42723879811](https://github.com/jmhill/yoink/actions/runs/42723879811)) | None. | [#280](https://github.com/jmhill/yoink/issues/280) |
 | `M6.3-process` | `M6.2`, `M5.1`, `M5.5` | — | Not started | None. | [#281](https://github.com/jmhill/yoink/issues/281) |
 | `M6.3-tasks-lists` | `M6.2`, `M5.3` | — | Not started | None. | [#282](https://github.com/jmhill/yoink/issues/282) |
 | `M6.3-work` | `M6.2`, `M5.3`, `CL-WORK` | — | Not started | None. | [#283](https://github.com/jmhill/yoink/issues/283) |

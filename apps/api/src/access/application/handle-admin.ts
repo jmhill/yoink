@@ -4,8 +4,11 @@ import type { Clock } from '../../kernel/clock.js';
 import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { PasswordHasher } from '../../kernel/password-hasher.js';
 import type { CommitFailure, UnitOfWork } from '../../kernel/unit-of-work.js';
-import type { ProjectStore } from '../../modules/task-management/domain/ports/project-store.js';
-import { projectNotFoundError } from '../../modules/task-management/domain/messages/project-errors.js';
+import {
+  projectNotFoundError,
+  type ProjectNotFoundError,
+  type StorageError,
+} from '../../modules/task-management/domain/messages/project-errors.js';
 import type { AdminPlan } from '../domain/admin-plan.js';
 import type { ApiToken } from '../domain/api-token.js';
 import {
@@ -43,13 +46,22 @@ import { userNotFoundError, userStorageError, type UserStorageError } from '../d
 import type { TokenStore } from '../domain/token-store.js';
 import type { UserStore } from '../domain/user-store.js';
 
+/** The two project reads and writes admin still calls. The task-management store stays internal. */
+type AdminProjectStore = {
+  findById(id: string): ResultAsync<Project | null, StorageError>;
+  updateCreatedAt(
+    id: string,
+    createdAt: string
+  ): ResultAsync<void, StorageError | ProjectNotFoundError>;
+};
+
 export type AdminServiceDependencies = {
   organizationStore: OrganizationStore;
   organizationMembershipStore: OrganizationMembershipStore;
   userStore: UserStore;
   invitationStore: InvitationStore;
   tokenStore: TokenStore;
-  projectStore: ProjectStore;
+  projectStore: AdminProjectStore;
   clock: Clock;
   idGenerator: IdGenerator;
   passwordHasher: PasswordHasher;

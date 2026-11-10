@@ -5,7 +5,7 @@ import {
   workFixtureProjects,
   workFixtureTasks,
   WORK_TASK,
-} from '../../domain/ports/work-store.contract.js';
+} from '../persistence/ports/work-store.contract.js';
 import { createFakeWorkStore } from './fake-work-store.js';
 
 describe('FakeWorkStore', () => {

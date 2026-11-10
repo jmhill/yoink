@@ -168,6 +168,7 @@ export const createTaskManagement = (deps: CreateTaskManagementDeps) => {
     },
     queries: {
       listTasks: taskHandlers.list,
+      getTask: taskHandlers.get,
       listProjects: projectHandlers.list,
       getProject: projectHandlers.get,
       listOpenTasksOnProject: projectHandlers.listOpenTasks,

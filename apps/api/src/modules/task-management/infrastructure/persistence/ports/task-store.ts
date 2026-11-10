@@ -1,18 +1,11 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Task, TaskFilter } from '@yoink/api-contracts';
-import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
-import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';
-import type { StorageError } from '../messages/task-errors.js';
+import type { Task } from '@yoink/api-contracts';
+import type { KeysetCursor } from '../../../../../kernel/listing/domain/keyset-cursor.js';
+import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
+import type { StorageError } from '../../../domain/messages/task-errors.js';
+import type { FindByOrganizationOptions } from '../../../domain/messages/task-page.js';
 
-export type FindByOrganizationOptions = {
-  organizationId: string;
-  filter?: TaskFilter; // 'today' | 'upcoming' | 'all' | 'completed' | 'mine'
-  today: string;
-  /** Caller principal id; used when filter is 'mine' */
-  assigneeId?: string;
-  fetchLimit: number;
-  seek?: KeysetCursor;
-};
+export type { FindByOrganizationOptions };
 
 export type TaskStore = {
   findById(id: string): ResultAsync<Task | null, StorageError>;

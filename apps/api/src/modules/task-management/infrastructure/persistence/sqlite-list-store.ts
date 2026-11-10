@@ -1,7 +1,7 @@
 import type { Database } from '../../../../platform/database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { NamedList } from '@yoink/api-contracts';
-import type { ListStore } from '../../domain/ports/list-store.js';
+import type { ListStore } from './ports/list-store.js';
 import { storageError, type StorageError } from '../../domain/messages/list-errors.js';
 import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';

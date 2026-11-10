@@ -10,7 +10,7 @@ import {
   WORK_CREATED_BY,
   WORK_ORG,
   WORK_TASK,
-} from '../../domain/ports/work-store.contract.js';
+} from './ports/work-store.contract.js';
 import { createSqliteWorkStore } from './sqlite-work-store.js';
 
 const seedFixture = async (db: Database): Promise<void> => {

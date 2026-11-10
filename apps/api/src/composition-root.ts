@@ -34,7 +34,6 @@ import {
 } from './modules/captures/infrastructure/persistence/sqlite-capture-store.js';
 import {
   createTaskManagement,
-  createTaskService,
   storageError,
 } from './modules/task-management/index.js';
 import { createFakeTaskManagementParticipant } from './modules/task-management/infrastructure/fakes/fake-task-management-participant.js';
@@ -629,9 +628,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     loadLookups: createSqliteTimelineLookups(database),
     logger: historyReadLogger,
   });
-  const taskService = createTaskService({
-    store: taskStore,
-  });
   const taskHandlers = taskManagement.taskHandlers;
   const workHandlers = taskManagement.workHandlers;
 
@@ -771,7 +767,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     projectHandlers,
     noteHandlers,
     historyHandlers,
-    taskService,
     taskHandlers,
     workHandlers,
     reviewHandlers,

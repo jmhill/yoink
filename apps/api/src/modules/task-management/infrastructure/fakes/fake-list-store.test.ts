@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createFakeListStore } from './fake-list-store.js';
-import { runListStoreContractTests } from '../../domain/ports/list-store.contract.js';
+import { runListStoreContractTests } from '../persistence/ports/list-store.contract.js';
 
 describe('FakeListStore', () => {
   runListStoreContractTests({

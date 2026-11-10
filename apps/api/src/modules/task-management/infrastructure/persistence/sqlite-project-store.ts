@@ -1,7 +1,7 @@
 import type { Database } from '../../../../platform/database/types.js';
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
 import type { Project } from '@yoink/api-contracts';
-import type { ProjectStore } from '../../domain/ports/project-store.js';
+import type { ProjectStore } from './ports/project-store.js';
 import { projectNotFoundError, storageError, type StorageError } from '../../domain/messages/project-errors.js';
 import type { KeysetCursor } from '../../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../../kernel/listing/domain/listed-page.js';

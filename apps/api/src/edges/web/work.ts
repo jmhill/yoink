@@ -2,7 +2,7 @@ import { implement } from '@orpc/server';
 import { webWorkContract } from '@yoink/api-contracts/web';
 import { principalKindOf } from '../../access/domain/user.js';
 import type { MembershipService } from '../../access/application/handle-membership.js';
-import type { UserService } from '../../access/domain/user-service.js';
+import type { UserService } from '../../access/application/handle-user.js';
 import { resolveViewerToday } from '../../kernel/viewer-today.js';
 import type { WorkHandlers } from '../../modules/task-management/index.js';
 import { toWorkListsBody } from '../_shared/http-listed-page.js';

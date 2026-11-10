@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createFakeClock } from '@yoink/infrastructure';
+import { nodeChallengeCrypto } from '../infrastructure/node-challenge-crypto.js';
 import { createChallengeManager } from './challenge.js';
 
 const TEST_SECRET = 'test-secret-that-is-at-least-32-bytes-long-for-hmac';
@@ -8,7 +9,7 @@ describe('createChallengeManager', () => {
   describe('generateRegistrationChallenge', () => {
     it('generates a base64url-encoded challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       
@@ -20,7 +21,7 @@ describe('createChallengeManager', () => {
     
     it('generates unique challenges each time', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge1 = manager.generateRegistrationChallenge('user-123');
       const challenge2 = manager.generateRegistrationChallenge('user-123');
@@ -32,7 +33,7 @@ describe('createChallengeManager', () => {
   describe('generateAuthenticationChallenge', () => {
     it('generates a challenge without userId', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateAuthenticationChallenge();
       
@@ -41,7 +42,7 @@ describe('createChallengeManager', () => {
     
     it('generates a challenge with userId', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateAuthenticationChallenge('user-123');
       
@@ -52,7 +53,7 @@ describe('createChallengeManager', () => {
   describe('validateChallenge', () => {
     it('validates a registration challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       const result = manager.validateChallenge(challenge, 'registration');
@@ -67,7 +68,7 @@ describe('createChallengeManager', () => {
     
     it('validates an authentication challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateAuthenticationChallenge('user-456');
       const result = manager.validateChallenge(challenge, 'authentication');
@@ -81,7 +82,7 @@ describe('createChallengeManager', () => {
     
     it('rejects expired challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       
@@ -98,7 +99,7 @@ describe('createChallengeManager', () => {
     
     it('rejects challenge with wrong purpose', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       const result = manager.validateChallenge(challenge, 'authentication');
@@ -111,7 +112,7 @@ describe('createChallengeManager', () => {
     
     it('rejects tampered challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       
@@ -130,8 +131,12 @@ describe('createChallengeManager', () => {
     
     it('rejects challenge signed with different secret', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager1 = createChallengeManager({ secret: TEST_SECRET, clock });
-      const manager2 = createChallengeManager({ secret: 'different-secret-that-is-at-least-32-bytes', clock });
+      const manager1 = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
+      const manager2 = createChallengeManager({
+        secret: 'different-secret-that-is-at-least-32-bytes',
+        clock,
+        crypto: nodeChallengeCrypto,
+      });
       
       const challenge = manager1.generateRegistrationChallenge('user-123');
       const result = manager2.validateChallenge(challenge, 'registration');
@@ -144,7 +149,7 @@ describe('createChallengeManager', () => {
     
     it('rejects invalid base64', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const result = manager.validateChallenge('not-valid!!!', 'registration');
       
@@ -153,7 +158,7 @@ describe('createChallengeManager', () => {
     
     it('rejects too-short challenge', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const result = manager.validateChallenge('c2hvcnQ', 'registration');
       
@@ -165,7 +170,7 @@ describe('createChallengeManager', () => {
     
     it('accepts challenge just before expiry', () => {
       const clock = createFakeClock(new Date('2024-01-01T00:00:00.000Z'));
-      const manager = createChallengeManager({ secret: TEST_SECRET, clock });
+      const manager = createChallengeManager({ secret: TEST_SECRET, clock, crypto: nodeChallengeCrypto });
       
       const challenge = manager.generateRegistrationChallenge('user-123');
       

@@ -94,6 +94,7 @@ import {
   seedAuthData,
 } from './access/infrastructure/index.js';
 import { createChallengeManager } from './access/domain/challenge.js';
+import { nodeChallengeCrypto } from './access/infrastructure/node-challenge-crypto.js';
 import {
   createTokenService,
   type TokenService,
@@ -298,9 +299,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       ? createdTokenService
       : options.wrapTokenService(createdTokenService);
 
-  // Create UserService to be used by other services
-  const userService = createUserService({ userStore });
-
   const historySink = createHistoryEventSink({
     ids: idGenerator,
     builders: {
@@ -342,6 +340,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     sink: historySink,
   });
 
+  // Create commits one user plan. Get, get-by-email, and get-by-ids stay reads.
+  const userService = createUserService({ userStore, unitOfWork });
+
   // Add, leave, remove, and role change commit one access plan.
   // Ownership transfer stays on handleTransferOwnership.
   const membershipService = createMembershipService({
@@ -381,6 +382,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       challenges: createChallengeManager({
         secret: config.webauthn.challengeSecret,
         clock,
+        crypto: nodeChallengeCrypto,
       }),
       unitOfWork,
     });

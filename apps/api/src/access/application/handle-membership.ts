@@ -24,7 +24,7 @@ import {
   type MembershipStorageError,
 } from '../domain/organization-errors.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
-import type { UserService } from '../domain/user-service.js';
+import type { UserService } from './handle-user.js';
 
 export type { AddMemberCommand } from '../domain/membership-commands.js';
 

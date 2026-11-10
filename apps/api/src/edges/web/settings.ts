@@ -3,7 +3,7 @@ import { webSettingsContract } from '@yoink/api-contracts/web';
 import type { AgentService, InvitationService } from '../../access/domain/index.js';
 import type { MembershipService } from '../../access/application/handle-membership.js';
 import type { SessionService } from '../../access/application/handle-session.js';
-import type { UserService } from '../../access/domain/user-service.js';
+import type { UserService } from '../../access/application/handle-user.js';
 import { principalKindOf } from '../../access/domain/user.js';
 import type { ChangeMemberRoleHandler } from '../../access/application/handle-change-member-role.js';
 import type { ReissueAgentToken } from '../../access/application/handle-reissue-agent-token.js';

@@ -21,7 +21,7 @@ import type { OrganizationMembershipStore } from '../../domain/organization-memb
 import type { Organization } from '../../domain/organization.js';
 import type { OrganizationStore } from '../../domain/organization-store.js';
 import type { User } from '../../domain/user.js';
-import type { UserService } from '../../domain/user-service.js';
+import type { UserService } from '../../application/handle-user.js';
 import { accessSqlParticipant } from './access-sql-participant.js';
 import { compileMembershipPlan } from './compile-membership.js';
 

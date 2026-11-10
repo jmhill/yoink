@@ -14,10 +14,11 @@ import {
 } from '../../../platform/unit-of-work/sqlite-unit-of-work.js';
 import { createPasskeyService } from '../../application/handle-passkey.js';
 import { createChallengeManager } from '../../domain/challenge.js';
+import { nodeChallengeCrypto } from '../node-challenge-crypto.js';
 import { planDeletePasskey, planRecordPasskeyUse, planSavePasskey } from '../../domain/passkey-plan.js';
 import type { PasskeyCredentialStore } from '../../domain/passkey-credential-store.js';
 import type { User } from '../../domain/user.js';
-import { createUserService } from '../../domain/user-service.js';
+import { createUserService } from '../../application/handle-user.js';
 import { createFakeUserStore } from '../fake-user-store.js';
 import { createFakeWebAuthnVerifier } from '../fake-webauthn-verifier.js';
 import { createSqlitePasskeyCredentialStore } from '../sqlite-passkey-credential-store.js';
@@ -86,7 +87,7 @@ describe('passkey unit of work', () => {
       }),
       clock,
       verifier,
-      challenges: createChallengeManager({ secret: SECRET, clock }),
+      challenges: createChallengeManager({ secret: SECRET, clock, crypto: nodeChallengeCrypto }),
       unitOfWork: createSqliteUnitOfWork({
         client: libsqlWriteClient(client),
         participants: [accessSqlParticipant],

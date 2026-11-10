@@ -5,7 +5,7 @@ import { invitationOrpcContract } from '@yoink/api-contracts/orpc';
 import type { InvitationService } from '../../../access/domain/index.js';
 import type { MembershipService } from '../../../access/application/handle-membership.js';
 import type { OrganizationService } from '../../../access/application/handle-organization.js';
-import type { UserService } from '../../../access/domain/user-service.js';
+import type { UserService } from '../../../access/application/handle-user.js';
 import type { AuthMiddleware } from '../../_shared/auth/auth-middleware.js';
 import { handleAcceptInvitation } from '../../../access/application/handle-accept-invitation.js';
 import { handleValidateInvitation } from '../../../access/application/handle-validate-invitation.js';

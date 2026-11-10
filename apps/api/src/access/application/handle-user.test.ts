@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createUserService, type UserService } from './user-service.js';
+import { createUserService, type UserService } from './handle-user.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import type { User } from './user.js';
-import type { UserStore } from './user-store.js';
+import type { User } from '../domain/user.js';
+import type { UserStore } from '../domain/user-store.js';
 
 const createTestUser = (overrides: Partial<User> = {}): User => ({
   id: '550e8400-e29b-41d4-a716-446655440001',

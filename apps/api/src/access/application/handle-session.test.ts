@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
 import { createSessionService, type SessionService } from './handle-session.js';
 import { createMembershipService, type MembershipService } from './handle-membership.js';
-import { createUserService, type UserService } from '../domain/user-service.js';
+import { createUserService, type UserService } from './handle-user.js';
 import type { UserSessionStore } from '../domain/user-session-store.js';
 import type { User } from '../domain/user.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';

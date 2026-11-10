@@ -33,7 +33,7 @@ import {
   planSavePasskey,
   type PasskeyPlan,
 } from '../domain/passkey-plan.js';
-import type { UserService } from '../domain/user-service.js';
+import type { UserService } from './handle-user.js';
 import type { WebAuthnVerifier } from '../domain/webauthn-verifier.js';
 
 export type {

@@ -3,10 +3,11 @@ import { errAsync } from 'neverthrow';
 import { createFakeClock } from '@yoink/infrastructure';
 import { createPasskeyService, type PasskeyService } from './handle-passkey.js';
 import { createChallengeManager } from '../domain/challenge.js';
+import { nodeChallengeCrypto } from '../infrastructure/node-challenge-crypto.js';
 import { createFakePasskeyCredentialStore } from '../infrastructure/fake-passkey-credential-store.js';
 import { createFakeWebAuthnVerifier } from '../infrastructure/fake-webauthn-verifier.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
-import { createUserService } from '../domain/user-service.js';
+import { createUserService } from './handle-user.js';
 import type { User } from '../domain/user.js';
 
 const TEST_USER: User = {
@@ -46,7 +47,7 @@ describe('createPasskeyService', () => {
       userService,
       clock,
       verifier,
-      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
+      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock, crypto: nodeChallengeCrypto }),
     });
   });
 
@@ -265,7 +266,7 @@ describe('createPasskeyService', () => {
         userService: createUserService({ userStore }),
         clock,
         verifier,
-        challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
+        challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock, crypto: nodeChallengeCrypto }),
         unitOfWork: {
           commit: () =>
             errAsync({

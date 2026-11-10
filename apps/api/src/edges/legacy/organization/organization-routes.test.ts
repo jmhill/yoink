@@ -5,7 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerOrganizationRoutes } from './organization-routes.js';
 import { createSessionService } from '../../../access/application/handle-session.js';
-import { createUserService } from '../../../access/domain/user-service.js';
+import { createUserService } from '../../../access/application/handle-user.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createAgentService } from '../../../access/application/handle-agent.js';
 import { createStoreBackedTokenReissue } from '../../../access/infrastructure/store-backed-token-persist.js';

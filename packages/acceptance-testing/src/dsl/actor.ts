@@ -1938,6 +1938,12 @@ export type BrowserActorOperations = {
   shouldKeepProjectPageOnWebEdge(): Promise<void>;
 
   /**
+   * The Work screen and work lists go to `/web-api`.
+   * `/api/work/*` stays mounted for other clients.
+   */
+  shouldKeepWorkOnWebEdge(): Promise<void>;
+
+  /**
    * Settings members, invitations, tokens, and passkeys go to `/web-api`.
    */
   shouldKeepSettingsOnWebEdge(): Promise<void>;

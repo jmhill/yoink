@@ -7,6 +7,7 @@ import { webListsContract } from './lists-contract.js';
 import { webProjectsContract } from './projects-contract.js';
 import { webSettingsContract } from './settings-contract.js';
 import { webTasksContract } from './tasks-contract.js';
+import { webWorkContract } from './work-contract.js';
 
 const procedures = (
   router: unknown,
@@ -153,6 +154,18 @@ describe('web tasks contract', () => {
     ]);
     expect(listed.some((procedure) => procedure.path.includes('history'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.includes('pin'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web work contract', () => {
+  it('is the Work screen and work lists, on the resource path', () => {
+    const listed = procedures(webWorkContract);
+    expect(listed).toEqual([
+      { key: 'screen', method: 'GET', path: '/work' },
+      { key: 'listLists', method: 'GET', path: '/work/lists' },
+    ]);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });

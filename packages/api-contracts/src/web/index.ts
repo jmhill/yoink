@@ -4,3 +4,4 @@ export { webListsContract } from './lists-contract.js';
 export { webProjectsContract } from './projects-contract.js';
 export { webSettingsContract } from './settings-contract.js';
 export { webTasksContract } from './tasks-contract.js';
+export { webWorkContract } from './work-contract.js';

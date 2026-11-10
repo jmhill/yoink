@@ -23,11 +23,11 @@ import { PlaceHeading } from '@/components/place-heading';
 import { ErrorState } from '@/components/error-state';
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { isBlockingQueryFailure } from '@/lib/live-query';
-import { listsRowLabel, localDateLabel, nowSubcopy, ownerLabelFor } from '@/lib/now';
+import { listsRowLabel, localDateLabel, nowSubcopy } from '@/lib/now';
 import { useOpenTaskMutations } from '@/lib/use-open-task-mutations';
 import { TASK_SURFACE_TEST_ID } from '@/lib/inbox-pane';
-import { calendarDateInTimeZone, viewerTimeZone } from '@/lib/viewer-today';
-import { workScreenSectionCopy, workScreenSections } from '@/lib/work-screen';
+import { viewerTimeZone } from '@/lib/viewer-today';
+import { workScreenSectionCopy } from '@/lib/work-screen';
 
 const searchSchema = z.object({
   mine: z.boolean().optional(),
@@ -53,7 +53,6 @@ function WorkPage() {
     refetchInterval: false,
   });
   const organizationId = sessionData?.organizationId;
-  const currentUserId = sessionData?.user.id;
 
   const membersQuery = useQuery({
     queryKey: ['organization-members', organizationId ?? ''],
@@ -64,13 +63,9 @@ function WorkPage() {
   });
   const members = membersQuery.data?.members ?? [];
 
-  const nextActionsQuery = useQuery({
-    queryKey: ['work', 'next-actions', owner],
-    queryFn: () => workClient.listNextActions({ owner, limit: PILE_SAFETY_CAP }),
-  });
-  const dueQuery = useQuery({
-    queryKey: ['work', 'due', owner],
-    queryFn: () => workClient.listDue({ owner, limit: PILE_SAFETY_CAP, timeZone }),
+  const screenQuery = useQuery({
+    queryKey: ['work', 'screen', owner],
+    queryFn: () => workClient.screen({ owner, limit: PILE_SAFETY_CAP, timeZone }),
   });
   const listsQuery = useQuery({
     queryKey: ['work', 'lists'],
@@ -112,32 +107,21 @@ function WorkPage() {
       ),
   });
 
-  const nextActions = nextActionsQuery.data?.items ?? [];
-  const dueTasks = dueQuery.data?.tasks ?? [];
-  const nextActionCount = nextActionsQuery.data?.total ?? nextActions.length;
-  const dueCount = dueQuery.data?.total ?? dueTasks.length;
+  const sections = screenQuery.data?.sections ?? [];
+  const nextActionCount = screenQuery.data?.nextActionCount ?? 0;
+  const dueCount = screenQuery.data?.dueCount ?? 0;
   const namedLists = listsQuery.data?.lists ?? [];
   const unlistedCount = listsQuery.data?.unlisted.openTaskCount ?? 0;
   const editLists = namedListsQuery.data?.lists ?? [];
   const editProjects = projectsQuery.data?.projects ?? [];
 
-  const ready =
-    nextActionsQuery.isSuccess &&
-    dueQuery.isSuccess &&
-    nextActionsQuery.data !== undefined &&
-    dueQuery.data !== undefined;
+  const ready = screenQuery.isSuccess && screenQuery.data !== undefined;
 
-  const isPending = nextActionsQuery.isPending || dueQuery.isPending;
-  const queryError = nextActionsQuery.error ?? dueQuery.error;
-  const blockingError = isBlockingQueryFailure(queryError, nextActionsQuery.data ?? dueQuery.data)
-    ? queryError
-    : null;
+  const isPending = screenQuery.isPending;
+  const queryError = screenQuery.error;
+  const blockingError = isBlockingQueryFailure(queryError, screenQuery.data) ? queryError : null;
 
-  const ownerOf = (task: Task) => ownerLabelFor(task, currentUserId, members);
-  const today = calendarDateInTimeZone(new Date(), timeZone);
-  const sections = workScreenSections({ nextActions, dueTasks, today });
-
-  const bothEmpty = ready && nextActions.length === 0 && dueTasks.length === 0;
+  const bothEmpty = ready && sections.length === 0;
 
   return (
     <div
@@ -180,8 +164,7 @@ function WorkPage() {
         <ErrorState
           error={blockingError}
           onRetry={() => {
-            void nextActionsQuery.refetch();
-            void dueQuery.refetch();
+            void screenQuery.refetch();
           }}
         />
       ) : isPending ? (
@@ -206,7 +189,7 @@ function WorkPage() {
                 rows={section.rows.map((row) => ({
                   task: row.task,
                   projectLabel: row.projectLabel,
-                  ownerLabel: ownerOf(row.task),
+                  ownerLabel: row.ownerLabel,
                 }))}
                 onComplete={(id) => completeMutation.mutate({ id })}
                 onEdit={setEditingTask}
